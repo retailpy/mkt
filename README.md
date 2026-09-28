@@ -2,7 +2,7 @@
 
 Diseño gráfico, CM, redes y equipo de Retail MKT en una sola app (PWA instalable).
 
-**App: https://retailpy.github.io/mkt/**
+**App: https://mkt-two.vercel.app**
 
 ## Cómo está armada
 
@@ -10,7 +10,7 @@ Diseño gráfico, CM, redes y equipo de Retail MKT en una sola app (PWA instalab
 |---|---|
 | App (HTML + JS, sin build) | `index.html`, `sync.js`, `config.js`, `sw.js`, `manifest.webmanifest`, íconos |
 | Base de datos, login y reglas de acceso | Supabase, proyecto `retail-mkt-hub` (región São Paulo) |
-| Publicación | GitHub Pages (`.github/workflows/pages.yml`): cada push a `main` se publica solo |
+| Publicación | Vercel, conectado a este repo: cada push a `main` se publica solo |
 
 - `sync.js` conecta la app con Supabase: login con email y contraseña, carga los datos al entrar,
   guarda solo cada cambio a los segundos y trae en vivo lo que cambian los demás. Si dos personas
