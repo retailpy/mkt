@@ -515,6 +515,34 @@ tr.off td{opacity:.55}
 .scard .myedit{margin:10px 0 0;font-size:12.5px;color:var(--cyan)}
 .scard.shidden{opacity:.5}
 .scard .svisrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line-2)}
+/* Prompts: botones con borde, sin degradados (más minimalista) */
+.pm2 .pmtabs2{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+@media (max-width:900px){.pm2 .pmtabs2{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:480px){.pm2 .pmtabs2{grid-template-columns:1fr}}
+.pm2 .pmtabs2 button{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line-3);border-radius:14px;color:var(--muted);font-size:14px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s}
+.pm2 .pmtabs2 button svg{width:20px;height:20px;stroke-width:1.75;flex:none}
+.pm2 .pmtabs2 button:hover{border-color:#64748b;color:var(--ink)}
+.pm2 .pmtabs2 button.on{border-color:var(--cyan);color:var(--ink);box-shadow:inset 0 0 0 1px var(--cyan)}
+.pm2 .pmtabs2 button.on svg{color:var(--cyan)}
+.pm2 .pynbtns button.on{background:transparent;color:var(--cyan);box-shadow:inset 0 0 0 1.5px var(--cyan)}
+.pm2 .pynbtns.big{align-self:flex-start}
+.pm2 .pynbtns.big button{padding:10px 18px;font-size:14px}
+.pm2 .btn.pgen{background:transparent;border:1.5px solid var(--cyan);color:var(--cyan);font-weight:700;display:inline-flex;align-items:center;gap:8px}
+.pm2 .btn.pgen:hover{background:rgba(34,211,238,.08)}
+.pm2 .btn.pgen svg,.pm2 .row .btn svg{width:16px;height:16px}
+.pm2 .row .btn{display:inline-flex;align-items:center;gap:6px}
+.pm2 .promptout{background:var(--panel);border-color:var(--line-3)}
+.pm2 .promptout textarea.base{color:var(--ink);font-family:var(--mono);font-size:13px;line-height:1.6}
+.pm2 .pmodel{border:1px solid var(--line-2);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.pm2 .pmodel b{font-size:13px;color:var(--ink)}
+.pm2 .pgrid4 .w2{grid-column:span 2}
+@media (max-width:640px){.pm2 .pgrid4 .w2{grid-column:1/-1}}
+.pm2 .pfsel{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted);max-width:320px}
+.pm2 .pfid{display:flex;align-items:center;gap:8px;margin:4px 0 0;font-size:12.5px;color:var(--good)}
+.pm2 .pfid svg{width:16px;height:16px;flex:none}
+.pm2 .perr{margin:0;padding:10px 14px;border:1px solid rgba(248,113,113,.5);border-radius:12px;color:#fca5a5;font-weight:600}
+.pm2 .promptform label{display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--muted)}
+.pm2 .promptform select.base{width:100%}
 /* Planificación del mes: íconos lineales de un solo color */
 .pmico{display:inline-grid;place-items:center;color:var(--cyan)}
 .pmico svg,.pmico i{width:20px;height:20px;stroke-width:1.75}
@@ -4142,85 +4170,234 @@ document.addEventListener("click", e => {
   const d = e.target.closest("[data-ldel]"); if (d){ const [b, i] = d.dataset.ldel.split("|"); linksOf(b).otros.splice(+i, 1); render(); toast("Enlace quitado."); }
 });
 document.addEventListener("submit", e => { const f = e.target.closest("[data-lform]"); if (!f) return; e.preventDefault(); const b = f.dataset.lform, l = f.l.value.trim(), u = f.u.value.trim(); if (!l || !u) return; linksOf(b).otros.push({ l, u }); render(); toast(`Enlace “${l}” agregado a ${b}.`); });
-// ---------- Prompts de imágenes: se completan los campos y se genera el texto para pegar en la IA ----------
-// FÓRMULA DE EJEMPLO (fotografía publicitaria). Se reemplaza por la fórmula definitiva del equipo en buildPrompt().
-const PROMPT_FORMATS = [["Historia / Reel de Instagram","9:16","1080 × 1920 px"],["Post vertical de Instagram","4:5","1080 × 1350 px"],["Post cuadrado","1:1","1080 × 1080 px"],["Horizontal (banner, pantalla)","16:9","1920 × 1080 px"]];
-const P_OPTS = {
-  cantidad:["Una persona","Dos personas","Un grupo pequeño (3 a 4)","Familia"],
-  genero:["Mujer","Hombre","Mixto"],
-  edad:["Niños (6 a 12)","Jóvenes (18 a 25)","Adultos (26 a 40)","Adultos (40 a 60)","Mayores (60+)"],
-  expresion:["Sonriente y natural","Relajada","Concentrada","Divertida, riendo"],
-  iluminacion:["Luz natural suave","Estudio profesional","Cálida, de atardecer","Contrastada y dramática"],
-  estilo:["Publicitario retail","Lifestyle cotidiano","Minimalista","Premium y elegante"],
-  plano:["Plano medio","Primer plano del producto","Plano general","Vista cenital (desde arriba)","Ángulo 3/4"],
+// ---------- Prompts de imágenes (ChatGPT / Gemini / Nano Banana) ----------
+// Pantalla en español; lo que va al prompt, en inglés. Seis modalidades, referencias adjuntas, modelos,
+// estilo, cámara automática, bloques de realismo, negativos y validaciones.
+// Lo más importante: si se adjuntan fotos (producto, logo, letras, personas), no se deforma nada.
+const PM_MODES = [
+  { n:1, l:"Producto en escenario", i:"package" },
+  { n:2, l:"Varios productos", i:"shopping-bag" },
+  { n:3, l:"Producto con modelos", i:"user-round" },
+  { n:4, l:"Modelos en locación", i:"map-pin" },
+  { n:5, l:"Fondo pleno o transparente", i:"square-dashed" },
+  { n:6, l:"Opción libre", i:"pencil-line" },
+];
+const PM = {
+  material:[["", "—"], ["glass","Vidrio brillante","glossy glass with clean, accurate reflections and realistic refraction"], ["metal","Metal pulido","polished metal with crisp specular highlights and true environment reflections"], ["matte","Mate","matte finish with soft even micro-texture"], ["plastic","Plástico brillante","glossy plastic with smooth, realistic highlights"], ["fabric","Tela","fabric with visible weave texture and natural folds"], ["wood","Madera","natural wood grain with real pores and subtle sheen"], ["box","Caja / cartón","printed cardboard packaging with sharp edges and crisp print"], ["food","Alimento","fresh food with appetizing natural texture, moisture and color"]],
+  disposicion:[["hero","Uno protagonista al frente","the first product as the hero in front and center, the others slightly behind and to the sides"], ["row","Alineados en fila","all products aligned in a neat row at the same height"], ["pyramid","En pirámide","products arranged in a staggered pyramid, tallest in the center"], ["natural","Agrupados natural","products grouped naturally, slightly overlapping, all labels visible"]],
+  interaccion:[["hold","Lo sostiene","holding the product naturally in hand, label facing camera"], ["use","Lo usa","using the product naturally"], ["show","Lo muestra a cámara","showing the product to camera at chest height"], ["look","Lo mira","looking at the product with interest"], ["beside","Producto al lado","with the product placed beside them"]],
+  escena:[["cart","En el súper con carrito","pushing a shopping cart through the supermarket aisle, cart filled with {P}"], ["shelf","En el súper eligiendo en góndola","choosing products from the supermarket shelves, reaching for {P}"], ["checkout","En la caja con bolsas","at the supermarket checkout carrying shopping bags with {P}"], ["featured","Otro ambiente con producto destacado","{I} with the featured product, the product clearly visible and highlighted in the frame"], ["happy","Modelos solos, felices","happy and relaxed, enjoying the moment together, no products in hand"], ["doing","Modelos haciendo algo",""]],
+  tipoFondo:[["white","Blanco puro","Isolated on a seamless pure white background #FFFFFF, {S}."], ["solid","Color sólido","Isolated on a seamless solid {H} background, evenly lit, {S}."], ["transp","Transparente","Isolated product on a transparent background (PNG, alpha channel), clean cut edges, {S}."]],
+  sombra:[["soft","Suave","a soft natural contact shadow under the product"], ["mirror","Reflejo","a subtle mirror reflection on a glossy surface"], ["none","Sin sombra","no shadow at all"]],
+  genero:[["f","Mujer"], ["m","Hombre"]],
+  peinado:[["long","Largo suelto","long straight"], ["wavy","Ondulado a los hombros","shoulder-length wavy"], ["tied","Recogido","tied back in a neat ponytail"], ["short","Corto","short, neatly styled"]],
+  expresion:[["smile","Sonrisa natural","a natural, relaxed smile"], ["wide","Sonrisa amplia","a wide, joyful smile"], ["serious","Seria y segura","a confident, serious look"], ["thought","Pensativa","a thoughtful expression"], ["laugh","Riendo","genuine laughter"]],
+  estilo:[["retail","Publicitario retail","retail advertising photography, clean, bright and product-focused","trustworthy, appealing and ready to buy","clean commercial color grade, neutral whites, vibrant yet accurate colors, crisp contrast"],
+    ["life","Lifestyle cotidiano","lifestyle commercial photography, candid and authentic everyday moment","warm, real and relatable","warm natural color grade, soft contrast, gentle film-like tonality reminiscent of Kodak Portra 400"],
+    ["mini","Minimalista","minimalist commercial photography, few elements, generous negative space","calm, modern and clean","airy neutral grade, soft tonal transitions, restrained palette"],
+    ["premium","Premium y elegante","premium luxury advertising photography, refined and elegant","exclusive, sophisticated and aspirational","rich deep color grade, controlled contrast, luminous highlights, luxurious tonality"]],
+  ilum:[["natural","Luz natural suave","soft diffused natural window light from the left, 5500K, large white bounce fill on the right, gentle soft shadows, even exposure"],
+    ["studio","Estudio profesional","three-point studio lighting: large octabox key light at 45° left, soft fill from the right at one stop under, subtle strip-box rim light from behind, 5600K, controlled soft shadows"],
+    ["sunset","Cálida, atardecer","warm golden-hour sunlight, 3500K, low sun backlighting from the right creating a soft rim glow, warm reflector fill on faces and subject, long soft shadows"],
+    ["dramatic","Contrastada y dramática","low-key dramatic lighting, single hard key light from the side with a grid, 4500K, deep controlled shadows, crisp rim light on edges"],
+    ["store","Interior comercial / supermercado","bright, even overhead LED commercial lighting at 4000K balanced with a large soft key light from the front-left at 5500K, no green or color cast, clean highlights, soft shadows under products"]],
+  encuadre:[["medium","Plano medio","medium shot at eye level","50mm prime lens at f/2.8","80mm prime lens at f/8"],
+    ["close","Primer plano","close-up detail shot","100mm macro lens at f/4","120mm macro lens at f/11, focus-stacked for front-to-back sharpness"],
+    ["wide","Plano general","wide shot showing the full scene","35mm prime lens at f/4","35mm lens at f/8"],
+    ["top","Cenital","top-down flat lay view, camera directly overhead","50mm prime lens at f/5.6","80mm prime lens at f/8, camera perfectly parallel to the surface"],
+    ["34","Ángulo 3/4","three-quarter angle, camera slightly elevated about 30°","85mm prime lens at f/2.8","100mm lens at f/8"]],
+  formato:[["916","Historia / Reel","9:16 vertical (1080×1920 px)"], ["45","Post vertical","4:5 vertical (1080×1350 px)"], ["11","Post cuadrado","1:1 square (1080×1080 px)"], ["169","Horizontal","16:9 horizontal (1920×1080 px)"]],
+  espacio:[["none","Sin espacio","balanced composition following the rule of thirds"], ["tb","Arriba y abajo","keep the top 22% and bottom 20% of the frame clean and empty for text overlay, main subject in the central area"], ["left","Izquierda","main subject on the right third, left side clean and uncluttered for text overlay"], ["right","Derecha","main subject on the left third, right side clean and uncluttered for text overlay"]],
 };
-const P_EMPTY = () => ({ producto:"", situacion:"", ambiente:"", fondo:"", ropa:"", formato:0, cantidad:0, genero:0, edad:2, expresion:0, iluminacion:0, estilo:0, plano:0, refProd:"no", refFondo:"no", refModelo:"no" });
-let promptUI = { mode:"sin", out:"", f:P_EMPTY() };
+const pmv = (list, k, i = 2) => (PM[list].find(x => x[0] === k) || PM[list][0])[i];
+const PM_MODEL = () => ({ edad:"", genero:"f", peinado:"long", expresion:"smile", ropa:"", pose:"" });
+const PM_EMPTY = () => ({ ref:"no", refProd:"no", refFondo:"no", fondoTipo:"super", refPersona:"no",
+  producto:"", productos:"", material:"", colores:"", marca:"", ambiente:"", fondo:"", detalles:"", disposicion:"hero", interaccion:"hold",
+  escena:"cart", superProds:"", locacion:"", tipoFondo:"white", fondoHex:"", sombra:"soft", libreQue:"", elemento:"", conPersonas:"no",
+  nModelos:1, modelos:[PM_MODEL(), PM_MODEL(), PM_MODEL(), PM_MODEL()],
+  estilo:"retail", ilum:"natural", encuadre:"medium", formato:"45", espacio:"none" });
+let promptUI = { mode:1, f:PM_EMPTY(), out:"", err:"" };
 const PROMPT_HISTORY = {};
-function buildPrompt(f, con){
-  const [fn, ratio, px] = PROMPT_FORMATS[+f.formato], O = k => P_OPTS[k][+f[k]].toLowerCase();
-  const parts = [];
-  parts.push(`Fotografía publicitaria profesional, realista y de alta calidad, estilo ${O("estilo")}.`);
-  if (con){
-    const quien = `${O("cantidad")}, ${P_OPTS.genero[+f.genero] === "Mixto" ? "hombres y mujeres" : O("genero")}, ${O("edad")}`;
-    parts.push(f.refModelo === "si"
-      ? `Modelos: usá a las personas de la imagen de referencia adjunta. Mantené idénticos sus rostros, rasgos, tono de piel, peinado y contextura; no cambies su identidad.${f.ropa ? ` Vestimenta: ${f.ropa}.` : ""}`
-      : `Modelos: ${quien}, expresión ${O("expresion")}, aspecto natural y auténtico, piel y manos realistas.${f.ropa ? ` Vestimenta: ${f.ropa}.` : ""}`);
-    if (f.situacion) parts.push(`Situación: ${f.situacion}.`);
+const SUPER_SCENES = ["cart","shelf","checkout"];
+// Quién va en la foto y qué campos corresponden a cada modalidad.
+const pmHasPeople = (m, f) => m === 3 || m === 4 || (m === 6 && f.conPersonas === "si");
+const pmHasProduct = (m, f) => [1,2,3,5].includes(m) || (m === 4 && f.escena === "featured") || (m === 6 && !!f.elemento.trim());
+const pmProdToggle = m => [1,2,3,5,6].includes(m);
+const pmFondoAdj = f => f.ref === "si" && f.refFondo === "si";
+const spellBrand = t => [...t.trim()].map(ch => ch === " " ? "space" : ch).join("-");
+const ageWord = (edad, g) => { const a = +edad, w = g === "m" ? ["boy","teenage boy","man"] : ["girl","teenage girl","woman"]; return a < 13 ? w[0] : a < 18 ? w[1] : w[2]; };
+
+function validatePrompt(m, f){
+  if ([1,3,5].includes(m) && !f.producto.trim()) return "Describí el producto.";
+  if (m === 2 && f.productos.split("\n").filter(x => x.trim()).length < 2) return "Poné al menos 2 productos, uno por línea.";
+  if (pmHasPeople(m, f) && f.modelos.slice(0, f.nModelos).some(x => !String(x.edad).trim() || isNaN(+x.edad) || +x.edad <= 0)) return "Poné la edad exacta de cada modelo.";
+  if (m === 4 && f.escena === "featured" && !f.producto.trim()) return "Describí el producto a destacar.";
+  if (m === 4 && !SUPER_SCENES.includes(f.escena) && !f.locacion.trim() && !pmFondoAdj(f)) return "Describí la locación.";
+  if (m === 5 && f.tipoFondo === "solid" && !pmFondoAdj(f) && !f.fondoHex.trim()) return "Poné el color del fondo en hex.";
+  if (m === 6 && !f.libreQue.trim()) return "Contá qué querés en la foto.";
+  return "";
+}
+function buildPrompt(m, f){
+  const people = pmHasPeople(m, f), product = pmHasProduct(m, f), fondoAdj = pmFondoAdj(f), refs = f.ref === "si";
+  const refProd = refs && pmProdToggle(m) && f.refProd === "si", refPers = refs && people && f.refPersona === "si";
+  const st = PM.estilo.find(x => x[0] === f.estilo) || PM.estilo[0], premium = f.estilo === "premium";
+  const L = [];
+  L.push(`Professional ${st[2]}, photorealistic, shot for a real advertising campaign.`);
+  // Referencias adjuntas
+  const R = [];
+  if (refProd) R.push(m === 2 ? "Use the attached product photos as the exact products: keep shapes, labels, logos, colors and proportions identical, do not redesign them."
+    : m === 6 ? "Use the attached photo as the exact main subject: keep its shape, colors, logos and proportions identical, do not redesign it."
+    : "Use the attached product photo as the exact product: keep its shape, label, logo, colors and proportions identical, do not redesign it.");
+  if (fondoAdj) R.push(f.fondoTipo === "super" ? "Use the attached supermarket photo as the real background: keep the aisles, shelves, products and store layout exactly as they are. Integrate the subject with matching perspective, light direction and shadows. Keep the background slightly out of focus so the subject stands out."
+    : "Use the attached background photo as the real scene; integrate the subject with matching perspective, light direction and shadows.");
+  if (refPers) R.push("Keep the face and identity of the attached person exactly the same, same facial features, skin tone and proportions.");
+  // Fidelidad total a las fotos adjuntas: no deformar productos, logos, letras ni personas.
+  if (refProd) R.push("Absolute fidelity to the attached reference: do not redraw, reshape, retouch, stylize or reinterpret the product, its packaging, logo, label, typography or any lettering; every letter, word, number and logo must stay exactly as in the original photo, same spelling, same font, same position, same size, no warping.");
+  if (refPers) R.push("Do not alter the attached person in any way: same face, same identity, same body shape, same hairline and skin; no beautifying, no age change, no face swap.");
+  if (R.length) L.push(R.join(" "));
+  // Sujeto
+  const S = [];
+  if ([1,3,5].includes(m) || (m === 4 && f.escena === "featured")) S.push(`Product: ${f.producto.trim()}.`);
+  if (m === 2){ const ps = f.productos.split("\n").map(x => x.trim()).filter(Boolean); S.push(`A product group of: ${ps.join("; ")}. Arrangement: ${pmv("disposicion", f.disposicion)}.`); }
+  if (m === 6) S.push(`Scene: ${f.libreQue.trim()}.${f.elemento.trim() ? ` Main subject: ${f.elemento.trim()}.` : ""}`);
+  const detailsOk = m !== 4 || f.escena === "featured";
+  if (detailsOk && f.material) S.push(`Material: ${pmv("material", f.material)}.`);
+  if (detailsOk && f.colores.trim()) S.push(`Exact colors: ${f.colores.trim()}.`);
+  if (detailsOk && f.marca.trim()) S.push(`Visible brand text "${f.marca.trim()}" spelled exactly ${spellBrand(f.marca)}, perfect proportions, no deformation, crystal clear and sharp.`);
+  if (S.length) S.push(m === 6 ? "Realistic proportions and true-to-life scale, sharp realistic textures." : "Pristine condition, sharp realistic textures.");
+  if (S.length) L.push(S.join(" "));
+  // Personas
+  if (people){
+    const ms = f.modelos.slice(0, f.nModelos);
+    const P = ms.map((x, i) => `${ms.length > 1 ? `Person ${i + 1}: ` : ""}${+x.edad}-year-old ${ageWord(x.edad, x.genero)}, fair light skin, natural Latin American (Paraguayan) features, dark brown hair ${pmv("peinado", x.peinado)}, brown eyes, ${pmv("expresion", x.expresion)}${x.ropa.trim() ? `, wearing ${x.ropa.trim()}` : ""}${x.pose.trim() ? `, ${x.pose.trim()}` : ""}.`);
+    if (m === 3) P.push(`Interaction: ${pmv("interaccion", f.interaccion)}.`);
+    if (m === 4 && f.escena !== "doing"){
+      const inter = pmv("interaccion", f.interaccion).replace(/the product/g, "the featured product").replace(/ with the featured product placed beside them/, " the featured product placed beside them");
+      const act = pmv("escena", f.escena).replace("{P}", f.superProds.trim() || "fresh groceries, fruits, vegetables and packaged products").replace("{I} with the featured product", f.interaccion === "beside" ? "posing with the featured product placed beside them" : inter);
+      P.push(`Scene action: ${act}.`);
+    }
+    L.push(P.join(" "));
   }
-  parts.push(f.refProd === "si"
-    ? `Producto${f.producto ? ` (${f.producto})` : ""}: usá la imagen de producto adjunta como referencia exacta. El producto tiene que ser idéntico al de la imagen: misma forma, colores, etiqueta, tipografía y proporciones. No lo modifiques ni inventes textos en el envase.`
-    : `Producto: ${f.producto}. Crealo de forma realista y atractiva, sin marcas ni textos legibles inventados.`);
-  parts.push(`Producto nítido, bien iluminado y claramente visible${con ? ", integrado de forma natural en la escena" : " como protagonista de la imagen"}.`);
-  if (f.ambiente) parts.push(`Ambiente: ${f.ambiente}.`);
-  parts.push(f.refFondo === "si"
-    ? `Fondo: usá la imagen de fondo adjunta como escenario, respetando su espacio, colores y perspectiva.`
-    : `Fondo: ${f.fondo || "neutro y limpio, acorde al producto"} (inventalo, que no distraiga del producto).`);
-  parts.push(`Iluminación: ${O("iluminacion")}. Encuadre: ${O("plano")}.`);
-  parts.push(`Formato: ${fn.toLowerCase()}, relación de aspecto ${ratio} (${px}), con espacio libre para agregar texto.`);
-  parts.push(`Sin texto, sin logos, sin marcas de agua${con ? ", sin deformaciones en manos ni rostros" : ""}.`);
-  const refs = [f.refProd === "si" && "producto", f.refFondo === "si" && "fondo", con && f.refModelo === "si" && "modelos"].filter(Boolean);
-  return (refs.length ? `[Adjuntá las imágenes de referencia de: ${refs.join(", ")}]\n\n` : "") + parts.join(" ");
+  // Escena
+  if (!fondoAdj){
+    if (m === 5){ const sh = pmv("sombra", f.sombra); L.push(pmv("tipoFondo", f.tipoFondo).replace("{S}", sh).replace("{H}", f.fondoHex.trim())); }
+    else {
+      const E = [];
+      if (m === 4){ const loc = f.locacion.trim() || (SUPER_SCENES.includes(f.escena) ? "a bright, clean, modern supermarket with well-stocked, neatly organized shelves" : ""); if (loc) E.push(`Location: ${loc}.`); }
+      else if (f.ambiente.trim()) E.push(`Setting: ${f.ambiente.trim()}.`);
+      if (f.fondo.trim()) E.push(`Background: ${f.fondo.trim()}, softly out of focus.`);
+      if (E.length) L.push(E.join(" "));
+    }
+  } else if (m === 5) L.push("Shadow: natural contact shadow matching the scene.");
+  if (f.detalles.trim()) L.push(`Details: ${f.detalles.trim()}.`);
+  L.push(`Composition: ${pmv("encuadre", f.encuadre)}, ${pmv("espacio", f.espacio)}.`);
+  const lighting = m === 5 && !fondoAdj ? "even high-key studio lighting with two large softboxes and a white sweep, 5600K, no color cast" : pmv("ilum", f.ilum);
+  L.push(`Lighting: ${lighting}.`);
+  // Cámara automática
+  const body = people ? (premium ? "Hasselblad X2D 100C medium format" : "Canon EOS R5, full-frame") : (premium ? "Phase One XF IQ4 150MP medium format" : "Hasselblad X2D 100C medium format");
+  const lens = pmv("encuadre", f.encuadre, people ? 3 : 4);
+  const expo = m === 5 || ["studio","dramatic"].includes(f.ilum) ? "ISO 100, 1/160s, studio strobes" : f.ilum === "store" ? "ISO 400, 1/200s" : people ? "ISO 200, 1/250s" : "ISO 100, 1/125s on tripod";
+  const focus = m === 4 || (m === 6 && people) ? "sharp focus on the main person's eyes" : "tack-sharp focus on the main subject";
+  const dof = people ? "shallow natural depth of field, smooth creamy background bokeh, subject separated from the background" : "controlled depth of field, product fully sharp, background gently soft";
+  L.push(`Camera: shot on ${body}, ${lens}, ${expo}, ${focus}, ${dof}. RAW capture, 14-bit color depth, wide dynamic range, lens corrections applied, true-to-life color science.`);
+  L.push(`Color and finish: ${st[4]}.`);
+  L.push("High-end advertising agency production quality. Ultra-detailed, natural micro-contrast, accurate color reproduction, clean shadows without crushed blacks, no blown highlights, professional yet natural retouching, no over-smoothing. Looks like a real photograph from a professional commercial shoot, not a render.");
+  if (people) L.push("Natural skin texture with visible pores and fine detail, subtle natural imperfections, realistic catchlights in the eyes, natural teeth, anatomically correct hands with five fingers and natural nails, clothing with real fabric folds and weave, natural body posture and weight distribution.");
+  if (product) L.push("Physically accurate materials, true reflections of the surrounding environment, crisp and legible label print, clean precise edges, realistic contact shadows and ambient occlusion, correct scale relative to the scene.");
+  L.push(`Mood: ${st[3]}.`);
+  L.push(`Format: aspect ratio ${pmv("formato", f.formato)}, 4K resolution, marketing-ready.`);
+  L.push("Single photograph, full frame, no borders, no collage, no text or captions added.");
+  // Negativos
+  let N = ["deformed product","warped or misspelled text","distorted logo","melted edges","blurry","low resolution","noise","jpeg artifacts","oversaturated colors","HDR look","overprocessed","plastic look","cartoon","illustration","3D render look","CGI","painting","AI-generated look","watermark","extra random text","random logos","text overlay","captions","borders","collage","extra objects","cluttered background"];
+  if (m === 2) N = N.map(x => x === "extra objects" ? "extra unrequested products" : x);
+  if (m === 4 && f.escena !== "featured") N = N.filter(x => x !== "deformed product");
+  if (m === 4 && SUPER_SCENES.includes(f.escena)) N.push("empty shelves", "messy aisles", "damaged packaging", "unreadable price tags");
+  if (m === 6) N = N.map(x => x === "deformed product" ? "deformed or distorted main subject, wrong scale, impossible perspective" : x);
+  if (people) N.push("extra fingers", "deformed hands", "distorted face", "asymmetric eyes", "unnatural body proportions", "plastic waxy skin", "airbrushed skin", "uncanny valley");
+  if (refProd) N.push("altered or redrawn logo", "changed label text", "misspelled or reshaped lettering", "modified packaging design", "different product than the attached one");
+  if (refPers) N.push("changed face", "different person", "altered identity", "face swap", "beautified or aged face");
+  L.push(`Avoid: ${N.join(", ")}.`);
+  return L.join("\n");
 }
+
 function pPrompts(){
-  const f = promptUI.f, con = promptUI.mode === "con", hist = PROMPT_HISTORY[viewer.id] || [];
-  const fld = (k, l, ph, big, cls = "") => `<label class="${big ? "w3" : ""} ${cls}">${l}${big ? `<textarea class="base" id="pr_${k}" rows="2" placeholder="${ph}">${esc(f[k])}</textarea>` : `<input class="base" id="pr_${k}" value="${esc(f[k])}" placeholder="${ph}">`}</label>`;
-  const sel = (k, l) => `<label>${l}<select class="base" id="pr_${k}">${P_OPTS[k].map((o, i) => `<option value="${i}" ${+f[k] === i ? "selected" : ""}>${o}</option>`).join("")}</select></label>`;
-  const yn = (k, l, hint) => `<div class="pyn"><div><b>${l}</b><span>${hint}</span></div><div class="pynbtns" role="group" aria-label="${l}"><button type="button" class="${f[k] === "si" ? "on" : ""}" data-pyn="${k}|si">Sí, adjunto</button><button type="button" class="${f[k] !== "si" ? "on" : ""}" data-pyn="${k}|no">No, que la IA lo invente</button></div></div>`;
-  return `<div class="head"><div><h1>Prompts de imágenes</h1><p class="sub">Completá los campos, tocá <b>Generar prompt</b> y copiá el texto para pegarlo en la IA de imágenes que uses.</p></div></div>
-  <div class="chips ptabs"><button class="chip ${!con ? "on" : ""}" data-pmode="sin">📦 Sin modelos · fotografía de producto</button><button class="chip ${con ? "on" : ""}" data-pmode="con">🧍 Con modelos</button></div>
-  <form class="panel pform promptform" id="promptForm">
-    <div class="w3 pgroup"><h3>¿Adjuntás imágenes de referencia?</h3><p class="note">Si adjuntás, el prompt le pide a la IA que respete tu imagen tal cual. Si no, le pide que lo cree a partir de tu descripción.</p>
-      ${yn("refProd", "Producto", "Una foto del producto real")}${yn("refFondo", "Fondo", "Una foto del lugar o fondo")}${con ? yn("refModelo", "Modelos", "Una foto de las personas") : ""}</div>
-    ${con ? `<div class="w3 pgroup"><h3>Modelos</h3><div class="pgrid4">${sel("cantidad", "Cantidad")}${sel("genero", "Género")}${sel("edad", "Edades")}${sel("expresion", "Expresión")}</div></div>
-    ${fld("ropa", "Vestimenta (opcional)", "Ej.: ropa casual de primavera, colores claros")}
-    ${fld("situacion", "Situación: qué están haciendo", "Ej.: brindando con jugo en el desayuno de familia", true)}` : ""}
-    ${fld("producto", `Producto${f.refProd === "si" ? " (opcional: igual se usa tu foto)" : ""}`, con ? "Ej.: un vaso de jugo de naranja natural" : "Ej.: botella de aceite de oliva extra virgen de 1 litro", true)}
-    ${fld("ambiente", "Ambiente", "Ej.: cocina luminosa de mañana, con plantas y madera clara", true)}
-    ${f.refFondo === "si" ? "" : fld("fondo", "Fondo", "Ej.: pared blanca con luz de ventana, desenfocado")}
-    <div class="w3 pgroup"><h3>Estilo de la foto</h3><div class="pgrid4">${sel("estilo", "Estilo")}${sel("iluminacion", "Iluminación")}${sel("plano", "Encuadre")}<label>Formato / medida<select class="base" id="pr_formato">${PROMPT_FORMATS.map(([n, r, px], i) => `<option value="${i}" ${+f.formato === i ? "selected" : ""}>${n} · ${r} · ${px}</option>`).join("")}</select></label></div></div>
-    <div class="chips" style="grid-column:1/-1;justify-content:flex-end"><button class="btn" type="button" data-pclear>Limpiar</button><button class="btn primary" type="submit">✨ Generar prompt</button></div>
+  const m = promptUI.mode, f = promptUI.f, hist = PROMPT_HISTORY[viewer.id] || [], people = pmHasPeople(m, f), fondoAdj = pmFondoAdj(f);
+  const T = (k, label, ph = "", req = false, big = false) => `<label class="${big ? "w3" : ""}">${label}${req ? " *" : ""}${big ? `<textarea class="base" data-pf="${k}" rows="${k === "productos" ? 4 : 2}" placeholder="${esc(ph)}">${esc(f[k])}</textarea>` : `<input class="base" data-pf="${k}" value="${esc(f[k])}" placeholder="${esc(ph)}">`}</label>`;
+  const S = (k, label, list, rr = false) => `<label>${label}<select class="base" data-pf="${k}"${rr ? " data-rr" : ""}>${PM[list].map(x => `<option value="${x[0]}" ${f[k] === x[0] ? "selected" : ""}>${x[1]}</option>`).join("")}</select></label>`;
+  const yn = (k, label, hint, yes = "Sí, adjunto", no = "No, que la IA lo invente") => `<div class="pyn"><div><b>${label}</b>${hint ? `<span>${hint}</span>` : ""}</div><div class="pynbtns" role="group" aria-label="${label}"><button type="button" class="${f[k] === "si" ? "on" : ""}" data-pyn="${k}|si">${yes}</button><button type="button" class="${f[k] !== "si" ? "on" : ""}" data-pyn="${k}|no">${no}</button></div></div>`;
+  const prodBlock = (required, label = "Producto", ph = "botella de aceite de oliva extra virgen de 1 litro, vidrio verde oscuro, etiqueta crema") => `${T("producto", label, ph, required, true)}${S("material", "Material / terminación", "material")}${T("colores", "Colores exactos en hex", "#1B5E20 verde, #F5F0E1 crema")}${T("marca", "Marca o texto visible", "OLIVAR")}`;
+  const sceneBlock = () => fondoAdj ? "" : `${T("ambiente", "Ambiente", "cocina luminosa de mañana, con madera clara")}${T("fondo", "Fondo", "pared de azulejos blancos")}`;
+  const models = people ? `<div class="w3 pgroup"><h3>Modelos</h3>
+      <div class="pgrid4"><label>Cantidad<select class="base" data-pf="nModelos" data-rr>${[1,2,3,4].map(n => `<option value="${n}" ${+f.nModelos === n ? "selected" : ""}>${n}</option>`).join("")}</select></label></div>
+      ${f.modelos.slice(0, f.nModelos).map((x, i) => `<div class="pmodel"><b>Modelo ${i + 1}</b><div class="pgrid4">
+        <label>Edad exacta *<input class="base" type="number" min="1" max="99" data-pm="${i}|edad" value="${esc(x.edad)}" placeholder="28"></label>
+        <label>Género<select class="base" data-pm="${i}|genero">${PM.genero.map(g => `<option value="${g[0]}" ${x.genero === g[0] ? "selected" : ""}>${g[1]}</option>`).join("")}</select></label>
+        <label>Peinado<select class="base" data-pm="${i}|peinado">${PM.peinado.map(g => `<option value="${g[0]}" ${x.peinado === g[0] ? "selected" : ""}>${g[1]}</option>`).join("")}</select></label>
+        <label>Expresión<select class="base" data-pm="${i}|expresion">${PM.expresion.map(g => `<option value="${g[0]}" ${x.expresion === g[0] ? "selected" : ""}>${g[1]}</option>`).join("")}</select></label>
+        <label class="w2">Ropa (prenda, color hex, tela)<input class="base" data-pm="${i}|ropa" value="${esc(x.ropa)}" placeholder="remera de algodón blanca #FFFFFF"></label>
+        <label class="w2">Qué hace / pose<input class="base" data-pm="${i}|pose" value="${esc(x.pose)}" placeholder="mirando a cámara, apoyada en la góndola"></label>
+      </div></div>`).join("")}
+      <p class="note" style="margin:0">Rasgos aplicados siempre: tez clara, rasgos latinoamericanos/paraguayos, cabello castaño oscuro, ojos marrones.</p></div>` : "";
+  let fields = "";
+  if (m === 1) fields = `${prodBlock(true)}${sceneBlock()}`;
+  if (m === 2) fields = `${T("productos", "Productos (uno por línea, el primero es el protagonista)", "aceite de oliva OLIVAR 1 L\nvinagre balsámico 500 ml\nsal marina en frasco", true, true)}${S("disposicion", "Disposición", "disposicion")}${S("material", "Material / terminación", "material")}${T("colores", "Colores exactos en hex", "#1B5E20, #F5F0E1")}${T("marca", "Marca o texto visible", "OLIVAR")}${sceneBlock()}`;
+  if (m === 3) fields = `${prodBlock(true)}${S("interaccion", "Interacción con el producto", "interaccion")}${sceneBlock()}`;
+  if (m === 4){ const sup = SUPER_SCENES.includes(f.escena), feat = f.escena === "featured";
+    fields = `<div class="w3">${S("escena", "Escena", "escena", true)}</div>
+      ${sup ? T("superProds", "Productos del súper que se ven", "frutas frescas, lácteos, panificados", false, true) : ""}
+      ${feat ? `${prodBlock(true, "Producto a destacar")}${S("interaccion", "Interacción con el producto", "interaccion")}` : ""}
+      ${fondoAdj ? "" : `${T("locacion", "Locación", sup ? "si queda vacío: un súper luminoso y moderno" : "parque con árboles al atardecer", !sup, true)}${T("fondo", "Fondo", "desenfocado, cálido")}`}`; }
+  if (m === 5) fields = `${prodBlock(true)}${fondoAdj ? "" : `${S("tipoFondo", "Tipo de fondo", "tipoFondo", true)}${f.tipoFondo === "solid" ? T("fondoHex", "Color del fondo en hex", "#E8F4FD", true) : ""}${S("sombra", "Sombra", "sombra")}`}`;
+  if (m === 6) fields = `${T("libreQue", "¿Qué querés en la foto?", "camión de reparto blanco estacionado frente al súper, al amanecer", true, true)}${T("elemento", "Elemento principal", "camión Hino 300 blanco #FFFFFF con caja térmica", false, true)}${S("material", "Material / terminación", "material")}${T("colores", "Colores exactos en hex", "#FFFFFF")}${T("marca", "Marca o texto visible", "")}${sceneBlock()}
+      <div class="w3">${yn("conPersonas", "¿Incluye personas?", "", "Sí", "No")}</div>`;
+  const refBlock = `<div class="w3 pgroup"><h3>¿Adjuntás imágenes de referencia?</h3>
+      <div class="pynbtns big" role="group"><button type="button" class="${f.ref === "si" ? "on" : ""}" data-pyn="ref|si">Sí, adjunto</button><button type="button" class="${f.ref !== "si" ? "on" : ""}" data-pyn="ref|no">No, que la IA lo invente</button></div>
+      ${f.ref === "si" ? `${pmProdToggle(m) ? yn("refProd", m === 6 ? "Elemento principal" : "Producto", "Se respeta tal cual: forma, etiqueta, logo, letras y colores", "Sí", "No") : ""}
+        ${yn("refFondo", "Fondo", "Una foto del lugar", "Sí", "No")}
+        ${f.refFondo === "si" ? `<label class="pfsel">¿Qué fondo adjuntás?<select class="base" data-pf="fondoTipo"><option value="super" ${f.fondoTipo === "super" ? "selected" : ""}>Supermercado</option><option value="otro" ${f.fondoTipo === "otro" ? "selected" : ""}>Otro lugar</option></select></label>` : ""}
+        ${people ? yn("refPersona", "Persona", "Se mantiene la cara y la identidad", "Sí", "No") : ""}
+        <p class="pfid">${icon("shield-check")} Todo lo que adjuntes se respeta al 100%: el prompt le pide a la IA que no deforme productos, logos, letras ni personas.</p>` : ""}</div>`;
+  const style = `<div class="w3 pgroup"><h3>Estilo de la foto</h3><div class="pgrid4">${S("estilo", "Estilo", "estilo")}${m === 5 && !fondoAdj ? `<label>Iluminación<input class="base" value="Estudio en blanco (fija)" disabled></label>` : S("ilum", "Iluminación", "ilum")}${S("encuadre", "Encuadre", "encuadre")}${S("formato", "Formato", "formato")}${S("espacio", "Espacio para texto", "espacio")}</div>
+      <p class="note" style="margin:0">La cámara, el lente y la exposición se eligen solos según lo que cargues.</p></div>`;
+  return `<div class="pm2"><div class="head"><div><h1>Prompts de imágenes</h1><p class="sub">Para ChatGPT, Gemini o Nano Banana. Elegí la modalidad, completá los campos, tocá <b>Generar prompt</b> y copiá el texto.</p></div></div>
+  <div class="pmtabs2" role="tablist">${PM_MODES.map(x => `<button type="button" role="tab" aria-selected="${m === x.n}" class="${m === x.n ? "on" : ""}" data-pmmode="${x.n}">${icon(x.i)}<span>${x.l}</span></button>`).join("")}</div>
+  <form class="panel pform promptform" id="promptForm" novalidate>
+    ${refBlock}
+    ${fields}
+    ${models}
+    ${T("detalles", "Detalles extra", "gotas de agua sobre la botella, hojas de olivo alrededor", false, true)}
+    ${style}
+    ${promptUI.err ? `<p class="perr w3" role="alert">${esc(promptUI.err)}</p>` : ""}
+    <div class="chips w3" style="justify-content:flex-end"><button class="btn" type="button" data-pclear>Limpiar</button><button class="btn pgen" type="submit">${icon("sparkles")} Generar prompt</button></div>
   </form>
-  ${promptUI.out ? `<section class="panel promptout"><div class="head"><h2 style="margin:0">Tu prompt</h2><button class="btn primary" type="button" data-pcopy>Copiar prompt</button></div>
-    <textarea class="base" id="promptText" rows="9" aria-label="Prompt generado">${esc(promptUI.out)}</textarea>
-    <p class="note" style="margin:0">Pegalo en la IA que uses para generar imágenes${[f.refProd, f.refFondo, con ? f.refModelo : "no"].includes("si") ? " y adjuntá las imágenes de referencia" : ""}. Podés retocar el texto antes de copiarlo. Si la IA permite elegir la medida, elegí ${PROMPT_FORMATS[+f.formato][1]}.</p></section>` : ""}
-  ${hist.length ? `<section class="panel"><h3 style="margin-top:0">Tus últimos prompts</h3><div class="list">${hist.map((h, i) => `<div class="row"><div class="grow"><div class="t">${esc(h.title)}</div><div class="m">${h.mode === "con" ? "Con modelos" : "Sin modelos"} · ${esc(h.fmt)} · ${h.time}</div></div><button class="btn" data-phist="${i}">Copiar</button></div>`).join("")}</div></section>` : ""}
-  <p class="note">La fórmula del prompt es de ejemplo y se puede reemplazar por la del equipo.</p>`;
+  ${promptUI.out ? `<section class="panel promptout"><div class="head"><h2 style="margin:0">Tu prompt</h2><button class="btn pgen" type="button" data-pcopy>${icon("copy")} Copiar prompt</button></div>
+    <textarea class="base" id="promptText" rows="16" aria-label="Prompt generado">${esc(promptUI.out)}</textarea>
+    <p class="note" style="margin:0">Pegalo en ChatGPT, Gemini o Nano Banana${f.ref === "si" ? " y adjuntá las mismas imágenes de referencia" : ""}. Podés retocar el texto antes de copiarlo.</p></section>` : ""}
+  ${hist.length ? `<section class="panel"><h3 style="margin-top:0">Tus últimos prompts</h3><div class="list">${hist.map((h, i) => `<div class="row"><div class="grow"><div class="t">${esc(h.title)}</div><div class="m">${esc(h.mode || "")} · ${esc(h.fmt || "")} · ${h.time}</div></div><button class="btn" data-phist="${i}">${icon("copy")} Copiar</button></div>`).join("")}</div></section>` : ""}
+  </div>`;
 }
-function readPromptForm(){ const f = promptUI.f; Object.keys(P_EMPTY()).forEach(k => { const el = document.getElementById("pr_" + k); if (!el) return; f[k] = el.tagName === "SELECT" ? +el.value : el.value.trim(); }); }
+// Los campos se guardan al escribir (sin volver a dibujar la pantalla); los que cambian qué se ve, redibujan.
+document.addEventListener("input", e => {
+  const el = e.target.closest("[data-pf],[data-pm]"); if (!el || page !== "prompts") return;
+  if (el.dataset.pm){ const [i, k] = el.dataset.pm.split("|"); promptUI.f.modelos[+i][k] = el.value; }
+  else promptUI.f[el.dataset.pf] = el.dataset.pf === "nModelos" ? +el.value : el.value;
+});
+document.addEventListener("change", e => { const el = e.target.closest("[data-rr]"); if (!el || page !== "prompts") return; promptUI.f[el.dataset.pf] = el.dataset.pf === "nModelos" ? +el.value : el.value; promptUI.err = ""; render(); });
 document.addEventListener("click", e => {
-  const y = e.target.closest("[data-pyn]"); if (y){ readPromptForm(); const [k, v] = y.dataset.pyn.split("|"); promptUI.f[k] = v; render(); return; }
-  const m = e.target.closest("[data-pmode]"); if (m){ readPromptForm(); promptUI.mode = m.dataset.pmode; promptUI.out = ""; render(); return; }
-  if (e.target.closest("[data-pclear]")){ promptUI.f = P_EMPTY(); promptUI.out = ""; render(); return; }
+  if (page !== "prompts") return;
+  const y = e.target.closest("[data-pyn]"); if (y){ const [k, v] = y.dataset.pyn.split("|"); promptUI.f[k] = v; promptUI.err = ""; render(); return; }
+  const m = e.target.closest("[data-pmmode]"); if (m){ promptUI.mode = +m.dataset.pmmode; promptUI.out = ""; promptUI.err = ""; render(); return; }
+  if (e.target.closest("[data-pclear]")){ promptUI.f = PM_EMPTY(); promptUI.out = ""; promptUI.err = ""; render(); return; }
   const cp = e.target.closest("[data-pcopy],[data-phist]"); if (cp){ const txt = cp.dataset.phist !== undefined ? PROMPT_HISTORY[viewer.id][+cp.dataset.phist].text : $("#promptText").value;
-    navigator.clipboard?.writeText(txt).then(() => toast("Prompt copiado. Pegalo en la IA."), () => { const ta = $("#promptText"); if (ta){ ta.select(); } toast("No se pudo copiar solo: quedó seleccionado, copialo a mano."); }); }
+    navigator.clipboard?.writeText(txt).then(() => toast("Prompt copiado. Pegalo en la IA."), () => { const ta = $("#promptText"); if (ta) ta.select(); toast("No se pudo copiar solo: quedó seleccionado, copialo a mano."); }); }
 });
 document.addEventListener("submit", e => {
-  if (e.target.id !== "promptForm") return; e.preventDefault(); readPromptForm(); const f = promptUI.f, con = promptUI.mode === "con";
-  if (!f.producto && f.refProd !== "si"){ toast("Describí el producto o marcá que adjuntás su foto."); return; }
-  promptUI.out = buildPrompt(f, con);
-  const [fn, ratio] = PROMPT_FORMATS[+f.formato];
-  (PROMPT_HISTORY[viewer.id] = PROMPT_HISTORY[viewer.id] || []).unshift({ title:f.producto || "Producto de la foto adjunta", mode:promptUI.mode, fmt:`${fn} · ${ratio}`, text:promptUI.out, time:nowTime() }); PROMPT_HISTORY[viewer.id].splice(5);
+  if (e.target.id !== "promptForm") return; e.preventDefault();
+  const m = promptUI.mode, f = promptUI.f, err = validatePrompt(m, f);
+  promptUI.err = err; if (err){ promptUI.out = ""; render(); document.querySelector(".perr")?.scrollIntoView({ block:"center" }); return; }
+  promptUI.out = buildPrompt(m, f);
+  const title = m === 2 ? f.productos.split("\n").find(x => x.trim()) : m === 6 ? f.libreQue : m === 4 && f.escena !== "featured" ? pmv("escena", f.escena, 1) : f.producto;
+  (PROMPT_HISTORY[viewer.id] = PROMPT_HISTORY[viewer.id] || []).unshift({ title:(title || "").trim().slice(0, 80), mode:PM_MODES[m - 1].l, fmt:pmv("formato", f.formato, 1), text:promptUI.out, time:nowTime() }); PROMPT_HISTORY[viewer.id].splice(5);
   render(); document.querySelector(".promptout")?.scrollIntoView({ behavior:"smooth", block:"start" }); toast("Prompt listo. Tocá “Copiar prompt”.");
 });
 // ---------- Guía de uso ----------
@@ -4263,7 +4440,7 @@ const GUIDE = [
     ["list-checks","Plan de posteo","Lo que se tiene que subir en el mes. Arriba, cuántas hay en cada estado y el % ya publicado (tocá un estado para filtrar). En cada publicación marcás Borrador, En diseño, Listo, Programado, Publicado o Pautado, cambiás el CM que la hace y pedís el diseño si hace falta."],
     ["archive","Historial CM","Lo que ya salió en el mes: publicaciones publicadas o pautadas y pedidos de CM terminados."]]],
   ["Recursos", [
-    ["wand-sparkles","Prompts de imágenes","Para fotos de producto con IA, con o sin modelos. Elegís si adjuntás producto, fondo o modelos de referencia, completás modelo, producto, ambiente, fondo, estilo, luz y medida (historia 9:16, post 4:5, cuadrado, horizontal), y la app arma el texto para copiar."],
+    ["wand-sparkles","Prompts de imágenes","Arma prompts profesionales para ChatGPT, Gemini o Nano Banana en seis modalidades: producto en escenario, varios productos, producto con modelos, modelos en locación, fondo pleno o transparente y opción libre. Si adjuntás fotos (producto, fondo o persona), el prompt pide respetarlas al 100%: sin deformar productos, logos, letras ni caras. La cámara, el lente y la exposición se eligen solos; se suman bloques de realismo y la lista de lo que hay que evitar."],
     ["link","Archivos y enlaces","Los links de Canva, Drive y descarga de cada marca por mes, más los que quieras agregar. Arriba las marcas que ya tienen links; abajo las pendientes. Botones para abrir y copiar."]]],
   ["Resultados", [
     ["megaphone","Pauta","Plan de pauta: el límite de cada marca por mes, lo cargado y la calificación de cada pauta. Informe Meta Ads: lo gastado, alcance y resultados."],
