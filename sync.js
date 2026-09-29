@@ -138,12 +138,18 @@ const RMH = (() => {
   function flush(){
     if (!ready || previewing) return Promise.resolve();
     if (flushing) return flushing;
-    flushing = (async () => {
-      try { for (const k of dirtyKeys()) await withTimeout(saveKey(k)); setStatus(""); saveErrShown = false; }
+    // Sin nada propio para guardar (por ejemplo, solo llegó un cambio de otra persona) no se arranca un guardado.
+    // Antes, ese guardado vacío terminaba al instante y quedaba marcado como “en curso” para siempre,
+    // y lo que la persona cargaba después no se guardaba hasta recargar la página.
+    const keys = dirtyKeys();
+    if (!keys.length){ setStatus(""); return Promise.resolve(); }
+    const run = (async () => {
+      try { for (const k of keys) await withTimeout(saveKey(k)); setStatus(""); saveErrShown = false; }
       catch (err){ console.error(err); setStatus("sin guardar"); retryAt = Date.now() + 5000; if (!saveErrShown){ saveErrShown = true; toast("No se pudo guardar: revisá la conexión. Se vuelve a intentar solo."); } }
-      finally { flushing = null; }
+      finally { if (flushing === run) flushing = null; }
     })();
-    return flushing;
+    flushing = run;
+    return run;
   }
   // Revisa cambios cada segundo y guarda cuando se dejó de tocar (o cada 4 s si se sigue escribiendo).
   setInterval(() => {
@@ -179,13 +185,24 @@ const RMH = (() => {
     // Las colecciones que todavía no existen en la base se crean con los datos iniciales en el primer guardado.
     lastSeen = ""; dirtySince = Date.now();
   }
+  // Lo que llega de otra persona se aplica enseguida, pero la pantalla no se redibuja mientras alguien está
+  // cargando algo (una ventana abierta o un formulario a medio escribir): así no se pierde lo que escribió.
+  let typingForm = null;
+  document.addEventListener("input", e => { const fm = e.target.closest && e.target.closest("#content form"); if (fm) typingForm = fm; });
+  document.addEventListener("submit", () => { typingForm = null; setTimeout(() => { if (rerenderPending) scheduleRender(); }, 0); }, true);
+  function busy(){
+    const f = document.activeElement;
+    if (f && f.closest && f.closest("#content") && /^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName)) return true;
+    if (document.querySelector("#content aside.drawer, #content .imodal")) return true;
+    return !!(typingForm && document.body.contains(typingForm));
+  }
   function scheduleRender(){
     if (!ready) return;
-    const f = document.activeElement;
-    if (f && f.closest && f.closest("#content") && /^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName)){ rerenderPending = true; return; }
+    if (busy()){ rerenderPending = true; return; }
     rerenderPending = false; render();
   }
   document.addEventListener("focusout", () => setTimeout(() => { if (rerenderPending) scheduleRender(); }, 150));
+  document.addEventListener("click", () => setTimeout(() => { if (rerenderPending) scheduleRender(); }, 200));
   let channel = null;
   function subscribe(){
     channel = sb.channel("app_state").on("postgres_changes", { event:"*", schema:"public", table:"app_state" }, async p => {
