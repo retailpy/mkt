@@ -2466,12 +2466,49 @@ function pStaff(){
       ${pp.personalEmail ? `<dt>E-mail personal</dt><dd class="mail">${esc(pp.personalEmail)}</dd>` : ""}
       ${pp.phone ? `<dt>Celular personal</dt><dd>${esc(fmtPhone(pp.phone))}</dd>` : ""}
     </dl>
-    <div class="facts" style="display:flex;gap:6px;flex-wrap:wrap">${(pp.skills || []).map(sk => `<span class="skill">${esc(sk)}</span>`).join("") || `<span class="note">Sin habilidades cargadas</span>`}</div>${me ? `<p class="myedit">${icon("pencil")} Tocá tu tarjeta para editar tu perfil</p>` : ""}${sup ? `<div class="svisrow"><span class="note">${pp.staffHidden ? "No aparece en Staff" : "Aparece en Staff"}</span><button class="btn sm" data-staffvis="${pp.id}">${pp.staffHidden ? `${icon("eye-off")} Oculto · mostrar` : `${icon("eye")} Visible · ocultar`}</button></div>` : ""}</div>`; };
+    <div class="facts" style="display:flex;gap:6px;flex-wrap:wrap">${(pp.skills || []).map(sk => `<span class="skill">${esc(sk)}</span>`).join("") || `<span class="note">Sin habilidades cargadas</span>`}</div>${me ? `<p class="myedit">${icon("pencil")} Tocá tu tarjeta para editar tu perfil</p>` : ""}${sup ? `<div class="svisrow"><button class="btn sm" data-staffedit="${pp.id}">${icon("pencil")} Editar datos</button><button class="btn sm" data-staffvis="${pp.id}">${pp.staffHidden ? `${icon("eye-off")} Oculto · mostrar` : `${icon("eye")} Visible · ocultar`}</button></div>` : ""}</div>`; };
   const hidden = PEOPLE.filter(pp => pp.active && pp.staffHidden).length;
-  return `<div><h1>Staff</h1><p class="sub">Las personas que forman parte de Retail MKT, para que todos se conozcan.${sup ? ` Como Admin total elegís quién aparece: tocá “Visible” / “Oculto” en cada tarjeta${hidden ? ` (${hidden} ${hidden === 1 ? "oculta" : "ocultas"})` : ""}.` : ""}</p></div>
+  return `<div><h1>Staff</h1><p class="sub">Las personas que forman parte de Retail MKT, para que todos se conozcan.${sup ? ` Como Admin total podés editar los datos de cada persona y elegir quién aparece (“Visible” / “Oculto”)${hidden ? ` · ${hidden} ${hidden === 1 ? "oculta" : "ocultas"}` : ""}.` : ""}</p></div>
   ${STAFF_GROUPS.map(([title, f]) => { const list = PEOPLE.filter(pp => pp.active && f(pp) && (sup || !pp.staffHidden)); return list.length ? `<h2 style="margin:6px 0 -8px;font-size:18px">${title} <span class="note">· ${list.length}</span></h2><div class="staff-grid">${list.map(card).join("")}</div>` : ""; }).join("")}
-  <p class="note">Cada persona completa su foto, frase, email personal y habilidades en Mi perfil. El número y el email de la empresa los carga un admin.</p>`;
+  <p class="note">Cada persona completa su foto, frase, email personal y habilidades en Mi perfil. El número y el email de la empresa los carga un admin.</p>${staffDrawer()}`;
 }
+// Admin total edita los datos de cualquier persona del Staff (el rol y el email para entrar se cambian en Usuarios).
+let staffEdit = null;
+function staffDrawer(){
+  const pp = staffEdit && viewer.role === "Admin total" && PEOPLE.find(x => x.id === staffEdit); if (!pp) return "";
+  const bd = pp.birthday ? [+pp.birthday.slice(3), +pp.birthday.slice(0, 2)] : [0, 0];
+  return `<div class="drawer-bg" data-staffclose></div><aside class="drawer" aria-label="Editar datos de ${esc(pp.name)}">
+    <div class="drawer-h"><div><h2 style="margin:0">Editar datos</h2><div class="note">${esc(pp.name)} · ${pp.role}</div></div><button class="btn ib" data-staffclose aria-label="Cerrar">${icon("x")}</button></div>
+    <form id="staffForm" class="pform drawer-b" style="grid-template-columns:1fr 1fr">
+      <label style="grid-column:1/-1">Nombre completo *<input class="base" id="sfName" required maxlength="80" value="${esc(pp.name)}"></label>
+      <label>¿Cómo le dicen?<input class="base" id="sfNick" maxlength="30" value="${esc(pp.nick || "")}" placeholder="Ej.: ${esc(pp.name.split(" ")[0])}"><span class="note">Así la saluda la app (“Buen día, …”) y así aparece en tableros y calendarios. Vacío = primer nombre.</span></label>
+      <label>Puesto<input class="base" id="sfCargo" maxlength="60" value="${esc(pp.cargo || "")}" placeholder="Ej.: Diseñador gráfico"></label>
+      <label>Número de la empresa<input class="base" id="sfWork" value="${esc(pp.workPhone || "")}" placeholder="(021) 000 000"></label>
+      <label>E-mail de la empresa<input class="base" type="email" id="sfMail" value="${esc(pp.email || "")}"><span class="note">Solo se muestra en Staff. El email para entrar a la app se cambia en Usuarios.</span></label>
+      <label>Celular personal<input class="base" id="sfPhone" value="${esc(pp.phone || "")}" placeholder="0981 000 000"></label>
+      <label>E-mail personal<input class="base" type="email" id="sfMail2" value="${esc(pp.personalEmail || "")}"></label>
+      <label>Marca principal<select class="base" id="sfBrand"><option value="">—</option>${mainBrandOptions(pp.mainBrand)}</select></label>
+      <label>Cumpleaños<span style="display:flex;gap:6px"><select class="base" id="sfDay" aria-label="Día"><option value="">Día</option>${Array.from({ length:31 }, (_, i) => `<option ${bd[0] === i + 1 ? "selected" : ""}>${i + 1}</option>`).join("")}</select><select class="base" id="sfMonth" aria-label="Mes"><option value="">Mes</option>${MONTHS_ES.map((m, i) => `<option value="${i + 1}" ${bd[1] === i + 1 ? "selected" : ""}>${m}</option>`).join("")}</select></span></label>
+      <label style="grid-column:1/-1">Frase<input class="base" id="sfQuote" maxlength="120" value="${esc(pp.quote || "")}"></label>
+      <label style="grid-column:1/-1">Habilidades (separadas por coma)<input class="base" id="sfSkills" value="${esc((pp.skills || []).join(", "))}"></label>
+      <div class="chips" style="grid-column:1/-1;justify-content:flex-end"><button class="btn" type="button" data-staffclose>Cancelar</button><button class="btn primary" type="submit">Guardar datos</button></div>
+    </form></aside>`;
+}
+document.addEventListener("click", e => {
+  const ed = e.target.closest("[data-staffedit]"); if (ed){ e.stopPropagation(); staffEdit = ed.dataset.staffedit; render(); return; }
+  if (e.target.closest("[data-staffclose]")){ staffEdit = null; render(); }
+}, true);
+document.addEventListener("submit", e => { if (e.target.id !== "staffForm") return; e.preventDefault();
+  const pp = PEOPLE.find(x => x.id === staffEdit), v = id => document.getElementById(id).value.trim(); if (!pp || viewer.role !== "Admin total") return;
+  const name = v("sfName"); if (!name){ toast("Poné el nombre completo."); return; }
+  for (const id of ["sfMail", "sfMail2"]) if (v(id) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v(id))){ toast("Revisá el email: falta algo (ej.: nombre@empresa.com.py)."); return; }
+  const d = +v("sfDay"), m = +v("sfMonth"); if ((d && !m) || (!d && m)){ toast("Para el cumpleaños elegí día y mes."); return; }
+  if (d && d > new Date(2024, m, 0).getDate()){ toast(`${MONTHS_ES[m - 1]} tiene ${new Date(2024, m, 0).getDate()} días.`); return; }
+  // Si cambia el nombre, se actualiza también donde figura como responsable.
+  const old = pp.name;
+  if (old !== name){ jobs.forEach(j => { if (j.owner === old) j.owner = name; }); posts.forEach(p => { if (p.cm === old) p.cm = name; }); CHANNEL_POSTS.forEach(k => { if (k.cm === old) k.cm = name; }); RECURRING.forEach(r => { if (r.owner === old) r.owner = name; }); }
+  Object.assign(pp, { name, nick:v("sfNick") || null, cargo:v("sfCargo"), workPhone:v("sfWork"), email:v("sfMail"), phone:v("sfPhone"), personalEmail:v("sfMail2") || null, mainBrand:v("sfBrand") || null, quote:v("sfQuote") || null, skills:v("sfSkills").split(",").map(x => x.trim()).filter(Boolean), birthday:d ? String(m).padStart(2, "0") + "-" + String(d).padStart(2, "0") : null });
+  staffEdit = null; render(); toast(`Guardado: los datos de ${name}.`); });
 document.addEventListener("click", e => {
   const v = e.target.closest("[data-staffvis]");
   if (v){ if (viewer.role !== "Admin total") return; const pp = PEOPLE.find(x => x.id === v.dataset.staffvis); pp.staffHidden = !pp.staffHidden; render(); toast(pp.staffHidden ? `${pp.name} ya no aparece en Staff.` : `${pp.name} aparece en Staff.`); return; }
