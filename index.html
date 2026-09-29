@@ -556,7 +556,12 @@ tr.off td{opacity:.55}
 .imodal .itabs button.on{border-color:var(--cyan);color:var(--ink)}
 .imodal .ibox{border:1px solid var(--line-3);border-radius:18px;padding:16px 18px;background:rgba(2,6,23,.35)}
 .imodal .ibox ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:10px;font-size:15.5px;line-height:1.5;color:var(--ink)}
-.imodal .ibox li b:first-child{color:#fff}
+.imodal .ibox ol{font-size:14.5px;gap:7px}
+.imodal .ibox b{color:#fff}
+.imodal .ibox h3{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:8px;color:var(--ink)}
+.imodal .ibox h3 svg{width:17px;height:17px;color:var(--cyan)}
+.imodal .ibox.mine{border-color:color-mix(in srgb,var(--cyan) 60%,transparent)}
+.imodal .imine{margin-left:auto;font-size:11px;font-weight:600;color:var(--cyan);border:1px solid color-mix(in srgb,var(--cyan) 50%,transparent);border-radius:99px;padding:2px 8px}
 .imodal .ishare svg{width:15px;height:15px;vertical-align:-2px;color:var(--cyan)}
 .imodal .inote{margin:0;font-size:12.5px;color:var(--faint)}
 .imodal .iact{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
@@ -2448,14 +2453,22 @@ function installDrawer(){
   if (!installOpen) return "";
   const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1), android = /Android/.test(ua);
   const tab = installTab || (ios || android ? "cel" : "pc");
-  const steps = tab === "cel"
-    ? [["Android / Chrome:", "menú ⋮ → <b>Instalar app</b> o <b>Agregar a pantalla principal</b>."], ["iPhone o iPad / Safari:", "Compartir <span class=\"ishare\">" + icon("share") + "</span> → <b>Agregar a pantalla de inicio</b> → <b>Agregar</b>."]]
-    : [["Chrome / Edge:", "tocá el ícono de instalar en la barra de direcciones, o menú ⋮ → <b>Instalar</b>."], ["Mac / Safari:", "Compartir o Archivo → <b>Agregar al Dock</b>."]];
+  // Pasos verificados con la ayuda oficial de Google Chrome, Apple (Safari) y Microsoft Edge. Primero va el del dispositivo que se está usando.
+  const edge = /Edg\//.test(ua), safariMac = !ios && /Macintosh/.test(ua) && /Safari\//.test(ua) && !/Chrome|Chromium|Edg\//.test(ua);
+  const SH = `<span class="ishare">${icon("share")}</span>`;
+  const G = {
+    ios:["iPhone o iPad (Safari)", "smartphone", [`Abrí la app en <b>Safari</b>.`, `Tocá <b>Compartir</b> ${SH}. En iOS 26, primero tocá <b>⋯</b> al lado de la barra de direcciones y después <b>Compartir</b>.`, `Deslizá hacia abajo y tocá <b>Agregar a pantalla de inicio</b> (si no aparece, tocá <b>Ver más</b>).`, `Tocá <b>Agregar</b>. El ícono queda en tu pantalla de inicio.`]],
+    android:["Android (Chrome)", "smartphone", [`Abrí la app en <b>Chrome</b>.`, `Tocá <b>⋮</b> (arriba a la derecha).`, `Tocá <b>Agregar a la pantalla principal</b> (en algunos celulares dice <b>Instalar app</b>).`, `Tocá <b>Instalar</b>. El ícono queda con tus apps.`]],
+    chrome:["Chrome (Windows o Mac)", "monitor", [`Abrí la app en <b>Chrome</b>.`, `Tocá <b>⋮</b> (arriba a la derecha) → <b>Transmitir, guardar y compartir</b> → <b>Instalar página como app…</b>`, `Tocá <b>Instalar</b>. Queda con su ícono, como un programa más.`]],
+    edge:["Microsoft Edge (Windows)", "monitor", [`Abrí la app en <b>Edge</b>.`, `Tocá <b>⋯</b> (arriba a la derecha) → <b>Aplicaciones</b> → <b>Instalar este sitio como una aplicación</b>.`, `Tocá <b>Instalar</b>. Si pregunta, podés anclarla a la barra de tareas.`]],
+    safari:["Mac (Safari)", "monitor", [`Abrí la app en <b>Safari</b> (hace falta macOS Sonoma o más nuevo).`, `En la barra de menú de arriba: <b>Archivo</b> → <b>Agregar al Dock</b>.`, `Tocá <b>Agregar</b>. Queda en el Dock.`]] };
+  const mine = ios ? "ios" : android ? "android" : edge ? "edge" : safariMac ? "safari" : "chrome";
+  const keys = (tab === "cel" ? ["ios","android"] : ["chrome","edge","safari"]).sort((x, y) => (y === mine) - (x === mine));
   return `<div class="imodal-bg" data-installclose2></div><div class="imodal" role="dialog" aria-modal="true" aria-labelledby="imodalT">
     <h2 id="imodalT">Instalar en ${tab === "cel" ? "celular o tablet" : "computadora"}</h2>
     <div class="itabs" role="tablist"><button type="button" role="tab" class="${tab === "cel" ? "on" : ""}" data-itab="cel">${icon("smartphone")} Celular o tablet</button><button type="button" role="tab" class="${tab === "pc" ? "on" : ""}" data-itab="pc">${icon("monitor")} Computadora</button></div>
     ${isInstalledApp() ? `<p class="pfid">${icon("check")} Ya la estás usando instalada.</p>` : `<p class="isub">${installPrompt ? "Podés instalarla directo con el botón, o seguir estos pasos:" : "Seguí estos pasos para tenerla con su ícono, a un toque:"}</p>`}
-    <div class="ibox"><ol>${steps.map(([k, v]) => `<li><b>${k}</b> ${v}</li>`).join("")}</ol></div>
+    ${keys.map(k => { const [t, ic, st] = G[k]; return `<div class="ibox${k === mine ? " mine" : ""}"><h3>${icon(ic)} ${t}${k === mine ? `<span class="imine">Tu dispositivo</span>` : ""}</h3><ol>${st.map(x => `<li>${x}</li>`).join("")}</ol></div>`; }).join("")}
     <p class="inote">Por seguridad, ningún navegador permite instalar una web sin que la persona lo confirme.</p>
     <div class="iact">${installPrompt ? `<button class="btn pgen" data-installnow>${icon("download")} Instalar ahora</button>` : ""}<button class="btn primary" data-installclose2>Entendido</button></div>
   </div>`;
