@@ -1823,12 +1823,12 @@ const groupOf = b => MAIN_BRANDS.includes(b) ? b : "Otros";
 const SECTIONS = [
   { g:"General", k:"dashboard", l:"Dashboard", i:"layout-dashboard" },
   { g:"General", k:"inicio", l:"Inicio", i:"house" },
+  { g:"General", k:"planmes", l:"Planificación del mes", i:"target" },
   { g:"General", k:"alertas", l:"Alertas", i:"bell" },
   { g:"General", k:"avisos", l:"Avisos", i:"megaphone" },
   { g:"General", k:"sabados", l:"Turnos Sábados", i:"calendar-clock" },
   { g:"General", k:"mensajes", l:"Mensajes", i:"mail" },
   { g:"General", k:"notas", l:"Bloc de notas", i:"notebook-pen" },
-  { g:"Planificación", k:"planmes", l:"Planificación del mes", i:"target" },
   { g:"Diseño gráfico", k:"pedidos", l:"Diseño para Redes", n:"Diseño para Redes", i:"image" },
   { g:"Diseño gráfico", k:"cartel", l:"Diseño para Cartelería", n:"Diseño para Cartelería", i:"signpost" },
   { g:"Diseño gráfico", k:"web", l:"Diseño para Web", n:"Diseño para Web", i:"monitor" },
@@ -2106,6 +2106,9 @@ const MATERIAL_PIECES = [...CARTEL_PIECES, ...WEB_PIECES];
 const isMaterial = j => !j.post && MATERIAL_PIECES.includes(j.piece); // todo lo que no es de redes
 const isWebJob = j => !j.post && WEB_PIECES.includes(j.piece);
 const matPieces = () => page === "web" ? WEB_PIECES : CARTEL_PIECES;
+const DESIGN_SECS = [["pedidos","Diseño para Redes"],["cartel","Diseño para Cartelería"],["web","Diseño para Web"]];
+const jobSection = j => j.area === "CM" ? "gestioncm" : j.post ? "pedidos" : WEB_PIECES.includes(j.piece) ? "web" : CARTEL_PIECES.includes(j.piece) ? "cartel" : "pedidos";
+const secPieces = sec => sec === "web" ? WEB_PIECES : sec === "cartel" ? CARTEL_PIECES : SOCIAL_TYPES;
 const inMatPage = j => page === "web" ? isWebJob(j) : isMaterial(j) && !isWebJob(j);
 const SOCIAL_TYPES = DESIGN_TYPES.filter(t => !MATERIAL_PIECES.includes(t));
 const PIECE_ICO = { "Post RRSS":"image", "Carrusel":"gallery-horizontal", "Historia":"smartphone", "Reel":"clapperboard", "Banner web":"monitor", "PDF de ofertas de la semana":"file-down", "Flyer impreso":"file-text", "Cartelería":"signpost", "Vía pública":"map", "Catálogo digital":"book-open", "Empaque o etiqueta":"package", "Pantalla":"tv", "Email marketing":"mail", "Otro":"shapes" };
@@ -3054,12 +3057,12 @@ function jobForm(){
   const f = jobUI.form; if (!f) return "";
   const j = f.job, area = j.area;
   // Redes Sociales y Cartelería tienen cada una sus tipos de pieza.
-  const types = area === "CM" ? CM_TYPES : WEB_PIECES.includes(j.piece) && !j.post ? WEB_PIECES : CARTEL_PIECES.includes(j.piece) && !j.post ? CARTEL_PIECES : SOCIAL_TYPES;
+  const sec = jobSection(j), types = area === "CM" ? CM_TYPES : secPieces(sec);
   const opt = (list, v) => list.map(x => `<option ${x === v ? "selected" : ""}>${x}</option>`).join("");
   return `<div class="drawer-bg" data-jclose></div><aside class="drawer" aria-label="Formulario de trabajo">
     <div class="drawer-h"><div><h2 style="margin:0">${f.mode === "edit" ? "Editar pedido" : f.mode === "dup" ? "Revisar pedido duplicado" : area === "CM" ? "Nuevo pedido para CM" : "Nuevo pedido de diseño gráfico"}</h2><div class="note">${esc(j.id)}</div></div><button class="btn" data-jclose aria-label="Cerrar">✕</button></div>
     <form id="jobForm" class="pform drawer-b" style="grid-template-columns:1fr 1fr">
-      <label>Área *<select class="base" id="jArea" disabled>${Object.keys(AREAS).map(a => `<option value="${a}" ${a === area ? "selected" : ""}>${AREAS[a].icon} ${areaName(a)}</option>`).join("")}</select></label>
+      ${area === "CM" ? `<label>Área *<select class="base" id="jArea" disabled>${Object.keys(AREAS).map(a => `<option value="${a}" ${a === area ? "selected" : ""}>${AREAS[a].icon} ${areaName(a)}</option>`).join("")}</select></label>` : `<label>¿Para dónde es? *<select class="base" id="jSec"${j.post ? " disabled" : ""}>${DESIGN_SECS.map(([k, l]) => `<option value="${k}" ${k === sec ? "selected" : ""}>${l}</option>`).join("")}</select></label>`}
       <label>ID<input class="base" value="${esc(j.id)}" readonly></label>
       <label>Fecha de solicitud *<input class="base" type="date" id="jReq" value="${j.requestDate}" required></label>
       <label>Solicitante *<select class="base" id="jRequester">${opt(SOLICITANTES, j.requester)}</select></label>
@@ -3077,6 +3080,9 @@ function jobForm(){
       <div class="chips" style="grid-column:1/-1;justify-content:flex-end">${f.mode === "edit" && canCreateJobs() ? `<button class="btn danger" type="button" data-jdel="${esc(j.id)}" style="margin-right:auto">🗑 Borrar</button>` : ""}<button class="btn" type="button" data-jclose>Cancelar</button><button class="btn primary" type="submit">Guardar trabajo</button></div>
     </form></aside>`;
 }
+// Lee lo que está escrito en el formulario de pedido (sin validar).
+function readJobForm(j){ const v = id => document.getElementById(id)?.value;
+  Object.assign(j, { requestDate:v("jReq") ?? j.requestDate, requester:v("jRequester") ?? j.requester, brand:v("jBrand") ?? j.brand, piece:v("jPiece") ?? j.piece, title:(v("jTitle") ?? j.title).trim(), owner:v("jOwner") ?? j.owner, status:v("jStatus") ?? j.status, priority:v("jPrio") ?? j.priority, complexity:v("jComp") ?? j.complexity, due:v("jDue") ?? j.due, link:(v("jLink") ?? j.link).trim(), notes:(v("jNotes") ?? j.notes).trim() }); }
 // Cuadraditos del proceso: uno por etapa; se toca el cuadradito de la etapa en la que está el trabajo.
 function stagePicker(j, editable){
   const st = stagesOf(j), cur = st.indexOf(j.status);
@@ -3214,6 +3220,8 @@ document.addEventListener("submit", e => {
   const f = postUI.form, title = $("#poTitle").value.trim(), date = $("#poDate").value;
   if (!title || !date){ toast("Completá el tema y la fecha."); return; }
   const common = { date, brand:$("#poBrand").value, title, cm:$("#poCm").value, status:$("#poStatus").value, notes:$("#poNotes").value.trim() };
+  if (!MONTHS_APP.some(x => x.v === date.slice(0,7))){ toast(`La fecha (${dm(date)}) está fuera de los meses de la app. Revisá la fecha.`); return; }
+  if (isCalPage() || (brandFilter !== "Todas" && groupOf(common.brand) !== brandFilter)) brandFilter = groupOf(common.brand); // lo cargado se ve enseguida, en su marca
   if (f.kind === "Canal"){
     const data = { ...common, channel:$("#poChannel").value };
     let k = f.mode === "edit" ? canalById(f.post.id) : null;
@@ -4977,6 +4985,7 @@ document.addEventListener("change", e => {
     p.status = to; render(); toast(`“${p.title}” pasó a ${to}.`); return; }
   const jf = e.target.closest("[data-jf]"); if (jf){ jobUI[jf.dataset.jf] = jf.value; render(); return; }
   if (e.target.id === "jSearch"){ jobUI.q = e.target.value; render(); return; }
+  if (e.target.id === "jSec" && jobUI.form){ const j = jobUI.form.job; readJobForm(j); j.piece = secPieces(e.target.value)[0]; render(); return; }
   if (e.target.id === "jArea" && jobUI.form){ const a = e.target.value; Object.assign(jobUI.form.job, { area:a, id:nextJobId(a), piece:(a === "CM" ? CM_TYPES : DESIGN_TYPES)[0], owner:"Sin asignar", title:$("#jTitle").value }); render(); return; }
   const s2 = e.target.closest("[data-urole]"); if (!s2) return;
   const pp = PEOPLE.find(x => x.id === s2.dataset.urole), nr = s2.value;
@@ -5050,11 +5059,25 @@ document.addEventListener("submit", e => {
   if (e.target.id === "jobForm"){ e.preventDefault();
     const f = jobUI.form, j = f.job, title = $("#jTitle").value.trim(), due = $("#jDue").value;
     if (!title || !due){ toast("Completá el trabajo solicitado y la fecha límite."); return; }
-    Object.assign(j, { requestDate:$("#jReq").value, requester:$("#jRequester").value, brand:$("#jBrand").value, piece:$("#jPiece").value, title, owner:$("#jOwner").value, status:$("#jStatus").value, priority:$("#jPrio").value, complexity:$("#jComp").value, due, link:$("#jLink").value.trim(), notes:$("#jNotes").value.trim() });
+    const m = due.slice(0,7);
+    if (!MONTHS_APP.some(x => x.v === m)){ toast(`La fecha límite (${dm(due)}) está fuera de los meses de la app. Revisá la fecha.`); return; }
+    // Fecha límite ya pasada en un pedido nuevo: casi siempre es un error de tipeo (ej.: 02/09 en vez de 02/10). Pide confirmar.
+    const past = f.mode !== "edit" && due < TODAY, key = "jpast:" + j.id + ":" + due;
+    if (past && !(sureKey === key && Date.now() - sureAt < 8000)){ sureKey = key; sureAt = Date.now(); toast(`Ojo: la fecha límite ${dm(due)} ya pasó. Si está bien, tocá “Guardar” de nuevo.`); return; }
+    sureKey = "";
+    readJobForm(j); j.title = title; j.due = due;
     if (isFin(j) && !j.delivered) j.delivered = TODAY;
     if (f.mode === "edit"){ Object.assign(jobs.find(x => x.id === j.id), j); } else jobs.push(j);
-    const m = due.slice(0,7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m;
-    jobUI.form = null; render(); toast(`${f.mode === "edit" ? "Guardado" : "Creado"}: ${j.id} · fecha límite ${dm(due)}. Ya aparece en el calendario.`); return; }
+    // Lo que se carga se ve enseguida: va a su sección, su mes y su marca (y sin filtros que lo escondan).
+    const to = jobSection(j), moved = to !== page; MONTH = m;
+    if (moved && can(to)) page = to;
+    if (page === "gestioncm" && !["tablero","tabla"].includes(cmUI.tview)) cmUI.tview = "tablero";
+    jobUI.status = isFin(j) ? "Todos" : "Activos";
+    jobUI.owner = "Todos"; jobUI.prio = "Todas"; jobUI.q = "";
+    if (soloYo && j.owner !== viewer.name) soloYo = false;
+    if (brandFilter !== "Todas" && groupOf(j.brand) !== brandFilter || isCalPage()) brandFilter = groupOf(j.brand);
+    jobUI.form = null; render();
+    toast(`${f.mode === "edit" ? "Guardado" : "Creado"}: “${j.title}” en ${to === "gestioncm" ? "Gestión CM" : DESIGN_SECS.find(x => x[0] === to)[1]} · ${j.brand} · fecha límite ${dm(due)}.`); return; }
   if (e.target.id === "personForm"){ e.preventDefault();
     const name = $("#pName").value.trim(), email = $("#pEmail").value.trim(), role = $("#pRole").value, pass = $("#pPass").value;
     if (!name || !email.includes("@")){ toast("Completá nombre y un email válido."); return; }
