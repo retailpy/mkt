@@ -491,6 +491,20 @@ tr.off td{opacity:.55}
 .calw.addable .d:not(.out){cursor:pointer}
 .calw.addable .d:not(.out):hover{border-color:color-mix(in srgb,var(--cyan) 60%,transparent)}
 .cmrec .cmplus{font-size:20px}
+/* Staff: tu tarjeta abre Mi perfil; Admin total elige quién aparece */
+.scard{position:relative}
+.scard.mine{cursor:pointer;border-color:color-mix(in srgb,var(--cyan) 55%,transparent)}
+.scard.mine:hover{box-shadow:0 0 0 2px color-mix(in srgb,var(--cyan) 35%,transparent)}
+.scard .myedit{margin:10px 0 0;font-size:12.5px;color:var(--cyan)}
+.scard.shidden{opacity:.5}
+.scard .svisrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line-2)}
+/* Objetivos principales */
+.prios{border-color:color-mix(in srgb,var(--cyan) 40%,transparent);background:linear-gradient(135deg,rgba(6,182,212,.10),rgba(37,99,235,.08)),var(--panel)}
+.priolist{list-style:none;margin:0;padding:0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))}
+.priolist li,.prioedit{display:flex;gap:12px;align-items:flex-start}
+.priolist p{margin:0;color:var(--ink);font-weight:600;line-height:1.4}
+.prioedit{margin-top:8px}.prioedit textarea{flex:1;resize:vertical}
+.pnum{flex:none;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-weight:800;color:#fff;background:linear-gradient(to bottom right,#22d3ee,#2563eb)}
 /* Nombres de las personas: degradado celeste → azul */
 .gname{background:linear-gradient(90deg,#67e8f9,#60a5fa);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 html.light .gname{background-image:linear-gradient(90deg,#0891b2,#2563eb)}
@@ -509,6 +523,8 @@ html.light .gname{background-image:linear-gradient(90deg,#0891b2,#2563eb)}
 .login .enter{border:0;border-radius:16px;padding:12px;font-weight:600;color:#fff;background:linear-gradient(to right,#06b6d4,#3b82f6);box-shadow:0 10px 15px -3px rgba(6,182,212,.2);transition:all .15s}
 .login .enter:hover{background:linear-gradient(to right,#22d3ee,#60a5fa)}
 .login .enter:active{transform:scale(.98)}
+.login .remember{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer}
+.login .remember input{width:16px;height:16px;accent-color:#06b6d4}
 .login .hint{font-size:12px;color:var(--faint);text-align:center}
 .fade{animation:fade .3s ease}
 @keyframes fade{from{opacity:0;transform:translateY(6px)}}
@@ -1601,8 +1617,9 @@ button,.btn,.chip,.nav a,.tabbar a,.tabbar button{-webkit-user-select:none;user-
   <div class="panel">
     <div class="login-top"><div class="login-mark"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="4.5" width="14" height="10" rx="1.8" stroke="currentColor" stroke-width="1.75"/><path d="M3.5 17.25h17" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><path d="M7.2 17.25 8 19h8l.8-1.75" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 8.1h8" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" opacity=".65"/><path d="M8 10.5h5.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" opacity=".55"/><circle cx="12" cy="16.1" r=".55" fill="currentColor" opacity=".9"/></svg></div><div><h1>Retail MKT Hub</h1><p class="sub">Ingresá con tu usuario para continuar</p></div></div>
     <form class="login-form" id="loginForm" hidden>
-      <input type="email" id="loginEmail" placeholder="Tu email" aria-label="Email" autocomplete="username" required>
-      <input type="password" id="loginPass" placeholder="Contraseña" aria-label="Contraseña" autocomplete="current-password" required>
+      <input type="email" id="loginEmail" name="email" placeholder="Tu email" aria-label="Email" autocomplete="username" required>
+      <input type="password" id="loginPass" name="password" placeholder="Contraseña" aria-label="Contraseña" autocomplete="current-password" required>
+      <label class="remember"><input type="checkbox" id="rememberMe" checked> Recordarme en este dispositivo</label>
       <button class="enter" type="submit">Entrar</button>
       <button class="linkbtn" type="button" id="forgot">¿Olvidaste tu contraseña?</button>
       <p class="hint">¿Todavía no tenés usuario? Pedíselo a un Admin total.</p>
@@ -1664,6 +1681,7 @@ const SECTIONS = [
   { g:"Community Manager", k:"gestioncm", l:"Gestión CM", n:"Gestión de pedidos", i:"send" },
   { g:"Community Manager", k:"calendario", l:"Calendario Feed", n:"Calendario Feed", i:"calendar-days" },
   { g:"Community Manager", k:"calhistoria", l:"Calendario Historia", n:"Calendario Historia", i:"smartphone" },
+  { g:"Community Manager", k:"calcanales", l:"Calendario Canales", n:"Calendario Canales", i:"store" },
   { g:"Community Manager", k:"cargacm", l:"Carga de trabajo CM", n:"Carga de trabajo", i:"gauge" },
   { g:"Community Manager", k:"plan", l:"Plan de posteo", i:"list-checks" },
   { g:"Community Manager", k:"historialcm", l:"Historial CM", n:"Historial", i:"archive" },
@@ -1684,12 +1702,11 @@ const SECTIONS = [
 const ROLE_DEFAULTS = {
   "Admin total": SECTIONS.map(s => s.k),
   "Admin": SECTIONS.map(s => s.k).filter(k => !["usuarios","config"].includes(k)),
-  "CM": ["dashboard","tvredes","tvimpacto","tv","inicio","alertas","staff","cumples","caldiseno","calendario","calhistoria","plan","pedidos","cargadiseno","gestioncm","cargacm","historialcm","pauta","redes","reportes"],
-  "Diseñador": ["dashboard","tvredes","tvimpacto","inicio","alertas","staff","cumples","caldiseno","calendario","calhistoria","pedidos","cargadiseno","tv","historial"],
+  "CM": ["dashboard","tvredes","tvimpacto","tv","inicio","alertas","staff","cumples","caldiseno","calendario","calhistoria","calcanales","plan","pedidos","cargadiseno","gestioncm","cargacm","historialcm","pauta","redes","reportes"],
+  "Diseñador": ["dashboard","tvredes","tvimpacto","inicio","alertas","staff","cumples","caldiseno","calendario","calhistoria","calcanales","pedidos","cargadiseno","tv","historial"],
 };
 const PEOPLE = [
   { id:"alyssa", workPhone:"+595 21 618 1001", phone:"+595 981 111 222", mainBrand:"Varias", skills:["Planificación estratégica","Gestión de equipos","Análisis de datos"], birthday:"11-08", brandsHandled:["Superseis","Stock","Delimarket"], quote:"Mi idea es cambiar las cosas", name:"Alyssa Lesme", cargo:"Jefa de Marketing", email:"alyssa.lesme@empresa.com.py", role:"Admin total", brands:null, last:"hoy 08:12" },
-  { id:"roberto", workPhone:"+595 21 618 1000", phone:"+595 982 333 444", mainBrand:"Retail Institucional", skills:["Dirección comercial","Negociación","Informes ejecutivos"], birthday:"12-02", name:"Roberto Giménez", cargo:"CEO", email:"roberto.gimenez@empresa.com.py", role:"Admin", brands:null, last:"ayer 18:40" },
   { id:"medardo", name:"Medardo Fabián Olmedo Arriola", cargo:"Diseño gráfico", role:"Diseñador", email:"Medardo-Olmedo@aj.com.py", personalEmail:"olmedofabian19@gmail.com", phone:"0984459876", birthday:"01-22", birthYear:1997, mainBrand:"Stock", secondBrands:["Superseis","Delimarket"], skills:["Diseño gráfico","Edición de fotografías"], brands:null, last:null },
   { id:"mhelena", name:"Maria Helena Giménez González", cargo:"Diseño gráfico", role:"Diseñador", email:"MariaHelena-Gimenez@aj.com.py", personalEmail:"gimenezmarih09@gmail.com", phone:"0983703494", birthday:"06-09", birthYear:2001, mainBrand:"Superseis", secondBrands:["Stock","Delimarket"], skills:["Diseño gráfico","Edición de fotografías"], brands:null, last:null },
   { id:"paguilera", name:"Pedro Aníbal Aguilera Céspedes", cargo:"Diseño gráfico", role:"Diseñador", email:"paguilera@sd.com.py", personalEmail:"pedro.aguilera91@gmail.com", phone:"0985281259", birthday:"10-11", birthYear:1991, mainBrand:"Stock", secondBrands:["Superseis","Delimarket"], skills:["Diseño gráfico","Edición de fotografías","Edición audiovisual (profesional)"], brands:null, last:null },
@@ -1701,7 +1718,7 @@ const PEOPLE = [
 PEOPLE.forEach(p => { p.perms = new Set(p.perms || ROLE_DEFAULTS[p.role]); p.active = true; p.mustChange = false; if (p.role !== "Diseñador" && p.perms.has("pedidos")) { p.perms.add("gestioncm"); p.perms.add("historialcm"); } if (p.perms.has("calendario")) p.perms.add("caldiseno"); upgradePerms(p); });
 // Secciones que se agregaron después: quien ya veía la sección de origen, ve también la nueva (una sola vez;
 // después cada permiso se prende o apaga por separado en Usuarios y permisos).
-function upgradePerms(p){ if (p.permsV >= 2) return; [["pedidos","cargadiseno"],["gestioncm","cargacm"],["calendario","calhistoria"]].forEach(([from, to]) => { if (p.perms.has(from)) p.perms.add(to); }); p.permsV = 2; }
+function upgradePerms(p){ const v = p.permsV || 1; if (v >= 3) return; [[2,"pedidos","cargadiseno"],[2,"gestioncm","cargacm"],[2,"calendario","calhistoria"],[3,"calendario","calcanales"]].forEach(([ver, from, to]) => { if (v < ver && p.perms.has(from)) p.perms.add(to); }); p.permsV = 3; }
 let DESIGNERS = [];
 const ROLES = ["Admin total","Admin","Diseñador","CM"];
 const ROLE_INFO = {
@@ -1756,7 +1773,7 @@ function dragMonthsBar(){
   document.body.appendChild(bar);
 }
 document.addEventListener("dragend", () => { drag = null; clearTimeout(dragNav.t); document.getElementById("dragMonths")?.remove(); document.querySelectorAll(".dragging,.over,.dragnav").forEach(x => x.classList.remove("dragging","over","dragnav")); });
-const isCalPage = () => page === "calendario" || page === "calhistoria" || page === "caldiseno" || (page === "pedidos" && jobUI.view === "calendario") || (page === "gestioncm" && cmUI.tview === "calendario");
+const isCalPage = () => page === "calendario" || page === "calhistoria" || page === "calcanales" || page === "caldiseno" || (page === "pedidos" && jobUI.view === "calendario") || (page === "gestioncm" && cmUI.tview === "calendario");
 function dropTarget(e){
   if (!drag) return null;
   if (drag.kind === "nitem"){ const c = e.target.closest("[data-nit]"); return c && c.dataset.nit.split("|")[0] === drag.id.split("|")[0] && c.dataset.nit !== drag.id ? c : null; }
@@ -1790,7 +1807,7 @@ document.addEventListener("drop", e => {
   if (t.dataset.nit || t.dataset.nsheet){ moveNote(kind, id, t); return; }
   if (t.dataset.jdrop){ setJobStatus(jobs.find(x => x.id === id), t.dataset.jdrop); return; }
   const to = t.dataset.cdrop;
-  if (kind === "post"){ const p = postById(id); if (p.date === to) return render(); const from = p.date; p.date = to; MONTH = to.slice(0,7); render();
+  if (kind === "post" || kind === "canal"){ const p = kind === "post" ? postById(id) : canalById(id); if (p.date === to) return render(); const from = p.date; p.date = to; MONTH = to.slice(0,7); render();
     toast(`Posteo movido del ${dm(from)} al ${dm(to)}${from.slice(0,7) !== to.slice(0,7) ? ` (pasó a ${monthName(to.slice(0,7))})` : ""}.`); }
   else { const j = jobs.find(x => x.id === id); if (j.due === to) return render(); const from = j.due; j.due = to; MONTH = to.slice(0,7); render();
     toast(`${j.id}: fecha límite del ${dm(from)} al ${dm(to)}${from.slice(0,7) !== to.slice(0,7) ? ` (pasó a ${monthName(to.slice(0,7))})` : ""}.`); }
@@ -2211,7 +2228,9 @@ function profileCard(v){
 const STAFF_GROUPS = [["Admin", pp => pp.role === "Admin total" || pp.role === "Admin"], ["Diseñador gráfico", pp => pp.role === "Diseñador"], ["CM", pp => pp.role === "CM"]];
 function pStaff(){
   const sup = viewer.role === "Admin total";
-  const card = pp => `<div class="scard"><div class="top">${avatarHTML(pp, "", "width:52px;height:52px;border-radius:16px")}<div><b>${gname(pp.name)}</b>${pp.nick ? `<span class="snick">Le dicen: ${esc(pp.nick)}</span>` : ""}<span>${esc(pp.cargo || pp.role)}</span></div></div>
+  // Tu tarjeta te lleva a Mi perfil. Admin total elige quién aparece en Staff (los ocultos solo los ve Admin total).
+  const card = pp => { const me = pp.id === viewer.id;
+    return `<div class="scard${me ? " mine" : ""}${pp.staffHidden ? " shidden" : ""}"${me ? ` data-mycard role="link" tabindex="0" title="Tocá para editar tu perfil"` : ""}><div class="top">${avatarHTML(pp, "", "width:52px;height:52px;border-radius:16px")}<div><b>${gname(pp.name)}</b>${pp.nick ? `<span class="snick">Le dicen: ${esc(pp.nick)}</span>` : ""}<span>${esc(pp.cargo || pp.role)}</span></div></div>
     ${pp.pending ? `<p class="spend">⚠ ${esc(pp.pending)}</p>` : ""}
     ${pp.quote ? `<p class="squote">“${esc(pp.quote)}”</p>` : ""}
     <dl class="sfact">
@@ -2223,11 +2242,18 @@ function pStaff(){
       ${pp.personalEmail ? `<dt>E-mail personal</dt><dd class="mail">${esc(pp.personalEmail)}</dd>` : ""}
       ${pp.phone ? `<dt>Celular personal</dt><dd>${esc(pp.phone)}</dd>` : ""}
     </dl>
-    <div class="facts" style="display:flex;gap:6px;flex-wrap:wrap">${(pp.skills || []).map(sk => `<span class="skill">${esc(sk)}</span>`).join("") || `<span class="note">Sin habilidades cargadas</span>`}</div></div>`;
-  return `<div><h1>Staff</h1><p class="sub">Las personas que forman parte de Retail MKT, para que todos se conozcan.</p></div>
-  ${STAFF_GROUPS.map(([title, f]) => { const list = PEOPLE.filter(pp => pp.active && f(pp)); return list.length ? `<h2 style="margin:6px 0 -8px;font-size:18px">${title} <span class="note">· ${list.length}</span></h2><div class="staff-grid">${list.map(card).join("")}</div>` : ""; }).join("")}
+    <div class="facts" style="display:flex;gap:6px;flex-wrap:wrap">${(pp.skills || []).map(sk => `<span class="skill">${esc(sk)}</span>`).join("") || `<span class="note">Sin habilidades cargadas</span>`}</div>${me ? `<p class="myedit">✏️ Tocá tu tarjeta para editar tu perfil</p>` : ""}${sup ? `<div class="svisrow"><span class="note">${pp.staffHidden ? "No aparece en Staff" : "Aparece en Staff"}</span><button class="btn sm" data-staffvis="${pp.id}">${pp.staffHidden ? "🚫 Oculto · mostrar" : "👁 Visible · ocultar"}</button></div>` : ""}</div>`; };
+  const hidden = PEOPLE.filter(pp => pp.active && pp.staffHidden).length;
+  return `<div><h1>Staff</h1><p class="sub">Las personas que forman parte de Retail MKT, para que todos se conozcan.${sup ? ` Como Admin total elegís quién aparece: tocá “👁 Visible” / “🚫 Oculto” en cada tarjeta${hidden ? ` (${hidden} ${hidden === 1 ? "oculta" : "ocultas"})` : ""}.` : ""}</p></div>
+  ${STAFF_GROUPS.map(([title, f]) => { const list = PEOPLE.filter(pp => pp.active && f(pp) && (sup || !pp.staffHidden)); return list.length ? `<h2 style="margin:6px 0 -8px;font-size:18px">${title} <span class="note">· ${list.length}</span></h2><div class="staff-grid">${list.map(card).join("")}</div>` : ""; }).join("")}
   <p class="note">Cada persona completa su foto, frase, email personal y habilidades en 👤 Mi perfil. El número y el email de la empresa los carga un admin.</p>`;
 }
+document.addEventListener("click", e => {
+  const v = e.target.closest("[data-staffvis]");
+  if (v){ if (viewer.role !== "Admin total") return; const pp = PEOPLE.find(x => x.id === v.dataset.staffvis); pp.staffHidden = !pp.staffHidden; render(); toast(pp.staffHidden ? `${pp.name} ya no aparece en Staff.` : `${pp.name} aparece en Staff.`); return; }
+  if (e.target.closest("[data-mycard]")){ page = "perfil"; render(); scrollTo(0, 0); }
+});
+document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("[data-mycard]")){ e.preventDefault(); page = "perfil"; render(); scrollTo(0, 0); } });
 // Bloc de notas personal: cada persona ve solo las suyas.
 const NOTES = {
   medardo:[{ id:1, type:"checklist", title:"Pendientes de la semana", items:[{ id:11, text:"Exportar carrusel electro", done:true },{ id:12, text:"Pedir fotos de producto a Stock", done:false }] }],
@@ -2317,12 +2343,12 @@ function visibleJobs(){
 }
 function brandChips(){
   const opts = myGroups().length > 1 ? ["Todas", ...myGroups()] : myGroups();
-  if (page === "calendario" || page === "calhistoria" || page === "caldiseno"){
+  if (page === "calendario" || page === "calhistoria" || page === "calcanales" || page === "caldiseno"){
     const all = page === "caldiseno" ? [...opts, "Materiales"] : opts;
     return `<div class="chips">${all.map(b => `<button class="chip ${brandFilter===b?"on":""}" data-brand="${b}">${b === "Todas" ? "Todos juntos" : b === "Otros" ? "Otras marcas" : b === "Materiales" ? "📦 Materiales" : b}</button>`).join("")}</div>`;
   }
   if (opts.length === 1) return `<div class="note">Viendo solo: <span class="brand" style="--c:${GROUP_COLOR[opts[0]]}">${opts[0] === "Otros" ? "Otras marcas" : opts[0]}</span></div>`;
-  return `<div class="chips">${opts.map(b => b === "Todas" && (page === "calendario" || page === "calhistoria" || page === "caldiseno") ? `<button class="chip ${brandFilter===b?"on":""}" data-brand="Todas">Todos juntos</button>` : `<button class="chip ${brandFilter===b?"on":""}" data-brand="${b}">${b === "Otros" ? "Otras marcas" : b}</button>`).join("")}</div>`;
+  return `<div class="chips">${opts.map(b => b === "Todas" && (page === "calendario" || page === "calhistoria" || page === "calcanales" || page === "caldiseno") ? `<button class="chip ${brandFilter===b?"on":""}" data-brand="Todas">Todos juntos</button>` : `<button class="chip ${brandFilter===b?"on":""}" data-brand="${b}">${b === "Otros" ? "Otras marcas" : b}</button>`).join("")}</div>`;
 }
 
 /* ---------- actions ---------- */
@@ -2650,8 +2676,8 @@ const canCalMove = () => !isViewOnly() && !isDesigner();
 const calDateOk = d => !!d && d.slice(0,7) >= CURRENT_MONTH && MONTHS_APP.some(m => m.v === d.slice(0,7));
 function calDrag(kind, id){
   if (!canCalMove()) return "";
-  const it = kind === "post" ? postById(id) : jobs.find(x => x.id === id);
-  const d = kind === "post" ? it.date : it.due;
+  const it = kind === "post" ? postById(id) : kind === "canal" ? canalById(id) : jobs.find(x => x.id === id);
+  const d = kind === "job" ? it.due : it.date;
   return calDateOk(d) && !(kind === "job" && isFin(it)) ? ` draggable="true" data-drag="${kind}:${id}"` : "";
 }
 const calHint = () => canCalMove() && !isClosed() ? `<p class="draghint">👆 Tocá un contenido para abrirlo y editarlo, o tocá un día para cargar uno nuevo en esa fecha. ✋ Arrastrá un posteo o una entrega a otro día para cambiar la fecha; para pasarlo a otro mes, soltalo en los días grises o dejalo un momento sobre “‹ Anterior” / “Siguiente ›”.</p>` : "";
@@ -2704,6 +2730,17 @@ function pCalCM(kind){
   ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("")
     + vp.filter(p => p.date === c).map(p => `<div class="ev"${calDrag("post", p.id)}${canEditPost() ? ` data-open="post:${p.id}"` : ""} style="--c:${BRANDS[p.brand]};--s:${POST_COLOR[p.status]}" title="${esc(p.title)} · ${p.net} ${p.format} · ${p.status} · ${esc(p.cm || "")}"><span>${postUrgency(p)?.late ? "⏰ " : ""}${p.brand} · ${esc(p.title)}</span><span class="st" style="color:${POST_COLOR[p.status] === "#334155" ? "#94a3b8" : POST_COLOR[p.status]}">● ${p.status} · ${p.net}${hist ? "" : " " + p.format} · ${esc(firstName(p.cm || ""))}</span></div>`).join(""), canEditPost())}
   <p class="note">🔁 = pedido repetitivo: se carga una sola vez en Gestión CM y aparece solo en cada fecha. Tocalo para marcarlo como hecho.</p>
+  ${postForm()}`;
+}
+function pCalCanales(){
+  const list = visibleCanales();
+  const calName = brandFilter === "Todas" ? "Todos juntos" : brandFilter === "Otros" ? "Otras marcas" : brandFilter;
+  const CH_ICO = { "Web / E-commerce":"🌐", "App":"📲", "WhatsApp":"💬", "E-mail":"✉️", "Pantallas en tienda":"🖥", "Otro":"📌" };
+  return `<div class="head"><div><h1>Calendario Canales · ${calName}</h1><p class="sub">${monthLabel(MONTH)} · lo que se sube fuera de las redes: ofertas en la web, la app, WhatsApp, e-mail o pantallas, cada una en su fecha.</p></div>
+    <div class="chips">${canEditPost() ? `<button class="btn primary" data-pnew="Canal">➕ Nuevo contenido</button>` : ""}${brandChips()}</div></div>
+  <div class="legend">${CANAL_STAGES.map(st => `<span><span class="sw" style="background:${POST_COLOR[st]}"></span>${st}</span>`).join("")}<span>${CANALES.map(c => `${CH_ICO[c]} ${c}`).join(" · ")}</span></div>${calHint()}
+  ${calGrid(c => list.filter(k => k.date === c).map(k => `<div class="ev"${calDrag("canal", k.id)}${canEditPost() ? ` data-open="canal:${k.id}"` : ""} style="--c:${BRANDS[k.brand]};--s:${POST_COLOR[k.status]}" title="${esc(k.title)} · ${esc(k.channel)} · ${k.status} · ${esc(k.cm || "")}"><span>${CH_ICO[k.channel] || "📌"} ${k.brand} · ${esc(k.title)}</span><span class="st" style="color:${POST_COLOR[k.status] === "#334155" ? "#94a3b8" : POST_COLOR[k.status]}">● ${k.status} · ${esc(k.channel)} · ${esc(firstName(k.cm || ""))}</span></div>`).join(""), canEditPost())}
+  ${list.some(k => k.date.slice(0,7) === MONTH) ? "" : `<p class="note">Todavía no hay nada cargado en ${monthName(MONTH)}. ${canEditPost() ? "Tocá un día para cargar una oferta o un contenido." : ""}</p>`}
   ${postForm()}`;
 }
 function pCalendario(){ return pCalCM("Feed"); }
@@ -2849,32 +2886,44 @@ function postStatusCell(p){
 }
 // Ficha de un posteo: se abre tocándolo en el calendario (o tocando un día vacío para cargar uno nuevo).
 // El CM responsable se elige libremente: un CM de Superseis puede hacer de CM de Stock, por ejemplo.
-const POST_NETS = ["IG","FB","TikTok"];
-const POST_FORMATS = ["Post","Carrusel","Reel","Historia"];
+const POST_NETS = ["IG","FB","IG + FB","TikTok"];
+const FEED_FORMATS = ["Post","Carrusel","Reel"];
+// Calendario Canales: ofertas y comunicaciones que no son redes (web, app, WhatsApp, e-mail, pantallas…).
+const CANALES = ["Web / E-commerce","App","WhatsApp","E-mail","Pantallas en tienda","Otro"];
+const CANAL_STAGES = ["Borrador","En diseño","Listo","Programado","Publicado"];
+let CHANNEL_POSTS = [];
+const canalById = id => CHANNEL_POSTS.find(k => k.id === id);
+const visibleCanales = () => CHANNEL_POSTS.filter(k => seesBrand(k.brand) && inFilter(k.brand));
 let postUI = { form:null };
 const nextPostId = () => "P" + (Math.max(0, ...posts.map(p => +String(p.id).replace(/\D/g, "") || 0)) + 1);
 function newPostOn(date, kind){
   const brand = MAIN_BRANDS.includes(brandFilter) && myBrands().includes(brandFilter) ? brandFilter : myBrands()[0];
-  postUI.form = { mode:"new", post:{ id:nextPostId(), date, brand, net:"IG", format:kind === "Historia" ? "Historia" : "Post", title:"", status:"Borrador", cm:CM_BY_BRAND[brand] || CM_NAMES()[0] || "", notes:"", carried:null } };
+  const cm = CM_BY_BRAND[brand] || CM_NAMES()[0] || "";
+  postUI.form = kind === "Canal"
+    ? { mode:"new", kind, post:{ id:"K" + (Math.max(0, ...CHANNEL_POSTS.map(k => +String(k.id).replace(/\D/g, "") || 0)) + 1), date, brand, channel:CANALES[0], title:"", status:"Borrador", cm, notes:"" } }
+    : { mode:"new", kind, post:{ id:nextPostId(), date, brand, net:"IG", format:kind === "Historia" ? "Historia" : "Post", title:"", status:"Borrador", cm, notes:"", carried:null } };
   render();
 }
 function postForm(){
   const f = postUI.form; if (!f) return "";
   const p = f.post, opt = (list, v) => [...new Set([...list, v].filter(Boolean))].map(x => `<option ${x === v ? "selected" : ""}>${esc(x)}</option>`).join("");
-  const j = jobs.find(x => x.post === p.id);
+  const j = f.kind === "Canal" ? null : jobs.find(x => x.post === p.id);
+  const kindFields = f.kind === "Canal"
+    ? `<label style="grid-column:1/-1">Canal *<select class="base" id="poChannel">${opt(CANALES, p.channel)}</select></label>`
+    : `<label>Red *<select class="base" id="poNet">${opt(POST_NETS, p.net)}</select></label>
+      ${f.kind === "Historia" ? `<label>Formato<input class="base" value="Historia" readonly></label>` : `<label>Formato *<select class="base" id="poFormat">${opt(FEED_FORMATS, p.format === "Historia" ? "Post" : p.format)}</select></label>`}`;
   return `<div class="drawer-bg" data-pclose></div><aside class="drawer" aria-label="Ficha del posteo">
-    <div class="drawer-h"><div><h2 style="margin:0">${f.mode === "edit" ? "Editar posteo" : p.format === "Historia" ? "Nueva historia" : "Nueva publicación"}</h2><div class="note">${esc(p.id)}${j ? ` · 🎨 diseño: ${esc(j.id)} (${esc(j.status)})` : ""}</div></div><button class="btn" data-pclose aria-label="Cerrar">✕</button></div>
+    <div class="drawer-h"><div><h2 style="margin:0">${f.mode === "edit" ? (f.kind === "Canal" ? "Editar contenido de canal" : f.kind === "Historia" ? "Editar historia" : "Editar publicación") : f.kind === "Canal" ? "Nuevo contenido de canal" : f.kind === "Historia" ? "Nueva historia" : "Nueva publicación"}</h2><div class="note">${esc(p.id)}${j ? ` · 🎨 diseño: ${esc(j.id)} (${esc(j.status)})` : ""}</div></div><button class="btn" data-pclose aria-label="Cerrar">✕</button></div>
     <form id="postForm" class="pform drawer-b" style="grid-template-columns:1fr 1fr">
       <label>Fecha de publicación *<input class="base" type="date" id="poDate" value="${p.date}" required></label>
       <label>Marca *<select class="base" id="poBrand">${opt(myBrands(), p.brand)}</select></label>
-      <label>Red *<select class="base" id="poNet">${opt(POST_NETS, p.net)}</select></label>
-      <label>Formato *<select class="base" id="poFormat">${opt(POST_FORMATS, p.format)}</select></label>
-      <label class="wide" style="grid-column:1/-1">Tema *<input class="base" id="poTitle" value="${esc(p.title)}" placeholder="Ej.: Ofertas del finde" required></label>
+      ${kindFields}
+      <label class="wide" style="grid-column:1/-1">${f.kind === "Canal" ? "Qué se sube *" : "Tema *"}<input class="base" id="poTitle" value="${esc(p.title)}" placeholder="${f.kind === "Canal" ? "Ej.: Ofertas del finde en la web" : "Ej.: Ofertas del finde"}" required></label>
       <label>CM (de cualquier marca) *<select class="base" id="poCm">${opt(CM_NAMES(), p.cm)}</select></label>
-      <label>Estado *<select class="base" id="poStatus">${opt(POST_STAGES, p.status)}</select></label>
+      <label>Estado *<select class="base" id="poStatus">${opt(f.kind === "Canal" ? CANAL_STAGES : POST_STAGES, p.status)}</select></label>
       <label style="grid-column:1/-1">Observaciones<input class="base" id="poNotes" value="${esc(p.notes || "")}" placeholder="Copy, link, detalles…"></label>
-      ${f.mode === "new" ? `<p class="note" style="grid-column:1/-1;margin:0">Si lo pasás a “En diseño”, se crea solo el pedido en Gestión Diseño gráfico.</p>` : ""}
-      <div class="chips" style="grid-column:1/-1;justify-content:flex-end">${f.mode === "edit" && viewer.role === "Admin total" ? `<button class="btn danger" type="button" data-pdel="${p.id}" style="margin-right:auto">🗑 Borrar</button>` : ""}<button class="btn" type="button" data-pclose>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div>
+      ${f.mode === "new" && f.kind !== "Canal" ? `<p class="note" style="grid-column:1/-1;margin:0">Si lo pasás a “En diseño”, se crea solo el pedido en Gestión Diseño gráfico.</p>` : ""}
+      <div class="chips" style="grid-column:1/-1;justify-content:flex-end">${f.mode === "edit" && viewer.role === "Admin total" ? `<button class="btn danger" type="button" data-pdel="${f.kind === "Canal" ? "canal:" : ""}${p.id}" style="margin-right:auto">🗑 Borrar</button>` : ""}<button class="btn" type="button" data-pclose>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div>
     </form></aside>`;
 }
 document.addEventListener("change", e => { if (e.target.id === "poBrand"){ const cm = CM_BY_BRAND[e.target.value], s2 = $("#poCm"); if (cm && s2 && [...s2.options].some(o => o.value === cm)) s2.value = cm; } });
@@ -2882,7 +2931,16 @@ document.addEventListener("submit", e => {
   if (e.target.id !== "postForm") return; e.preventDefault();
   const f = postUI.form, title = $("#poTitle").value.trim(), date = $("#poDate").value;
   if (!title || !date){ toast("Completá el tema y la fecha."); return; }
-  const data = { date, brand:$("#poBrand").value, net:$("#poNet").value, format:$("#poFormat").value, title, cm:$("#poCm").value, status:$("#poStatus").value, notes:$("#poNotes").value.trim() };
+  const common = { date, brand:$("#poBrand").value, title, cm:$("#poCm").value, status:$("#poStatus").value, notes:$("#poNotes").value.trim() };
+  if (f.kind === "Canal"){
+    const data = { ...common, channel:$("#poChannel").value };
+    let k = f.mode === "edit" ? canalById(f.post.id) : null;
+    if (k) Object.assign(k, data); else { k = { ...f.post, ...data }; CHANNEL_POSTS.push(k); }
+    postUI.form = null; const m = date.slice(0,7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m;
+    render(); toast(`${f.mode === "edit" ? "Guardado" : "Cargado"}: “${k.title}” en ${k.channel} el ${dm(k.date)}.`); return;
+  }
+  // Historia: siempre historia. Feed: nunca historia.
+  const data = { ...common, net:$("#poNet").value, format:f.kind === "Historia" ? "Historia" : $("#poFormat").value };
   let p = f.mode === "edit" ? postById(f.post.id) : null;
   if (p) Object.assign(p, data); else { p = { ...f.post, ...data }; posts.push(p); }
   postUI.form = null;
@@ -2892,7 +2950,8 @@ document.addEventListener("submit", e => {
 });
 document.addEventListener("click", e => {
   if (e.target.closest("[data-pclose]")){ postUI.form = null; render(); return; }
-  const d = e.target.closest("[data-pdel]"); if (d){ const p = postById(d.dataset.pdel); posts.splice(posts.indexOf(p), 1); jobs.forEach(j => { if (j.post === p.id) j.post = null; }); postUI.form = null; render(); toast(`Posteo “${p.title}” borrado.`); return; }
+  const d = e.target.closest("[data-pdel]"); if (d && d.dataset.pdel.startsWith("canal:")){ const k = canalById(d.dataset.pdel.slice(6)); CHANNEL_POSTS.splice(CHANNEL_POSTS.indexOf(k), 1); postUI.form = null; render(); toast(`“${k.title}” borrado.`); return; }
+  if (d){ const p = postById(d.dataset.pdel); posts.splice(posts.indexOf(p), 1); jobs.forEach(j => { if (j.post === p.id) j.post = null; }); postUI.form = null; render(); toast(`Posteo “${p.title}” borrado.`); return; }
   const n = e.target.closest("[data-pnew]"); if (n){ newPostOn(MONTH === TODAY.slice(0,7) ? TODAY : MONTH + "-01", n.dataset.pnew); return; }
   const jn = e.target.closest("[data-jnewcal]"); if (jn){ newJobOn(MONTH === TODAY.slice(0,7) ? TODAY : MONTH + "-01"); return; }
 });
@@ -2907,12 +2966,13 @@ document.addEventListener("click", e => {
   if (!isCalPage() || e.target.closest("[data-recdone]")) return;
   const ev = e.target.closest(".cal [data-open]");
   if (ev){ const [kind, id] = ev.dataset.open.split(":");
-    if (kind === "post" && canEditPost()){ postUI.form = { mode:"edit", post:{ ...postById(id) } }; render(); }
+    if (kind === "post" && canEditPost()){ const p = postById(id); postUI.form = { mode:"edit", kind:p.format === "Historia" ? "Historia" : "Feed", post:{ ...p } }; render(); }
+    else if (kind === "canal" && canEditPost()){ postUI.form = { mode:"edit", kind:"Canal", post:{ ...canalById(id) } }; render(); }
     else if (kind === "job" && canCreateJobs()){ jobUI.form = { mode:"edit", job:{ ...jobs.find(x => x.id === id) } }; render(); }
     return; }
   const cell = e.target.closest(".calw.addable [data-cdrop]"); if (!cell || e.target.closest(".ev")) return;
   const d = cell.dataset.cdrop; if (!calDateOk(d)) return;
-  if (page === "calendario" || page === "calhistoria") newPostOn(d, page === "calhistoria" ? "Historia" : "Feed"); else newJobOn(d);
+  if (page === "calendario" || page === "calhistoria" || page === "calcanales") newPostOn(d, { calhistoria:"Historia", calcanales:"Canal" }[page] || "Feed"); else newJobOn(d);
 });
 // Pedidos repetitivos de CM: se repiten ciertos días de la semana (historias, feed o grabaciones).
 const WEEKDAYS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
@@ -3696,6 +3756,24 @@ function objSpark(o){
   const pts = o.hist.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" "), last = o.hist.length - 1, c = OBJ_AREAS[o.area].c;
   return `<svg class="ospark" viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución semanal"><line x1="${P}" x2="${W - P}" y1="${y(o.target)}" y2="${y(o.target)}" stroke="#34d399" stroke-dasharray="4 3" stroke-width="1.5"/><text x="${W - P}" y="${y(o.target) < 14 ? y(o.target) + 12 : y(o.target) - 4}" text-anchor="end" fill="#34d399" font-size="9" font-weight="700">meta</text><polyline class="line" points="${pts}" fill="none" stroke="${c}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${x(last)}" cy="${y(o.hist[last])}" r="3.6" fill="${c}"/></svg>`;
 }
+// Las 3 prioridades del área: se muestran arriba de Planificación del mes, todos los meses. Admin total las edita.
+let MAIN_PRIORITIES = [
+  "Mejorar la consistencia de la comunicación y ejecución en los puntos de venta.",
+  "Identificar barreras de compra y aumentar la penetración de categorías dentro de la canasta actual de clientes.",
+  "Comunicar de forma clara las ventajas competitivas y atributos diferenciales de cada cadena.",
+];
+let prioEdit = false;
+function prioritiesPanel(){
+  if (prioEdit) return `<form class="panel prios" id="prioForm"><h2 style="margin:0 0 12px">⭐ Objetivos principales</h2>
+    ${[0,1,2].map(i => `<label class="prioedit"><span class="pnum">${i + 1}</span><textarea class="base" id="prio${i}" rows="2" required>${esc(MAIN_PRIORITIES[i] || "")}</textarea></label>`).join("")}
+    <div class="chips" style="justify-content:flex-end;margin-top:10px"><button class="btn" type="button" data-prioedit>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></form>`;
+  return `<section class="panel prios"><div class="head" style="margin-bottom:10px"><div><h2 style="margin:0">⭐ Objetivos principales</h2><p class="sub" style="margin:4px 0 0">Las tres prioridades importantes del área, para todos los meses.</p></div>${isAT() ? `<button class="btn sm" data-prioedit>✏️ Editar</button>` : ""}</div>
+    <ol class="priolist">${MAIN_PRIORITIES.map((t, i) => `<li><span class="pnum">${i + 1}</span><p>${esc(t)}</p></li>`).join("")}</ol></section>`;
+}
+document.addEventListener("click", e => { if (!e.target.closest("[data-prioedit]") || !isAT()) return; prioEdit = !prioEdit; render(); });
+document.addEventListener("submit", e => { if (e.target.id !== "prioForm") return; e.preventDefault();
+  const v = [0,1,2].map(i => $("#prio" + i).value.trim()); if (v.some(x => !x)){ toast("Completá las tres prioridades."); return; }
+  MAIN_PRIORITIES = v; prioEdit = false; render(); toast("Objetivos principales guardados. Se ven arriba todos los meses."); });
 function pPlanMes(){
   const objs = OBJECTIVES.filter(o => o.month === MONTH), camps = MONTH_CAMPAIGNS.filter(c => c.month === MONTH);
   const next = [...new Set(UPCOMING.filter(u => u.month > MONTH).map(u => u.month))].sort().slice(0, 3);
@@ -3724,6 +3802,7 @@ function pPlanMes(){
   const tabs = [["obj","🎯","Objetivos", objs.length + " este mes"],["camp","📣","Campañas", camps.length + " en destaque"],["up","🔭","Lo que se viene", UPCOMING.filter(u => next.includes(u.month)).length + " en " + next.length + " meses"],["prop","💡", isAT() ? "Propuestas" : "Proponé", isAT() ? (pendProps ? pendProps + (pendProps === 1 ? " nueva" : " nuevas") : "nada pendiente") : "tu idea de objetivo"]];
   const T = pmUI.tab;
   return `<div class="head"><div><h1>Planificación del mes</h1><p class="sub">Qué buscamos lograr en ${monthLabel(MONTH)}, qué campañas están en destaque y qué se viene. Elegí qué querés ver.${isAT() ? "" : " La define Admin total."}</p></div></div>
+  ${prioritiesPanel()}
   <div class="pmtabs" role="tablist">${tabs.map(([k, ic, l, d]) => `<button class="pmtab ${T === k ? "on" : ""}" role="tab" aria-selected="${T === k}" data-pmtab="${k}"><span class="pmi">${ic}</span><span><b>${l}</b><small>${d}</small></span></button>`).join("")}</div>
   ${T !== "obj" ? "" : `<section class="pmsec"><div class="head"><div><h2 style="margin:0">🎯 Objetivos del mes</h2><p class="sub" style="margin:4px 0 0">${objs.length ? "Lo que queremos lograr este mes, en pocas palabras." : "Todavía no hay objetivos para este mes."}</p></div>${add("obj", "Objetivo")}</div>
     ${pmUI.form === "obj" ? form : ""}${objs.length ? `<div class="ogrid">${group("Equipo", objs.filter(o => o.area === "Equipo"))}${group("Diseño", objs.filter(o => o.area === "Diseño"))}${group("CM", objs.filter(o => o.area === "CM"))}</div>` : ""}</section>`}
@@ -4038,7 +4117,7 @@ const GUIDE = [
     ["mail","Mensajes","Mensajes internos entre el equipo, por tema y con prioridad normal, atención o urgente. Muestran fecha y hora de envío y de cada respuesta. Se marcan como “Recibido” y se pasan a Finalizados."],
     ["notebook-pen","Bloc de notas","Tus notas y checklists privadas. “+ Reunión” arma una lista para la minuta. Cambiás el orden arrastrando desde ⋮⋮ o con las flechitas."]]],
   ["Planificación", [
-    ["target","Planificación del mes","En 4 pestañas: 🎯 Objetivos (por equipo, Diseño gráfico y CM, en palabras simples), 📣 Campañas del mes, 🔭 Lo que se viene y 💡 Propuestas. Cualquiera puede proponer un objetivo; solo Admin total lo lee y decide si lo suma."]]],
+    ["target","Planificación del mes","Arriba, siempre, los ⭐ Objetivos principales: las tres prioridades del área (Admin total las edita). Debajo, En 4 pestañas: 🎯 Objetivos (por equipo, Diseño gráfico y CM, en palabras simples), 📣 Campañas del mes, 🔭 Lo que se viene y 💡 Propuestas. Cualquiera puede proponer un objetivo; solo Admin total lo lee y decide si lo suma."]]],
   ["Diseño gráfico", [
     ["palette","Gestión Diseño gráfico","Los pedidos de diseño gráfico en Tablero, Tabla o Calendario de entregas. Con “➕ Nuevo pedido de diseño gráfico” se carga marca, tipo de pieza, responsable (cualquier diseñador, aunque sea de otra marca), prioridad, complejidad y fecha límite."],
     ["calendar-range","Calendario Diseño gráfico","Las entregas de diseño gráfico: cada pieza en su fecha límite, con su estado y quién la hace. Tocá una entrega para abrirla y editarla, o tocá un día para cargar un pedido nuevo con esa fecha. La pestaña 📦 Materiales es para cartelería, flyers, vía pública, catálogos y empaques."],
@@ -4047,7 +4126,8 @@ const GUIDE = [
   ["Community Manager", [
     ["send","Gestión CM","Los pedidos que se le hacen a los CM (grabaciones, ediciones de video, copys, armado de pauta, coberturas). Se cargan con “+ Cargar un pedido para CM” y se siguen en Tablero, Tabla o Calendario de pedidos. Con “🔁 Cargar pedido repetitivo para CM” se carga una sola vez lo que se repite solo (ej.: tarjetas de crédito todos los lunes 9:00, o una historia cada sábado) y se marca como hecho cada vez."],
     ["calendar-days","Calendario Feed","Las publicaciones del feed (posts, carruseles y reels) en su fecha, con su estado y su CM, más las repetitivas de feed (🔁). Tocá una publicación para editarla (fecha, tema, estado o CM, que puede ser de cualquier marca) o tocá un día para cargar una nueva."],
-    ["smartphone","Calendario Historia","Igual que el Calendario Feed, pero solo con las historias: las del plan y las repetitivas (🔁, tocalas para marcarlas hechas)."],
+    ["smartphone","Calendario Historia","Igual que el Calendario Feed, pero solo con las historias: las del plan y las repetitivas (🔁, tocalas para marcarlas hechas). Lo que se carga acá es siempre historia; en el Feed no se cargan historias. La red puede ser IG, FB, IG + FB juntos o TikTok."],
+    ["store","Calendario Canales","Lo que se sube fuera de las redes: ofertas en la web, la app, WhatsApp, e-mail o pantallas en tienda, cada una en su fecha, con su estado y quién la hace. Tocá un día para cargar una."],
     ["gauge","Carga de trabajo CM","Cuánto tiene cada CM: los pedidos sin terminar y las publicaciones del mes que todavía no están programadas."],
     ["list-checks","Plan de posteo","Lo que se tiene que subir en el mes. Arriba, cuántas hay en cada estado y el % ya publicado (tocá un estado para filtrar). En cada publicación marcás Borrador, En diseño, Listo, Programado, Publicado o Pautado, cambiás el CM que la hace y pedís el diseño si hace falta."],
     ["archive","Historial CM","Lo que ya salió en el mes: publicaciones publicadas o pautadas y pedidos de CM terminados."]]],
@@ -4063,7 +4143,7 @@ const GUIDE = [
     ["monitor-play","Vista TV Redes","Seguidores y público de cada marca en pantalla completa."],
     ["trophy","TV Impacto Redes","La mejor publicación de cada marca y después el top 10 de cada una."]]],
   ["Equipo", [
-    ["users","Staff","Quién es quién: puesto, frase, marcas, cumpleaños con su signo, número y email de la empresa, email y celular personal y habilidades."],
+    ["users","Staff","Quién es quién: puesto, frase, marcas, cumpleaños con su signo, número y email de la empresa, email y celular personal y habilidades. Tocá tu propia tarjeta para editar tu perfil. Admin total elige quién aparece (👁 Visible / 🚫 Oculto)."],
     ["sun","Sábados libres","Cada persona tiene un sábado libre por mes. Elegís el tuyo en la tarjeta del sábado (hay un máximo por sábado y avisa si no queda ningún CM o diseñador trabajando). Admin total puede organizar los de todos."],
     ["cake","Cumpleaños","Quién cumple hoy, en una semana y en los próximos meses. También aparecen en Inicio."]]],
   ["Tu cuenta y buzón", [
@@ -4219,8 +4299,8 @@ function pConfig(){
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-pref]"); if (!b) return; const [k, val] = b.dataset.pref.split("|"); viewer[k] = val; savePrefs(viewer); applyPrefs(); render();
   toast(k === "theme" ? `Listo: versión ${val === "light" ? "clara" : "oscura"}.` : k === "textSize" ? `Texto ${val === "big" ? "grande" : "normal"}.` : val === "off" ? "Animaciones desactivadas." : "Animaciones activadas."); });
-const EYEBROW = { sabados:"Equipo", caldiseno:"Calendario de entregas", historialcm:"Community managers", gestioncm:"Community managers", avisos:"Comunicados del equipo", prompts:"Inteligencia artificial", guia:"Ayuda", archivos:"Diseños y archivos", encuestas:"La voz del equipo", planmes:"Hacia dónde vamos", notas:"Tu espacio", mensajes:"Comunicación interna", sugerencias:"Buzón confidencial", tvimpacto:"Pantalla de oficina", inicio:"Panel general", alertas:"Control", calendario:"Calendario del feed", calhistoria:"Calendario de historias", cargadiseno:"Diseño gráfico", cargacm:"Community managers", plan:"Contenidos", pedidos:"Diseño gráfico", tv:"Equipo de diseño", historial:"Diseño gráfico", pauta:"Meta Ads", redes:"Audiencia", reportes:"Resultados del mes", usuarios:"Administración", perfil:"Tu cuenta", cumples:"Equipo", dashboard:"Visión general", tvredes:"Pantalla de oficina", staff:"Equipo", config:"Tu cuenta" };
-const PAGES = { sabados:pSabados, caldiseno:pCalDiseno, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
+const EYEBROW = { sabados:"Equipo", caldiseno:"Calendario de entregas", historialcm:"Community managers", gestioncm:"Community managers", avisos:"Comunicados del equipo", prompts:"Inteligencia artificial", guia:"Ayuda", archivos:"Diseños y archivos", encuestas:"La voz del equipo", planmes:"Hacia dónde vamos", notas:"Tu espacio", mensajes:"Comunicación interna", sugerencias:"Buzón confidencial", tvimpacto:"Pantalla de oficina", inicio:"Panel general", alertas:"Control", calendario:"Calendario del feed", calhistoria:"Calendario de historias", calcanales:"Ofertas y canales", cargadiseno:"Diseño gráfico", cargacm:"Community managers", plan:"Contenidos", pedidos:"Diseño gráfico", tv:"Equipo de diseño", historial:"Diseño gráfico", pauta:"Meta Ads", redes:"Audiencia", reportes:"Resultados del mes", usuarios:"Administración", perfil:"Tu cuenta", cumples:"Equipo", dashboard:"Visión general", tvredes:"Pantalla de oficina", staff:"Equipo", config:"Tu cuenta" };
+const PAGES = { sabados:pSabados, caldiseno:pCalDiseno, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
 
 /* ---------- render ---------- */
 // Barra de pestañas abajo (celular), como en cualquier app: lo que más usa cada rol + “Más” para el menú completo.
@@ -4292,7 +4372,7 @@ function render(){
   renderNav();
   $("#whoami").textContent = nickOf(viewer) + " · " + viewer.role + (viewer.brands ? " · " + viewer.brands.join(", ") : "");
   $("#viewas").value = viewer.id;
-  const ro = isViewOnly() && ["calendario","calhistoria","caldiseno","plan","pedidos","gestioncm","inicio"].includes(page) ? `<div class="ro">👁 Perfil Admin (control): ves todo el sitio y descargás informes, pero no modificás contenidos, usuarios ni configuración.</div>` : "";
+  const ro = isViewOnly() && ["calendario","calhistoria","calcanales","caldiseno","plan","pedidos","gestioncm","inicio"].includes(page) ? `<div class="ro">👁 Perfil Admin (control): ves todo el sitio y descargás informes, pero no modificás contenidos, usuarios ni configuración.</div>` : "";
   const avb = page === "inicio" ? avActiveFor(viewer).filter(a => !a.seen.includes(viewer.id)).sort((a, b) => ["Urgente","Importante","Informativo"].indexOf(a.level) - ["Urgente","Importante","Informativo"].indexOf(b.level)).map(avBanner).join("") : "";
   const bdays = page === "inicio" && can("cumples") ? bdayAlerts().map(({ pp, d }) => `<div class="panel bday ${d === 0 ? "today" : ""}" style="--u:${d === 0 ? "#ef4444" : "#f97316"}"><div class="ic">${CAKE_SVG}</div><div><b>${d === 0 ? `¡Hoy cumple años ${esc(pp.name)}! 🎉` : `${d === 1 ? "Mañana" : `En ${d} días`} cumple años ${esc(pp.name)}`}</b> <span>${esc(pp.cargo || pp.role)} · ${bdayLabel(pp.birthday)}${d === 0 ? " · ¡No te olvides de saludar!" : ""}</span></div></div>`).join("") : "";
   const demo = window.RMH?.previewing ? `<div class="panel demo">${icon("info")}<div><b>Vista previa como ${esc(viewer.name)}.</b> <span>Lo que cambies acá no se guarda. Volvé a tu usuario en “ver como” (abajo a la izquierda).</span></div></div>` : "";
@@ -4514,7 +4594,7 @@ document.addEventListener("submit", e => {
 document.addEventListener("click", e => {
   const t = e.target.closest("[data-month],[data-rtab],[data-rbrand],[data-dl],[data-close],[data-page],[data-brand],[data-redes],[data-pedir],[data-adv-post],[data-adv-job],[data-perm],[data-pb],[data-soon]");
   if (!t) return;
-  if ((t.dataset.page === "calendario" || t.dataset.page === "calhistoria") && brandFilter === "Todas") brandFilter = myGroups()[0];
+  if (["calendario","calhistoria","calcanales"].includes(t.dataset.page) && brandFilter === "Todas") brandFilter = myGroups()[0];
   if (t.dataset.month){ const i = MONTHS_APP.findIndex(m => m.v === MONTH) + Number(t.dataset.month); if (MONTHS_APP[i]){ MONTH = MONTHS_APP[i].v; render(); } }
   else if (t.dataset.rtab){ reportTab = t.dataset.rtab; render(); }
   else if (t.dataset.rbrand){ reportBrand = t.dataset.rbrand; render(); }
