@@ -1814,6 +1814,9 @@ button,.btn,.chip,.nav a,.tabbar a,.tabbar button{-webkit-user-select:none;user-
 .plcal .pev:hover{background:rgba(148,163,184,.08)}
 .plcal .pev[role=button]{cursor:pointer}
 .plcal .pev span svg{width:11px;height:11px;vertical-align:-1px;color:var(--muted)}
+.plcal .pev .pst{all:unset;grid-column:2;font-size:10px;color:var(--c);cursor:pointer;justify-self:start;border-radius:5px;padding:0 3px;margin-left:-3px}
+.plcal .pev .pst:hover,.plcal .pev .pst:focus-visible{background:rgba(148,163,184,.14);text-decoration:underline}
+#stagepop button svg{width:15px;height:15px;color:var(--cyan)}
 .clean .card.u{border-color:var(--line-3);border-left-color:var(--c);box-shadow:none}
 .clean .row.u{background:var(--inner)}
 .clean .urg.late{background:transparent;color:#f87171;border-color:rgba(239,68,68,.6);box-shadow:none;animation:none}
@@ -3105,7 +3108,7 @@ function postTable(list, kind){
   </tbody></table></div>`;
 }
 const canalStatusCell = k => canEditPost() ? `<select class="base sm" data-kstatus="${k.id}" aria-label="Estado de ${esc(k.title)}">${CANAL_STAGES.map(st => `<option ${st === k.status ? "selected" : ""}>${st}</option>`).join("")}</select>` : pill(k.status, POST_COLOR[k.status]);
-document.addEventListener("click", e => { const b = e.target.closest("[data-pedit]"); if (!b) return; const [kind, id] = b.dataset.pedit.split(":");
+document.addEventListener("click", e => { const b = e.target.closest("[data-pedit]"); if (!b || e.target.closest("[data-stagemenu]")) return; const [kind, id] = b.dataset.pedit.split(":");
   if (kind === "canal") postUI.form = { mode:"edit", kind:"Canal", post:{ ...canalById(id) } }; else { const p = postById(id); postUI.form = { mode:"edit", kind:p.format === "Historia" ? "Historia" : "Feed", post:{ ...p } }; }
   render(); });
 document.addEventListener("change", e => { const k = e.target.closest("[data-kstatus]"); if (!k) return; const c = canalById(k.dataset.kstatus); if (!c || c.status === k.value) return; c.status = k.value; render(); toast(`“${c.title}” pasó a ${c.status}.`); });
@@ -3188,12 +3191,31 @@ let planUI = { view:"calendario" };
 document.addEventListener("click", e => { const v = e.target.closest("[data-plview]"); if (v){ planUI.view = v.dataset.plview; render(); }
   if (e.target.closest("[data-plvid]")){ const area = "CM", brand = MAIN_BRANDS.includes(brandFilter) && myBrands().includes(brandFilter) ? brandFilter : myBrands()[0];
     jobUI.form = { mode:"new", job:{ id:nextJobId(area), area, requestDate:TODAY, requester:"Marketing", brand, piece:CM_TYPES[0], title:"", owner:"Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due:MONTH === TODAY.slice(0,7) ? TODAY : MONTH + "-01", link:"", notes:"", post:null } }; render(); } });
+// Tocar un día del Plan de posteo: menú para elegir qué cargar en esa fecha.
+document.addEventListener("click", e => {
+  if (page !== "plan") return;
+  const o = e.target.closest("[data-plnew]");
+  if (o){ const [kind, date] = o.dataset.plnew.split("|"); closeStageMenu();
+    if (kind === "Video"){ const brand = MAIN_BRANDS.includes(brandFilter) && myBrands().includes(brandFilter) ? brandFilter : myBrands()[0]; jobUI.form = { mode:"new", job:{ id:nextJobId("CM"), area:"CM", requestDate:TODAY, requester:"Marketing", brand, piece:CM_TYPES[0], title:"", owner:"Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due:date, link:"", notes:"", post:null } }; render(); }
+    else newPostOn(date, kind);
+    return; }
+  const cell = !e.target.closest(".pev") && e.target.closest(".plcal .calw.addable [data-cdrop]"); if (!cell) return;
+  const d = cell.dataset.cdrop; if (!calDateOk(d)) return;
+  const opts = [["Feed","image","Publicación (post, carrusel o reel)"],["Historia","smartphone","Historia"],["Canal","message-circle","Canal de WhatsApp"], ...(canCreateJobs() && can("gestioncm") ? [["Video","clapperboard","Pedido de video"]] : [])];
+  const pop = document.createElement("div"); pop.id = "stagepop"; pop.setAttribute("role", "menu");
+  pop.innerHTML = `<div class="sp-h">Cargar el ${dm(d)}</div>${opts.map(([k, ic, l]) => `<button type="button" role="menuitem" data-plnew="${k}|${d}" style="--c:var(--cyan)">${icon(ic)}${l}</button>`).join("")}`;
+  document.body.appendChild(pop); if (window.lucide) lucide.createIcons();
+  const r = cell.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
+  pop.style.left = Math.max(8, Math.min(r.left, innerWidth - pw - 8)) + "px";
+  pop.style.top = (r.bottom + ph + 8 > innerHeight ? Math.max(8, r.top - ph + 30) : r.top + 30) + "px";
+});
 const PLAN_ICO = x => x.rec ? "repeat" : x.vid ? "clapperboard" : x.canal ? "message-circle" : x.format === "Historia" ? "smartphone" : "image";
 function planCal(items){
   return `<div class="plcal">${calGrid(c => items.filter(x => x.date === c).map(x => { const st = x.rec ? (x.done ? "Hecho" : "Repetitivo") : x.status, col = x.rec ? (x.done ? "#10b981" : REC_KINDS[x.r.kind].c) : x.vid ? JOB_COLOR[x.status] || "#94a3b8" : POST_COLOR[x.status] === "#334155" ? "#94a3b8" : POST_COLOR[x.status];
     const act = x.rec ? (canCreateJobs() ? ` data-recdone="${x.id}" role="button" tabindex="0"` : "") : x.vid ? (canCreateJobs() ? ` data-jedit="${x.id}" role="button" tabindex="0"` : "") : canEditPost() ? ` data-pedit="${x.canal ? "canal" : "post"}:${x.id}" role="button" tabindex="0"` : "";
-    return `<div class="pev"${act} title="${esc(x.title)} · ${x.brand} · ${x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${st} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} ${esc(x.title)}</span><em style="--c:${col}">${st}</em></div>`; }).join(""))}</div>
-  <p class="note">Todo lo de CM junto, cada uno con el punto de color de su marca, su ícono (${icon("image")} feed, ${icon("smartphone")} historia, ${icon("message-circle")} Canal de WhatsApp, ${icon("clapperboard")} video, ${icon("repeat")} repetitivo) y su estado. Tocá uno para editarlo; en un repetitivo, lo marcás como hecho.</p>`;
+    const sk = x.rec ? null : x.vid ? "job" : x.canal ? "canal" : "post", it = x.vid ? x.job : x.canal ? canalById(x.id) : x.rec ? null : postById(x.id), can2 = sk && stageOptions(sk, it).length;
+    return `<div class="pev"${act} title="${esc(x.title)} · ${x.brand} · ${x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${st} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} ${esc(x.title)}</span>${can2 ? `<button type="button" class="pst" data-stagemenu="${sk}:${x.id}" style="--c:${col}" title="Cambiar el estado">${st} ▾</button>` : `<em style="--c:${col}">${st}</em>`}</div>`; }).join(""), canEditPost())}</div>
+  <p class="note">Todo lo de CM junto, cada uno con el punto de color de su marca, su ícono (${icon("image")} feed, ${icon("smartphone")} historia, ${icon("message-circle")} Canal de WhatsApp, ${icon("clapperboard")} video, ${icon("repeat")} repetitivo) y su estado. Tocá uno para editarlo, su estado para cambiarlo (${icon("chevron-down")}), o un día vacío para cargar algo en esa fecha. En un repetitivo, lo marcás como hecho.</p>`;
 }
 let jobUI = { area:"Todos", view:"calendario", status:"Activos", owner:"Todos", prio:"Todas", q:"", form:null };
 const canCreateJobs = () => !isDesigner() && !isViewOnly() && !isClosed();
@@ -5087,7 +5109,7 @@ function enterApp(){ loadPrefs(viewer); applyPrefs(); loadWeather(); viewer.last
 document.addEventListener("click", e => {
   const cmt = e.target.closest("[data-cmview],[data-cmtv],[data-cmst]");
   if (cmt){ const d = cmt.dataset; if (d.cmtv) cmUI.tview = d.cmtv; else if (d.cmst) cmUI.st = cmUI.st === d.cmst ? "Todos" : d.cmst; render(); return; }
-  const jt = e.target.closest("[data-jarea],[data-jview],[data-jnew],[data-jedit],[data-jdup],[data-jdel],[data-jclose]");
+  const jt = !e.target.closest(".pev [data-stagemenu]") && e.target.closest("[data-jarea],[data-jview],[data-jnew],[data-jedit],[data-jdup],[data-jdel],[data-jclose]");
   if (jt){ const d = jt.dataset, find = id => jobs.find(x => x.id === id);
     if (d.jarea){ jobUI.area = d.jarea; jobUI.owner = "Todos"; }
     else if (d.jview) jobUI.view = d.jview;
