@@ -1760,6 +1760,20 @@ button,.btn,.chip,.nav a,.tabbar a,.tabbar button{-webkit-user-select:none;user-
 .clean .urg{background:transparent}
 .clean .kanban .col{background:transparent}
 .btn.ib{display:inline-grid;place-items:center;padding:5px 8px}.btn.ib svg{width:15px;height:15px}
+.aico{flex:none;width:32px;height:32px;border-radius:10px;display:grid;place-items:center;color:var(--c);border:1px solid color-mix(in srgb,var(--c) 35%,transparent)}
+.aico svg{width:16px;height:16px}
+.clean .row.u{border-color:var(--line-3)}
+.clean .pmh .pmico svg{width:20px;height:20px}
+.clean .ph b svg,.clean .pghead h3 svg{width:16px;height:16px;vertical-align:-2px;margin-right:4px;color:var(--muted)}
+.clean .pfill,.clean .pfill[class*="ld-"],.clean .pfill[class*="lv-"]{background:var(--cyan-5);box-shadow:none;animation-name:grow}
+.clean .ztrack{background:rgba(148,163,184,.12)}
+.clean .kpi .n.up{color:var(--ink)!important}
+.clean .llegend span:not(:first-child){display:none}
+.clean .nowcard,.clean .hellohead .motto{box-shadow:none}
+.clean .avatar{background:rgba(148,163,184,.14);color:var(--ink)}
+.clean .avban{background:transparent}
+.row .m svg,.waitchip svg{width:14px;height:14px;vertical-align:-2px;color:var(--muted)}
+.clean .waitchip{background:transparent}
 .clean .card.u{border-color:var(--line-3);border-left-color:var(--c);box-shadow:none}
 .clean .row.u{background:var(--inner)}
 .clean .urg.late{background:transparent;color:#f87171;border-color:rgba(239,68,68,.6);box-shadow:none;animation:none}
@@ -2028,7 +2042,7 @@ function loadBar(title, L, big = false){
     ${ltrack(L)}
     <div class="pmeta"><span><i>${L.n}</i> ${L.n === 1 ? "trabajo" : "trabajos"} sin finalizar</span><span><i>${L.pts}</i> de ${L.cap} puntos de capacidad</span></div></div>`;
 }
-const LOAD_LEGEND = `<div class="llegend"><span>Carga = trabajos sin finalizar según complejidad (Baja 1 · Media 2 · Alta 3) sobre la capacidad (${LOAD_FULL} puntos por persona). Lo ideal es la zona verde.</span><span><i style="background:#10b981"></i>Zona ideal (menos de 50 %)</span><span><i style="background:#eab308"></i>Carga alta</span><span><i style="background:#f97316"></i>Al límite</span><span><i style="background:#ef4444"></i>Sobrecargado</span></div>`;
+const LOAD_LEGEND = `<div class="llegend"><span>Carga = trabajos sin finalizar según complejidad (Baja 1 · Media 2 · Alta 3) sobre la capacidad (${LOAD_FULL} puntos por persona). Lo ideal es menos del 50 %.</span><span><i style="background:#10b981"></i>Zona ideal (menos de 50 %)</span><span><i style="background:#eab308"></i>Carga alta</span><span><i style="background:#f97316"></i>Al límite</span><span><i style="background:#ef4444"></i>Sobrecargado</span></div>`;
 function loadChart(groups, cls = ""){
   const all = groups.flatMap(g => g.people.map(pp => ({ pp, ...loadOf(pp.name) })));
   const max = Math.max(LOAD_FULL, ...all.map(x => x.pts));
@@ -2623,38 +2637,38 @@ const adminNotifs = () => NOTIFS.filter(n => n.to === "admin" && !n.read && (n.t
 const myNotifs = () => NOTIFS.filter(n => n.to === viewer.name && !n.read);
 function notifAlerts(){
   if (viewer.role === "Admin total") return adminNotifs().map(n => {
-    if (n.type === "sug") { const x = SUGGESTIONS.find(y => y.id === n.sug); return { sev:"#22d3ee", rank:-4, t:`💬 Llegó una sugerencia nueva ${x ? sugNo(x) : ""}`, m:`${x ? x.topic : ""}${x && x.anon ? " · anónima" : x ? " · de " + (PEOPLE.find(pp => pp.id === x.author)?.name || "") : ""} · ${dm(n.date)} ${n.time}`, acts:`<button class="btn" data-page="sugerencias">Ver sugerencia</button>` }; }
+    if (n.type === "sug") { const x = SUGGESTIONS.find(y => y.id === n.sug); return { sev:"#22d3ee", rank:-4, ic:"message-square", t:`Llegó una sugerencia nueva ${x ? sugNo(x) : ""}`, m:`${x ? x.topic : ""}${x && x.anon ? " · anónima" : x ? " · de " + (PEOPLE.find(pp => pp.id === x.author)?.name || "") : ""} · ${dm(n.date)} ${n.time}`, acts:`<button class="btn" data-page="sugerencias">Ver sugerencia</button>` }; }
     const j = jobById(n.job);
-    return { sev:"#a855f7", rank:-5, t:`✅ ${n.who} ${n.fix ? "terminó las correcciones" : "terminó su diseño"}: ${j.title}`, m:`${j.brand} · ${j.piece} · listo para revisar · ${dm(n.date)} ${n.time}${j.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}`,
+    return { sev:"#a855f7", rank:-5, ic:"circle-check", t:`${n.who} ${n.fix ? "terminó las correcciones" : "terminó su diseño"}: ${j.title}`, m:`${j.brand} · ${j.piece} · listo para revisar · ${dm(n.date)} ${n.time}${j.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}`,
       acts:`<button class="btn primary" data-nact="approve" data-nid="${n.id}">Aprobar</button><button class="btn" data-nact="fix" data-nid="${n.id}">Pedir correcciones</button>` };
   });
-  return myNotifs().map(n => ({ sev:n.type === "approved" ? "#10b981" : "#f97316", rank:-5, t:n.type === "approved" ? `🎉 Admin total aprobó tu diseño: ${jobById(n.job)?.title}` : `Admin total pidió correcciones: ${jobById(n.job)?.title}`, m:`${dm(n.date)} ${n.time}${n.type === "fix" ? " · cuando termines, tocá “Terminé las correcciones”" : ""}`, acts:n.type === "fix" ? `<button class="btn primary" data-jdone="${n.job}">✓ Terminé las correcciones</button>` : "" }));
+  return myNotifs().map(n => ({ sev:n.type === "approved" ? "#10b981" : "#f97316", rank:-5, ic:n.type === "approved" ? "badge-check" : "pencil", t:n.type === "approved" ? `Admin total aprobó tu diseño: ${jobById(n.job)?.title}` : `Admin total pidió correcciones: ${jobById(n.job)?.title}`, m:`${dm(n.date)} ${n.time}${n.type === "fix" ? " · cuando termines, tocá “Terminé las correcciones”" : ""}`, acts:n.type === "fix" ? `<button class="btn primary" data-jdone="${n.job}">✓ Terminé las correcciones</button>` : "" }));
 }
 function alerts(){
   const out = [];
   if (!isDesigner()){
     posts.filter(p => seesBrand(p.brand) && (viewer.role !== "CM" || p.cm === viewer.name)).forEach(p => {
       const u = postUrgency(p);
-      if (u) out.push({ sev:u.c, rank: u.late ? 0 : daysTo(p.date) + 1, t:`${u.late ? "⏰ " : ""}Post ${u.t.toLowerCase().replace("se entrega hoy","se publica hoy")}: ${p.title}`, m:`${p.brand} · ${p.cm} · publicación ${dm(p.date)} · está en ${p.status}` });
+      if (u) out.push({ ic:u.late ? "alarm-clock" : "calendar-clock", sev:u.c, rank: u.late ? 0 : daysTo(p.date) + 1, t:`Post: ${u.t.toLowerCase()}: ${p.title}`, m:`${p.brand} · ${p.cm} · publicación ${dm(p.date)} · está en ${p.status}` });
     });
   }
   jobs.filter(j => seesBrand(j.brand) && !isFin(j) && (!isDesigner() || j.owner === viewer.name)).forEach(j => {
     const u = urgency(j);
-    if (u) out.push({ sev:u.c, rank: u.late ? 0 : daysTo(j.due) + 1, t:`${u.late ? "⏰ " : ""}${u.t}: ${j.title}`, m:`${j.brand} · ${j.owner} · entrega el ${dm(j.due)}` });
-    if (j.owner === "Sin asignar") out.push({ sev:"var(--warn)", t:`Pedido sin asignar: ${j.title}`, m:`${j.brand} · falta elegir diseñador` });
+    if (u) out.push({ ic:u.late ? "alarm-clock" : "clock", sev:u.c, rank: u.late ? 0 : daysTo(j.due) + 1, t:`${u.t}: ${j.title}`, m:`${j.brand} · ${j.owner} · entrega el ${dm(j.due)}` });
+    if (j.owner === "Sin asignar") out.push({ ic:"user-round-x", sev:"var(--warn)", t:`Pedido sin asignar: ${j.title}`, m:`${j.brand} · falta elegir diseñador` });
   });
   if (can("pauta")){
     CAMPAIGNS.filter(c => seesBrand(c.brand) && daysTo(c.end) >= 0 && daysTo(c.end) <= 3)
-      .forEach(c => out.push({ sev:"var(--warn)", t:`Pauta por terminar: ${c.name}`, m:`${c.brand} · termina el ${dm(c.end)}` }));
+      .forEach(c => out.push({ ic:"megaphone", sev:"var(--warn)", t:`Pauta por terminar: ${c.name}`, m:`${c.brand} · termina el ${dm(c.end)}` }));
   }
-  if (can("cumples")) bdayAlerts().forEach(({ pp, d }) => out.push({ sev: d === 0 ? "#ef4444" : "#f97316", rank:-2, t:`🎂 ${d === 0 ? `Hoy cumple años ${pp.name}` : `${d === 1 ? "Mañana" : `En ${d} días`} cumple años ${pp.name}`}`, m:bdayLabel(pp.birthday) }));
-  if (viewer.role === "Admin total"){ const np = OBJ_PROPOSALS.filter(x => x.status === "Pendiente"); if (np.length) out.push({ sev:"#eab308", rank:-3, t:`💡 ${np.length} ${np.length === 1 ? "propuesta" : "propuestas"} de objetivo del equipo`, m:np.map(x => `${nickOf(personById(x.by))}: ${x.title}`).join(" · "), acts:`<button class="btn" data-page="planmes">Ver propuestas</button>` }); }
-  avActiveFor(viewer).filter(a => !a.seen.includes(viewer.id)).forEach(a => out.push({ sev:AV_LEVELS[a.level].c, rank:-8, t:`${AV_LEVELS[a.level].i} Aviso: ${a.title}`, m:`${a.text} · ${avRange(a)}`, acts:`<button class="btn" data-avok="${a.id}">Entendido</button>` }));
-  out.push(...notifAlerts(), ...msgAlerts(), ...pendingSurveys().map(sv => ({ sev:"#a78bfa", rank:-3, t:`📋 Encuesta para responder: ${sv.title}`, m:`${sv.qs.length} preguntas · te lleva 2 minutos`, acts:`<button class="btn primary" data-svopen="${sv.id}">Responder</button>` })));
-  if (viewer.role === "Admin total") resetRequests.forEach(id => { const pp = PEOPLE.find(x => x.id === id); if (pp) out.push({ sev:"#22d3ee", rank:-1, t:`🔑 ${pp.name} pidió restablecer su contraseña`, m:"Andá a Usuarios y permisos → Restablecer contraseña" }); });
+  if (can("cumples")) bdayAlerts().forEach(({ pp, d }) => out.push({ sev: d === 0 ? "#ef4444" : "#f97316", rank:-2, ic:"cake", t:`${d === 0 ? `Hoy cumple años ${pp.name}` : `${d === 1 ? "Mañana" : `En ${d} días`} cumple años ${pp.name}`}`, m:bdayLabel(pp.birthday) }));
+  if (viewer.role === "Admin total"){ const np = OBJ_PROPOSALS.filter(x => x.status === "Pendiente"); if (np.length) out.push({ sev:"#eab308", rank:-3, ic:"lightbulb", t:`${np.length} ${np.length === 1 ? "propuesta" : "propuestas"} de objetivo del equipo`, m:np.map(x => `${nickOf(personById(x.by))}: ${x.title}`).join(" · "), acts:`<button class="btn" data-page="planmes">Ver propuestas</button>` }); }
+  avActiveFor(viewer).filter(a => !a.seen.includes(viewer.id)).forEach(a => out.push({ sev:AV_LEVELS[a.level].c, rank:-8, ic:AV_LEVELS[a.level].ic, t:`Aviso: ${a.title}`, m:`${a.text} · ${avRange(a)}`, acts:`<button class="btn" data-avok="${a.id}">Entendido</button>` }));
+  out.push(...notifAlerts(), ...msgAlerts(), ...pendingSurveys().map(sv => ({ sev:"#a78bfa", rank:-3, ic:"clipboard-list", t:`Encuesta para responder: ${sv.title}`, m:`${sv.qs.length} preguntas · te lleva 2 minutos`, acts:`<button class="btn primary" data-svopen="${sv.id}">Responder</button>` })));
+  if (viewer.role === "Admin total") resetRequests.forEach(id => { const pp = PEOPLE.find(x => x.id === id); if (pp) out.push({ sev:"#22d3ee", rank:-1, ic:"key-round", t:`${pp.name} pidió restablecer su contraseña`, m:"Andá a Usuarios y permisos → Restablecer contraseña" }); });
   return out.sort((a,b) => (a.rank ?? 0) - (b.rank ?? 0));
 }
-const alertList = list => list.length ? `<div class="list alist">${list.map((a, i) => `<div class="row arow" style="--i:${Math.min(i, 12) * 60}ms"><span class="sev" style="--c:${a.sev}"></span><div class="grow"><div class="t">${esc(a.t)}</div><div class="m">${esc(a.m)}</div></div>${a.acts ? `<div class="aacts">${a.acts}</div>` : ""}</div>`).join("")}</div>` : `<div class="empty">Todo al día.</div>`;
+const alertList = list => list.length ? `<div class="list alist">${list.map((a, i) => `<div class="row arow" style="--i:${Math.min(i, 12) * 60}ms"><span class="aico" style="--c:${a.sev}">${icon(a.ic || "bell")}</span><div class="grow"><div class="t">${esc(a.t)}</div><div class="m">${esc(a.m)}</div></div>${a.acts ? `<div class="aacts">${a.acts}</div>` : ""}</div>`).join("")}</div>` : `<div class="empty">Todo al día.</div>`;
 
 /* ---------- pages ---------- */
 // Progreso del mes: trabajos finalizados (Entregado) sobre el total del mes, sin contar cancelados.
@@ -2686,16 +2700,16 @@ function progressPanel(part = "all"){
   const team = loadStats(areaNames("Todos")), dz = loadStats(areaNames("Diseño")), cm = loadStats(areaNames("CM"));
   if (isAdminAny()){
     const ppl = PEOPLE.filter(pp => pp.active && (pp.role === "Diseñador" || pp.role === "CM"));
-    const teamP = `<div class="panel"><h2 style="font-size:20px">📊 Carga de trabajo del equipo</h2>
+    const teamP = `<div class="panel"><h2 style="font-size:20px" class="pmh">${pmIco("gauge")}Carga de trabajo del equipo</h2>
       ${loadBar("Equipo completo (Diseño gráfico + CM)", team, true)}
-      <div class="grid two" style="margin-top:16px">${loadBar("🎨 Diseño gráfico", dz)}${loadBar("🎬 Community Manager", cm)}</div>${LOAD_LEGEND}</div>`;
+      <div class="grid two" style="margin-top:16px">${loadBar(`${icon("palette")} Diseño gráfico`, dz)}${loadBar(`${icon("clapperboard")} Community Manager`, cm)}</div>${LOAD_LEGEND}</div>`;
     const prow = pp => `<div class="prow"><div class="person">${avatarHTML(pp)}<div><b>${esc(pp.name)}</b><span>${esc(pp.cargo || pp.role)}</span></div></div>${loadBar("", loadStats([pp.name]))}</div>`;
     const grp = (t, role, st) => { const l = ppl.filter(pp => pp.role === role); return l.length ? `<div class="pgroup"><div class="pghead"><h3>${t}</h3><span class="note">${l.length} personas · grupo al ${st.pct}%</span></div><div class="plist">${l.map(prow).join("")}</div></div>` : ""; };
-    const peopleP = `<div class="panel"><h2 style="font-size:20px">👥 Carga de cada persona</h2><div class="pgroups">${grp("🎨 Diseño gráfico", "Diseñador", dz)}${grp("🎬 Community Manager", "CM", cm)}</div></div>`;
+    const peopleP = `<div class="panel"><h2 style="font-size:20px" class="pmh">${pmIco("users")}Carga de cada persona</h2><div class="pgroups">${grp(`${icon("palette")} Diseño gráfico`, "Diseñador", dz)}${grp(`${icon("clapperboard")} Community Manager`, "CM", cm)}</div></div>`;
     return part === "team" ? teamP : part === "people" ? peopleP : teamP + peopleP;
   }
   if (part === "people") return "";
-  return `<div class="panel"><h2 style="font-size:20px">📊 Tu carga de trabajo</h2>
+  return `<div class="panel"><h2 style="font-size:20px" class="pmh">${pmIco("gauge")}Tu carga de trabajo</h2>
     ${loadBar("Tu carga", loadStats([viewer.name]), true)}
     <div style="margin-top:16px">${loadBar("Equipo completo (Diseño gráfico + CM)", team)}</div>${LOAD_LEGEND}</div>`;
 }
@@ -2821,7 +2835,7 @@ function pInicio(){
     return `${helloHead("Tus trabajos de diseño, ordenados por fecha de entrega.")}${banner}
     ${kpiRow(progStats(jobs.filter(j => j.owner === viewer.name)))}
     ${progressPanel("team")}
-    <div class="panel"><div class="head" style="margin-bottom:14px"><h2 style="margin:0">Mis trabajos</h2>${URG_LEGEND}</div>${mine.length ? `<div class="list">${mine.map(j => jobRow(j)).join("")}</div>` : `<div class="empty">No tenés trabajos pendientes.</div>`}</div>
+    <div class="panel"><div class="head" style="margin-bottom:14px"><h2 style="margin:0" class="pmh">${pmIco("list-checks")}Mis trabajos</h2>${URG_LEGEND}</div>${mine.length ? `<div class="list">${mine.map(j => jobRow(j)).join("")}</div>` : `<div class="empty">No tenés trabajos pendientes.</div>`}</div>
     ${progressPanel("people")}`;
   }
   const vp = posts.filter(p => seesBrand(p.brand) && p.date.slice(0,7) === MONTH);
@@ -2846,9 +2860,9 @@ function pInicio(){
   ${kpiRow(progStats(isAdminAny() ? jobs : jobs.filter(j => j.owner === viewer.name)))}
   ${progressPanel("team")}
   <div class="grid two">
-    ${viewer.role === "CM" ? (() => { const mine = jobs.filter(j => j.owner === viewer.name && !isClosedJob(j)).sort((a,b) => a.due.localeCompare(b.due)); return `<div class="panel" style="grid-column:1/-1"><div class="head" style="margin-bottom:14px"><h2 style="margin:0">🎬 Mis trabajos de CM</h2>${URG_LEGEND}</div>${mine.length ? `<div class="list">${mine.map(j => jobRow(j)).join("")}</div>` : `<div class="empty">No tenés trabajos abiertos.</div>`}</div>`; })() : ""}
-    <div class="panel"><h2>${weekTitle}</h2>${week.length ? `<div class="list">${week.map(p => `<div class="row${postUrgStyle(p)}"><span class="date">${dm(p.date)}</span><div class="grow"><div class="t">${esc(p.title)}</div><div class="m">${brandTag(p.brand)} · <span class="net">${p.net}</span> ${p.format}</div></div>${postUrgBadge(p)}${postPill(p)}</div>`).join("")}</div>` : `<div class="empty">${isClosed() ? "Se cumplió todo el plan." : "Nada programado."}</div>`}</div>
-    <div class="panel"><h2>Necesita atención</h2>${alertList(alerts().slice(0,5))}</div>
+    ${viewer.role === "CM" ? (() => { const mine = jobs.filter(j => j.owner === viewer.name && !isClosedJob(j)).sort((a,b) => a.due.localeCompare(b.due)); return `<div class="panel" style="grid-column:1/-1"><div class="head" style="margin-bottom:14px"><h2 style="margin:0" class="pmh">${pmIco("clapperboard")}Mis trabajos de CM</h2>${URG_LEGEND}</div>${mine.length ? `<div class="list">${mine.map(j => jobRow(j)).join("")}</div>` : `<div class="empty">No tenés trabajos abiertos.</div>`}</div>`; })() : ""}
+    <div class="panel"><h2 class="pmh">${pmIco("calendar-days")}${weekTitle}</h2>${week.length ? `<div class="list">${week.map(p => `<div class="row${postUrgStyle(p)}"><span class="date">${dm(p.date)}</span><div class="grow"><div class="t">${esc(p.title)}</div><div class="m">${brandTag(p.brand)} · <span class="net">${p.net}</span> ${p.format}</div></div>${postUrgBadge(p)}${postPill(p)}</div>`).join("")}</div>` : `<div class="empty">${isClosed() ? "Se cumplió todo el plan." : "Nada programado."}</div>`}</div>
+    <div class="panel"><h2 class="pmh">${pmIco("bell")}Necesita atención</h2>${alertList(alerts().slice(0,5))}</div>
   </div>
   ${progressPanel("people")}`;
 }
@@ -2927,7 +2941,7 @@ function designerAction(j){
   if (j.owner !== viewer.name || isClosed()) return "";
   if (["Pendiente","En proceso"].includes(j.status)) return `<button class="btn primary donebtn" data-jdone="${j.id}">✓ Terminé mi etapa</button>`;
   if (j.status === "En corrección") return `<button class="btn primary donebtn fix" data-jdone="${j.id}">✓ Terminé las correcciones</button>`;
-  if (j.status === "En revisión") return `<span class="waitchip">⏳ En revisión de Admin total</span>`;
+  if (j.status === "En revisión") return `<span class="waitchip">${icon("hourglass")} En revisión de Admin total</span>`;
   if (j.status === "Aprobado") return `<span class="okchip">✓ Aprobado</span>`;
   return "";
 }
@@ -2936,7 +2950,7 @@ function jobRow(j){
   const due = d < 0 ? `<span class="down">venció ${dm(j.due)}</span>` : d === 0 ? `<span class="warn">vence hoy</span>` : `vence ${dm(j.due)}`;
   const p = j.post && postById(j.post);
   const next = stagesOf(j)[stagesOf(j).indexOf(j.status)+1];
-  return `<div class="row${urgStyle(j)}"><div class="grow"><div class="t">${esc(j.title)}</div><div class="m">${AREAS[j.area || "Diseño"].icon} ${brandTag(j.brand)} · ${esc(j.piece)} · fecha límite ${dm(j.due)}${p ? ` · para el post del ${dm(p.date)}` : ""}</div></div>${urgBadge(j)}${pill(j.status, JOB_COLOR[j.status])}${isDesigner() ? designerAction(j) : next ? `<button class="btn" data-adv-job="${j.id}">Pasar a ${next}</button>` : ""}</div>`;
+  return `<div class="row${urgStyle(j)}"><div class="grow"><div class="t">${esc(j.title)}</div><div class="m">${icon(j.area === "CM" ? "clapperboard" : "palette")} ${brandTag(j.brand)} · ${esc(j.piece)} · fecha límite ${dm(j.due)}${p ? ` · para el post del ${dm(p.date)}` : ""}</div></div>${urgBadge(j)}${pill(j.status, JOB_COLOR[j.status])}${isDesigner() ? designerAction(j) : next ? `<button class="btn" data-adv-job="${j.id}">Pasar a ${next}</button>` : ""}</div>`;
 }
 function pAlertas(){
   if (isDesigner()) setTimeout(() => { let ch = false; NOTIFS.forEach(n => { if (n.to === viewer.name && n.type === "approved" && !n.read){ n.read = true; ch = true; } }); if (ch) renderNav(); }, 1500);
@@ -3960,9 +3974,9 @@ const unseenAcks = () => myThreads().flatMap(t => t.msgs.filter(m => m.from === 
 function msgAlerts(){
   const seen = new Set();
   return unreadMsgs().filter(({ t }) => !seen.has(t.id) && seen.add(t.id)).map(({ t, m }) => { const from = personById(m.from); const n = t.msgs.filter(x => x.from !== viewer.id && !x.read).length;
-    return { sev:prioOf(t).c, rank:-7 + prioOf(t).r / 10 - 1, t:`${t.prio && t.prio !== "Normal" ? `[${t.prio.toUpperCase()}] ` : ""}✉️ Mensaje de ${from?.name || ""}: ${t.topic}`, m:`“${m.text.length > 110 ? m.text.slice(0, 110) + "…" : m.text}”${n > 1 ? ` · ${n} mensajes nuevos` : ""} · ${dm(m.date)} ${m.time}`, acts:`<button class="btn ackbtn" data-msgack="${t.id}">✓ Recibido</button><button class="btn primary" data-msgopen="${t.id}">Ver y responder</button>` }; })
+    return { sev:prioOf(t).c, rank:-7 + prioOf(t).r / 10 - 1, ic:"mail", t:`${t.prio && t.prio !== "Normal" ? `[${t.prio.toUpperCase()}] ` : ""}Mensaje de ${from?.name || ""}: ${t.topic}`, m:`“${m.text.length > 110 ? m.text.slice(0, 110) + "…" : m.text}”${n > 1 ? ` · ${n} mensajes nuevos` : ""} · ${dm(m.date)} ${m.time}`, acts:`<button class="btn ackbtn" data-msgack="${t.id}">✓ Recibido</button><button class="btn primary" data-msgopen="${t.id}">Ver y responder</button>` }; })
   .concat((() => { const seen2 = new Set(); return unseenAcks().filter(({ t }) => !seen2.has(t.id) && seen2.add(t.id)).map(({ t, m }) => { const o = personById(t.a === viewer.id ? t.b : t.a);
-    return { sev:"#10b981", rank:-6, t:`✓✓ ${o?.name || ""} recibió tu mensaje: ${t.topic}`, m:`Lo marcó como recibido el ${dm(m.ack.date)} a las ${m.ack.time}`, acts:`<button class="btn" data-msgopen="${t.id}">Ver conversación</button>` }; }); })());
+    return { sev:"#10b981", rank:-6, ic:"check-check", t:`${o?.name || ""} recibió tu mensaje: ${t.topic}`, m:`Lo marcó como recibido el ${dm(m.ack.date)} a las ${m.ack.time}`, acts:`<button class="btn" data-msgopen="${t.id}">Ver conversación</button>` }; }); })());
 }
 function pMensajes(){
   const others = PEOPLE.filter(pp => pp.active && pp.id !== viewer.id);
@@ -4663,7 +4677,7 @@ function pGuia(){
 document.addEventListener("input", e => { if (e.target.id !== "guideQ") return; guideQ = e.target.value; const pos = e.target.selectionStart; render(); const el = $("#guideQ"); el.focus(); el.setSelectionRange(pos, pos); });
 // ---------- Avisos: Admin total publica un comunicado para un grupo, con fechas de inicio y fin ----------
 const AV_GROUPS = [["todos","Todo el equipo"],["Diseñador","Diseño gráfico"],["CM","CM"],["admins","Admins"]];
-const AV_LEVELS = { "Informativo":{ c:"#22d3ee", i:"📢" }, "Importante":{ c:"#f59e0b", i:"⚠️" }, "Urgente":{ c:"#ef4444", i:"🚨" } };
+const AV_LEVELS = { "Informativo":{ c:"#22d3ee", i:"📢", ic:"info" }, "Importante":{ c:"#f59e0b", i:"⚠️", ic:"triangle-alert" }, "Urgente":{ c:"#ef4444", i:"🚨", ic:"siren" } };
 let AVISOS = [
   { id:1, title:"Horario especial mañana", text:"Mañana jueves el horario de trabajo será de 15 a 19 horas por el inventario del local central.", to:["todos"], level:"Importante", from:"2026-09-23", until:"2026-09-24", by:"alyssa", date:"2026-09-22", seen:[] },
   { id:2, title:"Reunión de CM", text:"El viernes a las 9:00 revisamos juntos el plan de octubre. Traigan ideas para Octubre rosa.", to:["CM"], level:"Informativo", from:"2026-09-22", until:"2026-09-26", by:"alyssa", date:"2026-09-21", seen:[] },
@@ -4675,7 +4689,7 @@ const avState = a => TODAY < a.from ? "Programado" : TODAY > a.until ? "Vencido"
 const avActiveFor = pp => AVISOS.filter(a => avState(a) === "Activo" && avFor(a, pp));
 const avRange = a => a.from === a.until ? `el ${dm(a.from)}` : `del ${dm(a.from)} al ${dm(a.until)}`;
 const avToLabel = a => a.to.map(t => AV_GROUPS.find(g => g[0] === t)?.[1]).join(", ");
-const avBanner = a => { const L = AV_LEVELS[a.level]; return `<div class="panel avban" style="--c:${L.c}"><span class="avic">${L.i}</span><div class="grow"><span class="avlvl">Aviso ${a.level.toLowerCase()} · ${avRange(a)}</span><b>${esc(a.title)}</b><p>${esc(a.text)}</p></div><button class="btn" data-avok="${a.id}">Entendido</button></div>`; };
+const avBanner = a => { const L = AV_LEVELS[a.level]; return `<div class="panel avban" style="--c:${L.c}"><span class="avic">${icon(L.ic)}</span><div class="grow"><span class="avlvl">Aviso ${a.level.toLowerCase()} · ${avRange(a)}</span><b>${esc(a.title)}</b><p>${esc(a.text)}</p></div><button class="btn" data-avok="${a.id}">Entendido</button></div>`; };
 function pAvisos(){
   const at = viewer.role === "Admin total";
   if (!at){ const act = avActiveFor(viewer), prox = AVISOS.filter(a => avState(a) === "Programado" && avFor(a, viewer));
@@ -4886,7 +4900,7 @@ function render(){
   const viewKey = [page, MONTH, viewer.id, calCM, reportTab, redesBrand, brandFilter, jobUI.view, cmUI.tview, cartUI.view, soloYo].join("|");
   if (animate0(page)) { jobUI.owner = "Todos"; jobUI.q = ""; if (!stagesOf(jobArea()).includes(jobUI.status)) jobUI.status = jobUI.status === "Todos" ? "Todos" : "Activos"; }
   const animate = viewKey !== render.lastKey; render.lastKey = viewKey; if (animate) render.visit = (render.visit || 0) + 1;
-  $("#content").innerHTML = `<div class="${animate ? (page === "pedidos" || page === "gestioncm" ? "anim" : "fade anim") : "noanim"}${["pedidos","cartel","web","gestioncm"].includes(page) ? " clean" : ""}" style="display:flex;flex-direction:column;gap:24px">${bar}${["tv","tvredes","tvimpacto"].includes(page) ? "" : `<p class="eyebrow">${EYEBROW[page]}</p>`}${ro}${avb}${inst}${bdays}${PAGES[page]()}${demo}</div>${installDrawer()}`;
+  $("#content").innerHTML = `<div class="${animate ? (page === "pedidos" || page === "gestioncm" ? "anim" : "fade anim") : "noanim"}${["pedidos","cartel","web","gestioncm","inicio","alertas"].includes(page) ? " clean" : ""}" style="display:flex;flex-direction:column;gap:24px">${bar}${["tv","tvredes","tvimpacto"].includes(page) ? "" : `<p class="eyebrow">${EYEBROW[page]}</p>`}${ro}${avb}${inst}${bdays}${PAGES[page]()}${demo}</div>${installDrawer()}`;
   if (window.lucide) lucide.createIcons();
   if (page === "tvredes"){ tvShow(animate ? 0 : tv.i); tvStart(); } else tvStop();
   if (page === "tvimpacto"){ impShow(animate ? 0 : imp.i); impLoop(); } else impStop();
