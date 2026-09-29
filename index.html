@@ -4309,7 +4309,8 @@ const PM_MODES = [
   { n:6, l:"Opción libre", i:"pencil-line" },
 ];
 const PM = {
-  material:[["", "—"], ["glass","Vidrio brillante","glossy glass with clean, accurate reflections and realistic refraction"], ["metal","Metal pulido","polished metal with crisp specular highlights and true environment reflections"], ["matte","Mate","matte finish with soft even micro-texture"], ["plastic","Plástico brillante","glossy plastic with smooth, realistic highlights"], ["fabric","Tela","fabric with visible weave texture and natural folds"], ["wood","Madera","natural wood grain with real pores and subtle sheen"], ["box","Caja / cartón","printed cardboard packaging with sharp edges and crisp print"], ["food","Alimento","fresh food with appetizing natural texture, moisture and color"]],
+  material:[["", "Sin especificar (la IA decide)"], ["glass","Vidrio brillante","glossy glass with clean, accurate reflections and realistic refraction"], ["metal","Metal pulido","polished metal with crisp specular highlights and true environment reflections"], ["matte","Mate","matte finish with soft even micro-texture"], ["plastic","Plástico brillante","glossy plastic with smooth, realistic highlights"], ["fabric","Tela","fabric with visible weave texture and natural folds"], ["wood","Madera","natural wood grain with real pores and subtle sheen"], ["box","Caja / cartón","printed cardboard packaging with sharp edges and crisp print"], ["food","Alimento","fresh food with appetizing natural texture, moisture and color"]],
+  superficie:[["", "Sin especificar"], ["wood","Mesa de madera","placed on a natural wooden tabletop"], ["marble","Mármol","placed on a white marble surface"], ["kitchen","Mesada de cocina","placed on a clean kitchen countertop"], ["pedestal","Pedestal / podio","placed on a minimalist display pedestal"], ["shelf","Góndola del súper","placed on a supermarket shelf, neatly faced"], ["cloth","Mantel / tela","placed on a softly draped linen tablecloth"], ["float","Flotando","floating in mid-air with a subtle soft shadow below"]],
   disposicion:[["hero","Uno protagonista al frente","the first product as the hero in front and center, the others slightly behind and to the sides"], ["row","Alineados en fila","all products aligned in a neat row at the same height"], ["pyramid","En pirámide","products arranged in a staggered pyramid, tallest in the center"], ["natural","Agrupados natural","products grouped naturally, slightly overlapping, all labels visible"]],
   interaccion:[["hold","Lo sostiene","holding the product naturally in hand, label facing camera"], ["use","Lo usa","using the product naturally"], ["show","Lo muestra a cámara","showing the product to camera at chest height"], ["look","Lo mira","looking at the product with interest"], ["beside","Producto al lado","with the product placed beside them"]],
   escena:[["cart","En el súper con carrito","pushing a shopping cart through the supermarket aisle, cart filled with {P}"], ["shelf","En el súper eligiendo en góndola","choosing products from the supermarket shelves, reaching for {P}"], ["checkout","En la caja con bolsas","at the supermarket checkout carrying shopping bags with {P}"], ["featured","Otro ambiente con producto destacado","{I} with the featured product, the product clearly visible and highlighted in the frame"], ["happy","Modelos solos, felices","happy and relaxed, enjoying the moment together, no products in hand"], ["doing","Modelos haciendo algo",""]],
@@ -4318,8 +4319,14 @@ const PM = {
   genero:[["f","Mujer"], ["m","Hombre"]],
   peinado:[["long","Largo suelto","long straight"], ["wavy","Ondulado a los hombros","shoulder-length wavy"], ["tied","Recogido","tied back in a neat ponytail"], ["short","Corto","short, neatly styled"]],
   expresion:[["smile","Sonrisa natural","a natural, relaxed smile"], ["wide","Sonrisa amplia","a wide, joyful smile"], ["serious","Seria y segura","a confident, serious look"], ["thought","Pensativa","a thoughtful expression"], ["laugh","Riendo","genuine laughter"]],
-  estilo:[["retail","Publicitario retail","retail advertising photography, clean, bright and product-focused","trustworthy, appealing and ready to buy","clean commercial color grade, neutral whites, vibrant yet accurate colors, crisp contrast"],
+  estilo:[["retail","Publicidad de producto","retail advertising photography, clean, bright and product-focused","trustworthy, appealing and ready to buy","clean commercial color grade, neutral whites, vibrant yet accurate colors, crisp contrast"],
     ["life","Lifestyle cotidiano","lifestyle commercial photography, candid and authentic everyday moment","warm, real and relatable","warm natural color grade, soft contrast, gentle film-like tonality reminiscent of Kodak Portra 400"],
+    ["home","Hogar","home lifestyle photography, warm and cozy interior setting","warm, welcoming and homely","soft warm color grade, creamy highlights, gentle natural contrast"],
+    ["healthy","Vida sana","healthy lifestyle photography, fresh, light and energetic","fresh, energetic and wholesome","bright clean color grade, fresh greens and natural whites, luminous airy tones"],
+    ["gourmet","Gastronómico","gourmet food photography, appetizing and richly detailed","indulgent, crafted and irresistible","rich warm color grade, deep soft shadows, glossy appetizing highlights"],
+    ["family","Familiar","family lifestyle photography, genuine and heartfelt","joyful, close and trustworthy","warm natural color grade, soft contrast, true-to-life skin tones"],
+    ["promo","Ofertas y promoción","high-impact promotional retail photography, bold and vibrant","energetic, exciting and value-driven","punchy vibrant color grade, bright clean whites, strong yet accurate saturation"],
+    ["festive","Fiestas y celebraciones","festive celebration photography, lively and warm","celebratory, joyful and generous","warm golden color grade, sparkling highlights, rich festive tones"],
     ["mini","Minimalista","minimalist commercial photography, few elements, generous negative space","calm, modern and clean","airy neutral grade, soft tonal transitions, restrained palette"],
     ["premium","Premium y elegante","premium luxury advertising photography, refined and elegant","exclusive, sophisticated and aspirational","rich deep color grade, controlled contrast, luminous highlights, luxurious tonality"]],
   ilum:[["natural","Luz natural suave","soft diffused natural window light from the left, 5500K, large white bounce fill on the right, gentle soft shadows, even exposure"],
@@ -4339,7 +4346,7 @@ const pmv = (list, k, i = 2) => (PM[list].find(x => x[0] === k) || PM[list][0])[
 const PM_MODEL = () => ({ edad:"", genero:"f", peinado:"long", expresion:"smile", ropa:"", pose:"" });
 const PM_EMPTY = () => ({ ref:"no", refProd:"no", refFondo:"no", fondoTipo:"super", refPersona:"no",
   producto:"", productos:"", material:"", colores:"", marca:"", ambiente:"", fondo:"", detalles:"", disposicion:"hero", interaccion:"hold",
-  escena:"cart", superProds:"", locacion:"", tipoFondo:"white", fondoHex:"", sombra:"soft", libreQue:"", elemento:"", conPersonas:"no",
+  superficie:"", escena:"cart", superProds:"", locacion:"", tipoFondo:"white", fondoHex:"", sombra:"soft", libreQue:"", elemento:"", conPersonas:"no",
   nModelos:1, modelos:[PM_MODEL(), PM_MODEL(), PM_MODEL(), PM_MODEL()],
   estilo:"retail", ilum:"natural", encuadre:"medium", formato:"45", espacio:"none" });
 let promptUI = { mode:1, f:PM_EMPTY(), out:"", err:"" };
@@ -4388,7 +4395,6 @@ function buildPrompt(m, f){
   if (m === 6) S.push(`Scene: ${f.libreQue.trim()}.${f.elemento.trim() ? ` Main subject: ${f.elemento.trim()}.` : ""}`);
   const detailsOk = m !== 4 || f.escena === "featured";
   if (detailsOk && f.material) S.push(`Material: ${pmv("material", f.material)}.`);
-  if (detailsOk && f.colores.trim()) S.push(`Exact colors: ${f.colores.trim()}.`);
   if (detailsOk && f.marca.trim()) S.push(`Visible brand text "${f.marca.trim()}" spelled exactly ${spellBrand(f.marca)}, perfect proportions, no deformation, crystal clear and sharp.`);
   if (S.length) S.push(m === 6 ? "Realistic proportions and true-to-life scale, sharp realistic textures." : "Pristine condition, sharp realistic textures.");
   if (S.length) L.push(S.join(" "));
@@ -4411,10 +4417,12 @@ function buildPrompt(m, f){
       const E = [];
       if (m === 4){ const loc = f.locacion.trim() || (SUPER_SCENES.includes(f.escena) ? "a bright, clean, modern supermarket with well-stocked, neatly organized shelves" : ""); if (loc) E.push(`Location: ${loc}.`); }
       else if (f.ambiente.trim()) E.push(`Setting: ${f.ambiente.trim()}.`);
+      if ([1,2,6].includes(m) && f.superficie) E.push(`Surface: ${pmv("superficie", f.superficie)}.`);
       if (f.fondo.trim()) E.push(`Background: ${f.fondo.trim()}, softly out of focus.`);
       if (E.length) L.push(E.join(" "));
     }
   } else if (m === 5) L.push("Shadow: natural contact shadow matching the scene.");
+  else if ([1,2,6].includes(m) && f.superficie) L.push(`Surface: ${pmv("superficie", f.superficie)}.`);
   if (f.detalles.trim()) L.push(`Details: ${f.detalles.trim()}.`);
   L.push(`Composition: ${pmv("encuadre", f.encuadre)}, ${pmv("espacio", f.espacio)}.`);
   const lighting = m === 5 && !fondoAdj ? "even high-key studio lighting with two large softboxes and a white sweep, 5600K, no color cast" : pmv("ilum", f.ilum);
@@ -4451,7 +4459,9 @@ function pPrompts(){
   const T = (k, label, ph = "", req = false, big = false) => `<label class="${big ? "w3" : ""}">${label}${req ? " *" : ""}${big ? `<textarea class="base" data-pf="${k}" rows="${k === "productos" ? 4 : 2}" placeholder="${esc(ph)}">${esc(f[k])}</textarea>` : `<input class="base" data-pf="${k}" value="${esc(f[k])}" placeholder="${esc(ph)}">`}</label>`;
   const S = (k, label, list, rr = false) => `<label>${label}<select class="base" data-pf="${k}"${rr ? " data-rr" : ""}>${PM[list].map(x => `<option value="${x[0]}" ${f[k] === x[0] ? "selected" : ""}>${x[1]}</option>`).join("")}</select></label>`;
   const yn = (k, label, hint, yes = "Sí, adjunto", no = "No, que la IA lo invente") => `<div class="pyn"><div><b>${label}</b>${hint ? `<span>${hint}</span>` : ""}</div><div class="pynbtns" role="group" aria-label="${label}"><button type="button" class="${f[k] === "si" ? "on" : ""}" data-pyn="${k}|si">${yes}</button><button type="button" class="${f[k] !== "si" ? "on" : ""}" data-pyn="${k}|no">${no}</button></div></div>`;
-  const prodBlock = (required, label = "Producto", ph = "botella de aceite de oliva extra virgen de 1 litro, vidrio verde oscuro, etiqueta crema") => `${T("producto", label, ph, required, true)}${S("material", "Material / terminación", "material")}${T("colores", "Colores exactos en hex", "#1B5E20 verde, #F5F0E1 crema")}${T("marca", "Marca o texto visible", "OLIVAR")}`;
+  const matSel = () => S("material", "Terminación del producto (de qué está hecho)", "material");
+  const surfSel = () => S("superficie", "¿Sobre qué está apoyado?", "superficie");
+  const prodBlock = (required, label = "Producto", ph = "botella de aceite de oliva extra virgen de 1 litro, vidrio verde oscuro, etiqueta crema") => `${T("producto", label, ph, required, true)}${matSel()}${T("marca", "Marca o texto visible", "OLIVAR")}`;
   const sceneBlock = () => fondoAdj ? "" : `${T("ambiente", "Ambiente", "cocina luminosa de mañana, con madera clara")}${T("fondo", "Fondo", "pared de azulejos blancos")}`;
   const models = people ? `<div class="w3 pgroup"><h3>Modelos</h3>
       <div class="pgrid4"><label>Cantidad<select class="base" data-pf="nModelos" data-rr>${[1,2,3,4].map(n => `<option value="${n}" ${+f.nModelos === n ? "selected" : ""}>${n}</option>`).join("")}</select></label></div>
@@ -4465,8 +4475,8 @@ function pPrompts(){
       </div></div>`).join("")}
       <p class="note" style="margin:0">Rasgos aplicados siempre: tez clara, rasgos latinoamericanos/paraguayos, cabello castaño oscuro, ojos marrones.</p></div>` : "";
   let fields = "";
-  if (m === 1) fields = `${prodBlock(true)}${sceneBlock()}`;
-  if (m === 2) fields = `${T("productos", "Productos (uno por línea, el primero es el protagonista)", "aceite de oliva OLIVAR 1 L\nvinagre balsámico 500 ml\nsal marina en frasco", true, true)}${S("disposicion", "Disposición", "disposicion")}${S("material", "Material / terminación", "material")}${T("colores", "Colores exactos en hex", "#1B5E20, #F5F0E1")}${T("marca", "Marca o texto visible", "OLIVAR")}${sceneBlock()}`;
+  if (m === 1) fields = `${prodBlock(true)}${surfSel()}${sceneBlock()}`;
+  if (m === 2) fields = `${T("productos", "Productos (uno por línea, el primero es el protagonista)", "aceite de oliva OLIVAR 1 L\nvinagre balsámico 500 ml\nsal marina en frasco", true, true)}${S("disposicion", "Disposición", "disposicion")}${surfSel()}${matSel()}${T("marca", "Marca o texto visible", "OLIVAR")}${sceneBlock()}`;
   if (m === 3) fields = `${prodBlock(true)}${S("interaccion", "Interacción con el producto", "interaccion")}${sceneBlock()}`;
   if (m === 4){ const sup = SUPER_SCENES.includes(f.escena), feat = f.escena === "featured";
     fields = `<div class="w3">${S("escena", "Escena", "escena", true)}</div>
@@ -4474,7 +4484,7 @@ function pPrompts(){
       ${feat ? `${prodBlock(true, "Producto a destacar")}${S("interaccion", "Interacción con el producto", "interaccion")}` : ""}
       ${fondoAdj ? "" : `${T("locacion", "Locación", sup ? "si queda vacío: un súper luminoso y moderno" : "parque con árboles al atardecer", !sup, true)}${T("fondo", "Fondo", "desenfocado, cálido")}`}`; }
   if (m === 5) fields = `${prodBlock(true)}${fondoAdj ? "" : `${S("tipoFondo", "Tipo de fondo", "tipoFondo", true)}${f.tipoFondo === "solid" ? T("fondoHex", "Color del fondo en hex", "#E8F4FD", true) : ""}${S("sombra", "Sombra", "sombra")}`}`;
-  if (m === 6) fields = `${T("libreQue", "¿Qué querés en la foto?", "camión de reparto blanco estacionado frente al súper, al amanecer", true, true)}${T("elemento", "Elemento principal", "camión Hino 300 blanco #FFFFFF con caja térmica", false, true)}${S("material", "Material / terminación", "material")}${T("colores", "Colores exactos en hex", "#FFFFFF")}${T("marca", "Marca o texto visible", "")}${sceneBlock()}
+  if (m === 6) fields = `${T("libreQue", "¿Qué querés en la foto?", "camión de reparto blanco estacionado frente al súper, al amanecer", true, true)}${T("elemento", "Elemento principal", "camión Hino 300 blanco #FFFFFF con caja térmica", false, true)}${matSel()}${surfSel()}${T("marca", "Marca o texto visible", "")}${sceneBlock()}
       <div class="w3">${yn("conPersonas", "¿Incluye personas?", "", "Sí", "No")}</div>`;
   const refBlock = `<div class="w3 pgroup"><h3>¿Adjuntás imágenes de referencia?</h3>
       <div class="pynbtns big" role="group"><button type="button" class="${f.ref === "si" ? "on" : ""}" data-pyn="ref|si">Sí, adjunto</button><button type="button" class="${f.ref !== "si" ? "on" : ""}" data-pyn="ref|no">No, que la IA lo invente</button></div>
