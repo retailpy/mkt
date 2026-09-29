@@ -1,3 +1,5 @@
+<!doctype html>
+<meta charset="utf-8">
 <title>Retail MKT Hub</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- App instalable (PWA): en el celular o iPad se agrega a la pantalla de inicio y abre a pantalla completa -->
@@ -483,6 +485,15 @@ tr.off td{opacity:.55}
 /* toast */
 .toast{position:fixed;right:20px;bottom:20px;z-index:50;border:1px solid rgba(16,185,129,.6);background:rgba(15,23,42,.95);backdrop-filter:blur(4px);color:#d1fae5;padding:12px 20px;border-radius:16px;font-size:14px;font-weight:500;box-shadow:0 20px 25px -5px rgba(0,0,0,.4);max-width:calc(100% - 40px);animation:slide .25s ease}
 @keyframes slide{from{transform:translateY(10px);opacity:0}}
+/* Calendarios: tocar un contenido lo abre; tocar un día carga uno nuevo */
+.cal [data-open]{cursor:pointer}
+.cal [data-open]:hover{filter:brightness(1.25)}
+.calw.addable .d:not(.out){cursor:pointer}
+.calw.addable .d:not(.out):hover{border-color:color-mix(in srgb,var(--cyan) 60%,transparent)}
+.cmrec .cmplus{font-size:20px}
+/* Nombres de las personas: degradado celeste → azul */
+.gname{background:linear-gradient(90deg,#67e8f9,#60a5fa);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+html.light .gname{background-image:linear-gradient(90deg,#0891b2,#2563eb)}
 #whoami[data-sync]:not([data-sync=""])::after{content:" · " attr(data-sync);color:var(--faint)}
 /* login */
 .login{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:24px;background:#020617;background-image:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(6,182,212,.12) 0%,transparent 70%),radial-gradient(ellipse 60% 40% at 80% 100%,rgba(59,130,246,.08) 0%,transparent 60%)}
@@ -1648,9 +1659,12 @@ const SECTIONS = [
   { g:"Planificación", k:"planmes", l:"Planificación del mes", i:"target" },
   { g:"Diseño gráfico", k:"pedidos", l:"Gestión Diseño gráfico", n:"Gestión de pedidos", i:"palette" },
   { g:"Diseño gráfico", k:"caldiseno", l:"Calendario Diseño gráfico", n:"Calendario de entregas", i:"calendar-range" },
+  { g:"Diseño gráfico", k:"cargadiseno", l:"Carga de trabajo Diseño gráfico", n:"Carga de trabajo", i:"gauge" },
   { g:"Diseño gráfico", k:"historial", l:"Historial Diseño gráfico", n:"Historial", i:"archive" },
   { g:"Community Manager", k:"gestioncm", l:"Gestión CM", n:"Gestión de pedidos", i:"send" },
-  { g:"Community Manager", k:"calendario", l:"Calendario CM", n:"Calendario de posteos", i:"calendar-days" },
+  { g:"Community Manager", k:"calendario", l:"Calendario Feed", n:"Calendario Feed", i:"calendar-days" },
+  { g:"Community Manager", k:"calhistoria", l:"Calendario Historia", n:"Calendario Historia", i:"smartphone" },
+  { g:"Community Manager", k:"cargacm", l:"Carga de trabajo CM", n:"Carga de trabajo", i:"gauge" },
   { g:"Community Manager", k:"plan", l:"Plan de posteo", i:"list-checks" },
   { g:"Community Manager", k:"historialcm", l:"Historial CM", n:"Historial", i:"archive" },
   { g:"Recursos", k:"prompts", l:"Prompts de imágenes", i:"wand-sparkles" },
@@ -1670,8 +1684,8 @@ const SECTIONS = [
 const ROLE_DEFAULTS = {
   "Admin total": SECTIONS.map(s => s.k),
   "Admin": SECTIONS.map(s => s.k).filter(k => !["usuarios","config"].includes(k)),
-  "CM": ["dashboard","tvredes","tvimpacto","tv","inicio","alertas","staff","cumples","caldiseno","calendario","plan","pedidos","gestioncm","historialcm","pauta","redes","reportes"],
-  "Diseñador": ["dashboard","tvredes","tvimpacto","inicio","alertas","staff","cumples","caldiseno","calendario","pedidos","tv","historial"],
+  "CM": ["dashboard","tvredes","tvimpacto","tv","inicio","alertas","staff","cumples","caldiseno","calendario","calhistoria","plan","pedidos","cargadiseno","gestioncm","cargacm","historialcm","pauta","redes","reportes"],
+  "Diseñador": ["dashboard","tvredes","tvimpacto","inicio","alertas","staff","cumples","caldiseno","calendario","calhistoria","pedidos","cargadiseno","tv","historial"],
 };
 const PEOPLE = [
   { id:"alyssa", workPhone:"+595 21 618 1001", phone:"+595 981 111 222", mainBrand:"Varias", skills:["Planificación estratégica","Gestión de equipos","Análisis de datos"], birthday:"11-08", brandsHandled:["Superseis","Stock","Delimarket"], quote:"Mi idea es cambiar las cosas", name:"Alyssa Lesme", cargo:"Jefa de Marketing", email:"alyssa.lesme@empresa.com.py", role:"Admin total", brands:null, last:"hoy 08:12" },
@@ -1684,7 +1698,10 @@ const PEOPLE = [
   { id:"miguel", name:"Miguel Sebastián Kunzle Insfrán", cargo:"Community Manager", role:"CM", email:"", personalEmail:"sebasknz.i@gmail.com", phone:"0961615943", birthday:"05-15", birthYear:2001, mainBrand:"Varias", brandsHandled:["Bianca","Dayo","PediWOW","Clasipar"], secondBrands:["Delimarket","Stock","Superseis"], skills:["Edición de videos","Diseño básico para RRSS"], brands:null, last:null },
   { id:"anibal", name:"Aníbal Iván Martinez", cargo:"Community Manager", role:"CM", email:"Anibal-martinez@aj.com.py", personalEmail:"ivanchi291994@gmail.com", phone:"0971155215", workPhone:"0985561138", birthday:"11-09", birthYear:1994, mainBrand:"Superseis", secondBrands:["Stock","Delimarket"], skills:["Edición de videos","Diseño básico para RRSS"], brands:null, last:null },
 ];
-PEOPLE.forEach(p => { p.perms = new Set(p.perms || ROLE_DEFAULTS[p.role]); p.active = true; p.mustChange = false; if (p.role !== "Diseñador" && p.perms.has("pedidos")) { p.perms.add("gestioncm"); p.perms.add("historialcm"); } if (p.perms.has("calendario")) p.perms.add("caldiseno"); });
+PEOPLE.forEach(p => { p.perms = new Set(p.perms || ROLE_DEFAULTS[p.role]); p.active = true; p.mustChange = false; if (p.role !== "Diseñador" && p.perms.has("pedidos")) { p.perms.add("gestioncm"); p.perms.add("historialcm"); } if (p.perms.has("calendario")) p.perms.add("caldiseno"); upgradePerms(p); });
+// Secciones que se agregaron después: quien ya veía la sección de origen, ve también la nueva (una sola vez;
+// después cada permiso se prende o apaga por separado en Usuarios y permisos).
+function upgradePerms(p){ if (p.permsV >= 2) return; [["pedidos","cargadiseno"],["gestioncm","cargacm"],["calendario","calhistoria"]].forEach(([from, to]) => { if (p.perms.has(from)) p.perms.add(to); }); p.permsV = 2; }
 let DESIGNERS = [];
 const ROLES = ["Admin total","Admin","Diseñador","CM"];
 const ROLE_INFO = {
@@ -1739,7 +1756,7 @@ function dragMonthsBar(){
   document.body.appendChild(bar);
 }
 document.addEventListener("dragend", () => { drag = null; clearTimeout(dragNav.t); document.getElementById("dragMonths")?.remove(); document.querySelectorAll(".dragging,.over,.dragnav").forEach(x => x.classList.remove("dragging","over","dragnav")); });
-const isCalPage = () => page === "calendario" || page === "caldiseno" || (page === "pedidos" && jobUI.view === "calendario") || (page === "gestioncm" && cmUI.tview === "calendario");
+const isCalPage = () => page === "calendario" || page === "calhistoria" || page === "caldiseno" || (page === "pedidos" && jobUI.view === "calendario") || (page === "gestioncm" && cmUI.tview === "calendario");
 function dropTarget(e){
   if (!drag) return null;
   if (drag.kind === "nitem"){ const c = e.target.closest("[data-nit]"); return c && c.dataset.nit.split("|")[0] === drag.id.split("|")[0] && c.dataset.nit !== drag.id ? c : null; }
@@ -2177,7 +2194,7 @@ function pTVRedes(){
 let dashBrand = "Superseis";
 function pDashboard(){
   const bs = socialBrands();
-  return `<div><h1>${hello()}</h1><p class="sub">Dashboard · seguidores y público de todas las cuentas, actualizados todos los días desde Meta.</p></div>
+  return `<div><h1>${helloHTML()}</h1><p class="sub">Dashboard · seguidores y público de todas las cuentas, actualizados todos los días desde Meta.</p></div>
   ${followersPanel()}
   ${followersTable(false)}
   <div class="head"><h2 style="margin:0">Demográfico por marca</h2><div class="chips">${bs.map(b => `<button class="chip ${dashBrand === b ? "on" : ""}" data-dbrand="${b}">${b}</button>`).join("")}</div></div>
@@ -2194,7 +2211,7 @@ function profileCard(v){
 const STAFF_GROUPS = [["Admin", pp => pp.role === "Admin total" || pp.role === "Admin"], ["Diseñador gráfico", pp => pp.role === "Diseñador"], ["CM", pp => pp.role === "CM"]];
 function pStaff(){
   const sup = viewer.role === "Admin total";
-  const card = pp => `<div class="scard"><div class="top">${avatarHTML(pp, "", "width:52px;height:52px;border-radius:16px")}<div><b>${esc(pp.name)}</b>${pp.nick ? `<span class="snick">Le dicen: ${esc(pp.nick)}</span>` : ""}<span>${esc(pp.cargo || pp.role)}</span></div></div>
+  const card = pp => `<div class="scard"><div class="top">${avatarHTML(pp, "", "width:52px;height:52px;border-radius:16px")}<div><b>${gname(pp.name)}</b>${pp.nick ? `<span class="snick">Le dicen: ${esc(pp.nick)}</span>` : ""}<span>${esc(pp.cargo || pp.role)}</span></div></div>
     ${pp.pending ? `<p class="spend">⚠ ${esc(pp.pending)}</p>` : ""}
     ${pp.quote ? `<p class="squote">“${esc(pp.quote)}”</p>` : ""}
     <dl class="sfact">
@@ -2252,6 +2269,8 @@ let page = "dashboard";
 // Saludo según la hora de quien se conecta: 05–11 buen día, 12–19 buenas tardes, 20–04 buenas noches.
 const greeting = () => { const h = +new Intl.DateTimeFormat("en-US", { timeZone:"America/Asuncion", hour:"numeric", hour12:false }).format(new Date()) % 24; /* hora de Paraguay */ return h >= 5 && h < 12 ? "Buen día" : h >= 12 && h < 20 ? "Buenas tardes" : "Buenas noches"; };
 const hello = () => `${greeting()}, ${nickOf(viewer)}`;
+const gname = n => `<span class="gname">${esc(n)}</span>`;
+const helloHTML = () => `${greeting()}, ${gname(nickOf(viewer))}`;
 let brandFilter = "Todas";
 let redesBrand = "Superseis";
 
@@ -2298,12 +2317,12 @@ function visibleJobs(){
 }
 function brandChips(){
   const opts = myGroups().length > 1 ? ["Todas", ...myGroups()] : myGroups();
-  if (page === "calendario" || page === "caldiseno"){
+  if (page === "calendario" || page === "calhistoria" || page === "caldiseno"){
     const all = page === "caldiseno" ? [...opts, "Materiales"] : opts;
     return `<div class="chips">${all.map(b => `<button class="chip ${brandFilter===b?"on":""}" data-brand="${b}">${b === "Todas" ? "Todos juntos" : b === "Otros" ? "Otras marcas" : b === "Materiales" ? "📦 Materiales" : b}</button>`).join("")}</div>`;
   }
   if (opts.length === 1) return `<div class="note">Viendo solo: <span class="brand" style="--c:${GROUP_COLOR[opts[0]]}">${opts[0] === "Otros" ? "Otras marcas" : opts[0]}</span></div>`;
-  return `<div class="chips">${opts.map(b => b === "Todas" && (page === "calendario" || page === "caldiseno") ? `<button class="chip ${brandFilter===b?"on":""}" data-brand="Todas">Todos juntos</button>` : `<button class="chip ${brandFilter===b?"on":""}" data-brand="${b}">${b === "Otros" ? "Otras marcas" : b}</button>`).join("")}</div>`;
+  return `<div class="chips">${opts.map(b => b === "Todas" && (page === "calendario" || page === "calhistoria" || page === "caldiseno") ? `<button class="chip ${brandFilter===b?"on":""}" data-brand="Todas">Todos juntos</button>` : `<button class="chip ${brandFilter===b?"on":""}" data-brand="${b}">${b === "Otros" ? "Otras marcas" : b}</button>`).join("")}</div>`;
 }
 
 /* ---------- actions ---------- */
@@ -2533,7 +2552,7 @@ function nowCard(){
     <div class="nc-loc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>Asunción, Paraguay · hora oficial de Paraguay · clima actual${WX.status === "demo" ? ` <em>Clima de ejemplo en esta maqueta</em>` : ""}</div></div>`;
 }
 setInterval(() => { document.querySelectorAll("[data-clock]").forEach(el => el.textContent = clockNow()); document.querySelectorAll("[data-date]").forEach(el => el.textContent = dateNow()); }, 10000);
-const helloHead = sub => `<div class="hellohead"><div class="hh-l"><h1>${hello()}</h1><p class="sub">${sub}</p><p class="motto">“${esc(dailyPhrase())}”</p></div>${nowCard()}</div>`;
+const helloHead = sub => `<div class="hellohead"><div class="hh-l"><h1>${helloHTML()}</h1><p class="sub">${sub}</p><p class="motto">“${esc(dailyPhrase())}”</p></div>${nowCard()}</div>`;
 function pInicio(){
   const first = nickOf(viewer);
   if (isDesigner()){
@@ -2635,9 +2654,9 @@ function calDrag(kind, id){
   const d = kind === "post" ? it.date : it.due;
   return calDateOk(d) && !(kind === "job" && isFin(it)) ? ` draggable="true" data-drag="${kind}:${id}"` : "";
 }
-const calHint = () => canCalMove() && !isClosed() ? `<p class="draghint">✋ Arrastrá un posteo o una entrega a otro día para cambiar la fecha. Para pasarlo a otro mes, soltalo en los días grises o dejalo un momento sobre “‹ Anterior” / “Siguiente ›”.</p>` : "";
-function calGrid(render){
-  return `<div class="calw"><div class="cal">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => `<div class="dh">${d}</div>`).join("")}
+const calHint = () => canCalMove() && !isClosed() ? `<p class="draghint">👆 Tocá un contenido para abrirlo y editarlo, o tocá un día para cargar uno nuevo en esa fecha. ✋ Arrastrá un posteo o una entrega a otro día para cambiar la fecha; para pasarlo a otro mes, soltalo en los días grises o dejalo un momento sobre “‹ Anterior” / “Siguiente ›”.</p>` : "";
+function calGrid(render, addable = false){
+  return `<div class="calw${addable && !isClosed() ? " addable" : ""}"><div class="cal">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => `<div class="dh">${d}</div>`).join("")}
   ${calCells().map(c => { const inner = render(c), wd = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][new Date(c + "T12:00").getDay()];
     return `<div class="d ${c.slice(0,7) !== MONTH ? "out" : ""} ${c === TODAY ? "today" : ""} ${inner ? "" : "emptyday"}" data-cdrop="${c}"><span class="dn">${+c.slice(8)}</span><span class="dwk">${wd}</span>${inner}</div>`; }).join("")}</div></div>`;
 }
@@ -2657,38 +2676,38 @@ function pMateriales(){
   return `<div class="head"><div><h1>Calendario Diseño gráfico · 📦 Materiales</h1><p class="sub">${monthLabel(MONTH)} · cartelería, flyers, vía pública, catálogos, pantallas y empaques de todas las marcas, por fecha de entrega.</p></div>${brandChips()}</div>
   ${URG_LEGEND}${calHint()}
   ${calGrid(c => mats.filter(j => j.due === c).map(j => { const u = urgency(j), done = isFin(j);
-    return `<div class="ev"${calDrag("job", j.id)} style="--c:${BRANDS[j.brand]};--s:${done ? "#10b981" : u ? u.c : "#475569"}" title="${esc(j.piece)} · ${esc(j.title)} · ${j.status} · ${esc(j.owner)}"><span>${done ? "✓ " : u?.late ? "⏰ " : "📦 "}${j.brand} · ${esc(j.title)}</span></div>`; }).join(""))}
+    return `<div class="ev"${calDrag("job", j.id)}${canCreateJobs() ? ` data-open="job:${j.id}"` : ""} style="--c:${BRANDS[j.brand]};--s:${done ? "#10b981" : u ? u.c : "#475569"}" title="${esc(j.piece)} · ${esc(j.title)} · ${j.status} · ${esc(j.owner)}"><span>${done ? "✓ " : u?.late ? "⏰ " : "📦 "}${j.brand} · ${esc(j.title)}</span></div>`; }).join(""), canCreateJobs())}
   <div class="tw"><table><thead><tr><th>Entrega</th><th>Marca</th><th>Pieza</th><th>Material</th><th>Diseñador</th><th>Estado</th></tr></thead><tbody>
     ${mats.map(j => `<tr><td class="num">${dm(j.due)}</td><td>${brandTag(j.brand)}</td><td>${esc(j.piece)}</td><td>${esc(j.title)}</td><td>${esc(j.owner)}</td><td><div class="chips" style="flex-wrap:nowrap">${pill(j.status, JOB_COLOR[j.status])}${urgBadge(j)}</div></td></tr>`).join("") || `<tr><td colspan="6" class="empty">No hay materiales con entrega en ${monthName(MONTH)}.</td></tr>`}
   </tbody></table></div>
-  ${form}`;
+  ${form}${jobForm()}`;
 }
 // Calendario Diseño: cada trabajo de diseño en su fecha de entrega. Los materiales tienen su propia pestaña.
 function pCalDiseno(){
   if (brandFilter === "Materiales") return pMateriales();
   const list = visibleJobs().filter(j => j.area === "Diseño" && !isMaterial(j)).sort((a, b) => a.due.localeCompare(b.due));
   const calName = brandFilter === "Todas" ? "Todos juntos" : brandFilter === "Otros" ? "Otras marcas" : brandFilter;
-  return `<div class="head"><div><h1>Calendario Diseño gráfico · ${calName}</h1><p class="sub">${monthLabel(MONTH)} · las entregas de diseño gráfico: cada pieza en su fecha límite, con su estado y quién la hace. Los materiales van en su propia pestaña.</p></div>${brandChips()}</div>
-  ${URG_LEGEND}${jobDeliveryCal(list)}`;
+  return `<div class="head"><div><h1>Calendario Diseño gráfico · ${calName}</h1><p class="sub">${monthLabel(MONTH)} · las entregas de diseño gráfico: cada pieza en su fecha límite, con su estado y quién la hace. Los materiales van en su propia pestaña.</p></div>
+    <div class="chips">${canCreateJobs() ? `<button class="btn primary" data-jnewcal>➕ Nuevo pedido de diseño</button>` : ""}${brandChips()}</div></div>
+  ${URG_LEGEND}${jobDeliveryCal(list)}${jobForm()}`;
 }
 let calCM = "todo";
-const CAL_CM_TABS = [["todo","Todo"],["historias","📱 Historias"],["feed","🖼 Feed"],["grabacion","🎥 Grabación de contenidos"]];
-const REC_OF_TAB = { historias:"Historia", feed:"Feed", grabacion:"Grabación" };
-function pCalendario(){
-  const T = calCM, vp = visiblePosts().filter(p => T === "todo" || (T === "historias" ? p.format === "Historia" : T === "feed" ? p.format !== "Historia" : false));
-  const vj = can("gestioncm") ? visibleJobs().filter(j => j.area === "CM" && !isClosedJob(j) && (T === "todo" || (T === "grabacion" && ["Grabación de video","Cobertura de evento"].includes(j.piece)))) : [];
-  const rec = recVisible().filter(r => T === "todo" || r.kind === REC_OF_TAB[T]);
+// Calendario CM: dos calendarios separados, uno para el feed (posts, carruseles y reels) y otro para las historias.
+// Los pedidos a CM y las grabaciones repetitivas se ven en Gestión CM → Calendario de pedidos.
+function pCalCM(kind){
+  const hist = kind === "Historia", vp = visiblePosts().filter(p => hist ? p.format === "Historia" : p.format !== "Historia");
+  const rec = recVisible().filter(r => r.kind === kind);
   const calName = brandFilter === "Todas" ? "Todos juntos" : brandFilter === "Otros" ? "Otras marcas" : brandFilter;
-  const sub = { todo:"historias, feed, grabaciones y pedidos a CM, cada uno en su fecha", historias:"las historias de cada día: las del plan y las repetitivas (🔁)", feed:"las publicaciones del feed (posts, carruseles y reels) en su fecha de publicación", grabacion:"las fechas de grabación de contenido y coberturas, incluidas las repetitivas (🔁)" }[T];
-  return `<div class="head"><div><h1>Calendario CM · ${calName}</h1><p class="sub">${monthLabel(MONTH)} · ${sub}.</p></div>${brandChips()}</div>
-  <div class="chips caltabs">${CAL_CM_TABS.map(([k, l]) => `<button class="chip ${T === k ? "on" : ""}" data-calcm="${k}">${l}</button>`).join("")}</div>
-  <div class="legend">${T === "grabacion" ? "" : POST_STAGES.map(st => `<span><span class="sw" style="background:${POST_COLOR[st]}"></span>${st}</span>`).join("")}<span><span class="sw" style="border:1px dashed #94a3b8"></span>Fecha límite de un pedido a CM</span>${Object.entries(REC_KINDS).filter(([k]) => T === "todo" || k === REC_OF_TAB[T]).map(([k, v]) => `<span><span class="sw" style="background:${v.c}"></span>🔁 ${k} repetitiva</span>`).join("")}</div>${calHint()}
+  return `<div class="head"><div><h1>Calendario ${hist ? "Historia" : "Feed"} · ${calName}</h1><p class="sub">${monthLabel(MONTH)} · ${hist ? "las historias de cada día: las del plan y las repetitivas (🔁)" : "las publicaciones del feed (posts, carruseles y reels) en su fecha de publicación, y las repetitivas (🔁)"}.</p></div>
+    <div class="chips">${canEditPost() ? `<button class="btn primary" data-pnew="${kind}">➕ Nueva ${hist ? "historia" : "publicación"}</button>` : ""}${brandChips()}</div></div>
+  <div class="legend">${POST_STAGES.map(st => `<span><span class="sw" style="background:${POST_COLOR[st]}"></span>${st}</span>`).join("")}<span><span class="sw" style="background:${REC_KINDS[kind].c}"></span>🔁 ${kind} repetitiva</span></div>${calHint()}
   ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("")
-    + vp.filter(p => p.date === c).map(p => `<div class="ev"${calDrag("post", p.id)} style="--c:${BRANDS[p.brand]};--s:${POST_COLOR[p.status]}" title="${esc(p.title)} · ${p.net} ${p.format} · ${p.status}"><span>${postUrgency(p)?.late ? "⏰ " : ""}${p.brand} · ${esc(p.title)}</span><span class="st" style="color:${POST_COLOR[p.status] === "#334155" ? "#94a3b8" : POST_COLOR[p.status]}">● ${p.status} · ${p.net} ${p.format}</span></div>`).join("")
-    + vj.filter(j => j.due === c).map(j => `<div class="ev job"${calDrag("job", j.id)} style="--c:${BRANDS[j.brand]};--s:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}" title="${esc(j.title)} · ${j.status} · ${esc(j.owner)}"><span>${urgency(j)?.late ? "⏰" : "🎬"} ${esc(j.title)}</span><span class="st">● ${j.status} · ${esc(firstName(j.owner))}</span></div>`).join(""))}
-  <p class="note">🔁 = pedido repetitivo: se carga una sola vez en Gestión CM y aparece solo en cada fecha. Tocalo para marcarlo como hecho.</p>`;
+    + vp.filter(p => p.date === c).map(p => `<div class="ev"${calDrag("post", p.id)}${canEditPost() ? ` data-open="post:${p.id}"` : ""} style="--c:${BRANDS[p.brand]};--s:${POST_COLOR[p.status]}" title="${esc(p.title)} · ${p.net} ${p.format} · ${p.status} · ${esc(p.cm || "")}"><span>${postUrgency(p)?.late ? "⏰ " : ""}${p.brand} · ${esc(p.title)}</span><span class="st" style="color:${POST_COLOR[p.status] === "#334155" ? "#94a3b8" : POST_COLOR[p.status]}">● ${p.status} · ${p.net}${hist ? "" : " " + p.format} · ${esc(firstName(p.cm || ""))}</span></div>`).join(""), canEditPost())}
+  <p class="note">🔁 = pedido repetitivo: se carga una sola vez en Gestión CM y aparece solo en cada fecha. Tocalo para marcarlo como hecho.</p>
+  ${postForm()}`;
 }
-document.addEventListener("click", e => { const t = e.target.closest("[data-calcm]"); if (!t) return; calCM = t.dataset.calcm; render(); });
+function pCalendario(){ return pCalCM("Feed"); }
+function pCalHistoria(){ return pCalCM("Historia"); }
 
 function pPlan(){
   const all = visiblePosts(), vp = cmPosts();
@@ -2706,7 +2725,7 @@ function pPlan(){
   <div class="head"><span class="note">${vp.length} ${vp.length === 1 ? "publicación" : "publicaciones"} · ordenadas por fecha de publicación${canEditPost() ? " · cambiá el estado desde la lista" : ""}</span>${isClosed() ? "" : URG_LEGEND.replace("Alarma de entrega", "Alarma de publicación")}</div>
   <div class="tw"><table><thead><tr><th>Publicación</th><th>Marca</th><th>CM</th><th>Red · formato</th><th>Tema</th><th>Diseño gráfico</th><th>Estado</th><th>Siguiente paso</th></tr></thead><tbody>
     ${vp.map(p => { const lbl = canEditPost() && { "Listo":"Programar", "Programado":"Marcar publicado", "Publicado":"Pautar" }[p.status];
-      return `<tr><td class="num" style="white-space:nowrap">${dm(p.date)}</td><td>${brandTag(p.brand)}</td><td>${esc(firstName(p.cm))}</td><td style="white-space:nowrap"><span class="net">${p.net}</span> ${p.format}</td><td style="min-width:190px"><b style="color:#fff">${esc(p.title)}</b>${p.carried ? `<span class="carried">↩ Arrastrado de ${p.carried}</span>` : ""}</td><td style="white-space:nowrap">${postDesignCell(p)}</td><td><div class="chips" style="flex-wrap:nowrap">${postStatusCell(p)}${postUrgBadge(p)}</div></td><td>${lbl ? `<button class="btn" data-adv-post="${p.id}">${lbl}</button>` : `<span class="note">—</span>`}</td></tr>`; }).join("") || `<tr><td colspan="8" class="empty">No hay publicaciones con estos filtros.</td></tr>`}
+      return `<tr><td class="num" style="white-space:nowrap">${dm(p.date)}</td><td>${brandTag(p.brand)}</td><td>${canEditPost() ? `<select class="base sm" data-pcm="${p.id}" aria-label="CM de ${esc(p.title)}">${[...new Set([...CM_NAMES(), p.cm].filter(Boolean))].map(n => `<option value="${esc(n)}" ${n === p.cm ? "selected" : ""}>${esc(firstName(n))}</option>`).join("")}</select>` : esc(firstName(p.cm))}</td><td style="white-space:nowrap"><span class="net">${p.net}</span> ${p.format}</td><td style="min-width:190px"><b style="color:#fff">${esc(p.title)}</b>${p.carried ? `<span class="carried">↩ Arrastrado de ${p.carried}</span>` : ""}</td><td style="white-space:nowrap">${postDesignCell(p)}</td><td><div class="chips" style="flex-wrap:nowrap">${postStatusCell(p)}${postUrgBadge(p)}</div></td><td>${lbl ? `<button class="btn" data-adv-post="${p.id}">${lbl}</button>` : `<span class="note">—</span>`}</td></tr>`; }).join("") || `<tr><td colspan="8" class="empty">No hay publicaciones con estos filtros.</td></tr>`}
   </tbody></table></div>`;
 }
 let jobUI = { area:"Todos", view:"tablero", status:"Activos", owner:"Todos", prio:"Todas", q:"", form:null };
@@ -2738,7 +2757,7 @@ function jobForm(){
       <label>Marca *<select class="base" id="jBrand">${opt(myBrands(), j.brand)}</select></label>
       <label>Tipo de trabajo *<select class="base" id="jPiece">${opt(types, j.piece)}</select></label>
       <label class="wide" style="grid-column:1/-1">Trabajo solicitado *<input class="base" id="jTitle" value="${esc(j.title)}" placeholder="${area === "CM" ? "Ej.: Edición del reel de la semana del vino" : "Ej.: Banner web liquidación de invierno"}" required></label>
-      <label>Responsable *<select class="base" id="jOwner">${opt(["Sin asignar", ...areaPeople(area)], j.owner)}</select></label>
+      <label>Responsable (de cualquier marca) *<select class="base" id="jOwner">${opt([...new Set(["Sin asignar", ...areaPeople(area), j.owner])], j.owner)}</select></label>
       <label>Estado *<select class="base" id="jStatus">${opt(statesOf(area), j.status)}</select></label>
       <label>Prioridad *<select class="base" id="jPrio">${opt(PRIORIDADES, j.priority)}</select></label>
       <label>Complejidad *<select class="base" id="jComp">${opt(COMPLEJIDAD, j.complexity)}</select></label>
@@ -2788,11 +2807,19 @@ function jobFilterPanel(A){
   </div>`;
 }
 const loadPanel = (A, note) => `<div class="panel loadpanel"><div class="head" style="margin-bottom:6px"><h2 style="margin:0">📊 Carga de trabajo ${A === "CM" ? "de los CM" : "de diseño"}</h2><span class="note">${note}</span></div>${loadChart(loadGroups(A))}</div>`;
+// Carga de trabajo: sección propia en Diseño gráfico y en CM (así las pantallas de pedidos quedan más livianas).
+function pCarga(A){
+  const cm = A === "CM";
+  return `<div class="head"><div><h1>Carga de trabajo ${cm ? "CM" : "Diseño gráfico"}</h1><p class="sub">${cm ? "Cuánto tiene cada CM: los pedidos sin terminar y las publicaciones del mes que todavía no están programadas." : "Cuánto tiene cada diseñador: los trabajos sin finalizar, según su complejidad."} Sirve para repartir los pedidos nuevos.</p></div>
+    <a class="btn" href="#${cm ? "gestioncm" : "pedidos"}" data-page="${cm ? "gestioncm" : "pedidos"}">${cm ? "Ir a Gestión CM ›" : "Ir a Gestión Diseño gráfico ›"}</a></div>
+  ${loadPanel(A, cm ? "Cuenta los pedidos sin terminar y las publicaciones del mes que todavía no están programadas" : "Cuanto más trabajo sin finalizar, más alta y más roja la barra")}`;
+}
 // Calendario de Diseño: cada trabajo en su fecha de entrega (fecha límite).
 function jobDeliveryCal(list, A = "Diseño"){
-  return `<div class="legend">${stagesOf(A).map(st => `<span><span class="sw" style="background:${st === "Pendiente" ? "#94a3b8" : JOB_COLOR[st]}"></span>${st}</span>`).join("")}</div>${calHint().replace("un posteo o una entrega", "una entrega")}
-  ${calGrid(c => list.filter(j => j.due === c).map(j => { const done = isFin(j);
-    return `<div class="ev job"${calDrag("job", j.id)} style="--c:${BRANDS[j.brand]};--s:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}" title="${esc(j.title)} · ${j.status} · ${esc(j.owner)} · entrega ${dm(j.due)}"><span>${done ? "✓ " : urgency(j)?.late ? "⏰ " : ""}${esc(j.title)}</span><span class="st">● ${j.status} · ${esc(firstName(j.owner))}</span></div>`; }).join(""))}`;
+  const rec = A === "CM" ? recVisible().filter(r => r.kind === "Grabación") : [];
+  return `<div class="legend">${stagesOf(A).map(st => `<span><span class="sw" style="background:${st === "Pendiente" ? "#94a3b8" : JOB_COLOR[st]}"></span>${st}</span>`).join("")}${A === "CM" ? `<span><span class="sw" style="background:${REC_KINDS["Grabación"].c}"></span>🔁 Grabación repetitiva</span>` : ""}</div>${calHint().replace("un posteo o una entrega", "una entrega")}
+  ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("") + list.filter(j => j.due === c).map(j => { const done = isFin(j);
+    return `<div class="ev job"${calDrag("job", j.id)}${canCreateJobs() ? ` data-open="job:${j.id}"` : ""} style="--c:${BRANDS[j.brand]};--s:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}" title="${esc(j.title)} · ${j.status} · ${esc(j.owner)} · entrega ${dm(j.due)}"><span>${done ? "✓ " : urgency(j)?.late ? "⏰ " : ""}${esc(j.title)}</span><span class="st">● ${j.status} · ${esc(firstName(j.owner))}</span></div>`; }).join(""), canCreateJobs())}`;
 }
 function pPedidos(){
   const A = "Diseño", cal = jobUI.view === "calendario", list = jobsFiltered(cal);
@@ -2803,7 +2830,6 @@ function pPedidos(){
   <div class="head"><span class="note">${list.length} ${list.length === 1 ? "trabajo" : "trabajos"} · ${cal ? "cada uno en su fecha de entrega (incluye los ya entregados)" : "ordenados por fecha límite"}${jobUI.view === "tablero" && !isViewOnly() && !isClosed() && !isDesigner() ? " · arrastrá una tarjeta a otra columna para cambiarle el estado" : ""}</span>${URG_LEGEND}</div>
   ${isDesigner() ? `<div class="panel sugnote"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.8L16.5 9.5"/></svg><div><b>¿Terminaste tu parte?</b> Tocá <b>“✓ Terminé mi etapa”</b> en la tarjeta: pasa a revisión y le llega un aviso a Admin total. Si te piden cambios, te aparece en Alertas; cuando los termines, tocá <b>“✓ Terminé las correcciones”</b>.</div></div>` : ""}
   ${jobUI.view === "tablero" && !isDesigner() ? stageGuide("🎨 Diseño gráfico", JOB_STAGES) : ""}
-  ${loadPanel(A, "Cuanto más trabajo sin finalizar, más alta y más roja la barra")}
   ${jobUI.view === "tabla" ? jobTable(list) : cal ? jobDeliveryCal(list) : jobBoard(list, A)}
   ${jobForm()}`;
 }
@@ -2821,6 +2847,73 @@ function postStatusCell(p){
   if (!canEditPost()) return postPill(p);
   return `<select class="base sm" data-pstatus="${p.id}" aria-label="Estado de ${esc(p.title)}" style="--c:${POST_COLOR[p.status]}">${POST_STAGES.map(st => `<option ${st === p.status ? "selected" : ""}>${st}</option>`).join("")}</select>`;
 }
+// Ficha de un posteo: se abre tocándolo en el calendario (o tocando un día vacío para cargar uno nuevo).
+// El CM responsable se elige libremente: un CM de Superseis puede hacer de CM de Stock, por ejemplo.
+const POST_NETS = ["IG","FB","TikTok"];
+const POST_FORMATS = ["Post","Carrusel","Reel","Historia"];
+let postUI = { form:null };
+const nextPostId = () => "P" + (Math.max(0, ...posts.map(p => +String(p.id).replace(/\D/g, "") || 0)) + 1);
+function newPostOn(date, kind){
+  const brand = MAIN_BRANDS.includes(brandFilter) && myBrands().includes(brandFilter) ? brandFilter : myBrands()[0];
+  postUI.form = { mode:"new", post:{ id:nextPostId(), date, brand, net:"IG", format:kind === "Historia" ? "Historia" : "Post", title:"", status:"Borrador", cm:CM_BY_BRAND[brand] || CM_NAMES()[0] || "", notes:"", carried:null } };
+  render();
+}
+function postForm(){
+  const f = postUI.form; if (!f) return "";
+  const p = f.post, opt = (list, v) => [...new Set([...list, v].filter(Boolean))].map(x => `<option ${x === v ? "selected" : ""}>${esc(x)}</option>`).join("");
+  const j = jobs.find(x => x.post === p.id);
+  return `<div class="drawer-bg" data-pclose></div><aside class="drawer" aria-label="Ficha del posteo">
+    <div class="drawer-h"><div><h2 style="margin:0">${f.mode === "edit" ? "Editar posteo" : p.format === "Historia" ? "Nueva historia" : "Nueva publicación"}</h2><div class="note">${esc(p.id)}${j ? ` · 🎨 diseño: ${esc(j.id)} (${esc(j.status)})` : ""}</div></div><button class="btn" data-pclose aria-label="Cerrar">✕</button></div>
+    <form id="postForm" class="pform drawer-b" style="grid-template-columns:1fr 1fr">
+      <label>Fecha de publicación *<input class="base" type="date" id="poDate" value="${p.date}" required></label>
+      <label>Marca *<select class="base" id="poBrand">${opt(myBrands(), p.brand)}</select></label>
+      <label>Red *<select class="base" id="poNet">${opt(POST_NETS, p.net)}</select></label>
+      <label>Formato *<select class="base" id="poFormat">${opt(POST_FORMATS, p.format)}</select></label>
+      <label class="wide" style="grid-column:1/-1">Tema *<input class="base" id="poTitle" value="${esc(p.title)}" placeholder="Ej.: Ofertas del finde" required></label>
+      <label>CM (de cualquier marca) *<select class="base" id="poCm">${opt(CM_NAMES(), p.cm)}</select></label>
+      <label>Estado *<select class="base" id="poStatus">${opt(POST_STAGES, p.status)}</select></label>
+      <label style="grid-column:1/-1">Observaciones<input class="base" id="poNotes" value="${esc(p.notes || "")}" placeholder="Copy, link, detalles…"></label>
+      ${f.mode === "new" ? `<p class="note" style="grid-column:1/-1;margin:0">Si lo pasás a “En diseño”, se crea solo el pedido en Gestión Diseño gráfico.</p>` : ""}
+      <div class="chips" style="grid-column:1/-1;justify-content:flex-end">${f.mode === "edit" && viewer.role === "Admin total" ? `<button class="btn danger" type="button" data-pdel="${p.id}" style="margin-right:auto">🗑 Borrar</button>` : ""}<button class="btn" type="button" data-pclose>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div>
+    </form></aside>`;
+}
+document.addEventListener("change", e => { if (e.target.id === "poBrand"){ const cm = CM_BY_BRAND[e.target.value], s2 = $("#poCm"); if (cm && s2 && [...s2.options].some(o => o.value === cm)) s2.value = cm; } });
+document.addEventListener("submit", e => {
+  if (e.target.id !== "postForm") return; e.preventDefault();
+  const f = postUI.form, title = $("#poTitle").value.trim(), date = $("#poDate").value;
+  if (!title || !date){ toast("Completá el tema y la fecha."); return; }
+  const data = { date, brand:$("#poBrand").value, net:$("#poNet").value, format:$("#poFormat").value, title, cm:$("#poCm").value, status:$("#poStatus").value, notes:$("#poNotes").value.trim() };
+  let p = f.mode === "edit" ? postById(f.post.id) : null;
+  if (p) Object.assign(p, data); else { p = { ...f.post, ...data }; posts.push(p); }
+  postUI.form = null;
+  const m = date.slice(0,7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m;
+  if (p.status === "En diseño" && !jobs.some(x => x.post === p.id)){ pedirDiseno(p.id); return; }
+  render(); toast(`${f.mode === "edit" ? "Guardado" : "Cargado"}: “${p.title}” el ${dm(p.date)} · CM: ${firstName(p.cm)}.`);
+});
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-pclose]")){ postUI.form = null; render(); return; }
+  const d = e.target.closest("[data-pdel]"); if (d){ const p = postById(d.dataset.pdel); posts.splice(posts.indexOf(p), 1); jobs.forEach(j => { if (j.post === p.id) j.post = null; }); postUI.form = null; render(); toast(`Posteo “${p.title}” borrado.`); return; }
+  const n = e.target.closest("[data-pnew]"); if (n){ newPostOn(MONTH === TODAY.slice(0,7) ? TODAY : MONTH + "-01", n.dataset.pnew); return; }
+  const jn = e.target.closest("[data-jnewcal]"); if (jn){ newJobOn(MONTH === TODAY.slice(0,7) ? TODAY : MONTH + "-01"); return; }
+});
+// Calendarios: tocar un contenido lo abre para editarlo; tocar un día carga uno nuevo en esa fecha.
+function newJobOn(due){
+  const area = page === "gestioncm" ? "CM" : "Diseño", mat = page === "caldiseno" && brandFilter === "Materiales";
+  const brand = MAIN_BRANDS.includes(brandFilter) && myBrands().includes(brandFilter) ? brandFilter : myBrands()[0];
+  jobUI.form = { mode:"new", job:{ id:nextJobId(area), area, requestDate:TODAY, requester:"Marketing", brand, piece:mat ? MATERIAL_PIECES[0] : (area === "CM" ? CM_TYPES : DESIGN_TYPES)[0], title:"", owner:"Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due, link:"", notes:"", post:null } };
+  render();
+}
+document.addEventListener("click", e => {
+  if (!isCalPage() || e.target.closest("[data-recdone]")) return;
+  const ev = e.target.closest(".cal [data-open]");
+  if (ev){ const [kind, id] = ev.dataset.open.split(":");
+    if (kind === "post" && canEditPost()){ postUI.form = { mode:"edit", post:{ ...postById(id) } }; render(); }
+    else if (kind === "job" && canCreateJobs()){ jobUI.form = { mode:"edit", job:{ ...jobs.find(x => x.id === id) } }; render(); }
+    return; }
+  const cell = e.target.closest(".calw.addable [data-cdrop]"); if (!cell || e.target.closest(".ev")) return;
+  const d = cell.dataset.cdrop; if (!calDateOk(d)) return;
+  if (page === "calendario" || page === "calhistoria") newPostOn(d, page === "calhistoria" ? "Historia" : "Feed"); else newJobOn(d);
+});
 // Pedidos repetitivos de CM: se repiten ciertos días de la semana (historias, feed o grabaciones).
 const WEEKDAYS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 const REC_KINDS = { "Historia":{ c:"#e879f9", i:"📱" }, "Feed":{ c:"#22d3ee", i:"🖼" }, "Grabación":{ c:"#f97316", i:"🎥" } };
@@ -2853,7 +2946,7 @@ function recurringPanel(){
       <label>Desde<input class="base" type="date" id="rcFrom" value="${TODAY}"></label>
       <label>Hasta (opcional)<input class="base" type="date" id="rcUntil"></label>
       <div class="chips" style="grid-column:1/-1;justify-content:flex-end"><button class="btn" type="button" data-recform>Cancelar</button><button class="btn primary" type="submit">Guardar pedido repetitivo</button></div></form>` : "";
-  return `<div class="panel recpanel"><div class="head"><div><h2 style="margin:0">🔁 Pedidos repetitivos</h2><p class="sub" style="margin:4px 0 0">Lo que se hace siempre los mismos días: historias, feed o grabaciones. Aparecen solos en el Calendario CM.</p></div>${edit ? `<button class="btn primary" data-recform>${recUI.form ? "Cerrar" : "+ Pedido repetitivo"}</button>` : ""}</div>
+  return `<div class="panel recpanel"><div class="head"><div><h2 style="margin:0">🔁 Pedidos repetitivos</h2><p class="sub" style="margin:4px 0 0">Lo que se hace siempre los mismos días: historias, feed o grabaciones. Aparecen solos en el Calendario Historia, el Calendario Feed y el Calendario de pedidos (grabaciones).</p></div></div>
     ${form}
     <div class="reclist">${list.map(r => { const k = REC_KINDS[r.kind]; return `<div class="recitem" style="--k:${k.c}"><span class="rk">${k.i}</span><div class="grow"><b>${esc(r.title)}</b><div class="m">${brandTag(r.brand)}<span class="rkind">${r.kind}</span><span>${recDays(r)} · ${r.time} hs</span><span>${esc(r.owner)}</span>${r.until ? `<span>hasta ${dm(r.until)}</span>` : ""}</div></div>${edit ? `<button class="btn danger sm" data-recdel="${r.id}" aria-label="Borrar">✕</button>` : ""}</div>`; }).join("") || `<div class="empty">Todavía no hay pedidos repetitivos.</div>`}</div>
     ${next.length ? `<h3 class="rech">Próximos 7 días</h3><div class="recnext">${next.map(([r, d]) => { const done = RECUR_DONE.has(r.id + "|" + d); return `<div class="rn ${done ? "done" : ""}" style="--k:${REC_KINDS[r.kind].c}"><span class="rnd">${["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][new Date(d + "T12:00").getDay()]} ${dm(d)}<small>${r.time}</small></span><span class="grow">${REC_KINDS[r.kind].i} ${esc(r.title)} <span class="note">· ${r.brand} · ${esc(firstName(r.owner))}</span></span>${edit ? `<button class="btn ${done ? "" : "primary"} sm" data-recdone="${r.id}|${d}">${done ? "✓ Hecho" : "Marcar hecho"}</button>` : done ? `<span class="okchip">✓ Hecho</span>` : ""}</div>`; }).join("")}</div>` : ""}
@@ -2868,18 +2961,18 @@ document.addEventListener("click", e => {
 document.addEventListener("submit", e => { if (e.target.id !== "recForm") return; e.preventDefault();
   if (!recUI.days.length){ toast("Elegí al menos un día de la semana."); return; }
   RECURRING.push({ id:Math.max(0, ...RECURRING.map(r => r.id)) + 1, title:$("#rcTitle").value.trim(), brand:$("#rcBrand").value, kind:$("#rcKind").value, days:[...recUI.days], time:$("#rcTime").value, owner:$("#rcOwner").value, from:$("#rcFrom").value, until:$("#rcUntil").value });
-  recUI = { form:false, days:[] }; render(); toast("Pedido repetitivo guardado. Ya aparece en el Calendario CM."); });
+  recUI = { form:false, days:[] }; render(); toast("Pedido repetitivo guardado. Ya aparece solo en su calendario, en cada fecha."); });
 function pGestionCM(){
   const A = "CM", cal = cmUI.tview === "calendario", list = jobsFiltered(cal);
   const views = [["tablero","Tablero"],["tabla","Tabla"],["calendario","Calendario de pedidos"]];
   return `<div class="head"><div><h1>Gestión CM</h1><p class="sub">Lo que se le pide a los CM: grabaciones, ediciones de video, copys, armado de pauta, coberturas. Las publicaciones del mes van en el <a href="#plan" data-page="plan" class="glink">Plan de posteo ›</a></p></div>
     <div class="chips">${views.map(([k, l]) => `<button class="chip ${cmUI.tview === k ? "on" : ""}" data-cmtv="${k}">${l}</button>`).join("")}</div></div>
-  ${canCreateJobs() ? `<button class="panel cmnew" data-jnew><span class="cmplus">+</span><span><b>Cargar un pedido para CM</b><small>Qué se necesita, para qué marca, quién lo hace y para cuándo.</small></span></button>` : ""}
+  ${canCreateJobs() ? `<button class="panel cmnew" data-jnew><span class="cmplus">+</span><span><b>Cargar un pedido para CM</b><small>Qué se necesita, para qué marca, quién lo hace y para cuándo.</small></span></button>
+  <button class="panel cmnew cmrec" data-recform><span class="cmplus">🔁</span><span><b>${recUI.form ? "Cerrar el pedido repetitivo" : "Cargar pedido repetitivo para CM"}</b><small>Se repite solo: por ejemplo cada lunes, o cada sábado si es una historia o un post del feed. Elegí el tipo (Historia, Feed o Grabación), los días y la hora.</small></span></button>` : ""}
   ${recurringPanel()}
   ${jobFilterPanel(A)}
   <div class="head"><span class="note">${list.length} ${list.length === 1 ? "pedido" : "pedidos"} · ${cal ? "cada uno en su fecha límite (incluye los terminados)" : "ordenados por fecha límite"}${cmUI.tview === "tablero" && !isViewOnly() && !isClosed() ? " · arrastrá una tarjeta a otra columna para cambiarle el estado" : ""}</span>${URG_LEGEND}</div>
   ${cmUI.tview === "tablero" ? stageGuide("🎬 CM", CM_STAGES) : ""}
-  ${loadPanel(A, "Cuenta los pedidos sin terminar y las publicaciones del mes que todavía no están programadas")}
   ${cmUI.tview === "tabla" ? jobTable(list) : cal ? jobDeliveryCal(list, A) : jobBoard(list, A)}
   ${jobForm()}`;
 }
@@ -3947,13 +4040,16 @@ const GUIDE = [
   ["Planificación", [
     ["target","Planificación del mes","En 4 pestañas: 🎯 Objetivos (por equipo, Diseño gráfico y CM, en palabras simples), 📣 Campañas del mes, 🔭 Lo que se viene y 💡 Propuestas. Cualquiera puede proponer un objetivo; solo Admin total lo lee y decide si lo suma."]]],
   ["Diseño gráfico", [
-    ["palette","Gestión Diseño gráfico","Los pedidos de diseño gráfico en Tablero, Tabla o Calendario de entregas. Con “➕ Nuevo pedido de diseño gráfico” se carga marca, tipo de pieza, responsable, prioridad, complejidad y fecha límite. Muestra la carga de cada diseñador."],
-    ["calendar-range","Calendario Diseño gráfico","Las entregas de diseño gráfico: cada pieza en su fecha límite, con su estado y quién la hace. La pestaña 📦 Materiales es para cartelería, flyers, vía pública, catálogos y empaques, y ahí mismo se cargan."],
+    ["palette","Gestión Diseño gráfico","Los pedidos de diseño gráfico en Tablero, Tabla o Calendario de entregas. Con “➕ Nuevo pedido de diseño gráfico” se carga marca, tipo de pieza, responsable (cualquier diseñador, aunque sea de otra marca), prioridad, complejidad y fecha límite."],
+    ["calendar-range","Calendario Diseño gráfico","Las entregas de diseño gráfico: cada pieza en su fecha límite, con su estado y quién la hace. Tocá una entrega para abrirla y editarla, o tocá un día para cargar un pedido nuevo con esa fecha. La pestaña 📦 Materiales es para cartelería, flyers, vía pública, catálogos y empaques."],
+    ["gauge","Carga de trabajo Diseño gráfico","Cuánto tiene cada diseñador: los trabajos sin finalizar según su complejidad. Sirve para repartir los pedidos nuevos."],
     ["archive","Historial Diseño gráfico","Los trabajos de diseño gráfico entregados en el mes, con su fecha y si salieron a tiempo."]]],
   ["Community Manager", [
-    ["send","Gestión CM","Los pedidos que se le hacen a los CM (grabaciones, ediciones de video, copys, armado de pauta, coberturas). Se cargan con “+ Cargar un pedido para CM” y se siguen en Tablero, Tabla o Calendario de pedidos. En 🔁 Pedidos repetitivos se carga una sola vez lo que se repite (ej.: tarjetas de crédito todos los lunes 9:00, pick-up miércoles y viernes en historias) y se marca como hecho cada vez. Muestra la carga de cada CM."],
-    ["calendar-days","Calendario CM","Con pestañas: Todo, 📱 Historias, 🖼 Feed y 🎥 Grabación de contenidos. Muestra las publicaciones en su fecha con su estado, los pedidos repetitivos (🔁, tocalos para marcarlos hechos) y las fechas de grabación."],
-    ["list-checks","Plan de posteo","Lo que se tiene que subir en el mes. Arriba, cuántas hay en cada estado y el % ya publicado (tocá un estado para filtrar). En cada publicación marcás Borrador, En diseño, Listo, Programado, Publicado o Pautado, y pedís el diseño si hace falta."],
+    ["send","Gestión CM","Los pedidos que se le hacen a los CM (grabaciones, ediciones de video, copys, armado de pauta, coberturas). Se cargan con “+ Cargar un pedido para CM” y se siguen en Tablero, Tabla o Calendario de pedidos. Con “🔁 Cargar pedido repetitivo para CM” se carga una sola vez lo que se repite solo (ej.: tarjetas de crédito todos los lunes 9:00, o una historia cada sábado) y se marca como hecho cada vez."],
+    ["calendar-days","Calendario Feed","Las publicaciones del feed (posts, carruseles y reels) en su fecha, con su estado y su CM, más las repetitivas de feed (🔁). Tocá una publicación para editarla (fecha, tema, estado o CM, que puede ser de cualquier marca) o tocá un día para cargar una nueva."],
+    ["smartphone","Calendario Historia","Igual que el Calendario Feed, pero solo con las historias: las del plan y las repetitivas (🔁, tocalas para marcarlas hechas)."],
+    ["gauge","Carga de trabajo CM","Cuánto tiene cada CM: los pedidos sin terminar y las publicaciones del mes que todavía no están programadas."],
+    ["list-checks","Plan de posteo","Lo que se tiene que subir en el mes. Arriba, cuántas hay en cada estado y el % ya publicado (tocá un estado para filtrar). En cada publicación marcás Borrador, En diseño, Listo, Programado, Publicado o Pautado, cambiás el CM que la hace y pedís el diseño si hace falta."],
     ["archive","Historial CM","Lo que ya salió en el mes: publicaciones publicadas o pautadas y pedidos de CM terminados."]]],
   ["Recursos", [
     ["wand-sparkles","Prompts de imágenes","Para fotos de producto con IA, con o sin modelos. Elegís si adjuntás producto, fondo o modelos de referencia, completás modelo, producto, ambiente, fondo, estilo, luz y medida (historia 9:16, post 4:5, cuadrado, horizontal), y la app arma el texto para copiar."],
@@ -4123,8 +4219,8 @@ function pConfig(){
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-pref]"); if (!b) return; const [k, val] = b.dataset.pref.split("|"); viewer[k] = val; savePrefs(viewer); applyPrefs(); render();
   toast(k === "theme" ? `Listo: versión ${val === "light" ? "clara" : "oscura"}.` : k === "textSize" ? `Texto ${val === "big" ? "grande" : "normal"}.` : val === "off" ? "Animaciones desactivadas." : "Animaciones activadas."); });
-const EYEBROW = { sabados:"Equipo", caldiseno:"Calendario de entregas", historialcm:"Community managers", gestioncm:"Community managers", avisos:"Comunicados del equipo", prompts:"Inteligencia artificial", guia:"Ayuda", archivos:"Diseños y archivos", encuestas:"La voz del equipo", planmes:"Hacia dónde vamos", notas:"Tu espacio", mensajes:"Comunicación interna", sugerencias:"Buzón confidencial", tvimpacto:"Pantalla de oficina", inicio:"Panel general", alertas:"Control", calendario:"Calendario de publicaciones", plan:"Contenidos", pedidos:"Diseño gráfico", tv:"Equipo de diseño", historial:"Diseño gráfico", pauta:"Meta Ads", redes:"Audiencia", reportes:"Resultados del mes", usuarios:"Administración", perfil:"Tu cuenta", cumples:"Equipo", dashboard:"Visión general", tvredes:"Pantalla de oficina", staff:"Equipo", config:"Tu cuenta" };
-const PAGES = { sabados:pSabados, caldiseno:pCalDiseno, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
+const EYEBROW = { sabados:"Equipo", caldiseno:"Calendario de entregas", historialcm:"Community managers", gestioncm:"Community managers", avisos:"Comunicados del equipo", prompts:"Inteligencia artificial", guia:"Ayuda", archivos:"Diseños y archivos", encuestas:"La voz del equipo", planmes:"Hacia dónde vamos", notas:"Tu espacio", mensajes:"Comunicación interna", sugerencias:"Buzón confidencial", tvimpacto:"Pantalla de oficina", inicio:"Panel general", alertas:"Control", calendario:"Calendario del feed", calhistoria:"Calendario de historias", cargadiseno:"Diseño gráfico", cargacm:"Community managers", plan:"Contenidos", pedidos:"Diseño gráfico", tv:"Equipo de diseño", historial:"Diseño gráfico", pauta:"Meta Ads", redes:"Audiencia", reportes:"Resultados del mes", usuarios:"Administración", perfil:"Tu cuenta", cumples:"Equipo", dashboard:"Visión general", tvredes:"Pantalla de oficina", staff:"Equipo", config:"Tu cuenta" };
+const PAGES = { sabados:pSabados, caldiseno:pCalDiseno, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
 
 /* ---------- render ---------- */
 // Barra de pestañas abajo (celular), como en cualquier app: lo que más usa cada rol + “Más” para el menú completo.
@@ -4196,7 +4292,7 @@ function render(){
   renderNav();
   $("#whoami").textContent = nickOf(viewer) + " · " + viewer.role + (viewer.brands ? " · " + viewer.brands.join(", ") : "");
   $("#viewas").value = viewer.id;
-  const ro = isViewOnly() && ["calendario","caldiseno","plan","pedidos","gestioncm","inicio"].includes(page) ? `<div class="ro">👁 Perfil Admin (control): ves todo el sitio y descargás informes, pero no modificás contenidos, usuarios ni configuración.</div>` : "";
+  const ro = isViewOnly() && ["calendario","calhistoria","caldiseno","plan","pedidos","gestioncm","inicio"].includes(page) ? `<div class="ro">👁 Perfil Admin (control): ves todo el sitio y descargás informes, pero no modificás contenidos, usuarios ni configuración.</div>` : "";
   const avb = page === "inicio" ? avActiveFor(viewer).filter(a => !a.seen.includes(viewer.id)).sort((a, b) => ["Urgente","Importante","Informativo"].indexOf(a.level) - ["Urgente","Importante","Informativo"].indexOf(b.level)).map(avBanner).join("") : "";
   const bdays = page === "inicio" && can("cumples") ? bdayAlerts().map(({ pp, d }) => `<div class="panel bday ${d === 0 ? "today" : ""}" style="--u:${d === 0 ? "#ef4444" : "#f97316"}"><div class="ic">${CAKE_SVG}</div><div><b>${d === 0 ? `¡Hoy cumple años ${esc(pp.name)}! 🎉` : `${d === 1 ? "Mañana" : `En ${d} días`} cumple años ${esc(pp.name)}`}</b> <span>${esc(pp.cargo || pp.role)} · ${bdayLabel(pp.birthday)}${d === 0 ? " · ¡No te olvides de saludar!" : ""}</span></div></div>`).join("") : "";
   const demo = window.RMH?.previewing ? `<div class="panel demo">${icon("info")}<div><b>Vista previa como ${esc(viewer.name)}.</b> <span>Lo que cambies acá no se guarda. Volvé a tu usuario en “ver como” (abajo a la izquierda).</span></div></div>` : "";
@@ -4303,6 +4399,8 @@ document.addEventListener("change", e => {
   if (js){ setJobStatus(jobs.find(x => x.id === js.dataset.jstatus), js.value); return; }
   const ps = e.target.closest("[data-pub]"); if (ps){ pubUI[ps.dataset.pub] = ps.value; render(); return; }
   const cf = e.target.closest("[data-cmf]"); if (cf){ cmUI[cf.dataset.cmf] = cf.value; render(); return; }
+  const pcm = e.target.closest("[data-pcm]");
+  if (pcm){ const p = postById(pcm.dataset.pcm); p.cm = pcm.value; render(); toast(`“${p.title}”: ahora lo hace ${firstName(p.cm)}.`); return; }
   const pst = e.target.closest("[data-pstatus]");
   if (pst){ const p = postById(pst.dataset.pstatus), to = pst.value;
     if (to === "En diseño" && !jobs.some(x => x.post === p.id)){ pedirDiseno(p.id); render(); toast(`“${p.title}” pasó a En diseño: se creó el pedido en Gestión Diseño.`); return; }
@@ -4416,7 +4514,7 @@ document.addEventListener("submit", e => {
 document.addEventListener("click", e => {
   const t = e.target.closest("[data-month],[data-rtab],[data-rbrand],[data-dl],[data-close],[data-page],[data-brand],[data-redes],[data-pedir],[data-adv-post],[data-adv-job],[data-perm],[data-pb],[data-soon]");
   if (!t) return;
-  if (t.dataset.page === "calendario" && brandFilter === "Todas") brandFilter = myGroups()[0];
+  if ((t.dataset.page === "calendario" || t.dataset.page === "calhistoria") && brandFilter === "Todas") brandFilter = myGroups()[0];
   if (t.dataset.month){ const i = MONTHS_APP.findIndex(m => m.v === MONTH) + Number(t.dataset.month); if (MONTHS_APP[i]){ MONTH = MONTHS_APP[i].v; render(); } }
   else if (t.dataset.rtab){ reportTab = t.dataset.rtab; render(); }
   else if (t.dataset.rbrand){ reportBrand = t.dataset.rbrand; render(); }

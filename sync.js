@@ -26,6 +26,7 @@ const RMH = (() => {
     PEOPLE:[() => PEOPLE.map(pp => { const c = { ...pp }; LOCAL_ONLY.forEach(k => delete c[k]); return c; }), v => {
       const keep = new Map(PEOPLE.map(pp => [pp.id, pp]));
       replaceArr(PEOPLE, v.map(pp => { const old = keep.get(pp.id); if (old) LOCAL_ONLY.forEach(k => { if (old[k] !== undefined) pp[k] = old[k]; }); return pp; }));
+      PEOPLE.forEach(pp => { if (pp.perms instanceof Set) upgradePerms(pp); }); // secciones nuevas
       if (viewer) viewer = PEOPLE.find(pp => pp.id === viewer.id) || viewer;
       refreshPeople(); }],
     posts:[() => posts, v => { posts = v; }],
