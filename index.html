@@ -42,10 +42,11 @@ button{cursor:pointer}
 .logo b{display:block;color:#fff;font-size:16px;font-weight:600;line-height:1.2}
 .logo small{font-size:12px;color:var(--faint)}
 /* Logo alargado arriba de las páginas (el cuadrado va en la barra lateral) */
-.brandbar{display:flex;align-items:center;max-width:1280px;margin:0 auto;padding:22px 24px 0;box-sizing:border-box}
+.brandbar{display:flex;align-items:center;gap:16px;max-width:1280px;margin:0 auto;padding:22px 24px 0;box-sizing:border-box}
+.brandlogos{margin-left:auto;height:34px;width:auto;opacity:.9}
 .logo-wide{display:block;width:260px;max-width:60vw;height:auto}
 html.light .logo-wide{background:#0f172a;border-radius:12px;padding:6px 10px;box-sizing:border-box}
-@media (max-width:1024px){.brandbar{padding:14px 16px 0}.logo-wide{width:200px}}
+@media (max-width:1024px){.brandbar{padding:14px 16px 0}.logo-wide{width:200px}.brandlogos{height:24px}}
 .nav{display:flex;flex-direction:column;gap:14px}
 .nav-group{display:flex;flex-direction:column;gap:4px}
 .nav-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.2em;padding:0 12px 2px;color:rgba(34,211,238,.6)}
@@ -1800,7 +1801,6 @@ const SECTIONS = [
   { g:"Diseño gráfico", k:"pedidos", l:"Gestión Redes", n:"Gestión Redes", i:"image" },
   { g:"Diseño gráfico", k:"caldiseno", l:"Calendario Redes", n:"Calendario Redes", i:"calendar-range" },
   { g:"Diseño gráfico", k:"cartel", l:"Gestión Cartelería", n:"Gestión Cartelería", i:"signpost" },
-  { g:"Diseño gráfico", k:"calcartel", l:"Calendario Cartelería", n:"Calendario Cartelería", i:"calendar-days" },
   { g:"Diseño gráfico", k:"cargadiseno", l:"Carga de trabajo Diseño gráfico", n:"Carga de trabajo", i:"gauge" },
   { g:"Diseño gráfico", k:"historial", l:"Historial Diseño gráfico", n:"Historial", i:"archive" },
   { g:"Community Manager", k:"gestioncm", l:"Gestión CM", n:"Gestión de pedidos", i:"send" },
@@ -1897,7 +1897,7 @@ function dragMonthsBar(){
   document.body.appendChild(bar);
 }
 document.addEventListener("dragend", () => { drag = null; clearTimeout(dragNav.t); document.getElementById("dragMonths")?.remove(); document.querySelectorAll(".dragging,.over,.dragnav").forEach(x => x.classList.remove("dragging","over","dragnav")); });
-const isCalPage = () => page === "calendario" || page === "calhistoria" || page === "calcanales" || page === "caldiseno" || page === "calcartel" || ((page === "pedidos" || page === "cartel") && jobUI.view === "calendario");
+const isCalPage = () => page === "calendario" || page === "calhistoria" || page === "calcanales" || page === "caldiseno" || (page === "cartel" && cartUI.view === "calendario");
 function dropTarget(e){
   if (!drag) return null;
   if (drag.kind === "nitem"){ const c = e.target.closest("[data-nit]"); return c && c.dataset.nit.split("|")[0] === drag.id.split("|")[0] && c.dataset.nit !== drag.id ? c : null; }
@@ -2428,6 +2428,7 @@ function installDrawer(){
     <div class="iact">${installPrompt ? `<button class="btn pgen" data-installnow>${icon("download")} Instalar ahora</button>` : ""}<button class="btn primary" data-installclose2>Entendido</button></div>
   </div>`;
 }
+document.addEventListener("click", e => { const v = e.target.closest("[data-cview]"); if (v){ cartUI.view = v.dataset.cview; render(); } });
 document.addEventListener("click", e => { const t = e.target.closest("[data-itab]"); if (t){ installTab = t.dataset.itab; render(); } });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && installOpen){ installOpen = false; render(); } });
 document.addEventListener("click", e => {
@@ -2526,7 +2527,7 @@ function visibleJobs(){
 }
 function brandChips(){
   const opts = myGroups().length > 1 ? ["Todas", ...myGroups()] : myGroups();
-  if (page === "calendario" || page === "calhistoria" || page === "calcanales" || page === "caldiseno" || page === "calcartel"){
+  if (page === "calendario" || page === "calhistoria" || page === "calcanales" || page === "caldiseno" || (page === "cartel" && cartUI.view === "calendario")){
     const all = myGroups(); // siempre por marca, nunca todas juntas
     return `<div class="chips">${all.map(b => `<button class="chip ${brandFilter===b?"on":""}" data-brand="${b}">${b === "Todas" ? "Todos juntos" : b === "Otros" ? "Otras marcas" : b === "Materiales" ? "📦 Materiales" : b}</button>`).join("")}</div>`;
   }
@@ -2916,30 +2917,15 @@ function calGrid(render, addable = false){
   ${calCells().map(c => { const inner = render(c), wd = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][new Date(c + "T12:00").getDay()];
     return `<div class="d ${c.slice(0,7) !== MONTH ? "out" : ""} ${c === TODAY ? "today" : ""} ${inner ? "" : "emptyday"}" data-cdrop="${c}"><span class="dn">${+c.slice(8)}</span><span class="dwk">${wd}</span>${inner}</div>`; }).join("")}</div></div>`;
 }
-function pMateriales(){
+// Calendario de cartelería: se ve dentro de Gestión Cartelería (vista “Calendario”).
+function cartelCal(){
   const mats = jobs.filter(j => isMaterial(j) && seesBrand(j.brand) && inFilter(j.brand) && j.due.slice(0,7) === MONTH).sort((a,b) => a.due.localeCompare(b.due));
-  const today = TODAY.slice(0,7) === MONTH ? TODAY : MONTH + "-01";
-  const canAdd = !isClosed() && !isDesigner() && !isViewOnly();
-  const form = canAdd ? `<div class="panel"><h2 class="pmh">${pmIco("plus")}Carga rápida</h2>
-    <form id="matForm" class="matform">
-      <label>Marca<select class="base" id="mBrand">${myBrands().map(b => `<option>${b}</option>`).join("")}</select></label>
-      <label>Pieza<select class="base" id="mPiece">${MATERIAL_PIECES.map(pc => `<option>${pc}</option>`).join("")}</select></label>
-      <label class="wide">Qué hay que hacer<input class="base" id="mTitle" placeholder="Ej.: Cartelería góndola ofertas de octubre" required></label>
-      <label>Fecha de entrega<input class="base" type="date" id="mDue" value="${today}" required></label>
-      <label>Diseñador<select class="base" id="mOwner">${["Sin asignar", ...DESIGNERS].map(n => `<option>${n}</option>`).join("")}</select></label>
-      <button class="btn primary" type="submit">Agregar al calendario</button>
-    </form></div>` : "";
-  return `<div class="head"><div><h1 class="pmh">${pmIco("signpost")}Calendario Cartelería · ${brandFilter === "Otros" ? "Otras marcas" : brandFilter}</h1><p class="sub">${monthLabel(MONTH)} · cartelería, flyers, vía pública, catálogos, pantallas, banners y empaques, por fecha de entrega.</p></div>
-    ${brandChips()}</div>
-  ${calAdds(canCreateJobs() ? [["data-jnewcal", "plus", "Cargar pedido", "Una pieza de cartelería con su fecha de entrega."]] : [])}
-  ${URG_LEGEND}${calHint()}
+  return `${URG_LEGEND}${calHint()}
   ${calGrid(c => mats.filter(j => j.due === c).map(j => { const u = urgency(j), done = isFin(j);
     return `<div class="ev${sepCls(j.brand)}"${calDrag("job", j.id)}${canCreateJobs() ? ` data-open="job:${j.id}"` : ""} style="--c:${BRANDS[j.brand]};--s:${done ? "#10b981" : u ? u.c : "#475569"}" title="${esc(j.piece)} · ${esc(j.title)} · ${j.status} · ${esc(j.owner)}"><span>${done ? "✓ " : u?.late ? "⏰ " : ""}${esc(j.piece)} · ${esc(j.title)}</span>${evStage("job", j, `${j.status} · ${esc(firstName(j.owner))}`, j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status])}</div>`; }).join(""), canCreateJobs())}
-  <div class="tw"><table><thead><tr><th>Entrega</th><th>Marca</th><th>Pieza</th><th>Material</th><th>Diseñador</th><th>Estado</th></tr></thead><tbody>
-    ${mats.map(j => `<tr><td class="num">${dm(j.due)}</td><td>${brandTag(j.brand)}</td><td>${pieceTag(j.piece)}</td><td>${esc(j.title)}</td><td>${esc(j.owner)}</td><td><div class="chips" style="flex-wrap:nowrap">${pill(j.status, JOB_COLOR[j.status])}${urgBadge(j)}</div></td></tr>`).join("") || `<tr><td colspan="6" class="empty">No hay materiales con entrega en ${monthName(MONTH)}.</td></tr>`}
-  </tbody></table></div>
-  ${form}${jobForm()}`;
+  ${mats.length ? "" : `<p class="note">No hay cartelería con entrega en ${monthName(MONTH)}${brandFilter !== "Todas" ? " para esta marca" : ""}.</p>`}`;
 }
+function pMateriales(){ page = "cartel"; cartUI.view = "calendario"; return pPedidos(); } // compatibilidad con la dirección vieja #calcartel
 // Calendario Diseño: cada trabajo de diseño en su fecha de entrega. Los materiales tienen su propia pestaña.
 function pCalDiseno(){
   const list = visibleJobs().filter(j => j.area === "Diseño" && !isMaterial(j)).sort((a, b) => a.due.localeCompare(b.due));
@@ -3102,16 +3088,18 @@ function jobDeliveryCal(list, A = "Diseño"){
   ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("") + list.filter(j => j.due === c).map(j => { const done = isFin(j);
     return `<div class="ev job${sepCls(j.brand)}"${calDrag("job", j.id)}${canCreateJobs() ? ` data-open="job:${j.id}"` : ""} style="--c:${BRANDS[j.brand]};--s:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}" title="${esc(j.title)} · ${j.status} · ${esc(j.owner)} · entrega ${dm(j.due)}"><span>${done ? "✓ " : urgency(j)?.late ? "⏰ " : ""}${esc(j.title)}</span>${evStage("job", j, `${j.status} · ${esc(firstName(j.owner))}`, j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status])}</div>`; }).join(""), canCreateJobs())}`;
 }
+let cartUI = { view:"calendario" };
 function pPedidos(){
   const A = "Diseño", cart = page === "cartel";
   if (!["tablero","tabla"].includes(jobUI.view)) jobUI.view = "tablero";
+  const view = cart ? cartUI.view : jobUI.view;
   const list = jobsFiltered(true).filter(j => j.status !== "Cancelado" && (!isClosedJob(j) || jobMonth(j) === MONTH));
-  const views = [["tablero","Tablero"],["tabla","Tabla"]];
+  const views = cart ? [["calendario","Calendario"],["tabla","Tabla"],["tablero","Tablero"]] : [["tablero","Tablero"],["tabla","Tabla"]];
   return `<div class="head"><div><h1 class="pmh">${pmIco(cart ? "signpost" : "image")}${cart ? "Gestión Cartelería" : "Gestión Redes"}</h1><p class="sub">${cart ? "Cartelería, flyers, vía pública, catálogos, pantallas, banners y empaques." : "Posts, carruseles, historias y reels para las redes."}${isDesigner() ? " Tocá tu trabajo para avisar cuando lo termines." : ""}</p></div>
-    <div class="chips">${views.map(([k, l]) => `<button class="chip ${jobUI.view === k ? "on" : ""}" data-jview="${k}">${l}</button>`).join("")}</div></div>
+    <div class="chips">${views.map(([k, l]) => `<button class="chip ${view === k ? "on" : ""}" ${cart ? "data-cview" : "data-jview"}="${k}">${l}</button>`).join("")}</div></div>
   ${canCreateJobs() ? `<button class="panel cmnew" data-jnew><span class="cmplus">${icon("plus")}</span><span><b>Cargar pedido</b><small>${cart ? "Qué pieza, para qué marca, quién la hace y para cuándo." : "Qué se necesita para redes, para qué marca, quién lo hace y para cuándo."}</small></span></button>` : ""}
-  <div class="head">${brandChips()}${!isViewOnly() && !isClosed() ? `<span class="note">${jobUI.view === "tablero" ? "Tocá una tarjeta para cambiar su etapa · ✏️ para editar" : "Tocá el trabajo para editarlo · cambiá la etapa desde la lista"}</span>` : ""}</div>
-  ${jobUI.view === "tabla" ? jobTable(list) : jobBoard(list, A)}
+  <div class="head">${brandChips()}${!isViewOnly() && !isClosed() ? `<span class="note">${view === "tablero" ? "Tocá una tarjeta para cambiar su etapa · ✏️ para editar" : view === "calendario" ? "Tocá una entrega para abrirla, o un día para cargar un pedido" : "Tocá el trabajo para editarlo · cambiá la etapa desde la lista"}</span>` : ""}</div>
+  ${view === "calendario" ? cartelCal() : view === "tabla" ? jobTable(list) : jobBoard(list, A)}
   ${jobForm()}`;
 }
 /* ---------- Gestión CM: publicaciones (fecha de publicación y estado) + tareas de CM ---------- */
@@ -4566,8 +4554,8 @@ const GUIDE = [
     ["target","Planificación del mes","Arriba, siempre, los Objetivos principales: las tres prioridades del área (Admin total las edita). Debajo, En 4 pestañas: 🎯 Objetivos (por equipo, Diseño gráfico y CM, en palabras simples), 📣 Campañas del mes, 🔭 Lo que se viene y 💡 Propuestas. Cualquiera puede proponer un objetivo; solo Admin total lo lee y decide si lo suma."]]],
   ["Diseño gráfico", [
     ["image","Gestión Redes","Los pedidos de diseño para redes (posts, carruseles, historias y reels) en Tablero o Tabla. “Cargar pedido” abre la ventana del pedido. En el tablero tocás una tarjeta para cambiar su etapa (hasta Entregado) y con ✏️ lo editás; en la tabla tocás el trabajo para abrirlo."],
-    ["signpost","Gestión Cartelería","Igual que Gestión Redes, pero para cartelería, flyers, vía pública, catálogos, pantallas, banners y empaques. Cada una tiene su propio calendario."],
-    ["calendar-range","Calendario Redes y Calendario Cartelería","Las entregas de cada tipo en su fecha límite, con su estado y quién la hace, una marca a la vez. Tocá una entrega para abrirla, o un día para cargar un pedido nuevo con esa fecha."],
+    ["signpost","Gestión Cartelería","Cartelería, flyers, vía pública, catálogos, pantallas, banners y empaques. Arranca en Calendario (cada entrega en su fecha, una marca a la vez); también tiene Tabla y Tablero."],
+    ["calendar-range","Calendario Redes","Las entregas de cada tipo en su fecha límite, con su estado y quién la hace, una marca a la vez. Tocá una entrega para abrirla, o un día para cargar un pedido nuevo con esa fecha."],
     ["gauge","Carga de trabajo Diseño gráfico","Cuánto tiene cada diseñador: los trabajos sin finalizar según su complejidad. Sirve para repartir los pedidos nuevos."],
     ["archive","Historial Diseño gráfico","Los trabajos de diseño gráfico entregados en el mes, con su fecha y si salieron a tiempo."]]],
   ["Community Manager", [
@@ -4813,8 +4801,9 @@ function reveal(){
 }
 function animate0(pg){ const ch = (pg === "pedidos" || pg === "gestioncm") && render.jobPage !== pg; if (pg === "pedidos" || pg === "gestioncm") render.jobPage = pg; return ch; }
 function render(){
+  if (page === "calcartel"){ page = "cartel"; cartUI.view = "calendario"; } // el calendario de cartelería ahora está dentro de Gestión Cartelería
   if (!can(page)) page = can("dashboard") ? "dashboard" : "inicio";
-  if (["calendario","calhistoria","calcanales","caldiseno","calcartel"].includes(page) && (brandFilter === "Todas" || brandFilter === "Materiales")) brandFilter = myGroups()[0]; // calendarios: una marca a la vez
+  if ((["calendario","calhistoria","calcanales","caldiseno"].includes(page) || (page === "cartel" && cartUI.view === "calendario")) && (brandFilter === "Todas" || brandFilter === "Materiales")) brandFilter = myGroups()[0]; // calendarios: una marca a la vez
   if (brandFilter === "Materiales") brandFilter = "Todas"; // Cartelería ahora es su propia sección
   if (brandFilter !== "Todas" && brandFilter !== "Materiales" && !seesBrand(brandFilter)) brandFilter = "Todas";
   renderNav();
@@ -4871,15 +4860,7 @@ document.addEventListener("click", e => {
 function enterApp(){ loadPrefs(viewer); applyPrefs(); loadWeather(); viewer.last = "hoy " + new Date().toTimeString().slice(0,5);
   const want = enterApp.done ? "" : START_PAGE; enterApp.done = true; page = PAGES[want] && can(want) ? want : "dashboard"; render.lastKey = null; brandFilter = "Todas"; $("#login").hidden = true; $("#changeForm").hidden = true; $("#loginForm").hidden = false; $("#loginMsg").hidden = true; render(); toast(`${hello()}. Entraste como ${viewer.role}.`); }
 // El login, el cambio de contraseña y “¿Olvidaste tu contraseña?” están en sync.js (Supabase Auth).
-document.addEventListener("submit", e => {
-  if (e.target.id !== "matForm") return;
-  e.preventDefault();
-  const title = $("#mTitle").value.trim(); if (!title){ toast("Escribí qué material hay que hacer."); return; }
-  const due = $("#mDue").value;
-  jobs.push({ id:nextJobId("Diseño"), area:"Diseño", title, brand:$("#mBrand").value, piece:$("#mPiece").value, owner:$("#mOwner").value, due, status:"Pendiente", post:null, priority:"Media", complexity:"Media", requester:"Marketing", requestDate:TODAY, link:"", notes:"" });
-  const m = due.slice(0,7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m;
-  toast(`Material agregado: entrega el ${dm(due)}. También aparece en Pedidos de diseño con su alarma.`); render();
-});
+
 document.addEventListener("click", e => {
   const cmt = e.target.closest("[data-cmview],[data-cmtv],[data-cmst]");
   if (cmt){ const d = cmt.dataset; if (d.cmtv) cmUI.tview = d.cmtv; else if (d.cmst) cmUI.st = cmUI.st === d.cmst ? "Todos" : d.cmst; render(); return; }
