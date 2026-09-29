@@ -43,7 +43,11 @@ button{cursor:pointer}
 .logo small{font-size:12px;color:var(--faint)}
 /* Logo alargado arriba de las páginas (el cuadrado va en la barra lateral) */
 .brandbar{display:flex;align-items:center;gap:16px;max-width:1280px;margin:0 auto;padding:22px 24px 0;box-sizing:border-box}
-.brandlogos{margin-left:auto;height:34px;width:auto}
+.brandlogos{height:34px;width:auto}
+.bclock{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.bclock svg{width:15px;height:15px}
+.bclock b{color:var(--ink);font-weight:600}
+@media (max-width:640px){.brandbar{gap:10px}.logo-wide{width:150px!important;min-width:0}.bclock svg{display:none}.bclock{font-size:12px}.brandlogos{height:20px!important;min-width:0}}
 .logo-wide{display:block;width:260px;max-width:60vw;height:auto}
 html.light .logo-wide{background:#0f172a;border-radius:12px;padding:6px 10px;box-sizing:border-box}
 @media (max-width:1024px){.brandbar{padding:14px 16px 0}.logo-wide{width:200px}.brandlogos{height:24px}}
@@ -1774,6 +1778,26 @@ button,.btn,.chip,.nav a,.tabbar a,.tabbar button{-webkit-user-select:none;user-
 .clean .avban{background:transparent}
 .row .m svg,.waitchip svg{width:14px;height:14px;vertical-align:-2px;color:var(--muted)}
 .clean .waitchip{background:transparent}
+.avlvl svg,.avcard footer svg,.msgdates svg{width:14px;height:14px;vertical-align:-2px}
+.clean .avcard{border-left-width:3px}
+.clean .prio-opt:has(input:checked){background:transparent}
+.clean .msgthread.urgent{box-shadow:none}
+.clean .msgthread.open{box-shadow:0 0 0 1px var(--line-3)}
+.clean .bubble.own{background:rgba(148,163,184,.08);border-color:var(--line-3)}
+.clean .bubble.own .bfrom{color:var(--muted)}
+.clean .pubst{border-top:1px solid var(--line-3);background:transparent}
+.clean .pubst b{color:var(--ink);font-weight:700}
+.clean .pubst span::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--c);margin-right:6px;vertical-align:1px}
+.clean .pubst.on{box-shadow:none}
+.clean .pubpct{border-color:var(--line-3);background:transparent}
+.clean .pubpct b{color:var(--ink);font-weight:700}
+.clean [data-pstatus],.clean [data-pcm]{border-color:var(--line-3)!important;color:var(--ink)!important;background:transparent!important}
+.clean .carried{background:transparent;color:var(--muted);border-color:var(--line-3)}
+.plcal .pev{display:grid;grid-template-columns:6px 1fr;column-gap:5px;align-items:center;font-size:11px;line-height:1.3;padding:3px 4px;border-radius:6px;color:#e2e8f0}
+.plcal .pev i{width:6px;height:6px;border-radius:50%}
+.plcal .pev span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.plcal .pev em{grid-column:2;font-style:normal;font-size:10px;color:var(--c)}
+.plcal .pev:hover{background:rgba(148,163,184,.08)}
 .clean .card.u{border-color:var(--line-3);border-left-color:var(--c);box-shadow:none}
 .clean .row.u{background:var(--inner)}
 .clean .urg.late{background:transparent;color:#f87171;border-color:rgba(239,68,68,.6);box-shadow:none;animation:none}
@@ -1817,7 +1841,7 @@ button,.btn,.chip,.nav a,.tabbar a,.tabbar button{-webkit-user-select:none;user-
       <button class="logout" id="logout" type="button">Cerrar sesión</button>
     </div>
   </aside>
-  <div class="main"><header class="brandbar"><img class="logo-wide" src="logo-wide.png" alt="Retail MKT Hub"><img class="brandlogos" src="marcas.png" alt="Superseis · Delimarket · Stock"></header><main class="content" id="content"></main></div>
+  <div class="main"><header class="brandbar"><img class="logo-wide" src="logo-wide.png" alt="Retail MKT Hub"><span class="bclock" title="Hora de Paraguay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><b data-clock></b></span><img class="brandlogos" src="marcas.png" alt="Superseis · Delimarket · Stock"></header><main class="content" id="content"></main></div>
 </div>
 <nav class="tabbar" id="tabbar" aria-label="Accesos rápidos"></nav>
 <div class="toast" id="toast" hidden></div>
@@ -2823,7 +2847,8 @@ function nowCard(){
       <ul class="nc-det"><li>Sensación <b>${d.feels}°</b></li><li>Humedad <b>${d.hum}%</b></li><li>Viento <b>${d.wind} km/h ${WIND_DIR(d.windDir)}</b></li>${d.at ? `<li>Medido <b>${d.at}</b></li>` : ""}</ul>` : `<div class="nc-temp"><span>Cargando el clima…</span></div>`}</div>
     <div class="nc-loc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>Asunción, Paraguay · hora oficial de Paraguay · clima actual${WX.status === "demo" ? ` <em>Clima de ejemplo en esta maqueta</em>` : ""}</div></div>`;
 }
-setInterval(() => { document.querySelectorAll("[data-clock]").forEach(el => el.textContent = clockNow()); document.querySelectorAll("[data-date]").forEach(el => el.textContent = dateNow()); }, 10000);
+const tickClock = () => { document.querySelectorAll("[data-clock]").forEach(el => el.textContent = clockNow()); document.querySelectorAll("[data-date]").forEach(el => el.textContent = dateNow()); };
+setInterval(tickClock, 10000); tickClock();
 const helloHead = sub => `<div class="hellohead"><div class="hh-l"><h1>${helloHTML()}</h1><p class="sub">${sub}</p><p class="motto">“${esc(dailyPhrase())}”</p></div>${nowCard()}</div>`;
 function pInicio(){
   const first = nickOf(viewer);
@@ -3043,14 +3068,21 @@ function pPlan(){
   const filters = `<div class="panel" style="padding:14px;display:flex;flex-direction:column;gap:10px"><div class="head">${brandChips()}</div>
     <div class="jfilters"><select class="base" data-cmf="cm"><option value="Todos">CM: todos</option>${names.map(n => `<option ${cmUI.cm === n ? "selected" : ""}>${n}</option>`).join("")}</select>
     <select class="base" data-cmf="st"><option value="Todos">Estado: todos</option>${POST_STAGES.map(st => `<option ${cmUI.st === st ? "selected" : ""}>${st}</option>`).join("")}</select></div></div>`;
-  return `<div class="head"><div><h1>Plan de posteo</h1><p class="sub">${monthLabel(MONTH)} · lo que se tiene que subir: cada publicación en su fecha, con su estado. Marcá si está programada, publicada o pautada. Se arma solo cada mes según las reglas de cada marca.</p></div></div>
+  return `<div class="head"><div><h1 class="pmh">${pmIco("list-checks")}Plan de posteo</h1><p class="sub">${monthLabel(MONTH)} · todo lo que se sube en el mes, cada publicación en su fecha y con su estado. Se arma solo cada mes según las reglas de cada marca.</p></div>${viewTabs([["tabla","Tabla","table-2"],["calendario","Calendario","calendar-days"]], planUI.view, "data-plview")}</div>
   ${isClosed() ? `<div class="ro">🔒 ${monthLabel(MONTH)} está cerrado: se puede consultar, pero no modificar. Lo que no se cumplió pasó al mes siguiente como “arrastrado”.</div>` : ""}
   ${summary}${filters}
-  <div class="head"><span class="note">${vp.length} ${vp.length === 1 ? "publicación" : "publicaciones"} · ordenadas por fecha de publicación${canEditPost() ? " · cambiá el estado desde la lista" : ""}</span>${isClosed() ? "" : URG_LEGEND.replace("Alarma de entrega", "Alarma de publicación")}</div>
+  ${planUI.view === "calendario" ? planCal(vp) : `<div class="head"><span class="note">${vp.length} ${vp.length === 1 ? "publicación" : "publicaciones"} · ordenadas por fecha de publicación${canEditPost() ? " · cambiá el estado desde la lista" : ""}</span></div>
   <div class="tw"><table><thead><tr><th>Publicación</th><th>Marca</th><th>CM</th><th>Red · formato</th><th>Tema</th><th>Diseño gráfico</th><th>Estado</th><th>Siguiente paso</th></tr></thead><tbody>
     ${vp.map(p => { const lbl = canEditPost() && { "Listo":"Programar", "Programado":"Marcar publicado", "Publicado":"Pautar" }[p.status];
       return `<tr><td class="num" style="white-space:nowrap">${dm(p.date)}</td><td>${brandTag(p.brand)}</td><td>${canEditPost() ? `<select class="base sm" data-pcm="${p.id}" aria-label="CM de ${esc(p.title)}">${[...new Set([...CM_NAMES(), p.cm].filter(Boolean))].map(n => `<option value="${esc(n)}" ${n === p.cm ? "selected" : ""}>${esc(firstName(n))}</option>`).join("")}</select>` : esc(firstName(p.cm))}</td><td style="white-space:nowrap"><span class="net">${p.net}</span> ${p.format}</td><td style="min-width:190px"><b style="color:#fff">${esc(p.title)}</b>${p.carried ? `<span class="carried">↩ Arrastrado de ${p.carried}</span>` : ""}</td><td style="white-space:nowrap">${postDesignCell(p)}</td><td><div class="chips" style="flex-wrap:nowrap">${postStatusCell(p)}${postUrgBadge(p)}</div></td><td>${lbl ? `<button class="btn" data-adv-post="${p.id}">${lbl}</button>` : `<span class="note">—</span>`}</td></tr>`; }).join("") || `<tr><td colspan="8" class="empty">No hay publicaciones con estos filtros.</td></tr>`}
-  </tbody></table></div>`;
+  </tbody></table></div>`}`;
+}
+// Plan de posteo en calendario: una vista general del mes, con todas las marcas juntas.
+let planUI = { view:"tabla" };
+document.addEventListener("click", e => { const v = e.target.closest("[data-plview]"); if (v){ planUI.view = v.dataset.plview; render(); } });
+function planCal(vp){
+  return `<div class="plcal">${calGrid(c => vp.filter(p => p.date === c).map(p => `<div class="pev" title="${esc(p.title)} · ${p.brand} · ${p.net} ${p.format} · ${p.status} · ${esc(p.cm || "")}"><i style="background:${BRANDS[p.brand]}"></i><span>${esc(p.title)}</span><em style="--c:${POST_COLOR[p.status] === "#334155" ? "#94a3b8" : POST_COLOR[p.status]}">${p.status}</em></div>`).join(""))}</div>
+  <p class="note">Cada publicación con el punto de color de su marca y su estado. Para cambiar la fecha o editarla, usá el Calendario Feed o Historia.</p>`;
 }
 let jobUI = { area:"Todos", view:"calendario", status:"Activos", owner:"Todos", prio:"Todas", q:"", form:null };
 const canCreateJobs = () => !isDesigner() && !isViewOnly() && !isClosed();
@@ -3998,7 +4030,7 @@ function pMensajes(){
     <div class="msgthreads"><div class="chips msgtabs"><button class="chip ${msgUI.tab === "curso" ? "on" : ""}" data-msgtab="curso">En curso · ${act.length}</button><button class="chip ${msgUI.tab === "fin" ? "on" : ""}" data-msgtab="fin">Finalizados · ${fin.length}</button></div>
     ${list.length ? list.map(t => { const otherId = t.a === viewer.id ? t.b : t.a, o = personById(otherId), unread = t.msgs.some(m => m.from !== viewer.id && !m.read);
       return `<article class="panel msgthread ${unread ? "unread" : ""} ${msgUI.open === t.id ? "open" : ""} ${t.done ? "done" : ""} ${t.prio === "Urgente" && !t.done ? "urgent" : ""}" style="--pc:${prioOf(t).c}" id="thread-${t.id}"><header>${o ? avatarHTML(o) : ""}<div><b>${prioChip(t)} ${esc(t.topic)}</b><span>con ${esc(o?.name || "")}${unread ? ` · <em>nuevo</em>` : ""}</span></div><span class="note">${dm(t.msgs[t.msgs.length - 1].date)} ${t.msgs[t.msgs.length - 1].time}</span></header>
-        <div class="msgdates"><span>📤 Enviado el <b>${dm(t.msgs[0].date)} a las ${t.msgs[0].time}</b></span>${t.msgs.length > 1 ? `<span>↩ Última respuesta el <b>${dm(t.msgs[t.msgs.length - 1].date)} a las ${t.msgs[t.msgs.length - 1].time}</b></span>` : `<span class="note">Todavía sin respuesta</span>`}</div>
+        <div class="msgdates"><span>${icon("send")} Enviado el <b>${dm(t.msgs[0].date)} a las ${t.msgs[0].time}</b></span>${t.msgs.length > 1 ? `<span>${icon("reply")} Última respuesta el <b>${dm(t.msgs[t.msgs.length - 1].date)} a las ${t.msgs[t.msgs.length - 1].time}</b></span>` : `<span class="note">Todavía sin respuesta</span>`}</div>
         <div class="bubbles">${t.msgs.map((m, mi) => `<div class="bubble ${m.from === viewer.id ? "own" : ""}"><div class="bfrom">${m.from === viewer.id ? "Vos" : esc(nickOf(personById(m.from)) || "")} · ${mi === 0 ? "envió" : "respondió"} el ${dm(m.date)} a las ${m.time}</div><div class="btxt">${esc(m.text)}</div>${m.from === viewer.id ? `<div class="bstate ${m.ack ? "ok" : ""}">${m.ack ? `✓✓ Recibido por ${esc(nickOf(o) || "")} · ${dm(m.ack.date)} ${m.ack.time}` : "✓ Enviado"}</div>` : m.ack ? `<div class="bstate ok">✓✓ Marcaste recibido · ${m.ack.time}</div>` : ""}</div>`).join("")}</div>
         ${t.done ? `<div class="msgdone"><span>✓ Finalizada por ${t.done.by === viewer.id ? "vos" : esc(nickOf(personById(t.done.by)) || "")} · ${dm(t.done.date)} ${t.done.time}</span><button class="btn" data-msgreopen="${t.id}">Reabrir</button></div>` : `<div class="msgreply">${pendingAck(t) ? `<button class="btn ackbtn" data-msgack="${t.id}" title="Confirmá que lo leíste, sin tener que contestar">✓ Recibido</button>` : ""}<input class="base" data-msgrep="${t.id}" placeholder="Responder a ${esc(nickOf(o) || "")}…" aria-label="Respuesta"><button class="btn primary" data-msgsend="${t.id}">Responder</button></div><div class="msgfin"><button class="btn finbtn" data-msgfin="${t.id}" title="Pasa a Finalizados para las dos personas">✓ Finalizar conversación</button></div>`}</article>`; }).join("") : `<div class="panel"><div class="empty">${msgUI.tab === "fin" ? "Todavía no hay conversaciones finalizadas." : "No tenés conversaciones en curso."}</div></div>`}</div>
   </div>`;
@@ -4559,7 +4591,7 @@ function pPrompts(){
         ${f.refFondo === "si" ? `<label class="pfsel">¿Qué fondo adjuntás?<select class="base" data-pf="fondoTipo"><option value="super" ${f.fondoTipo === "super" ? "selected" : ""}>Supermercado</option><option value="otro" ${f.fondoTipo === "otro" ? "selected" : ""}>Otro lugar</option></select></label>` : ""}
         ${people ? yn("refPersona", "Persona", "Se mantiene la cara y la identidad", "Sí", "No") : ""}
         <p class="pfid">${icon("shield-check")} Todo lo que adjuntes se respeta al 100%: el prompt le pide a la IA que no deforme productos, logos, letras ni personas.</p>` : ""}</div>`;
-  const style = `<div class="w3 pgroup"><h3>Estilo de la foto</h3><div class="pgrid4">${S("estilo", "Estilo", "estilo")}${m === 5 && !fondoAdj ? `<label>Iluminación<input class="base" value="Estudio en blanco (fija)" disabled></label>` : S("ilum", "Iluminación", "ilum")}${S("encuadre", "Encuadre", "encuadre")}${S("formato", "Formato", "formato", true)}${f.formato === "px" ? `<label>Ancho (px) *<input class="base" type="number" inputmode="numeric" min="100" max="10000" step="1" data-pf="pxW" value="${esc(f.pxW)}" placeholder="1080"></label><label>Largo / alto (px) *<input class="base" type="number" inputmode="numeric" min="100" max="10000" step="1" data-pf="pxH" value="${esc(f.pxH)}" placeholder="1350"></label>` : ""}${S("espacio", "Espacio para texto", "espacio")}</div>
+  const style = `<div class="w3 pgroup"><h3>Estilo de la foto</h3><div class="pgrid4">${S("estilo", "Estilo", "estilo")}${m === 5 && !fondoAdj ? `<label>Iluminación<input class="base" value="Estudio en blanco (fija)" disabled></label>` : S("ilum", "Iluminación", "ilum")}${S("encuadre", "Encuadre", "encuadre")}${S("espacio", "Espacio para texto", "espacio")}${S("formato", "Formato", "formato", true)}${f.formato === "px" ? `<label>Ancho (px) *<input class="base" type="number" inputmode="numeric" min="100" max="10000" step="1" data-pf="pxW" value="${esc(f.pxW)}" placeholder="1080"></label><label>Largo / alto (px) *<input class="base" type="number" inputmode="numeric" min="100" max="10000" step="1" data-pf="pxH" value="${esc(f.pxH)}" placeholder="1350"></label>` : ""}</div>
       <p class="note" style="margin:0">La cámara, el lente y la exposición se eligen solos según lo que cargues.</p></div>`;
   return `<div class="pm2"><div class="head"><div><h1>Prompts de imágenes</h1><p class="sub">Para ChatGPT, Gemini o Nano Banana. Elegí la modalidad, completá los campos, tocá <b>Generar prompt</b> y copiá el texto.</p></div></div>
   <div class="pmtabs2" role="tablist">${PM_MODES.map(x => `<button type="button" role="tab" aria-selected="${m === x.n}" class="${m === x.n ? "on" : ""}" data-pmmode="${x.n}">${icon(x.i)}<span>${x.l}</span></button>`).join("")}</div>
@@ -4697,7 +4729,7 @@ function pAvisos(){
     <h2 style="margin:0">Vigentes</h2>${act.length ? `<div class="avlist">${act.map(a => avCard(a, false)).join("")}</div>` : `<div class="panel"><div class="empty">No hay avisos vigentes.</div></div>`}
     ${prox.length ? `<h2 style="margin:0">Próximos</h2><div class="avlist">${prox.map(a => avCard(a, false)).join("")}</div>` : ""}`; }
   const groups = ["Activo","Programado","Vencido"].map(st => [st, AVISOS.filter(a => avState(a) === st).sort((a, b) => a.from.localeCompare(b.from))]);
-  return `<div class="head"><div><h1>Avisos</h1><p class="sub">Publicá un comunicado para todo el equipo o para un grupo. Aparece arriba en el Inicio y en Alertas de esas personas, solo durante las fechas que elijas.</p></div><button class="btn primary" data-avnew>+ Nuevo aviso</button></div>
+  return `<div class="head"><div><h1>Avisos</h1><p class="sub">Publicá un comunicado para todo el equipo o para un grupo. Aparece arriba en el Inicio y en Alertas de esas personas, solo durante las fechas que elijas.</p></div><button class="btn primary" data-avnew>${icon("plus")} Nuevo aviso</button></div>
   ${avUI.form ? `<form class="panel pform avform" id="avForm"><h3 style="margin:0;grid-column:1/-1">Nuevo aviso</h3>
     <label class="w2">Título<input class="base" id="avTitle" required maxlength="80" placeholder="Ej.: Horario especial mañana"></label>
     <label>Tipo<select class="base" id="avLevel">${Object.keys(AV_LEVELS).map(k => `<option>${k}</option>`).join("")}</select></label>
@@ -4710,9 +4742,9 @@ function pAvisos(){
   ${groups.map(([st, list]) => list.length ? `<h2 style="margin:0">${st === "Activo" ? "Activos ahora" : st === "Programado" ? "Programados" : "Vencidos"} <span class="note">(${list.length})</span></h2><div class="avlist">${list.map(a => avCard(a, true)).join("")}</div>` : "").join("")}`;
 }
 function avCard(a, admin){ const L = AV_LEVELS[a.level], st = avState(a), n = PEOPLE.filter(pp => pp.active && avFor(a, pp) && pp.role !== "Admin total"), seen = n.filter(pp => a.seen.includes(pp.id)).length;
-  return `<article class="panel avcard ${st.toLowerCase()}" style="--c:${L.c}"><header><span class="avlvl">${L.i} ${a.level}</span><span class="avst">${st}</span>${admin ? `<button class="btn danger sm" data-avdel="${a.id}" aria-label="Borrar aviso">✕</button>` : ""}</header>
+  return `<article class="panel avcard ${st.toLowerCase()}" style="--c:${L.c}"><header><span class="avlvl">${icon(L.ic)} ${a.level}</span><span class="avst">${st}</span>${admin ? `<button class="btn danger sm ib" data-avdel="${a.id}" aria-label="Borrar aviso">${icon("trash-2")}</button>` : ""}</header>
     <h3>${esc(a.title)}</h3><p>${esc(a.text)}</p>
-    <footer><span>📅 Se muestra ${avRange(a)}</span><span>👥 ${avToLabel(a)}</span>${admin ? `<span>👁 Lo marcaron como entendido ${seen} de ${n.length}</span>` : ""}</footer></article>`; }
+    <footer><span>${icon("calendar")} Se muestra ${avRange(a)}</span><span>${icon("users")} ${avToLabel(a)}</span>${admin ? `<span>${icon("eye")} Lo marcaron como entendido ${seen} de ${n.length}</span>` : ""}</footer></article>`; }
 const addDays = (d, k) => { const x = new Date(d + "T12:00"); x.setDate(x.getDate() + k); return x.toISOString().slice(0, 10); };
 document.addEventListener("click", e => {
   if (e.target.closest("[data-avnew]")){ avUI.form = !avUI.form; render(); return; }
@@ -4891,7 +4923,7 @@ function render(){
   $("#viewas").value = viewer.id;
   const ro = isViewOnly() && ["calendario","calhistoria","calcanales","caldiseno","plan","pedidos","gestioncm","inicio"].includes(page) ? `<div class="ro">👁 Perfil Admin (control): ves todo el sitio y descargás informes, pero no modificás contenidos, usuarios ni configuración.</div>` : "";
   const avb = page === "inicio" ? avActiveFor(viewer).filter(a => !a.seen.includes(viewer.id)).sort((a, b) => ["Urgente","Importante","Informativo"].indexOf(a.level) - ["Urgente","Importante","Informativo"].indexOf(b.level)).map(avBanner).join("") : "";
-  const inst = page === "inicio" && !isInstalledApp() && !installTipClosed() ? `<div class="panel insttip"><span class="pico">${icon("smartphone")}</span><div class="grow"><b>Tené la app a un toque</b><span>Instalala en tu celular, tablet o computadora: queda con su ícono y abre a pantalla completa.</span></div><button class="btn pgen" data-install>${icon("download")} Ver cómo</button><button class="btn" data-installclose aria-label="Cerrar aviso">✕</button></div>` : "";
+  const inst = page === "inicio" && !isInstalledApp() && !installTipClosed() ? `<div class="panel insttip"><span class="pico">${icon("smartphone")}</span><div class="grow"><b>Tené la app a un toque</b><span>Instalala en tu celular, tablet o computadora: queda con su ícono y abre a pantalla completa.</span></div><button class="btn pgen" data-install>${icon("download")} Ver cómo</button><button class="btn ib" data-installclose aria-label="Cerrar aviso">${icon("x")}</button></div>` : "";
   const bdays = page === "inicio" && can("cumples") ? bdayAlerts().map(({ pp, d }) => `<div class="panel bday ${d === 0 ? "today" : ""}" style="--u:${d === 0 ? "#ef4444" : "#f97316"}"><div class="ic">${CAKE_SVG}</div><div><b>${d === 0 ? `¡Hoy cumple años ${esc(pp.name)}! 🎉` : `${d === 1 ? "Mañana" : `En ${d} días`} cumple años ${esc(pp.name)}`}</b> <span>${esc(pp.cargo || pp.role)} · ${bdayLabel(pp.birthday)}${d === 0 ? " · ¡No te olvides de saludar!" : ""}</span></div></div>`).join("") : "";
   const demo = window.RMH?.previewing ? `<div class="panel demo">${icon("info")}<div><b>Vista previa como ${esc(viewer.name)}.</b> <span>Lo que cambies acá no se guarda. Volvé a tu usuario en “ver como” (abajo a la izquierda).</span></div></div>` : "";
   const i = MONTHS_APP.findIndex(m => m.v === MONTH);
@@ -4900,7 +4932,7 @@ function render(){
   const viewKey = [page, MONTH, viewer.id, calCM, reportTab, redesBrand, brandFilter, jobUI.view, cmUI.tview, cartUI.view, soloYo].join("|");
   if (animate0(page)) { jobUI.owner = "Todos"; jobUI.q = ""; if (!stagesOf(jobArea()).includes(jobUI.status)) jobUI.status = jobUI.status === "Todos" ? "Todos" : "Activos"; }
   const animate = viewKey !== render.lastKey; render.lastKey = viewKey; if (animate) render.visit = (render.visit || 0) + 1;
-  $("#content").innerHTML = `<div class="${animate ? (page === "pedidos" || page === "gestioncm" ? "anim" : "fade anim") : "noanim"}${["pedidos","cartel","web","gestioncm","inicio","alertas"].includes(page) ? " clean" : ""}" style="display:flex;flex-direction:column;gap:24px">${bar}${["tv","tvredes","tvimpacto"].includes(page) ? "" : `<p class="eyebrow">${EYEBROW[page]}</p>`}${ro}${avb}${inst}${bdays}${PAGES[page]()}${demo}</div>${installDrawer()}`;
+  $("#content").innerHTML = `<div class="${animate ? (page === "pedidos" || page === "gestioncm" ? "anim" : "fade anim") : "noanim"}${["pedidos","cartel","web","gestioncm","inicio","alertas","avisos","mensajes","plan"].includes(page) ? " clean" : ""}" style="display:flex;flex-direction:column;gap:24px">${bar}${["tv","tvredes","tvimpacto"].includes(page) ? "" : `<p class="eyebrow">${EYEBROW[page]}</p>`}${ro}${avb}${inst}${bdays}${PAGES[page]()}${demo}</div>${installDrawer()}`;
   if (window.lucide) lucide.createIcons();
   if (page === "tvredes"){ tvShow(animate ? 0 : tv.i); tvStart(); } else tvStop();
   if (page === "tvimpacto"){ impShow(animate ? 0 : imp.i); impLoop(); } else impStop();
