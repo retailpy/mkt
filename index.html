@@ -152,6 +152,10 @@ td.r,th.r{text-align:right}
 .ev::before{content:"";display:block;height:3px;background:var(--c)}
 .ev span{display:block;padding:3px 6px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
 .ev.job{border-style:dashed;background:transparent}
+.ev.sep{background:transparent!important;border:2px solid var(--c)!important}
+.cmnews{display:grid;gap:12px}
+.card.tapstage{cursor:pointer}.card.tapstage:hover{border-color:color-mix(in srgb,var(--cyan) 55%,transparent)}
+.ev.sep::before{display:none}
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);align-items:center}
 .legend .sw{display:inline-block;width:18px;height:8px;border-radius:4px;margin-right:6px;vertical-align:1px}
 /* redes */
@@ -1785,7 +1789,7 @@ function dragMonthsBar(){
   document.body.appendChild(bar);
 }
 document.addEventListener("dragend", () => { drag = null; clearTimeout(dragNav.t); document.getElementById("dragMonths")?.remove(); document.querySelectorAll(".dragging,.over,.dragnav").forEach(x => x.classList.remove("dragging","over","dragnav")); });
-const isCalPage = () => page === "calendario" || page === "calhistoria" || page === "calcanales" || page === "caldiseno" || (page === "pedidos" && jobUI.view === "calendario") || (page === "gestioncm" && cmUI.tview === "calendario");
+const isCalPage = () => page === "calendario" || page === "calhistoria" || page === "calcanales" || page === "caldiseno" || (page === "pedidos" && jobUI.view === "calendario");
 function dropTarget(e){
   if (!drag) return null;
   if (drag.kind === "nitem"){ const c = e.target.closest("[data-nit]"); return c && c.dataset.nit.split("|")[0] === drag.id.split("|")[0] && c.dataset.nit !== drag.id ? c : null; }
@@ -2365,7 +2369,7 @@ function visibleJobs(){
 function brandChips(){
   const opts = myGroups().length > 1 ? ["Todas", ...myGroups()] : myGroups();
   if (page === "calendario" || page === "calhistoria" || page === "calcanales" || page === "caldiseno"){
-    const all = page === "caldiseno" ? [...opts, "Materiales"] : opts;
+    const all = (page === "caldiseno" ? [...myGroups(), "Materiales"] : myGroups()); // siempre por marca, nunca todas juntas
     return `<div class="chips">${all.map(b => `<button class="chip ${brandFilter===b?"on":""}" data-brand="${b}">${b === "Todas" ? "Todos juntos" : b === "Otros" ? "Otras marcas" : b === "Materiales" ? "📦 Materiales" : b}</button>`).join("")}</div>`;
   }
   if (opts.length === 1) return `<div class="note">Viendo solo: <span class="brand" style="--c:${GROUP_COLOR[opts[0]]}">${opts[0] === "Otros" ? "Otras marcas" : opts[0]}</span></div>`;
@@ -2681,7 +2685,7 @@ function evStage(kind, it, text, color){
 function closeStageMenu(){ document.getElementById("stagepop")?.remove(); }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-stagemenu]");
-  if (!b){ if (!e.target.closest("#stagepop")) closeStageMenu(); return; }
+  if (!b || (b.classList.contains("card") && e.target.closest("button,a,select,input"))){ if (!e.target.closest("#stagepop")) closeStageMenu(); return; }
   e.preventDefault(); closeStageMenu();
   const [kind, id] = b.dataset.stagemenu.split(":"), it = kind === "post" ? postById(id) : kind === "canal" ? canalById(id) : jobs.find(x => x.id === id);
   const opts = stageOptions(kind, it); if (!opts.length) return;
@@ -2693,7 +2697,7 @@ document.addEventListener("click", e => {
   pop.style.left = Math.max(8, Math.min(r.left, innerWidth - pw - 8)) + "px";
   pop.style.top = (r.bottom + ph + 8 > innerHeight ? Math.max(8, r.top - ph - 4) : r.bottom + 4) + "px";
 });
-document.addEventListener("keydown", e => { if (e.key === "Escape") closeStageMenu(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeStageMenu(); if ((e.key === "Enter" || e.key === " ") && e.target.matches?.(".card[data-stagemenu]")){ e.preventDefault(); e.target.click(); } });
 document.addEventListener("click", e => {
   const o = e.target.closest("[data-stageset]"); if (!o) return;
   closeStageMenu();
@@ -2770,7 +2774,7 @@ function pMateriales(){
   return `<div class="head"><div><h1>Calendario Diseño gráfico · 📦 Materiales</h1><p class="sub">${monthLabel(MONTH)} · cartelería, flyers, vía pública, catálogos, pantallas y empaques de todas las marcas, por fecha de entrega.</p></div>${brandChips()}</div>
   ${URG_LEGEND}${calHint()}
   ${calGrid(c => mats.filter(j => j.due === c).map(j => { const u = urgency(j), done = isFin(j);
-    return `<div class="ev"${calDrag("job", j.id)}${canCreateJobs() ? ` data-open="job:${j.id}"` : ""} style="--c:${BRANDS[j.brand]};--s:${done ? "#10b981" : u ? u.c : "#475569"}" title="${esc(j.piece)} · ${esc(j.title)} · ${j.status} · ${esc(j.owner)}"><span>${done ? "✓ " : u?.late ? "⏰ " : "📦 "}${j.brand} · ${esc(j.title)}</span>${evStage("job", j, `${j.status} · ${esc(firstName(j.owner))}`, j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status])}</div>`; }).join(""), canCreateJobs())}
+    return `<div class="ev${sepCls(j.brand)}"${calDrag("job", j.id)}${canCreateJobs() ? ` data-open="job:${j.id}"` : ""} style="--c:${BRANDS[j.brand]};--s:${done ? "#10b981" : u ? u.c : "#475569"}" title="${esc(j.piece)} · ${esc(j.title)} · ${j.status} · ${esc(j.owner)}"><span>${done ? "✓ " : u?.late ? "⏰ " : "📦 "}${j.brand} · ${esc(j.title)}</span>${evStage("job", j, `${j.status} · ${esc(firstName(j.owner))}`, j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status])}</div>`; }).join(""), canCreateJobs())}
   <div class="tw"><table><thead><tr><th>Entrega</th><th>Marca</th><th>Pieza</th><th>Material</th><th>Diseñador</th><th>Estado</th></tr></thead><tbody>
     ${mats.map(j => `<tr><td class="num">${dm(j.due)}</td><td>${brandTag(j.brand)}</td><td>${esc(j.piece)}</td><td>${esc(j.title)}</td><td>${esc(j.owner)}</td><td><div class="chips" style="flex-wrap:nowrap">${pill(j.status, JOB_COLOR[j.status])}${urgBadge(j)}</div></td></tr>`).join("") || `<tr><td colspan="6" class="empty">No hay materiales con entrega en ${monthName(MONTH)}.</td></tr>`}
   </tbody></table></div>
@@ -2787,19 +2791,21 @@ function pCalDiseno(){
 }
 let calCM = "todo";
 // Calendario CM: dos calendarios separados, uno para el feed (posts, carruseles y reels) y otro para las historias.
-// Los pedidos a CM y las grabaciones repetitivas se ven en Gestión CM → Calendario de pedidos.
+// Los pedidos a CM se ven en Gestión CM (Tablero o Tabla); las grabaciones repetitivas, en el Calendario Feed.
 function pCalCM(kind){
   const hist = kind === "Historia", vp = visiblePosts().filter(p => hist ? p.format === "Historia" : p.format !== "Historia");
-  const rec = recVisible().filter(r => r.kind === kind);
+  const rec = recVisible().filter(r => r.kind === kind || (!hist && r.kind === "Grabación"));
   const calName = brandFilter === "Todas" ? "Todos juntos" : brandFilter === "Otros" ? "Otras marcas" : brandFilter;
   return `<div class="head"><div><h1>Calendario ${hist ? "Historia" : "Feed"} · ${calName}</h1><p class="sub">${monthLabel(MONTH)} · ${hist ? "las historias de cada día: las del plan y las repetitivas (🔁)" : "las publicaciones del feed (posts, carruseles y reels) en su fecha de publicación, y las repetitivas (🔁)"}.</p></div>
     <div class="chips">${canEditPost() ? `<button class="btn primary" data-pnew="${kind}">➕ Nueva ${hist ? "historia" : "publicación"}</button>` : ""}${canCreateJobs() && can("gestioncm") ? `<button class="btn" data-recgo="${kind}">🔁 Repetitivo</button>` : ""}${brandChips()}</div></div>
-  <div class="legend">${POST_STAGES.map(st => `<span><span class="sw" style="background:${POST_COLOR[st]}"></span>${st}</span>`).join("")}<span><span class="sw" style="background:${REC_KINDS[kind].c}"></span>🔁 ${kind} repetitiva</span></div>${calHint()}
+  <div class="legend">${POST_STAGES.map(st => `<span><span class="sw" style="background:${POST_COLOR[st]}"></span>${st}</span>`).join("")}<span><span class="sw" style="background:${REC_KINDS[kind].c}"></span>🔁 ${kind} repetitiva</span>${hist ? "" : `<span><span class="sw" style="background:${REC_KINDS["Grabación"].c}"></span>🔁 Grabación repetitiva</span>`}</div>${calHint()}
   ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("")
-    + vp.filter(p => p.date === c).map(p => `<div class="ev"${calDrag("post", p.id)}${canEditPost() ? ` data-open="post:${p.id}"` : ""} style="--c:${BRANDS[p.brand]};--s:${POST_COLOR[p.status]}" title="${esc(p.title)} · ${p.net} ${p.format} · ${p.status} · ${esc(p.cm || "")}"><span>${postUrgency(p)?.late ? "⏰ " : ""}${p.brand} · ${esc(p.title)}</span>${evStage("post", p, `${p.status} · ${p.net}${hist ? "" : " " + p.format} · ${esc(firstName(p.cm || ""))}`, POST_COLOR[p.status] === "#334155" ? "#94a3b8" : POST_COLOR[p.status])}</div>`).join(""), canEditPost())}
-  <p class="note">🔁 = pedido repetitivo: se carga una sola vez en Gestión CM y aparece solo en cada fecha. Tocalo para marcarlo como hecho.</p>
-  ${postForm()}`;
+    + vp.filter(p => p.date === c).map(p => `<div class="ev${sepCls(p.brand)}"${calDrag("post", p.id)}${canEditPost() ? ` data-open="post:${p.id}"` : ""} style="--c:${BRANDS[p.brand]};--s:${POST_COLOR[p.status]}" title="${esc(p.title)} · ${p.net} ${p.format} · ${p.status} · ${esc(p.cm || "")}"><span>${postUrgency(p)?.late ? "⏰ " : ""}${p.brand} · ${esc(p.title)}</span>${evStage("post", p, `${p.status} · ${p.net}${hist ? "" : " " + p.format} · ${esc(firstName(p.cm || ""))}`, POST_COLOR[p.status] === "#334155" ? "#94a3b8" : POST_COLOR[p.status])}</div>`).join(""), canEditPost())}
+  <p class="note">🔁 = pedido repetitivo: se carga una sola vez con “🔁 Repetitivo” y aparece solo en cada fecha. Tocalo para marcarlo como hecho.</p>
+  ${postForm()}${recDrawer()}`;
 }
+// Lo de otras marcas (fuera de Superseis, Stock y Delimarket) se dibuja solo con el borde de su color.
+const sepCls = b => MAIN_BRANDS.includes(b) ? "" : " sep";
 function pCalCanales(){
   const list = visibleCanales(), rec = recVisible().filter(r => r.kind === "Canal");
   const calName = brandFilter === "Todas" ? "Todos juntos" : brandFilter === "Otros" ? "Otras marcas" : brandFilter;
@@ -2807,9 +2813,9 @@ function pCalCanales(){
   return `<div class="head"><div><h1>Calendario Canales · ${calName}</h1><p class="sub">${monthLabel(MONTH)} · lo que se sube fuera de las redes: ofertas en la web, la app, WhatsApp, e-mail o pantallas, cada una en su fecha.</p></div>
     <div class="chips">${canEditPost() ? `<button class="btn primary" data-pnew="Canal">➕ Nuevo contenido</button>` : ""}${canCreateJobs() && can("gestioncm") ? `<button class="btn" data-recgo="Canal">🔁 Repetitivo</button>` : ""}${brandChips()}</div></div>
   <div class="legend">${CANAL_STAGES.map(st => `<span><span class="sw" style="background:${POST_COLOR[st]}"></span>${st}</span>`).join("")}<span><span class="sw" style="background:${REC_KINDS.Canal.c}"></span>🔁 Canal repetitivo</span><span>${CANALES.map(c => `${CH_ICO[c]} ${c}`).join(" · ")}</span></div>${calHint()}
-  ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("") + list.filter(k => k.date === c).map(k => `<div class="ev"${calDrag("canal", k.id)}${canEditPost() ? ` data-open="canal:${k.id}"` : ""} style="--c:${BRANDS[k.brand]};--s:${POST_COLOR[k.status]}" title="${esc(k.title)} · ${esc(k.channel)} · ${k.status} · ${esc(k.cm || "")}"><span>${CH_ICO[k.channel] || "📌"} ${k.brand} · ${esc(k.title)}</span>${evStage("canal", k, `${k.status} · ${esc(k.channel)} · ${esc(firstName(k.cm || ""))}`, POST_COLOR[k.status] === "#334155" ? "#94a3b8" : POST_COLOR[k.status])}</div>`).join(""), canEditPost())}
+  ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("") + list.filter(k => k.date === c).map(k => `<div class="ev${sepCls(k.brand)}"${calDrag("canal", k.id)}${canEditPost() ? ` data-open="canal:${k.id}"` : ""} style="--c:${BRANDS[k.brand]};--s:${POST_COLOR[k.status]}" title="${esc(k.title)} · ${esc(k.channel)} · ${k.status} · ${esc(k.cm || "")}"><span>${CH_ICO[k.channel] || "📌"} ${k.brand} · ${esc(k.title)}</span>${evStage("canal", k, `${k.status} · ${esc(k.channel)} · ${esc(firstName(k.cm || ""))}`, POST_COLOR[k.status] === "#334155" ? "#94a3b8" : POST_COLOR[k.status])}</div>`).join(""), canEditPost())}
   <p class="note">🔁 = repetitivo: una oferta o contenido que sale siempre los mismos días (ej.: ofertas de WhatsApp cada lunes). Se carga una vez con “🔁 Repetitivo” y aparece solo en cada fecha; tocalo para marcarlo como hecho.${list.some(k => k.date.slice(0,7) === MONTH) ? "" : ` Todavía no hay contenidos cargados en ${monthName(MONTH)}.`}</p>
-  ${postForm()}`;
+  ${postForm()}${recDrawer()}`;
 }
 function pCalendario(){ return pCalCM("Feed"); }
 function pCalHistoria(){ return pCalCM("Historia"); }
@@ -2892,10 +2898,11 @@ function jobBoard(list, A){
     const col = list.filter(j => j.status === st);
     return `<div class="col" data-jdrop="${st}"><div class="col-h" style="--c:${JOB_COLOR[st]}"><span>${st}</span><span class="num">${col.length}</span></div>${col.map(j => {
       const p = j.post && postById(j.post);
-      return `<div class="card${urgStyle(j)}--c:${BRANDS[j.brand]}"${canSetAnyStatus(j) ? ` draggable="true" data-drag="job:${j.id}"` : ""}><div class="bar-top"></div><div class="in">${urgBadge(j) ? `<div>${urgBadge(j)}</div>` : ""}<div class="t">${esc(j.title)}</div>
+      const tap = A === "CM" && stageOptions("job", j).length;
+      return `<div class="card${tap ? " tapstage" : ""}${urgStyle(j)}--c:${BRANDS[j.brand]}"${canSetAnyStatus(j) ? ` draggable="true" data-drag="job:${j.id}"` : ""}${tap ? ` data-stagemenu="job:${j.id}" role="button" tabindex="0" title="Tocá para cambiar la etapa"` : ""}><div class="bar-top"></div><div class="in">${urgBadge(j) ? `<div>${urgBadge(j)}</div>` : ""}<div class="t">${esc(j.title)}</div>
         <div class="m">${brandTag(j.brand)}<span>${esc(j.piece)}</span><span>${FIN_STATES.includes(st) ? "finalizado " + dm(j.delivered || j.due) : "límite " + dm(j.due)}</span></div>
         ${p ? `<div class="link-post">↳ Post del ${dm(p.date)} · ${p.net}</div>` : ""}
-        <div class="foot"><span>${esc(j.owner)} · ${pill(j.priority, PRIO_COLOR[j.priority])}</span></div>${isDesigner() ? `<div class="dact"><span class="spl" style="color:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}">${j.status}</span>${designerAction(j)}</div>` : stagePicker(j, canSetAnyStatus(j))}</div></div>`;
+        <div class="foot"><span>${esc(j.owner)} · ${pill(j.priority, PRIO_COLOR[j.priority])}</span>${A === "CM" && canCreateJobs() ? `<button class="btn sm" data-jedit="${j.id}" title="Editar pedido" aria-label="Editar pedido">✏️</button>` : ""}</div>${isDesigner() ? `<div class="dact"><span class="spl" style="color:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}">${j.status}</span>${designerAction(j)}</div>` : A === "CM" ? `<div class="dact"><span class="spl" style="color:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}">● ${j.status}${tap ? " ▾" : ""}</span></div>` : stagePicker(j, canSetAnyStatus(j))}</div></div>`;
     }).join("") || `<div class="empty" style="padding:6px">Vacío</div>`}</div>`; }).join("")}</div>`;
 }
 const stageGuide = (t, st) => `<div class="stageguide"><span style="flex-basis:100%">Cuadraditos de etapa en cada tarjeta: tocá uno para mover el trabajo a esa etapa.</span><div class="sgrow"><b style="color:#e2e8f0;min-width:78px">${t}</b>${st.map((x, i) => `<span class="sg"><i style="--c:${JOB_COLOR[x]}">${i + 1}</i>${x}</span>`).join("")}</div></div>`;
@@ -2924,7 +2931,7 @@ function jobDeliveryCal(list, A = "Diseño"){
   const rec = A === "CM" ? recVisible().filter(r => r.kind === "Grabación") : [];
   return `<div class="legend">${stagesOf(A).map(st => `<span><span class="sw" style="background:${st === "Pendiente" ? "#94a3b8" : JOB_COLOR[st]}"></span>${st}</span>`).join("")}${A === "CM" ? `<span><span class="sw" style="background:${REC_KINDS["Grabación"].c}"></span>🔁 Grabación repetitiva</span>` : ""}</div>${calHint().replace("un posteo o una entrega", "una entrega")}
   ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("") + list.filter(j => j.due === c).map(j => { const done = isFin(j);
-    return `<div class="ev job"${calDrag("job", j.id)}${canCreateJobs() ? ` data-open="job:${j.id}"` : ""} style="--c:${BRANDS[j.brand]};--s:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}" title="${esc(j.title)} · ${j.status} · ${esc(j.owner)} · entrega ${dm(j.due)}"><span>${done ? "✓ " : urgency(j)?.late ? "⏰ " : ""}${esc(j.title)}</span>${evStage("job", j, `${j.status} · ${esc(firstName(j.owner))}`, j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status])}</div>`; }).join(""), canCreateJobs())}`;
+    return `<div class="ev job${sepCls(j.brand)}"${calDrag("job", j.id)}${canCreateJobs() ? ` data-open="job:${j.id}"` : ""} style="--c:${BRANDS[j.brand]};--s:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}" title="${esc(j.title)} · ${j.status} · ${esc(j.owner)} · entrega ${dm(j.due)}"><span>${done ? "✓ " : urgency(j)?.late ? "⏰ " : ""}${esc(j.title)}</span>${evStage("job", j, `${j.status} · ${esc(firstName(j.owner))}`, j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status])}</div>`; }).join(""), canCreateJobs())}`;
 }
 function pPedidos(){
   const A = "Diseño", cal = jobUI.view === "calendario", list = jobsFiltered(cal);
@@ -3059,52 +3066,69 @@ const recVisible = () => RECURRING.filter(r => seesBrand(r.brand) && inFilter(r.
 const recDays = r => r.days.length === 7 ? "Todos los días" : r.days.length === 5 && r.days.every(d => d < 5) ? "De lunes a viernes" : "Todos los " + r.days.map(d => WEEKDAYS[d].toLowerCase()).join(" y ").replace(/ y (?=.* y )/g, ", ");
 function recEv(r, d){
   const done = RECUR_DONE.has(r.id + "|" + d), k = REC_KINDS[r.kind];
-  return `<div class="ev rec ${done ? "done" : ""}" style="--c:${BRANDS[r.brand]};--s:${k.c}" title="🔁 ${esc(r.title)} · ${r.kind} · ${recDays(r)} ${r.time} · ${esc(r.owner)}${done ? " · hecho" : ""}"${canCreateJobs() ? ` data-recdone="${r.id}|${d}"` : ""}><span>${done ? "✓" : "🔁"} ${r.time} · ${esc(r.title)}</span><span class="st">● ${r.kind} · ${esc(firstName(r.owner))}</span></div>`;
+  return `<div class="ev rec ${done ? "done" : ""}${sepCls(r.brand)}" style="--c:${BRANDS[r.brand]};--s:${k.c}" title="🔁 ${esc(r.title)} · ${r.kind} · ${recDays(r)} ${r.time} · ${esc(r.owner)}${done ? " · hecho" : ""}"${canCreateJobs() ? ` data-recdone="${r.id}|${d}"` : ""}><span>${done ? "✓" : "🔁"} ${r.time} · ${esc(r.title)}</span><span class="st">● ${r.kind} · ${esc(firstName(r.owner))}</span></div>`;
 }
-function recurringPanel(){
+function recurringList(){
   const list = recVisible(), edit = canCreateJobs();
   const next = []; for (let i = 0; i < 7; i++){ const d = addDays(TODAY, i); list.filter(r => recOn(r, d)).sort((a, b) => a.time.localeCompare(b.time)).forEach(r => next.push([r, d])); }
-  const form = recUI.form ? `<form class="pform recform" id="recForm">
-      <label class="w2">Qué hay que hacer *<input class="base" id="rcTitle" required placeholder="Ej.: Historia de tarjetas de crédito"></label>
-      <label>Marca *<select class="base" id="rcBrand">${myBrands().map(b => `<option>${b}</option>`).join("")}</select></label>
-      <label>Tipo *<select class="base" id="rcKind">${Object.keys(REC_KINDS).map(k => `<option ${recUI.kind === k ? "selected" : ""}>${k}</option>`).join("")}</select></label>
-      <div class="recdays" style="grid-column:1/-1"><span class="note">Se repite los días *</span><div class="chips">${WEEKDAYS.map((w, i) => `<button type="button" class="chip ${recUI.days.includes(i) ? "on" : ""}" data-recday="${i}">${w}</button>`).join("")}</div></div>
-      <label>Hora *<input class="base" type="time" id="rcTime" value="09:00" required></label>
-      <label>Responsable *<select class="base" id="rcOwner">${CM_NAMES().map(n => `<option>${n}</option>`).join("")}</select></label>
-      <label>Desde<input class="base" type="date" id="rcFrom" value="${TODAY}"></label>
-      <label>Hasta (opcional)<input class="base" type="date" id="rcUntil"></label>
-      <div class="chips" style="grid-column:1/-1;justify-content:flex-end"><button class="btn" type="button" data-recform>Cancelar</button><button class="btn primary" type="submit">Guardar pedido repetitivo</button></div></form>` : "";
-  return `<div class="panel recpanel"><div class="head"><div><h2 style="margin:0">🔁 Pedidos repetitivos</h2><p class="sub" style="margin:4px 0 0">Lo que se hace siempre los mismos días: historias, feed o grabaciones. Aparecen solos en el Calendario Historia, el Feed, el de Canales y el Calendario de pedidos (grabaciones).</p></div></div>
-    ${form}
-    <div class="reclist">${list.map(r => { const k = REC_KINDS[r.kind]; return `<div class="recitem" style="--k:${k.c}"><span class="rk">${k.i}</span><div class="grow"><b>${esc(r.title)}</b><div class="m">${brandTag(r.brand)}<span class="rkind">${r.kind}</span><span>${recDays(r)} · ${r.time} hs</span><span>${esc(r.owner)}</span>${r.until ? `<span>hasta ${dm(r.until)}</span>` : ""}</div></div>${edit ? `<button class="btn danger sm" data-recdel="${r.id}" aria-label="Borrar">✕</button>` : ""}</div>`; }).join("") || `<div class="empty">Todavía no hay pedidos repetitivos.</div>`}</div>
+  return `<div class="panel recpanel"><div class="head"><div><h2 style="margin:0">🔁 Pedidos repetitivos</h2><p class="sub" style="margin:4px 0 0">Lo que sale siempre los mismos días. Se cargan solos en su calendario (Historia, Feed o Canales), desde la fecha de inicio hasta la de fin, o sin fin.</p></div></div>
+    <div class="reclist">${list.map(r => { const k = REC_KINDS[r.kind]; return `<div class="recitem" style="--k:${k.c}"><span class="rk">${k.i}</span><div class="grow"><b>${esc(r.title)}</b><div class="m">${brandTag(r.brand)}<span class="rkind">${r.kind}</span><span>${recDays(r)} · ${r.time} hs</span><span>${esc(r.owner)}</span><span>${r.from ? "desde " + dm(r.from) : ""}${r.until ? " hasta " + dm(r.until) : " · sin fecha de fin"}</span></div></div>${edit ? `<button class="btn sm" data-recedit="${r.id}" aria-label="Editar">✏️</button><button class="btn danger sm" data-recdel="${r.id}" aria-label="Borrar">✕</button>` : ""}</div>`; }).join("") || `<div class="empty">Todavía no hay pedidos repetitivos.</div>`}</div>
     ${next.length ? `<h3 class="rech">Próximos 7 días</h3><div class="recnext">${next.map(([r, d]) => { const done = RECUR_DONE.has(r.id + "|" + d); return `<div class="rn ${done ? "done" : ""}" style="--k:${REC_KINDS[r.kind].c}"><span class="rnd">${["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][new Date(d + "T12:00").getDay()]} ${dm(d)}<small>${r.time}</small></span><span class="grow">${REC_KINDS[r.kind].i} ${esc(r.title)} <span class="note">· ${r.brand} · ${esc(firstName(r.owner))}</span></span>${edit ? `<button class="btn ${done ? "" : "primary"} sm" data-recdone="${r.id}|${d}">${done ? "✓ Hecho" : "Marcar hecho"}</button>` : done ? `<span class="okchip">✓ Hecho</span>` : ""}</div>`; }).join("")}</div>` : ""}
   </div>`;
 }
+// Ventana para cargar (o editar) un pedido repetitivo: días de la semana, hora, fecha de inicio y fecha de fin (o sin fin).
+function recDrawer(){
+  if (!recUI.form) return "";
+  const r = recUI.edit ? RECURRING.find(x => x.id === recUI.edit) : null, v = r || { title:"", brand:myBrands()[0], kind:recUI.kind || "Historia", time:"09:00", owner:CM_NAMES()[0], from:TODAY, until:"" };
+  const opt = (list, cur) => [...new Set([...list, cur].filter(Boolean))].map(x => `<option ${x === cur ? "selected" : ""}>${esc(x)}</option>`).join("");
+  const noEnd = recUI.noEnd ?? !v.until;
+  return `<div class="drawer-bg" data-recform></div><aside class="drawer" aria-label="Pedido repetitivo">
+    <div class="drawer-h"><div><h2 style="margin:0">${r ? "Editar pedido repetitivo" : "Cargar pedido repetitivo para CM"}</h2><div class="note">Se carga solo en el calendario, en cada día elegido</div></div><button class="btn" data-recform aria-label="Cerrar">✕</button></div>
+    <form class="pform drawer-b recform" id="recForm" style="grid-template-columns:1fr 1fr">
+      <label style="grid-column:1/-1">Qué se publica o se hace *<input class="base" id="rcTitle" required value="${esc(v.title)}" placeholder="Ej.: Ofertas de la semana"></label>
+      <label>Marca *<select class="base" id="rcBrand">${opt(myBrands(), v.brand)}</select></label>
+      <label>Tipo *<select class="base" id="rcKind">${opt(Object.keys(REC_KINDS), recUI.kind || v.kind)}</select></label>
+      <div class="recdays" style="grid-column:1/-1"><span class="note">Se repite todos los *</span><div class="chips">${WEEKDAYS.map((w, i) => `<button type="button" class="chip ${recUI.days.includes(i) ? "on" : ""}" data-recday="${i}">${w}</button>`).join("")}</div></div>
+      <label>Hora *<input class="base" type="time" id="rcTime" value="${v.time}" required></label>
+      <label>Responsable (de cualquier marca) *<select class="base" id="rcOwner">${opt(CM_NAMES(), v.owner)}</select></label>
+      <label>Fecha de inicio *<input class="base" type="date" id="rcFrom" value="${v.from || TODAY}" required></label>
+      <label>Fecha de fin<input class="base" type="date" id="rcUntil" value="${v.until || ""}" ${noEnd ? "disabled" : ""}></label>
+      <label class="remember" style="grid-column:1/-1;flex-direction:row;display:flex;align-items:center;gap:8px"><input type="checkbox" id="rcNoEnd" ${noEnd ? "checked" : ""}> Sin fecha de fin (se repite siempre)</label>
+      <p class="note" style="grid-column:1/-1;margin:0">Ejemplo: “Ofertas de la semana”, todos los lunes, desde hoy y sin fecha de fin → aparece sola en el calendario cada lunes.</p>
+      <div class="chips" style="grid-column:1/-1;justify-content:flex-end"><button class="btn" type="button" data-recform>Cancelar</button><button class="btn primary" type="submit">Guardar pedido repetitivo</button></div>
+    </form></aside>`;
+}
 document.addEventListener("click", e => {
-  const f = e.target.closest("[data-recform]"); if (f){ recUI.form = !recUI.form; recUI.days = []; recUI.kind = null; render(); return; }
-  // Desde un calendario: “🔁 Repetitivo” lleva a Gestión CM con el formulario abierto y el tipo elegido.
-  const g = e.target.closest("[data-recgo]"); if (g){ page = "gestioncm"; recUI = { form:true, days:[], kind:g.dataset.recgo }; render(); document.getElementById("recForm")?.scrollIntoView({ block:"center" }); return; }
+  const f = e.target.closest("[data-recform]"); if (f){ recUI = { form:!recUI.form, days:[], kind:null, edit:null, noEnd:null }; render(); return; }
+  // Desde un calendario: “🔁 Repetitivo” abre la ventana ahí mismo, con el tipo elegido.
+  const g = e.target.closest("[data-recgo]"); if (g){ recUI = { form:true, days:[], kind:g.dataset.recgo, edit:null, noEnd:null }; render(); return; }
+  const ed = e.target.closest("[data-recedit]"); if (ed){ const r = RECURRING.find(x => x.id === +ed.dataset.recedit); recUI = { form:true, days:[...r.days], kind:r.kind, edit:r.id, noEnd:null }; render(); return; }
+  const ne = e.target.closest("#rcNoEnd"); if (ne){ recUI.noEnd = ne.checked; const u = document.getElementById("rcUntil"); if (u){ u.disabled = ne.checked; if (ne.checked) u.value = ""; } return; }
   const dy = e.target.closest("[data-recday]"); if (dy){ const i = +dy.dataset.recday; recUI.days = recUI.days.includes(i) ? recUI.days.filter(x => x !== i) : [...recUI.days, i].sort(); dy.classList.toggle("on"); return; }
   const dl = e.target.closest("[data-recdel]"); if (dl){ RECURRING = RECURRING.filter(r => r.id !== +dl.dataset.recdel); render(); toast("Pedido repetitivo borrado."); return; }
   const dn = e.target.closest("[data-recdone]"); if (dn){ const k = dn.dataset.recdone; RECUR_DONE.has(k) ? RECUR_DONE.delete(k) : RECUR_DONE.add(k); render(); toast(RECUR_DONE.has(k) ? "Marcado como hecho." : "Vuelve a pendiente."); }
 });
 document.addEventListener("submit", e => { if (e.target.id !== "recForm") return; e.preventDefault();
   if (!recUI.days.length){ toast("Elegí al menos un día de la semana."); return; }
-  RECURRING.push({ id:Math.max(0, ...RECURRING.map(r => r.id)) + 1, title:$("#rcTitle").value.trim(), brand:$("#rcBrand").value, kind:$("#rcKind").value, days:[...recUI.days], time:$("#rcTime").value, owner:$("#rcOwner").value, from:$("#rcFrom").value, until:$("#rcUntil").value });
-  recUI = { form:false, days:[] }; render(); toast("Pedido repetitivo guardado. Ya aparece solo en su calendario, en cada fecha."); });
+  const until = $("#rcNoEnd").checked ? "" : $("#rcUntil").value, from = $("#rcFrom").value;
+  if (until && until < from){ toast("La fecha de fin tiene que ser después de la de inicio."); return; }
+  const data = { title:$("#rcTitle").value.trim(), brand:$("#rcBrand").value, kind:$("#rcKind").value, days:[...recUI.days], time:$("#rcTime").value, owner:$("#rcOwner").value, from, until };
+  const old = recUI.edit && RECURRING.find(r => r.id === recUI.edit);
+  if (old) Object.assign(old, data); else RECURRING.push({ id:Math.max(0, ...RECURRING.map(r => r.id)) + 1, ...data });
+  recUI = { form:false, days:[] }; render(); toast(`${old ? "Guardado" : "Listo"}: “${data.title}” ${recDays(data).toLowerCase()}${until ? " hasta el " + dm(until) : ", sin fecha de fin"}. Ya aparece solo en el calendario.`); });
 function pGestionCM(){
-  const A = "CM", cal = cmUI.tview === "calendario", list = jobsFiltered(cal);
-  const views = [["tablero","Tablero"],["tabla","Tabla"],["calendario","Calendario de pedidos"]];
-  return `<div class="head"><div><h1>Gestión CM</h1><p class="sub">Lo que se le pide a los CM: grabaciones, ediciones de video, copys, armado de pauta, coberturas. Las publicaciones del mes van en el <a href="#plan" data-page="plan" class="glink">Plan de posteo ›</a></p></div>
+  const A = "CM";
+  if (!["tablero","tabla","repetitivos"].includes(cmUI.tview)) cmUI.tview = "tablero";
+  // Pedidos sin terminar y los terminados del mes (así, al marcar “Publicado”, la tarjeta sigue en su columna).
+  const list = jobsFiltered(true).filter(j => j.status !== "Cancelado" && (!isClosedJob(j) || jobMonth(j) === MONTH));
+  const views = [["tablero","Tablero"],["tabla","Tabla"],["repetitivos","🔁 Repetitivos"]];
+  return `<div class="head"><div><h1>Gestión CM</h1><p class="sub">Lo que se le pide a los CM: grabaciones, ediciones de video, copys, armado de pauta, coberturas.</p></div>
     <div class="chips">${views.map(([k, l]) => `<button class="chip ${cmUI.tview === k ? "on" : ""}" data-cmtv="${k}">${l}</button>`).join("")}</div></div>
-  ${canCreateJobs() ? `<button class="panel cmnew" data-jnew><span class="cmplus">+</span><span><b>Cargar un pedido para CM</b><small>Qué se necesita, para qué marca, quién lo hace y para cuándo.</small></span></button>
-  <button class="panel cmnew cmrec" data-recform><span class="cmplus">🔁</span><span><b>${recUI.form ? "Cerrar el pedido repetitivo" : "Cargar pedido repetitivo para CM"}</b><small>Se repite solo: por ejemplo cada lunes, o cada sábado si es una historia o un post del feed. Elegí el tipo (Historia, Feed o Grabación), los días y la hora.</small></span></button>` : ""}
-  ${recurringPanel()}
-  ${jobFilterPanel(A)}
-  <div class="head"><span class="note">${list.length} ${list.length === 1 ? "pedido" : "pedidos"} · ${cal ? "cada uno en su fecha límite (incluye los terminados)" : "ordenados por fecha límite"}${cmUI.tview === "tablero" && !isViewOnly() && !isClosed() ? " · arrastrá una tarjeta a otra columna para cambiarle el estado" : ""}</span>${URG_LEGEND}</div>
-  ${cmUI.tview === "tablero" ? stageGuide("🎬 CM", CM_STAGES) : ""}
-  ${cmUI.tview === "tabla" ? jobTable(list) : cal ? jobDeliveryCal(list, A) : jobBoard(list, A)}
-  ${jobForm()}`;
+  ${canCreateJobs() ? `<div class="cmnews"><button class="panel cmnew" data-jnew><span class="cmplus">+</span><span><b>Cargar pedido</b><small>Qué se necesita, para qué marca, quién lo hace y para cuándo.</small></span></button>
+  <button class="panel cmnew cmrec" data-recgo="Historia"><span class="cmplus">🔁</span><span><b>Cargar pedido repetitivo</b><small>Publicaciones que se repiten: todos los lunes, o lunes y viernes… desde una fecha hasta otra (o sin fin). Se cargan solas en el calendario.</small></span></button></div>` : ""}
+  ${cmUI.tview === "repetitivos" ? recurringList() : `<div class="head">${brandChips()}${cmUI.tview === "tablero" && !isViewOnly() && !isClosed() ? `<span class="note">Tocá una tarjeta para cambiar su etapa (Programado, Publicado…)</span>` : ""}</div>
+  ${cmUI.tview === "tabla" ? jobTable(list) : jobBoard(list, A)}`}
+  ${jobForm()}${recDrawer()}`;
 }
 const TV_TEAM_MIN = 10;
 let tvTeam = { timer:null, clock:null, slideT:null, updated:"", i:0, paused:false };
@@ -4195,8 +4219,8 @@ const GUIDE = [
     ["gauge","Carga de trabajo Diseño gráfico","Cuánto tiene cada diseñador: los trabajos sin finalizar según su complejidad. Sirve para repartir los pedidos nuevos."],
     ["archive","Historial Diseño gráfico","Los trabajos de diseño gráfico entregados en el mes, con su fecha y si salieron a tiempo."]]],
   ["Community Manager", [
-    ["send","Gestión CM","Los pedidos que se le hacen a los CM (grabaciones, ediciones de video, copys, armado de pauta, coberturas). Se cargan con “+ Cargar un pedido para CM” y se siguen en Tablero, Tabla o Calendario de pedidos. Con “🔁 Cargar pedido repetitivo para CM” se carga una sola vez lo que se repite solo (ej.: tarjetas de crédito todos los lunes 9:00, o una historia cada sábado) y se marca como hecho cada vez."],
-    ["calendar-days","Calendario Feed","Las publicaciones del feed (posts, carruseles y reels) en su fecha, con su estado y su CM, más las repetitivas de feed (🔁). Tocá una publicación para editarla (fecha, tema, estado o CM, que puede ser de cualquier marca) o tocá un día para cargar una nueva."],
+    ["send","Gestión CM","Los pedidos que se le hacen a los CM (grabaciones, ediciones de video, copys, armado de pauta, coberturas). “Cargar pedido” abre una ventana para cargarlo. “Cargar pedido repetitivo” abre otra para lo que sale siempre los mismos días (ej.: “Ofertas de la semana” todos los lunes), con fecha de inicio y de fin o sin fin: se carga solo en el calendario. En Tablero tocás una tarjeta para cambiar su etapa (Programado, Publicado…); en Tabla ves la lista; en 🔁 Repetitivos los editás o borrás."],
+    ["calendar-days","Calendario Feed","Las publicaciones del feed (posts, carruseles y reels) en su fecha, con su estado y su CM, más las repetitivas de feed (🔁). Tocá una publicación para editarla (fecha, tema, estado o CM, que puede ser de cualquier marca) o tocá un día para cargar una nueva. Cada calendario muestra una marca a la vez; lo de otras marcas (Bianca, Dayo, PediWOW, Clasipar…) se ve solo con el borde de su color."],
     ["smartphone","Calendario Historia","Igual que el Calendario Feed, pero solo con las historias: las del plan y las repetitivas (🔁, tocalas para marcarlas hechas). Lo que se carga acá es siempre historia; en el Feed no se cargan historias. La red puede ser IG, FB, IG + FB juntos o TikTok."],
     ["store","Calendario Canales","Lo que se sube fuera de las redes: ofertas en la web, la app, WhatsApp, e-mail o pantallas en tienda, cada una en su fecha, con su estado y quién la hace. Tocá un día para cargar una. Las que salen siempre los mismos días se cargan una vez con “🔁 Repetitivo”."],
     ["gauge","Carga de trabajo CM","Cuánto tiene cada CM: los pedidos sin terminar y las publicaciones del mes que todavía no están programadas."],
@@ -4438,6 +4462,7 @@ function reveal(){
 function animate0(pg){ const ch = (pg === "pedidos" || pg === "gestioncm") && render.jobPage !== pg; if (pg === "pedidos" || pg === "gestioncm") render.jobPage = pg; return ch; }
 function render(){
   if (!can(page)) page = can("dashboard") ? "dashboard" : "inicio";
+  if (["calendario","calhistoria","calcanales","caldiseno"].includes(page) && brandFilter === "Todas") brandFilter = myGroups()[0]; // calendarios: una marca a la vez
   if (brandFilter === "Materiales" && page !== "caldiseno") brandFilter = "Todas";
   if (brandFilter !== "Todas" && brandFilter !== "Materiales" && !seesBrand(brandFilter)) brandFilter = "Todas";
   renderNav();
