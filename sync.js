@@ -114,12 +114,13 @@ const RMH = (() => {
   }
 
   // ---------- guardado ----------
-  let flushing = null, lastSeen = "", changedAt = 0, dirtySince = 0, rerenderPending = false, saveErrShown = false;
-  function dirtyKeys(){ return localKeys().filter(k => getLocal(k) !== undefined && C(enc(getLocal(k))) !== (base.get(k)?.json ?? null)); }
+  let flushing = null, lastSeen = "", changedAt = 0, dirtySince = 0, rerenderPending = false, saveErrShown = false, retryAt = 0;
+  // Pendiente de guardar: cambió desde lo último del servidor, o todavía no existe en la base (v 0: se crea).
+  function dirtyKeys(){ return localKeys().filter(k => { if (getLocal(k) === undefined) return false; const b = base.get(k); return !b || b.v === 0 || C(enc(getLocal(k))) !== b.json; }); }
   async function saveKey(key){
     for (let attempt = 0; attempt < 4; attempt++){
       const data = enc(getLocal(key)), json = C(data), b = base.get(key);
-      if (b && b.json === json) return;
+      if (b && b.v > 0 && b.json === json) return;
       const { data: v, error } = await sb.rpc("save_state", { p_key:key, p_data:data, p_base:b?.v || 0 });
       if (error) throw error;
       if (v !== null && v !== undefined){ base.set(key, { v, json }); return; }
@@ -139,7 +140,7 @@ const RMH = (() => {
     if (flushing) return flushing;
     flushing = (async () => {
       try { for (const k of dirtyKeys()) await withTimeout(saveKey(k)); setStatus(""); saveErrShown = false; }
-      catch (err){ console.error(err); setStatus("sin guardar"); if (!saveErrShown){ saveErrShown = true; toast("No se pudo guardar: revisá la conexión. Se vuelve a intentar solo."); } }
+      catch (err){ console.error(err); setStatus("sin guardar"); retryAt = Date.now() + 5000; if (!saveErrShown){ saveErrShown = true; toast("No se pudo guardar: revisá la conexión. Se vuelve a intentar solo."); } }
       finally { flushing = null; }
     })();
     return flushing;
@@ -151,6 +152,7 @@ const RMH = (() => {
     const now = Date.now();
     if (snap !== lastSeen){ lastSeen = snap; changedAt = now; if (!dirtySince) dirtySince = now; setStatus("guardando…"); }
     if (dirtySince && (now - changedAt > 800 || now - dirtySince > 4000)){ dirtySince = 0; flush(); }
+    else if (retryAt && now >= retryAt){ retryAt = 0; flush(); } // reintento después de un error de conexión
   }, 1000);
   addEventListener("pagehide", () => flush());
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flush(); });
@@ -171,6 +173,9 @@ const RMH = (() => {
     base.clear();
     THREADS = []; // solo las conversaciones que vienen del servidor
     data.forEach(row => { if (row.key.startsWith("thread:") || localKeys().includes(row.key)) applyRow(row); });
+    // Las que todavía no están en la base: su base es el valor inicial (versión 0). Así, si otra persona la crea
+    // mientras tanto, lo que se cargó acá se combina en vez de perderse.
+    localKeys().forEach(k => { if (!base.has(k) && getLocal(k) !== undefined) base.set(k, { v:0, json:C(enc(getLocal(k))) }); });
     // Las colecciones que todavía no existen en la base se crean con los datos iniciales en el primer guardado.
     lastSeen = ""; dirtySince = Date.now();
   }
