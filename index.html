@@ -1812,7 +1812,8 @@ button,.btn,.chip,.nav a,.tabbar a,.tabbar button{-webkit-user-select:none;user-
 .plcal .pev span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
 .plcal .pev em{grid-column:2;font-style:normal;font-size:10px;color:var(--c)}
 .plcal .pev:hover{background:rgba(148,163,184,.08)}
-.plcal .pev[data-pedit]{cursor:pointer}
+.plcal .pev[role=button]{cursor:pointer}
+.plcal .pev span svg{width:11px;height:11px;vertical-align:-1px;color:var(--muted)}
 .clean .card.u{border-color:var(--line-3);border-left-color:var(--c);box-shadow:none}
 .clean .row.u{background:var(--inner)}
 .clean .urg.late{background:transparent;color:#f87171;border-color:rgba(239,68,68,.6);box-shadow:none;animation:none}
@@ -1887,12 +1888,12 @@ const SECTIONS = [
   { g:"Diseño gráfico", k:"web", l:"Diseño para Web", n:"Diseño para Web", i:"monitor" },
   { g:"Diseño gráfico", k:"cargadiseno", l:"Carga de trabajo Diseño gráfico", n:"Carga de trabajo", i:"gauge" },
   { g:"Diseño gráfico", k:"historial", l:"Historial Diseño gráfico", n:"Historial", i:"archive" },
+  { g:"Community Manager", k:"plan", l:"Plan de posteo", i:"list-checks" },
   { g:"Community Manager", k:"calendario", l:"Gestión Redes", n:"Gestión Redes", i:"calendar-days" },
   { g:"Community Manager", k:"calhistoria", l:"Gestión Historia", n:"Gestión Historia", i:"smartphone" },
   { g:"Community Manager", k:"calcanales", l:"Gestión Canal WhatsApp", n:"Gestión Canal WhatsApp", i:"message-circle" },
   { g:"Community Manager", k:"gestioncm", l:"Gestión Videos", n:"Gestión Videos", i:"clapperboard" },
   { g:"Community Manager", k:"cargacm", l:"Carga de trabajo CM", n:"Carga de trabajo", i:"gauge" },
-  { g:"Community Manager", k:"plan", l:"Plan de posteo", i:"list-checks" },
   { g:"Community Manager", k:"historialcm", l:"Historial CM", n:"Historial", i:"archive" },
   { g:"Recursos", k:"prompts", l:"Prompts de imágenes", i:"wand-sparkles" },
   { g:"Recursos", k:"archivos", l:"Archivos y enlaces", i:"link" },
@@ -3148,10 +3149,15 @@ function pCalendario(){ return pCalCM("Feed"); }
 function pCalHistoria(){ return pCalCM("Historia"); }
 
 function pPlan(){
-  // Plan de posteo: feed, historias y canales juntos.
+  // Plan de posteo: todo lo de CM del mes junto: feed, historias, Canal de WhatsApp, videos (pedidos a CM) y repetitivos.
+  const byCm = x => cmUI.cm === "Todos" || x === cmUI.cm, allSt = cmUI.st === "Todos";
   const all = [...visiblePosts(), ...visibleCanales().map(k => ({ ...k, canal:true }))];
-  const vp = [...cmPosts(), ...visibleCanales().filter(k => (cmUI.cm === "Todos" || k.cm === cmUI.cm) && (cmUI.st === "Todos" || k.status === cmUI.st)).map(k => ({ ...k, canal:true }))].filter(soloPost).sort((a, b) => a.date.localeCompare(b.date));
-  const names = [...new Set(all.map(p => p.cm))].sort();
+  const vids = visibleJobs().filter(j => j.area === "CM" && j.status !== "Cancelado" && j.due.slice(0, 7) === MONTH && byCm(j.owner) && soloMine(j) && allSt)
+    .map(j => ({ vid:true, id:j.id, date:j.due, brand:j.brand, title:j.title, status:j.status, cm:j.owner, piece:j.piece, job:j }));
+  const recs = []; if (allSt){ const rl = recVisible().filter(r => byCm(r.owner) && soloRec(r)); for (let d = 1; d <= lastDay(MONTH); d++){ const c = MONTH + "-" + String(d).padStart(2, "0"); rl.filter(r => recOn(r, c)).forEach(r => recs.push({ rec:true, id:r.id + "|" + c, date:c, brand:r.brand, title:r.title, cm:r.owner, r, done:RECUR_DONE.has(r.id + "|" + c) })); } }
+  const vp = [...cmPosts(), ...visibleCanales().filter(k => byCm(k.cm) && (allSt || k.status === cmUI.st)).map(k => ({ ...k, canal:true }))].filter(soloPost);
+  const items = [...vp, ...vids, ...recs].sort((a, b) => a.date.localeCompare(b.date) || (a.r?.time || "").localeCompare(b.r?.time || ""));
+  const names = [...new Set([...all.map(p => p.cm), ...CM_NAMES()])].filter(Boolean).sort();
   const count = st => all.filter(p => p.status === st).length;
   const done = all.filter(p => ["Publicado","Pautado"].includes(p.status)).length;
   const summary = `<div class="pubsum">${POST_STAGES.map(st => `<button class="pubst ${cmUI.st === st ? "on" : ""}" data-cmst="${st}" style="--c:${POST_COLOR[st] === "#334155" ? "#94a3b8" : POST_COLOR[st]}"><b class="num">${count(st)}</b><span>${st}</span></button>`).join("")}
@@ -3159,23 +3165,35 @@ function pPlan(){
   const filters = `<div class="panel" style="padding:14px;display:flex;flex-direction:column;gap:10px"><div class="head"><div class="chips">${brandChips()}${soloBtn()}</div></div>
     <div class="jfilters"><select class="base" data-cmf="cm"><option value="Todos">CM: todos</option>${names.map(n => `<option ${cmUI.cm === n ? "selected" : ""}>${n}</option>`).join("")}</select>
     <select class="base" data-cmf="st"><option value="Todos">Estado: todos</option>${POST_STAGES.map(st => `<option ${cmUI.st === st ? "selected" : ""}>${st}</option>`).join("")}</select></div></div>`;
-  return `<div class="head"><div><h1 class="pmh">${pmIco("list-checks")}Plan de posteo</h1><p class="sub">${monthLabel(MONTH)} · todo lo que se sube en el mes, junto: feed (posts, carruseles y reels), historias y Canal de WhatsApp. Cargalo desde acá o desde cada Gestión.</p></div>${viewTabs([["tabla","Tabla","table-2"],["calendario","Calendario","calendar-days"]], planUI.view, "data-plview")}</div>
-  ${isClosed() ? `<div class="ro">🔒 ${monthLabel(MONTH)} está cerrado: se puede consultar, pero no modificar. Lo que no se cumplió pasó al mes siguiente como “arrastrado”.</div>` : ""}
-  ${calAdds(canEditPost() ? [['data-pnew="Feed"', "image", "Cargar publicación", "Post, carrusel o reel para el feed."], ['data-pnew="Historia"', "smartphone", "Cargar historia", "Una historia en su fecha."], ['data-pnew="Canal"', "message-circle", "Cargar para el Canal de WhatsApp", "Un contenido para el canal."]] : [])}
+  const tema = (x, kind) => canEditPost() ? `<button type="button" class="linkish" data-pedit="${kind}:${x.id}">${esc(x.title)}</button>` : `<b style="color:#fff">${esc(x.title)}</b>`;
+  const row = x => {
+    if (x.rec) return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)} <span class="note">${x.r.time}</span></td><td>${brandTag(x.brand)}</td><td>${esc(firstName(x.cm || ""))}</td><td style="white-space:nowrap">${icon("repeat")} ${x.r.kind === "Canal" ? "Canal de WhatsApp" : x.r.kind} · repetitivo</td><td style="min-width:190px"><b style="color:#fff">${esc(x.title)}</b></td><td><span class="note">—</span></td><td>${canCreateJobs() ? `<button class="btn sm ${x.done ? "" : "primary"}" data-recdone="${x.id}">${x.done ? `${icon("check")} Hecho` : "Marcar hecho"}</button>` : x.done ? pill("Hecho", "#10b981") : pill("Pendiente", "#94a3b8")}</td><td><span class="note">—</span></td></tr>`;
+    if (x.vid) return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${esc(firstName(x.cm || ""))}</td><td style="white-space:nowrap">${icon("clapperboard")} ${esc(x.piece)}</td><td style="min-width:190px">${canCreateJobs() ? `<button type="button" class="linkish" data-jedit="${x.id}">${esc(x.title)}</button>` : `<b style="color:#fff">${esc(x.title)}</b>`}</td><td><span class="note">—</span></td><td><div class="chips" style="flex-wrap:nowrap">${pill(x.status, JOB_COLOR[x.status])}${urgBadge(x.job)}</div></td><td><span class="note">—</span></td></tr>`;
+    if (x.canal) return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${esc(firstName(x.cm || ""))}</td><td style="white-space:nowrap">${icon("message-circle")} Canal de WhatsApp</td><td style="min-width:190px">${tema(x, "canal")}</td><td><span class="note">—</span></td><td>${canalStatusCell(x)}</td><td><span class="note">—</span></td></tr>`;
+    const lbl = canEditPost() && { "Listo":"Programar", "Programado":"Marcar publicado", "Publicado":"Pautar" }[x.status];
+    return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${canEditPost() ? `<select class="base sm" data-pcm="${x.id}" aria-label="CM de ${esc(x.title)}">${[...new Set([...CM_NAMES(), x.cm].filter(Boolean))].map(n => `<option value="${esc(n)}" ${n === x.cm ? "selected" : ""}>${esc(firstName(n))}</option>`).join("")}</select>` : esc(firstName(x.cm))}</td><td style="white-space:nowrap">${icon(x.format === "Historia" ? "smartphone" : "image")} <span class="net">${x.net}</span> ${x.format}</td><td style="min-width:190px">${tema(x, "post")}${x.carried ? `<span class="carried">↩ Arrastrado de ${x.carried}</span>` : ""}</td><td style="white-space:nowrap">${postDesignCell(x)}</td><td><div class="chips" style="flex-wrap:nowrap">${postStatusCell(x)}${postUrgBadge(x)}</div></td><td>${lbl ? `<button class="btn" data-adv-post="${x.id}">${lbl}</button>` : `<span class="note">—</span>`}</td></tr>`;
+  };
+  return `<div class="head"><div><h1 class="pmh">${pmIco("list-checks")}Plan de posteo</h1><p class="sub">${monthLabel(MONTH)} · todo lo de CM del mes, junto: feed (posts, carruseles y reels), historias, Canal de WhatsApp, videos y repetitivos. Cargalo desde acá o desde cada Gestión.</p></div>${viewTabs([["calendario","Calendario","calendar-days"],["tabla","Tabla","table-2"]], planUI.view, "data-plview")}</div>
+  ${isClosed() ? `<div class="ro">${icon("lock")} ${monthLabel(MONTH)} está cerrado: se puede consultar, pero no modificar. Lo que no se cumplió pasó al mes siguiente como “arrastrado”.</div>` : ""}
+  ${calAdds(canEditPost() ? [['data-pnew="Feed"', "image", "Cargar publicación", "Post, carrusel o reel para el feed."], ['data-pnew="Historia"', "smartphone", "Cargar historia", "Una historia en su fecha."], ['data-pnew="Canal"', "message-circle", "Cargar para el Canal de WhatsApp", "Un contenido para el canal."], ...(canCreateJobs() && can("gestioncm") ? [['data-plvid', "clapperboard", "Cargar pedido de video", "Grabación, edición o cobertura, con su fecha."]] : [])] : [])}
   ${summary}${filters}
-  ${planUI.view === "calendario" ? planCal(vp) : `<div class="head"><span class="note">${vp.length} ${vp.length === 1 ? "publicación" : "publicaciones"} · ordenadas por fecha de publicación${canEditPost() ? " · cambiá el estado desde la lista" : ""}</span></div>
-  <div class="tw"><table><thead><tr><th>Publicación</th><th>Marca</th><th>CM</th><th>Dónde</th><th>Tema</th><th>Diseño gráfico</th><th>Estado</th><th>Siguiente paso</th></tr></thead><tbody>
-    ${vp.map(p => p.canal ? `<tr><td class="num" style="white-space:nowrap">${dm(p.date)}</td><td>${brandTag(p.brand)}</td><td>${esc(firstName(p.cm || ""))}</td><td style="white-space:nowrap">${icon(CH_ICO[p.channel] || "message-circle")} ${esc(p.channel)}</td><td style="min-width:190px">${canEditPost() ? `<button type="button" class="linkish" data-pedit="canal:${p.id}">${esc(p.title)}</button>` : `<b style="color:#fff">${esc(p.title)}</b>`}</td><td><span class="note">—</span></td><td>${canalStatusCell(p)}</td><td><span class="note">—</span></td></tr>` : (() => { const lbl = canEditPost() && { "Listo":"Programar", "Programado":"Marcar publicado", "Publicado":"Pautar" }[p.status];
-      return `<tr><td class="num" style="white-space:nowrap">${dm(p.date)}</td><td>${brandTag(p.brand)}</td><td>${canEditPost() ? `<select class="base sm" data-pcm="${p.id}" aria-label="CM de ${esc(p.title)}">${[...new Set([...CM_NAMES(), p.cm].filter(Boolean))].map(n => `<option value="${esc(n)}" ${n === p.cm ? "selected" : ""}>${esc(firstName(n))}</option>`).join("")}</select>` : esc(firstName(p.cm))}</td><td style="white-space:nowrap"><span class="net">${p.net}</span> ${p.format}</td><td style="min-width:190px">${canEditPost() ? `<button type="button" class="linkish" data-pedit="post:${p.id}">${esc(p.title)}</button>` : `<b style="color:#fff">${esc(p.title)}</b>`}${p.carried ? `<span class="carried">↩ Arrastrado de ${p.carried}</span>` : ""}</td><td style="white-space:nowrap">${postDesignCell(p)}</td><td><div class="chips" style="flex-wrap:nowrap">${postStatusCell(p)}${postUrgBadge(p)}</div></td><td>${lbl ? `<button class="btn" data-adv-post="${p.id}">${lbl}</button>` : `<span class="note">—</span>`}</td></tr>`; })()).join("") || `<tr><td colspan="8" class="empty">No hay publicaciones con estos filtros.</td></tr>`}
+  ${planUI.view === "calendario" ? planCal(items) : `<div class="head"><span class="note">${items.length} ${items.length === 1 ? "contenido" : "contenidos"} en ${monthName(MONTH)} · ordenados por fecha${canEditPost() ? " · cambiá el estado desde la lista" : ""}</span></div>
+  <div class="tw"><table><thead><tr><th>Fecha</th><th>Marca</th><th>CM</th><th>Qué es</th><th>Tema</th><th>Diseño gráfico</th><th>Estado</th><th>Siguiente paso</th></tr></thead><tbody>
+    ${items.map(row).join("") || `<tr><td colspan="8" class="empty">No hay contenidos con estos filtros.</td></tr>`}
   </tbody></table></div>`}
-  ${postForm()}`;
+  ${postForm()}${jobForm()}`;
 }
 // Plan de posteo en calendario: una vista general del mes, con todas las marcas juntas.
-let planUI = { view:"tabla" };
-document.addEventListener("click", e => { const v = e.target.closest("[data-plview]"); if (v){ planUI.view = v.dataset.plview; render(); } });
-function planCal(vp){
-  return `<div class="plcal">${calGrid(c => vp.filter(p => p.date === c).map(p => `<div class="pev"${canEditPost() ? ` data-pedit="${p.canal ? "canal" : "post"}:${p.id}" role="button" tabindex="0"` : ""} title="${esc(p.title)} · ${p.brand} · ${p.canal ? p.channel : p.net + " " + p.format} · ${p.status} · ${esc(p.cm || "")}"><i style="background:${BRANDS[p.brand]}"></i><span>${esc(p.title)}</span><em style="--c:${POST_COLOR[p.status] === "#334155" ? "#94a3b8" : POST_COLOR[p.status]}">${p.status}</em></div>`).join(""))}</div>
-  <p class="note">Feed, historias y Canal de WhatsApp juntos: cada uno con el punto de color de su marca y su estado. Tocá uno para editarlo.</p>`;
+let planUI = { view:"calendario" };
+document.addEventListener("click", e => { const v = e.target.closest("[data-plview]"); if (v){ planUI.view = v.dataset.plview; render(); }
+  if (e.target.closest("[data-plvid]")){ const area = "CM", brand = MAIN_BRANDS.includes(brandFilter) && myBrands().includes(brandFilter) ? brandFilter : myBrands()[0];
+    jobUI.form = { mode:"new", job:{ id:nextJobId(area), area, requestDate:TODAY, requester:"Marketing", brand, piece:CM_TYPES[0], title:"", owner:"Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due:MONTH === TODAY.slice(0,7) ? TODAY : MONTH + "-01", link:"", notes:"", post:null } }; render(); } });
+const PLAN_ICO = x => x.rec ? "repeat" : x.vid ? "clapperboard" : x.canal ? "message-circle" : x.format === "Historia" ? "smartphone" : "image";
+function planCal(items){
+  return `<div class="plcal">${calGrid(c => items.filter(x => x.date === c).map(x => { const st = x.rec ? (x.done ? "Hecho" : "Repetitivo") : x.status, col = x.rec ? (x.done ? "#10b981" : REC_KINDS[x.r.kind].c) : x.vid ? JOB_COLOR[x.status] || "#94a3b8" : POST_COLOR[x.status] === "#334155" ? "#94a3b8" : POST_COLOR[x.status];
+    const act = x.rec ? (canCreateJobs() ? ` data-recdone="${x.id}" role="button" tabindex="0"` : "") : x.vid ? (canCreateJobs() ? ` data-jedit="${x.id}" role="button" tabindex="0"` : "") : canEditPost() ? ` data-pedit="${x.canal ? "canal" : "post"}:${x.id}" role="button" tabindex="0"` : "";
+    return `<div class="pev"${act} title="${esc(x.title)} · ${x.brand} · ${x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${st} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} ${esc(x.title)}</span><em style="--c:${col}">${st}</em></div>`; }).join(""))}</div>
+  <p class="note">Todo lo de CM junto, cada uno con el punto de color de su marca, su ícono (${icon("image")} feed, ${icon("smartphone")} historia, ${icon("message-circle")} Canal de WhatsApp, ${icon("clapperboard")} video, ${icon("repeat")} repetitivo) y su estado. Tocá uno para editarlo; en un repetitivo, lo marcás como hecho.</p>`;
 }
 let jobUI = { area:"Todos", view:"calendario", status:"Activos", owner:"Todos", prio:"Todas", q:"", form:null };
 const canCreateJobs = () => !isDesigner() && !isViewOnly() && !isClosed();
@@ -5211,7 +5229,7 @@ document.addEventListener("submit", e => {
     if (f.mode === "edit"){ Object.assign(jobs.find(x => x.id === j.id), j); } else jobs.push(j);
     // Lo que se carga se ve enseguida: va a su sección, su mes y su marca (y sin filtros que lo escondan).
     const to = jobSection(j), moved = to !== page; MONTH = m;
-    if (moved && can(to)) page = to;
+    if (moved && can(to) && page !== "plan") page = to; // desde el Plan de posteo se queda en el plan
     if (page === "gestioncm" && !["tablero","tabla"].includes(cmUI.tview)) cmUI.tview = "tablero";
     jobUI.status = isFin(j) ? "Todos" : "Activos";
     jobUI.owner = "Todos"; jobUI.prio = "Todas"; jobUI.q = "";
