@@ -1812,6 +1812,7 @@ button,.btn,.chip,.nav a,.tabbar a,.tabbar button{-webkit-user-select:none;user-
 .plcal .pev span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
 .plcal .pev em{grid-column:2;font-style:normal;font-size:10px;color:var(--c)}
 .plcal .pev:hover{background:rgba(148,163,184,.08)}
+.plcal .pev[data-pedit]{cursor:pointer}
 .clean .card.u{border-color:var(--line-3);border-left-color:var(--c);box-shadow:none}
 .clean .row.u{background:var(--inner)}
 .clean .urg.late{background:transparent;color:#f87171;border-color:rgba(239,68,68,.6);box-shadow:none;animation:none}
@@ -1888,7 +1889,7 @@ const SECTIONS = [
   { g:"Diseño gráfico", k:"historial", l:"Historial Diseño gráfico", n:"Historial", i:"archive" },
   { g:"Community Manager", k:"calendario", l:"Gestión Redes", n:"Gestión Redes", i:"calendar-days" },
   { g:"Community Manager", k:"calhistoria", l:"Gestión Historia", n:"Gestión Historia", i:"smartphone" },
-  { g:"Community Manager", k:"calcanales", l:"Gestión Canales", n:"Gestión Canales", i:"store" },
+  { g:"Community Manager", k:"calcanales", l:"Gestión Canal WhatsApp", n:"Gestión Canal WhatsApp", i:"message-circle" },
   { g:"Community Manager", k:"gestioncm", l:"Gestión Videos", n:"Gestión Videos", i:"clapperboard" },
   { g:"Community Manager", k:"cargacm", l:"Carga de trabajo CM", n:"Carga de trabajo", i:"gauge" },
   { g:"Community Manager", k:"plan", l:"Plan de posteo", i:"list-checks" },
@@ -3083,7 +3084,7 @@ document.addEventListener("click", e => { const v = e.target.closest("[data-gvie
 const G_VIEWS = [["calendario","Calendario","calendar-days"],["tablero","Tablero","kanban"],["tabla","Tabla","table-2"]];
 const soloPost = p => !soloYo || p.cm === viewer.name;
 const soloRec = r => !soloYo || r.owner === viewer.name;
-const CH_ICO = { "Web / E-commerce":"globe", "App":"smartphone", "WhatsApp":"message-circle", "E-mail":"mail", "Pantallas en tienda":"monitor", "Otro":"pin" };
+const CH_ICO = { "Canal de WhatsApp":"message-circle", "WhatsApp":"message-circle" };
 const stColor = st => POST_COLOR[st] === "#334155" ? "#94a3b8" : POST_COLOR[st];
 // Tablero de publicaciones: una columna por etapa; tocar la tarjeta cambia la etapa, el lápiz la edita.
 function postBoard(list, kind){
@@ -3091,7 +3092,7 @@ function postBoard(list, kind){
   return `<div class="kanban" style="grid-template-columns:repeat(${stages.length},minmax(min(210px,100%),1fr))">${stages.map(st => { const col = list.filter(p => p.status === st);
     return `<div class="col"><div class="col-h" style="--c:${stColor(st)}"><span>${st}</span><span class="num">${col.length}</span></div>${col.map(p => { const tap = stageOptions(canal ? "canal" : "post", p).length, u = canal ? null : postUrgency(p);
       return `<div class="card${tap ? " tapstage" : ""}" style="--c:${BRANDS[p.brand]}"${tap ? ` data-stagemenu="${canal ? "canal" : "post"}:${p.id}" role="button" tabindex="0" title="Tocá para cambiar la etapa"` : ""}><div class="in">${u ? `<div>${postUrgBadge(p)}</div>` : ""}<div class="t">${esc(p.title)}</div>
-        <div class="m">${brandTag(p.brand)}<span>${canal ? `${icon(CH_ICO[p.channel] || "pin")} ${esc(p.channel)}` : `${p.net} · ${p.format}`}</span><span>${dm(p.date)}</span></div>
+        <div class="m">${brandTag(p.brand)}<span>${canal ? `${icon(CH_ICO[p.channel] || "message-circle")} ${esc(p.channel)}` : `${p.net} · ${p.format}`}</span><span>${dm(p.date)}</span></div>
         <div class="foot"><span>${esc(firstName(p.cm || ""))}</span>${canEditPost() ? `<button class="btn sm ib" data-pedit="${canal ? "canal" : "post"}:${p.id}" title="Editar" aria-label="Editar">${icon("pencil")}</button>` : ""}</div>
         <div class="dact"><span class="spl" style="color:${stColor(p.status)}">● ${p.status}${tap ? " ▾" : ""}</span></div></div></div>`; }).join("") || `<div class="empty" style="padding:6px">Vacío</div>`}</div>`; }).join("")}</div>`;
 }
@@ -3099,7 +3100,7 @@ function postBoard(list, kind){
 function postTable(list, kind){
   const canal = kind === "Canal";
   return `<div class="tw"><table><thead><tr><th>Fecha</th><th>Marca</th><th>CM</th><th>${canal ? "Canal" : "Red · formato"}</th><th>Tema</th>${canal ? "" : "<th>Diseño gráfico</th>"}<th>Estado</th></tr></thead><tbody>
-    ${list.map(p => `<tr><td class="num" style="white-space:nowrap">${dm(p.date)}</td><td>${brandTag(p.brand)}</td><td>${esc(firstName(p.cm || ""))}</td><td style="white-space:nowrap">${canal ? `${icon(CH_ICO[p.channel] || "pin")} ${esc(p.channel)}` : `<span class="net">${p.net}</span> ${p.format}`}</td><td style="min-width:180px">${canEditPost() ? `<button type="button" class="linkish" data-pedit="${canal ? "canal" : "post"}:${p.id}">${esc(p.title)}</button>` : `<b style="color:#fff">${esc(p.title)}</b>`}</td>${canal ? "" : `<td style="white-space:nowrap">${postDesignCell(p)}</td>`}<td><div class="chips" style="flex-wrap:nowrap">${canal ? canalStatusCell(p) : `${postStatusCell(p)}${postUrgBadge(p)}`}</div></td></tr>`).join("") || `<tr><td colspan="7" class="empty">No hay nada cargado con estos filtros.</td></tr>`}
+    ${list.map(p => `<tr><td class="num" style="white-space:nowrap">${dm(p.date)}</td><td>${brandTag(p.brand)}</td><td>${esc(firstName(p.cm || ""))}</td><td style="white-space:nowrap">${canal ? `${icon(CH_ICO[p.channel] || "message-circle")} ${esc(p.channel)}` : `<span class="net">${p.net}</span> ${p.format}`}</td><td style="min-width:180px">${canEditPost() ? `<button type="button" class="linkish" data-pedit="${canal ? "canal" : "post"}:${p.id}">${esc(p.title)}</button>` : `<b style="color:#fff">${esc(p.title)}</b>`}</td>${canal ? "" : `<td style="white-space:nowrap">${postDesignCell(p)}</td>`}<td><div class="chips" style="flex-wrap:nowrap">${canal ? canalStatusCell(p) : `${postStatusCell(p)}${postUrgBadge(p)}`}</div></td></tr>`).join("") || `<tr><td colspan="7" class="empty">No hay nada cargado con estos filtros.</td></tr>`}
   </tbody></table></div>`;
 }
 const canalStatusCell = k => canEditPost() ? `<select class="base sm" data-kstatus="${k.id}" aria-label="Estado de ${esc(k.title)}">${CANAL_STAGES.map(st => `<option ${st === k.status ? "selected" : ""}>${st}</option>`).join("")}</select>` : pill(k.status, POST_COLOR[k.status]);
@@ -3134,13 +3135,13 @@ const sepCls = b => MAIN_BRANDS.includes(b) ? "" : " sep";
 function pCalCanales(){
   const view = gView(), list = visibleCanales().filter(soloPost).sort((a, b) => a.date.localeCompare(b.date)), rec = recVisible().filter(r => r.kind === "Canal" && soloRec(r));
   const calName = brandFilter === "Todas" ? "Todas las marcas" : brandFilter === "Otros" ? "Otras marcas" : brandFilter;
-  const adds = calAdds([...(canEditPost() ? [['data-pnew="Canal"', "plus", "Cargar contenido", "Una oferta o contenido para web, app, WhatsApp, e-mail o pantallas."]] : []), ...(canCreateJobs() && can("gestioncm") ? [['data-recgo="Canal"', "repeat", "Cargar repetitivo", "Algo que sale siempre los mismos días (ej.: ofertas cada lunes)."]] : [])]);
-  const head = gHead(`Gestión Canales${view === "calendario" ? " · " + calName : ""}`, `${monthLabel(MONTH)} · lo que se sube fuera de las redes: ofertas en la web, la app, WhatsApp, e-mail o pantallas, cada una en su fecha.`, "store");
+  const adds = calAdds([...(canEditPost() ? [['data-pnew="Canal"', "plus", "Cargar contenido", "Un contenido para el Canal de WhatsApp, en su fecha."]] : []), ...(canCreateJobs() && can("gestioncm") ? [['data-recgo="Canal"', "repeat", "Cargar repetitivo", "Algo que sale siempre los mismos días en el canal (ej.: ofertas cada lunes)."]] : [])]);
+  const head = gHead(`Gestión Canal WhatsApp${view === "calendario" ? " · " + calName : ""}`, `${monthLabel(MONTH)} · lo que se publica en el Canal de WhatsApp de cada marca, cada contenido en su fecha.`, "message-circle");
   if (view !== "calendario") return `${head}${adds}${gFilters(view === "tablero" ? "Tocá una tarjeta para cambiar su etapa · el lápiz para editar" : "Tocá el tema para editarlo")}${view === "tablero" ? postBoard(list, "Canal") : postTable(list, "Canal")}${postForm()}${recDrawer()}`;
   return `${head}${adds}${gFilters("")}
-  <div class="legend">${CANAL_STAGES.map(st => `<span><span class="sw" style="background:${POST_COLOR[st]}"></span>${st}</span>`).join("")}<span><span class="sw" style="background:${REC_KINDS.Canal.c}"></span>${icon("repeat")} Canal repetitivo</span></div>${calHint()}
-  ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("") + list.filter(k => k.date === c).map(k => `<div class="ev${sepCls(k.brand)}"${calDrag("canal", k.id)}${canEditPost() ? ` data-open="canal:${k.id}"` : ""} style="--c:${BRANDS[k.brand]};--s:${POST_COLOR[k.status]}" title="${esc(k.title)} · ${esc(k.channel)} · ${k.status} · ${esc(k.cm || "")}"><span>${icon(CH_ICO[k.channel] || "pin")} ${k.brand} · ${esc(k.title)}</span>${evStage("canal", k, `${k.status} · ${esc(k.channel)} · ${esc(firstName(k.cm || ""))}`, stColor(k.status))}</div>`).join(""), canEditPost())}
-  <p class="note">${icon("repeat")} = repetitivo: una oferta o contenido que sale siempre los mismos días (ej.: ofertas de WhatsApp cada lunes). Se carga una vez y aparece solo en cada fecha; tocalo para marcarlo como hecho.${list.some(k => k.date.slice(0,7) === MONTH) ? "" : ` Todavía no hay contenidos cargados en ${monthName(MONTH)}.`}</p>
+  <div class="legend">${CANAL_STAGES.map(st => `<span><span class="sw" style="background:${POST_COLOR[st]}"></span>${st}</span>`).join("")}<span><span class="sw" style="background:${REC_KINDS.Canal.c}"></span>${icon("repeat")} Canal de WhatsApp repetitivo</span></div>${calHint()}
+  ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("") + list.filter(k => k.date === c).map(k => `<div class="ev${sepCls(k.brand)}"${calDrag("canal", k.id)}${canEditPost() ? ` data-open="canal:${k.id}"` : ""} style="--c:${BRANDS[k.brand]};--s:${POST_COLOR[k.status]}" title="${esc(k.title)} · ${esc(k.channel)} · ${k.status} · ${esc(k.cm || "")}"><span>${icon(CH_ICO[k.channel] || "message-circle")} ${k.brand} · ${esc(k.title)}</span>${evStage("canal", k, `${k.status} · ${esc(k.channel)} · ${esc(firstName(k.cm || ""))}`, stColor(k.status))}</div>`).join(""), canEditPost())}
+  <p class="note">${icon("repeat")} = repetitivo: un contenido que sale siempre los mismos días en el Canal de WhatsApp (ej.: ofertas cada lunes). Se carga una vez y aparece solo en cada fecha; tocalo para marcarlo como hecho.${list.some(k => k.date.slice(0,7) === MONTH) ? "" : ` Todavía no hay contenidos cargados en ${monthName(MONTH)}.`}</p>
   ${postForm()}${recDrawer()}`;
 }
 function pCalendario(){ return pCalCM("Feed"); }
@@ -3158,21 +3159,23 @@ function pPlan(){
   const filters = `<div class="panel" style="padding:14px;display:flex;flex-direction:column;gap:10px"><div class="head"><div class="chips">${brandChips()}${soloBtn()}</div></div>
     <div class="jfilters"><select class="base" data-cmf="cm"><option value="Todos">CM: todos</option>${names.map(n => `<option ${cmUI.cm === n ? "selected" : ""}>${n}</option>`).join("")}</select>
     <select class="base" data-cmf="st"><option value="Todos">Estado: todos</option>${POST_STAGES.map(st => `<option ${cmUI.st === st ? "selected" : ""}>${st}</option>`).join("")}</select></div></div>`;
-  return `<div class="head"><div><h1 class="pmh">${pmIco("list-checks")}Plan de posteo</h1><p class="sub">${monthLabel(MONTH)} · todo lo que se sube en el mes, junto: feed, historias y canales, cada uno en su fecha y con su estado.</p></div>${viewTabs([["tabla","Tabla","table-2"],["calendario","Calendario","calendar-days"]], planUI.view, "data-plview")}</div>
+  return `<div class="head"><div><h1 class="pmh">${pmIco("list-checks")}Plan de posteo</h1><p class="sub">${monthLabel(MONTH)} · todo lo que se sube en el mes, junto: feed (posts, carruseles y reels), historias y Canal de WhatsApp. Cargalo desde acá o desde cada Gestión.</p></div>${viewTabs([["tabla","Tabla","table-2"],["calendario","Calendario","calendar-days"]], planUI.view, "data-plview")}</div>
   ${isClosed() ? `<div class="ro">🔒 ${monthLabel(MONTH)} está cerrado: se puede consultar, pero no modificar. Lo que no se cumplió pasó al mes siguiente como “arrastrado”.</div>` : ""}
+  ${calAdds(canEditPost() ? [['data-pnew="Feed"', "image", "Cargar publicación", "Post, carrusel o reel para el feed."], ['data-pnew="Historia"', "smartphone", "Cargar historia", "Una historia en su fecha."], ['data-pnew="Canal"', "message-circle", "Cargar para el Canal de WhatsApp", "Un contenido para el canal."]] : [])}
   ${summary}${filters}
   ${planUI.view === "calendario" ? planCal(vp) : `<div class="head"><span class="note">${vp.length} ${vp.length === 1 ? "publicación" : "publicaciones"} · ordenadas por fecha de publicación${canEditPost() ? " · cambiá el estado desde la lista" : ""}</span></div>
   <div class="tw"><table><thead><tr><th>Publicación</th><th>Marca</th><th>CM</th><th>Dónde</th><th>Tema</th><th>Diseño gráfico</th><th>Estado</th><th>Siguiente paso</th></tr></thead><tbody>
-    ${vp.map(p => p.canal ? `<tr><td class="num" style="white-space:nowrap">${dm(p.date)}</td><td>${brandTag(p.brand)}</td><td>${esc(firstName(p.cm || ""))}</td><td style="white-space:nowrap">${icon(CH_ICO[p.channel] || "pin")} ${esc(p.channel)}</td><td style="min-width:190px"><b style="color:#fff">${esc(p.title)}</b></td><td><span class="note">—</span></td><td>${canalStatusCell(p)}</td><td><span class="note">—</span></td></tr>` : (() => { const lbl = canEditPost() && { "Listo":"Programar", "Programado":"Marcar publicado", "Publicado":"Pautar" }[p.status];
-      return `<tr><td class="num" style="white-space:nowrap">${dm(p.date)}</td><td>${brandTag(p.brand)}</td><td>${canEditPost() ? `<select class="base sm" data-pcm="${p.id}" aria-label="CM de ${esc(p.title)}">${[...new Set([...CM_NAMES(), p.cm].filter(Boolean))].map(n => `<option value="${esc(n)}" ${n === p.cm ? "selected" : ""}>${esc(firstName(n))}</option>`).join("")}</select>` : esc(firstName(p.cm))}</td><td style="white-space:nowrap"><span class="net">${p.net}</span> ${p.format}</td><td style="min-width:190px"><b style="color:#fff">${esc(p.title)}</b>${p.carried ? `<span class="carried">↩ Arrastrado de ${p.carried}</span>` : ""}</td><td style="white-space:nowrap">${postDesignCell(p)}</td><td><div class="chips" style="flex-wrap:nowrap">${postStatusCell(p)}${postUrgBadge(p)}</div></td><td>${lbl ? `<button class="btn" data-adv-post="${p.id}">${lbl}</button>` : `<span class="note">—</span>`}</td></tr>`; })()).join("") || `<tr><td colspan="8" class="empty">No hay publicaciones con estos filtros.</td></tr>`}
-  </tbody></table></div>`}`;
+    ${vp.map(p => p.canal ? `<tr><td class="num" style="white-space:nowrap">${dm(p.date)}</td><td>${brandTag(p.brand)}</td><td>${esc(firstName(p.cm || ""))}</td><td style="white-space:nowrap">${icon(CH_ICO[p.channel] || "message-circle")} ${esc(p.channel)}</td><td style="min-width:190px">${canEditPost() ? `<button type="button" class="linkish" data-pedit="canal:${p.id}">${esc(p.title)}</button>` : `<b style="color:#fff">${esc(p.title)}</b>`}</td><td><span class="note">—</span></td><td>${canalStatusCell(p)}</td><td><span class="note">—</span></td></tr>` : (() => { const lbl = canEditPost() && { "Listo":"Programar", "Programado":"Marcar publicado", "Publicado":"Pautar" }[p.status];
+      return `<tr><td class="num" style="white-space:nowrap">${dm(p.date)}</td><td>${brandTag(p.brand)}</td><td>${canEditPost() ? `<select class="base sm" data-pcm="${p.id}" aria-label="CM de ${esc(p.title)}">${[...new Set([...CM_NAMES(), p.cm].filter(Boolean))].map(n => `<option value="${esc(n)}" ${n === p.cm ? "selected" : ""}>${esc(firstName(n))}</option>`).join("")}</select>` : esc(firstName(p.cm))}</td><td style="white-space:nowrap"><span class="net">${p.net}</span> ${p.format}</td><td style="min-width:190px">${canEditPost() ? `<button type="button" class="linkish" data-pedit="post:${p.id}">${esc(p.title)}</button>` : `<b style="color:#fff">${esc(p.title)}</b>`}${p.carried ? `<span class="carried">↩ Arrastrado de ${p.carried}</span>` : ""}</td><td style="white-space:nowrap">${postDesignCell(p)}</td><td><div class="chips" style="flex-wrap:nowrap">${postStatusCell(p)}${postUrgBadge(p)}</div></td><td>${lbl ? `<button class="btn" data-adv-post="${p.id}">${lbl}</button>` : `<span class="note">—</span>`}</td></tr>`; })()).join("") || `<tr><td colspan="8" class="empty">No hay publicaciones con estos filtros.</td></tr>`}
+  </tbody></table></div>`}
+  ${postForm()}`;
 }
 // Plan de posteo en calendario: una vista general del mes, con todas las marcas juntas.
 let planUI = { view:"tabla" };
 document.addEventListener("click", e => { const v = e.target.closest("[data-plview]"); if (v){ planUI.view = v.dataset.plview; render(); } });
 function planCal(vp){
-  return `<div class="plcal">${calGrid(c => vp.filter(p => p.date === c).map(p => `<div class="pev" title="${esc(p.title)} · ${p.brand} · ${p.canal ? p.channel : p.net + " " + p.format} · ${p.status} · ${esc(p.cm || "")}"><i style="background:${BRANDS[p.brand]}"></i><span>${esc(p.title)}</span><em style="--c:${POST_COLOR[p.status] === "#334155" ? "#94a3b8" : POST_COLOR[p.status]}">${p.status}</em></div>`).join(""))}</div>
-  <p class="note">Feed, historias y canales juntos: cada uno con el punto de color de su marca y su estado. Para cambiar la fecha o editarlo, usá Gestión Redes, Historia o Canales.</p>`;
+  return `<div class="plcal">${calGrid(c => vp.filter(p => p.date === c).map(p => `<div class="pev"${canEditPost() ? ` data-pedit="${p.canal ? "canal" : "post"}:${p.id}" role="button" tabindex="0"` : ""} title="${esc(p.title)} · ${p.brand} · ${p.canal ? p.channel : p.net + " " + p.format} · ${p.status} · ${esc(p.cm || "")}"><i style="background:${BRANDS[p.brand]}"></i><span>${esc(p.title)}</span><em style="--c:${POST_COLOR[p.status] === "#334155" ? "#94a3b8" : POST_COLOR[p.status]}">${p.status}</em></div>`).join(""))}</div>
+  <p class="note">Feed, historias y Canal de WhatsApp juntos: cada uno con el punto de color de su marca y su estado. Tocá uno para editarlo.</p>`;
 }
 let jobUI = { area:"Todos", view:"calendario", status:"Activos", owner:"Todos", prio:"Todas", q:"", form:null };
 const canCreateJobs = () => !isDesigner() && !isViewOnly() && !isClosed();
@@ -3312,8 +3315,8 @@ function postStatusCell(p){
 // El CM responsable se elige libremente: un CM de Superseis puede hacer de CM de Stock, por ejemplo.
 const POST_NETS = ["IG","FB","IG + FB","TikTok"];
 const FEED_FORMATS = ["Post","Carrusel","Reel"];
-// Calendario Canales: ofertas y comunicaciones que no son redes (web, app, WhatsApp, e-mail, pantallas…).
-const CANALES = ["Web / E-commerce","App","WhatsApp","E-mail","Pantallas en tienda","Otro"];
+// Canal: el Canal de WhatsApp de cada marca, donde también se publican contenidos.
+const CANALES = ["Canal de WhatsApp"];
 const CANAL_STAGES = ["Borrador","En diseño","Listo","Programado","Publicado"];
 let CHANNEL_POSTS = [];
 const canalById = id => CHANNEL_POSTS.find(k => k.id === id);
@@ -3333,21 +3336,21 @@ function postForm(){
   const p = f.post, opt = (list, v) => [...new Set([...list, v].filter(Boolean))].map(x => `<option ${x === v ? "selected" : ""}>${esc(x)}</option>`).join("");
   const j = f.kind === "Canal" ? null : jobs.find(x => x.post === p.id);
   const kindFields = f.kind === "Canal"
-    ? `<label style="grid-column:1/-1">Canal *<select class="base" id="poChannel">${opt(CANALES, p.channel)}</select></label>`
+    ? `<label style="grid-column:1/-1">Dónde se publica<input class="base" id="poChannel" value="Canal de WhatsApp" readonly></label>`
     : `<label>Red *<select class="base" id="poNet">${opt(POST_NETS, p.net)}</select></label>
       ${f.kind === "Historia" ? `<label>Formato<input class="base" value="Historia" readonly></label>` : `<label>Formato *<select class="base" id="poFormat">${opt(FEED_FORMATS, p.format === "Historia" ? "Post" : p.format)}</select></label>`}`;
   return `<div class="drawer-bg" data-pclose></div><aside class="drawer" aria-label="Ficha del posteo">
-    <div class="drawer-h"><div><h2 style="margin:0">${f.mode === "edit" ? (f.kind === "Canal" ? "Editar contenido de canal" : f.kind === "Historia" ? "Editar historia" : "Editar publicación") : f.kind === "Canal" ? "Nuevo contenido de canal" : f.kind === "Historia" ? "Nueva historia" : "Nueva publicación"}</h2><div class="note">${esc(p.id)}${j ? ` · 🎨 diseño: ${esc(j.id)} (${esc(j.status)})` : ""}</div></div><button class="btn" data-pclose aria-label="Cerrar">✕</button></div>
+    <div class="drawer-h"><div><h2 style="margin:0">${f.mode === "edit" ? (f.kind === "Canal" ? "Editar contenido del Canal de WhatsApp" : f.kind === "Historia" ? "Editar historia" : "Editar publicación") : f.kind === "Canal" ? "Nuevo contenido para el Canal de WhatsApp" : f.kind === "Historia" ? "Nueva historia" : "Nueva publicación"}</h2><div class="note">${esc(p.id)}${j ? ` · 🎨 diseño: ${esc(j.id)} (${esc(j.status)})` : ""}</div></div><button class="btn" data-pclose aria-label="Cerrar">✕</button></div>
     <form id="postForm" class="pform drawer-b" style="grid-template-columns:1fr 1fr">
       <label>Fecha de publicación *<input class="base" type="date" id="poDate" value="${p.date}" required></label>
       <label>Marca *<select class="base" id="poBrand">${opt(myBrands(), p.brand)}</select></label>
       ${kindFields}
-      <label class="wide" style="grid-column:1/-1">${f.kind === "Canal" ? "Qué se sube *" : "Tema *"}<input class="base" id="poTitle" value="${esc(p.title)}" placeholder="${f.kind === "Canal" ? "Ej.: Ofertas del finde en la web" : "Ej.: Ofertas del finde"}" required></label>
+      <label class="wide" style="grid-column:1/-1">${f.kind === "Canal" ? "Qué se sube *" : "Tema *"}<input class="base" id="poTitle" value="${esc(p.title)}" placeholder="${f.kind === "Canal" ? "Ej.: Ofertas del finde para el canal" : "Ej.: Ofertas del finde"}" required></label>
       <label>CM (de cualquier marca) *<select class="base" id="poCm">${opt(CM_NAMES(), p.cm)}</select></label>
       <label>Estado *<select class="base" id="poStatus">${opt(f.kind === "Canal" ? CANAL_STAGES : POST_STAGES, p.status)}</select></label>
       <label style="grid-column:1/-1">Observaciones<input class="base" id="poNotes" value="${esc(p.notes || "")}" placeholder="Copy, link, detalles…"></label>
       ${f.mode === "new" && f.kind !== "Canal" ? `<p class="note" style="grid-column:1/-1;margin:0">Si lo pasás a “En diseño”, se crea solo el pedido en Diseño para Redes.</p>` : ""}
-      <div class="chips" style="grid-column:1/-1;justify-content:flex-end">${f.mode === "edit" && canEditPost() ? `<button class="btn danger" type="button" data-postdel="${f.kind === "Canal" ? "canal:" : ""}${p.id}" style="margin-right:auto">🗑 Borrar</button>` : ""}<button class="btn" type="button" data-pclose>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div>
+      <div class="chips" style="grid-column:1/-1;justify-content:flex-end">${f.mode === "edit" && canEditPost() ? `<button class="btn danger" type="button" data-postdel="${f.kind === "Canal" ? "canal:" : ""}${p.id}" style="margin-right:auto">${icon("trash-2")} Borrar</button>` : ""}<button class="btn" type="button" data-pclose>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div>
     </form></aside>`;
 }
 document.addEventListener("change", e => { if (e.target.id === "poBrand"){ const cm = CM_BY_BRAND[e.target.value], s2 = $("#poCm"); if (cm && s2 && [...s2.options].some(o => o.value === cm)) s2.value = cm; } });
@@ -3440,7 +3443,7 @@ function recDrawer(){
     <form class="pform drawer-b recform" id="recForm" style="grid-template-columns:1fr 1fr">
       <label style="grid-column:1/-1">Qué se publica o se hace *<input class="base" id="rcTitle" required value="${esc(v.title)}" placeholder="Ej.: Ofertas de la semana"></label>
       <label>Marca *<select class="base" id="rcBrand">${opt(myBrands(), v.brand)}</select></label>
-      <label>Tipo *<select class="base" id="rcKind">${opt(Object.keys(REC_KINDS), recUI.kind || v.kind)}</select></label>
+      <label>Tipo *<select class="base" id="rcKind">${Object.keys(REC_KINDS).map(k => `<option value="${k}" ${k === (recUI.kind || v.kind) ? "selected" : ""}>${k === "Canal" ? "Canal de WhatsApp" : k}</option>`).join("")}</select></label>
       <div class="recdays" style="grid-column:1/-1"><span class="note">Se repite todos los *</span><div class="chips">${WEEKDAYS.map((w, i) => `<button type="button" class="chip ${recUI.days.includes(i) ? "on" : ""}" data-recday="${i}">${w}</button>`).join("")}</div></div>
       <label>Hora *<input class="base" type="time" id="rcTime" value="${v.time}" required></label>
       <label>Responsable (de cualquier marca) *<select class="base" id="rcOwner">${opt(CM_NAMES(), v.owner)}</select></label>
@@ -4731,7 +4734,7 @@ const GUIDE = [
   ["Primeros pasos", [
     ["user","Completá tu perfil","En Mi perfil (abajo a la izquierda): foto, frase que te define, celular, email personal, cumpleaños y marcas que manejás. El año de nacimiento queda privado."],
     ["bell","Revisá Alertas todos los días","Ahí llega todo lo que necesita tu atención: entregas por vencer, mensajes, encuestas, avisos y revisiones. Desde cada alerta podés actuar."],
-    ["palette","Trabajá desde tu Gestión","Diseñadores: Diseño para Redes, Cartelería y Web. CM: Gestión Redes, Historia, Canales y Videos, y el Plan de posteo con todo junto. Cada cosa tiene su fecha límite y su estado."],
+    ["palette","Trabajá desde tu Gestión","Diseñadores: Diseño para Redes, Cartelería y Web. CM: Gestión Redes, Historia, Canal WhatsApp y Videos, y el Plan de posteo con todo junto. Cada cosa tiene su fecha límite y su estado."],
     ["smartphone","Instalá la app","En “Instalá la app” (menú) están los pasos para tenerla con su ícono en el celular, la tablet o la computadora. En Android y en Chrome/Edge de la compu hay un botón para instalarla directo."],
     ["settings","Elegí cómo ver la app","En Configuración: versión oscura o clara, foto, tamaño del texto y animaciones."],
     ["search","¿No encontrás algo?","Usá el buscador de esta guía: escribí, por ejemplo, “pauta”, “cumpleaños” o “contraseña”."]]],
@@ -4762,7 +4765,7 @@ const GUIDE = [
   ["Community Manager", [
     ["calendar-days","Gestión Redes","Las publicaciones del feed (posts, carruseles y reels) y sus repetitivas. Arranca en Calendario; también tiene Tablero (tocás una tarjeta para cambiar la etapa) y Tabla. Con “Solo yo” ves solo lo tuyo."],
     ["smartphone","Gestión Historia","Igual que Gestión Redes, pero solo con las historias: las del plan y las repetitivas. Calendario, Tablero y Tabla."],
-    ["store","Gestión Canales","Lo que se sube fuera de las redes: ofertas en la web, la app, WhatsApp, e-mail o pantallas. Calendario, Tablero y Tabla."],
+    ["message-circle","Gestión Canal WhatsApp","Lo que se publica en el Canal de WhatsApp de cada marca. Calendario, Tablero y Tabla."],
     ["clapperboard","Gestión Videos","Los pedidos a los CM: grabaciones, ediciones de video, coberturas, copys y pauta. Calendario (cada pedido en su fecha límite, con las grabaciones repetitivas), Tablero, Tabla y la lista de Repetitivos."],
     ["gauge","Carga de trabajo CM","Cuánto tiene cada CM: los pedidos sin terminar y las publicaciones del mes que todavía no están programadas."],
     ["list-checks","Plan de posteo","Lo que se tiene que subir en el mes. Arriba, cuántas hay en cada estado y el % ya publicado (tocá un estado para filtrar). En cada publicación marcás Borrador, En diseño, Listo, Programado, Publicado o Pautado, cambiás el CM que la hace y pedís el diseño si hace falta."],
