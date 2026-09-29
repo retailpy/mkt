@@ -1776,6 +1776,12 @@ button,.btn,.chip,.nav a,.tabbar a,.tabbar button{-webkit-user-select:none;user-
 .clean .nowcard,.clean .hellohead .motto{box-shadow:none}
 .clean .avatar{background:rgba(148,163,184,.14);color:var(--ink)}
 .clean .avban{background:transparent}
+.metapages{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:12px;margin-top:12px}
+.metapage{border:1px solid var(--line-3);border-radius:14px;padding:12px}
+.metapage .mph{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.metapage .mpn{margin-left:auto;font-size:12px;color:var(--muted)}
+.metawarn{display:flex;gap:12px;align-items:flex-start;border-color:rgba(234,179,8,.45)!important;line-height:1.5;color:#cbd5e1}
+.metawarn svg{flex:none;width:20px;height:20px;color:#eab308;margin-top:2px}
 .ev span svg,.legend svg,.note svg{width:11px;height:11px;vertical-align:-1px}
 .note svg{width:13px;height:13px;vertical-align:-2px}
 .avatar.roleav{background:rgba(148,163,184,.12)!important;color:var(--cyan);border:1px solid var(--line-3)}
@@ -2252,17 +2258,21 @@ const areaPeople = a => a === "CM" ? CM_NAMES() : DESIGNERS;
 let jobCounter = 150;
 const nextJobId = area => `${AREAS[area].prefix}-2026-${++jobCounter}`;
 
-const CAMPAIGNS = [
-  { month:"2026-08", brand:"Superseis", name:"Liquidación de invierno", obj:"Alcance", start:"2026-08-01", end:"2026-08-31", spend:4200000, reach:288100, results:288100, unit:"personas" },
-  { month:"2026-08", brand:"Superseis", name:"Día del niño", obj:"Mensajes", start:"2026-08-08", end:"2026-08-16", spend:1500000, reach:70400, results:356, unit:"conversaciones" },
-  { month:"2026-08", brand:"Stock", name:"Semana del bebé", obj:"Tráfico", start:"2026-08-10", end:"2026-08-23", spend:2300000, reach:121800, results:2680, unit:"clics" },
-  { month:"2026-08", brand:"Delimarket", name:"Delivery express", obj:"Mensajes", start:"2026-08-14", end:"2026-08-31", spend:1800000, reach:64900, results:471, unit:"conversaciones" },
-  { month:"2026-09", brand:"Superseis", name:"Ofertas de primavera", obj:"Alcance", start:"2026-09-01", end:"2026-09-30", spend:4850000, reach:312400, results:312400, unit:"personas" },
-  { month:"2026-09", brand:"Superseis", name:"Semana del vino", obj:"Mensajes", start:"2026-09-11", end:"2026-09-24", spend:1900000, reach:88200, results:412, unit:"conversaciones" },
-  { month:"2026-09", brand:"Stock", name:"Semana del hogar", obj:"Tráfico", start:"2026-09-15", end:"2026-09-28", spend:2600000, reach:140300, results:3120, unit:"clics" },
-  { month:"2026-09", brand:"Stock", name:"Martes de carnes", obj:"Alcance", start:"2026-09-02", end:"2026-09-09", spend:900000, reach:95000, results:95000, unit:"personas" },
-  { month:"2026-09", brand:"Delimarket", name:"Delivery gratis", obj:"Mensajes", start:"2026-09-09", end:"2026-09-26", spend:2100000, reach:76500, results:538, unit:"conversaciones" },
-];
+// Campañas de Meta Ads (inversión, alcance y resultados): se cargan desde la conexión con Meta, no a mano.
+const CAMPAIGNS = [];
+// Datos que llegan de Meta: cuándo se actualizó, qué cuenta publicitaria se ve y los anuncios activos de cada página.
+let META_ADS = { updated:null, account:null, spendAccess:false, pages:[], ads:[] };
+const META_PAGE_BRAND = { "Superseis":"Superseis", "Superseis Villarrica":"Superseis", "Supermercados Stock":"Stock", "Delimarket":"Delimarket", "Bianca":"Bianca", "DAYO":"Dayo", "Pedi WOW":"PediWOW", "Clasipar.com":"Clasipar" };
+const metaWhen = iso => { if (!iso) return "sin actualizar"; const d = new Date(iso); return new Intl.DateTimeFormat("es-PY", { timeZone:"America/Asuncion", day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit", hour12:false }).format(d).replace(",", " ·"); };
+// Anuncios activos por página (Biblioteca de anuncios de Meta, pública).
+function metaAdsPanel(){
+  const pages = META_ADS.pages.filter(pg => { const b = META_PAGE_BRAND[pg.name]; return !b || (seesBrand(b) && inFilter(b)); });
+  if (!META_ADS.updated) return `<div class="panel"><div class="empty">Todavía no llegaron datos de Meta.</div></div>`;
+  return `<div class="panel"><div class="head"><h2 class="pmh" style="margin:0">${pmIco("radio")}Anuncios activos ahora</h2><div class="tag-row"><span class="tag">Fuente: Biblioteca de anuncios de Meta</span><span class="tag">Actualizado ${metaWhen(META_ADS.updated)}</span></div></div>
+    <div class="metapages">${pages.map(pg => { const ads = META_ADS.ads.filter(a => a.page === pg.name), b = META_PAGE_BRAND[pg.name];
+      return `<div class="metapage"><div class="mph">${b ? brandTag(b) : `<span class="brand" style="--c:#94a3b8">${esc(pg.name)}</span>`}${b && pg.name !== b ? `<span class="note">${esc(pg.name)}</span>` : ""}<span class="mpn">${ads.length ? `${ads.length} ${ads.length === 1 ? "activo" : "activos"}` : "Sin anuncios activos"}</span></div>
+        ${ads.length ? `<div class="list">${ads.map(a => `<div class="row"><div class="grow"><div class="t">${esc(a.title || "Anuncio sin título")}</div><div class="m">Activo desde ${dm(a.start)}</div></div><a class="btn sm" href="${esc(a.url)}" target="_blank" rel="noopener">${icon("external-link")} Ver anuncio</a></div>`).join("")}</div>` : ""}</div>`; }).join("")}</div></div>`;
+}
 
 const MONTHS6 = ["Abr","May","Jun","Jul","Ago","Sep"];
 const SOCIAL = {
@@ -3748,10 +3758,12 @@ function pPautaInforme(){
   const list = CAMPAIGNS.filter(c => c.month === MONTH && seesBrand(c.brand) && inFilter(c.brand));
   const byBrand = myMain().filter(inFilter).map(b => [b, CAMPAIGNS.filter(c => c.brand === b && c.month === MONTH).reduce((a,c) => a + c.spend, 0)]);
   const st = c => { const d = daysTo(c.end); return d < 0 ? pill("Finalizada","#334155") : d <= 3 ? pill("Termina pronto","#f97316") : pill("Activa","#10b981"); };
-  return `${pautaTabs()}<div class="head"><div><h2 style="margin:0">Informe de lo gastado</h2><p class="sub">Campañas de Meta Ads, actualizadas todos los días de forma automática.</p></div>${brandChips()}</div>
-  <div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("megaphone")}Inversión de ${monthName(MONTH)}</h2><div class="tag-row"><span class="tag">Fuente: Meta Ads</span><span class="tag">Actualizado hoy 08:00</span></div></div><div class="panel-b grid kpis">${byBrand.map(([b,v]) => `<div class="brandbox kpi"><div class="l">${brandTag(b)}</div><div class="n">${gs(v)}</div><div class="d">invertido en el mes</div></div>`).join("")}</div></div>
+  return `${pautaTabs()}<div class="head"><div><h2 style="margin:0">Informe de lo gastado</h2><p class="sub">Datos reales de Meta, actualizados todos los días de forma automática.</p></div>${brandChips()}</div>
+  ${META_ADS.updated && !META_ADS.spendAccess ? `<div class="panel metawarn">${icon("info")}<div><b>Falta el acceso a las cuentas publicitarias de las marcas.</b> <span>La conexión con Meta solo ve la cuenta “${esc(META_ADS.account || "Retail Hub")}”, que no tiene campañas. Para ver inversión, alcance y resultados, en el Business Manager de la empresa hay que agregar al usuario conectado en las cuentas publicitarias de cada marca (con permiso para ver rendimiento). Mientras tanto se ven los anuncios activos de cada página.</span></div></div>` : ""}
+  ${metaAdsPanel()}
+  <div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("megaphone")}Inversión de ${monthName(MONTH)}</h2><div class="tag-row"><span class="tag">Fuente: Meta Ads</span><span class="tag">Actualizado ${metaWhen(META_ADS.updated)}</span></div></div><div class="panel-b grid kpis">${byBrand.map(([b,v]) => `<div class="brandbox kpi"><div class="l">${brandTag(b)}</div><div class="n">${gs(v)}</div><div class="d">invertido en el mes</div></div>`).join("")}</div></div>
   <div class="tw"><table><thead><tr><th>Marca</th><th>Campaña</th><th>Objetivo</th><th>Fechas</th><th class="r">Inversión</th><th class="r">Alcance</th><th class="r">Resultados</th><th class="r">Costo por resultado</th><th>Estado</th></tr></thead><tbody>
-  ${list.length ? "" : `<tr><td colspan="9" class="empty">Todavía no hay campañas cargadas para ${monthName(MONTH)}.</td></tr>`}${list.map(c => `<tr><td>${brandTag(c.brand)}</td><td>${esc(c.name)}</td><td>${c.obj}</td><td class="num">${dm(c.start)} – ${dm(c.end)}</td><td class="r num">${gs(c.spend)}</td><td class="r num">${dots(c.reach)}</td><td class="r num">${dots(c.results)} <span class="note">${c.unit}</span></td><td class="r num">${gs(c.spend / c.results)}</td><td>${st(c)}</td></tr>`).join("")}
+  ${list.length ? "" : `<tr><td colspan="9" class="empty">${META_ADS.spendAccess ? `No hubo campañas con inversión en ${monthName(MONTH)}.` : "Sin datos de inversión todavía: falta el acceso a las cuentas publicitarias de las marcas."}</td></tr>`}${list.map(c => `<tr><td>${brandTag(c.brand)}</td><td>${esc(c.name)}</td><td>${c.obj}</td><td class="num">${dm(c.start)} – ${dm(c.end)}</td><td class="r num">${gs(c.spend)}</td><td class="r num">${dots(c.reach)}</td><td class="r num">${dots(c.results)} <span class="note">${c.unit}</span></td><td class="r num">${gs(c.spend / c.results)}</td><td>${st(c)}</td></tr>`).join("")}
   </tbody></table></div>`;
 }
 function areaChart(vals, color, id){
@@ -5067,7 +5079,7 @@ function render(){
   const viewKey = [page, MONTH, viewer.id, calCM, reportTab, redesBrand, brandFilter, jobUI.view, cmUI.tview, cartUI.view, soloYo].join("|");
   if (animate0(page)) { jobUI.owner = "Todos"; jobUI.q = ""; if (!stagesOf(jobArea()).includes(jobUI.status)) jobUI.status = jobUI.status === "Todos" ? "Todos" : "Activos"; }
   const animate = viewKey !== render.lastKey; render.lastKey = viewKey; if (animate) render.visit = (render.visit || 0) + 1;
-  $("#content").innerHTML = `<div class="${animate ? (page === "pedidos" || page === "gestioncm" ? "anim" : "fade anim") : "noanim"}${["pedidos","cartel","web","gestioncm","calendario","calhistoria","calcanales","inicio","alertas","avisos","mensajes","plan","reportes","usuarios","staff","perfil"].includes(page) ? " clean" : ""}" style="display:flex;flex-direction:column;gap:24px">${bar}${["tv","tvredes","tvimpacto"].includes(page) ? "" : `<p class="eyebrow">${EYEBROW[page]}</p>`}${ro}${avb}${inst}${bdays}${PAGES[page]()}${demo}</div>${installDrawer()}`;
+  $("#content").innerHTML = `<div class="${animate ? (page === "pedidos" || page === "gestioncm" ? "anim" : "fade anim") : "noanim"}${["pedidos","cartel","web","gestioncm","calendario","calhistoria","calcanales","inicio","alertas","avisos","mensajes","plan","reportes","usuarios","staff","perfil","pauta"].includes(page) ? " clean" : ""}" style="display:flex;flex-direction:column;gap:24px">${bar}${["tv","tvredes","tvimpacto"].includes(page) ? "" : `<p class="eyebrow">${EYEBROW[page]}</p>`}${ro}${avb}${inst}${bdays}${PAGES[page]()}${demo}</div>${installDrawer()}`;
   if (window.lucide) lucide.createIcons();
   if (page === "tvredes"){ tvShow(animate ? 0 : tv.i); tvStart(); } else tvStop();
   if (page === "tvimpacto"){ impShow(animate ? 0 : imp.i); impLoop(); } else impStop();

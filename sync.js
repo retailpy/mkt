@@ -49,6 +49,7 @@ const RMH = (() => {
     LINKS:[() => LINKS, v => { LINKS = v; }],
     AVISOS:[() => AVISOS, v => { AVISOS = v; }],
     CAMPAIGNS:[() => CAMPAIGNS, v => replaceArr(CAMPAIGNS, v)],
+    META_ADS:[() => META_ADS, v => { META_ADS = v; }],
     CHANNEL_POSTS:[() => CHANNEL_POSTS, v => { CHANNEL_POSTS = v; }],
     MAIN_PRIORITIES:[() => MAIN_PRIORITIES, v => { MAIN_PRIORITIES = v; }],
   };
