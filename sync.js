@@ -49,6 +49,8 @@ const RMH = (() => {
     LINKS:[() => LINKS, v => { LINKS = v; }],
     AVISOS:[() => AVISOS, v => { AVISOS = v; }],
     CAMPAIGNS:[() => CAMPAIGNS, v => replaceArr(CAMPAIGNS, v)],
+    CHANNEL_POSTS:[() => CHANNEL_POSTS, v => { CHANNEL_POSTS = v; }],
+    MAIN_PRIORITIES:[() => MAIN_PRIORITIES, v => { MAIN_PRIORITIES = v; }],
   };
 
   let me = null, member = null, previewing = false, ready = false;
@@ -193,7 +195,17 @@ const RMH = (() => {
   const $id = id => document.getElementById(id);
   function msg(text, err){ const m = $id("loginMsg"); m.textContent = text; m.className = err ? "err" : "ok"; m.hidden = !text; }
   function setStatus(t){ const w = $id("whoami"); if (w) w.dataset.sync = t; }
-  function showLogin(){ $id("login").hidden = false; $id("loginForm").hidden = false; $id("changeForm").hidden = true; }
+  function showLogin(){ $id("login").hidden = false; $id("loginForm").hidden = false; $id("changeForm").hidden = true;
+    try { const e = localStorage.getItem(EMAIL_KEY); if (e && !$id("loginEmail").value){ $id("loginEmail").value = e; $id("loginPass").focus(); } } catch (err) {} }
+  // Recordar: el email queda guardado en este dispositivo y se le ofrece al navegador guardar la contraseña
+  // (así no hay que escribirla cada vez). La sesión además queda abierta hasta tocar “Cerrar sesión”.
+  const EMAIL_KEY = "rmh-last-email";
+  function rememberLogin(email, password){
+    try { if ($id("rememberMe")?.checked) localStorage.setItem(EMAIL_KEY, email); else localStorage.removeItem(EMAIL_KEY); } catch (err) {}
+    if ($id("rememberMe")?.checked && window.PasswordCredential && navigator.credentials?.store){
+      try { navigator.credentials.store(new PasswordCredential({ id:email, password, name:email })).catch(() => {}); } catch (err) {}
+    }
+  }
 
   async function afterLogin(user){
     msg("Cargando datos…");
@@ -216,6 +228,7 @@ const RMH = (() => {
     msg("Entrando…");
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if (error){ msg(/invalid/i.test(error.message) ? "Email o contraseña incorrectos." : /banned/i.test(error.message) ? "Tu usuario está desactivado. Hablá con un Admin total." : "No se pudo entrar: " + error.message, true); return; }
+    rememberLogin(email, password);
     $id("loginPass").value = "";
     if (data.user.user_metadata?.must_change){
       $id("loginForm").hidden = true; $id("changeForm").hidden = false; msg("");
