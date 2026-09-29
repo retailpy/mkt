@@ -421,6 +421,8 @@ td.r,th.r{text-align:right}
 /* gestión de trabajos */
 .jfilters{display:grid;grid-template-columns:2fr repeat(3,minmax(150px,1fr));gap:8px}
 .jfilters .base{width:100%}
+.jfilters input.base{border:1px solid var(--line-3);background:var(--inner);border-radius:16px;padding:8px 12px;color:#f1f5f9;outline:none;color-scheme:dark}
+.jfilters input.base:focus{border-color:var(--cyan)}
 @media (max-width:860px){.jfilters{grid-template-columns:1fr}}
 select.base.sm{padding:4px 8px;border-radius:10px;font-size:12.5px;border-color:color-mix(in srgb,var(--c) 70%,transparent);background:color-mix(in srgb,var(--c) 18%,#020617)}
 .drawer-bg{position:fixed;inset:0;background:rgba(2,6,23,.6);backdrop-filter:blur(2px);z-index:40}
@@ -513,13 +515,29 @@ tr.off td{opacity:.55}
 .scard .myedit{margin:10px 0 0;font-size:12.5px;color:var(--cyan)}
 .scard.shidden{opacity:.5}
 .scard .svisrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line-2)}
+/* Planificación del mes: íconos lineales de un solo color */
+.pmico{display:inline-grid;place-items:center;color:var(--cyan)}
+.pmico svg,.pmico i{width:20px;height:20px;stroke-width:1.75}
+.pmh{display:flex;align-items:center;gap:10px}
+.pmtab .pmi .pmico svg{width:26px;height:26px}
+.pmtab.on .pmi .pmico{color:#fff}
+.oglabel .pmico,.oarea .pmico{color:var(--muted)}.oglabel .pmico svg,.oarea .pmico svg{width:16px;height:16px}
+.oglabel{display:flex;align-items:center;gap:8px}
+.pmfoot{display:inline-flex;align-items:center;gap:6px}.pmfoot svg{width:14px;height:14px}
+/* Objetivos por área: sobrios, sin tantos colores */
+.ogrid .ogroup{border-top:1px solid var(--line-3)!important}
+.ogrid .oglabel{color:var(--muted)!important;letter-spacing:.06em}
+.oitem .onum{background:transparent!important;color:var(--cyan)!important;border:1.5px solid color-mix(in srgb,var(--cyan) 55%,transparent);font-weight:800}
 /* Objetivos principales */
 .prios{border-color:color-mix(in srgb,var(--cyan) 40%,transparent);background:linear-gradient(135deg,rgba(6,182,212,.10),rgba(37,99,235,.08)),var(--panel)}
-.priolist{list-style:none;margin:0;padding:0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))}
+.prios{padding:26px 28px}
+.prios h2{font-size:26px}.prios .pmh .pmico svg{width:26px;height:26px}
+.priolist{list-style:none;margin:0;padding:0;display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}
+.priolist li{padding:18px;border-radius:18px;background:rgba(2,6,23,.35);border:1px solid var(--line-2)}
 .priolist li,.prioedit{display:flex;gap:12px;align-items:flex-start}
-.priolist p{margin:0;color:var(--ink);font-weight:600;line-height:1.4}
+.priolist p{margin:0;color:var(--ink);font-weight:700;font-size:19px;line-height:1.4}
 .prioedit{margin-top:8px}.prioedit textarea{flex:1;resize:vertical}
-.pnum{flex:none;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-weight:800;color:#fff;background:linear-gradient(to bottom right,#22d3ee,#2563eb)}
+.pnum{flex:none;width:40px;height:40px;font-size:19px;border-radius:12px;display:grid;place-items:center;font-weight:800;color:#fff;background:linear-gradient(to bottom right,#22d3ee,#2563eb)}
 /* Nombres de las personas: degradado celeste → azul */
 .gname{background:linear-gradient(90deg,#67e8f9,#60a5fa);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 html.light .gname{background-image:linear-gradient(90deg,#0891b2,#2563eb)}
@@ -1687,6 +1705,7 @@ const SECTIONS = [
   { g:"General", k:"inicio", l:"Inicio", i:"house" },
   { g:"General", k:"alertas", l:"Alertas", i:"bell" },
   { g:"General", k:"avisos", l:"Avisos", i:"megaphone" },
+  { g:"General", k:"sabados", l:"Turnos Sábados", i:"calendar-clock" },
   { g:"General", k:"mensajes", l:"Mensajes", i:"mail" },
   { g:"General", k:"notas", l:"Bloc de notas", i:"notebook-pen" },
   { g:"Planificación", k:"planmes", l:"Planificación del mes", i:"target" },
@@ -1711,7 +1730,6 @@ const SECTIONS = [
   { g:"Vista TV", k:"tvimpacto", l:"TV Impacto Redes", i:"trophy" },
   { g:"Admin", k:"usuarios", l:"Usuarios y permisos", i:"shield-check" },
   { g:"Equipo", k:"staff", l:"Staff", i:"users" },
-  { g:"Equipo", k:"sabados", l:"Sábados libres", i:"sun" },
   { g:"Equipo", k:"cumples", l:"Cumpleaños", i:"cake" },
   { g:"Ayuda", k:"guia", l:"Guía de uso", i:"book-open" },
 ];
@@ -3205,13 +3223,29 @@ function tvTeamStart(){
   if (!tvTeam.timer) tvTeam.timer = setInterval(() => { if (page !== "tv") return; render.lastKey = null; render(); toast("Datos del equipo actualizados."); }, TV_TEAM_MIN * 60 * 1000);
 }
 function tvTeamStop(){ clearInterval(tvTeam.timer); clearInterval(tvTeam.clock); clearInterval(tvTeam.slideT); tvTeam.timer = tvTeam.clock = tvTeam.slideT = null; }
+let histUI = { owner:"Todos", brand:"Todas", piece:"Todos", q:"" };
 function pHistorial(){
-  const list = jobs.filter(j => j.area === "Diseño" && isFin(j) && jobMonth(j) === MONTH && seesBrand(j.brand) && (!isDesigner() || j.owner === viewer.name));
-  return `<div><h1>Historial Diseño gráfico</h1><p class="sub">Trabajos de diseño entregados en ${monthName(MONTH)}${isDesigner()?" por vos":""}.</p></div>
+  const all = jobs.filter(j => j.area === "Diseño" && isFin(j) && jobMonth(j) === MONTH && seesBrand(j.brand) && (!isDesigner() || j.owner === viewer.name));
+  const q = histUI.q.trim().toLowerCase();
+  const list = all.filter(j => (histUI.owner === "Todos" || j.owner === histUI.owner) && (histUI.brand === "Todas" || j.brand === histUI.brand) && (histUI.piece === "Todos" || j.piece === histUI.piece)
+    && (!q || [j.id, j.title, j.brand, j.owner, j.piece].join(" ").toLowerCase().includes(q))).sort((a, b) => (a.delivered || a.due).localeCompare(b.delivered || b.due));
+  const uniq = f => [...new Set(all.map(f))].filter(Boolean).sort((a, b) => a.localeCompare(b, "es"));
+  const sel = (k, all0, opts) => `<select class="base" data-hf="${k}"><option value="${all0}">${{ owner:"Persona", brand:"Marca", piece:"Tipo" }[k]}: ${all0 === "Todas" ? "todas" : "todos"}</option>${opts.map(o => `<option ${histUI[k] === o ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
+  const late = list.filter(j => (j.delivered || j.due) > j.due).length;
+  return `<div><h1>Historial Diseño gráfico</h1><p class="sub">Trabajos de diseño entregados en ${monthName(MONTH)}${isDesigner()?" por vos":""}. Filtrá por persona, marca o tipo de pieza.</p></div>
+  <div class="panel" style="padding:14px"><div class="jfilters">
+    <input class="base" id="hSearch" placeholder="🔎 Buscar por trabajo, ID…" value="${esc(histUI.q)}">
+    ${isDesigner() ? "" : sel("owner", "Todos", uniq(j => j.owner))}${sel("brand", "Todas", uniq(j => j.brand))}${sel("piece", "Todos", uniq(j => j.piece))}
+    ${histUI.owner !== "Todos" || histUI.brand !== "Todas" || histUI.piece !== "Todos" || q ? `<button class="btn" data-hclear>Limpiar filtros</button>` : ""}
+  </div></div>
+  <div class="head"><span class="note">${list.length} de ${all.length} ${all.length === 1 ? "entrega" : "entregas"}${late ? ` · ${late} con atraso` : ""}</span></div>
   <div class="tw"><table><thead><tr><th>ID</th><th>Tipo</th><th>Trabajo</th><th>Marca</th><th>Responsable</th><th>Entrega</th></tr></thead><tbody>
-  ${list.map(j => `<tr><td class="num">${j.id}</td><td>${esc(j.piece)}</td><td>${esc(j.title)}</td><td>${brandTag(j.brand)}</td><td>${esc(j.owner)}</td><td class="num">${dm(j.delivered || j.due)} ${j.delivered > j.due ? `<span class="down">(atrasado)</span>` : ""}</td></tr>`).join("") || `<tr><td colspan="6" class="empty">Sin entregas todavía.</td></tr>`}
+  ${list.map(j => `<tr><td class="num">${j.id}</td><td>${esc(j.piece)}</td><td>${esc(j.title)}</td><td>${brandTag(j.brand)}</td><td>${esc(j.owner)}</td><td class="num">${dm(j.delivered || j.due)} ${j.delivered > j.due ? `<span class="down">(atrasado)</span>` : ""}</td></tr>`).join("") || `<tr><td colspan="6" class="empty">${all.length ? "Nada con estos filtros." : "Sin entregas todavía."}</td></tr>`}
   </tbody></table></div>`;
 }
+document.addEventListener("change", e => { const f = e.target.closest("[data-hf]"); if (f){ histUI[f.dataset.hf] = f.value; render(); } });
+document.addEventListener("input", e => { if (e.target.id !== "hSearch") return; histUI.q = e.target.value; const pos = e.target.selectionStart; render(); const el = $("#hSearch"); el.focus(); el.setSelectionRange(pos, pos); });
+document.addEventListener("click", e => { if (e.target.closest("[data-hclear]")){ histUI = { owner:"Todos", brand:"Todas", piece:"Todos", q:"" }; render(); } });
 function pHistorialCM(){
   const pubs = posts.filter(p => p.date.slice(0,7) === MONTH && seesBrand(p.brand) && ["Publicado","Pautado"].includes(p.status) && (viewer.role !== "CM" || p.cm === viewer.name)).sort((a, b) => a.date.localeCompare(b.date));
   const tasks = jobs.filter(j => j.area === "CM" && isFin(j) && jobMonth(j) === MONTH && seesBrand(j.brand) && (viewer.role !== "CM" || j.owner === viewer.name));
@@ -3240,7 +3274,7 @@ function pSabados(){
   const missing = ppl.filter(pp => !map[pp.id]);
   const warn = d => { const off = offOn(d), w = []; ["Diseñador","CM"].forEach(r => { const all = ppl.filter(pp => pp.role === r); if (all.length && all.every(pp => off.includes(pp))) w.push(`No queda ningún ${r === "CM" ? "CM" : "diseñador"} trabajando`); }); if (off.length > cap) w.push(`Hay más de ${cap} libres`); return w; };
   const sel = pp => canSetSat(pp) && (viewer.role === "Admin total" || !(map[pp.id] && map[pp.id] < TODAY)) ? `<select class="base sm" data-satset="${pp.id}" aria-label="Sábado libre de ${esc(pp.name)}"><option value="">Sin elegir</option>${sats.map(d => `<option value="${d}" ${map[pp.id] === d ? "selected" : ""} ${d < TODAY && map[pp.id] !== d ? "disabled" : ""}>Sábado ${dm(d)}${offOn(d).length >= cap && map[pp.id] !== d ? " (completo)" : ""}</option>`).join("")}</select>` : map[pp.id] ? `<b style="color:#fff">Sábado ${dm(map[pp.id])}</b>` : `<span class="note">Sin elegir</span>`;
-  return `<div class="head"><div><h1>Sábados libres</h1><p class="sub">${monthLabel(MONTH)} · cada persona del equipo tiene un sábado libre por mes. Elegí el tuyo; Admin total puede organizar los de todos. Como mucho ${cap} por sábado, para que siempre quede gente trabajando.</p></div></div>
+  return `<div class="head"><div><h1>Turnos Sábados</h1><p class="sub">${monthLabel(MONTH)} · cada persona del equipo tiene un sábado libre por mes. Elegí el tuyo; Admin total puede organizar los de todos. Como mucho ${cap} por sábado, para que siempre quede gente trabajando.</p></div></div>
   <div class="grid kpis">
     <div class="panel kpi"><div class="l">Tu sábado libre</div><div class="n">${isP ? (mine ? dm(mine) : "—") : "—"}</div><div class="d">${!isP ? "no participás del turno de sábados" : mine ? (mine < TODAY ? "ya lo tomaste" : daysTo(mine) === 0 ? "¡es hoy!" : `faltan ${daysTo(mine)} días`) : "todavía no elegiste"}</div></div>
     <div class="panel kpi"><div class="l">Ya eligieron</div><div class="n">${ppl.length - missing.length} de ${ppl.length}</div><div class="d">${missing.length ? "faltan: " + missing.map(pp => nickOf(pp)).join(", ") : "todos tienen su sábado"}</div></div>
@@ -3781,7 +3815,9 @@ document.addEventListener("submit", e => {
 });
 // ---------- Planificación del mes: objetivos (medibles), campañas en destaque y lo que se viene ----------
 // Lo carga Admin total; el resto del equipo lo ve. Cada objetivo tiene línea base, meta y valor actual para medir el avance.
-const OBJ_AREAS = { "Equipo":{ c:"#22d3ee", i:"👥" }, "Diseño":{ c:"#a78bfa", i:"🎨" }, "CM":{ c:"#f472b6", i:"🎬" } };
+// Áreas de los objetivos: mismo color tranquilo para todas (más fácil de leer); el ícono dice el área.
+const OBJ_AREAS = { "Equipo":{ c:"#94a3b8", i:"users" }, "Diseño":{ c:"#94a3b8", i:"palette" }, "CM":{ c:"#94a3b8", i:"clapperboard" } };
+const pmIco = n => `<span class="pmico" aria-hidden="true">${icon(n)}</span>`;
 let OBJECTIVES = [
   { id:1, month:"2026-09", area:"Diseño", title:"Reducir 30% el tiempo entre pieza y pieza", why:"Menos espera entre pedido y entrega para que los posteos salgan a tiempo.", base:4.2, target:2.9, cur:3.5, unit:"días", hist:[4.2,4.0,3.8,3.5] },
   { id:2, month:"2026-09", area:"Diseño", title:"90% de piezas entregadas a tiempo", why:"Que la fecha límite se cumpla sin correr al final.", base:74, target:90, cur:83, unit:"%", hist:[74,78,80,83] },
@@ -3817,14 +3853,14 @@ function proposalsBlock(){
   if (isAT()){
     const list = [...OBJ_PROPOSALS].sort((a, b) => (a.status !== "Pendiente") - (b.status !== "Pendiente") || b.date.localeCompare(a.date));
     const pend = list.filter(x => x.status === "Pendiente").length;
-    return `<section class="pmsec"><div class="head"><div><h2 style="margin:0">💡 Propuestas del equipo</h2><p class="sub" style="margin:4px 0 0">Objetivos que sugiere el equipo. Solo los ves vos. ${pend ? `<b style="color:#fde68a">${pend} ${pend === 1 ? "nueva" : "nuevas"}</b>` : "Nada pendiente."}</p></div></div>
+    return `<section class="pmsec"><div class="head"><div><h2 style="margin:0" class="pmh">${pmIco("lightbulb")}Propuestas del equipo</h2><p class="sub" style="margin:4px 0 0">Objetivos que sugiere el equipo. Solo los ves vos. ${pend ? `<b style="color:#fde68a">${pend} ${pend === 1 ? "nueva" : "nuevas"}</b>` : "Nada pendiente."}</p></div></div>
       <div class="plist3">${list.map(x => { const a = personById(x.by);
-        return `<article class="panel propcard ${x.status === "Pendiente" ? "pend" : ""}"><header>${a ? avatarHTML(a) : ""}<div class="grow"><b>${esc(a?.name || "")}</b><span>${esc(a?.cargo || "")} · ${dm(x.date)}</span></div><span class="oarea" style="--ac:${OBJ_AREAS[x.area].c}">${OBJ_AREAS[x.area].i} ${areaName(x.area)}</span>${pill(x.status, PROP_COLOR[x.status])}</header>
+        return `<article class="panel propcard ${x.status === "Pendiente" ? "pend" : ""}"><header>${a ? avatarHTML(a) : ""}<div class="grow"><b>${esc(a?.name || "")}</b><span>${esc(a?.cargo || "")} · ${dm(x.date)}</span></div><span class="oarea" style="--ac:${OBJ_AREAS[x.area].c}">${pmIco(OBJ_AREAS[x.area].i)} ${areaName(x.area)}</span>${pill(x.status, PROP_COLOR[x.status])}</header>
           <h3>${esc(x.title)}</h3>${x.why ? `<p>${esc(x.why)}</p>` : ""}
           ${x.status === "Pendiente" ? `<div class="chips"><button class="btn primary" data-propok="${x.id}">+ Agregar a objetivos de ${monthName(MONTH)}</button><button class="btn" data-propno="${x.id}">No por ahora</button></div>` : ""}</article>`; }).join("") || `<div class="panel"><div class="empty">Todavía nadie propuso objetivos.</div></div>`}</div></section>`;
   }
   const mine = OBJ_PROPOSALS.filter(x => x.by === viewer.id).sort((a, b) => b.date.localeCompare(a.date));
-  return `<section class="pmsec"><div class="head"><div><h2 style="margin:0">💡 Proponé un objetivo</h2><p class="sub" style="margin:4px 0 0">¿Se te ocurre algo que deberíamos lograr este mes? Mandalo: lo lee solo Admin total y decide si lo suma.</p></div></div>
+  return `<section class="pmsec"><div class="head"><div><h2 style="margin:0" class="pmh">${pmIco("lightbulb")}Proponé un objetivo</h2><p class="sub" style="margin:4px 0 0">¿Se te ocurre algo que deberíamos lograr este mes? Mandalo: lo lee solo Admin total y decide si lo suma.</p></div></div>
     <form class="panel pform pmform" id="propForm"><label>Área<select class="base" id="prArea">${Object.keys(OBJ_AREAS).map(a => `<option value="${a}" ${a === (viewer.role === "CM" ? "CM" : viewer.role === "Diseñador" ? "Diseño" : "Equipo") ? "selected" : ""}>${areaName(a)}</option>`).join("")}</select></label>
       <label class="w2">Objetivo<input class="base" id="prTitle" required maxlength="120" placeholder="Ej.: Responder los comentarios en menos de 2 horas"></label>
       <label class="w3">Por qué (opcional)<input class="base" id="prWhy" maxlength="200" placeholder="Qué mejoraría"></label>
@@ -3858,10 +3894,10 @@ let MAIN_PRIORITIES = [
 ];
 let prioEdit = false;
 function prioritiesPanel(){
-  if (prioEdit) return `<form class="panel prios" id="prioForm"><h2 style="margin:0 0 12px">⭐ Objetivos principales</h2>
+  if (prioEdit) return `<form class="panel prios" id="prioForm"><h2 style="margin:0 0 12px" class="pmh">${pmIco("star")}Objetivos principales</h2>
     ${[0,1,2].map(i => `<label class="prioedit"><span class="pnum">${i + 1}</span><textarea class="base" id="prio${i}" rows="2" required>${esc(MAIN_PRIORITIES[i] || "")}</textarea></label>`).join("")}
     <div class="chips" style="justify-content:flex-end;margin-top:10px"><button class="btn" type="button" data-prioedit>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div></form>`;
-  return `<section class="panel prios"><div class="head" style="margin-bottom:10px"><div><h2 style="margin:0">⭐ Objetivos principales</h2><p class="sub" style="margin:4px 0 0">Las tres prioridades importantes del área, para todos los meses.</p></div>${isAT() ? `<button class="btn sm" data-prioedit>✏️ Editar</button>` : ""}</div>
+  return `<section class="panel prios"><div class="head" style="margin-bottom:10px"><div><h2 style="margin:0" class="pmh">${pmIco("star")}Objetivos principales</h2><p class="sub" style="margin:4px 0 0">Las tres prioridades importantes del área, para todos los meses.</p></div>${isAT() ? `<button class="btn sm" data-prioedit>✏️ Editar</button>` : ""}</div>
     <ol class="priolist">${MAIN_PRIORITIES.map((t, i) => `<li><span class="pnum">${i + 1}</span><p>${esc(t)}</p></li>`).join("")}</ol></section>`;
 }
 document.addEventListener("click", e => { if (!e.target.closest("[data-prioedit]") || !isAT()) return; prioEdit = !prioEdit; render(); });
@@ -3874,7 +3910,7 @@ function pPlanMes(){
   const avg = objs.length ? Math.round(objs.reduce((a, o) => a + objProgress(o), 0) / objs.length) : 0;
   const del = (kind, id) => isAT() ? `<button class="btn danger sm" data-pmdel="${kind}|${id}" aria-label="Borrar">✕</button>` : "";
   const objCard = (o, n) => `<li class="oitem"><span class="onum">${n}</span><div><b>${esc(o.title)}</b>${o.why ? `<p>${esc(o.why)}</p>` : ""}</div>${del("obj", o.id)}</li>`;
-  const group = (area, list) => list.length ? `<div class="ogroup" style="--ac:${OBJ_AREAS[area].c}"><h3 class="oglabel">${OBJ_AREAS[area].i} ${area === "Equipo" ? "Todo el equipo" : area === "CM" ? "Community Manager" : "Diseño gráfico"}</h3><ol class="olist">${list.map((o, i) => objCard(o, i + 1)).join("")}</ol></div>` : "";
+  const group = (area, list) => list.length ? `<div class="ogroup" style="--ac:${OBJ_AREAS[area].c}"><h3 class="oglabel">${pmIco(OBJ_AREAS[area].i)} ${area === "Equipo" ? "Todo el equipo" : area === "CM" ? "Community Manager" : "Diseño gráfico"}</h3><ol class="olist">${list.map((o, i) => objCard(o, i + 1)).join("")}</ol></div>` : "";
   const form = pmUI.form === "obj" ? `<form class="panel pform pmform" id="pmObjForm"><h3 style="margin:0;grid-column:1/-1">Nuevo objetivo de ${monthName(MONTH)}</h3>
       <label>Área<select class="base" id="poArea">${Object.keys(OBJ_AREAS).map(a => `<option value="${a}">${areaName(a)}</option>`).join("")}</select></label>
       <label class="w2">Objetivo<input class="base" id="poTitle" required placeholder="Ej.: Reducir 30% el tiempo entre pieza y pieza"></label>
@@ -3893,17 +3929,17 @@ function pPlanMes(){
   const add = (k, l) => isAT() ? `<button class="btn primary" data-pmform="${k}">+ ${l}</button>` : "";
   const KIND_C = { "Campaña":"#f472b6", "Materiales":"#f59e0b", "Evento":"#a78bfa", "Comunicación":"#22d3ee" };
   const pendProps = OBJ_PROPOSALS.filter(x => x.status === "Pendiente").length;
-  const tabs = [["obj","🎯","Objetivos", objs.length + " este mes"],["camp","📣","Campañas", camps.length + " en destaque"],["up","🔭","Lo que se viene", UPCOMING.filter(u => next.includes(u.month)).length + " en " + next.length + " meses"],["prop","💡", isAT() ? "Propuestas" : "Proponé", isAT() ? (pendProps ? pendProps + (pendProps === 1 ? " nueva" : " nuevas") : "nada pendiente") : "tu idea de objetivo"]];
+  const tabs = [["obj","target","Objetivos", objs.length + " este mes"],["camp","megaphone","Campañas", camps.length + " en destaque"],["up","telescope","Lo que se viene", UPCOMING.filter(u => next.includes(u.month)).length + " en " + next.length + " meses"],["prop","lightbulb", isAT() ? "Propuestas" : "Proponé", isAT() ? (pendProps ? pendProps + (pendProps === 1 ? " nueva" : " nuevas") : "nada pendiente") : "tu idea de objetivo"]];
   const T = pmUI.tab;
   return `<div class="head"><div><h1>Planificación del mes</h1><p class="sub">Qué buscamos lograr en ${monthLabel(MONTH)}, qué campañas están en destaque y qué se viene. Elegí qué querés ver.${isAT() ? "" : " La define Admin total."}</p></div></div>
   ${prioritiesPanel()}
-  <div class="pmtabs" role="tablist">${tabs.map(([k, ic, l, d]) => `<button class="pmtab ${T === k ? "on" : ""}" role="tab" aria-selected="${T === k}" data-pmtab="${k}"><span class="pmi">${ic}</span><span><b>${l}</b><small>${d}</small></span></button>`).join("")}</div>
-  ${T !== "obj" ? "" : `<section class="pmsec"><div class="head"><div><h2 style="margin:0">🎯 Objetivos del mes</h2><p class="sub" style="margin:4px 0 0">${objs.length ? "Lo que queremos lograr este mes, en pocas palabras." : "Todavía no hay objetivos para este mes."}</p></div>${add("obj", "Objetivo")}</div>
+  <div class="pmtabs" role="tablist">${tabs.map(([k, ic, l, d]) => `<button class="pmtab ${T === k ? "on" : ""}" role="tab" aria-selected="${T === k}" data-pmtab="${k}"><span class="pmi">${pmIco(ic)}</span><span><b>${l}</b><small>${d}</small></span></button>`).join("")}</div>
+  ${T !== "obj" ? "" : `<section class="pmsec"><div class="head"><div><h2 style="margin:0" class="pmh">${pmIco("target")}Objetivos del mes</h2><p class="sub" style="margin:4px 0 0">${objs.length ? "Lo que queremos lograr este mes, en pocas palabras." : "Todavía no hay objetivos para este mes."}</p></div>${add("obj", "Objetivo")}</div>
     ${pmUI.form === "obj" ? form : ""}${objs.length ? `<div class="ogrid">${group("Equipo", objs.filter(o => o.area === "Equipo"))}${group("Diseño", objs.filter(o => o.area === "Diseño"))}${group("CM", objs.filter(o => o.area === "CM"))}</div>` : ""}</section>`}
   ${T === "prop" ? proposalsBlock() : ""}
-  ${T !== "camp" ? "" : `<section class="pmsec"><div class="head"><div><h2 style="margin:0">📣 Campañas del mes</h2><p class="sub" style="margin:4px 0 0">Las campañas en destaque de ${monthName(MONTH)}.</p></div>${add("camp", "Campaña")}</div>
-    ${pmUI.form === "camp" ? form : ""}<div class="cgrid">${camps.map(c => `<article class="panel ccard" style="--c:${BRANDS[c.brand] || "#94a3b8"}"><header>${brandTag(c.brand)}<span class="grow"></span>${del("camp", c.id)}</header><h3>${esc(c.title)}</h3><p>${esc(c.desc)}</p><footer><span>📅 ${esc(c.dates || "")}</span><span>${esc(c.channels || "")}</span></footer></article>`).join("") || `<div class="panel"><div class="empty">Sin campañas cargadas para ${monthName(MONTH)}.</div></div>`}</div></section>`}
-  ${T !== "up" ? "" : `<section class="pmsec"><div class="head"><div><h2 style="margin:0">🔭 Lo que se viene</h2><p class="sub" style="margin:4px 0 0">Para planificar con tiempo campañas, materiales y comunicación.</p></div>${add("up", "Agregar")}</div>
+  ${T !== "camp" ? "" : `<section class="pmsec"><div class="head"><div><h2 style="margin:0" class="pmh">${pmIco("megaphone")}Campañas del mes</h2><p class="sub" style="margin:4px 0 0">Las campañas en destaque de ${monthName(MONTH)}.</p></div>${add("camp", "Campaña")}</div>
+    ${pmUI.form === "camp" ? form : ""}<div class="cgrid">${camps.map(c => `<article class="panel ccard" style="--c:${BRANDS[c.brand] || "#94a3b8"}"><header>${brandTag(c.brand)}<span class="grow"></span>${del("camp", c.id)}</header><h3>${esc(c.title)}</h3><p>${esc(c.desc)}</p><footer><span class="pmfoot">${icon("calendar")} ${esc(c.dates || "")}</span><span>${esc(c.channels || "")}</span></footer></article>`).join("") || `<div class="panel"><div class="empty">Sin campañas cargadas para ${monthName(MONTH)}.</div></div>`}</div></section>`}
+  ${T !== "up" ? "" : `<section class="pmsec"><div class="head"><div><h2 style="margin:0" class="pmh">${pmIco("telescope")}Lo que se viene</h2><p class="sub" style="margin:4px 0 0">Para planificar con tiempo campañas, materiales y comunicación.</p></div>${add("up", "Agregar")}</div>
     ${pmUI.form === "up" ? form : ""}<div class="upline">${next.map(m => `<div class="upmonth"><div class="upm"><b>${MONTHS_ES[+m.slice(5) - 1]}</b><span>${m.slice(0, 4)}</span></div><div class="upitems">${UPCOMING.filter(u => u.month === m).map(u => `<article class="upitem" style="--k:${KIND_C[u.kind] || "#94a3b8"}"><header><span class="ukind">${esc(u.kind)}</span>${del("up", u.id)}</header><b>${esc(u.title)}</b>${u.desc ? `<p>${esc(u.desc)}</p>` : ""}${(u.brands || []).length ? `<div class="hbrands">${u.brands.map(brandTag).join("")}</div>` : ""}</article>`).join("")}</div></div>`).join("") || `<div class="panel"><div class="empty">Todavía no hay nada cargado para los próximos meses.</div></div>`}</div></section>`}`;
 }
 const pmNum = v => Number(String(v).replace(/\./g, "").replace(",", "."));
@@ -4212,7 +4248,7 @@ const GUIDE = [
     ["mail","Mensajes","Mensajes internos entre el equipo, por tema y con prioridad normal, atención o urgente. Muestran fecha y hora de envío y de cada respuesta. Se marcan como “Recibido” y se pasan a Finalizados."],
     ["notebook-pen","Bloc de notas","Tus notas y checklists privadas. “+ Reunión” arma una lista para la minuta. Cambiás el orden arrastrando desde ⋮⋮ o con las flechitas."]]],
   ["Planificación", [
-    ["target","Planificación del mes","Arriba, siempre, los ⭐ Objetivos principales: las tres prioridades del área (Admin total las edita). Debajo, En 4 pestañas: 🎯 Objetivos (por equipo, Diseño gráfico y CM, en palabras simples), 📣 Campañas del mes, 🔭 Lo que se viene y 💡 Propuestas. Cualquiera puede proponer un objetivo; solo Admin total lo lee y decide si lo suma."]]],
+    ["target","Planificación del mes","Arriba, siempre, los Objetivos principales: las tres prioridades del área (Admin total las edita). Debajo, En 4 pestañas: 🎯 Objetivos (por equipo, Diseño gráfico y CM, en palabras simples), 📣 Campañas del mes, 🔭 Lo que se viene y 💡 Propuestas. Cualquiera puede proponer un objetivo; solo Admin total lo lee y decide si lo suma."]]],
   ["Diseño gráfico", [
     ["palette","Gestión Diseño gráfico","Los pedidos de diseño gráfico en Tablero, Tabla o Calendario de entregas. Con “➕ Nuevo pedido de diseño gráfico” se carga marca, tipo de pieza, responsable (cualquier diseñador, aunque sea de otra marca), prioridad, complejidad y fecha límite."],
     ["calendar-range","Calendario Diseño gráfico","Las entregas de diseño gráfico: cada pieza en su fecha límite, con su estado y quién la hace. Tocá una entrega para abrirla y editarla, o tocá un día para cargar un pedido nuevo con esa fecha. La pestaña 📦 Materiales es para cartelería, flyers, vía pública, catálogos y empaques."],
@@ -4239,7 +4275,7 @@ const GUIDE = [
     ["trophy","TV Impacto Redes","La mejor publicación de cada marca y después el top 10 de cada una."]]],
   ["Equipo", [
     ["users","Staff","Quién es quién: puesto, frase, marcas, cumpleaños con su signo, número y email de la empresa, email y celular personal y habilidades. Tocá tu propia tarjeta para editar tu perfil. Admin total elige quién aparece (👁 Visible / 🚫 Oculto)."],
-    ["sun","Sábados libres","Cada persona tiene un sábado libre por mes. Elegís el tuyo en la tarjeta del sábado (hay un máximo por sábado y avisa si no queda ningún CM o diseñador trabajando). Admin total puede organizar los de todos."],
+    ["calendar-clock","Turnos Sábados","Cada persona tiene un sábado libre por mes. Elegís el tuyo en la tarjeta del sábado (hay un máximo por sábado y avisa si no queda ningún CM o diseñador trabajando). Admin total puede organizar los de todos."],
     ["cake","Cumpleaños","Quién cumple hoy, en una semana y en los próximos meses. También aparecen en Inicio."]]],
   ["Tu cuenta y buzón", [
     ["user","Mi perfil","Tus datos, foto, frase y marcas. El número y el email de la empresa los carga un admin."],
