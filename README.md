@@ -41,3 +41,18 @@ Diseño gráfico, CM, redes y equipo de Retail MKT en una sola app (PWA instalab
 ## Instalar en el celular
 
 Ver `LEEME.txt`.
+
+## Datos de Meta (seguidores y demográficos)
+
+Dos funciones en Vercel consultan la Graph API de Meta todos los días y guardan el resultado en `app_state`:
+
+| Función | Guarda en | Horario (Paraguay) |
+|---|---|---|
+| `api/seguidores.js` | `s:META_FOLLOWERS` (un bloque por mes) | 07:00 |
+| `api/demograficos.js` | `s:META_DEMO` (ciudades, edades y sexo de Instagram) | 07:15 |
+
+- Las marcas y su orden están en `api/_lib/meta.js` (`NOMBRES` y `ORDEN`).
+- Variables en Vercel: `META_TOKEN` (vence cada 60 días), `SUPABASE_URL`, `SUPABASE_KEY`, `CRON_SECRET`, `INGEST_KEY`.
+- Escriben con la clave publicable a través de `ingest_meta()`, que exige `INGEST_KEY` y solo acepta esas dos claves
+  (ver `supabase/migrations/20260930030000_meta_ingest.sql`).
+- Probar sin guardar: `https://mkt-two.vercel.app/api/demograficos?dry=1&secret=CRON_SECRET`.
