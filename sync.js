@@ -50,6 +50,8 @@ const RMH = (() => {
     AVISOS:[() => AVISOS, v => { AVISOS = v; }],
     CAMPAIGNS:[() => CAMPAIGNS, v => replaceArr(CAMPAIGNS, v)],
     META_ADS:[() => META_ADS, v => { META_ADS = v; }],
+    META_FOLLOWERS:[() => META_FOLLOWERS, v => { META_FOLLOWERS = v || {}; }],
+    META_DEMO:[() => META_DEMO, v => { META_DEMO = v || {}; }],
     CHANNEL_POSTS:[() => CHANNEL_POSTS, v => { CHANNEL_POSTS = v; }],
     MAIN_PRIORITIES:[() => MAIN_PRIORITIES, v => { MAIN_PRIORITIES = v; }],
   };
@@ -117,8 +119,11 @@ const RMH = (() => {
   // ---------- guardado ----------
   let flushing = null, lastSeen = "", changedAt = 0, dirtySince = 0, rerenderPending = false, saveErrShown = false, retryAt = 0;
   // Pendiente de guardar: cambió desde lo último del servidor, o todavía no existe en la base (v 0: se crea).
-  function dirtyKeys(){ return localKeys().filter(k => { if (getLocal(k) === undefined) return false; const b = base.get(k); return !b || b.v === 0 || C(enc(getLocal(k))) !== b.json; }); }
+  // De solo lectura: las escriben las funciones de Meta; la app las lee pero nunca las guarda.
+  const READONLY = new Set(["s:META_FOLLOWERS", "s:META_DEMO"]);
+  function dirtyKeys(){ return localKeys().filter(k => { if (READONLY.has(k) || getLocal(k) === undefined) return false; const b = base.get(k); return !b || b.v === 0 || C(enc(getLocal(k))) !== b.json; }); }
   async function saveKey(key){
+    if (READONLY.has(key)) return;
     for (let attempt = 0; attempt < 4; attempt++){
       const data = enc(getLocal(key)), json = C(data), b = base.get(key);
       if (b && b.v > 0 && b.json === json) return;
