@@ -2200,7 +2200,6 @@ const lastDay = v => { const [y,m] = v.split("-").map(Number); return new Date(y
 const jobMonth = j => (isFin(j) ? (j.delivered || j.due) : j.due).slice(0,7);
 const isDone = p => ["Publicado","Pautado"].includes(p.status);
 // Datos de redes de ejemplo: los meses posteriores muestran el último cargado.
-const SOCIAL_IDX = new Proxy({ "2026-07":3, "2026-08":4, "2026-09":5, "2026-10":5 }, { get:(o, k) => k in o ? o[k] : typeof k === "string" && k > "2026-10" ? 5 : undefined });
 
 let jobs = [
   { id:"D-101", title:"Reel detrás de la panadería", brand:"Superseis", piece:"Reel", owner:"Maria Helena Giménez González", due:"2026-09-24", status:"En proceso", post:"P16" },
@@ -2274,23 +2273,19 @@ function metaAdsPanel(){
         ${ads.length ? `<div class="list">${ads.map(a => `<div class="row"><div class="grow"><div class="t">${esc(a.title || "Anuncio sin título")}</div><div class="m">Activo desde ${dm(a.start)}</div></div><a class="btn sm" href="${esc(a.url)}" target="_blank" rel="noopener">${icon("external-link")} Ver anuncio</a></div>`).join("")}</div>` : ""}</div>`; }).join("")}</div></div>`;
 }
 
-const MONTHS6 = ["Abr","May","Jun","Jul","Ago","Sep"];
-const SOCIAL = {
-  Superseis: { ig:[241000,247500,252100,258300,263200,268900], fb:[401200,403900,405800,407600,410100,412300], f:61, ages:[14,31,26,15,9,5], cities:[["Asunción",34],["San Lorenzo",12],["Luque",10],["Fernando de la Mora",8],["Lambaré",7]] },
-  Stock: { ig:[181200,184900,188300,191700,195100,198400], fb:[349100,350600,352000,353700,355200,356800], f:57, ages:[17,33,24,14,8,4], cities:[["Asunción",22],["Luque",13],["San Lorenzo",12],["Capiatá",9],["Ciudad del Este",8]] },
-  Delimarket: { ig:[104300,107900,111800,114600,118200,121700], fb:[93100,94200,95300,96400,97500,98400], f:64, ages:[11,29,28,17,10,5], cities:[["Asunción",41],["Lambaré",11],["Fernando de la Mora",10],["San Lorenzo",9],["Luque",7]] },
-};
-Object.assign(SOCIAL, {
-  "Retail Institucional": { ig:[18200,18900,19500,20100,20800,21400], fb:[42100,42300,42600,42800,43100,43300], f:52, ages:[9,27,29,20,10,5], cities:[["Asunción",38],["San Lorenzo",11],["Luque",9],["Lambaré",8],["Fernando de la Mora",7]] },
-  Bianca: { ig:[64300,66800,69100,71900,74200,77500], fb:[28400,28600,28900,29100,29300,29400], f:78, ages:[19,36,24,12,6,3], cities:[["Asunción",36],["Luque",10],["San Lorenzo",10],["Lambaré",8],["Encarnación",6]] },
-  Dayo: { ig:[38900,40200,41700,43900,45200,46100], fb:[15100,15300,15600,15800,16000,16200], f:59, ages:[22,38,22,11,5,2], cities:[["Asunción",44],["Lambaré",10],["Fernando de la Mora",9],["San Lorenzo",9],["Luque",7]] },
-  PediWOW: { ig:[52400,54100,55200,57800,59900,61300], fb:[21800,22100,22400,22600,22900,23100], f:55, ages:[24,37,21,10,5,3], cities:[["Asunción",39],["Luque",11],["San Lorenzo",10],["Capiatá",8],["Lambaré",7]] },
-  Clasipar: { ig:[29800,30100,30600,30900,31300,31700], fb:[96400,96800,97100,97500,97800,98200], f:41, ages:[12,28,27,18,10,5], cities:[["Asunción",27],["Ciudad del Este",14],["Encarnación",11],["San Lorenzo",9],["Luque",8]] },
-});
-const AGE_LABELS = ["18–24","25–34","35–44","45–54","55–64","65+"];
+// Seguidores y público reales de Meta: los escriben las funciones diarias en Supabase (solo lectura en la app).
+// META_FOLLOWERS = { updated, "AAAA-MM": { Marca: { ig, fb, handle, page } } } · META_DEMO = { updated, Marca: { handle, foll, cities, ages, gender } } (cantidades).
+let META_FOLLOWERS = {}, META_DEMO = {};
+const NO_DATA = "Sin datos todavía";
 const BRAND_RANK = b => MAIN_BRANDS.includes(b) ? MAIN_BRANDS.indexOf(b) : 10;
-const socialBrands = () => myBrands().filter(b => SOCIAL[b]).sort((a, b) => BRAND_RANK(a) - BRAND_RANK(b) || a.localeCompare(b, "es"));
-const MONTH_KEYS6 = ["2026-04","2026-05","2026-06","2026-07","2026-08","2026-09"];
+const socialBrands = () => myBrands().sort((a, b) => BRAND_RANK(a) - BRAND_RANK(b) || a.localeCompare(b, "es"));
+const isNum = v => typeof v === "number" && isFinite(v);
+// Seguidores de una marca en un mes, o null si ese mes no tiene datos de la marca.
+const folOf = (b, m = MONTH) => { const f = META_FOLLOWERS[m]?.[b]; return f && (isNum(f.ig) || isNum(f.fb)) ? f : null; };
+// El último mes con datos de la marca (para estimar alcances).
+const folLatest = b => { const m = Object.keys(META_FOLLOWERS).filter(k => /^\d{4}-\d{2}$/.test(k) && folOf(b, k)).sort().pop(); return m ? folOf(b, m) : null; };
+const folDiff = (c, p) => isNum(c) && isNum(p) ? c - p : null;
+const updTag = iso => `<span class="tag">Actualizado ${metaWhen(iso)}</span>`;
 // Números pseudoaleatorios estables (misma entrada → mismo valor) para los datos de ejemplo.
 function seeded(str){ let h = 2166136261; for (const ch of str){ h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h >>> 0) % 10000) / 10000; }
 const GENERIC_TOPICS = ["Ofertas de la semana","Novedades en góndola","Tips del día","Promo del finde","Receta fácil","Sorteo del mes","Detrás de escena","Lanzamiento","Clientes felices","Horarios especiales"];
@@ -2307,7 +2302,7 @@ function publicationsFor(month){
       items.push({ brand:b, date:`${month}-${String(day).padStart(2,"0")}`, net:nets[i % 6], format:fmts[i % 6], title:GENERIC_TOPICS[Math.floor(seeded(b + i + month + "t") * GENERIC_TOPICS.length)], cm:CM_BY_BRAND[b], paid:seeded(b + i + "p") > 0.85, fromPlan:false });
     }
     items.filter(it => it.net !== "TikTok").forEach(it => {
-      const base = (it.net === "IG" ? SOCIAL[b].ig[5] : SOCIAL[b].fb[5]) * 0.12;
+      const f = folLatest(b), base = ((it.net === "IG" ? f?.ig : f?.fb) || 5000) * 0.12;
       const mult = { Reel:1.9, Carrusel:1.1, Post:0.85, Historia:0.45 }[it.format] || 1;
       const reach = Math.round(base * mult * (0.35 + seeded(it.title + it.date + b) * 1.3) * (it.paid ? 3.5 : 1));
       out.push({ ...it, reach, inter:Math.round(reach * (0.02 + seeded(it.date + b + "i") * 0.06)), age:daysTo(it.date) * -1 });
@@ -2315,63 +2310,76 @@ function publicationsFor(month){
   });
   return out;
 }
-const EXTRA_CITIES = ["Capiatá","Ñemby","Mariano Roque Alonso","Villa Elisa","Limpio","Itauguá","Ciudad del Este","Encarnación","Luque","San Lorenzo","Lambaré","Fernando de la Mora"];
-const cityDept = c => c === "Asunción" ? "Asunción" : c === "Ciudad del Este" ? "Ciudad del Este, Alto Paraná Department" : c === "Encarnación" ? "Encarnación, Itapúa Department" : `${c}, Central Department`;
 const pct2 = n => n.toFixed(2).replace(".", ",") + "%";
-function demoData(b){
-  const S = SOCIAL[b];
-  const cities = S.cities.map(([c,v],i) => [c, v - 0.9 + seeded(b + c) * 0.8]);
-  let last = cities[cities.length-1][1];
-  for (const c of EXTRA_CITIES){ if (cities.length >= 10) break; if (cities.some(x => x[0] === c)) continue; last = last * (0.72 + seeded(b + c) * 0.2); cities.push([c, last]); }
-  const unk = 4 + seeded(b + "u") * 4, fem = S.f * (100 - unk) / 100;
-  const teen = 1 + seeded(b + "t") * 2, ages = [teen, ...S.ages.map(v => v * (100 - teen) / 100)];
-  return { cities, fem, male: 100 - unk - fem, unk, ages, handle:"@" + b.toLowerCase().replace(/[^a-z0-9]/g,""), foll:S.ig[SOCIAL_IDX[MONTH]] };
+const AGE7 = ["13-17","18-24","25-34","35-44","45-54","55-64","65+"];
+// Público de Instagram de una marca en porcentajes, a partir de las cantidades de Meta. null si no hay datos.
+function demoReal(b){
+  const D = META_DEMO[b]; if (!D || typeof D !== "object") return null;
+  const cityList = (D.cities || []).filter(x => Array.isArray(x) && isNum(x[1])).sort((a, c) => c[1] - a[1]).slice(0, 10);
+  const ageN = AGE7.map(k => isNum(D.ages?.[k]) ? D.ages[k] : 0), ageT = ageN.reduce((a, v) => a + v, 0);
+  const g = D.gender || {}, gF = isNum(g.F) ? g.F : 0, gM = isNum(g.M) ? g.M : 0, gU = isNum(g.U) ? g.U : 0, gT = gF + gM + gU;
+  if (!cityList.length && !ageT && !gT) return null;
+  const cityT = isNum(D.foll) && D.foll > 0 ? D.foll : cityList.reduce((a, x) => a + x[1], 0) || 1;
+  return { handle:D.handle ? (String(D.handle).startsWith("@") ? D.handle : "@" + D.handle) : "", foll:isNum(D.foll) ? D.foll : null,
+    cities:cityList.map(([c, n]) => [String(c).split(",")[0].trim(), n / cityT * 100]),
+    ages:ageT ? ageN.map(v => v / ageT * 100) : null,
+    sex:gT ? { fem:gF / gT * 100, male:gM / gT * 100, unk:gU / gT * 100 } : null };
 }
 function donut(parts, big, lbl){
   const R = 70, C = 2 * Math.PI * R; let off = 0;
   return `<svg class="sexdonut" viewBox="0 0 200 200" role="img" aria-label="Distribución por sexo">${parts.map(([v,c]) => { const len = v / 100 * C; const seg = `<circle class="seg" cx="100" cy="100" r="${R}" fill="none" stroke="${c}" stroke-width="26" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}" transform="rotate(-90 100 100)" style="--C:${C.toFixed(1)}"/>`; off += len; return seg; }).join("")}${big ? `<text class="c1" x="100" y="104" text-anchor="middle">${big}</text><text class="c2" x="100" y="126" text-anchor="middle">${lbl}</text>` : ""}</svg>`;
 }
-const AGE7 = ["13-17","18-24","25-34","35-44","45-54","55-64","65+"];
 // Edades en barras horizontales: se leen bien en cualquier ancho (celular, compu o tele).
 function ageChart(ages){
   const max = Math.max(...ages);
   return `<div class="agebars" role="img" aria-label="Edades">${ages.map((v,i) => `<div class="ar"><span class="al">${AGE7[i]}</span><div class="tr"><div class="fl" style="width:${Math.max(v / max * 100, 2)}%;--dl:${i*70}ms;animation-delay:${i*70}ms"></div></div><b>${Math.round(v)}%</b></div>`).join("")}</div>`;
 }
 function demoBlock(b, i = 0){
-  const d = demoData(b);
-  const sx = [["Mujeres", d.fem, "#f472b6"], ["Hombres", d.male, "#38bdf8"], ["Desconocido", d.unk, "#94a3b8"]];
-  return `<div class="demo-wrap"><div class="demo-h"><b>Demográfico de la audiencia</b><span>${brandTag(b)}</span><span>${d.handle}</span><small>${dots(d.foll)} seguidores</small></div>
+  const d = demoReal(b);
+  const head = `<div class="demo-h"><b>Demográfico de la audiencia</b><span>${brandTag(b)}</span>${d?.handle ? `<span>${esc(d.handle)}</span>` : ""}${d?.foll != null ? `<small>${dots(d.foll)} seguidores</small>` : ""}<small>Actualizado ${metaWhen(META_DEMO.updated)}</small></div>`;
+  if (!d) return `<div class="demo-wrap">${head}<div class="empty">${NO_DATA}</div></div>`;
+  const sx = d.sex ? [["Mujeres", d.sex.fem, "#f472b6"], ["Hombres", d.sex.male, "#38bdf8"], ["Desconocido", d.sex.unk, "#94a3b8"]] : null;
+  return `<div class="demo-wrap">${head}
     <div class="demo-grid">
-      <div class="dcard d-cities"><h3>Top 10 ciudades</h3><div class="cl">${d.cities.map(([c,v]) => `<div class="cityrow"><span title="${cityDept(c)}">${cityDept(c)}</span><b>${pct2(v)}</b></div>`).join("")}</div></div>
-      <div class="dcard d-ages"><h3>Edades</h3><div class="ab">${ageChart(d.ages)}</div></div>
-      <div class="dcard d-sex"><h3>Sexo</h3><div class="sx">${donut(sx.map(([, v, c]) => [v, c]), Math.round(d.fem) + "%", "mujeres")}
-        <div class="sexlist">${sx.map(([n, v, c], k) => `<div class="sr"><i style="background:${c}"></i><span>${n}</span><b>${pct2(v)}</b><div class="tb"><span class="fl" style="width:${v}%;background:${c};--dl:${k*80}ms;animation-delay:${k*80}ms"></span></div></div>`).join("")}</div></div></div>
+      <div class="dcard d-cities"><h3>Top 10 ciudades</h3>${d.cities.length ? `<div class="cl">${d.cities.map(([c,v]) => `<div class="cityrow"><span title="${esc(c)}">${esc(c)}</span><b>${pct2(v)}</b></div>`).join("")}</div>` : `<div class="empty">${NO_DATA}</div>`}</div>
+      <div class="dcard d-ages"><h3>Edades</h3>${d.ages ? `<div class="ab">${ageChart(d.ages)}</div>` : `<div class="empty">${NO_DATA}</div>`}</div>
+      <div class="dcard d-sex"><h3>Sexo</h3>${sx ? `<div class="sx">${donut(sx.map(([, v, c]) => [v, c]), Math.round(d.sex.fem) + "%", "mujeres")}
+        <div class="sexlist">${sx.map(([n, v, c], k) => `<div class="sr"><i style="background:${c}"></i><span>${n}</span><b>${pct2(v)}</b><div class="tb"><span class="fl" style="width:${v}%;background:${c};--dl:${k*80}ms;animation-delay:${k*80}ms"></span></div></div>`).join("")}</div></div>` : `<div class="empty">${NO_DATA}</div>`}</div>
     </div></div>`;
 }
 function followersPanel(){
-  const bs = socialBrands(), ix = SOCIAL_IDX[MONTH], ml = monthLabel(MONTH > "2026-09" ? "2026-09" : MONTH);
-  const card = (net, title, color) => { const list = bs.map((b,i) => ({ b, v:SOCIAL[b][net][ix], c:FCOL(b,i) })); const max = Math.max(...list.map(x => x.v));
-    return `<div><div class="fhead"><b style="color:${color}">${title}</b><span>${ml}</span></div><div class="fcard">${list.map((x,i) => `<div class="fbar"><span class="lb" title="${x.b}">${x.b}</span><div class="tr"><div class="fl" style="width:${Math.max(x.v/max*100,1.5)}%;background:${x.c};--dl:${i*60}ms"></div></div><span class="v">${dots(x.v)}</span></div>`).join("")}</div></div>`; };
-  return `<div class="panel"><h2 style="font-size:26px;margin:0">Seguidores por cuenta</h2><p class="sub" style="margin:4px 0 18px">Cantidad de seguidores de cada marca en ${ml}. Instagram y Facebook por separado.</p>
+  const bs = socialBrands(), ml = monthLabel(MONTH);
+  const card = (net, title, color) => { const list = bs.map((b,i) => ({ b, v:folOf(b)?.[net], c:FCOL(b,i) })), max = Math.max(1, ...list.map(x => isNum(x.v) ? x.v : 0));
+    return `<div><div class="fhead"><b style="color:${color}">${title}</b><span>${ml}</span></div><div class="fcard">${list.map((x,i) => isNum(x.v) ? `<div class="fbar"><span class="lb" title="${x.b}">${x.b}</span><div class="tr"><div class="fl" style="width:${Math.max(x.v/max*100,1.5)}%;background:${x.c};--dl:${i*60}ms"></div></div><span class="v">${dots(x.v)}</span></div>`
+      : `<div class="fbar nodata"><span class="lb" title="${x.b}">${x.b}</span><span class="note">${NO_DATA}</span></div>`).join("")}</div></div>`; };
+  return `<div class="panel"><div class="head"><h2 style="font-size:26px;margin:0">Seguidores por cuenta</h2><div class="tag-row"><span class="tag">Fuente: Meta</span>${updTag(META_FOLLOWERS.updated)}</div></div><p class="sub" style="margin:4px 0 18px">Cantidad de seguidores de cada marca en ${ml}. Instagram y Facebook por separado.</p>
     <div class="grid two">${card("ig","Instagram","#f9a8d4")}${card("fb","Facebook","#7dd3fc")}</div></div>`;
 }
+// Filas de seguidores: mes elegido contra el mes anterior. Sin dato → "Sin datos todavía" o "—".
+function followerRows(bs){
+  return bs.map(b => { const c = folOf(b), p = folOf(b, prevMonth(MONTH)); return { b, has:!!c, igp:p?.ig, igc:c?.ig, fbp:p?.fb, fbc:c?.fb }; });
+}
 function followersTable(showTotal = true){
-  const bs = socialBrands(), ix = SOCIAL_IDX[MONTH], prevLbl = MONTH_ABBR_ES(prevMonth(MONTH > "2026-09" ? "2026-09" : MONTH)), curLbl = MONTH_ABBR_ES(MONTH > "2026-09" ? "2026-09" : MONTH);
-  const diffB = d => `<span class="dbadge ${d > 0 ? "up" : d < 0 ? "down" : "eq"}">${d > 0 ? "+" : ""}${dots(d)}</span>`;
-  const trend = d => d > 0 ? "↑ Sube" : d < 0 ? "↓ Baja" : "= Igual";
-  const rows = bs.map(b => { const S = SOCIAL[b]; return { b, igp:S.ig[ix-1], igc:S.ig[ix], fbp:S.fb[ix-1], fbc:S.fb[ix] }; });
-  const tot = rows.reduce((a,r) => ({ igp:a.igp + r.igp, igc:a.igc + r.igc, fbp:a.fbp + r.fbp, fbc:a.fbc + r.fbc }), { igp:0, igc:0, fbp:0, fbc:0 });
-  const tr = (r, isTot, i = 0) => `<tr class="arow ${isTot ? "total" : ""}" style="--i:${i * 70}ms"><td>${isTot ? "Total" : brandTag(r.b)}</td><td class="r num past">${dots(r.igp)}</td><td class="r num cur">${dots(r.igc)}</td><td class="r">${diffB(r.igc - r.igp)}</td><td class="r num past">${dots(r.fbp)}</td><td class="r num cur">${dots(r.fbc)}</td><td class="r">${diffB(r.fbc - r.fbp)}</td><td>${trend((r.igc - r.igp) + (r.fbc - r.fbp))}</td></tr>`;
-  return `<div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("users")}Seguidores por marca</h2><div class="tag-row"><span class="tag">Compara con el mes anterior: ↑ sube · ↓ baja</span><span class="tag">Fuente: Meta Graph API (automático)</span><span class="tag">${bs.length} cuentas</span></div></div>
+  const bs = socialBrands(), prevLbl = MONTH_ABBR_ES(prevMonth(MONTH)), curLbl = MONTH_ABBR_ES(MONTH);
+  const num = v => isNum(v) ? dots(v) : "—";
+  const diffB = d => d == null ? `<span class="dbadge eq">—</span>` : `<span class="dbadge ${d > 0 ? "up" : d < 0 ? "down" : "eq"}">${d > 0 ? "+" : ""}${dots(d)}</span>`;
+  const trend = r => { const a = folDiff(r.igc, r.igp), b = folDiff(r.fbc, r.fbp); if (a == null && b == null) return "—"; const d = (a || 0) + (b || 0); return d > 0 ? "↑ Sube" : d < 0 ? "↓ Baja" : "= Igual"; };
+  const rows = followerRows(bs), withData = rows.filter(r => r.has);
+  const sumOf = k => { const v = withData.filter(r => isNum(r[k])); return v.length ? v.reduce((a, r) => a + r[k], 0) : null; };
+  const full = k => withData.every(r => isNum(r[k.replace("c", "p")]) || !isNum(r[k])); // total anterior solo si todas las marcas tienen el dato
+  const tot = { igc:sumOf("igc"), fbc:sumOf("fbc"), igp:full("igc") ? sumOf("igp") : null, fbp:full("fbc") ? sumOf("fbp") : null };
+  const tr = (r, isTot, i = 0) => !isTot && !r.has ? `<tr class="arow" style="--i:${i * 70}ms"><td>${brandTag(r.b)}</td><td colspan="7" class="note">${NO_DATA}</td></tr>`
+    : `<tr class="arow ${isTot ? "total" : ""}" style="--i:${i * 70}ms"><td>${isTot ? "Total" : brandTag(r.b)}</td><td class="r num past">${num(r.igp)}</td><td class="r num cur">${num(r.igc)}</td><td class="r">${diffB(folDiff(r.igc, r.igp))}</td><td class="r num past">${num(r.fbp)}</td><td class="r num cur">${num(r.fbc)}</td><td class="r">${diffB(folDiff(r.fbc, r.fbp))}</td><td>${trend(r)}</td></tr>`;
+  return `<div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("users")}Seguidores por marca</h2><div class="tag-row"><span class="tag">Compara con el mes anterior: ↑ sube · ↓ baja</span><span class="tag">Fuente: Meta</span>${updTag(META_FOLLOWERS.updated)}<span class="tag">${withData.length} de ${bs.length} cuentas con datos</span></div></div>
     <div class="tw" style="border:0;border-radius:0;box-shadow:none"><table class="ftable"><thead><tr><th>Marca</th><th class="r past">IG ${prevLbl}</th><th class="r cur">IG ${curLbl}</th><th class="r">Dif. IG</th><th class="r past">FB ${prevLbl}</th><th class="r cur">FB ${curLbl}</th><th class="r">Dif. FB</th><th>Tendencia</th></tr></thead>
-    <tbody>${rows.map((r, i) => tr(r, false, i)).join("")}${showTotal ? tr(tot, true, rows.length) : ""}</tbody></table></div></div>`;
+    <tbody>${rows.map((r, i) => tr(r, false, i)).join("")}${showTotal && withData.length ? tr(tot, true, rows.length) : ""}</tbody></table></div></div>`;
 }
 const TV_SECS = 10;
 let tv = { i:0, timer:null, paused:false };
 function tvBrandHero(b){
-  const S = SOCIAL[b], ix = SOCIAL_IDX[MONTH];
+  const f = folOf(b), n = v => isNum(v) ? dots(v) : NO_DATA;
   return `<div class="tvhero" style="--c:${BRANDS[b]}"><div class="nm"><i></i><div><b>${b}</b><span>Demográfico de la audiencia</span></div></div>
-    <div class="nums"><div class="ig">📷 ${dots(S.ig[ix])} <small>seguidores en Instagram</small></div><div class="fb">📘 ${dots(S.fb[ix])} <small>seguidores en Facebook</small></div></div></div>`;
+    <div class="nums"><div class="ig">${ICO.IG} ${n(f?.ig)} <small>seguidores en Instagram</small></div><div class="fb">${ICO.FB} ${n(f?.fb)} <small>seguidores en Facebook</small></div></div></div>`;
 }
 // Ciclo: general → tabla de seguidores → demográfico de una marca → general → tabla → siguiente marca…
 // ---------- TV Impacto Redes: 1) lo mejor de cada marca  2…) top 10 de cada marca. 10 segundos cada pantalla ----------
@@ -2391,12 +2399,12 @@ function impSlide(sl){
       ${best.map((p, k) => `<tr style="--k:${k}"><td class="rk">${k + 1}</td><td><span class="bname" style="--c:${BRANDS[p.brand]}"><i></i>${p.brand}</span></td><td class="ttl"><span class="tt">${esc(p.title)}</span><small>${dm(p.date)}</small></td><td>${netLabel(p.net)}</td><td>${typeCell(p)}</td><td class="r big">${dots(p.reach)}</td><td class="r">${dots(p.inter)}</td><td class="r">${tasa(p)}</td></tr>`).join("")}
       </tbody></table></div></div>`;
   }
-  const b = sl.brand, S = SOCIAL[b], ix = SOCIAL_IDX[impMonth()] ?? 5;
+  const b = sl.brand, f = folOf(b, impMonth()), fn = v => isNum(v) ? dots(v) : NO_DATA;
   const top = pubs.filter(p => p.brand === b).sort((a, c) => c.reach - a.reach).slice(0, 10);
   const tot = top.reduce((a, p) => a + p.reach, 0);
   return `<div class="impslide">
     <div class="tvhero imphero" style="--c:${BRANDS[b]}"><div class="nm"><i></i><div><b>${b}</b><span>Top ${top.length} publicaciones · ${ml}</span></div></div>
-      <div class="impnums"><div><em>${ICO.IG}${dots(S.ig[ix])}</em><small>seguidores en Instagram</small></div><div><em>${ICO.FB}${dots(S.fb[ix])}</em><small>seguidores en Facebook</small></div><div><em>${ICO.eye}${dots(tot)}</em><small>alcance de estas publicaciones</small></div></div></div>
+      <div class="impnums"><div><em>${ICO.IG}${fn(f?.ig)}</em><small>seguidores en Instagram</small></div><div><em>${ICO.FB}${fn(f?.fb)}</em><small>seguidores en Facebook</small></div><div><em>${ICO.eye}${dots(tot)}</em><small>alcance de estas publicaciones</small></div></div></div>
     <div class="imptw"><table class="imptable"><thead><tr><th>#</th><th>Publicación</th><th>Red</th><th>Tipo</th><th class="r">Alcance</th><th class="r">Interacciones</th><th class="r">Tasa</th><th>Pauta</th></tr></thead><tbody>
     ${top.map((p, k) => `<tr style="--k:${k}"><td class="rk">${k + 1}</td><td class="ttl"><span class="tt">${esc(p.title)}</span><small>${dm(p.date)}</small></td><td>${netLabel(p.net)}</td><td>${typeCell(p)}</td><td class="r big">${dots(p.reach)}</td><td class="r">${dots(p.inter)}</td><td class="r">${tasa(p)}</td><td>${paidCell(p)}</td></tr>`).join("") || `<tr><td colspan="8" class="empty">Todavía no hay publicaciones este mes.</td></tr>`}
     </tbody></table></div></div>`;
@@ -2454,8 +2462,7 @@ function pDashboard(){
   ${followersPanel()}
   ${followersTable(false)}
   <div class="head"><h2 style="margin:0">Demográfico por marca</h2><div class="chips">${bs.map(b => `<button class="chip ${dashBrand === b ? "on" : ""}" data-dbrand="${b}">${b}</button>`).join("")}</div></div>
-  <div class="dash-demo" id="dashDemo">${demoBlock(bs.includes(dashBrand) ? dashBrand : bs[0], 0)}</div>
-  <p class="note">Datos de ejemplo. En la app real salen de Meta (seguidores de Instagram y Facebook, y el público de Instagram de cada cuenta).</p>`;
+  <div class="dash-demo" id="dashDemo">${demoBlock(bs.includes(dashBrand) ? dashBrand : bs[0], 0)}</div>`;
 }
 function profileCard(v){
   return `<div class="panel"><div class="me">${avatarHTML(v, "", "width:84px;height:84px;border-radius:26px;font-size:24px")}
@@ -2938,9 +2945,6 @@ function pInicio(){
   const done = vp.filter(p => ["Publicado","Pautado"].includes(p.status)).length;
   const activeJobs = jobs.filter(j => seesBrand(j.brand) && !isFin(j) && jobMonth(j) === MONTH);
   const spend = CAMPAIGNS.filter(c => seesBrand(c.brand) && c.month === MONTH).reduce((a,c) => a + c.spend, 0);
-  const ix = SOCIAL_IDX[MONTH];
-  const foll = socialBrands().reduce((a,b) => a + SOCIAL[b].ig[ix] + SOCIAL[b].fb[ix], 0);
-  const follPrev = socialBrands().reduce((a,b) => a + SOCIAL[b].ig[ix-1] + SOCIAL[b].fb[ix-1], 0);
   const week = MONTH === CURRENT_MONTH ? vp.filter(p => { const d = daysTo(p.date); return (d >= 0 && d <= 7) || postUrgency(p)?.late; }).sort((a,b) => a.date.localeCompare(b.date))
     : isClosed() ? vp.filter(p => !isDone(p)) : vp.slice().sort((a,b) => a.date.localeCompare(b.date)).slice(0,6);
   const weekTitle = MONTH === CURRENT_MONTH ? "Próximos 7 días y atrasados" : isClosed() ? "No cumplidos del mes" : "Primeros posteos planificados";
@@ -3766,40 +3770,6 @@ function pPautaInforme(){
   ${list.length ? "" : `<tr><td colspan="9" class="empty">${META_ADS.spendAccess ? `No hubo campañas con inversión en ${monthName(MONTH)}.` : "Sin datos de inversión todavía: falta el acceso a las cuentas publicitarias de las marcas."}</td></tr>`}${list.map(c => `<tr><td>${brandTag(c.brand)}</td><td>${esc(c.name)}</td><td>${c.obj}</td><td class="num">${dm(c.start)} – ${dm(c.end)}</td><td class="r num">${gs(c.spend)}</td><td class="r num">${dots(c.reach)}</td><td class="r num">${dots(c.results)} <span class="note">${c.unit}</span></td><td class="r num">${gs(c.spend / c.results)}</td><td>${st(c)}</td></tr>`).join("")}
   </tbody></table></div>`;
 }
-function areaChart(vals, color, id){
-  const W = 340, H = 150, L = 46, R = 44, T = 14, B = 24;
-  const min = Math.min(...vals), max = Math.max(...vals), pad = (max-min)*0.12 || 1;
-  const lo = min - pad, hi = max + pad;
-  const x = i => L + i * (W-L-R) / (vals.length-1);
-  const y = v => T + (hi - v) * (H-T-B) / (hi-lo);
-  const pts = vals.map((v,i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
-  const grid = [lo+pad, (lo+hi)/2, hi-pad].map(v => `<line class="gridl" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${L-6}" y="${y(v)+3}" text-anchor="end">${k(v)}</text>`).join("");
-  const last = vals.length-1;
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución de seguidores">
-    <defs><linearGradient id="g${id}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".28"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
-    ${grid}
-    <polygon points="${x(0)},${H-B} ${pts} ${x(last)},${H-B}" fill="url(#g${id})"/>
-    <polyline class="line" points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <circle cx="${x(last)}" cy="${y(vals[last])}" r="4" fill="${color}"/>
-    <text class="axis" x="${x(last)+7}" y="${y(vals[last])+3}" style="fill:#fff;font-weight:700">${k(vals[last])}</text>
-    ${MONTHS6.map((m,i) => `<text class="axis" x="${x(i)}" y="${H-6}" text-anchor="middle">${m}</text>`).join("")}
-  </svg>`;
-}
-function lineChartMulti(net, brands, idBase){
-  const W = 640, H = 260, L = 50, R = 16, T = 18, B = 34;
-  const vals = brands.flatMap(b => SOCIAL[b][net]);
-  const TICKS = [10000,20000,30000,50000,100000,200000,300000,500000];
-  const lo = [...TICKS].reverse().find(t => t <= Math.min(...vals)) || TICKS[0], hi = TICKS.find(t => t >= Math.max(...vals)) || TICKS[TICKS.length-1];
-  const ticks = TICKS.filter(t => t >= lo && t <= hi);
-  const x = i => L + i * (W - L - R) / 5, y = v => T + (1 - (Math.log10(v) - Math.log10(lo)) / (Math.log10(hi) - Math.log10(lo))) * (H - T - B);
-  const cur = MONTH_KEYS6.indexOf(MONTH > "2026-09" ? "2026-09" : MONTH);
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución de seguidores ${net}">
-    ${ticks.map(t => `<line class="gridl" x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}" style="stroke-dasharray:none"/><text class="axis" x="${L-6}" y="${y(t)+3}" text-anchor="end">${k(t)}</text>`).join("")}
-    ${MONTHS6.map((m,i) => `${i === cur ? `<line x1="${x(i)}" x2="${x(i)}" y1="${T}" y2="${H-B}" style="stroke:#334155;stroke-dasharray:3 3"/>` : ""}<text class="axis" x="${x(i)}" y="${H-12}" text-anchor="middle" style="${i === cur ? "fill:#cbd5e1;font-weight:700" : ""}">${m} 26</text>`).join("")}
-    ${brands.map((b,bi) => { const c = FSOLID(b, bi); const pts = SOCIAL[b][net].map((v,i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
-      return `<polyline class="line" points="${pts}" fill="none" style="stroke:${c};filter:drop-shadow(0 0 3px ${c})" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><title>${b}</title></polyline>${SOCIAL[b][net].map((v,i) => `<circle cx="${x(i)}" cy="${y(v)}" r="3.2" fill="#0f172a" style="stroke:${c}" stroke-width="2"><title>${b} · ${MONTHS6[i]}: ${dots(v)}</title></circle>`).join("")}`; }).join("")}
-  </svg>`;
-}
 const FCOLORS = ["#22d3ee","#f472b6","#a78bfa","#fbbf24","#34d399","#fb923c","#60a5fa","#f87171"];
 const FSOLID = (b, i) => BRANDS[b] || FCOLORS[i % FCOLORS.length];
 const FCOL = (b, i) => BRAND_GRAD[b] || BRANDS[b] || FCOLORS[i % FCOLORS.length]; // cada marca con su color
@@ -3828,21 +3798,12 @@ function pRedes(){
   const bs = socialBrands();
   if (!bs.length) return `<div><h1>Redes</h1></div><div class="panel"><div class="empty">No tenés marcas con redes conectadas.</div></div>`;
   if (!bs.includes(redesBrand)) redesBrand = bs[0];
-  const ix = SOCIAL_IDX[MONTH], prevLbl = MONTH_ABBR_ES(prevMonth(MONTH > "2026-09" ? "2026-09" : MONTH)), curLbl = MONTH_ABBR_ES(MONTH > "2026-09" ? "2026-09" : MONTH);
-  const diffB = d => d == null ? `<span class="dbadge eq">—</span>` : `<span class="dbadge ${d > 0 ? "up" : d < 0 ? "down" : "eq"}">${d > 0 ? "+" : ""}${dots(d)}</span>`;
-  const trend = d => d > 0 ? "↑ Sube" : d < 0 ? "↓ Baja" : "= Igual";
-  const rows = bs.map(b => { const S = SOCIAL[b]; return { b, igp:S.ig[ix-1], igc:S.ig[ix], fbp:S.fb[ix-1], fbc:S.fb[ix] }; });
-  const tot = rows.reduce((a,r) => ({ igp:a.igp + r.igp, igc:a.igc + r.igc, fbp:a.fbp + r.fbp, fbc:a.fbc + r.fbc }), { igp:0, igc:0, fbp:0, fbc:0 });
-  const tr = (r, isTot) => `<tr class="${isTot ? "total" : ""}"><td>${isTot ? "Total" : brandTag(r.b)}</td><td class="r num past">${dots(r.igp)}</td><td class="r num cur">${dots(r.igc)}</td><td class="r">${diffB(r.igc - r.igp)}</td><td class="r num past">${dots(r.fbp)}</td><td class="r num cur">${dots(r.fbc)}</td><td class="r">${diffB(r.fbc - r.fbp)}</td><td>${trend((r.igc - r.igp) + (r.fbc - r.fbp))}</td></tr>`;
-  const bars = net => { const list = bs.map((b,i) => ({ b, v:SOCIAL[b][net][ix], c:FCOL(b,i) })); const max = Math.max(...list.map(x => x.v));
-    return `<div class="fbars">${list.map((x,i) => `<div class="fbar"><span class="lb" title="${x.b}">${x.b}</span><div class="tr"><div class="fl" style="width:${Math.max(x.v/max*100,2)}%;background:${x.c};--dl:${i*60}ms"></div></div><span class="v">${dots(x.v)}</span></div>`).join("")}</div>`; };
   // publicaciones
   const all = publicationsFor(MONTH).filter(p => (pubUI.brand === "Todas" || p.brand === pubUI.brand) && (pubUI.net === "Todas" || p.net === pubUI.net) && (pubUI.fmt === "Todos" || p.format === pubUI.fmt) && (pubUI.paid === "incluir" || !p.paid));
   const top = [...all].sort((a,b) => b.reach - a.reach).slice(0,10);
   const low = all.filter(p => p.age >= 7).sort((a,b) => a.reach - b.reach).slice(0,10);
   const sel = (key, opts, lbl) => `<select class="base" data-pub="${key}" aria-label="${lbl}">${opts.map(o => `<option value="${o[0]}" ${pubUI[key] === o[0] ? "selected" : ""}>${o[1]}</option>`).join("")}</select>`;
   const pubTable = list => `<div class="tw"><table><thead><tr><th>#</th><th>Publicación</th><th class="r">Alcance</th><th class="r">Interacciones</th><th class="r">Tasa</th><th>Tipo</th><th>CM</th><th></th></tr></thead><tbody>${list.map(pubRow).join("") || `<tr><td colspan="8" class="empty">Sin publicaciones para estos filtros.</td></tr>`}</tbody></table></div>`;
-  const S = SOCIAL[redesBrand], maxAge = Math.max(...S.ages), maxCity = S.cities[0][1];
   return `<div><h1>Informe Redes</h1><p class="sub">Seguidores, publicaciones y público de todas las cuentas, traídos de Meta todos los días.</p></div>
   ${followersTable()}
   ${followersPanel()}
@@ -3940,28 +3901,27 @@ function repPauta(){
   </tbody></table></div>`;
 }
 function repAlcance(){
-  const ix = SOCIAL_IDX[MONTH], bs = socialBrands();
+  const bs = socialBrands();
   if (!bs.length) return `<div class="panel"><div class="empty">Las otras marcas todavía no están conectadas a Meta.</div></div>`;
   if (!bs.includes(reportBrand)) reportBrand = bs[0];
-  const s2 = SOCIAL[reportBrand], maxAge = Math.max(...s2.ages), maxCity = s2.cities[0][1];
-  const foto = isFuture() ? `<div class="ro">La foto de audiencia de ${monthName(MONTH)} se guarda el ${lastDay(MONTH)}/${MONTH.slice(5)}. Mientras tanto se muestran los datos más recientes.</div>`
-    : MONTH === CURRENT_MONTH ? `<div class="ro">Mes en curso: datos al ${dm(TODAY)}. La foto definitiva se guarda el ${lastDay(MONTH)}/${MONTH.slice(5)}.</div>`
-    : `<div class="ro">🔒 Foto de audiencia guardada al cierre: ${lastDay(MONTH)}/${MONTH.slice(5)}.</div>`;
+  const d = demoReal(reportBrand), maxAge = d?.ages ? Math.max(...d.ages) : 1, maxCity = d?.cities.length ? d.cities[0][1] : 1;
+  const growth = v => v == null ? `<span class="note">—</span>` : `<span class="${v >= 0 ? "up" : "down"}">${v >= 0 ? "+" : "−"}${dots(Math.abs(v))}</span>`;
+  const foto = `<div class="ro">Seguidores de ${monthName(MONTH)} · actualizado ${metaWhen(META_FOLLOWERS.updated)}. Audiencia: los datos más recientes de Meta · actualizado ${metaWhen(META_DEMO.updated)}.</div>`;
   return `${foto}
   <div class="tw"><table><thead><tr><th>Marca</th><th class="r">Instagram al cierre</th><th class="r">Crecimiento</th><th class="r">Facebook al cierre</th><th class="r">Crecimiento</th></tr></thead><tbody>
-    ${bs.map(b => { const S = SOCIAL[b], di = S.ig[ix]-S.ig[ix-1], df = S.fb[ix]-S.fb[ix-1];
-      return `<tr><td>${brandTag(b)}</td><td class="r num">${dots(S.ig[ix])}</td><td class="r num up">+${dots(di)}</td><td class="r num">${dots(S.fb[ix])}</td><td class="r num up">+${dots(df)}</td></tr>`; }).join("")}
+    ${followerRows(bs).map(r => !r.has ? `<tr><td>${brandTag(r.b)}</td><td colspan="4" class="note">${NO_DATA}</td></tr>`
+      : `<tr><td>${brandTag(r.b)}</td><td class="r num">${isNum(r.igc) ? dots(r.igc) : "—"}</td><td class="r num">${growth(folDiff(r.igc, r.igp))}</td><td class="r num">${isNum(r.fbc) ? dots(r.fbc) : "—"}</td><td class="r num">${growth(folDiff(r.fbc, r.fbp))}</td></tr>`).join("")}
   </tbody></table></div>
   ${isFuture() ? "" : (() => { const pubs = publicationsFor(MONTH); const t = [...pubs].sort((a,b) => b.reach - a.reach).slice(0,5), l = pubs.filter(p => p.age >= 7).sort((a,b) => a.reach - b.reach).slice(0,5);
     const tb = list => `<div class="tw"><table><thead><tr><th>#</th><th>Publicación</th><th class="r">Alcance</th><th class="r">Interacciones</th><th class="r">Tasa</th><th>Tipo</th><th>CM</th><th></th></tr></thead><tbody>${list.map(pubRow).join("")}</tbody></table></div>`;
     return `<h2 style="margin:0 0 -8px" class="pmh">${pmIco("trophy")}Top 5 publicaciones por alcance</h2>${tb(t)}<h2 style="margin:0 0 -8px" class="pmh">${pmIco("trending-down")}Las 5 de menor alcance</h2>${tb(l)}<p class="note" style="margin:-8px 0 0">En Redes está el top 10 completo, con filtros por marca, red y tipo.</p>`; })()}
   <div class="head"><h2 style="margin:0">Audiencia de Instagram por marca</h2><div class="chips">${bs.map(b => `<button class="chip ${reportBrand===b?"on":""}" data-rbrand="${b}">${b}</button>`).join("")}</div></div>
-  <div class="grid two">
-    <div class="panel"><h2 class="pmh">${pmIco("map-pin")}Ciudades</h2><div class="bars">${s2.cities.map(([c,v],i) => `<div class="bar" style="--dl:${i*80}ms"><span>${c}</span><div class="tr"><div class="fl" style="width:${v/maxCity*100}%"></div></div><span class="v">${v}%</span></div>`).join("")}</div>
+  ${!d ? `<div class="panel"><div class="empty">${NO_DATA}</div></div>` : `<div class="grid two">
+    <div class="panel"><h2 class="pmh">${pmIco("map-pin")}Ciudades</h2>${d.cities.length ? `<div class="bars">${d.cities.map(([c,v],i) => `<div class="bar" style="--dl:${i*80}ms"><span>${esc(c)}</span><div class="tr"><div class="fl" style="width:${v/maxCity*100}%"></div></div><span class="v">${pct2(v)}</span></div>`).join("")}</div>` : `<div class="empty">${NO_DATA}</div>`}
       <p class="note" style="margin:12px 0 0">Solo Instagram: Facebook ya no informa ciudades.</p></div>
-    <div class="panel"><h2 class="pmh">${pmIco("users")}Edades y género</h2><div class="bars">${s2.ages.map((v,i) => `<div class="bar" style="--dl:${i*80}ms"><span>${AGE_LABELS[i]}</span><div class="tr"><div class="fl" style="width:${v/maxAge*100}%"></div></div><span class="v">${v}%</span></div>`).join("")}</div>
-      <div class="tag-row" style="margin-top:14px"><span class="tag">Mujeres ${s2.f}%</span><span class="tag">Hombres ${100-s2.f}%</span></div></div>
-  </div>`;
+    <div class="panel"><h2 class="pmh">${pmIco("users")}Edades y género</h2>${d.ages ? `<div class="bars">${d.ages.map((v,i) => `<div class="bar" style="--dl:${i*80}ms"><span>${AGE7[i]}</span><div class="tr"><div class="fl" style="width:${v/maxAge*100}%"></div></div><span class="v">${Math.round(v)}%</span></div>`).join("")}</div>` : `<div class="empty">${NO_DATA}</div>`}
+      ${d.sex ? `<div class="tag-row" style="margin-top:14px"><span class="tag">Mujeres ${pct2(d.sex.fem)}</span><span class="tag">Hombres ${pct2(d.sex.male)}</span><span class="tag">Desconocido ${pct2(d.sex.unk)}</span></div>` : ""}</div>
+  </div>`}`;
 }
 function pReportes(){
   const tabs = REPORT_TABS.filter(t => can(t.perm));
