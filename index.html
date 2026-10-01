@@ -2291,7 +2291,9 @@ function metaAdsPanel(){
 let META_FOLLOWERS = {}, META_DEMO = {};
 const NO_DATA = "Sin datos todavía";
 const BRAND_RANK = b => MAIN_BRANDS.includes(b) ? MAIN_BRANDS.indexOf(b) : 10;
-const socialBrands = () => myBrands().sort((a, b) => BRAND_RANK(a) - BRAND_RANK(b) || a.localeCompare(b, "es"));
+// Retail Institucional no va en los informes de redes (no tiene página propia en Meta).
+const NO_SOCIAL = ["Retail Institucional"];
+const socialBrands = () => myBrands().filter(b => !NO_SOCIAL.includes(b)).sort((a, b) => BRAND_RANK(a) - BRAND_RANK(b) || a.localeCompare(b, "es"));
 const isNum = v => typeof v === "number" && isFinite(v);
 // Seguidores de una marca en un mes, o null si ese mes no tiene datos de la marca.
 const folOf = (b, m = MONTH) => { const f = META_FOLLOWERS[m]?.[b]; return f && (isNum(f.ig) || isNum(f.fb)) ? f : null; };

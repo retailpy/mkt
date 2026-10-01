@@ -13,11 +13,10 @@ const NOMBRES = {
   "Clasipar": ["clasipar"],
   "Dayo": ["dayo"],
   "PediWOW": ["pediwow", "pedi wow"],
-  "Retail Institucional": ["retail"],
 };
 
 // En qué orden salen las marcas.
-const ORDEN = ["Superseis", "Stock", "Delimarket", "Bianca", "Clasipar", "Dayo", "PediWOW", "Retail Institucional"];
+const ORDEN = ["Superseis", "Stock", "Delimarket", "Bianca", "Clasipar", "Dayo", "PediWOW"];
 
 const norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
