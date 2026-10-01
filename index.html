@@ -1710,7 +1710,7 @@ td .pgauge .pglab{display:none}
 .ev.rec.done{opacity:.55}
 .ev.rec.done span:first-child{text-decoration:line-through}
 .caltabs{margin-top:-8px}
-/* v66 · sábados libres */
+/* v66 · turnos sábados */
 .satgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:14px}
 .satcard{display:flex;flex-direction:column;gap:10px}
 .satcard header{display:flex;justify-content:space-between;align-items:flex-start}
@@ -3705,59 +3705,58 @@ function pHistorialCM(){
   ${tasks.map(j => `<tr><td class="num">${j.id}</td><td>${esc(j.piece)}</td><td>${esc(j.title)}</td><td>${brandTag(j.brand)}</td><td>${esc(j.owner)}</td><td class="num">${dm(j.delivered || j.due)} ${j.delivered > j.due ? `<span class="down">(atrasado)</span>` : ""}</td><td>${pill(j.status, JOB_COLOR[j.status])}</td></tr>`).join("") || `<tr><td colspan="7" class="empty">Sin tareas terminadas todavía.</td></tr>`}
   </tbody></table></div></div>`;
 }
-// ---------- Sábados libres: cada persona del equipo tiene dos sábados libres por mes ----------
-let SAT_OFF = {
-  "2026-09":{ medardo:"2026-09-05", anibal:"2026-09-12", mhelena:"2026-09-19", miguel:"2026-09-26", laura:"2026-09-12" },
-  "2026-10":{ medardo:"2026-10-10", anibal:"2026-10-17" },
-};
+// ---------- Turnos Sábados: cada persona elige los dos sábados del mes que viene a trabajar a la oficina ----------
+// SAT_TURN = { "AAAA-MM": { persona: ["AAAA-MM-DD", ...] } }. (SAT_OFF era la versión vieja, de sábados libres: ya no se usa.)
+let SAT_OFF = {};
+let SAT_TURN = {};
 const satPeople = () => PEOPLE.filter(pp => pp.active && ["Diseñador","CM","Admin total"].includes(pp.role));
-const SATS_PER = 2; // sábados libres por persona y por mes
+const SATS_PER = 2; // sábados de turno por persona y por mes
 // Los sábados de una persona en el mes (antes se guardaba uno solo como texto; ahora una lista de hasta dos).
 const satList = (map, id) => { const v = map[id]; return (Array.isArray(v) ? v : v ? [v] : []).filter(Boolean).sort(); };
 const satSet = (map, id, arr) => { const a = [...new Set(arr.filter(Boolean))].sort().slice(0, SATS_PER); if (a.length) map[id] = a; else delete map[id]; };
 function saturdaysOf(m){ const out = []; for (let d = 1; d <= lastDay(m); d++){ const x = `${m}-${String(d).padStart(2, "0")}`; if (new Date(x + "T12:00").getDay() === 6) out.push(x); } return out; }
 const canSetSat = pp => !isClosed() && !isViewOnly() && (viewer.role === "Admin total" || pp.id === viewer.id);
 function pSabados(){
-  const sats = saturdaysOf(MONTH), ppl = satPeople(), map = (SAT_OFF[MONTH] = SAT_OFF[MONTH] || {});
+  const sats = saturdaysOf(MONTH), ppl = satPeople(), map = (SAT_TURN[MONTH] = SAT_TURN[MONTH] || {});
   const cap = Math.ceil(ppl.length * SATS_PER / Math.max(1, sats.length));
   const offOn = d => ppl.filter(pp => satList(map, pp.id).includes(d));
   const mine = satList(map, viewer.id), isP = ppl.includes(viewer);
   const missing = ppl.filter(pp => satList(map, pp.id).length < SATS_PER);
   const nextMine = mine.find(d => d >= TODAY);
-  const warn = d => { const off = offOn(d), w = []; ["Diseñador","CM"].forEach(r => { const all = ppl.filter(pp => pp.role === r); if (all.length && all.every(pp => off.includes(pp))) w.push(`No queda ningún ${r === "CM" ? "CM" : "diseñador"} trabajando`); }); if (off.length > cap) w.push(`Hay más de ${cap} libres`); return w; };
-  // Dos selectores por persona: 1.º y 2.º sábado libre.
+  const warn = d => { const on = offOn(d), w = []; if (d < TODAY || !on.length) return w; ["Diseñador","CM"].forEach(r => { if (ppl.some(pp => pp.role === r) && !on.some(pp => pp.role === r)) w.push(`Falta ${r === "CM" ? "un CM" : "un diseñador"} de turno`); }); if (on.length > cap) w.push(`Hay más de ${cap} de turno`); return w; };
+  // Dos selectores por persona: 1.º y 2.º sábado de turno.
   const sel = (pp, k) => { const list = satList(map, pp.id), cur = list[k] || "", other = list[1 - k];
     const locked = viewer.role !== "Admin total" && cur && cur < TODAY;
     if (!canSetSat(pp) || locked) return cur ? `<b style="color:#fff">Sábado ${dm(cur)}</b>` : `<span class="note">Sin elegir</span>`;
-    return `<select class="base sm" data-satset="${pp.id}" data-satk="${k}" aria-label="${k + 1}.º sábado libre de ${esc(pp.name)}"><option value="">Sin elegir</option>${sats.filter(d => d !== other).map(d => `<option value="${d}" ${cur === d ? "selected" : ""} ${d < TODAY && cur !== d ? "disabled" : ""}>Sábado ${dm(d)}${offOn(d).length >= cap && cur !== d ? " (completo)" : ""}</option>`).join("")}</select>`; };
-  return `<div class="head"><div><h1>Turnos Sábados</h1><p class="sub">${monthLabel(MONTH)} · cada persona del equipo tiene ${SATS_PER} sábados libres por mes. Elegí los tuyos; Admin total puede organizar los de todos. Como mucho ${cap} por sábado, para que siempre quede gente trabajando.</p></div></div>
+    return `<select class="base sm" data-satset="${pp.id}" data-satk="${k}" aria-label="${k + 1}.º sábado de turno de ${esc(pp.name)}"><option value="">Sin elegir</option>${sats.filter(d => d !== other).map(d => `<option value="${d}" ${cur === d ? "selected" : ""} ${d < TODAY && cur !== d ? "disabled" : ""}>Sábado ${dm(d)}${offOn(d).length >= cap && cur !== d ? " (completo)" : ""}</option>`).join("")}</select>`; };
+  return `<div class="head"><div><h1>Turnos Sábados</h1><p class="sub">${monthLabel(MONTH)} · cada persona elige los ${SATS_PER} sábados que viene a trabajar a la oficina. Elegí los tuyos; Admin total puede organizar los de todos. Hasta ${cap} personas por sábado, para repartir los turnos y que cada sábado haya gente de Diseño y de CM.</p></div></div>
   <div class="grid kpis">
-    <div class="panel kpi"><div class="l">Tus sábados libres</div><div class="n">${isP && mine.length ? mine.map(dm).join(" y ") : "—"}</div><div class="d">${!isP ? "no participás del turno de sábados" : mine.length < SATS_PER ? (mine.length ? `te falta elegir ${SATS_PER - mine.length}` : `todavía no elegiste (son ${SATS_PER})`) : !nextMine ? "ya los tomaste" : daysTo(nextMine) === 0 ? "¡hoy es uno!" : `el próximo es en ${daysTo(nextMine)} días`}</div></div>
+    <div class="panel kpi"><div class="l">Tus sábados de turno</div><div class="n">${isP && mine.length ? mine.map(dm).join(" y ") : "—"}</div><div class="d">${!isP ? "no participás del turno de sábados" : mine.length < SATS_PER ? (mine.length ? `te falta elegir ${SATS_PER - mine.length}` : `todavía no elegiste (son ${SATS_PER})`) : !nextMine ? "ya los trabajaste" : daysTo(nextMine) === 0 ? "hoy te toca" : `el próximo es en ${daysTo(nextMine)} días`}</div></div>
     <div class="panel kpi"><div class="l">Ya eligieron</div><div class="n">${ppl.length - missing.length} de ${ppl.length}</div><div class="d">${missing.length ? "faltan: " + missing.map(pp => nickOf(pp)).join(", ") : "todos tienen sus dos sábados"}</div></div>
-    <div class="panel kpi"><div class="l">Sábados del mes</div><div class="n">${sats.length}</div><div class="d">hasta ${cap} personas libres por sábado</div></div>
+    <div class="panel kpi"><div class="l">Sábados del mes</div><div class="n">${sats.length}</div><div class="d">hasta ${cap} personas de turno por sábado</div></div>
   </div>
   <div class="satgrid">${sats.map(d => { const off = offOn(d), w = warn(d), past = d < TODAY, has = mine.includes(d);
-    const action = !isP || !canSetSat(viewer) ? "" : has ? `<div class="chips"><span class="okchip">✓ Tu sábado libre</span>${past ? "" : `<button class="btn sm" data-satdrop="${d}">Quitar</button>`}</div>`
+    const action = !isP || !canSetSat(viewer) ? "" : has ? `<div class="chips"><span class="okchip">✓ Venís a trabajar</span>${past ? "" : `<button class="btn sm" data-satdrop="${d}">Quitar</button>`}</div>`
       : past ? "" : mine.length >= SATS_PER ? `<span class="note">Ya elegiste tus ${SATS_PER} sábados</span>`
-      : `<button class="btn ${off.length >= cap ? "" : "primary"} sm" data-satpick="${d}" ${off.length >= cap ? "disabled" : ""}>${off.length >= cap ? "Completo" : "Elegir este sábado"}</button>`;
+      : `<button class="btn ${off.length >= cap ? "" : "primary"} sm" data-satpick="${d}" ${off.length >= cap ? "disabled" : ""}>${off.length >= cap ? "Completo" : "Vengo este sábado"}</button>`;
     return `<article class="panel satcard ${past ? "past" : ""} ${d === TODAY ? "today" : ""}"><header><div><span class="sdw">Sábado</span><b class="sdn">${+d.slice(8)}</b><span class="note">${MONTHS_ES[+d.slice(5,7) - 1]}${past ? " · ya pasó" : ""}</span></div><span class="scap" style="--c:${off.length > cap ? "#ef4444" : off.length === cap ? "#eab308" : "#10b981"}">${off.length}/${cap}</span></header>
-      <div class="soff">${off.map(pp => `<span class="sperson">${avatarHTML(pp)}<span><b>${esc(nickOf(pp))}</b><small>${pp.role === "CM" ? "CM" : pp.role === "Diseñador" ? "Diseño gráfico" : "Admin"}</small></span></span>`).join("") || `<span class="note">Nadie libre todavía</span>`}</div>
+      <div class="soff">${off.map(pp => `<span class="sperson">${avatarHTML(pp)}<span><b>${esc(nickOf(pp))}</b><small>${pp.role === "CM" ? "CM" : pp.role === "Diseñador" ? "Diseño gráfico" : "Admin"}</small></span></span>`).join("") || `<span class="note">Nadie de turno todavía</span>`}</div>
       ${w.map(x => `<div class="swarn">⚠ ${x}</div>`).join("")}
       ${action}
     </article>`; }).join("")}</div>
-  <div class="tw"><table><thead><tr><th>Persona</th><th>Área</th><th>1.º sábado libre</th><th>2.º sábado libre</th><th></th></tr></thead><tbody>
+  <div class="tw"><table><thead><tr><th>Persona</th><th>Área</th><th>1.º sábado de turno</th><th>2.º sábado de turno</th><th></th></tr></thead><tbody>
     ${ppl.map(pp => { const n = satList(map, pp.id).length; return `<tr><td><div class="person">${avatarHTML(pp)}<b style="color:#fff">${esc(pp.name)}</b></div></td><td>${pp.role === "CM" ? "Community Manager" : pp.role === "Diseñador" ? "Diseño gráfico" : "Admin"}</td><td>${sel(pp, 0)}</td><td>${sel(pp, 1)}</td><td>${n >= SATS_PER ? `<span class="okchip">✓ Elegidos</span>` : `<span class="waitchip">${n ? "Falta 1" : "Falta elegir"}</span>`}</td></tr>`; }).join("")}
   </tbody></table></div>`;
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-satpick], [data-satdrop]"); if (!b) return;
-  const m = (SAT_OFF[MONTH] = SAT_OFF[MONTH] || {}), list = satList(m, viewer.id);
-  if (b.dataset.satpick){ if (list.length >= SATS_PER) return toast(`Ya elegiste tus ${SATS_PER} sábados. Quitá uno para cambiarlo.`); satSet(m, viewer.id, [...list, b.dataset.satpick]); render(); const n = satList(m, viewer.id); toast(n.length >= SATS_PER ? `Listo: tus sábados libres son el ${n.map(dm).join(" y el ")}.` : `Listo: elegiste el ${dm(b.dataset.satpick)}. Te falta elegir uno más.`); }
+  const m = (SAT_TURN[MONTH] = SAT_TURN[MONTH] || {}), list = satList(m, viewer.id);
+  if (b.dataset.satpick){ if (list.length >= SATS_PER) return toast(`Ya elegiste tus ${SATS_PER} sábados. Quitá uno para cambiarlo.`); satSet(m, viewer.id, [...list, b.dataset.satpick]); render(); const n = satList(m, viewer.id); toast(n.length >= SATS_PER ? `Listo: venís a trabajar el ${n.map(dm).join(" y el ")}.` : `Listo: venís el sábado ${dm(b.dataset.satpick)}. Te falta elegir uno más.`); }
   else { satSet(m, viewer.id, list.filter(d => d !== b.dataset.satdrop)); render(); toast(`Quitaste el sábado ${dm(b.dataset.satdrop)}.`); }
 });
-document.addEventListener("change", e => { const s2 = e.target.closest("[data-satset]"); if (!s2) return; const m = (SAT_OFF[MONTH] = SAT_OFF[MONTH] || {}), pp = PEOPLE.find(x => x.id === s2.dataset.satset);
+document.addEventListener("change", e => { const s2 = e.target.closest("[data-satset]"); if (!s2) return; const m = (SAT_TURN[MONTH] = SAT_TURN[MONTH] || {}), pp = PEOPLE.find(x => x.id === s2.dataset.satset);
   const list = satList(m, pp.id), k = +s2.dataset.satk, prev = list[k]; const next = list.filter(d => d !== prev); if (s2.value) next.push(s2.value);
-  satSet(m, pp.id, next); render(); toast(s2.value ? `${nickOf(pp)}: sábado libre el ${dm(s2.value)}.` : `${nickOf(pp)}: se quitó un sábado.`); });
+  satSet(m, pp.id, next); render(); toast(s2.value ? `${nickOf(pp)}: de turno el sábado ${dm(s2.value)}.` : `${nickOf(pp)}: se quitó un sábado.`); });
 // ---------- Pauta: el PLAN (lo que arma el equipo, con límite por marca) y el INFORME (lo gastado, desde Meta Ads) ----------
 const AD_RATINGS = [[5,"5 Excelente"],[4,"4 Normal"],[3,"3 Más o menos"],[2,"2 Mal"],[1,"1 Pésimo"]];
 const RATE_COLOR = { 5:"#10b981", 4:"#22d3ee", 3:"#eab308", 2:"#f97316", 1:"#ef4444" };
@@ -4859,7 +4858,7 @@ const GUIDE = [
     ["trophy","TV Impacto Redes","La mejor publicación de cada marca y después el top 10 de cada una."]]],
   ["Equipo", [
     ["users","Staff","Quién es quién: puesto, frase, marcas, cumpleaños con su signo, número y email de la empresa, email y celular personal y habilidades. Tocá tu propia tarjeta para editar tu perfil. Admin total elige quién aparece (Visible / Oculto)."],
-    ["calendar-clock","Turnos Sábados","Cada persona tiene dos sábados libres por mes. Elegís los tuyos en la tarjeta de cada sábado (hay un máximo por sábado y avisa si no queda ningún CM o diseñador trabajando). Admin total puede organizar los de todos."],
+    ["calendar-clock","Turnos Sábados","Cada persona elige los dos sábados del mes que viene a trabajar a la oficina, en la tarjeta de cada sábado (hay un máximo por sábado y avisa si falta un CM o un diseñador de turno). Admin total puede organizar los de todos."],
     ["cake","Cumpleaños","Quién cumple hoy, en una semana y en los próximos meses. También aparecen en Inicio."]]],
   ["Tu cuenta y buzón", [
     ["user","Mi perfil","Tus datos, foto, frase y marcas. El número y el email de la empresa los carga un admin."],

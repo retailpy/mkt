@@ -38,6 +38,7 @@ const RMH = (() => {
     RECURRING:[() => RECURRING, v => { RECURRING = v; }],
     RECUR_DONE:[() => RECUR_DONE, v => { RECUR_DONE = v; }],
     SAT_OFF:[() => SAT_OFF, v => { SAT_OFF = v; }],
+    SAT_TURN:[() => SAT_TURN, v => { SAT_TURN = v; }],
     PAUTA_LIMITS:[() => PAUTA_LIMITS, v => { PAUTA_LIMITS = v; }],
     PAUTA_PLAN:[() => PAUTA_PLAN, v => { PAUTA_PLAN = v; }],
     SUGGESTIONS:[() => SUGGESTIONS, v => { SUGGESTIONS = v; }],
