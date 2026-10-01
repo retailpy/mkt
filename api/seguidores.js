@@ -1,6 +1,6 @@
 // Seguidores de Instagram y Facebook por marca. Guarda en app_state → s:META_FOLLOWERS:
 //   { "updated": "...", "2026-09": { "Superseis": { "ig": 268900, "fb": 412300, "handle": "@superseis" }, ... }, ... }
-// Cada mes queda con el último dato del mes, así la app puede comparar contra el mes anterior.
+// Cada mes queda con el último dato del mes (corre a la mañana y a las 23 h de Paraguay), así la app compara contra el mes anterior.
 //
 // Probar sin guardar:  /api/seguidores?dry=1&secret=EL_CRON_SECRET
 const { ORDEN, authorized, brandPages, save, today, tokenHint } = require("./_lib/meta");
