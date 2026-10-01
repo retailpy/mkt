@@ -2313,7 +2313,7 @@ const folDiff = (c, p) => isNum(c) && isNum(p) ? c - p : null;
 // Mes en curso todavía sin datos de Meta: se muestra el mes anterior (con aviso) hasta que llegue la primera actualización.
 const hasFol = m => Object.values(META_FOLLOWERS[m] || {}).some(f => f && (isNum(f.ig) || isNum(f.fb)));
 const folMonth = (m = MONTH) => m === CURRENT_MONTH && !hasFol(m) && hasFol(prevMonth(m)) ? prevMonth(m) : m;
-const folNote = (m = MONTH) => folMonth(m) !== m ? `<div class="ro">${monthLabel(m)} todavía no se actualizó desde Meta: mientras tanto se muestran los datos de ${monthName(prevMonth(m))} (al cierre del mes).</div>` : "";
+const folNote = () => ""; // por ahora el mes en curso se muestra con su nombre, sin aviso (pedido de Marketing)
 const updTag = iso => `<span class="tag">Actualizado ${metaWhen(iso)}</span>`;
 // Números pseudoaleatorios estables (misma entrada → mismo valor) para los datos de ejemplo.
 function seeded(str){ let h = 2166136261; for (const ch of str){ h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h >>> 0) % 10000) / 10000; }
@@ -2347,7 +2347,7 @@ const demoMonth = () => META_DEMO.updated ? new Intl.DateTimeFormat("en-CA", { t
 // Público del mes: la foto guardada de ese mes; si no hay, lo último solo cuando es de ese mismo mes.
 // Igual que los seguidores: mes en curso sin foto todavía → la del mes anterior.
 const demoMonthFor = (m = MONTH) => m === CURRENT_MONTH && !META_DEMO[m] && demoMonth() !== m && META_DEMO[prevMonth(m)] ? prevMonth(m) : m;
-const demoWhen = (m0 = MONTH) => { const m = demoMonthFor(m0); return m !== m0 ? `Datos de ${monthName(m)} · ${monthName(m0)} todavía no se actualizó` : demoMonth() === m ? `Actualizado ${metaWhen(META_DEMO.updated)}` : META_DEMO[m] ? `Foto al cierre de ${monthName(m)}` : "Sin actualizar"; };
+const demoWhen = (m0 = MONTH) => { const m = demoMonthFor(m0); return m !== m0 || demoMonth() === m ? `Actualizado ${metaWhen(META_DEMO.updated)}` : META_DEMO[m] ? `Foto al cierre de ${monthName(m)}` : "Sin actualizar"; };
 const demoRaw = (b, m0 = MONTH) => { const m = demoMonthFor(m0); return META_DEMO[m]?.[b] || (demoMonth() === m ? META_DEMO[b] : null); };
 function demoReal(b, m = MONTH){
   const D = demoRaw(b, m); if (!D || typeof D !== "object") return null;
@@ -2384,7 +2384,7 @@ function demoBlock(b, i = 0){
     </div></div>`;
 }
 function followersPanel(){
-  const bs = socialBrands(), fm = folMonth(), ml = monthLabel(fm);
+  const bs = socialBrands(), fm = folMonth(), ml = monthLabel(MONTH);
   const card = (net, title, color) => { const list = bs.map((b,i) => ({ b, v:folOf(b, fm)?.[net], c:FCOL(b,i) })), max = Math.max(1, ...list.map(x => isNum(x.v) ? x.v : 0));
     return `<div><div class="fhead"><b style="color:${color}">${title}</b><span>${ml}</span></div><div class="fcard">${list.map((x,i) => isNum(x.v) ? `<div class="fbar"><span class="lb" title="${x.b}">${x.b}</span><div class="tr"><div class="fl" style="width:${Math.max(x.v/max*100,1.5)}%;background:${x.c};--dl:${i*60}ms"></div></div><span class="v">${dots(x.v)}</span></div>`
       : `<div class="fbar nodata"><span class="lb" title="${x.b}">${x.b}</span><span class="note">${NO_DATA}</span></div>`).join("")}</div></div>`; };
@@ -2394,10 +2394,10 @@ function followersPanel(){
 // Filas de seguidores: mes elegido contra el mes anterior. Sin dato → "Sin datos todavía" o "—".
 function followerRows(bs){
   const fm = folMonth();
-  return bs.map(b => { const c = folOf(b, fm), p = folOf(b, prevMonth(fm)); return { b, has:!!c, igp:p?.ig, igc:c?.ig, fbp:p?.fb, fbc:c?.fb }; });
+  return bs.map(b => { const c = folOf(b, fm), p = folOf(b, prevMonth(MONTH)); return { b, has:!!c, igp:p?.ig, igc:c?.ig, fbp:p?.fb, fbc:c?.fb }; });
 }
 function followersTable(showTotal = true){
-  const bs = socialBrands(), fm = folMonth(), prevLbl = MONTH_ABBR_ES(prevMonth(fm)), curLbl = MONTH_ABBR_ES(fm);
+  const bs = socialBrands(), fm = folMonth(), prevLbl = MONTH_ABBR_ES(prevMonth(MONTH)), curLbl = MONTH_ABBR_ES(MONTH);
   const num = v => isNum(v) ? dots(v) : "—";
   const diffB = d => d == null ? `<span class="dbadge eq">—</span>` : `<span class="dbadge ${d > 0 ? "up" : d < 0 ? "down" : "eq"}">${d > 0 ? "+" : ""}${dots(d)}</span>`;
   const trend = r => { const a = folDiff(r.igc, r.igp), b = folDiff(r.fbc, r.fbp); if (a == null && b == null) return "—"; const d = (a || 0) + (b || 0); return d > 0 ? "↑ Sube" : d < 0 ? "↓ Baja" : "= Igual"; };
