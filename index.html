@@ -2310,6 +2310,10 @@ const folOf = (b, m = MONTH) => { const f = META_FOLLOWERS[m]?.[b]; return f && 
 // El último mes con datos de la marca (para estimar alcances).
 const folLatest = b => { const m = Object.keys(META_FOLLOWERS).filter(k => /^\d{4}-\d{2}$/.test(k) && folOf(b, k)).sort().pop(); return m ? folOf(b, m) : null; };
 const folDiff = (c, p) => isNum(c) && isNum(p) ? c - p : null;
+// Mes en curso todavía sin datos de Meta: se muestra el mes anterior (con aviso) hasta que llegue la primera actualización.
+const hasFol = m => Object.values(META_FOLLOWERS[m] || {}).some(f => f && (isNum(f.ig) || isNum(f.fb)));
+const folMonth = (m = MONTH) => m === CURRENT_MONTH && !hasFol(m) && hasFol(prevMonth(m)) ? prevMonth(m) : m;
+const folNote = (m = MONTH) => folMonth(m) !== m ? `<div class="ro">${monthLabel(m)} todavía no se actualizó desde Meta: mientras tanto se muestran los datos de ${monthName(prevMonth(m))} (al cierre del mes).</div>` : "";
 const updTag = iso => `<span class="tag">Actualizado ${metaWhen(iso)}</span>`;
 // Números pseudoaleatorios estables (misma entrada → mismo valor) para los datos de ejemplo.
 function seeded(str){ let h = 2166136261; for (const ch of str){ h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h >>> 0) % 10000) / 10000; }
@@ -2341,8 +2345,10 @@ const AGE7 = ["13-17","18-24","25-34","35-44","45-54","55-64","65+"];
 // Mes de la última actualización (hora de Paraguay).
 const demoMonth = () => META_DEMO.updated ? new Intl.DateTimeFormat("en-CA", { timeZone:"America/Asuncion" }).format(new Date(META_DEMO.updated)).slice(0, 7) : null;
 // Público del mes: la foto guardada de ese mes; si no hay, lo último solo cuando es de ese mismo mes.
-const demoWhen = (m = MONTH) => demoMonth() === m ? `Actualizado ${metaWhen(META_DEMO.updated)}` : META_DEMO[m] ? `Foto al cierre de ${monthName(m)}` : "Sin actualizar";
-const demoRaw = (b, m = MONTH) => META_DEMO[m]?.[b] || (demoMonth() === m ? META_DEMO[b] : null);
+// Igual que los seguidores: mes en curso sin foto todavía → la del mes anterior.
+const demoMonthFor = (m = MONTH) => m === CURRENT_MONTH && !META_DEMO[m] && demoMonth() !== m && META_DEMO[prevMonth(m)] ? prevMonth(m) : m;
+const demoWhen = (m0 = MONTH) => { const m = demoMonthFor(m0); return m !== m0 ? `Datos de ${monthName(m)} · ${monthName(m0)} todavía no se actualizó` : demoMonth() === m ? `Actualizado ${metaWhen(META_DEMO.updated)}` : META_DEMO[m] ? `Foto al cierre de ${monthName(m)}` : "Sin actualizar"; };
+const demoRaw = (b, m0 = MONTH) => { const m = demoMonthFor(m0); return META_DEMO[m]?.[b] || (demoMonth() === m ? META_DEMO[b] : null); };
 function demoReal(b, m = MONTH){
   const D = demoRaw(b, m); if (!D || typeof D !== "object") return null;
   const cityList = (D.cities || []).filter(x => Array.isArray(x) && isNum(x[1])).sort((a, c) => c[1] - a[1]).slice(0, 10);
@@ -2378,8 +2384,8 @@ function demoBlock(b, i = 0){
     </div></div>`;
 }
 function followersPanel(){
-  const bs = socialBrands(), ml = monthLabel(MONTH);
-  const card = (net, title, color) => { const list = bs.map((b,i) => ({ b, v:folOf(b)?.[net], c:FCOL(b,i) })), max = Math.max(1, ...list.map(x => isNum(x.v) ? x.v : 0));
+  const bs = socialBrands(), fm = folMonth(), ml = monthLabel(fm);
+  const card = (net, title, color) => { const list = bs.map((b,i) => ({ b, v:folOf(b, fm)?.[net], c:FCOL(b,i) })), max = Math.max(1, ...list.map(x => isNum(x.v) ? x.v : 0));
     return `<div><div class="fhead"><b style="color:${color}">${title}</b><span>${ml}</span></div><div class="fcard">${list.map((x,i) => isNum(x.v) ? `<div class="fbar"><span class="lb" title="${x.b}">${x.b}</span><div class="tr"><div class="fl" style="width:${Math.max(x.v/max*100,1.5)}%;background:${x.c};--dl:${i*60}ms"></div></div><span class="v">${dots(x.v)}</span></div>`
       : `<div class="fbar nodata"><span class="lb" title="${x.b}">${x.b}</span><span class="note">${NO_DATA}</span></div>`).join("")}</div></div>`; };
   return `<div class="panel"><div class="head"><h2 style="font-size:26px;margin:0">Seguidores por cuenta</h2><div class="tag-row"><span class="tag">Fuente: Meta</span>${updTag(META_FOLLOWERS.updated)}</div></div><p class="sub" style="margin:4px 0 18px">Cantidad de seguidores de cada marca en ${ml}. Instagram y Facebook por separado.</p>
@@ -2387,10 +2393,11 @@ function followersPanel(){
 }
 // Filas de seguidores: mes elegido contra el mes anterior. Sin dato → "Sin datos todavía" o "—".
 function followerRows(bs){
-  return bs.map(b => { const c = folOf(b), p = folOf(b, prevMonth(MONTH)); return { b, has:!!c, igp:p?.ig, igc:c?.ig, fbp:p?.fb, fbc:c?.fb }; });
+  const fm = folMonth();
+  return bs.map(b => { const c = folOf(b, fm), p = folOf(b, prevMonth(fm)); return { b, has:!!c, igp:p?.ig, igc:c?.ig, fbp:p?.fb, fbc:c?.fb }; });
 }
 function followersTable(showTotal = true){
-  const bs = socialBrands(), prevLbl = MONTH_ABBR_ES(prevMonth(MONTH)), curLbl = MONTH_ABBR_ES(MONTH);
+  const bs = socialBrands(), fm = folMonth(), prevLbl = MONTH_ABBR_ES(prevMonth(fm)), curLbl = MONTH_ABBR_ES(fm);
   const num = v => isNum(v) ? dots(v) : "—";
   const diffB = d => d == null ? `<span class="dbadge eq">—</span>` : `<span class="dbadge ${d > 0 ? "up" : d < 0 ? "down" : "eq"}">${d > 0 ? "+" : ""}${dots(d)}</span>`;
   const trend = r => { const a = folDiff(r.igc, r.igp), b = folDiff(r.fbc, r.fbp); if (a == null && b == null) return "—"; const d = (a || 0) + (b || 0); return d > 0 ? "↑ Sube" : d < 0 ? "↓ Baja" : "= Igual"; };
@@ -2407,7 +2414,7 @@ function followersTable(showTotal = true){
 const TV_SECS = 10;
 let tv = { i:0, timer:null, paused:false };
 function tvBrandHero(b){
-  const f = folOf(b), n = v => isNum(v) ? dots(v) : NO_DATA;
+  const f = folOf(b, folMonth()), n = v => isNum(v) ? dots(v) : NO_DATA;
   return `<div class="tvhero" style="--c:${BRANDS[b]}"><div class="nm"><i></i><div><b>${b}</b><span>Demográfico de la audiencia</span></div></div>
     <div class="nums"><div class="ig">${ICO.IG} ${n(f?.ig)} <small>seguidores en Instagram</small></div><div class="fb">${ICO.FB} ${n(f?.fb)} <small>seguidores en Facebook</small></div></div></div>`;
 }
@@ -2429,7 +2436,7 @@ function impSlide(sl){
       ${best.map((p, k) => `<tr style="--k:${k}"><td class="rk">${k + 1}</td><td><span class="bname" style="--c:${BRANDS[p.brand]}"><i></i>${p.brand}</span></td><td class="ttl"><span class="tt">${esc(p.title)}</span><small>${dm(p.date)}</small></td><td>${netLabel(p.net)}</td><td>${typeCell(p)}</td><td class="r big">${dots(p.reach)}</td><td class="r">${dots(p.inter)}</td><td class="r">${tasa(p)}</td></tr>`).join("")}
       </tbody></table></div></div>`;
   }
-  const b = sl.brand, f = folOf(b, impMonth()), fn = v => isNum(v) ? dots(v) : NO_DATA;
+  const b = sl.brand, f = folOf(b, folMonth(impMonth())), fn = v => isNum(v) ? dots(v) : NO_DATA;
   const top = pubs.filter(p => p.brand === b).sort((a, c) => c.reach - a.reach).slice(0, 10);
   const tot = top.reduce((a, p) => a + p.reach, 0);
   return `<div class="impslide">
@@ -2489,6 +2496,7 @@ let dashBrand = "Superseis";
 function pDashboard(){
   const bs = socialBrands();
   return `<div><h1>${helloHTML()}</h1><p class="sub">Dashboard · seguidores y público de todas las cuentas, actualizados todos los días desde Meta.</p></div>
+  ${folNote()}
   ${followersPanel()}
   ${followersTable(false)}
   <div class="head"><h2 style="margin:0">Demográfico por marca</h2><div class="chips">${bs.map(b => `<button class="chip ${dashBrand === b ? "on" : ""}" data-dbrand="${b}">${b}</button>`).join("")}</div></div>
@@ -3870,6 +3878,7 @@ function pRedes(){
   const sel = (key, opts, lbl) => `<select class="base" data-pub="${key}" aria-label="${lbl}">${opts.map(o => `<option value="${o[0]}" ${pubUI[key] === o[0] ? "selected" : ""}>${o[1]}</option>`).join("")}</select>`;
   const pubTable = list => `<div class="tw"><table><thead><tr><th>#</th><th>Publicación</th><th class="r">Alcance</th><th class="r">Interacciones</th><th class="r">Tasa</th><th>Tipo</th><th>CM</th><th></th></tr></thead><tbody>${list.map(pubRow).join("") || `<tr><td colspan="8" class="empty">Sin publicaciones para estos filtros.</td></tr>`}</tbody></table></div>`;
   return `<div><h1>Informe Redes</h1><p class="sub">Seguidores, publicaciones y público de todas las cuentas, traídos de Meta todos los días.</p></div>
+  ${folNote()}
   ${followersTable()}
   ${followersPanel()}
   <div class="head"><h2 style="margin:0">Público de Instagram por marca</h2><div class="chips">${bs.map(b => `<button class="chip ${redesBrand===b?"on":""}" data-redes="${b}">${b}</button>`).join("")}</div></div>
@@ -3971,7 +3980,7 @@ function repAlcance(){
   if (!bs.includes(reportBrand)) reportBrand = bs[0];
   const d = demoReal(reportBrand), maxAge = d?.ages ? Math.max(...d.ages) : 1, maxCity = d?.cities.length ? d.cities[0][1] : 1;
   const growth = v => v == null ? `<span class="note">—</span>` : `<span class="${v >= 0 ? "up" : "down"}">${v >= 0 ? "+" : "−"}${dots(Math.abs(v))}</span>`;
-  const foto = `<div class="ro">Seguidores de ${monthName(MONTH)} · actualizado ${metaWhen(META_FOLLOWERS.updated)}. Audiencia de ${monthName(MONTH)}: ${demoWhen().toLowerCase()}.</div>`;
+  const foto = folNote() || `<div class="ro">Seguidores de ${monthName(MONTH)} · actualizado ${metaWhen(META_FOLLOWERS.updated)}. Audiencia de ${monthName(MONTH)}: ${demoWhen().toLowerCase()}.</div>`;
   return `${foto}
   <div class="tw"><table><thead><tr><th>Marca</th><th class="r">Instagram al cierre</th><th class="r">Crecimiento</th><th class="r">Facebook al cierre</th><th class="r">Crecimiento</th></tr></thead><tbody>
     ${followerRows(bs).map(r => !r.has ? `<tr><td>${brandTag(r.b)}</td><td colspan="4" class="note">${NO_DATA}</td></tr>`
