@@ -7,7 +7,7 @@ const { ORDEN, authorized, brandPages, save, today, tokenHint } = require("./_li
 
 module.exports = async (req, res) => {
   if (!authorized(req)) return res.status(401).json({ ok: false, error: "No autorizado: falta ?secret= o es incorrecto" });
-  if (!process.env.META_TOKEN) return res.status(500).json({ ok: false, error: "Falta la variable META_TOKEN en Vercel" });
+  if (!process.env.META_TOKEN){ console.error("ERROR: falta la variable META_TOKEN en Vercel"); return res.status(500).json({ ok: false, error: "Falta la variable META_TOKEN en Vercel" }); }
   const dry = req.query.dry === "1";
   try {
     const { byBrand, unmatched, missing, total } = await brandPages();
@@ -19,6 +19,7 @@ module.exports = async (req, res) => {
     }
     const payload = { updated: at, [month]: monthData };
     if (!dry) await save("s:META_FOLLOWERS", payload);
+    console.log(`[seguidores] ${month}: ${Object.keys(monthData).length} marcas${dry ? " (prueba, sin guardar)" : " guardadas"}. Sin página: ${missing.join(", ") || "ninguna"}`);
     return res.status(200).json({
       ok: true, dry, saved: !dry, month, pagesSeen: total,
       brands: monthData,
@@ -26,6 +27,8 @@ module.exports = async (req, res) => {
       pagesNotMatched: unmatched,    // páginas que no coinciden con ninguna marca
     });
   } catch (e){
+    // Queda en los logs de Vercel, así se ve el motivo cuando corre el cron.
+    console.error(`[${req.url}] ERROR: ${e.message}${e.code ? ` (código ${e.code})` : ""}${tokenHint(e) ? " → " + tokenHint(e) : ""}`);
     return res.status(500).json({ ok: false, error: e.message, hint: tokenHint(e) });
   }
 };
