@@ -18,7 +18,7 @@ async function breakdown(igId, by){
 
 module.exports = async (req, res) => {
   if (!authorized(req)) return res.status(401).json({ ok: false, error: "No autorizado: falta ?secret= o es incorrecto" });
-  if (!process.env.META_TOKEN) return res.status(500).json({ ok: false, error: "Falta la variable META_TOKEN en Vercel" });
+  if (!process.env.META_TOKEN){ console.error("ERROR: falta la variable META_TOKEN en Vercel"); return res.status(500).json({ ok: false, error: "Falta la variable META_TOKEN en Vercel" }); }
   const dry = req.query.dry === "1";
   try {
     const { byBrand, missing } = await brandPages();
@@ -44,8 +44,11 @@ module.exports = async (req, res) => {
     const { month, at } = today();
     const payload = { updated: at, ...out, [month]: out };
     if (!dry && Object.keys(out).length) await save("s:META_DEMO", payload);
+    console.log(`[demograficos] ${month}: ${Object.keys(out).length} marcas${dry ? " (prueba, sin guardar)" : " guardadas"}.${Object.keys(sinDatos).length ? " Sin datos: " + Object.entries(sinDatos).map(([b, m]) => `${b} (${m})`).join("; ") : ""}`);
     return res.status(200).json({ ok: true, dry, saved: !dry && Object.keys(out).length > 0, brands: out, sinDatos, missingBrands: missing });
   } catch (e){
+    // Queda en los logs de Vercel, así se ve el motivo cuando corre el cron.
+    console.error(`[${req.url}] ERROR: ${e.message}${e.code ? ` (código ${e.code})` : ""}${tokenHint(e) ? " → " + tokenHint(e) : ""}`);
     return res.status(500).json({ ok: false, error: e.message, hint: tokenHint(e) });
   }
 };
