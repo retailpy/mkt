@@ -1,7 +1,8 @@
 // Ciudades, edades y sexo de los seguidores de Instagram por marca (Meta ya no los da para Facebook).
 // Guarda en app_state → s:META_DEMO:
 //   { "updated": "...", "Superseis": { "handle", "foll", "cities": [["Asunción", 1234], ...], "ages": { "18-24": 900, ... },
-//                                       "gender": { "F": 1, "M": 1, "U": 1 } }, ... }
+//                                       "gender": { "F": 1, "M": 1, "U": 1 } }, ...,
+//     "2026-10": { "Superseis": {...}, ... } }   ← la foto de cada mes (la última del mes queda guardada)
 // Meta no entrega demografía de cuentas con menos de 100 seguidores: esas marcas quedan en "sinDatos".
 //
 // Probar sin guardar:  /api/demograficos?dry=1&secret=EL_CRON_SECRET
@@ -39,7 +40,9 @@ module.exports = async (req, res) => {
         sinDatos[b] = e.message;
       }
     }
-    const payload = { updated: today().at, ...out };
+    // Arriba queda lo último; además se guarda por mes ("2026-10": {...}) para que cada mes conserve su foto al cierre.
+    const { month, at } = today();
+    const payload = { updated: at, ...out, [month]: out };
     if (!dry && Object.keys(out).length) await save("s:META_DEMO", payload);
     return res.status(200).json({ ok: true, dry, saved: !dry && Object.keys(out).length > 0, brands: out, sinDatos, missingBrands: missing });
   } catch (e){
