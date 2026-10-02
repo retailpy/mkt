@@ -613,6 +613,27 @@ h1.pmh .pmico svg{width:26px;height:26px}
 .pblibre{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
 .pblibre input.base{border:1px solid var(--line-3);background:var(--inner);border-radius:16px;padding:8px 12px;color:#f1f5f9;outline:none;max-width:420px}
 .pblibre input.base:focus{border-color:var(--cyan)}
+.pm2{display:flex;flex-direction:column;gap:16px}
+.pm2 .pback{display:inline-flex;align-items:center;gap:6px;margin:0 0 10px}
+.pm2 .pback svg{width:16px;height:16px}
+.pm2 .pstep{display:flex;align-items:center;gap:10px;margin:0 0 10px;font-size:17px;color:var(--ink)}
+.pm2 .pstep i{flex:none;width:26px;height:26px;border-radius:50%;border:1.5px solid var(--cyan);color:var(--cyan);display:inline-grid;place-items:center;font-style:normal;font-size:13px;font-weight:800}
+.pm2 .pstepw{display:flex;flex-direction:column}
+.pm2 .puse{display:flex;flex-direction:column;gap:2px}
+.pm2 .puse .pstep{margin-bottom:4px}
+.pm2 .puse .pfsel{margin:4px 0 8px}
+.pm2 .pdetail summary{cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-weight:700;color:var(--ink);list-style:none}
+.pm2 .pdetail summary::-webkit-details-marker{display:none}
+.pm2 .pdetail summary>span:first-child::before{content:"▸";display:inline-block;margin-right:8px;color:var(--bc);transition:transform .15s}
+.pm2 .pdetail[open] summary>span:first-child::before{transform:rotate(90deg)}
+.pm2 .pdetail[open]{display:flex;flex-direction:column;gap:14px;border-left:4px solid var(--bc)}
+.pcolors{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr));gap:10px}
+.pcolors div{display:flex;align-items:center;gap:10px}
+.pcolors span{display:flex;flex-direction:column;font-size:12px;color:var(--muted);font-family:var(--mono)}
+.pcolors b{font-family:var(--sans,inherit);font-weight:600;font-size:13px;color:var(--ink)}
+.phist .row>.pbdot{flex:none}
+.phb{color:var(--ink);font-weight:700}
+html.light .pbdot{filter:invert(1) hue-rotate(180deg)}
 .pm2 .pbrand{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:6px;padding:16px 18px;border-radius:16px;border:1.5px solid var(--line-3);border-top:4px solid var(--bc);transition:border-color .15s}
 .pm2 .pbrand:hover,.pm2 .pbrand:focus-visible{border-color:var(--bc)}
 .pbrand b{font-size:18px;color:var(--ink)}
@@ -4678,7 +4699,7 @@ const PM_BRAND_LIST = ["Superseis", "Stock", "Delimarket"];
 const PM_LIBRE = "Libre"; // otra marca u otro uso: sin estilo fijo, se eligen estilo e iluminación
 const PM_BRANDS = {
   Superseis:{ ui:"#97A219", tag:"Cálida y hogareña", resumen:"Luz natural de ventana · producto integrado a una escena vivida · antojo",
-    swatches:[["#005226","Verde oscuro (principal)"],["#97A219","Verde oliva (secundario)"],["#EDE6DA","Beige lino"],["#A77B4F","Madera nogal"],["#C9C2B6","Gris cálido piedra"]],
+    swatches:[["#005226","Verde oscuro (principal) · Pantone 349 C"],["#97A219","Verde oliva (secundario) · Pantone 383 C"],["#EDE6DA","Beige lino"],["#A77B4F","Madera nogal"],["#C9C2B6","Gris cálido piedra"]],
     reglas:[["Luz","Natural de ventana, lateral a 45°, 4200 K, suave y envolvente"],["Cámara","35 o 50 mm, f/2.8–f/4 · 45° en escenas, cenital en platos"],["Producto","Tamaño medio, integrado a una escena con vida"],["Color","Beige, madera y piedra; el verde va en objetos de la escena, nunca de fondo"],["Emoción","Antojo, calidez, placer cotidiano, compartir"],["Prohibido","Frialdad de catálogo, asepsia de estudio"]],
     genre:"warm lifestyle photography, real and lived-in",
     light:"soft natural side light at 45 degrees (window light indoors, open shade or gentle low sun outdoors), 4200K, soft and enveloping, medium contrast 3:1, long soft shadows, mid-morning or mid-afternoon feel, mid-key exposure",
@@ -4700,16 +4721,17 @@ const PM_BRANDS = {
       { l:"En la cocina, sobre tabla", ambiente:"cocina real de una casa moderna, mesada de nogal o granito claro", fondo:"alacenas sobrias y plantas, desenfocadas", superficie:"walnut", detalles:"ingredientes frescos sueltos alrededor, hierbas, repasador de lino", encuadre:"34" },
       { l:"Panadería y rotisería", ambiente:"panadería o rotisería del local, con el producto recién hecho", fondo:"local cálido desenfocado", superficie:"wood", detalles:"recién salido del horno, vapor, luz cálida", encuadre:"medium" },
       { l:"Cenital de mesa compartida", ambiente:"mesa compartida con varios platos, vista desde arriba", fondo:"", superficie:"walnut", detalles:"manos sirviendo, vajilla artesanal, mantel de lino", encuadre:"top" }] },
-  Stock:{ ui:"var(--b-stock)", tag:"Luminosa y limpia", resumen:"Luz difusa frontal · todo enfocado · producto grande y dominante", pending:true, sharp:true,
-    swatches:[],
-    reglas:[["Luz","Difusa frontal, 5500 K neutra, contraste bajo 2:1"],["Cámara","f/8, todo enfocado"],["Producto","Grande y dominante en el cuadro"],["Color","Saturación alta, clave alta (domina lo claro)"],["Acabado","Limpio, sin grano"]],
+  Stock:{ ui:"#FFD600", tag:"Luminosa y limpia", resumen:"Luz difusa frontal · todo enfocado · producto grande y dominante", sharp:true,
+    swatches:[["#1A428A","Azul Stock (principal) · Pantone 7687 C"],["#FFD600","Amarillo Stock (principal)"],["#3CB4E5","Celeste (secundario) · Pantone 298 C"],["#FFFFFF","Blanco"]],
+    reglas:[["Luz","Difusa frontal, 5500 K neutra, contraste bajo 2:1"],["Cámara","f/8, todo enfocado"],["Producto","Grande y dominante en el cuadro"],["Color","Azul y amarillo (principales) y celeste (secundario) en objetos de la escena; saturación alta, clave alta (domina lo claro)"],["Acabado","Limpio, sin grano"]],
     genre:"bright, clean retail advertising photography",
     light:"diffused frontal light, 5500K neutral, low contrast 2:1, high-key exposure where bright tones dominate, even and clean",
     camera:"50mm prime lens at f/8, everything in focus from front to back",
     composition:"product large and dominant in the frame, everything in focus",
-    palette:"", props:"",
+    palette:"bright white #FFFFFF and light clean neutral base; the brand colors appear in objects of the scene (for example tableware, textiles, a basket, a shopping bag or accessories), never as a flat background: Stock blue #1A428A and Stock yellow #FFD600 are the main colors and must predominate among the accents, sky blue #3CB4E5 is the secondary accent. Combinations: blue with yellow, blue with white, sky blue with white and yellow",
+    props:"",
     adapt:"keep this same bright, clean look in any setting (kitchen, living room, supermarket, garden or outdoors): evenly lit, high-key and fully in focus",
-    style:"diffused frontal light 5500K neutral, low contrast 2:1, high saturation, high-key exposure with bright tones dominating, everything in focus at f/8, product large and dominant in the frame, clean finish with no grain",
+    style:"diffused frontal light 5500K neutral, low contrast 2:1, high saturation, high-key exposure with bright tones dominating, everything in focus at f/8, product large and dominant in the frame, clean finish with no grain, bright white base with Stock blue #1A428A and yellow #FFD600 present in objects of the scene and sky blue #3CB4E5 as secondary accent",
     emotion:"", words:"",
     avoid:["film grain","vignette","moody low-key look","heavy dark shadows","shallow depth of field"],
     cutout:"bright, clean, high-saturation look, everything in focus, no grain",
@@ -4719,17 +4741,17 @@ const PM_BRANDS = {
       { l:"Producto protagonista", ambiente:"", fondo:"fondo claro, luminoso y limpio", superficie:"", detalles:"producto grande y nítido, colores vivos", encuadre:"medium" },
       { l:"Mesa luminosa", ambiente:"mesa clara y luminosa", fondo:"pared clara y limpia", superficie:"wood", detalles:"producto grande al frente, todo enfocado, colores vivos", encuadre:"34" }] },
   Delimarket:{ ui:"#CDAF5F", tag:"Editorial y reservada", resumen:"Un solo foco de luz · mucho espacio negativo · deseo contenido", lowkey:true,
-    swatches:[["#000000","Negro (principal)"],["#CDAF5F","Dorado (solo como reflejo)"],["#1C1C1C","Gris carbón"],["#3A3A3A","Gris grafito"],["#2A2A2E","Mármol oscuro"],["#6E1E5F","Violeta (solo Pick Up)"]],
-    reglas:[["Luz","Un solo foco dirigido, lateral o contraluz, 3400 K, contraste alto 8:1"],["Cámara","85 mm o macro 100 mm, f/1.8–f/2.8, foco muy selectivo"],["Producto","Chico o en macro, con mucho espacio negativo"],["Color","Negro y grises; el dorado solo como reflejo"],["Emoción","Deseo contenido, admiración, exclusividad"],["Prohibido","Urgencia, oferta, abundancia. Nunca precio"]],
+    swatches:[["#000000","Negro (principal)"],["#CDAF5F","Dorado (secundario, solo como reflejo) · Pantone 872 C"],["#6E6E6E","Gris piedra"],["#FFFFFF","Blanco (solo en detalles)"],["#1C1C1C","Gris carbón"],["#3A3A3A","Gris grafito"],["#2A2A2E","Mármol oscuro"],["#6E1E5F","Violeta (solo Pick Up) · Pantone 222 C"]],
+    reglas:[["Luz","Un solo foco dirigido, lateral o contraluz, 3400 K, contraste alto 8:1"],["Cámara","85 mm o macro 100 mm, f/1.8–f/2.8, foco muy selectivo"],["Producto","Chico o en macro, con mucho espacio negativo"],["Color","Negro y grises; blanco solo en detalles; el dorado solo como reflejo"],["Emoción","Deseo contenido, admiración, exclusividad"],["Prohibido","Urgencia, oferta, abundancia. Nunca precio"]],
     genre:"high-end editorial photography, refined and restrained",
     light:"single hard directional spotlight from the side or from behind (backlight), 3400K, high contrast 8:1, dramatic chiaroscuro with fast falloff into black, low-key exposure, background melting into black",
     camera:"100mm macro lens at f/2 (85mm for wider still lifes), very selective focus on one detail, asymmetric composition",
     cameraPeople:"85mm prime lens at f/2, very selective focus, asymmetric composition, background melting into black",
     composition:"product small or in macro with generous negative space, asymmetric; the emptiness shows the product does not need to compete; few objects, all carefully chosen; hands, if any, without faces",
-    palette:"black #000000 base, deep charcoal #1C1C1C background, graphite grey #3A3A3A surfaces, stone grey #6E6E6E and dark veined marble #2A2A2E; gold #CDAF5F only as a single warm reflection or highlight. Combinations: black with charcoal and a gold reflection, dark marble with graphite, black with stone grey and dark metal",
+    palette:"black #000000 base, deep charcoal #1C1C1C background, graphite grey #3A3A3A surfaces, stone grey #6E6E6E and dark veined marble #2A2A2E; pure white #FFFFFF only in small details (white porcelain, a crisp napkin, the label); gold #CDAF5F only as a single warm reflection or highlight. Combinations: black with charcoal and a gold reflection, black with a small white detail, dark marble with graphite, black with stone grey and dark metal",
     props:"noble materials: stone, marble, glass, dark metal and noble wood; controlled specular reflections and marble veining; with food, glistening oil, salt crystals and faint smoke",
     adapt:"keep this same low-key look in any setting (kitchen, dining room, living room, store, garden or outdoors): a single directed light source and everything else falling into darkness; outdoors, shoot at dusk or night with one directed light",
-    style:"single hard directional light 3400K, high contrast 8:1, dramatic falloff into black, low desaturated neutral palette, low-key exposure, 100mm f/2 very selective focus, product small or macro with generous negative space, fine film grain, subtle vignette, editorial magazine finish, black and grey base #000000 #1C1C1C #3A3A3A, single warm gold highlight #CDAF5F",
+    style:"single hard directional light 3400K, high contrast 8:1, dramatic falloff into black, low desaturated neutral palette, low-key exposure, 100mm f/2 very selective focus, product small or macro with generous negative space, fine film grain, subtle vignette, editorial magazine finish, black and grey base #000000 #1C1C1C #3A3A3A #6E6E6E, white #FFFFFF only in small details, single warm gold highlight #CDAF5F",
     emotion:"refined, restrained, desirable, quiet, exclusive, crafted, contemplative, no urgency, no discount energy, no abundance",
     words:"refined, elegant, crafted, quiet, moody, artisanal, premium",
     avoid:["cheerful","bright high-key look","bargain look","abundance","urgency","discount energy","price tags","price labels","cluttered composition"],
@@ -4779,13 +4801,18 @@ function pmApplyBrand(b){
 }
 const pmBrandOk = b => !!PM_BRANDS[b] || b === PM_LIBRE;
 const pmBrandLabel = f => f.brand === PM_LIBRE ? (f.libreMarca.trim() || "Otra marca") : f.brand;
+// Historial: marca (las tres o "Otra marca: …"), su color y el día y la hora en que se hizo.
+const pmHistBrand = h => h.brandKey === PM_LIBRE ? `Otra marca${h.brand && h.brand !== "Otra marca" ? `: ${h.brand}` : ""}` : h.brand || "";
+const pmHistColor = h => PM_BRANDS[h.brandKey || h.brand]?.ui || "#94a3b8";
+const pmWhen = h => { if (!h.at) return h.time || ""; const d = new Date(h.at);
+  return `${["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][d.getDay()]} ${d.getDate()} ${MONTHS_ES[d.getMonth()].slice(0, 3)} · ${d.toTimeString().slice(0, 5)}`; };
 // Medida a elección: ancho × largo en píxeles, con su proporción y orientación.
 function pmSize(f){ const w = +f.pxW, h = +f.pxH, g = (a, b) => b ? g(b, a % b) : a, d = g(w, h);
   return `${w}×${h} px (aspect ratio ${w / d}:${h / d}, ${w === h ? "square" : w > h ? "horizontal" : "vertical"})`; }
 const pmFmtLabel = f => f.formato === "px" ? `${+f.pxW}×${+f.pxH} px` : pmv("formato", f.formato, 1);
 const pmv = (list, k, i = 2) => (PM[list].find(x => x[0] === k) || PM[list][0])[i];
 const PM_MODEL = () => ({ edad:"", genero:"f", peinado:"long", expresion:"smile", ropa:"", pose:"" });
-const PM_EMPTY = () => ({ brand:"", libreMarca:"", pickup:"no", ref:"no", refProd:"no", refFondo:"no", fondoTipo:"super", refPersona:"no",
+const PM_EMPTY = () => ({ brand:"", libreMarca:"", pickup:"no", refProd:"no", refFondo:"no", fondoTipo:"super", modTipo:"ia", rostro:"si",
   producto:"", productos:"", material:"", colores:"", marca:"", ambiente:"", fondo:"", detalles:"", disposicion:"hero", interaccion:"hold",
   superficie:"", escena:"cart", superProds:"", locacion:"", tipoFondo:"white", fondoHex:"", sombra:"soft", libreQue:"", elemento:"", conPersonas:"no",
   nModelos:1, modelos:[PM_MODEL(), PM_MODEL(), PM_MODEL(), PM_MODEL()],
@@ -4796,7 +4823,12 @@ const SUPER_SCENES = ["cart","shelf","checkout"];
 // Quién va en la foto y qué campos corresponden a cada modalidad.
 const pmHasPeople = (m, f) => m === 3 || m === 4 || (m === 6 && f.conPersonas === "si");
 const pmHasProduct = (m, f) => [1,2,3,5].includes(m) || (m === 4 && f.escena === "featured") || (m === 6 && !!f.elemento.trim());
-const pmProdToggle = m => [1,2,3,5,6].includes(m);
+const pmProdToggle = (m, f) => [1,2,3,5,6].includes(m) || (m === 4 && f.escena === "featured");
+// Qué se adjunta: foto del producto, foto del fondo y, con personas, si son modelos reales (con sus fotos) o inventados por la IA.
+const pmRefProd = (m, f) => pmProdToggle(m, f) && f.refProd === "si";
+const pmRealPeople = (m, f) => pmHasPeople(m, f) && f.modTipo === "real";
+const pmNoFace = (m, f) => pmHasPeople(m, f) && f.rostro === "no";
+const pmAttached = (m, f) => pmRefProd(m, f) || pmFondoAdj(f) || pmRealPeople(m, f);
 const pmFondoAdj = f => f.refFondo === "si"; // se elige en Escenario: “¿Adjuntás una foto del fondo?”
 // Con foto del fondo: el lugar no cambia, pero la luz y el color de la marca (o el estilo elegido) se aplican a toda la imagen.
 const pmFondoGrade = f => `Attached background: the place stays as in the photo and recognizable; apply ${PM_BRANDS[f.brand] ? `the ${f.brand}` : "the chosen"} light, color grade and mood to the whole image so the subject and the background read as one ${PM_BRANDS[f.brand] ? f.brand + " " : ""}photograph.`;
@@ -4807,7 +4839,7 @@ function validatePrompt(m, f){
   if (!pmBrandOk(f.brand)) return "Elegí para qué marca es la foto.";
   if ([1,3,5].includes(m) && !f.producto.trim()) return "Describí el producto.";
   if (m === 2 && f.productos.split("\n").filter(x => x.trim()).length < 2) return "Poné al menos 2 productos, uno por línea.";
-  if (pmHasPeople(m, f) && f.modelos.slice(0, f.nModelos).some(x => !String(x.edad).trim() || isNaN(+x.edad) || +x.edad <= 0)) return "Poné la edad exacta de cada modelo.";
+  if (pmHasPeople(m, f) && !pmRealPeople(m, f) && f.modelos.slice(0, f.nModelos).some(x => !String(x.edad).trim() || isNaN(+x.edad) || +x.edad <= 0)) return "Poné la edad exacta de cada modelo.";
   if (m === 4 && f.escena === "featured" && !f.producto.trim()) return "Describí el producto a destacar.";
   if (m === 4 && !SUPER_SCENES.includes(f.escena) && !f.locacion.trim() && !pmFondoAdj(f)) return "Describí la locación.";
   if (m === 5 && f.tipoFondo === "solid" && !pmFondoAdj(f) && !f.fondoHex.trim()) return "Poné el color del fondo en hex.";
@@ -4816,8 +4848,8 @@ function validatePrompt(m, f){
   return "";
 }
 function buildPrompt(m, f){
-  const people = pmHasPeople(m, f), product = pmHasProduct(m, f), fondoAdj = pmFondoAdj(f), refs = f.ref === "si";
-  const refProd = refs && pmProdToggle(m) && f.refProd === "si", refPers = refs && people && f.refPersona === "si";
+  const people = pmHasPeople(m, f), product = pmHasProduct(m, f), fondoAdj = pmFondoAdj(f);
+  const refProd = pmRefProd(m, f), refPers = pmRealPeople(m, f), noFace = pmNoFace(m, f);
   const st = PM.estilo.find(x => x[0] === f.estilo) || PM.estilo[0], B = PM_BRANDS[f.brand];
   const cutout = m === 5 && !fondoAdj, premium = B ? f.brand === "Delimarket" : f.estilo === "premium";
   const L = [];
@@ -4829,10 +4861,11 @@ function buildPrompt(m, f){
     : "Use the attached product photo as the exact product: keep its shape, label, logo, colors and proportions identical, do not redesign it.");
   if (fondoAdj) R.push(f.fondoTipo === "super" ? "Use the attached supermarket photo as the real background: keep the aisles, shelves, products and store layout exactly as they are. Integrate the subject with matching perspective, light direction and shadows. Keep the background slightly out of focus so the subject stands out."
     : "Use the attached background photo as the real scene; integrate the subject with matching perspective, light direction and shadows.");
-  if (refPers) R.push("Keep the face and identity of the attached person exactly the same, same facial features, skin tone and proportions.");
+  if (refPers) R.push(noFace ? `Use the attached ${+f.nModelos > 1 ? "photos of the real people" : "photo of the real person"} for body type, skin tone, hands and clothing; keep ${+f.nModelos > 1 ? "them" : "it"} exactly as in the photo.`
+    : "Keep the face and identity of the attached person exactly the same, same facial features, skin tone and proportions.");
   // Fidelidad total a las fotos adjuntas: no deformar productos, logos, letras ni personas.
   if (refProd) R.push("Absolute fidelity to the attached reference: do not redraw, reshape, retouch, stylize or reinterpret the product, its packaging, logo, label, typography or any lettering; every letter, word, number and logo must stay exactly as in the original photo, same spelling, same font, same position, same size, no warping.");
-  if (refPers) R.push("Do not alter the attached person in any way: same face, same identity, same body shape, same hairline and skin; no beautifying, no age change, no face swap.");
+  if (refPers && !noFace) R.push("Do not alter the attached person in any way: same face, same identity, same body shape, same hairline and skin; no beautifying, no age change, no face swap.");
   if (R.length) L.push(R.join(" "));
   // Sujeto
   const S = [];
@@ -4847,7 +4880,10 @@ function buildPrompt(m, f){
   // Personas
   if (people){
     const ms = f.modelos.slice(0, f.nModelos);
-    const P = ms.map((x, i) => `${ms.length > 1 ? `Person ${i + 1}: ` : ""}${+x.edad}-year-old ${ageWord(x.edad, x.genero)}, fair light skin, natural Latin American (Paraguayan) features, dark brown hair ${pmv("peinado", x.peinado)}, brown eyes, ${pmv("expresion", x.expresion)}${x.ropa.trim() ? `, wearing ${x.ropa.trim()}` : ""}${x.pose.trim() ? `, ${x.pose.trim()}` : ""}.`);
+    const wear = x => `${x.ropa.trim() ? `, wearing ${x.ropa.trim()}` : ""}${x.pose.trim() ? `, ${x.pose.trim()}` : ""}`;
+    const P = ms.map((x, i) => `${ms.length > 1 ? `Person ${i + 1}: ` : ""}${refPers ? `${ms.length > 1 ? `the real person from attached photo ${i + 1}` : "The real person from the attached photo"}${wear(x)}`
+      : `${+x.edad}-year-old ${ageWord(x.edad, x.genero)}, fair light skin, natural Latin American (Paraguayan) ${noFace ? "appearance" : "features"}, dark brown hair ${pmv("peinado", x.peinado)}${noFace ? "" : `, brown eyes, ${pmv("expresion", x.expresion)}`}${wear(x)}`}.`);
+    if (noFace) P.push("Faces not shown: frame the people from the neck down, from behind or with the face out of frame or turned away; tell the story with hands, gestures, body language and the product; no visible face anywhere in the image.");
     if (m === 3) P.push(`Interaction: ${pmv("interaccion", f.interaccion)}.`);
     if (m === 4 && f.escena !== "doing"){
       const inter = pmv("interaccion", f.interaccion).replace(/the product/g, "the featured product").replace(/ with the featured product placed beside them/, " the featured product placed beside them");
@@ -4877,7 +4913,7 @@ function buildPrompt(m, f){
   const body = people ? (premium ? "Hasselblad X2D 100C medium format" : "Canon EOS R5, full-frame") : (premium ? "Phase One XF IQ4 150MP medium format" : "Hasselblad X2D 100C medium format");
   const lens = pmv("encuadre", f.encuadre, people ? 3 : 4);
   const expo = m === 5 || ["studio","dramatic"].includes(f.ilum) ? "ISO 100, 1/160s, studio strobes" : f.ilum === "store" ? "ISO 400, 1/200s" : people ? "ISO 200, 1/250s" : "ISO 100, 1/125s on tripod";
-  const focus = m === 4 || (m === 6 && people) ? "sharp focus on the main person's eyes" : "tack-sharp focus on the main subject";
+  const focus = noFace ? "sharp focus on the hands and the product" : m === 4 || (m === 6 && people) ? "sharp focus on the main person's eyes" : "tack-sharp focus on the main subject";
   const dof = people ? "shallow natural depth of field, smooth creamy background bokeh, subject separated from the background" : "controlled depth of field, product fully sharp, background gently soft";
   L.push(B && !cutout ? `Camera: shot on ${body}, ${people && B.cameraPeople ? B.cameraPeople : B.camera}, ${expo}, ${focus}. RAW capture, 14-bit color depth, wide dynamic range, lens corrections applied, true-to-life color science.`
     : `Camera: shot on ${body}, ${lens}, ${expo}, ${focus}, ${dof}. RAW capture, 14-bit color depth, wide dynamic range, lens corrections applied, true-to-life color science.`);
@@ -4887,7 +4923,7 @@ function buildPrompt(m, f){
     if (f.brand === "Delimarket" && f.pickup === "si") L.push("Pick Up accent: the violet #6E1E5F present in one object of the scene.");
   } else L.push(`Color and finish: ${B ? B.cutout : st[4]}.`);
   L.push(`High-end advertising agency production quality. Ultra-detailed, natural micro-contrast, accurate color reproduction, ${B?.lowkey && !cutout ? "deep rich blacks with detail kept in the lit areas" : "clean shadows without crushed blacks"}, no blown highlights, professional yet natural retouching, no over-smoothing. Looks like a real photograph from a professional commercial shoot, not a render.`);
-  if (people) L.push("Natural skin texture with visible pores and fine detail, subtle natural imperfections, realistic catchlights in the eyes, natural teeth, anatomically correct hands with five fingers and natural nails, clothing with real fabric folds and weave, natural body posture and weight distribution.");
+  if (people) L.push(`Natural skin texture with visible pores and fine detail, subtle natural imperfections, ${noFace ? "" : "realistic catchlights in the eyes, natural teeth, "}anatomically correct hands with five fingers and natural nails, clothing with real fabric folds and weave, natural body posture and weight distribution.`);
   if (product) L.push("Physically accurate materials, true reflections of the surrounding environment, crisp and legible label print, clean precise edges, realistic contact shadows and ambient occlusion, correct scale relative to the scene.");
   // Lo más importante, con o sin marca: el producto no se deforma y se ve en alta calidad.
   if (product){ const who = m === 2 ? "the products are the heroes; the focus always falls on them and they stay" : m === 6 ? "the main subject is the hero; the focus always falls on it and it stays" : "the product is the hero; the focus always falls on it and it stays";
@@ -4906,9 +4942,9 @@ function buildPrompt(m, f){
   if (m === 4 && f.escena !== "featured") N = N.filter(x => x !== "deformed product");
   if (m === 4 && SUPER_SCENES.includes(f.escena)) N.push("empty shelves", "messy aisles", "damaged packaging", "unreadable price tags");
   if (m === 6) N = N.map(x => x === "deformed product" ? "deformed or distorted main subject, wrong scale, impossible perspective" : x);
-  if (people) N.push("extra fingers", "deformed hands", "distorted face", "asymmetric eyes", "unnatural body proportions", "plastic waxy skin", "airbrushed skin", "uncanny valley");
+  if (people) N.push("extra fingers", "deformed hands", ...(noFace ? ["visible face", "face in frame"] : ["distorted face", "asymmetric eyes"]), "unnatural body proportions", "plastic waxy skin", "airbrushed skin", "uncanny valley");
   if (refProd) N.push("altered or redrawn logo", "changed label text", "misspelled or reshaped lettering", "modified packaging design", "different product than the attached one");
-  if (refPers) N.push("changed face", "different person", "altered identity", "face swap", "beautified or aged face");
+  if (refPers) N.push(...(noFace ? ["different body type", "changed skin tone"] : ["changed face", "different person", "altered identity", "face swap", "beautified or aged face"]));
   if (B && !cutout) N.push(...B.avoid);
   L.push(`Avoid: ${N.join(", ")}.`);
   return L.join("\n");
@@ -4918,70 +4954,76 @@ function pPrompts(){
   const m = promptUI.mode, f = promptUI.f, hist = PROMPT_HISTORY[viewer.id] || [], people = pmHasPeople(m, f), fondoAdj = pmFondoAdj(f);
   const T = (k, label, ph = "", req = false, big = false) => `<label class="${big ? "w3" : ""}">${label}${req ? " *" : ""}${big ? `<textarea class="base" data-pf="${k}" rows="${k === "productos" ? 4 : 2}" placeholder="${esc(ph)}">${esc(f[k])}</textarea>` : `<input class="base" data-pf="${k}" value="${esc(f[k])}" placeholder="${esc(ph)}">`}</label>`;
   const S = (k, label, list, rr = false) => `<label>${label}<select class="base" data-pf="${k}"${rr ? " data-rr" : ""}>${PM[list].map(x => `<option value="${x[0]}" ${f[k] === x[0] ? "selected" : ""}>${x[1]}</option>`).join("")}</select></label>`;
-  const yn = (k, label, hint, yes = "Sí, adjunto", no = "No, que la IA lo invente") => `<div class="pyn"><div><b>${label}</b>${hint ? `<span>${hint}</span>` : ""}</div><div class="pynbtns" role="group" aria-label="${label}"><button type="button" class="${f[k] === "si" ? "on" : ""}" data-pyn="${k}|si">${yes}</button><button type="button" class="${f[k] !== "si" ? "on" : ""}" data-pyn="${k}|no">${no}</button></div></div>`;
   const matSel = () => S("material", "Terminación del producto (de qué está hecho)", "material");
   const surfSel = () => S("superficie", "¿Sobre qué está apoyado?", "superficie");
   const prodBlock = (required, label = "Producto", ph = "botella de aceite de oliva extra virgen de 1 litro, vidrio verde oscuro, etiqueta crema") => `${T("producto", label, ph, required, true)}${matSel()}${T("marca", "Marca o texto visible", "OLIVAR")}`;
-  const sceneBlock = () => fondoAdj ? "" : `${T("ambiente", "Escenario / ambiente", "cocina, sala, súper, jardín…")}${T("fondo", "Fondo", "pared de azulejos blancos")}`;
-  const models = people ? `<div class="w3 pgroup"><h3>Modelos</h3>
+  const B = PM_BRANDS[f.brand], libre = f.brand === PM_LIBRE, realP = pmRealPeople(m, f), noFace = pmNoFace(m, f);
+  const sw = (list, big) => list.map(([hex, n]) => `<i class="pbdot${big ? " big" : ""}" style="--sw:${hex}" title="${esc(n)} ${hex}"></i>`).join("");
+  const histBlock = hist.length ? `<section class="panel phist"><h3 style="margin-top:0">Tus últimos prompts</h3><div class="list">${hist.map((h, i) => `<div class="row"><i class="pbdot" style="--sw:${pmHistColor(h)}"></i><div class="grow"><div class="t">${esc(h.title || "Sin nombre")}</div><div class="m"><b class="phb">${esc(pmHistBrand(h))}</b> · ${esc(h.mode || "")} · ${esc(h.fmt || "")} · ${esc(pmWhen(h))}</div></div><button class="btn" data-phist="${i}">${icon("copy")} Copiar</button></div>`).join("")}</div></section>` : "";
+  const brandPick = `<section class="panel pbrandpick"><h2 class="pmh" style="margin:0">${pmIco("palette")}¿Para qué marca es la foto?</h2><p class="sub" style="margin:4px 0 14px">Cada marca tiene su estilo de fotos. Elegila primero: su estilo se carga solo y el prompt lo respeta siempre, aunque cambies el escenario.</p>
+    <div class="pbrands">${PM_BRAND_LIST.map(b => { const x = PM_BRANDS[b]; return `<button type="button" class="pbrand" data-pbrand="${b}" style="--bc:${x.ui}"><span class="pbsw">${sw(x.swatches.slice(0, 4))}</span><b>${b}</b><span class="pbtag">${x.tag}</span><small>${x.resumen}</small></button>`; }).join("")}
+      <button type="button" class="pbrand libre" data-pbrand="${PM_LIBRE}" style="--bc:var(--muted)"><span class="pbsw">${icon("pencil-line")}</span><b>Otra marca (libre)</b><span class="pbtag">Estilo a elección</span><small>Para otra marca u otro uso: elegís vos el estilo y la luz</small></button></div></section>`;
+  if (!B && !libre) return `<div class="pm2"><div class="head"><div><h1>Prompts de imágenes</h1><p class="sub">Para ChatGPT, Gemini o Nano Banana. Primero elegí la marca.</p></div></div>${brandPick}${histBlock}</div>`;
+  const step = (n, t) => `<h2 class="pstep"><i>${n}</i>${t}</h2>`;
+  const opt = (k, label, hint, a, b) => `<div class="pyn"><div><b>${label}</b>${hint ? `<span>${hint}</span>` : ""}</div><div class="pynbtns" role="group" aria-label="${label}">${[a, b].map(([v, l]) => `<button type="button" class="${f[k] === v ? "on" : ""}" data-pyn="${k}|${v}">${l}</button>`).join("")}</div></div>`;
+  // 1 · Marca (arriba, chica) con Volver
+  const brandBar = `<section class="panel pbrandbar" style="--bc:${libre ? "var(--muted)" : B.ui}"><div class="pbb-h"><div class="pbb-n"><span class="note">Marca</span><b>${libre ? "Otra marca (libre)" : f.brand}</b><span class="pbtag">${libre ? "Estilo a elección" : B.tag}</span></div>${B ? `<span class="pbsw">${sw(B.swatches, true)}</span>` : ""}</div>
+    ${libre ? `<label class="pblibre"><span>¿Para qué marca o uso? <span class="note">(opcional, para tu historial)</span></span><input class="base" data-pf="libreMarca" value="${esc(f.libreMarca)}" placeholder="Bianca, Clasipar, evento interno…"></label>`
+      : `<p class="note" style="margin:0">${B.resumen}. Su estilo se aplica solo en cada prompt.</p>`}</section>`;
+  // 2 · ¿Qué vas a usar? (lo que se adjunta y cómo son las personas)
+  const fondoRow = `<div class="pyn"><div><b>Foto del fondo</b><span>${fondoAdj ? `El lugar sale de tu foto; ${libre ? "el estilo que elijas" : "el estilo de " + f.brand} le pone la luz y el color.` : "La IA arma el escenario que elijas más abajo."}</span></div><div class="pynbtns" role="group" aria-label="Foto del fondo"><button type="button" class="${fondoAdj ? "on" : ""}" data-pbfondo="si">Sí, adjunto</button><button type="button" class="${fondoAdj ? "" : "on"}" data-pbfondo="no">No, que la IA lo arme</button></div></div>
+    ${fondoAdj ? `<label class="pfsel">¿Qué fondo adjuntás?<select class="base" data-pf="fondoTipo"><option value="super" ${f.fondoTipo === "super" ? "selected" : ""}>Supermercado</option><option value="otro" ${f.fondoTipo === "otro" ? "selected" : ""}>Otro lugar</option></select></label>` : ""}`;
+  const useBlock = `<section class="panel puse">${step(2, "¿Qué vas a usar?")}
+    ${pmProdToggle(m, f) ? opt("refProd", m === 2 ? "Fotos de los productos" : m === 6 ? "Foto del elemento principal" : "Foto del producto", f.refProd === "si" ? "Se respeta tal cual: forma, etiqueta, logo, letras y colores." : "La IA lo arma con lo que describas.", ["si", "Sí, adjunto"], ["no", "No, que la IA lo invente"]) : ""}
+    ${fondoRow}
+    ${m === 6 ? opt("conPersonas", "¿Incluye personas?", "", ["si", "Sí"], ["no", "No"]) : ""}
+    ${people ? opt("modTipo", "Modelos", realP ? "Adjuntás una foto de cada persona: se respetan tal cual." : "La IA crea las personas con la edad y el estilo que elijas.", ["ia", "Con IA (inventados)"], ["real", "Reales (adjunto sus fotos)"]) : ""}
+    ${people ? opt("rostro", "¿Se ve el rostro?", noFace ? "Solo manos, cuerpo o de espaldas: sin cara." : "Los modelos se ven de frente o de perfil.", ["si", "Sí, se ve"], ["no", "No, sin rostro"]) : ""}
+    ${f.brand === "Delimarket" ? opt("pickup", "¿Es para Pick Up?", "Suma el violeta #6E1E5F en un objeto de la escena.", ["si", "Sí"], ["no", "No"]) : ""}
+    ${pmAttached(m, f) ? `<p class="pfid">${icon("shield-check")} Todo lo que adjuntes se respeta al 100%: el prompt le pide a la IA que no deforme productos, logos, letras ni personas.</p>` : ""}</section>`;
+  // 3 · Desarrollo
+  const sup4 = m === 4 && SUPER_SCENES.includes(f.escena), escOk = !fondoAdj && m !== 5 && !sup4;
+  const sceneGroup = m === 5 ? "" : fondoAdj ? `<div class="w3 pgroup"><h3>Escenario</h3><p class="note" style="margin:0">El lugar sale de tu foto del fondo${B ? `; ${f.brand} le aplica su luz, su color y su emoción` : ""}.</p></div>`
+    : `<div class="w3 pgroup"><h3>Escenario</h3>
+      ${escOk ? `<div class="pbmodes">${PM_ESC.map(([k, l]) => `<button type="button" class="chip ${f.esc === k ? "on" : ""}" data-pbesc="${k}">${l}</button>`).join("")}</div>` : ""}
+      ${escOk && B ? `<div class="pbmodes"><span class="note">Escenas típicas de ${f.brand}:</span>${B.modos.map((x, i) => `<button type="button" class="chip" data-pbmode="${i}">${x.l}</button>`).join("")}</div>` : ""}
+      <div class="pgrid4">${[m === 4 ? T("locacion", "Locación", sup4 ? "si queda vacío: un súper luminoso y moderno" : "parque con árboles al atardecer", !sup4) : T("ambiente", "Lugar / ambiente", "cocina, sala, súper, jardín…"), T("fondo", "Fondo", m === 4 ? "desenfocado, cálido" : "pared de azulejos blancos")].map(x => x.replace('<label class="">', '<label class="w2">')).join("")}</div>
+      ${B ? `<p class="note" style="margin:0">Cambiá el lugar cuando quieras: la luz, la colorimetría y la emoción de ${f.brand} se mantienen en todos.</p>` : ""}</div>`;
+  const models = people ? `<div class="w3 pgroup"><h3>${realP ? "Modelos reales" : "Modelos con IA"}</h3>
       <div class="pgrid4"><label>Cantidad<select class="base" data-pf="nModelos" data-rr>${[1,2,3,4].map(n => `<option value="${n}" ${+f.nModelos === n ? "selected" : ""}>${n}</option>`).join("")}</select></label></div>
-      ${f.modelos.slice(0, f.nModelos).map((x, i) => `<div class="pmodel"><b>Modelo ${i + 1}</b><div class="pgrid4">
-        <label>Edad exacta *<input class="base" type="number" min="1" max="99" data-pm="${i}|edad" value="${esc(x.edad)}" placeholder="28"></label>
+      ${f.modelos.slice(0, f.nModelos).map((x, i) => `<div class="pmodel"><b>${realP ? `Persona ${i + 1} (foto ${i + 1})` : `Modelo ${i + 1}`}</b><div class="pgrid4">
+        ${realP ? "" : `<label>Edad exacta *<input class="base" type="number" min="1" max="99" data-pm="${i}|edad" value="${esc(x.edad)}" placeholder="28"></label>
         <label>Género<select class="base" data-pm="${i}|genero">${PM.genero.map(g => `<option value="${g[0]}" ${x.genero === g[0] ? "selected" : ""}>${g[1]}</option>`).join("")}</select></label>
         <label>Peinado<select class="base" data-pm="${i}|peinado">${PM.peinado.map(g => `<option value="${g[0]}" ${x.peinado === g[0] ? "selected" : ""}>${g[1]}</option>`).join("")}</select></label>
-        <label>Expresión<select class="base" data-pm="${i}|expresion">${PM.expresion.map(g => `<option value="${g[0]}" ${x.expresion === g[0] ? "selected" : ""}>${g[1]}</option>`).join("")}</select></label>
+        ${noFace ? "" : `<label>Expresión<select class="base" data-pm="${i}|expresion">${PM.expresion.map(g => `<option value="${g[0]}" ${x.expresion === g[0] ? "selected" : ""}>${g[1]}</option>`).join("")}</select></label>`}`}
         <label class="w2">Ropa (prenda, color hex, tela)<input class="base" data-pm="${i}|ropa" value="${esc(x.ropa)}" placeholder="remera de algodón blanca #FFFFFF"></label>
-        <label class="w2">Qué hace / pose<input class="base" data-pm="${i}|pose" value="${esc(x.pose)}" placeholder="mirando a cámara, apoyada en la góndola"></label>
+        <label class="w2">Qué hace / pose<input class="base" data-pm="${i}|pose" value="${esc(x.pose)}" placeholder="${noFace ? "manos sirviendo el plato, de espaldas" : "mirando a cámara, apoyada en la góndola"}"></label>
       </div></div>`).join("")}
-      <p class="note" style="margin:0">Rasgos aplicados siempre: tez clara, rasgos latinoamericanos/paraguayos, cabello castaño oscuro, ojos marrones.</p></div>` : "";
+      <p class="note" style="margin:0">${realP ? "Adjuntá las fotos en el mismo orden: la persona 1 es la foto 1." : `Rasgos aplicados siempre: tez clara, rasgos latinoamericanos/paraguayos, cabello castaño oscuro${noFace ? "" : ", ojos marrones"}.`}</p></div>` : "";
   let fields = "";
-  if (m === 1) fields = `${prodBlock(true)}${surfSel()}${sceneBlock()}`;
-  if (m === 2) fields = `${T("productos", "Productos (uno por línea, el primero es el protagonista)", "aceite de oliva OLIVAR 1 L\nvinagre balsámico 500 ml\nsal marina en frasco", true, true)}${S("disposicion", "Disposición", "disposicion")}${surfSel()}${matSel()}${T("marca", "Marca o texto visible", "OLIVAR")}${sceneBlock()}`;
-  if (m === 3) fields = `${prodBlock(true)}${S("interaccion", "Interacción con el producto", "interaccion")}${sceneBlock()}`;
-  if (m === 4){ const sup = SUPER_SCENES.includes(f.escena), feat = f.escena === "featured";
-    fields = `<div class="w3">${S("escena", "Escena", "escena", true)}</div>
-      ${sup ? T("superProds", "Productos del súper que se ven", "frutas frescas, lácteos, panificados", false, true) : ""}
-      ${feat ? `${prodBlock(true, "Producto a destacar")}${S("interaccion", "Interacción con el producto", "interaccion")}` : ""}
-      ${fondoAdj ? "" : `${T("locacion", "Locación", sup ? "si queda vacío: un súper luminoso y moderno" : "parque con árboles al atardecer", !sup, true)}${T("fondo", "Fondo", "desenfocado, cálido")}`}`; }
+  if (m === 1) fields = `${prodBlock(true)}${surfSel()}`;
+  if (m === 2) fields = `${T("productos", "Productos (uno por línea, el primero es el protagonista)", "aceite de oliva OLIVAR 1 L\nvinagre balsámico 500 ml\nsal marina en frasco", true, true)}${S("disposicion", "Disposición", "disposicion")}${surfSel()}${matSel()}${T("marca", "Marca o texto visible", "OLIVAR")}`;
+  if (m === 3) fields = `${prodBlock(true)}${S("interaccion", "Interacción con el producto", "interaccion")}`;
+  if (m === 4) fields = `<div class="w3">${S("escena", "Escena", "escena", true)}</div>
+      ${sup4 ? T("superProds", "Productos del súper que se ven", "frutas frescas, lácteos, panificados", false, true) : ""}
+      ${f.escena === "featured" ? `${prodBlock(true, "Producto a destacar")}${S("interaccion", "Interacción con el producto", "interaccion")}` : ""}`;
   if (m === 5) fields = `${prodBlock(true)}${fondoAdj ? "" : `${S("tipoFondo", "Tipo de fondo", "tipoFondo", true)}${f.tipoFondo === "solid" ? T("fondoHex", "Color del fondo en hex", "#E8F4FD", true) : ""}${S("sombra", "Sombra", "sombra")}`}`;
-  if (m === 6) fields = `${T("libreQue", "¿Qué querés en la foto?", "camión de reparto blanco estacionado frente al súper, al amanecer", true, true)}${T("elemento", "Elemento principal", "camión Hino 300 blanco #FFFFFF con caja térmica", false, true)}${matSel()}${surfSel()}${T("marca", "Marca o texto visible", "")}${sceneBlock()}
-      <div class="w3">${yn("conPersonas", "¿Incluye personas?", "", "Sí", "No")}</div>`;
-  const refBlock = `<div class="w3 pgroup"><h3>¿Adjuntás imágenes de referencia?</h3>
-      <div class="pynbtns big" role="group"><button type="button" class="${f.ref === "si" ? "on" : ""}" data-pyn="ref|si">Sí, adjunto</button><button type="button" class="${f.ref !== "si" ? "on" : ""}" data-pyn="ref|no">No, que la IA lo invente</button></div>
-      ${f.ref === "si" ? `${pmProdToggle(m) ? yn("refProd", m === 6 ? "Elemento principal" : "Producto", "Se respeta tal cual: forma, etiqueta, logo, letras y colores", "Sí", "No") : ""}
-        ${people ? yn("refPersona", "Persona", "Se mantiene la cara y la identidad", "Sí", "No") : ""}
-        <p class="pfid">${icon("shield-check")} Todo lo que adjuntes se respeta al 100%: el prompt le pide a la IA que no deforme productos, logos, letras ni personas.</p>` : ""}</div>`;
-  const B = PM_BRANDS[f.brand], libre = f.brand === PM_LIBRE;
-  const sw = (list, big) => list.map(([hex, n]) => `<i class="pbdot${big ? " big" : ""}" style="--sw:${hex}" title="${esc(n)} ${hex}"></i>`).join("");
-  const brandPick = `<section class="panel pbrandpick"><h2 class="pmh" style="margin:0">${pmIco("palette")}¿Para qué marca es la foto?</h2><p class="sub" style="margin:4px 0 14px">Cada marca tiene su estilo de fotos. Elegila primero: su estilo se carga solo y el prompt lo respeta siempre, aunque cambies el escenario.</p>
-    <div class="pbrands">${PM_BRAND_LIST.map(b => { const x = PM_BRANDS[b]; return `<button type="button" class="pbrand" data-pbrand="${b}" style="--bc:${x.ui}"><span class="pbsw">${sw(x.swatches.slice(0, 3))}</span><b>${b}</b><span class="pbtag">${x.tag}</span><small>${x.resumen}</small></button>`; }).join("")}
-      <button type="button" class="pbrand libre" data-pbrand="${PM_LIBRE}" style="--bc:var(--muted)"><span class="pbsw">${icon("pencil-line")}</span><b>Otra marca (libre)</b><span class="pbtag">Estilo a elección</span><small>Para otra marca u otro uso: elegís vos el estilo y la luz</small></button></div></section>`;
-  if (!B && !libre) return `<div class="pm2"><div class="head"><div><h1>Prompts de imágenes</h1><p class="sub">Para ChatGPT, Gemini o Nano Banana. Primero elegí la marca.</p></div></div>${brandPick}
-    ${hist.length ? `<section class="panel"><h3 style="margin-top:0">Tus últimos prompts</h3><div class="list">${hist.map((h, i) => `<div class="row"><div class="grow"><div class="t">${esc(h.title)}</div><div class="m">${h.brand ? esc(h.brand) + " · " : ""}${esc(h.mode || "")} · ${esc(h.fmt || "")} · ${h.time}</div></div><button class="btn" data-phist="${i}">${icon("copy")} Copiar</button></div>`).join("")}</div></section>` : ""}</div>`;
-  const escChips = cur => `<div class="pbmodes"><span class="note">Escenario:</span>${PM_ESC.map(([k, l]) => `<button type="button" class="chip ${cur === k ? "on" : ""}" data-pbesc="${k}">${l}</button>`).join("")}</div>`;
-  const fondoRow = `<div class="pyn"><div><b>¿Adjuntás una foto del fondo?</b><span>${fondoAdj ? `El lugar sale de tu foto; ${libre ? "el estilo que elijas" : "el estilo de " + f.brand} se aplica a la luz y al color.` : "Si no, el escenario lo arma la IA con lo que elijas o escribas."}</span></div><div class="pynbtns" role="group" aria-label="Foto del fondo"><button type="button" class="${fondoAdj ? "on" : ""}" data-pbfondo="si">Sí, adjunto</button><button type="button" class="${fondoAdj ? "" : "on"}" data-pbfondo="no">No</button></div></div>
-    ${fondoAdj ? `<label class="pfsel">¿Qué fondo adjuntás?<select class="base" data-pf="fondoTipo"><option value="super" ${f.fondoTipo === "super" ? "selected" : ""}>Supermercado</option><option value="otro" ${f.fondoTipo === "otro" ? "selected" : ""}>Otro lugar</option></select></label>` : ""}`;
-  const escOk = !fondoAdj && m !== 5 && !(m === 4 && SUPER_SCENES.includes(f.escena));
-  const brandBar = libre ? `<section class="panel pbrandbar" style="--bc:var(--muted)"><div class="pbb-h"><div class="pbb-n"><span class="note">Marca</span><b>Otra marca (libre)</b><span class="pbtag">Estilo a elección</span></div><button type="button" class="btn sm" data-pbrand="">Cambiar marca</button></div>
-    <label class="pblibre"><span>¿Para qué marca o uso? <span class="note">(opcional, para tu historial)</span></span><input class="base" data-pf="libreMarca" value="${esc(f.libreMarca)}" placeholder="Bianca, Clasipar, evento interno…"></label>
-    <p class="note" style="margin:0">Sin estilo fijo de marca: elegís el estilo y la iluminación en “Estilo de la foto”.</p>
-    ${escOk ? escChips(f.esc) : ""}${fondoRow}</section>`
-  : `<section class="panel pbrandbar" style="--bc:${B.ui}"><div class="pbb-h"><div class="pbb-n"><span class="note">Marca</span><b>${f.brand}</b><span class="pbtag">${B.tag}</span></div>${B.swatches.length ? `<span class="pbsw">${sw(B.swatches, true)}</span>` : ""}<button type="button" class="btn sm" data-pbrand="">Cambiar marca</button></div>
+  if (m === 6) fields = `${T("libreQue", "¿Qué querés en la foto?", "camión de reparto blanco estacionado frente al súper, al amanecer", true, true)}${T("elemento", "Elemento principal", "camión Hino 300 blanco #FFFFFF con caja térmica", false, true)}${matSel()}${surfSel()}${T("marca", "Marca o texto visible", "")}`;
+  const style = `<div class="w3 pgroup"><h3>${libre ? "Estilo, encuadre y formato" : "Encuadre y formato"}</h3><div class="pgrid4">${libre ? `${S("estilo", "Estilo", "estilo")}${m === 5 && !fondoAdj ? `<label>Iluminación<input class="base" value="Estudio en blanco (fija)" disabled></label>` : S("ilum", "Iluminación", "ilum")}` : ""}${S("encuadre", "Encuadre", "encuadre")}${S("espacio", "Espacio para texto", "espacio")}${S("formato", "Formato", "formato", true)}${f.formato === "px" ? `<label>Ancho (px) *<input class="base" type="number" inputmode="numeric" min="100" max="10000" step="1" data-pf="pxW" value="${esc(f.pxW)}" placeholder="1080"></label><label>Largo / alto (px) *<input class="base" type="number" inputmode="numeric" min="100" max="10000" step="1" data-pf="pxH" value="${esc(f.pxH)}" placeholder="1350"></label>` : ""}</div>
+      <p class="note" style="margin:0">${libre ? "La cámara, el lente y la exposición se eligen solos según lo que cargues." : `La luz, la cámara y el color los pone el estilo de ${f.brand} (el detalle está al final).`}</p></div>`;
+  // Al final: el detalle técnico de la marca (colores oficiales, luz, cámara…)
+  const detail = B ? `<details class="panel pdetail" style="--bc:${B.ui}"><summary><span>Detalle técnico de ${f.brand}: colores, luz y cámara</span><span class="pbsw">${sw(B.swatches)}</span></summary>
+    <div class="pcolors">${B.swatches.map(([hex, n]) => `<div><i class="pbdot big" style="--sw:${hex}"></i><span><b>${esc(n)}</b>${hex}</span></div>`).join("")}</div>
     <div class="pbrules">${B.reglas.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("")}</div>
-    ${B.pending ? `<p class="note" style="margin:0">Estilo provisorio de Stock (luz, color, enfoque y acabado). Falta cargar su identidad completa: colores, emociones y escenas.</p>` : ""}
-    ${f.brand === "Delimarket" ? yn("pickup", "¿Es para Pick Up?", "Suma el violeta #6E1E5F en un objeto de la escena", "Sí", "No") : ""}
-    ${escOk ? `${escChips(f.esc)}<div class="pbmodes"><span class="note">Escenas típicas de ${f.brand}:</span>${B.modos.map((x, i) => `<button type="button" class="chip" data-pbmode="${i}">${x.l}</button>`).join("")}</div>
-    <p class="note" style="margin:0">El escenario lo podés cambiar (cocina, sala, súper, jardín o lo que escribas en “Otro”): la luz, la colorimetría y la emoción de ${f.brand} se mantienen en todos.</p>` : ""}
-    ${fondoRow}
-    ${m === 5 ? `<p class="note" style="margin:0">En fondo pleno o transparente la luz es de estudio (el producto va recortado); de la marca se respetan el color y el acabado.</p>` : ""}</section>`;
-  const style = `<div class="w3 pgroup"><h3>Estilo de la foto</h3><div class="pgrid4">${libre ? `${S("estilo", "Estilo", "estilo")}${m === 5 && !fondoAdj ? `<label>Iluminación<input class="base" value="Estudio en blanco (fija)" disabled></label>` : S("ilum", "Iluminación", "ilum")}` : `<label>Estilo e iluminación<input class="base" value="${m === 5 && !fondoAdj ? "Estudio en blanco (fija)" : "Los define " + f.brand}" disabled></label>`}${S("encuadre", "Encuadre", "encuadre")}${S("espacio", "Espacio para texto", "espacio")}${S("formato", "Formato", "formato", true)}${f.formato === "px" ? `<label>Ancho (px) *<input class="base" type="number" inputmode="numeric" min="100" max="10000" step="1" data-pf="pxW" value="${esc(f.pxW)}" placeholder="1080"></label><label>Largo / alto (px) *<input class="base" type="number" inputmode="numeric" min="100" max="10000" step="1" data-pf="pxH" value="${esc(f.pxH)}" placeholder="1350"></label>` : ""}</div>
-      <p class="note" style="margin:0">${libre ? "La cámara, el lente y la exposición se eligen solos según lo que cargues." : `La luz, la cámara, el lente y el color los define el estilo de ${f.brand}.`}</p></div>`;
-  return `<div class="pm2"><div class="head"><div><h1>Prompts de imágenes</h1><p class="sub">Para ChatGPT, Gemini o Nano Banana. Elegí la modalidad, completá los campos, tocá <b>Generar prompt</b> y copiá el texto.</p></div></div>
+    ${m === 5 ? `<p class="note" style="margin:0">En fondo pleno o transparente la luz es de estudio (el producto va recortado); de la marca se respetan el color y el acabado.</p>` : ""}</details>` : "";
+  return `<div class="pm2"><div class="head"><div><button type="button" class="btn sm pback" data-pbrand="">${icon("arrow-left")} Volver</button><h1>Prompts de imágenes</h1><p class="sub">Para ChatGPT, Gemini o Nano Banana. Seguí los pasos, tocá <b>Generar prompt</b> y copiá el texto.</p></div></div>
   ${brandBar}
-  <div class="pmtabs2" role="tablist">${PM_MODES.map(x => `<button type="button" role="tab" aria-selected="${m === x.n}" class="${m === x.n ? "on" : ""}" data-pmmode="${x.n}">${icon(x.i)}<span>${x.l}</span></button>`).join("")}</div>
+  <section class="pstepw">${step(1, "¿Qué foto vas a hacer?")}<div class="pmtabs2" role="tablist">${PM_MODES.map(x => `<button type="button" role="tab" aria-selected="${m === x.n}" class="${m === x.n ? "on" : ""}" data-pmmode="${x.n}">${icon(x.i)}<span>${x.l}</span></button>`).join("")}</div></section>
+  ${useBlock}
   <form class="panel pform promptform" id="promptForm" novalidate>
-    ${refBlock}
+    <div class="w3">${step(3, "Contanos la foto")}</div>
     ${fields}
+    ${sceneGroup}
     ${models}
     ${T("detalles", "Detalles extra", "gotas de agua sobre la botella, hojas de olivo alrededor", false, true)}
     ${style}
@@ -4990,8 +5032,9 @@ function pPrompts(){
   </form>
   ${promptUI.out ? `<section class="panel promptout"><div class="head"><h2 style="margin:0">Tu prompt</h2><button class="btn pgen" type="button" data-pcopy>${icon("copy")} Copiar prompt</button></div>
     <textarea class="base" id="promptText" rows="16" aria-label="Prompt generado">${esc(promptUI.out)}</textarea>
-    <p class="note" style="margin:0">Pegalo en ChatGPT, Gemini o Nano Banana${f.ref === "si" || fondoAdj ? " y adjuntá las mismas imágenes de referencia" : ""}. Podés retocar el texto antes de copiarlo.</p></section>` : ""}
-  ${hist.length ? `<section class="panel"><h3 style="margin-top:0">Tus últimos prompts</h3><div class="list">${hist.map((h, i) => `<div class="row"><div class="grow"><div class="t">${esc(h.title)}</div><div class="m">${h.brand ? esc(h.brand) + " · " : ""}${esc(h.mode || "")} · ${esc(h.fmt || "")} · ${h.time}</div></div><button class="btn" data-phist="${i}">${icon("copy")} Copiar</button></div>`).join("")}</div></section>` : ""}
+    <p class="note" style="margin:0">Pegalo en ChatGPT, Gemini o Nano Banana${pmAttached(m, f) ? " y adjuntá las mismas imágenes" : ""}. Podés retocar el texto antes de copiarlo.</p></section>` : ""}
+  ${detail}
+  ${histBlock}
   </div>`;
 }
 // Los campos se guardan al escribir (sin volver a dibujar la pantalla); los que cambian qué se ve, redibujan.
@@ -5032,7 +5075,7 @@ document.addEventListener("submit", e => {
   promptUI.err = err; if (err){ promptUI.out = ""; render(); document.querySelector(".perr")?.scrollIntoView({ block:"center" }); return; }
   promptUI.out = buildPrompt(m, f);
   const title = m === 2 ? f.productos.split("\n").find(x => x.trim()) : m === 6 ? f.libreQue : m === 4 && f.escena !== "featured" ? pmv("escena", f.escena, 1) : f.producto;
-  (PROMPT_HISTORY[viewer.id] = PROMPT_HISTORY[viewer.id] || []).unshift({ title:(title || "").trim().slice(0, 80), brand:pmBrandLabel(f), mode:PM_MODES[m - 1].l, fmt:pmFmtLabel(f), text:promptUI.out, time:nowTime() }); PROMPT_HISTORY[viewer.id].splice(5);
+  (PROMPT_HISTORY[viewer.id] = PROMPT_HISTORY[viewer.id] || []).unshift({ title:(title || "").trim().slice(0, 80), brand:pmBrandLabel(f), brandKey:f.brand, mode:PM_MODES[m - 1].l, fmt:pmFmtLabel(f), text:promptUI.out, time:nowTime(), at:new Date().toISOString() }); PROMPT_HISTORY[viewer.id].splice(5);
   render(); document.querySelector(".promptout")?.scrollIntoView({ behavior:"smooth", block:"start" }); toast("Prompt listo. Tocá “Copiar prompt”.");
 });
 // ---------- Guía de uso ----------
