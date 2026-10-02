@@ -56,6 +56,11 @@ html.light .logo-wide{background:#0f172a;border-radius:12px;padding:6px 10px;box
 .nav{display:flex;flex-direction:column;gap:14px}
 .nav-group{display:flex;flex-direction:column;gap:4px}
 .nav-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.2em;padding:0 12px 2px;color:rgba(34,211,238,.6)}
+.nav-group.big .nav-label{font-size:15px;letter-spacing:.06em;font-weight:800;color:var(--ink);text-transform:none;display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:10px 12px 6px}
+.focusbtn{all:unset;box-sizing:border-box;cursor:pointer;font-size:11.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border-radius:999px;background:#dc2626;color:#fff;box-shadow:0 2px 10px rgba(220,38,38,.35)}
+.focusbtn:hover{background:#ef4444}
+.focusbtn.team{background:transparent;color:var(--ink);border:1.5px solid var(--line-3);box-shadow:none}
+.focusbtn:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .nav a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;color:var(--muted);text-decoration:none;font-weight:500;font-size:14px;transition:all .15s}
 .nav a svg{width:16px;height:16px;flex:none}
 .nav a:hover{background:rgba(30,41,59,.8);color:#fff}
@@ -5062,6 +5067,13 @@ function renderTabbar(){
     + `<button type="button" class="${open || !tabs.some(([k]) => k === page) ? "on" : ""}" data-tabmore><span class="tbi">${tbIcon("menu")}</span><span>Más</span></button>`;
 }
 document.addEventListener("click", e => { if (!e.target.closest("[data-tabmore]")) return; document.getElementById("menuBtn")?.click(); renderTabbar(); });
+// Modo enfocado: “Solo Diseño” o “Solo CM” deja en el menú únicamente esa área; “Team completo” vuelve a mostrar todo.
+const FOCUS_GROUPS = { "Diseño gráfico":"Solo Diseño", "Community Manager":"Solo CM" };
+let navFocus = (() => { try { const v = localStorage.getItem("rmh-focus") || ""; return FOCUS_GROUPS[v] ? v : ""; } catch { return ""; } })();
+document.addEventListener("click", e => { const b = e.target.closest("[data-navfocus]"); if (!b) return; e.preventDefault();
+  navFocus = b.dataset.navfocus; try { localStorage.setItem("rmh-focus", navFocus); } catch {}
+  if (navFocus){ const items = SECTIONS.filter(s => s.g === navFocus && can(s.k)); if (items.length && !items.some(s => s.k === page)){ page = items[0].k; location.hash = page; } }
+  render(); });
 function renderNav(){
   renderTabbar();
   const mc2 = document.getElementById("menuCount"), na2 = alerts().length + unreadMsgs().length; if (mc2){ mc2.hidden = !na2; mc2.textContent = na2; }
@@ -5073,11 +5085,12 @@ function renderNav(){
   const svc = document.getElementById("svCount"), nsv = pendingSurveys().length; if (svc){ svc.hidden = !nsv; svc.textContent = nsv; }
   document.querySelector(".cfgbtn")?.classList.toggle("on", page === "config");
   const mc = document.getElementById("msgCount"), nm = unreadMsgs().length; if (mc){ mc.hidden = !nm; mc.textContent = nm; }
-  const groups = [...new Set(SECTIONS.map(s => s.g))];
+  const groups = [...new Set(SECTIONS.map(s => s.g))].filter(g => !navFocus || g === navFocus);
   $("#nav").innerHTML = groups.map(g => {
     const items = SECTIONS.filter(s => s.g === g && can(s.k));
     if (!items.length) return "";
-    return `<div class="nav-group"><div class="nav-label">${g}</div>${items.map(s => `<a href="#${s.k}" data-page="${s.k}" class="${page===s.k?"on":""}">${icon(s.i)}<span>${s.n || s.l}</span>${s.k==="mensajes" && unreadMsgs().length ? `<span class="count msgc">${unreadMsgs().length}</span>` : ""}${s.k==="alertas" && alerts().length ? `<span class="count">${alerts().length}</span>` : ""}</a>`).join("")}</div>`;
+    const fb = FOCUS_GROUPS[g] && (navFocus ? `<button type="button" class="focusbtn team" data-navfocus="">Team completo</button>` : `<button type="button" class="focusbtn" data-navfocus="${g}">${FOCUS_GROUPS[g]}</button>`);
+    return `<div class="nav-group${FOCUS_GROUPS[g] ? " big" : ""}"><div class="nav-label">${g}${fb || ""}</div>${items.map(s => `<a href="#${s.k}" data-page="${s.k}" class="${page===s.k?"on":""}">${icon(s.i)}<span>${s.n || s.l}</span>${s.k==="mensajes" && unreadMsgs().length ? `<span class="count msgc">${unreadMsgs().length}</span>` : ""}${s.k==="alertas" && alerts().length ? `<span class="count">${alerts().length}</span>` : ""}</a>`).join("")}</div>`;
   }).join("");
 }
 // Aparición animada de todo lo que se ve: paneles, tablas (fila por fila), calendarios (día por día), tableros, listas y tarjetas.
