@@ -602,10 +602,17 @@ h1.pmh .pmico svg{width:26px;height:26px}
 .pm2 .pmtabs2 button.on{border-color:var(--cyan);color:var(--ink);box-shadow:inset 0 0 0 1px var(--cyan)}
 .pm2 .pmtabs2 button.on svg{color:var(--cyan)}
 .pm2 .pynbtns button.on{background:transparent;color:var(--cyan);box-shadow:inset 0 0 0 1.5px var(--cyan)}
+.pm2 .chip.on{background:transparent;border-color:var(--cyan);color:var(--ink);box-shadow:inset 0 0 0 1px var(--cyan)}
 .pm2 .pynbtns.big{align-self:flex-start}
 /* Prompts: elegir marca */
-.pbrands{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-@media (max-width:800px){.pbrands{grid-template-columns:1fr}}
+.pbrands{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:1100px){.pbrands{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:600px){.pbrands{grid-template-columns:1fr}}
+.pm2 .pbrand.libre{border-top-style:dashed}
+.pbrand.libre .pbsw svg{width:16px;height:16px;color:var(--muted)}
+.pblibre{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+.pblibre input.base{border:1px solid var(--line-3);background:var(--inner);border-radius:16px;padding:8px 12px;color:#f1f5f9;outline:none;max-width:420px}
+.pblibre input.base:focus{border-color:var(--cyan)}
 .pm2 .pbrand{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:6px;padding:16px 18px;border-radius:16px;border:1.5px solid var(--line-3);border-top:4px solid var(--bc);transition:border-color .15s}
 .pm2 .pbrand:hover,.pm2 .pbrand:focus-visible{border-color:var(--bc)}
 .pbrand b{font-size:18px;color:var(--ink)}
@@ -4668,16 +4675,18 @@ const PM = {
 // Antes de armar el prompt se elige la marca. Su estilo se carga solo y SIEMPRE se respeta (hilo conductor de la marca):
 // luz, cámara, colorimetría de la escena, composición, STYLE LOCK y EMOTION LOCK. El escenario se puede cambiar.
 const PM_BRAND_LIST = ["Superseis", "Stock", "Delimarket"];
+const PM_LIBRE = "Libre"; // otra marca u otro uso: sin estilo fijo, se eligen estilo e iluminación
 const PM_BRANDS = {
   Superseis:{ ui:"#97A219", tag:"Cálida y hogareña", resumen:"Luz natural de ventana · producto integrado a una escena vivida · antojo",
     swatches:[["#005226","Verde oscuro (principal)"],["#97A219","Verde oliva (secundario)"],["#EDE6DA","Beige lino"],["#A77B4F","Madera nogal"],["#C9C2B6","Gris cálido piedra"]],
     reglas:[["Luz","Natural de ventana, lateral a 45°, 4200 K, suave y envolvente"],["Cámara","35 o 50 mm, f/2.8–f/4 · 45° en escenas, cenital en platos"],["Producto","Tamaño medio, integrado a una escena con vida"],["Color","Beige, madera y piedra; el verde va en objetos de la escena, nunca de fondo"],["Emoción","Antojo, calidez, placer cotidiano, compartir"],["Prohibido","Frialdad de catálogo, asepsia de estudio"]],
-    genre:"warm lifestyle food and home photography, real and lived-in",
-    light:"natural window side light at 45 degrees, 4200K, soft and enveloping, medium contrast 3:1, long soft shadows, mid-morning or mid-afternoon feel, mid-key exposure",
+    genre:"warm lifestyle photography, real and lived-in",
+    light:"soft natural side light at 45 degrees (window light indoors, open shade or gentle low sun outdoors), 4200K, soft and enveloping, medium contrast 3:1, long soft shadows, mid-morning or mid-afternoon feel, mid-key exposure",
     camera:"50mm prime lens at f/2.8 (35mm for wider scenes), 45-degree angle for scenes or top-down for plated dishes, background softly out of focus",
-    composition:"product medium-sized and integrated into a real lived-in scene, with life around it: a cup beside it, crumbs, a moved napkin, hands cutting or serving",
-    palette:"warm beige linen #EDE6DA, walnut wood #A77B4F and warm stone grey #C9C2B6; the brand deep green #005226 and olive #97A219 appear in objects of the scene (tableware, tablecloth, leaves), never as a flat background. Combinations: deep green with wood and beige, olive with cream and off-white, green with artisanal ceramics",
-    props:"wooden board, artisanal tableware, linen, loose fresh ingredients and herbs; gentle steam on hot food and condensation on cold items; visible fabric and wood texture",
+    composition:"product medium-sized and integrated into a real lived-in scene, with natural signs of everyday life around it (for example a cup, a moved napkin, hands that use or serve it)",
+    palette:"warm beige linen #EDE6DA, walnut wood #A77B4F and warm stone grey #C9C2B6 tones; the brand deep green #005226 and olive #97A219 appear in objects of the scene (for example tableware, textiles, plants or leaves), never as a flat background. Combinations: deep green with wood and beige, olive with cream and off-white, green with artisanal ceramics",
+    props:"natural materials and textures: wood, linen, artisanal ceramics and plants; with food, loose fresh ingredients and herbs, gentle steam on hot food and condensation on cold items; visible fabric and wood texture",
+    adapt:"keep this same warm look in any setting (kitchen, dining room, living room, supermarket, garden or outdoors): outdoors, recreate the soft warm 4200K side light with open shade or a gentle low sun, never harsh midday sun",
     style:"natural window side light 4200K, medium contrast 3:1, medium earthy saturation, mid-key exposure, 50mm f/2.8 shallow depth of field, product integrated into a real lived-in scene, visible natural textures, fine photographic grain, warm beige and wood tones, deep green #005226 or olive #97A219 present in an object of the scene",
     emotion:"warm, homely, appetizing, unhurried, caring, shared moment, lived-in and real, inviting, no studio coldness, no catalogue sterility",
     words:"cozy, homemade, inviting, fresh, warm, lived-in, comforting",
@@ -4699,6 +4708,7 @@ const PM_BRANDS = {
     camera:"50mm prime lens at f/8, everything in focus from front to back",
     composition:"product large and dominant in the frame, everything in focus",
     palette:"", props:"",
+    adapt:"keep this same bright, clean look in any setting (kitchen, living room, supermarket, garden or outdoors): evenly lit, high-key and fully in focus",
     style:"diffused frontal light 5500K neutral, low contrast 2:1, high saturation, high-key exposure with bright tones dominating, everything in focus at f/8, product large and dominant in the frame, clean finish with no grain",
     emotion:"", words:"",
     avoid:["film grain","vignette","moody low-key look","heavy dark shadows","shallow depth of field"],
@@ -4711,13 +4721,14 @@ const PM_BRANDS = {
   Delimarket:{ ui:"#CDAF5F", tag:"Editorial y reservada", resumen:"Un solo foco de luz · mucho espacio negativo · deseo contenido", lowkey:true,
     swatches:[["#000000","Negro (principal)"],["#CDAF5F","Dorado (solo como reflejo)"],["#1C1C1C","Gris carbón"],["#3A3A3A","Gris grafito"],["#2A2A2E","Mármol oscuro"],["#6E1E5F","Violeta (solo Pick Up)"]],
     reglas:[["Luz","Un solo foco dirigido, lateral o contraluz, 3400 K, contraste alto 8:1"],["Cámara","85 mm o macro 100 mm, f/1.8–f/2.8, foco muy selectivo"],["Producto","Chico o en macro, con mucho espacio negativo"],["Color","Negro y grises; el dorado solo como reflejo"],["Emoción","Deseo contenido, admiración, exclusividad"],["Prohibido","Urgencia, oferta, abundancia. Nunca precio"]],
-    genre:"high-end editorial food photography, refined and restrained",
+    genre:"high-end editorial photography, refined and restrained",
     light:"single hard directional spotlight from the side or from behind (backlight), 3400K, high contrast 8:1, dramatic chiaroscuro with fast falloff into black, low-key exposure, background melting into black",
     camera:"100mm macro lens at f/2 (85mm for wider still lifes), very selective focus on one detail, asymmetric composition",
     cameraPeople:"85mm prime lens at f/2, very selective focus, asymmetric composition, background melting into black",
     composition:"product small or in macro with generous negative space, asymmetric; the emptiness shows the product does not need to compete; few objects, all carefully chosen; hands, if any, without faces",
     palette:"black #000000 base, deep charcoal #1C1C1C background, graphite grey #3A3A3A surfaces, stone grey #6E6E6E and dark veined marble #2A2A2E; gold #CDAF5F only as a single warm reflection or highlight. Combinations: black with charcoal and a gold reflection, dark marble with graphite, black with stone grey and dark metal",
-    props:"stone, marble, glass, dark metal and noble wood; controlled specular reflections, glistening oil, salt crystals, marble veining, faint smoke",
+    props:"noble materials: stone, marble, glass, dark metal and noble wood; controlled specular reflections and marble veining; with food, glistening oil, salt crystals and faint smoke",
+    adapt:"keep this same low-key look in any setting (kitchen, dining room, living room, store, garden or outdoors): a single directed light source and everything else falling into darkness; outdoors, shoot at dusk or night with one directed light",
     style:"single hard directional light 3400K, high contrast 8:1, dramatic falloff into black, low desaturated neutral palette, low-key exposure, 100mm f/2 very selective focus, product small or macro with generous negative space, fine film grain, subtle vignette, editorial magazine finish, black and grey base #000000 #1C1C1C #3A3A3A, single warm gold highlight #CDAF5F",
     emotion:"refined, restrained, desirable, quiet, exclusive, crafted, contemplative, no urgency, no discount energy, no abundance",
     words:"refined, elegant, crafted, quiet, moody, artisanal, premium",
@@ -4732,20 +4743,49 @@ const PM_BRANDS = {
       { l:"Producto único en negro", ambiente:"un solo producto sobre negro, con un único haz de luz", fondo:"negro puro", superficie:"", detalles:"humo tenue, un reflejo dorado", encuadre:"medium" },
       { l:"Manos de chef emplatando", ambiente:"manos de chef emplatando en una cocina de autor, siempre sin rostro", fondo:"negro", superficie:"darkmarble", detalles:"solo manos, sin rostro, gesto preciso", encuadre:"34" }] },
 };
-const PM_BRAND_KEYS = ["ambiente","fondo","superficie","encuadre"];
-// Al elegir la marca se cargan su ambiente, fondo, superficie y encuadre (solo donde no escribiste otra cosa).
+// Escenarios: la foto puede ir en cualquier lugar; cada marca lo describe con su propia colorimetría y emoción.
+const PM_ESC = [["cocina","Cocina"], ["mesa","Comedor / mesa"], ["sala","Sala de estar"], ["super","Supermercado"], ["exterior","Jardín / aire libre"], ["otro","Otro (lo escribo yo)"]];
+const PM_ESC_BRAND = {
+  Superseis:{ cocina:["cocina moderna de una casa de clase media-alta, mesada de nogal o granito claro, plantas y ventana grande", "cocina luminosa desenfocada con plantas", "walnut"],
+    mesa:["mesa de comedor de una casa moderna y cuidada, mantel de lino, luz cálida de media tarde", "ventana con luz cálida, desenfocada", "cloth"],
+    sala:["sala de estar luminosa y cálida de una casa moderna, sillón de lino, plantas y madera", "plantas y biblioteca, desenfocadas", "wood"],
+    super:["supermercado moderno, cálido y ordenado, góndolas prolijas y la panadería al fondo", "góndolas desenfocadas con luz cálida", "shelf"],
+    exterior:["jardín de una casa moderna a media tarde, mesa de exterior de madera, plantas y sombra suave", "plantas y árboles desenfocados", "wood"] },
+  Stock:{ cocina:["cocina luminosa y clara, todo limpio y ordenado", "pared clara y limpia", ""],
+    mesa:["mesa clara y luminosa", "ambiente claro y luminoso", "wood"],
+    sala:["sala de estar luminosa y clara, colores vivos", "pared clara", ""],
+    super:["supermercado luminoso y ordenado, góndolas llenas y prolijas", "góndolas luminosas", "shelf"],
+    exterior:["jardín o patio a pleno día, cielo claro, todo luminoso", "cielo claro y verde", ""] },
+  Libre:{ cocina:["cocina luminosa y ordenada", "", ""], mesa:["mesa de comedor", "", ""], sala:["sala de estar", "", ""], super:["supermercado moderno y ordenado", "góndolas desenfocadas", "shelf"], exterior:["jardín al aire libre", "", ""] },
+  Delimarket:{ cocina:["cocina de autor con isla de mármol negro, acero inoxidable mate y madera oscura; pocos objetos, todos elegidos", "gris carbón que se funde en negro", "darkmarble"],
+    mesa:["mesa de degustación en penumbra, mantel oscuro y copas de cristal", "penumbra que se funde en negro", "darkwood"],
+    sala:["living de diseño en penumbra, sillón de cuero oscuro, piedra y madera noble, una sola lámpara encendida", "penumbra que se funde en negro", "darkwood"],
+    super:["tienda gourmet de alta gama, estantería oscura con pocos productos elegidos y luz puntual cálida", "estantería oscura que se funde en negro", "darkwood"],
+    exterior:["terraza o jardín de noche, en penumbra, con un solo foco de luz dirigido", "noche, se funde en negro", "stone"] },
+};
+// Valores de un botón de Escenario para una marca.
+const pmEscVals = (b, k) => { const x = PM_ESC_BRAND[b]?.[k]; return x ? { ambiente:x[0], locacion:x[0], fondo:x[1], superficie:x[2] } : null; };
+// Al elegir la marca se carga el mismo escenario que tenías (cocina, sala, súper…) pero con la colorimetría de la nueva marca, más su encuadre.
+// Lo que escribiste vos no se toca; lo que había cargado la marca anterior se reemplaza.
 function pmApplyBrand(b){
-  const f = promptUI.f, prev = PM_BRANDS[f.brand]?.def || {}, d = PM_BRANDS[b].def, base = PM_EMPTY();
-  PM_BRAND_KEYS.forEach(k => { if (!f[k] || f[k] === prev[k] || f[k] === base[k]) f[k] = d[k] ?? ""; });
-  f.brand = b;
+  const f = promptUI.f, from = f.brand || f.lastBrand || "", A = PM_BRANDS[from], base = PM_EMPTY();
+  const k = pmEscVals(b, f.esc) || f.esc === "otro" ? f.esc : b === PM_LIBRE ? "" : "cocina";
+  const def = PM_BRANDS[b]?.def || {}, target = k === "otro" ? { encuadre:def.encuadre } : { ...def, ...(pmEscVals(b, k) || {}) };
+  const auto = [A?.def, ...(A?.modos || []), ...PM_ESC.map(([e]) => pmEscVals(from, e))].filter(Boolean);
+  const isAuto = (key, v) => !v || v === base[key] || auto.some(x => x[key] === v || (key === "locacion" && x.ambiente === v));
+  ["ambiente","fondo","superficie","encuadre","detalles"].forEach(key => { if (isAuto(key, f[key])) f[key] = target[key] ?? base[key]; });
+  if (f.locacion && isAuto("locacion", f.locacion)) f.locacion = pmEscVals(b, k)?.locacion ?? "";
+  f.brand = b; f.esc = k;
 }
+const pmBrandOk = b => !!PM_BRANDS[b] || b === PM_LIBRE;
+const pmBrandLabel = f => f.brand === PM_LIBRE ? (f.libreMarca.trim() || "Otra marca") : f.brand;
 // Medida a elección: ancho × largo en píxeles, con su proporción y orientación.
 function pmSize(f){ const w = +f.pxW, h = +f.pxH, g = (a, b) => b ? g(b, a % b) : a, d = g(w, h);
   return `${w}×${h} px (aspect ratio ${w / d}:${h / d}, ${w === h ? "square" : w > h ? "horizontal" : "vertical"})`; }
 const pmFmtLabel = f => f.formato === "px" ? `${+f.pxW}×${+f.pxH} px` : pmv("formato", f.formato, 1);
 const pmv = (list, k, i = 2) => (PM[list].find(x => x[0] === k) || PM[list][0])[i];
 const PM_MODEL = () => ({ edad:"", genero:"f", peinado:"long", expresion:"smile", ropa:"", pose:"" });
-const PM_EMPTY = () => ({ brand:"", pickup:"no", ref:"no", refProd:"no", refFondo:"no", fondoTipo:"super", refPersona:"no",
+const PM_EMPTY = () => ({ brand:"", libreMarca:"", pickup:"no", ref:"no", refProd:"no", refFondo:"no", fondoTipo:"super", refPersona:"no",
   producto:"", productos:"", material:"", colores:"", marca:"", ambiente:"", fondo:"", detalles:"", disposicion:"hero", interaccion:"hold",
   superficie:"", escena:"cart", superProds:"", locacion:"", tipoFondo:"white", fondoHex:"", sombra:"soft", libreQue:"", elemento:"", conPersonas:"no",
   nModelos:1, modelos:[PM_MODEL(), PM_MODEL(), PM_MODEL(), PM_MODEL()],
@@ -4757,12 +4797,14 @@ const SUPER_SCENES = ["cart","shelf","checkout"];
 const pmHasPeople = (m, f) => m === 3 || m === 4 || (m === 6 && f.conPersonas === "si");
 const pmHasProduct = (m, f) => [1,2,3,5].includes(m) || (m === 4 && f.escena === "featured") || (m === 6 && !!f.elemento.trim());
 const pmProdToggle = m => [1,2,3,5,6].includes(m);
-const pmFondoAdj = f => f.ref === "si" && f.refFondo === "si";
+const pmFondoAdj = f => f.refFondo === "si"; // se elige en Escenario: “¿Adjuntás una foto del fondo?”
+// Con foto del fondo: el lugar no cambia, pero la luz y el color de la marca (o el estilo elegido) se aplican a toda la imagen.
+const pmFondoGrade = f => `Attached background: the place stays as in the photo and recognizable; apply ${PM_BRANDS[f.brand] ? `the ${f.brand}` : "the chosen"} light, color grade and mood to the whole image so the subject and the background read as one ${PM_BRANDS[f.brand] ? f.brand + " " : ""}photograph.`;
 const spellBrand = t => [...t.trim()].map(ch => ch === " " ? "space" : ch).join("-");
 const ageWord = (edad, g) => { const a = +edad, w = g === "m" ? ["boy","teenage boy","man"] : ["girl","teenage girl","woman"]; return a < 13 ? w[0] : a < 18 ? w[1] : w[2]; };
 
 function validatePrompt(m, f){
-  if (!PM_BRANDS[f.brand]) return "Elegí para qué marca es la foto.";
+  if (!pmBrandOk(f.brand)) return "Elegí para qué marca es la foto.";
   if ([1,3,5].includes(m) && !f.producto.trim()) return "Describí el producto.";
   if (m === 2 && f.productos.split("\n").filter(x => x.trim()).length < 2) return "Poné al menos 2 productos, uno por línea.";
   if (pmHasPeople(m, f) && f.modelos.slice(0, f.nModelos).some(x => !String(x.edad).trim() || isNaN(+x.edad) || +x.edad <= 0)) return "Poné la edad exacta de cada modelo.";
@@ -4847,11 +4889,15 @@ function buildPrompt(m, f){
   L.push(`High-end advertising agency production quality. Ultra-detailed, natural micro-contrast, accurate color reproduction, ${B?.lowkey && !cutout ? "deep rich blacks with detail kept in the lit areas" : "clean shadows without crushed blacks"}, no blown highlights, professional yet natural retouching, no over-smoothing. Looks like a real photograph from a professional commercial shoot, not a render.`);
   if (people) L.push("Natural skin texture with visible pores and fine detail, subtle natural imperfections, realistic catchlights in the eyes, natural teeth, anatomically correct hands with five fingers and natural nails, clothing with real fabric folds and weave, natural body posture and weight distribution.");
   if (product) L.push("Physically accurate materials, true reflections of the surrounding environment, crisp and legible label print, clean precise edges, realistic contact shadows and ambient occlusion, correct scale relative to the scene.");
+  // Lo más importante, con o sin marca: el producto no se deforma y se ve en alta calidad.
+  if (product){ const who = m === 2 ? "the products are the heroes; the focus always falls on them and they stay" : m === 6 ? "the main subject is the hero; the focus always falls on it and it stays" : "the product is the hero; the focus always falls on it and it stays";
+    L.push(`Product fidelity first: ${who} undistorted and true to life, with real shape, proportions, label, logo, lettering and colors, in high resolution with print-quality detail${B ? `; the ${f.brand} style only sets the light, setting and mood and never alters, blurs or crops the product` : ""}.`); }
   if (B && !cutout){
     L.push(`STYLE LOCK (always respect, it defines the ${f.brand} look): ${B.style}.`);
+    if (fondoAdj) L.push(pmFondoGrade(f)); else if (B.adapt) L.push(`Any setting: ${B.adapt}.`);
     if (B.emotion) L.push(`EMOTION LOCK: ${B.emotion}.`);
     if (B.words) L.push(`Mood: ${B.words}.`);
-  } else L.push(`Mood: ${B && B.words ? B.words : st[3]}.`);
+  } else { if (fondoAdj) L.push(pmFondoGrade(f)); L.push(`Mood: ${B && B.words ? B.words : st[3]}.`); }
   L.push(f.formato === "px" ? `Format: exact output size ${pmSize(f)}, keep this exact width and height, high resolution, marketing-ready.` : `Format: aspect ratio ${pmv("formato", f.formato)}, 4K resolution, marketing-ready.`);
   L.push("Single photograph, full frame, no borders, no collage, no text or captions added.");
   // Negativos
@@ -4876,7 +4922,7 @@ function pPrompts(){
   const matSel = () => S("material", "Terminación del producto (de qué está hecho)", "material");
   const surfSel = () => S("superficie", "¿Sobre qué está apoyado?", "superficie");
   const prodBlock = (required, label = "Producto", ph = "botella de aceite de oliva extra virgen de 1 litro, vidrio verde oscuro, etiqueta crema") => `${T("producto", label, ph, required, true)}${matSel()}${T("marca", "Marca o texto visible", "OLIVAR")}`;
-  const sceneBlock = () => fondoAdj ? "" : `${T("ambiente", "Ambiente", "cocina luminosa de mañana, con madera clara")}${T("fondo", "Fondo", "pared de azulejos blancos")}`;
+  const sceneBlock = () => fondoAdj ? "" : `${T("ambiente", "Escenario / ambiente", "cocina, sala, súper, jardín…")}${T("fondo", "Fondo", "pared de azulejos blancos")}`;
   const models = people ? `<div class="w3 pgroup"><h3>Modelos</h3>
       <div class="pgrid4"><label>Cantidad<select class="base" data-pf="nModelos" data-rr>${[1,2,3,4].map(n => `<option value="${n}" ${+f.nModelos === n ? "selected" : ""}>${n}</option>`).join("")}</select></label></div>
       ${f.modelos.slice(0, f.nModelos).map((x, i) => `<div class="pmodel"><b>Modelo ${i + 1}</b><div class="pgrid4">
@@ -4903,24 +4949,33 @@ function pPrompts(){
   const refBlock = `<div class="w3 pgroup"><h3>¿Adjuntás imágenes de referencia?</h3>
       <div class="pynbtns big" role="group"><button type="button" class="${f.ref === "si" ? "on" : ""}" data-pyn="ref|si">Sí, adjunto</button><button type="button" class="${f.ref !== "si" ? "on" : ""}" data-pyn="ref|no">No, que la IA lo invente</button></div>
       ${f.ref === "si" ? `${pmProdToggle(m) ? yn("refProd", m === 6 ? "Elemento principal" : "Producto", "Se respeta tal cual: forma, etiqueta, logo, letras y colores", "Sí", "No") : ""}
-        ${yn("refFondo", "Fondo", "Una foto del lugar", "Sí", "No")}
-        ${f.refFondo === "si" ? `<label class="pfsel">¿Qué fondo adjuntás?<select class="base" data-pf="fondoTipo"><option value="super" ${f.fondoTipo === "super" ? "selected" : ""}>Supermercado</option><option value="otro" ${f.fondoTipo === "otro" ? "selected" : ""}>Otro lugar</option></select></label>` : ""}
         ${people ? yn("refPersona", "Persona", "Se mantiene la cara y la identidad", "Sí", "No") : ""}
         <p class="pfid">${icon("shield-check")} Todo lo que adjuntes se respeta al 100%: el prompt le pide a la IA que no deforme productos, logos, letras ni personas.</p>` : ""}</div>`;
-  const B = PM_BRANDS[f.brand];
+  const B = PM_BRANDS[f.brand], libre = f.brand === PM_LIBRE;
   const sw = (list, big) => list.map(([hex, n]) => `<i class="pbdot${big ? " big" : ""}" style="--sw:${hex}" title="${esc(n)} ${hex}"></i>`).join("");
   const brandPick = `<section class="panel pbrandpick"><h2 class="pmh" style="margin:0">${pmIco("palette")}¿Para qué marca es la foto?</h2><p class="sub" style="margin:4px 0 14px">Cada marca tiene su estilo de fotos. Elegila primero: su estilo se carga solo y el prompt lo respeta siempre, aunque cambies el escenario.</p>
-    <div class="pbrands">${PM_BRAND_LIST.map(b => { const x = PM_BRANDS[b]; return `<button type="button" class="pbrand" data-pbrand="${b}" style="--bc:${x.ui}"><span class="pbsw">${sw(x.swatches.slice(0, 3))}</span><b>${b}</b><span class="pbtag">${x.tag}</span><small>${x.resumen}</small></button>`; }).join("")}</div></section>`;
-  if (!B) return `<div class="pm2"><div class="head"><div><h1>Prompts de imágenes</h1><p class="sub">Para ChatGPT, Gemini o Nano Banana. Primero elegí la marca.</p></div></div>${brandPick}
+    <div class="pbrands">${PM_BRAND_LIST.map(b => { const x = PM_BRANDS[b]; return `<button type="button" class="pbrand" data-pbrand="${b}" style="--bc:${x.ui}"><span class="pbsw">${sw(x.swatches.slice(0, 3))}</span><b>${b}</b><span class="pbtag">${x.tag}</span><small>${x.resumen}</small></button>`; }).join("")}
+      <button type="button" class="pbrand libre" data-pbrand="${PM_LIBRE}" style="--bc:var(--muted)"><span class="pbsw">${icon("pencil-line")}</span><b>Otra marca (libre)</b><span class="pbtag">Estilo a elección</span><small>Para otra marca u otro uso: elegís vos el estilo y la luz</small></button></div></section>`;
+  if (!B && !libre) return `<div class="pm2"><div class="head"><div><h1>Prompts de imágenes</h1><p class="sub">Para ChatGPT, Gemini o Nano Banana. Primero elegí la marca.</p></div></div>${brandPick}
     ${hist.length ? `<section class="panel"><h3 style="margin-top:0">Tus últimos prompts</h3><div class="list">${hist.map((h, i) => `<div class="row"><div class="grow"><div class="t">${esc(h.title)}</div><div class="m">${h.brand ? esc(h.brand) + " · " : ""}${esc(h.mode || "")} · ${esc(h.fmt || "")} · ${h.time}</div></div><button class="btn" data-phist="${i}">${icon("copy")} Copiar</button></div>`).join("")}</div></section>` : ""}</div>`;
-  const brandBar = `<section class="panel pbrandbar" style="--bc:${B.ui}"><div class="pbb-h"><div class="pbb-n"><span class="note">Marca</span><b>${f.brand}</b><span class="pbtag">${B.tag}</span></div>${B.swatches.length ? `<span class="pbsw">${sw(B.swatches, true)}</span>` : ""}<button type="button" class="btn sm" data-pbrand="">Cambiar marca</button></div>
+  const escChips = cur => `<div class="pbmodes"><span class="note">Escenario:</span>${PM_ESC.map(([k, l]) => `<button type="button" class="chip ${cur === k ? "on" : ""}" data-pbesc="${k}">${l}</button>`).join("")}</div>`;
+  const fondoRow = `<div class="pyn"><div><b>¿Adjuntás una foto del fondo?</b><span>${fondoAdj ? `El lugar sale de tu foto; ${libre ? "el estilo que elijas" : "el estilo de " + f.brand} se aplica a la luz y al color.` : "Si no, el escenario lo arma la IA con lo que elijas o escribas."}</span></div><div class="pynbtns" role="group" aria-label="Foto del fondo"><button type="button" class="${fondoAdj ? "on" : ""}" data-pbfondo="si">Sí, adjunto</button><button type="button" class="${fondoAdj ? "" : "on"}" data-pbfondo="no">No</button></div></div>
+    ${fondoAdj ? `<label class="pfsel">¿Qué fondo adjuntás?<select class="base" data-pf="fondoTipo"><option value="super" ${f.fondoTipo === "super" ? "selected" : ""}>Supermercado</option><option value="otro" ${f.fondoTipo === "otro" ? "selected" : ""}>Otro lugar</option></select></label>` : ""}`;
+  const escOk = !fondoAdj && m !== 5 && !(m === 4 && SUPER_SCENES.includes(f.escena));
+  const brandBar = libre ? `<section class="panel pbrandbar" style="--bc:var(--muted)"><div class="pbb-h"><div class="pbb-n"><span class="note">Marca</span><b>Otra marca (libre)</b><span class="pbtag">Estilo a elección</span></div><button type="button" class="btn sm" data-pbrand="">Cambiar marca</button></div>
+    <label class="pblibre"><span>¿Para qué marca o uso? <span class="note">(opcional, para tu historial)</span></span><input class="base" data-pf="libreMarca" value="${esc(f.libreMarca)}" placeholder="Bianca, Clasipar, evento interno…"></label>
+    <p class="note" style="margin:0">Sin estilo fijo de marca: elegís el estilo y la iluminación en “Estilo de la foto”.</p>
+    ${escOk ? escChips(f.esc) : ""}${fondoRow}</section>`
+  : `<section class="panel pbrandbar" style="--bc:${B.ui}"><div class="pbb-h"><div class="pbb-n"><span class="note">Marca</span><b>${f.brand}</b><span class="pbtag">${B.tag}</span></div>${B.swatches.length ? `<span class="pbsw">${sw(B.swatches, true)}</span>` : ""}<button type="button" class="btn sm" data-pbrand="">Cambiar marca</button></div>
     <div class="pbrules">${B.reglas.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("")}</div>
     ${B.pending ? `<p class="note" style="margin:0">Estilo provisorio de Stock (luz, color, enfoque y acabado). Falta cargar su identidad completa: colores, emociones y escenas.</p>` : ""}
     ${f.brand === "Delimarket" ? yn("pickup", "¿Es para Pick Up?", "Suma el violeta #6E1E5F en un objeto de la escena", "Sí", "No") : ""}
-    ${m === 5 || (m === 4 && SUPER_SCENES.includes(f.escena)) ? "" : `<div class="pbmodes"><span class="note">Escenas de ${f.brand}:</span>${B.modos.map((x, i) => `<button type="button" class="chip" data-pbmode="${i}">${x.l}</button>`).join("")}</div>`}
+    ${escOk ? `${escChips(f.esc)}<div class="pbmodes"><span class="note">Escenas típicas de ${f.brand}:</span>${B.modos.map((x, i) => `<button type="button" class="chip" data-pbmode="${i}">${x.l}</button>`).join("")}</div>
+    <p class="note" style="margin:0">El escenario lo podés cambiar (cocina, sala, súper, jardín o lo que escribas en “Otro”): la luz, la colorimetría y la emoción de ${f.brand} se mantienen en todos.</p>` : ""}
+    ${fondoRow}
     ${m === 5 ? `<p class="note" style="margin:0">En fondo pleno o transparente la luz es de estudio (el producto va recortado); de la marca se respetan el color y el acabado.</p>` : ""}</section>`;
-  const style = `<div class="w3 pgroup"><h3>Estilo de la foto</h3><div class="pgrid4"><label>Estilo e iluminación<input class="base" value="${m === 5 && !fondoAdj ? "Estudio en blanco (fija)" : "Los define " + f.brand}" disabled></label>${S("encuadre", "Encuadre", "encuadre")}${S("espacio", "Espacio para texto", "espacio")}${S("formato", "Formato", "formato", true)}${f.formato === "px" ? `<label>Ancho (px) *<input class="base" type="number" inputmode="numeric" min="100" max="10000" step="1" data-pf="pxW" value="${esc(f.pxW)}" placeholder="1080"></label><label>Largo / alto (px) *<input class="base" type="number" inputmode="numeric" min="100" max="10000" step="1" data-pf="pxH" value="${esc(f.pxH)}" placeholder="1350"></label>` : ""}</div>
-      <p class="note" style="margin:0">La luz, la cámara, el lente y el color los define el estilo de ${f.brand}.</p></div>`;
+  const style = `<div class="w3 pgroup"><h3>Estilo de la foto</h3><div class="pgrid4">${libre ? `${S("estilo", "Estilo", "estilo")}${m === 5 && !fondoAdj ? `<label>Iluminación<input class="base" value="Estudio en blanco (fija)" disabled></label>` : S("ilum", "Iluminación", "ilum")}` : `<label>Estilo e iluminación<input class="base" value="${m === 5 && !fondoAdj ? "Estudio en blanco (fija)" : "Los define " + f.brand}" disabled></label>`}${S("encuadre", "Encuadre", "encuadre")}${S("espacio", "Espacio para texto", "espacio")}${S("formato", "Formato", "formato", true)}${f.formato === "px" ? `<label>Ancho (px) *<input class="base" type="number" inputmode="numeric" min="100" max="10000" step="1" data-pf="pxW" value="${esc(f.pxW)}" placeholder="1080"></label><label>Largo / alto (px) *<input class="base" type="number" inputmode="numeric" min="100" max="10000" step="1" data-pf="pxH" value="${esc(f.pxH)}" placeholder="1350"></label>` : ""}</div>
+      <p class="note" style="margin:0">${libre ? "La cámara, el lente y la exposición se eligen solos según lo que cargues." : `La luz, la cámara, el lente y el color los define el estilo de ${f.brand}.`}</p></div>`;
   return `<div class="pm2"><div class="head"><div><h1>Prompts de imágenes</h1><p class="sub">Para ChatGPT, Gemini o Nano Banana. Elegí la modalidad, completá los campos, tocá <b>Generar prompt</b> y copiá el texto.</p></div></div>
   ${brandBar}
   <div class="pmtabs2" role="tablist">${PM_MODES.map(x => `<button type="button" role="tab" aria-selected="${m === x.n}" class="${m === x.n ? "on" : ""}" data-pmmode="${x.n}">${icon(x.i)}<span>${x.l}</span></button>`).join("")}</div>
@@ -4935,7 +4990,7 @@ function pPrompts(){
   </form>
   ${promptUI.out ? `<section class="panel promptout"><div class="head"><h2 style="margin:0">Tu prompt</h2><button class="btn pgen" type="button" data-pcopy>${icon("copy")} Copiar prompt</button></div>
     <textarea class="base" id="promptText" rows="16" aria-label="Prompt generado">${esc(promptUI.out)}</textarea>
-    <p class="note" style="margin:0">Pegalo en ChatGPT, Gemini o Nano Banana${f.ref === "si" ? " y adjuntá las mismas imágenes de referencia" : ""}. Podés retocar el texto antes de copiarlo.</p></section>` : ""}
+    <p class="note" style="margin:0">Pegalo en ChatGPT, Gemini o Nano Banana${f.ref === "si" || fondoAdj ? " y adjuntá las mismas imágenes de referencia" : ""}. Podés retocar el texto antes de copiarlo.</p></section>` : ""}
   ${hist.length ? `<section class="panel"><h3 style="margin-top:0">Tus últimos prompts</h3><div class="list">${hist.map((h, i) => `<div class="row"><div class="grow"><div class="t">${esc(h.title)}</div><div class="m">${h.brand ? esc(h.brand) + " · " : ""}${esc(h.mode || "")} · ${esc(h.fmt || "")} · ${h.time}</div></div><button class="btn" data-phist="${i}">${icon("copy")} Copiar</button></div>`).join("")}</div></section>` : ""}
   </div>`;
 }
@@ -4943,19 +4998,31 @@ function pPrompts(){
 document.addEventListener("input", e => {
   const el = e.target.closest("[data-pf],[data-pm]"); if (!el || page !== "prompts") return;
   if (el.dataset.pm){ const [i, k] = el.dataset.pm.split("|"); promptUI.f.modelos[+i][k] = el.value; }
-  else promptUI.f[el.dataset.pf] = el.dataset.pf === "nModelos" ? +el.value : el.value;
+  else { promptUI.f[el.dataset.pf] = el.dataset.pf === "nModelos" ? +el.value : el.value; if (["ambiente","locacion"].includes(el.dataset.pf)) promptUI.f.esc = "otro"; }
 });
 document.addEventListener("change", e => { const el = e.target.closest("[data-rr]"); if (!el || page !== "prompts") return; promptUI.f[el.dataset.pf] = el.dataset.pf === "nModelos" ? +el.value : el.value; promptUI.err = ""; render(); });
 document.addEventListener("click", e => {
   if (page !== "prompts") return;
   const y = e.target.closest("[data-pyn]"); if (y){ const [k, v] = y.dataset.pyn.split("|"); promptUI.f[k] = v; promptUI.err = ""; render(); return; }
   const pb = e.target.closest("[data-pbrand]"); if (pb){ const b = pb.dataset.pbrand; promptUI.out = ""; promptUI.err = "";
-    if (b) pmApplyBrand(b); else promptUI.f.brand = ""; render(); window.scrollTo({ top:0, behavior:"smooth" }); if (b) toast(`Estilo de ${b} cargado. El prompt lo respeta siempre.`); return; }
+    if (b) pmApplyBrand(b); else { promptUI.f.lastBrand = promptUI.f.brand; promptUI.f.brand = ""; } render(); window.scrollTo({ top:0, behavior:"smooth" });
+    if (b === PM_LIBRE) toast("Opción libre: elegís el estilo y la luz vos."); else if (b) toast(`Estilo de ${b} cargado. El prompt lo respeta siempre.`); return; }
+  const pfo = e.target.closest("[data-pbfondo]"); if (pfo){ const f = promptUI.f; f.refFondo = pfo.dataset.pbfondo;
+    if (f.refFondo === "si" && f.esc) f.fondoTipo = f.esc === "super" ? "super" : "otro"; // el tipo de fondo sigue al escenario elegido
+    promptUI.out = ""; promptUI.err = ""; render(); return; }
+  const pe = e.target.closest("[data-pbesc]"); if (pe){ const f = promptUI.f, k = pe.dataset.pbesc, x = PM_ESC_BRAND[f.brand]?.[k], B = PM_BRANDS[f.brand];
+    const autoDet = d => !d || (B?.modos || []).some(o => o.detalles === d);
+    f.esc = k; if (autoDet(f.detalles)) f.detalles = "";
+    const set = (amb, fondo, sup) => { if (promptUI.mode === 4) f.locacion = amb; else f.ambiente = amb; f.fondo = fondo; f.superficie = sup; };
+    if (x) set(...x); else set("", "", "");
+    promptUI.out = ""; promptUI.err = ""; render();
+    if (k === "otro") { document.querySelector(promptUI.mode === 4 ? '[data-pf="locacion"]' : '[data-pf="ambiente"]')?.focus(); toast(`Escribí el escenario que quieras: el estilo de ${pmBrandLabel(f)} se mantiene.`); }
+    else toast(f.brand === PM_LIBRE ? `Escenario “${PM_ESC.find(e2 => e2[0] === k)[1]}” cargado. Podés cambiarlo.` : `Escenario “${PM_ESC.find(e2 => e2[0] === k)[1]}” con el estilo de ${f.brand}. Podés cambiarlo.`); return; }
   const pbm = e.target.closest("[data-pbmode]"); if (pbm){ const x = PM_BRANDS[promptUI.f.brand]?.modos[+pbm.dataset.pbmode]; if (!x) return; const f = promptUI.f;
     if (promptUI.mode === 4) f.locacion = x.ambiente; else f.ambiente = x.ambiente;
-    f.fondo = x.fondo; f.superficie = x.superficie; f.detalles = x.detalles; f.encuadre = x.encuadre; promptUI.out = ""; promptUI.err = ""; render(); toast(`Escena “${x.l}” cargada. Podés cambiar lo que quieras.`); return; }
+    f.fondo = x.fondo; f.superficie = x.superficie; f.detalles = x.detalles; f.encuadre = x.encuadre; f.esc = ""; promptUI.out = ""; promptUI.err = ""; render(); toast(`Escena “${x.l}” cargada. Podés cambiar lo que quieras.`); return; }
   const m = e.target.closest("[data-pmmode]"); if (m){ promptUI.mode = +m.dataset.pmmode; promptUI.out = ""; promptUI.err = ""; render(); return; }
-  if (e.target.closest("[data-pclear]")){ const b = promptUI.f.brand; promptUI.f = PM_EMPTY(); if (b) pmApplyBrand(b); promptUI.out = ""; promptUI.err = ""; render(); return; }
+  if (e.target.closest("[data-pclear]")){ const b = promptUI.f.brand, lm = promptUI.f.libreMarca; promptUI.f = PM_EMPTY(); if (b){ pmApplyBrand(b); promptUI.f.libreMarca = lm; } promptUI.out = ""; promptUI.err = ""; render(); return; }
   const cp = e.target.closest("[data-pcopy],[data-phist]"); if (cp){ const txt = cp.dataset.phist !== undefined ? PROMPT_HISTORY[viewer.id][+cp.dataset.phist].text : $("#promptText").value;
     navigator.clipboard?.writeText(txt).then(() => toast("Prompt copiado. Pegalo en la IA."), () => { const ta = $("#promptText"); if (ta) ta.select(); toast("No se pudo copiar solo: quedó seleccionado, copialo a mano."); }); }
 });
@@ -4965,7 +5032,7 @@ document.addEventListener("submit", e => {
   promptUI.err = err; if (err){ promptUI.out = ""; render(); document.querySelector(".perr")?.scrollIntoView({ block:"center" }); return; }
   promptUI.out = buildPrompt(m, f);
   const title = m === 2 ? f.productos.split("\n").find(x => x.trim()) : m === 6 ? f.libreQue : m === 4 && f.escena !== "featured" ? pmv("escena", f.escena, 1) : f.producto;
-  (PROMPT_HISTORY[viewer.id] = PROMPT_HISTORY[viewer.id] || []).unshift({ title:(title || "").trim().slice(0, 80), brand:f.brand, mode:PM_MODES[m - 1].l, fmt:pmFmtLabel(f), text:promptUI.out, time:nowTime() }); PROMPT_HISTORY[viewer.id].splice(5);
+  (PROMPT_HISTORY[viewer.id] = PROMPT_HISTORY[viewer.id] || []).unshift({ title:(title || "").trim().slice(0, 80), brand:pmBrandLabel(f), mode:PM_MODES[m - 1].l, fmt:pmFmtLabel(f), text:promptUI.out, time:nowTime() }); PROMPT_HISTORY[viewer.id].splice(5);
   render(); document.querySelector(".promptout")?.scrollIntoView({ behavior:"smooth", block:"start" }); toast("Prompt listo. Tocá “Copiar prompt”.");
 });
 // ---------- Guía de uso ----------
