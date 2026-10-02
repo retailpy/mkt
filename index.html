@@ -2059,7 +2059,7 @@ document.addEventListener("drop", e => {
   if (kind === "post" || kind === "canal"){ const p = kind === "post" ? postById(id) : canalById(id); if (p.date === to) return render(); const from = p.date; p.date = to; MONTH = to.slice(0,7); render();
     toast(`Posteo movido del ${dm(from)} al ${dm(to)}${from.slice(0,7) !== to.slice(0,7) ? ` (pasó a ${monthName(to.slice(0,7))})` : ""}.`); }
   else { const j = jobs.find(x => x.id === id); if (j.due === to) return render(); const from = j.due; j.due = to; MONTH = to.slice(0,7); render();
-    toast(`${j.id}: fecha límite del ${dm(from)} al ${dm(to)}${from.slice(0,7) !== to.slice(0,7) ? ` (pasó a ${monthName(to.slice(0,7))})` : ""}.`); }
+    toast(`“${j.title}”: fecha límite del ${dm(from)} al ${dm(to)}${from.slice(0,7) !== to.slice(0,7) ? ` (pasó a ${monthName(to.slice(0,7))})` : ""}.`); }
 });
 
 if ("serviceWorker" in navigator && location.protocol === "https:" && window.top === window.self) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
@@ -3103,7 +3103,7 @@ function designerAction(j){
   if (j.owner !== viewer.name || isClosed()) return "";
   if (["Pendiente","En proceso"].includes(j.status)) return `<button class="btn primary donebtn" data-jdone="${j.id}">✓ Diseño finalizado</button>`;
   if (j.status === "En corrección") return `<button class="btn primary donebtn fix" data-jdone="${j.id}">✓ Terminé las correcciones</button>`;
-  if (REVIEW_WAIT.includes(j.status)) return `<span class="waitchip">${icon("hourglass")} Esperando la revisión de Admin total</span>`;
+  if (REVIEW_WAIT.includes(j.status)) return `<span class="waitchip">${icon("hourglass")} Esperando revisión</span>`;
   if (j.status === "Aprobado") return `<span class="okchip">✓ Aprobado</span><button class="btn primary donebtn" data-jdeliver="${j.id}">Marcar entregado</button>`;
   return "";
 }
@@ -3303,7 +3303,7 @@ function planCal(items){
   <p class="note">Todo lo de CM junto, cada uno con el punto de color de su marca, su ícono (${icon("image")} feed, ${icon("smartphone")} historia, ${icon("message-circle")} Canal de WhatsApp, ${icon("clapperboard")} video, ${icon("repeat")} repetitivo) y su estado. Tocá uno para editarlo, su estado para cambiarlo (${icon("chevron-down")}), o un día vacío para cargar algo en esa fecha. En un repetitivo, lo marcás como hecho.</p>`;
 }
 let jobUI = { area:"Todos", view:"calendario", status:"Activos", owner:"Todos", prio:"Todas", q:"", form:null };
-const canCreateJobs = () => !isDesigner() && !isViewOnly() && !isClosed();
+const canCreateJobs = () => viewer.role === "Admin total" && !isClosed(); // cargar, editar y borrar pedidos: solo Admin total
 const canChangeStatus = j => !isClosed() && !isViewOnly() && (viewer.role === "Admin total" || viewer.role === "CM" || j.owner === viewer.name);
 const jobArea = () => page === "gestioncm" ? "CM" : "Diseño";
 function jobsFiltered(allStates){
@@ -3324,10 +3324,9 @@ function jobForm(){
   const sec = jobSection(j), types = area === "CM" ? CM_TYPES : secPieces(sec);
   const opt = (list, v) => list.map(x => `<option ${x === v ? "selected" : ""}>${x}</option>`).join("");
   return `<div class="drawer-bg" data-jclose></div><aside class="drawer" aria-label="Formulario de trabajo">
-    <div class="drawer-h"><div><h2 style="margin:0">${f.mode === "edit" ? "Editar pedido" : f.mode === "dup" ? "Revisar pedido duplicado" : area === "CM" ? "Nuevo pedido para CM" : "Nuevo pedido de diseño gráfico"}</h2><div class="note">${esc(j.id)}</div></div><button class="btn" data-jclose aria-label="Cerrar">✕</button></div>
+    <div class="drawer-h"><div><h2 style="margin:0">${f.mode === "edit" ? "Editar pedido" : f.mode === "dup" ? "Revisar pedido duplicado" : area === "CM" ? "Nuevo pedido para CM" : "Nuevo pedido de diseño gráfico"}</h2></div><button class="btn" data-jclose aria-label="Cerrar">✕</button></div>
     <form id="jobForm" class="pform drawer-b" style="grid-template-columns:1fr 1fr">
       ${area === "CM" ? `<label>Área *<select class="base" id="jArea" disabled>${Object.keys(AREAS).map(a => `<option value="${a}" ${a === area ? "selected" : ""}>${AREAS[a].icon} ${areaName(a)}</option>`).join("")}</select></label>` : `<label>¿Para dónde es? *<select class="base" id="jSec"${j.post ? " disabled" : ""}>${DESIGN_SECS.map(([k, l]) => `<option value="${k}" ${k === sec ? "selected" : ""}>${l}</option>`).join("")}</select></label>`}
-      <label>ID<input class="base" value="${esc(j.id)}" readonly></label>
       <label>Fecha de solicitud *<input class="base" type="date" id="jReq" value="${j.requestDate}" required></label>
       <label>Solicitante *<select class="base" id="jRequester">${opt(SOLICITANTES, j.requester)}</select></label>
       <label>Marca *<select class="base" id="jBrand">${opt(myBrands(), j.brand)}</select></label>
@@ -3356,9 +3355,12 @@ function stagePicker(j, editable){
 const jobStatusSelect = j => `<select class="base sm" data-jstatus="${j.id}" aria-label="Estado de ${esc(j.title)}" style="--c:${JOB_COLOR[j.status]}">${[...new Set([j.status, ...stageOptions("job", j)])].sort((a, b) => statesOf(j).indexOf(a) - statesOf(j).indexOf(b)).map(st => `<option ${st === j.status ? "selected" : ""}>${st}</option>`).join("")}</select>`;
 function jobStatusCell(j){ return isDesigner() ? `<div class="chips" style="flex-wrap:nowrap">${stageOptions("job", j).length ? jobStatusSelect(j) : pill(j.status, JOB_COLOR[j.status])}${designerAction(j)}</div>` : canSetAnyStatus(j) ? `<select class="base sm" data-jstatus="${j.id}" aria-label="Estado de ${esc(j.title)}" style="--c:${JOB_COLOR[j.status]}">${[...new Set([j.status, ...stageOptions("job", j)])].sort((a, b) => statesOf(j).indexOf(a) - statesOf(j).indexOf(b)).map(st => `<option ${st === j.status ? "selected" : ""}>${st}</option>`).join("")}</select>` : pill(j.status, JOB_COLOR[j.status]); }
 const jobActions = j => canCreateJobs() ? `<div class="acts" style="flex-wrap:nowrap"><button class="btn ib" data-jedit="${j.id}" title="Editar" aria-label="Editar">${icon("pencil")}</button><button class="btn ib" data-jdup="${j.id}" title="Duplicar" aria-label="Duplicar">${icon("copy")}</button>${viewer.role === "Admin total" ? `<button class="btn danger ib" data-jdel="${j.id}" title="Borrar" aria-label="Borrar">${icon("trash-2")}</button>` : ""}</div>` : "";
+// Tabla de pedidos: primero lo que importa (trabajo, fecha límite y estado). Responsable solo cuando se ve todo el equipo; la fecha de solicitud y las acciones, para Admin total.
 function jobTable(list){
-  return `<div class="tw"><table><thead><tr><th>ID</th><th>Solicitud</th><th>Solicitante</th><th>Marca</th><th>Tipo</th><th>Trabajo solicitado</th><th>Responsable</th><th>Prioridad</th><th>Fecha límite</th><th>Estado</th><th></th></tr></thead><tbody>
-    ${list.map(j => `<tr><td class="num note" style="white-space:nowrap">${j.id}</td><td class="num">${dm(j.requestDate)}</td><td>${esc(j.requester)}</td><td>${brandTag(j.brand)}</td><td>${j.area === "Diseño" ? pieceTag(j.piece) : esc(j.piece)}</td><td>${canCreateJobs() ? `<button type="button" class="linkish" data-jedit="${j.id}" title="Editar">${esc(j.title)}</button>` : `<b style="color:#fff">${esc(j.title)}</b>`}${j.link ? ` <a class="link-post" href="${esc(j.link)}" target="_blank" rel="noopener">🔗 brief</a>` : ""}</td><td>${esc(j.owner)}</td><td>${pill(j.priority, PRIO_COLOR[j.priority])}</td><td><div class="chips" style="flex-wrap:nowrap"><span class="num">${dm(j.due)}</span>${urgBadge(j)}</div></td><td>${jobStatusCell(j)}</td><td>${jobActions(j)}</td></tr>`).join("") || `<tr><td colspan="11" class="empty">No hay trabajos con estos filtros.</td></tr>`}
+  const at = canCreateJobs(), showOwner = !pedMine(), showReq = viewer.role === "Admin total";
+  const cols = 7 + (showOwner ? 1 : 0) + (showReq ? 1 : 0) + (at ? 1 : 0);
+  return `<div class="tw"><table><thead><tr><th>Trabajo solicitado</th><th>Marca</th><th>Tipo</th><th>Fecha límite</th><th>Estado</th><th>Prioridad</th><th>Solicitante</th>${showOwner ? "<th>Responsable</th>" : ""}${showReq ? "<th>Solicitud</th>" : ""}${at ? "<th></th>" : ""}</tr></thead><tbody>
+    ${list.map(j => `<tr><td>${at ? `<button type="button" class="linkish" data-jedit="${j.id}" title="Editar">${esc(j.title)}</button>` : `<b style="color:#fff">${esc(j.title)}</b>`}${j.link ? ` <a class="link-post" href="${esc(j.link)}" target="_blank" rel="noopener">${icon("link")} brief</a>` : ""}</td><td>${brandTag(j.brand)}</td><td>${j.area === "Diseño" ? pieceTag(j.piece) : esc(j.piece)}</td><td><div class="chips" style="flex-wrap:nowrap"><span class="num">${dm(j.due)}</span>${urgBadge(j)}</div></td><td>${jobStatusCell(j)}</td><td>${pill(j.priority, PRIO_COLOR[j.priority])}</td><td>${esc(j.requester)}</td>${showOwner ? `<td>${esc(j.owner)}</td>` : ""}${showReq ? `<td class="num">${dm(j.requestDate)}</td>` : ""}${at ? `<td>${jobActions(j)}</td>` : ""}</tr>`).join("") || `<tr><td colspan="${cols}" class="empty">No hay pedidos.</td></tr>`}
   </tbody></table></div>`;
 }
 function jobBoard(list, A){
@@ -3410,18 +3412,34 @@ const soloBtn = () => `<button type="button" class="chip solo ${soloYo ? "on" : 
 document.addEventListener("click", e => { if (!e.target.closest("[data-soloyo]")) return; soloYo = !soloYo; try { localStorage.setItem("rmh-soloyo", soloYo ? "1" : "0"); } catch {} render(); });
 // Pestañas de vista (Calendario · Tabla · Tablero) con ícono.
 const viewTabs = (views, cur, attr) => `<div class="vtabs" role="tablist">${views.map(([k, l, ic]) => `<button type="button" role="tab" aria-selected="${cur === k}" class="vtab ${cur === k ? "on" : ""}" ${attr}="${k}">${icon(ic)}<span>${l}</span></button>`).join("")}</div>`;
-function pPedidos(){
-  const A = "Diseño", cart = MAT_SECS.includes(page), web = page === "web", scr = page === "pantallas";
-  if (!["calendario","tablero","tabla"].includes(jobUI.view)) jobUI.view = "calendario";
-  const view = cart ? cartUI.view : jobUI.view;
-  const list = jobsFiltered(true).filter(j => j.status !== "Cancelado" && (!isClosedJob(j) || jobMonth(j) === MONTH));
-  const views = [["calendario","Calendario","calendar-days"],["tabla","Tabla","table-2"],["tablero","Tablero","kanban"]];
-  return `<div class="head"><div><h1 class="pmh">${pmIco(web ? "monitor" : scr ? "tv" : cart ? "signpost" : "image")}${web ? "Diseño para Web" : scr ? "Diseño para Pantallas" : cart ? "Diseño para Cartelería" : "Diseño para Redes"}</h1><p class="sub">${web ? "Banners para los sitios web, el PDF con los precios de oferta de la semana que se sube a la web, catálogos digitales y e-mails." : scr ? "Piezas y videos para las pantallas de las tiendas, pantallas LED y menús digitales." : cart ? "Cartelería, flyers, vía pública y empaques." : "Posts, carruseles, historias y reels para las redes."}${isDesigner() ? " Tocá tu trabajo para avisar cuando lo termines." : ""}</p></div>
-    ${viewTabs(views, view, cart ? "data-cview" : "data-jview")}</div>
-  ${canCreateJobs() ? `<button class="panel cmnew" data-jnew><span class="cmplus">${icon("plus")}</span><span><b>Cargar pedido</b><small>${web ? "Qué banner o PDF, para qué marca, quién lo hace y para cuándo." : scr ? "Qué pieza para pantalla, para qué marca, quién la hace y para cuándo." : cart ? "Qué pieza, para qué marca, quién la hace y para cuándo." : "Qué se necesita para redes, para qué marca, quién lo hace y para cuándo."}</small></span></button>` : ""}
-  <div class="head"><div class="chips">${brandChips()}${soloBtn()}</div>${!isViewOnly() && !isClosed() ? `<span class="note">${view === "tablero" ? "Tocá una tarjeta para cambiar su etapa · el lápiz para editar" : view === "calendario" ? "Tocá una entrega para abrirla, o un día para cargar un pedido" : "Tocá el trabajo para editarlo · cambiá la etapa desde la lista"}</span>` : ""}</div>
-  ${view === "calendario" ? (cart ? cartelCal() : redesCal()) : view === "tabla" ? jobTable(list) : jobBoard(list, A)}
+// Pedidos (Diseño gráfico y CM): una sola página, sin dividir por marca. Arriba la tabla, abajo el calendario.
+// Diseñadores y CM ven primero sus pedidos (“Mis pedidos”) y pueden ver todo el equipo; solo cambian el estado. Cargar: solo Admin total.
+const ownsJobs = () => isDesigner() || viewer.role === "CM";
+let pedScope = (() => { try { return localStorage.getItem("rmh-pedscope") || ""; } catch { return ""; } })();
+const pedMine = () => ownsJobs() && pedScope !== "team";
+document.addEventListener("click", e => { const b = e.target.closest("[data-pedscope]"); if (!b) return; pedScope = b.dataset.pedscope; try { localStorage.setItem("rmh-pedscope", pedScope); } catch {} render(); });
+function pedList(A){
+  const cart = MAT_SECS.includes(page), soc = page === "pedidos";
+  return jobs.filter(j => j.area === A && seesBrand(j.brand) && jobMonth(j) === MONTH && j.status !== "Cancelado" && (!cart || inMatPage(j)) && (!soc || !isMaterial(j)) && (!pedMine() || j.owner === viewer.name))
+    .sort((a, b) => a.due.localeCompare(b.due));
+}
+const pedScopeChips = A => ownsJobs() ? `<div class="chips pedscope"><button type="button" class="chip ${pedMine() ? "on" : ""}" data-pedscope="mine">${icon("user-round")} Mis pedidos</button><button type="button" class="chip ${pedMine() ? "" : "on"}" data-pedscope="team">${icon("users")} Todo el equipo de ${A === "CM" ? "CM" : "Diseño gráfico"}</button></div>` : "";
+function pedPage(A, title, ico, sub, newHint, extra = ""){
+  const list = pedList(A), inMonth = list.filter(j => j.due.slice(0, 7) === MONTH);
+  return `<div class="head"><div><h1 class="pmh">${pmIco(ico)}${title}</h1><p class="sub">${sub}</p></div>${extra}</div>
+  ${canCreateJobs() ? `<button class="panel cmnew" data-jnew><span class="cmplus">${icon("plus")}</span><span><b>Cargar pedido</b><small>${newHint}</small></span></button>` : ""}
+  ${pedScopeChips(A)}
+  <h2 class="pmh" style="margin:0">${pmIco("table-2")}${pedMine() ? "Mis pedidos" : "Pedidos"} de ${monthName(MONTH)} <span class="note" style="font-weight:400">· ${list.length}</span></h2>
+  ${jobTable(list)}
+  <h2 class="pmh" style="margin:0">${pmIco("calendar-days")}Calendario de entregas</h2>
+  ${jobDeliveryCal(inMonth, A)}
   ${jobForm()}`;
+}
+function pPedidos(){
+  const cart = MAT_SECS.includes(page), web = page === "web", scr = page === "pantallas";
+  return pedPage("Diseño", web ? "Diseño para Web" : scr ? "Diseño para Pantallas" : cart ? "Diseño para Cartelería" : "Diseño para Redes", web ? "monitor" : scr ? "tv" : cart ? "signpost" : "image",
+    `${web ? "Banners para los sitios web, el PDF con los precios de oferta de la semana, catálogos digitales y e-mails." : scr ? "Piezas y videos para las pantallas de las tiendas, pantallas LED y menús digitales." : cart ? "Cartelería, flyers, vía pública y empaques." : "Posts, carruseles, historias y reels para las redes."}${ownsJobs() ? " Cambiá el estado de tus pedidos desde la tabla o el calendario." : ""}`,
+    web ? "Qué banner o PDF, para qué marca, quién lo hace y para cuándo." : scr ? "Qué pieza para pantalla, para qué marca, quién la hace y para cuándo." : cart ? "Qué pieza, para qué marca, quién la hace y para cuándo." : "Qué se necesita para redes, para qué marca, quién lo hace y para cuándo.");
 }
 /* ---------- Gestión CM: publicaciones (fecha de publicación y estado) + tareas de CM ---------- */
 let cmUI = { tview:"calendario", st:"Todos", cm:"Todos" };
@@ -3603,18 +3621,11 @@ document.addEventListener("submit", e => { if (e.target.id !== "recForm") return
   if (old) Object.assign(old, data); else RECURRING.push({ id:Math.max(0, ...RECURRING.map(r => r.id)) + 1, ...data });
   recUI = { form:false, days:[] }; render(); toast(`${old ? "Guardado" : "Listo"}: “${data.title}” ${recDays(data).toLowerCase()}${until ? " hasta el " + dm(until) : ", sin fecha de fin"}. Ya aparece solo en el calendario.`); });
 function pGestionCM(){
-  const A = "CM";
-  if (!["calendario","tablero","tabla","repetitivos"].includes(cmUI.tview)) cmUI.tview = "calendario";
-  // Pedidos sin terminar y los terminados del mes (así, al marcar “Publicado”, la tarjeta sigue en su columna).
-  const list = jobsFiltered(true).filter(j => j.status !== "Cancelado" && (!isClosedJob(j) || jobMonth(j) === MONTH));
-  const views = [...G_VIEWS, ["repetitivos","Repetitivos","repeat"]];
-  return `<div class="head"><div><h1 class="pmh">${pmIco("clapperboard")}Gestión Videos</h1><p class="sub">Los pedidos a los CM: grabaciones, ediciones de video, coberturas, copys y armado de pauta.</p></div>
-    ${viewTabs(views, cmUI.tview, "data-cmtv")}</div>
-  ${canCreateJobs() ? `<div class="cmnews"><button class="panel cmnew" data-jnew><span class="cmplus">${icon("plus")}</span><span><b>Cargar pedido</b><small>Qué se necesita, para qué marca, quién lo hace y para cuándo.</small></span></button>
-  <button class="panel cmnew cmrec" data-recgo="Historia"><span class="cmplus">${icon("repeat")}</span><span><b>Cargar pedido repetitivo</b><small>Publicaciones que se repiten: todos los lunes, o lunes y viernes… desde una fecha hasta otra (o sin fin). Se cargan solas en el calendario.</small></span></button></div>` : ""}
-  ${cmUI.tview === "repetitivos" ? recurringList() : `<div class="head"><div class="chips">${brandChips()}${soloBtn()}</div>${!isViewOnly() && !isClosed() ? `<span class="note">${cmUI.tview === "tablero" ? "Tocá una tarjeta para cambiar su etapa (Programado, Publicado…)" : cmUI.tview === "calendario" ? "Tocá un pedido para abrirlo, o un día para cargar uno" : "Tocá el pedido para editarlo"}</span>` : ""}</div>
-  ${cmUI.tview === "calendario" ? jobDeliveryCal(list, "CM") : cmUI.tview === "tabla" ? jobTable(list) : jobBoard(list, A)}`}
-  ${jobForm()}${recDrawer()}`;
+  if (cmUI.tview === "repetitivos" && canCreateJobs()) return `<div class="head"><div><h1 class="pmh">${pmIco("repeat")}Pedidos repetitivos</h1><p class="sub">Lo que se repite ciertos días de la semana. Se carga solo en el calendario.</p></div><button class="btn" data-cmtv="calendario">‹ Volver a Gestión Videos</button></div>
+    <button class="panel cmnew cmrec" data-recgo="Historia"><span class="cmplus">${icon("repeat")}</span><span><b>Cargar pedido repetitivo</b><small>Todos los lunes, o lunes y viernes… desde una fecha hasta otra (o sin fin).</small></span></button>
+    ${recurringList()}${recDrawer()}`;
+  return pedPage("CM", "Gestión Videos", "clapperboard", `Los pedidos a los CM: grabaciones, ediciones de video, coberturas, copys y armado de pauta.${ownsJobs() ? " Cambiá el estado de tus pedidos desde la tabla o el calendario." : ""}`,
+    "Qué se necesita, para qué marca, quién lo hace y para cuándo.", canCreateJobs() ? `<button class="btn" data-cmtv="repetitivos">${icon("repeat")} Repetitivos</button>` : "") + recDrawer();
 }
 const TV_TEAM_MIN = 10;
 let tvTeam = { timer:null, clock:null, slideT:null, updated:"", i:0, paused:false };
@@ -5189,7 +5200,7 @@ document.addEventListener("click", e => {
     else if (d.jedit){ jobUI.form = { mode:"edit", job:{ ...find(d.jedit) } }; }
     else if (d.jdup){ const o = find(d.jdup); jobUI.form = { mode:"dup", job:{ ...o, id:nextJobId(o.area), requestDate:TODAY, status:"Pendiente", delivered:null, approved:null, post:null } }; }
     else if (d.jdel){ if (!confirmTap(jt, "job:" + d.jdel, "¿Seguro? Tocá de nuevo")) return;
-      const o = find(d.jdel); if (!o) return; jobs.splice(jobs.indexOf(o), 1); if (jobUI.form?.job?.id === o.id) jobUI.form = null; toast(`Pedido ${o.id} borrado.`); }
+      const o = find(d.jdel); if (!o) return; jobs.splice(jobs.indexOf(o), 1); if (jobUI.form?.job?.id === o.id) jobUI.form = null; toast(`Pedido “${o.title}” borrado.`); }
     else if (d.jclose !== undefined) jobUI.form = null;
     render(); return; }
   if (e.target.closest("[data-bdclear]")){ viewer.birthday = null; render(); toast("Quitaste tu cumpleaños."); return; }
@@ -5223,7 +5234,7 @@ function setJobStatus(j, st){
   const first = isFin(j) && !j.delivered;
   if (first) j.delivered = TODAY;
   if (j.status === "Entregado"){ const p = j.post && postById(j.post); if (p && p.status === "En diseño") p.status = "Listo"; }
-  render(); toast(`${j.id}: ${prev} → ${j.status}${first ? ` (finalizado el ${dm(TODAY)}${TODAY > j.due ? ", con atraso" : ", a tiempo"})` : ""}.`);
+  render(); toast(`“${j.title}”: ${prev} → ${j.status}${first ? ` (finalizado el ${dm(TODAY)}${TODAY > j.due ? ", con atraso" : ", a tiempo"})` : ""}.`);
 }
 document.addEventListener("change", e => {
   const js = e.target.closest("[data-jstatus]");
