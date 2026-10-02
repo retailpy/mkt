@@ -62,6 +62,19 @@ html.light .logo-wide{background:#0f172a;border-radius:12px;padding:6px 10px;box
 .focusbtn.team{color:var(--muted);border-color:var(--line-3)}
 .focusbtn:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .jficha .jf{display:flex;flex-direction:column;gap:14px}
+.jform{display:flex;flex-direction:column;gap:16px}
+.jlink{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.jlink label{flex:1;min-width:220px;display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+.jlink input{border:1px solid var(--line-3);background:var(--inner);border-radius:14px;padding:9px 12px;color:#f1f5f9;outline:none;font:inherit}
+.jcext{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.jfs{display:flex;flex-direction:column;gap:12px;border:1px solid var(--line-2);border-radius:16px;padding:14px 16px}
+.jfs h3{margin:0;display:flex;align-items:center;gap:8px;font-size:14.5px;color:var(--ink)}
+.jfs h3 i{font-style:normal;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--cyan);color:var(--cyan);display:inline-grid;place-items:center;font-size:12px;font-weight:700}
+.jfg{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(200px,100%),1fr));gap:12px}
+.jfg label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+.jfg label.wide,.jfg label[style*="grid-column"]{grid-column:1/-1}
+.jform textarea.base,.jform input.base{border:1px solid var(--line-3);background:var(--inner);border-radius:14px;padding:9px 12px;color:#f1f5f9;outline:none;font:inherit;color-scheme:dark}
+.jform .chips{justify-content:flex-end}
 .jchain{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line-2);padding-top:12px}
 .jchain h3{margin:0;font-size:14px;color:var(--ink);display:flex;gap:8px;align-items:baseline}
 .jchain ol{list-style:none;margin:0;padding:0 0 0 4px;display:flex;flex-direction:column;gap:0}
@@ -2093,17 +2106,31 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-jdel
 // Admin total: aprobar o pedir correcciones desde el aviso
 document.addEventListener("click", e => { const b = e.target.closest("[data-nact]"); if (!b) return;
   const n = NOTIFS.find(x => x.id === +b.dataset.nid), j = n && jobById(n.job); if (!j) return;
-  if (b.dataset.nact === "approve"){ n.read = true; approveJob(j); } else openFixModal(j, n); });
+  if (b.dataset.nact === "approve"){ n.read = true; openApproveModal(j); } else openFixModal(j, n); });
 // Revisión de Admin total: aprobar, o pedir cambios con un mensaje que le llega a la persona.
 const reviewStage = j => j.area === "CM" ? "" : "Boceto finalizado";
 const jobDone = j => j.area === "CM" ? "trabajo" : "diseño";
-function approveJob(j){
+// Diseño finalizado: Admin total elige a qué CM avisarle para que lo sume a su grilla de contenido.
+function openApproveModal(j){
+  if (j.area === "CM") return approveJob(j);
+  document.getElementById("fixpop")?.remove();
+  const p = j.post && postById(j.post), cms = CM_NAMES(), pre = p?.cm || "";
+  const w = document.createElement("div"); w.id = "fixpop"; w.className = "fixpop";
+  w.innerHTML = `<div class="fixbox" role="dialog" aria-modal="true" aria-labelledby="okh"><h2 id="okh">Diseño finalizado</h2><p class="note">${esc(j.title)} · ${esc(j.owner)}</p>
+    <label>¿A qué CM le avisamos para que lo sume a su grilla?<select class="base" id="okCm"><option value="">No avisar a nadie</option>${cms.map(n => `<option ${n === pre ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label>
+    <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-oksend="${j.id}">✓ Diseño finalizado</button></div></div>`;
+  document.body.appendChild(w);
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-oksend]"); if (!b) return;
+  const j = jobById(b.dataset.oksend), cm = document.getElementById("okCm")?.value || ""; document.getElementById("fixpop")?.remove(); if (j) approveJob(j, cm); });
+function approveJob(j, cm = ""){
   j.status = j.area === "CM" ? "Aprobado" : "Entregado"; if (!j.approved) j.approved = TODAY; // en Diseño, aprobar cierra el ciclo: Diseño finalizado
   if (j.status === "Entregado"){ if (!j.delivered) j.delivered = TODAY; const p = j.post && postById(j.post); if (p && p.status === "En diseño") p.status = "Listo"; }
   (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), ok:true, by:viewer.name });
   NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
   notify({ to:j.owner, type:"approved", job:j.id }); jobUI.form = null;
-  render(); toast(`${j.area === "CM" ? "Aprobado" : "Diseño finalizado"}. Le avisamos a ${firstName(j.owner)}.`);
+  if (cm){ notify({ to:cm, type:"listo", job:j.id }); j.cmNotified = cm; }
+  render(); toast(`${j.area === "CM" ? "Aprobado" : "Diseño finalizado"}. Le avisamos a ${firstName(j.owner)}${cm ? ` y a ${firstName(cm)} (CM)` : ""}.`);
 }
 const jobRounds = j => (j.changes || []).filter(c => !c.ok && !c.kind).length; // cuántas veces se pidieron cambios
 function sendJobChanges(j, text){
@@ -2132,11 +2159,11 @@ document.addEventListener("click", e => {
 function moveJob(j, to){
   if (!j || j.status === to || !stageOptions("job", j).includes(to)) return render();
   if (viewer.role === "Admin total" && to === "En corrección"){ render(); openFixModal(j); return; } // los cambios siempre van con mensaje
-  if (viewer.role === "Admin total" && (to === "Aprobado" || to === "Entregado") && REVIEW_WAIT.includes(j.status)) return approveJob(j);
+  if (viewer.role === "Admin total" && (to === "Aprobado" || to === "Entregado") && REVIEW_WAIT.includes(j.status)){ render(); return openApproveModal(j); }
   if (viewer.role !== "Admin total" && to === reviewStage(j)){
     const fix = j.status === "En corrección"; if (fix) j.rounds = (j.rounds || 0) + 1;
     j.status = to; NOTIFS.forEach(n => { if (n.to === viewer.name && n.job === j.id) n.read = true; });
-    (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), kind:"boceto", by:viewer.name, fix });
+    (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), kind:"boceto", by:viewer.name, fix, link:j.designLink || "" });
     notify({ to:"admin", type:"review", job:j.id, who:viewer.name, fix });
     render(); toast(`¡Bien! “${j.title}” quedó como ${to}. Le avisamos a Admin total para que lo revise.`); return; }
   setJobStatus(j, to);
@@ -2948,7 +2975,9 @@ function notifAlerts(){
     return { go:"job:" + j.id, key:"n:" + n.id, sev:"#a855f7", rank:-5, ic:"circle-check", t:`${n.who} ${n.fix ? "terminó las correcciones" : j.area === "CM" ? "terminó su trabajo" : "terminó el boceto"}: ${j.title}`, m:`${j.brand} · ${j.piece} · listo para revisar · ${dm(n.date)} ${n.time}${j.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}`,
       acts:`<button class="btn primary" data-nact="approve" data-nid="${n.id}">${j.area === "CM" ? "Aprobar" : "✓ Diseño finalizado"}</button><button class="btn" data-nact="fix" data-nid="${n.id}">Pedir cambios</button><button class="btn" data-jficha="${j.id}">Ver pedido</button>` };
   });
-  return myNotifs().map(n => n.type === "nota" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#94a3b8", rank:-4, ic:"message-circle", t:`Admin total comentó en: ${jobById(n.job)?.title || ""}`, m:`“${n.text}” · ${dm(n.date)} ${n.time}` } : ({ go:"job:" + n.job, key:"n:" + n.id, sev:n.type === "approved" ? "#10b981" : "#f97316", rank:-5, ic:n.type === "approved" ? "badge-check" : "pencil", t:n.type === "approved" ? `Admin total aprobó tu ${jobDone(jobById(n.job) || {})}: ${jobById(n.job)?.title}` : `Admin total pidió cambios: ${jobById(n.job)?.title}`, m:`${n.type === "fix" && n.text ? `“${n.text}” · ` : ""}${dm(n.date)} ${n.time}${n.type === "fix" ? " · cuando termines, tocá “Terminé las correcciones”" : ""}`, acts:`${n.type === "fix" ? `<button class="btn primary" data-jdone="${n.job}">✓ Terminé las correcciones</button>` : ""}<button class="btn" data-jficha="${n.job}">Ver pedido</button>` }));
+  return myNotifs().map(n => n.type === "nuevo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:"inbox", t:`Nuevo pedido para vos: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""} · fecha límite ${jobById(n.job) ? dm(jobById(n.job).due) : ""} · tocá para ver todo` }
+    : n.type === "listo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#10b981", rank:-6, ic:"badge-check", t:`Diseño listo para tu grilla: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""}${jobById(n.job)?.designLink ? " · tiene el link del diseño" : ""} · sumalo a tu calendario` }
+    : n.type === "nota" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#94a3b8", rank:-4, ic:"message-circle", t:`Admin total comentó en: ${jobById(n.job)?.title || ""}`, m:`“${n.text}” · ${dm(n.date)} ${n.time}` } : ({ go:"job:" + n.job, key:"n:" + n.id, sev:n.type === "approved" ? "#10b981" : "#f97316", rank:-5, ic:n.type === "approved" ? "badge-check" : "pencil", t:n.type === "approved" ? `Admin total aprobó tu ${jobDone(jobById(n.job) || {})}: ${jobById(n.job)?.title}` : `Admin total pidió cambios: ${jobById(n.job)?.title}`, m:`${n.type === "fix" && n.text ? `“${n.text}” · ` : ""}${dm(n.date)} ${n.time}${n.type === "fix" ? " · cuando termines, tocá “Terminé las correcciones”" : ""}`, acts:`${n.type === "fix" ? `<button class="btn primary" data-jdone="${n.job}">✓ Terminé las correcciones</button>` : ""}<button class="btn" data-jficha="${n.job}">Ver pedido</button>` }));
 }
 function alerts(){
   const out = [];
@@ -3503,18 +3532,22 @@ function jobChain(j, input = true){
   let round = 0;
   const item = c => {
     if (c.ok) return `<li class="ok"><i>${icon("badge-check")}</i><div><b>${j.area === "CM" ? "Aprobado" : "Diseño finalizado"}</b><span>${who(c.by)} · ${dm(c.date)} ${c.time}</span></div></li>`;
-    if (c.kind === "boceto") return `<li class="bo"><i>${icon("send")}</i><div><b>${c.fix ? "Correcciones entregadas" : "Boceto finalizado"}</b><span>${who(c.by)} · ${dm(c.date)} ${c.time}</span></div></li>`;
+    if (c.kind === "boceto") return `<li class="bo"><i>${icon("send")}</i><div><b>${c.fix ? "Correcciones entregadas" : "Boceto finalizado"}</b>${c.link ? `<p><a class="link-post" href="${esc(c.link)}" target="_blank" rel="noopener">${icon("link")} Ver el diseño</a></p>` : ""}<span>${who(c.by)} · ${dm(c.date)} ${c.time}</span></div></li>`;
     if (c.kind === "nota") return `<li class="nt"><i>${icon("message-circle")}</i><div><b>${esc(who(c.by))}</b><p>${esc(c.text)}</p><span>${dm(c.date)} ${c.time}</span></div></li>`;
-    round++; return `<li class="fx"><i>${icon("pencil")}</i><div><b>Cambios pedidos · ronda ${round}</b><p>${esc(c.text)}</p><span>${who(c.by)} · ${dm(c.date)} ${c.time}</span></div></li>`;
+    round++; return `<li class="fx"><i>${icon("pencil")}</i><div><b>Cambios pedidos · ronda ${round}${c.ext ? ` <small class="note">(anotado por ${esc(who(c.by))})</small>` : ""}</b><p>${esc(c.text)}</p><span>${who(c.by)} · ${dm(c.date)} ${c.time}</span></div></li>`;
   };
   if (!list.length && !canWrite) return "";
   return `<div class="jchain"><h3>Cadena de cambios <span class="note">${jobRounds(j)} ${jobRounds(j) === 1 ? "cambio pedido" : "cambios pedidos"}</span></h3>
     ${list.length ? `<ol>${list.map(item).join("")}</ol>` : `<p class="note" style="margin:0">Todavía no hay movimientos.</p>`}
-    ${canWrite ? `<div class="jcin"><textarea class="base" id="jcText" rows="2" placeholder="Escribí un comentario o una consulta sobre los cambios…"></textarea><button class="btn" type="button" data-jcsend="${j.id}">${icon("send")} Enviar</button></div>` : ""}</div>`;
+    ${canWrite ? `<div class="jcin"><textarea class="base" id="jcText" rows="2" placeholder="${viewer.role === "Admin total" ? "Escribí un comentario para " + esc(firstName(j.owner)) + "…" : "Escribí un comentario, o anotá los cambios que te pidieron (ej.: Comercial)…"}"></textarea><button class="btn" type="button" data-jcsend="${j.id}">${icon("send")} Enviar</button></div>
+      ${viewer.role === "Admin total" ? "" : `<label class="jcext"><input type="checkbox" id="jcExt"> Es un pedido de cambios (se cuenta como ronda)</label>`}` : ""}</div>`;
 }
+document.addEventListener("click", e => { const b = e.target.closest("[data-jdlink]"); if (!b) return;
+  const j = jobById(b.dataset.jdlink), v = document.getElementById("jDesignLink")?.value.trim(); if (!j) return; j.designLink = v; render(); toast(v ? "Link guardado: Admin total lo ve en la ficha." : "Quitaste el link."); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-jcsend]"); if (!b) return;
   const j = jobById(b.dataset.jcsend), t = document.getElementById("jcText")?.value.trim(); if (!j || !t) return;
-  (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), kind:"nota", text:t, by:viewer.name });
+  const ext = !!document.getElementById("jcExt")?.checked;
+  (j.changes = j.changes || []).push(ext ? { date:TODAY, time:nowTime(), text:t, by:viewer.name, ext:true } : { date:TODAY, time:nowTime(), kind:"nota", text:t, by:viewer.name });
   notify(viewer.role === "Admin total" ? { to:j.owner, type:"nota", job:j.id, text:t } : { to:"admin", type:"nota", job:j.id, who:viewer.name, text:t });
   render(); toast("Comentario enviado."); });
 // Ficha del pedido: todo lo que cargó Admin total, los cambios pedidos y lo que la persona puede hacer.
@@ -3536,6 +3569,8 @@ function jobFicha(){
       <div class="jfgrid">${row("Marca", brandTag(j.brand))}${row("Tipo de trabajo", esc(j.piece))}${row("Solicitante", esc(j.requester))}${row("Responsable", esc(j.owner))}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", pill(j.priority, PRIO_COLOR[j.priority]))}${row("Complejidad", esc(j.complexity))}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}</div>
       ${j.link ? `<a class="btn" href="${esc(j.link)}" target="_blank" rel="noopener">${icon("link")} Abrir brief y archivos</a>` : ""}
       ${j.notes ? `<div class="jfnotes"><span>Observaciones</span><p>${esc(j.notes)}</p></div>` : ""}
+      ${j.owner === viewer.name && !isFin(j) && !isViewOnly() && j.area !== "CM" ? `<div class="jlink"><label>Link del diseño para revisar<input class="base" id="jDesignLink" value="${esc(j.designLink || "")}" placeholder="Drive, Canva, Figma…"></label><button class="btn" type="button" data-jdlink="${j.id}">${icon("link")} Guardar link</button></div>`
+        : j.designLink ? `<a class="btn" href="${esc(j.designLink)}" target="_blank" rel="noopener">${icon("eye")} Ver el diseño</a>` : ""}
       <div class="jfact"><h3>Etapa</h3>${stagePicker(j, false)}${acts}</div>
       ${jobChain(j)}
       ${at ? `<button class="btn" data-jedit="${j.id}">${icon("pencil")} Editar pedido</button>` : ""}
@@ -3543,9 +3578,9 @@ function jobFicha(){
 }
 document.addEventListener("click", e => {
   const c = e.target.closest("[data-jfclose]"); if (c){ jobUI.ficha = null; render(); return; }
-  const mv = e.target.closest("[data-jmove]"); if (mv){ const [id, to] = mv.dataset.jmove.split("|"); moveJob(jobById(id), to); return; }
+  const mv = e.target.closest("[data-jmove]"); if (mv){ const [id, to] = mv.dataset.jmove.split("|"), dl = document.getElementById("jDesignLink"), j = jobById(id); if (j && dl) j.designLink = dl.value.trim(); moveJob(j, to); return; }
   const rv = e.target.closest("[data-jrev]"); if (rv){ const [act, id] = rv.dataset.jrev.split(":"), j = jobById(id); if (!j || viewer.role !== "Admin total") return;
-    if (act === "approve"){ jobUI.ficha = null; approveJob(j); } else openFixModal(j); return; }
+    if (act === "approve") openApproveModal(j); else openFixModal(j); return; }
   const fo = e.target.closest("[data-jficha]"); if (!fo) return;
   const inner = e.target.closest("button,a,select,input,[data-stagemenu]"); if (inner && inner !== fo && fo.contains(inner)) return;
   e.preventDefault(); closeStageMenu(); jobUI.form = null; jobUI.ficha = fo.dataset.jficha; render();
@@ -3558,22 +3593,28 @@ function jobForm(){
   const opt = (list, v) => list.map(x => `<option ${x === v ? "selected" : ""}>${x}</option>`).join("");
   return `<div class="drawer-bg" data-jclose></div><aside class="drawer" aria-label="Formulario de trabajo">
     <div class="drawer-h"><div><h2 style="margin:0">${f.mode === "edit" ? "Editar pedido" : f.mode === "dup" ? "Revisar pedido duplicado" : area === "CM" ? "Nuevo pedido para CM" : "Nuevo pedido de diseño gráfico"}</h2></div><button class="btn" data-jclose aria-label="Cerrar">✕</button></div>
-    <form id="jobForm" class="pform drawer-b" style="grid-template-columns:1fr 1fr">
+    <form id="jobForm" class="drawer-b jform">
       ${f.mode === "edit" ? jobReviewBox(jobById(j.id)) : ""}
+      <section class="jfs"><h3><i>1</i>Qué hay que hacer</h3><div class="jfg">
       ${area === "CM" ? `<label>Área *<select class="base" id="jArea" disabled>${Object.keys(AREAS).map(a => `<option value="${a}" ${a === area ? "selected" : ""}>${AREAS[a].icon} ${areaName(a)}</option>`).join("")}</select></label>` : `<label>¿Para dónde es? *<select class="base" id="jSec"${j.post ? " disabled" : ""}>${DESIGN_SECS.map(([k, l]) => `<option value="${k}" ${k === sec ? "selected" : ""}>${l}</option>`).join("")}</select></label>`}
-      <label>Fecha de solicitud *<input class="base" type="date" id="jReq" value="${j.requestDate}" required></label>
-      <label>Solicitante *<select class="base" id="jRequester">${opt(SOLICITANTES, j.requester)}</select></label>
-      <label>Marca *<select class="base" id="jBrand">${opt(myBrands(), j.brand)}</select></label>
       <label>Tipo de trabajo *<select class="base" id="jPiece">${opt(types, j.piece)}</select></label>
+      <label>Marca *<select class="base" id="jBrand">${opt(myBrands(), j.brand)}</select></label>
       <label class="wide" style="grid-column:1/-1">Trabajo solicitado *<input class="base" id="jTitle" value="${esc(j.title)}" placeholder="${area === "CM" ? "Ej.: Edición del reel de la semana del vino" : "Ej.: Banner web liquidación de invierno"}" required></label>
+      <label style="grid-column:1/-1">Link al brief o archivos<input class="base" id="jLink" value="${esc(j.link)}" placeholder="Drive, WeTransfer, carpeta compartida…"></label>
+      <label style="grid-column:1/-1">Detalle / observaciones<textarea class="base" id="jNotes" rows="3" placeholder="Qué tiene que tener, textos, precios, referencias…">${esc(j.notes)}</textarea></label>
+      </div></section>
+      <section class="jfs"><h3><i>2</i>Quién y para cuándo</h3><div class="jfg">
+      <label>Solicitante *<select class="base" id="jRequester">${opt(SOLICITANTES, j.requester)}</select></label>
       <label>Responsable (de cualquier marca) *<select class="base" id="jOwner">${opt([...new Set(["Sin asignar", ...areaPeople(area), j.owner])], j.owner)}</select></label>
+      <label>Fecha de solicitud *<input class="base" type="date" id="jReq" value="${j.requestDate}" required></label>
+      <label >Fecha límite *<input class="base" type="date" id="jDue" value="${j.due}" required></label>
+      </div></section>
+      <section class="jfs"><h3><i>3</i>Estado</h3><div class="jfg">
       <label>Estado *<select class="base" id="jStatus">${opt(statesOf(area), j.status)}</select></label>
       <label>Prioridad *<select class="base" id="jPrio">${opt(PRIORIDADES, j.priority)}</select></label>
       <label>Complejidad *<select class="base" id="jComp">${opt(COMPLEJIDAD, j.complexity)}</select></label>
-      <label style="grid-column:1/-1">Fecha límite * <span class="note">— ese día el trabajo tiene que estar finalizado</span><input class="base" type="date" id="jDue" value="${j.due}" required></label>
-      <label style="grid-column:1/-1">Link al brief o archivos<input class="base" id="jLink" value="${esc(j.link)}" placeholder="Drive, WeTransfer, carpeta compartida…"></label>
-      <label style="grid-column:1/-1">Observaciones<input class="base" id="jNotes" value="${esc(j.notes)}" placeholder="Notas adicionales…"></label>
-      <p class="note" style="grid-column:1/-1;margin:0">Las fechas de aprobación y de entrega se registran solas al pasar a “Aprobado” y al finalizar (“Entregado” en Diseño, “Programado” en CM).</p>
+      </div></section>
+      <p class="note" style="margin:0">Al guardar, le llega el aviso a quien lo tiene que hacer. La fecha de entrega se registra sola cuando marcás Diseño finalizado (CM: Publicado).</p>
       <div class="chips" style="grid-column:1/-1;justify-content:flex-end">${f.mode === "edit" && canCreateJobs() ? `<button class="btn danger" type="button" data-jdel="${esc(j.id)}" style="margin-right:auto">🗑 Borrar</button>` : ""}<button class="btn" type="button" data-jclose>Cancelar</button><button class="btn primary" type="submit">Guardar trabajo</button></div>
     </form></aside>`;
 }
@@ -5754,7 +5795,9 @@ document.addEventListener("submit", e => {
     sureKey = "";
     readJobForm(j); j.title = title; j.due = due;
     if (isFin(j) && !j.delivered) j.delivered = TODAY;
+    const prevOwner = f.mode === "edit" ? jobById(j.id)?.owner : null;
     if (f.mode === "edit"){ Object.assign(jobs.find(x => x.id === j.id), j); } else jobs.push(j);
+    if (j.owner && j.owner !== "Sin asignar" && j.owner !== prevOwner && j.owner !== viewer.name) notify({ to:j.owner, type:"nuevo", job:j.id }); // le llega el aviso a quien lo tiene que hacer
     // Lo que se carga se ve enseguida: va a su sección, su mes y su marca (y sin filtros que lo escondan).
     const to = jobSection(j), moved = to !== page; MONTH = m;
     if (moved && can(to) && page !== "plan" && !CM_CAL_KIND[page]) page = to; // desde el Plan de posteo o un calendario de CM se queda donde estaba
