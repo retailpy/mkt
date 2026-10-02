@@ -62,6 +62,20 @@ html.light .logo-wide{background:#0f172a;border-radius:12px;padding:6px 10px;box
 .focusbtn.team{color:var(--muted);border-color:var(--line-3)}
 .focusbtn:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .jficha .jf{display:flex;flex-direction:column;gap:14px}
+.jchain{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line-2);padding-top:12px}
+.jchain h3{margin:0;font-size:14px;color:var(--ink);display:flex;gap:8px;align-items:baseline}
+.jchain ol{list-style:none;margin:0;padding:0 0 0 4px;display:flex;flex-direction:column;gap:0}
+.jchain li{display:flex;gap:12px;position:relative;padding-bottom:14px}
+.jchain li:not(:last-child)::before{content:"";position:absolute;left:13px;top:28px;bottom:0;width:2px;background:var(--line-2)}
+.jchain li>i{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;border:1.5px solid var(--c,#64748b);color:var(--c,#94a3b8)}
+.jchain li>i svg{width:14px;height:14px}
+.jchain li.bo{--c:#06b6d4}.jchain li.fx{--c:#f97316}.jchain li.nt{--c:#94a3b8}.jchain li.ok{--c:#10b981}
+.jchain li b{display:block;font-size:13.5px;color:var(--ink);font-weight:600}
+.jchain li p{margin:3px 0;font-size:14px;color:var(--ink);white-space:pre-wrap}
+.jchain li span{font-size:12px;color:var(--faint)}
+.jcin{display:flex;gap:8px;align-items:flex-end}
+.jcin textarea{flex:1;background:var(--inner);border:1px solid var(--line-3);border-radius:14px;color:var(--ink);padding:9px 12px;font:inherit;outline:none;resize:vertical}
+.jcin textarea:focus{border-color:var(--cyan)}
 .arow.ago{cursor:pointer}
 .satmiss{display:inline-flex;align-items:center;gap:5px;margin-left:6px;padding:2px 8px;border-radius:999px;border:1px solid rgba(249,115,22,.55);color:#fdba74;font-size:12px;cursor:pointer}
 .satmiss svg{width:13px;height:13px}
@@ -69,7 +83,7 @@ html.light .logo-wide{background:#0f172a;border-radius:12px;padding:6px 10px;box
 .arow .adis{all:unset;cursor:pointer;flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;color:var(--faint)}
 .arow .adis:hover{color:var(--ink);background:rgba(148,163,184,.12)}
 .arow .adis svg{width:15px;height:15px}
-.jfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(170px,100%),1fr));gap:12px 18px}
+.jfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(140px,100%),1fr));gap:12px 18px}
 .jfgrid div,.jfnotes{display:flex;flex-direction:column;gap:3px}
 .jfgrid span,.jfnotes span,.jfhist span,.jfmsg span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
 .jfgrid b{font-weight:500;font-size:14px;color:var(--ink)}
@@ -475,8 +489,9 @@ td.r,th.r{text-align:right}
 .jfilters input.base:focus{border-color:var(--cyan)}
 @media (max-width:860px){.jfilters{grid-template-columns:1fr}}
 select.base.sm{padding:4px 8px;border-radius:10px;font-size:12.5px;border-color:color-mix(in srgb,var(--c) 70%,transparent);background:color-mix(in srgb,var(--c) 18%,#020617)}
-.drawer-bg{position:fixed;inset:0;background:rgba(2,6,23,.6);backdrop-filter:blur(2px);z-index:40}
-.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:#0f172a;border-left:1px solid var(--line-3);z-index:41;display:flex;flex-direction:column;box-shadow:-20px 0 40px rgba(0,0,0,.4);animation:slidein .2s ease}
+.drawer-bg{position:fixed;inset:0;background:rgba(2,6,23,.6);backdrop-filter:blur(2px);z-index:120}
+.drawer{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(780px,calc(100% - 24px));max-height:calc(100dvh - 32px);background:#0f172a;border:1px solid var(--line-3);border-radius:22px;z-index:121;display:flex;flex-direction:column;box-shadow:0 30px 60px rgba(0,0,0,.5);animation:winpop .18s ease}
+@keyframes winpop{from{opacity:0;transform:translate(-50%,-48%) scale(.98)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 @keyframes slidein{from{transform:translateX(30px);opacity:.4}}
 .drawer-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:18px 20px;border-bottom:1px solid var(--line-2)}
 .drawer-b{padding:18px 20px;overflow-y:auto}
@@ -1992,7 +2007,6 @@ const SECTIONS = [
   { g:"General", k:"planmes", l:"Planificación del mes", i:"target" },
   { g:"General", k:"alertas", l:"Alertas", i:"bell", hide:true }, // ahora están en Inicio
   { g:"General", k:"avisos", l:"Avisos", i:"megaphone", hide:true }, // se ven en Inicio
-  { g:"General", k:"sabados", l:"Turnos Sábados", i:"calendar-clock" },
   { g:"General", k:"mensajes", l:"Mensajes", i:"mail" },
   { g:"General", k:"notas", l:"Bloc de notas", i:"notebook-pen" },
   { g:"Diseño gráfico", k:"pedidos", l:"Diseño para Redes", n:"Diseño: Redes", i:"image" },
@@ -2018,6 +2032,7 @@ const SECTIONS = [
   { g:"Vista TV", k:"tvimpacto", l:"TV Impacto Redes", i:"trophy" },
   { g:"Admin", k:"usuarios", l:"Usuarios y permisos", i:"shield-check" },
   { g:"Equipo", k:"staff", l:"Staff", i:"users" },
+  { g:"Equipo", k:"sabados", l:"Turnos Sábados", i:"calendar-clock" },
   { g:"Equipo", k:"cumples", l:"Cumpleaños", i:"cake" },
   { g:"Ayuda", k:"guia", l:"Guía de uso", i:"book-open" },
 ];
@@ -2085,14 +2100,14 @@ const jobDone = j => j.area === "CM" ? "trabajo" : "diseño";
 function approveJob(j){
   j.status = j.area === "CM" ? "Aprobado" : "Entregado"; if (!j.approved) j.approved = TODAY; // en Diseño, aprobar cierra el ciclo: Diseño finalizado
   if (j.status === "Entregado"){ if (!j.delivered) j.delivered = TODAY; const p = j.post && postById(j.post); if (p && p.status === "En diseño") p.status = "Listo"; }
-  (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), ok:true });
+  (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), ok:true, by:viewer.name });
   NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
   notify({ to:j.owner, type:"approved", job:j.id }); jobUI.form = null;
   render(); toast(`${j.area === "CM" ? "Aprobado" : "Diseño finalizado"}. Le avisamos a ${firstName(j.owner)}.`);
 }
-const jobRounds = j => (j.changes || []).filter(c => !c.ok).length; // cuántas veces se pidieron cambios
+const jobRounds = j => (j.changes || []).filter(c => !c.ok && !c.kind).length; // cuántas veces se pidieron cambios
 function sendJobChanges(j, text){
-  j.status = "En corrección"; (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), text });
+  j.status = "En corrección"; (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), text, by:viewer.name });
   NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
   notify({ to:j.owner, type:"fix", job:j.id, text }); jobUI.form = null;
   render(); toast(`Le mandamos los cambios a ${firstName(j.owner)}.`);
@@ -2121,6 +2136,7 @@ function moveJob(j, to){
   if (viewer.role !== "Admin total" && to === reviewStage(j)){
     const fix = j.status === "En corrección"; if (fix) j.rounds = (j.rounds || 0) + 1;
     j.status = to; NOTIFS.forEach(n => { if (n.to === viewer.name && n.job === j.id) n.read = true; });
+    (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), kind:"boceto", by:viewer.name, fix });
     notify({ to:"admin", type:"review", job:j.id, who:viewer.name, fix });
     render(); toast(`¡Bien! “${j.title}” quedó como ${to}. Le avisamos a Admin total para que lo revise.`); return; }
   setJobStatus(j, to);
@@ -2856,7 +2872,8 @@ const mainBrandOptions = cur => `<option value="${VARIAS}" ${cur === VARIAS ? "s
 const icon = n => `<i data-lucide="${n}"></i>`;
 // Vistas TV, Usuarios y Carga de trabajo: solo Admin total (aunque el permiso esté marcado).
 const ONLY_AT = ["tv","tvredes","tvimpacto","usuarios","cargadiseno","cargacm"];
-const can = key => ONLY_AT.includes(key) ? viewer.role === "Admin total" : ["sabados","avisos","perfil","sugerencias","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
+const ONLY_ADMINS = ["historial","historialcm"]; // Historial de Diseño y de CM: solo Admin total y Admin
+const can = key => ONLY_AT.includes(key) ? viewer.role === "Admin total" : ONLY_ADMINS.includes(key) ? isAdminAny() && viewer.perms.has(key) : ["sabados","avisos","perfil","sugerencias","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
 const myGroups = () => viewer.brands || GROUPS;
 const seesBrand = b => myGroups().includes(groupOf(b));
 const myBrands = () => Object.keys(BRANDS).filter(seesBrand);
@@ -2926,11 +2943,12 @@ const myNotifs = () => NOTIFS.filter(n => n.to === viewer.name && !n.read);
 function notifAlerts(){
   if (viewer.role === "Admin total") return adminNotifs().map(n => {
     if (n.type === "sug") { const x = SUGGESTIONS.find(y => y.id === n.sug); return { go:"sugerencias", key:"n:" + n.id, sev:"#22d3ee", rank:-4, ic:"message-square", t:`Llegó una sugerencia nueva ${x ? sugNo(x) : ""}`, m:`${x ? x.topic : ""}${x && x.anon ? " · anónima" : x ? " · de " + (PEOPLE.find(pp => pp.id === x.author)?.name || "") : ""} · ${dm(n.date)} ${n.time}`, acts:`<button class="btn" data-page="sugerencias">Ver sugerencia</button>` }; }
-    const j = jobById(n.job);
+    const j = jobById(n.job); if (!j) return null;
+    if (n.type === "nota") return { go:"job:" + j.id, key:"n:" + n.id, sev:"#94a3b8", rank:-4, ic:"message-circle", t:`${n.who} comentó en: ${j.title}`, m:`“${n.text}” · ${dm(n.date)} ${n.time}` };
     return { go:"job:" + j.id, key:"n:" + n.id, sev:"#a855f7", rank:-5, ic:"circle-check", t:`${n.who} ${n.fix ? "terminó las correcciones" : j.area === "CM" ? "terminó su trabajo" : "terminó el boceto"}: ${j.title}`, m:`${j.brand} · ${j.piece} · listo para revisar · ${dm(n.date)} ${n.time}${j.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}`,
       acts:`<button class="btn primary" data-nact="approve" data-nid="${n.id}">${j.area === "CM" ? "Aprobar" : "✓ Diseño finalizado"}</button><button class="btn" data-nact="fix" data-nid="${n.id}">Pedir cambios</button><button class="btn" data-jficha="${j.id}">Ver pedido</button>` };
   });
-  return myNotifs().map(n => ({ go:"job:" + n.job, key:"n:" + n.id, sev:n.type === "approved" ? "#10b981" : "#f97316", rank:-5, ic:n.type === "approved" ? "badge-check" : "pencil", t:n.type === "approved" ? `Admin total aprobó tu ${jobDone(jobById(n.job) || {})}: ${jobById(n.job)?.title}` : `Admin total pidió cambios: ${jobById(n.job)?.title}`, m:`${n.type === "fix" && n.text ? `“${n.text}” · ` : ""}${dm(n.date)} ${n.time}${n.type === "fix" ? " · cuando termines, tocá “Terminé las correcciones”" : ""}`, acts:`${n.type === "fix" ? `<button class="btn primary" data-jdone="${n.job}">✓ Terminé las correcciones</button>` : ""}<button class="btn" data-jficha="${n.job}">Ver pedido</button>` }));
+  return myNotifs().map(n => n.type === "nota" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#94a3b8", rank:-4, ic:"message-circle", t:`Admin total comentó en: ${jobById(n.job)?.title || ""}`, m:`“${n.text}” · ${dm(n.date)} ${n.time}` } : ({ go:"job:" + n.job, key:"n:" + n.id, sev:n.type === "approved" ? "#10b981" : "#f97316", rank:-5, ic:n.type === "approved" ? "badge-check" : "pencil", t:n.type === "approved" ? `Admin total aprobó tu ${jobDone(jobById(n.job) || {})}: ${jobById(n.job)?.title}` : `Admin total pidió cambios: ${jobById(n.job)?.title}`, m:`${n.type === "fix" && n.text ? `“${n.text}” · ` : ""}${dm(n.date)} ${n.time}${n.type === "fix" ? " · cuando termines, tocá “Terminé las correcciones”" : ""}`, acts:`${n.type === "fix" ? `<button class="btn primary" data-jdone="${n.job}">✓ Terminé las correcciones</button>` : ""}<button class="btn" data-jficha="${n.job}">Ver pedido</button>` }));
 }
 function alerts(){
   const out = [];
@@ -2952,7 +2970,7 @@ function alerts(){
   if (can("cumples")) bdayAlerts().forEach(({ pp, d }) => out.push({ go:"cumples", key:`bday:${pp.id}:${TODAY}`, sev: d === 0 ? "#ef4444" : "#f97316", rank:-2, ic:"cake", t:`${d === 0 ? `Hoy cumple años ${pp.name}` : `${d === 1 ? "Mañana" : `En ${d} días`} cumple años ${pp.name}`}`, m:bdayLabel(pp.birthday) }));
   if (viewer.role === "Admin total"){ const np = OBJ_PROPOSALS.filter(x => x.status === "Pendiente"); if (np.length) out.push({ go:"planmes", sev:"#eab308", rank:-3, ic:"lightbulb", t:`${np.length} ${np.length === 1 ? "propuesta" : "propuestas"} de objetivo del equipo`, m:np.map(x => `${nickOf(personById(x.by))}: ${x.title}`).join(" · "), acts:`<button class="btn" data-page="planmes">Ver propuestas</button>` }); }
   avActiveFor(viewer).filter(a => !a.seen.includes(viewer.id)).forEach(a => out.push({ key:"av:" + a.id, sev:AV_LEVELS[a.level].c, rank:-8, ic:AV_LEVELS[a.level].ic, t:`Aviso: ${a.title}`, m:`${a.text} · ${avRange(a)}`, acts:`<button class="btn" data-avok="${a.id}">Entendido</button>` }));
-  out.push(...notifAlerts(), ...msgAlerts(), ...pendingSurveys().map(sv => ({ sev:"#a78bfa", rank:-3, ic:"clipboard-list", t:`Encuesta para responder: ${sv.title}`, m:`${sv.qs.length} preguntas · te lleva 2 minutos`, acts:`<button class="btn primary" data-svopen="${sv.id}">Responder</button>` })));
+  out.push(...notifAlerts().filter(Boolean), ...msgAlerts(), ...pendingSurveys().map(sv => ({ sev:"#a78bfa", rank:-3, ic:"clipboard-list", t:`Encuesta para responder: ${sv.title}`, m:`${sv.qs.length} preguntas · te lleva 2 minutos`, acts:`<button class="btn primary" data-svopen="${sv.id}">Responder</button>` })));
   if (viewer.role === "Admin total") resetRequests.forEach(id => { const pp = PEOPLE.find(x => x.id === id); if (pp) out.push({ go:"usuarios", sev:"#22d3ee", rank:-1, ic:"key-round", t:`${pp.name} pidió restablecer su contraseña`, m:"Andá a Usuarios y permisos → Restablecer contraseña" }); });
   if (satPeople().includes(viewer) && !isViewOnly()){ const n = satList(SAT_TURN[CURRENT_MONTH] || {}, viewer.id).length;
     if (n < SATS_PER) out.push({ go:"sabados", key:`sat:${CURRENT_MONTH}:${n}`, sev:"#f97316", rank:-2, ic:"calendar-clock", t:n ? "Te falta elegir 1 sábado de turno" : "Elegí tus sábados de turno", m:`${monthLabel(CURRENT_MONTH)} · tenés que elegir ${SATS_PER} sábados para venir a la oficina` }); }
@@ -3476,14 +3494,35 @@ function jobReviewBox(j){
   const hist = (j.changes || []).slice().reverse(), wait = REVIEW_WAIT.includes(j.status);
   if (!wait && !hist.length) return "";
   return `<div class="jrevbox" style="grid-column:1/-1"><span class="note">Cambios pedidos: <b>${jobRounds(j)}</b></span>${wait ? `<div class="jrevh"><b>${icon("hourglass")} ${esc(firstName(j.owner))} terminó ${j.area === "CM" ? "su trabajo" : "el boceto"}: esperando tu revisión</b><div class="chips"><button class="btn primary" type="button" data-jrev="approve:${j.id}">${j.area === "CM" ? "Aprobar" : "✓ Diseño finalizado"}</button><button class="btn" type="button" data-jrev="fix:${j.id}">Pedir cambios</button></div></div>` : ""}
-    ${hist.length ? `<div class="jfhist">${hist.map(c => `<div class="${c.ok ? "ok" : ""}"><span>${dm(c.date)} · ${c.time}</span><p>${c.ok ? (j.area === "CM" ? "✓ Aprobado" : "✓ Diseño finalizado") : esc(c.text)}</p></div>`).join("")}</div>` : ""}</div>`;
+    ${jobChain(j, false)}</div>`;
 }
+// Cadena de cambios: cada boceto entregado, cada pedido de cambios, los mensajes de ida y vuelta y el cierre, en orden.
+function jobChain(j, input = true){
+  const list = j.changes || [], who = n => { const pp = PEOPLE.find(x => x.name === n); return pp ? nickOf(pp) : n ? firstName(n) : "Admin total"; };
+  const canWrite = input && !isViewOnly() && !isClosed() && (viewer.role === "Admin total" || j.owner === viewer.name) && !isFin(j);
+  let round = 0;
+  const item = c => {
+    if (c.ok) return `<li class="ok"><i>${icon("badge-check")}</i><div><b>${j.area === "CM" ? "Aprobado" : "Diseño finalizado"}</b><span>${who(c.by)} · ${dm(c.date)} ${c.time}</span></div></li>`;
+    if (c.kind === "boceto") return `<li class="bo"><i>${icon("send")}</i><div><b>${c.fix ? "Correcciones entregadas" : "Boceto finalizado"}</b><span>${who(c.by)} · ${dm(c.date)} ${c.time}</span></div></li>`;
+    if (c.kind === "nota") return `<li class="nt"><i>${icon("message-circle")}</i><div><b>${esc(who(c.by))}</b><p>${esc(c.text)}</p><span>${dm(c.date)} ${c.time}</span></div></li>`;
+    round++; return `<li class="fx"><i>${icon("pencil")}</i><div><b>Cambios pedidos · ronda ${round}</b><p>${esc(c.text)}</p><span>${who(c.by)} · ${dm(c.date)} ${c.time}</span></div></li>`;
+  };
+  if (!list.length && !canWrite) return "";
+  return `<div class="jchain"><h3>Cadena de cambios <span class="note">${jobRounds(j)} ${jobRounds(j) === 1 ? "cambio pedido" : "cambios pedidos"}</span></h3>
+    ${list.length ? `<ol>${list.map(item).join("")}</ol>` : `<p class="note" style="margin:0">Todavía no hay movimientos.</p>`}
+    ${canWrite ? `<div class="jcin"><textarea class="base" id="jcText" rows="2" placeholder="Escribí un comentario o una consulta sobre los cambios…"></textarea><button class="btn" type="button" data-jcsend="${j.id}">${icon("send")} Enviar</button></div>` : ""}</div>`;
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-jcsend]"); if (!b) return;
+  const j = jobById(b.dataset.jcsend), t = document.getElementById("jcText")?.value.trim(); if (!j || !t) return;
+  (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), kind:"nota", text:t, by:viewer.name });
+  notify(viewer.role === "Admin total" ? { to:j.owner, type:"nota", job:j.id, text:t } : { to:"admin", type:"nota", job:j.id, who:viewer.name, text:t });
+  render(); toast("Comentario enviado."); });
 // Ficha del pedido: todo lo que cargó Admin total, los cambios pedidos y lo que la persona puede hacer.
 function jobFicha(){
   const j = jobUI.ficha && jobById(jobUI.ficha); if (!j) return "";
   const at = viewer.role === "Admin total", p = j.post && postById(j.post), hist = (j.changes || []).slice().reverse();
   const row = (k, v) => v ? `<div><span>${k}</span><b>${v}</b></div>` : "";
-  const last = j.status === "En corrección" && hist.find(c => !c.ok);
+  const last = j.status === "En corrección" && hist.find(c => !c.ok && !c.kind);
   const label = st => st === reviewStage(j) ? `✓ ${st} · avisar a Admin total` : st === "Entregado" ? "✓ Diseño finalizado" : st === "Publicado" ? "✓ Publicado" : st;
   const opts = stageOptions("job", j).filter(st => st !== j.status);
   const acts = at && REVIEW_WAIT.includes(j.status) ? `<div class="chips"><button class="btn primary" data-jrev="approve:${j.id}">${j.area === "CM" ? "Aprobar" : "✓ Diseño finalizado"}</button><button class="btn" data-jrev="fix:${j.id}">Pedir cambios</button></div>`
@@ -3498,7 +3537,7 @@ function jobFicha(){
       ${j.link ? `<a class="btn" href="${esc(j.link)}" target="_blank" rel="noopener">${icon("link")} Abrir brief y archivos</a>` : ""}
       ${j.notes ? `<div class="jfnotes"><span>Observaciones</span><p>${esc(j.notes)}</p></div>` : ""}
       <div class="jfact"><h3>Etapa</h3>${stagePicker(j, false)}${acts}</div>
-      ${hist.length ? `<div class="jfhist"><h3>Revisiones</h3>${hist.map(c => `<div class="${c.ok ? "ok" : ""}"><span>${dm(c.date)} · ${c.time}</span><p>${c.ok ? (j.area === "CM" ? "✓ Aprobado por Admin total" : "✓ Diseño finalizado por Admin total") : esc(c.text)}</p></div>`).join("")}</div>` : ""}
+      ${jobChain(j)}
       ${at ? `<button class="btn" data-jedit="${j.id}">${icon("pencil")} Editar pedido</button>` : ""}
     </div></aside>`;
 }
