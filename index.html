@@ -55,8 +55,8 @@ html.light .logo-wide{background:#0f172a;border-radius:12px;padding:6px 10px;box
 @media (max-width:1024px){.brandbar{padding:14px 16px 0}.logo-wide{width:200px}.brandlogos{height:24px}}
 .nav{display:flex;flex-direction:column;gap:14px}
 .nav-group{display:flex;flex-direction:column;gap:4px}
-.nav-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.2em;padding:0 12px 2px;color:rgba(34,211,238,.6)}
-.nav-group.big .nav-label{display:flex;align-items:center;justify-content:flex-start;gap:8px;white-space:nowrap;letter-spacing:.1em}
+.nav-label{font-size:12.5px;font-weight:400;text-transform:uppercase;letter-spacing:.16em;padding:0 12px 2px;color:rgba(34,211,238,.75)}
+.nav-group.big .nav-label{display:flex;flex-direction:column;align-items:flex-start;gap:6px;white-space:nowrap}
 .focusbtn{all:unset;box-sizing:border-box;cursor:pointer;flex:none;white-space:nowrap;font-size:9.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;border:1px solid rgba(239,68,68,.55);color:#f87171;background:transparent;line-height:1.5}
 .focusbtn:hover{background:rgba(239,68,68,.1)}
 .focusbtn.team{color:var(--muted);border-color:var(--line-3)}
@@ -2067,21 +2067,23 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-jdon
   moveJob(j, reviewStage(j)); });
 // Diseñador: un diseño aprobado se marca como entregado
 document.addEventListener("click", e => { const b = e.target.closest("[data-jdeliver]"); if (!b) return; e.stopPropagation();
-  const j = jobById(b.dataset.jdeliver); if (!j || j.owner !== viewer.name || j.status !== "Aprobado") return; moveJob(j, j.area === "CM" ? "Publicado" : "Entregado"); });
+  const j = jobById(b.dataset.jdeliver); if (!j || j.owner !== viewer.name || (j.area !== "CM" && j.status !== "Aprobado")) return; moveJob(j, j.area === "CM" ? "Publicado" : "Entregado"); });
 // Admin total: aprobar o pedir correcciones desde el aviso
 document.addEventListener("click", e => { const b = e.target.closest("[data-nact]"); if (!b) return;
   const n = NOTIFS.find(x => x.id === +b.dataset.nid), j = n && jobById(n.job); if (!j) return;
   if (b.dataset.nact === "approve"){ n.read = true; approveJob(j); } else openFixModal(j, n); });
 // Revisión de Admin total: aprobar, o pedir cambios con un mensaje que le llega a la persona.
-const reviewStage = j => j.area === "CM" ? "En revisión" : "Boceto finalizado";
+const reviewStage = j => j.area === "CM" ? "" : "Boceto finalizado";
 const jobDone = j => j.area === "CM" ? "trabajo" : "diseño";
 function approveJob(j){
-  j.status = "Aprobado"; if (!j.approved) j.approved = TODAY;
+  j.status = j.area === "CM" ? "Aprobado" : "Entregado"; if (!j.approved) j.approved = TODAY; // en Diseño, aprobar cierra el ciclo: Diseño finalizado
+  if (j.status === "Entregado"){ if (!j.delivered) j.delivered = TODAY; const p = j.post && postById(j.post); if (p && p.status === "En diseño") p.status = "Listo"; }
   (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), ok:true });
   NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
   notify({ to:j.owner, type:"approved", job:j.id }); jobUI.form = null;
-  render(); toast(`Aprobado. Le avisamos a ${firstName(j.owner)}.`);
+  render(); toast(`${j.area === "CM" ? "Aprobado" : "Diseño finalizado"}. Le avisamos a ${firstName(j.owner)}.`);
 }
+const jobRounds = j => (j.changes || []).filter(c => !c.ok).length; // cuántas veces se pidieron cambios
 function sendJobChanges(j, text){
   j.status = "En corrección"; (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), text });
   NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
@@ -2108,7 +2110,7 @@ document.addEventListener("click", e => {
 function moveJob(j, to){
   if (!j || j.status === to || !stageOptions("job", j).includes(to)) return render();
   if (viewer.role === "Admin total" && to === "En corrección"){ render(); openFixModal(j); return; } // los cambios siempre van con mensaje
-  if (viewer.role === "Admin total" && to === "Aprobado" && REVIEW_WAIT.includes(j.status)) return approveJob(j);
+  if (viewer.role === "Admin total" && (to === "Aprobado" || to === "Entregado") && REVIEW_WAIT.includes(j.status)) return approveJob(j);
   if (viewer.role !== "Admin total" && to === reviewStage(j)){
     const fix = j.status === "En corrección"; if (fix) j.rounds = (j.rounds || 0) + 1;
     j.status = to; NOTIFS.forEach(n => { if (n.to === viewer.name && n.job === j.id) n.read = true; });
@@ -2912,7 +2914,7 @@ function notifAlerts(){
     if (n.type === "sug") { const x = SUGGESTIONS.find(y => y.id === n.sug); return { sev:"#22d3ee", rank:-4, ic:"message-square", t:`Llegó una sugerencia nueva ${x ? sugNo(x) : ""}`, m:`${x ? x.topic : ""}${x && x.anon ? " · anónima" : x ? " · de " + (PEOPLE.find(pp => pp.id === x.author)?.name || "") : ""} · ${dm(n.date)} ${n.time}`, acts:`<button class="btn" data-page="sugerencias">Ver sugerencia</button>` }; }
     const j = jobById(n.job);
     return { sev:"#a855f7", rank:-5, ic:"circle-check", t:`${n.who} ${n.fix ? "terminó las correcciones" : j.area === "CM" ? "terminó su trabajo" : "terminó el boceto"}: ${j.title}`, m:`${j.brand} · ${j.piece} · listo para revisar · ${dm(n.date)} ${n.time}${j.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}`,
-      acts:`<button class="btn primary" data-nact="approve" data-nid="${n.id}">Aprobar</button><button class="btn" data-nact="fix" data-nid="${n.id}">Pedir cambios</button><button class="btn" data-jficha="${j.id}">Ver pedido</button>` };
+      acts:`<button class="btn primary" data-nact="approve" data-nid="${n.id}">${j.area === "CM" ? "Aprobar" : "✓ Diseño finalizado"}</button><button class="btn" data-nact="fix" data-nid="${n.id}">Pedir cambios</button><button class="btn" data-jficha="${j.id}">Ver pedido</button>` };
   });
   return myNotifs().map(n => ({ sev:n.type === "approved" ? "#10b981" : "#f97316", rank:-5, ic:n.type === "approved" ? "badge-check" : "pencil", t:n.type === "approved" ? `Admin total aprobó tu ${jobDone(jobById(n.job) || {})}: ${jobById(n.job)?.title}` : `Admin total pidió cambios: ${jobById(n.job)?.title}`, m:`${n.type === "fix" && n.text ? `“${esc(n.text)}” · ` : ""}${dm(n.date)} ${n.time}${n.type === "fix" ? " · cuando termines, tocá “Terminé las correcciones”" : ""}`, acts:`${n.type === "fix" ? `<button class="btn primary" data-jdone="${n.job}">✓ Terminé las correcciones</button>` : ""}<button class="btn" data-jficha="${n.job}">Ver pedido</button>` }));
 }
@@ -3172,8 +3174,7 @@ function stageOptions(kind, it){
   }
   if (!canChangeStatus(it)) return [];
   if (it.area === "CM"){ // el CM avanza hasta “En revisión”; Admin total aprueba o pide cambios; después el CM programa y publica
-    if (["Pendiente","En proceso","En corrección"].includes(it.status)) return ["Pendiente","En proceso","En revisión"];
-    return ["Aprobado","Programado","Publicado"].includes(it.status) ? ["Aprobado","Programado","Publicado"] : [];
+    return ["Pendiente","En proceso","Programado","Publicado"];
   }
   return statesOf(it).filter(st => !["En revisión","En corrección","Aprobado","Entregado"].includes(st));
 }
@@ -3213,7 +3214,8 @@ document.addEventListener("click", e => {
 const canSetAnyStatus = j => canChangeStatus(j) && !isDesigner();
 function designerAction(j){
   if (j.owner !== viewer.name || isClosed()) return "";
-  if (["Pendiente","En proceso"].includes(j.status)) return `<button class="btn primary donebtn" data-jdone="${j.id}">✓ ${j.area === "CM" ? "Listo para revisar" : "Boceto finalizado"}</button>`;
+  if (j.area === "CM") return j.status === "Publicado" ? "" : `<button class="btn primary donebtn" data-jdeliver="${j.id}">✓ Publicado</button>`;
+  if (["Pendiente","En proceso"].includes(j.status)) return `<button class="btn primary donebtn" data-jdone="${j.id}">✓ Boceto finalizado</button>`;
   if (j.status === "En corrección") return `<button class="btn primary donebtn fix" data-jdone="${j.id}">✓ Terminé las correcciones</button>`;
   if (REVIEW_WAIT.includes(j.status)) return `<span class="waitchip">${icon("hourglass")} Esperando revisión</span>`;
   if (j.status === "Aprobado") return `<span class="okchip">✓ Aprobado</span><button class="btn primary donebtn" data-jdeliver="${j.id}">✓ ${j.area === "CM" ? "Publicado" : "Diseño finalizado"}</button>`;
@@ -3434,8 +3436,8 @@ function jobReviewBox(j){
   if (!j || viewer.role !== "Admin total") return "";
   const hist = (j.changes || []).slice().reverse(), wait = REVIEW_WAIT.includes(j.status);
   if (!wait && !hist.length) return "";
-  return `<div class="jrevbox" style="grid-column:1/-1">${wait ? `<div class="jrevh"><b>${icon("hourglass")} ${esc(firstName(j.owner))} terminó ${j.area === "CM" ? "su trabajo" : "el boceto"}: esperando tu revisión</b><div class="chips"><button class="btn primary" type="button" data-jrev="approve:${j.id}">Aprobar</button><button class="btn" type="button" data-jrev="fix:${j.id}">Pedir cambios</button></div></div>` : ""}
-    ${hist.length ? `<div class="jfhist">${hist.map(c => `<div class="${c.ok ? "ok" : ""}"><span>${dm(c.date)} · ${c.time}</span><p>${c.ok ? "✓ Aprobado" : esc(c.text)}</p></div>`).join("")}</div>` : ""}</div>`;
+  return `<div class="jrevbox" style="grid-column:1/-1"><span class="note">Cambios pedidos: <b>${jobRounds(j)}</b></span>${wait ? `<div class="jrevh"><b>${icon("hourglass")} ${esc(firstName(j.owner))} terminó ${j.area === "CM" ? "su trabajo" : "el boceto"}: esperando tu revisión</b><div class="chips"><button class="btn primary" type="button" data-jrev="approve:${j.id}">${j.area === "CM" ? "Aprobar" : "✓ Diseño finalizado"}</button><button class="btn" type="button" data-jrev="fix:${j.id}">Pedir cambios</button></div></div>` : ""}
+    ${hist.length ? `<div class="jfhist">${hist.map(c => `<div class="${c.ok ? "ok" : ""}"><span>${dm(c.date)} · ${c.time}</span><p>${c.ok ? (j.area === "CM" ? "✓ Aprobado" : "✓ Diseño finalizado") : esc(c.text)}</p></div>`).join("")}</div>` : ""}</div>`;
 }
 // Ficha del pedido: todo lo que cargó Admin total, los cambios pedidos y lo que la persona puede hacer.
 function jobFicha(){
@@ -3443,9 +3445,9 @@ function jobFicha(){
   const at = viewer.role === "Admin total", p = j.post && postById(j.post), hist = (j.changes || []).slice().reverse();
   const row = (k, v) => v ? `<div><span>${k}</span><b>${v}</b></div>` : "";
   const last = j.status === "En corrección" && hist.find(c => !c.ok);
-  const label = st => st === reviewStage(j) ? `✓ ${st} · avisar a Admin total` : st === "Entregado" ? "✓ Diseño finalizado" : st;
+  const label = st => st === reviewStage(j) ? `✓ ${st} · avisar a Admin total` : st === "Entregado" ? "✓ Diseño finalizado" : st === "Publicado" ? "✓ Publicado" : st;
   const opts = stageOptions("job", j).filter(st => st !== j.status);
-  const acts = at && REVIEW_WAIT.includes(j.status) ? `<div class="chips"><button class="btn primary" data-jrev="approve:${j.id}">Aprobar</button><button class="btn" data-jrev="fix:${j.id}">Pedir cambios</button></div>`
+  const acts = at && REVIEW_WAIT.includes(j.status) ? `<div class="chips"><button class="btn primary" data-jrev="approve:${j.id}">${j.area === "CM" ? "Aprobar" : "✓ Diseño finalizado"}</button><button class="btn" data-jrev="fix:${j.id}">Pedir cambios</button></div>`
     : REVIEW_WAIT.includes(j.status) ? `<span class="waitchip">${icon("hourglass")} Esperando la revisión de Admin total</span>`
     : opts.length ? `<div class="chips">${opts.map(st => `<button class="btn${st === reviewStage(j) || st === "Entregado" || st === "Publicado" ? " primary" : ""}" data-jmove="${j.id}|${st}">${label(st)}</button>`).join("")}</div>` : "";
   return `<div class="drawer-bg" data-jfclose></div><aside class="drawer jficha" aria-label="Pedido completo">
@@ -3453,11 +3455,11 @@ function jobFicha(){
     <div class="drawer-b jf">
       <div class="chips">${pill(j.status, JOB_COLOR[j.status])}${urgBadge(j)}</div>
       ${last ? `<div class="jfmsg"><b>${icon("pencil")} Cambios que pidió Admin total</b><p>${esc(last.text)}</p><span>${dm(last.date)} · ${last.time}</span></div>` : ""}
-      <div class="jfgrid">${row("Marca", brandTag(j.brand))}${row("Tipo de trabajo", esc(j.piece))}${row("Solicitante", esc(j.requester))}${row("Responsable", esc(j.owner))}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", pill(j.priority, PRIO_COLOR[j.priority]))}${row("Complejidad", esc(j.complexity))}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}</div>
+      <div class="jfgrid">${row("Marca", brandTag(j.brand))}${row("Tipo de trabajo", esc(j.piece))}${row("Solicitante", esc(j.requester))}${row("Responsable", esc(j.owner))}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", pill(j.priority, PRIO_COLOR[j.priority]))}${row("Complejidad", esc(j.complexity))}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}</div>
       ${j.link ? `<a class="btn" href="${esc(j.link)}" target="_blank" rel="noopener">${icon("link")} Abrir brief y archivos</a>` : ""}
       ${j.notes ? `<div class="jfnotes"><span>Observaciones</span><p>${esc(j.notes)}</p></div>` : ""}
       <div class="jfact"><h3>Etapa</h3>${stagePicker(j, false)}${acts}</div>
-      ${hist.length ? `<div class="jfhist"><h3>Revisiones</h3>${hist.map(c => `<div class="${c.ok ? "ok" : ""}"><span>${dm(c.date)} · ${c.time}</span><p>${c.ok ? "✓ Aprobado por Admin total" : esc(c.text)}</p></div>`).join("")}</div>` : ""}
+      ${hist.length ? `<div class="jfhist"><h3>Revisiones</h3>${hist.map(c => `<div class="${c.ok ? "ok" : ""}"><span>${dm(c.date)} · ${c.time}</span><p>${c.ok ? (j.area === "CM" ? "✓ Aprobado por Admin total" : "✓ Diseño finalizado por Admin total") : esc(c.text)}</p></div>`).join("")}</div>` : ""}
       ${at ? `<button class="btn" data-jedit="${j.id}">${icon("pencil")} Editar pedido</button>` : ""}
     </div></aside>`;
 }
@@ -5196,7 +5198,7 @@ const GUIDE = [
   ["Cómo funciona", [
     ["gauge","Carga de trabajo","Cada persona tiene una barra: suman los trabajos sin terminar según su complejidad (Baja 1 · Media 2 · Alta 3) sobre 10 puntos de capacidad. En los CM también suma 1 punto cada publicación del mes que todavía no está programada. Verde = ideal, amarillo = carga alta, naranja = al límite, rojo = sobrecargado."],
     ["alarm-clock","Alarmas de entrega","Cada pedido y publicación avisa cuánto falta: falta 7 días, falta 3, falta 1, hoy, o ⏰ retraso de tantos días. La alarma queda hasta que se marca como terminado."],
-    ["list-ordered","Etapas con cuadraditos","Cada tarjeta muestra sus etapas numeradas. Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección) → Aprobado → Entregado. Admin total carga el pedido. El diseñador o el CM toca el pedido y ve la ficha completa; lo lleva hasta Boceto finalizado (CM: En revisión) y le llega el aviso a Admin total, que aprueba o pide cambios con un mensaje escrito. Con los cambios hechos vuelve a revisión; aprobado, el diseñador marca Diseño finalizado (CM: Programado → Publicado). Tocás el cuadradito de la etapa o arrastrás la tarjeta a otra columna."],
+    ["list-ordered","Etapas con cuadraditos","Cada tarjeta muestra sus etapas numeradas. Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección) → Aprobado → Entregado. Admin total carga el pedido. El diseñador o el CM toca el pedido y ve la ficha completa; el diseñador lo lleva hasta Boceto finalizado y le llega el aviso a Admin total, que pide cambios con un mensaje escrito (se cuentan en la ficha) o toca Diseño finalizado y cierra el ciclo. El CM recibe el pedido y lo marca Programado → Publicado. Tocás el cuadradito de la etapa o arrastrás la tarjeta a otra columna."],
     ["check-check","Terminé mi etapa (diseñadores)","El diseñador toca “Terminé mi etapa”: pasa a revisión y le llega un aviso a Admin total, que aprueba o pide correcciones. Con correcciones aparece “Terminé las correcciones”."],
     ["calendar-clock","Meses y cierre","Arriba cambiás de mes con ‹ Anterior / Siguiente ›. Admin total cierra el mes desde Informe mensual: queda para consultar y lo no cumplido pasa al mes siguiente como “arrastrado”."],
     ["mouse-pointer-click","Cambiar de etapa desde el calendario","En cualquier calendario, tocá la línea de estado de un contenido (● Estado ▾) y elegí la etapa: Programado, Publicado, Entregado… Los CM cambian todas las etapas de lo suyo. Los diseñadores llevan sus trabajos hasta “En revisión” (terminado); aprobar y entregar lo hace solo Admin total."],
@@ -5438,7 +5440,7 @@ function renderNav(){
   const svc = document.getElementById("svCount"), nsv = pendingSurveys().length; if (svc){ svc.hidden = !nsv; svc.textContent = nsv; }
   document.querySelector(".cfgbtn")?.classList.toggle("on", page === "config");
   const mc = document.getElementById("msgCount"), nm = unreadMsgs().length; if (mc){ mc.hidden = !nm; mc.textContent = nm; }
-  const groups = [...new Set(SECTIONS.map(s => s.g))].filter(g => !navFocus || g === navFocus);
+  const groups = [...new Set(SECTIONS.map(s => s.g))].filter(g => !navFocus || !FOCUS_GROUPS[g] || g === navFocus);
   $("#nav").innerHTML = groups.map(g => {
     const items = SECTIONS.filter(s => s.g === g && can(s.k));
     if (!items.length) return "";
