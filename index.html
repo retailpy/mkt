@@ -62,6 +62,13 @@ html.light .logo-wide{background:#0f172a;border-radius:12px;padding:6px 10px;box
 .focusbtn.team{color:var(--muted);border-color:var(--line-3)}
 .focusbtn:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .jficha .jf{display:flex;flex-direction:column;gap:14px}
+.arow.ago{cursor:pointer}
+.satmiss{display:inline-flex;align-items:center;gap:5px;margin-left:6px;padding:2px 8px;border-radius:999px;border:1px solid rgba(249,115,22,.55);color:#fdba74;font-size:12px;cursor:pointer}
+.satmiss svg{width:13px;height:13px}
+.arow.ago:hover{background:rgba(34,211,238,.05)}
+.arow .adis{all:unset;cursor:pointer;flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;color:var(--faint)}
+.arow .adis:hover{color:var(--ink);background:rgba(148,163,184,.12)}
+.arow .adis svg{width:15px;height:15px}
 .jfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(170px,100%),1fr));gap:12px 18px}
 .jfgrid div,.jfnotes{display:flex;flex-direction:column;gap:3px}
 .jfgrid span,.jfnotes span,.jfhist span,.jfmsg span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
@@ -1983,22 +1990,22 @@ const SECTIONS = [
   { g:"General", k:"dashboard", l:"Dashboard", i:"layout-dashboard" },
   { g:"General", k:"inicio", l:"Inicio", i:"house" },
   { g:"General", k:"planmes", l:"Planificación del mes", i:"target" },
-  { g:"General", k:"alertas", l:"Alertas", i:"bell" },
-  { g:"General", k:"avisos", l:"Avisos", i:"megaphone" },
+  { g:"General", k:"alertas", l:"Alertas", i:"bell", hide:true }, // ahora están en Inicio
+  { g:"General", k:"avisos", l:"Avisos", i:"megaphone", hide:true }, // se ven en Inicio
   { g:"General", k:"sabados", l:"Turnos Sábados", i:"calendar-clock" },
   { g:"General", k:"mensajes", l:"Mensajes", i:"mail" },
   { g:"General", k:"notas", l:"Bloc de notas", i:"notebook-pen" },
-  { g:"Diseño gráfico", k:"pedidos", l:"Diseño para Redes", n:"Diseño para Redes", i:"image" },
-  { g:"Diseño gráfico", k:"cartel", l:"Diseño para Cartelería", n:"Diseño para Cartelería", i:"signpost" },
-  { g:"Diseño gráfico", k:"web", l:"Diseño para Web", n:"Diseño para Web", i:"monitor" },
-  { g:"Diseño gráfico", k:"pantallas", l:"Diseño para Pantallas", n:"Diseño para Pantallas", i:"tv" },
+  { g:"Diseño gráfico", k:"pedidos", l:"Diseño para Redes", n:"Diseño: Redes", i:"image" },
+  { g:"Diseño gráfico", k:"cartel", l:"Diseño para Cartelería", n:"Diseño: Cartelería", i:"signpost" },
+  { g:"Diseño gráfico", k:"web", l:"Diseño para Web", n:"Diseño: Web", i:"monitor" },
+  { g:"Diseño gráfico", k:"pantallas", l:"Diseño para Pantallas", n:"Diseño: Pantallas", i:"tv" },
   { g:"Diseño gráfico", k:"cargadiseno", l:"Carga de trabajo Diseño gráfico", n:"Carga de trabajo", i:"gauge" },
   { g:"Diseño gráfico", k:"historial", l:"Historial Diseño gráfico", n:"Historial", i:"archive" },
   { g:"Community Manager", k:"plan", l:"Plan de posteo", i:"list-checks" },
-  { g:"Community Manager", k:"calendario", l:"Gestión Redes", n:"Gestión Redes", i:"calendar-days" },
-  { g:"Community Manager", k:"calhistoria", l:"Gestión Historia", n:"Gestión Historia", i:"smartphone" },
-  { g:"Community Manager", k:"calcanales", l:"Gestión Canal WhatsApp", n:"Gestión Canal WhatsApp", i:"message-circle" },
-  { g:"Community Manager", k:"gestioncm", l:"Gestión Videos", n:"Gestión Videos", i:"clapperboard" },
+  { g:"Community Manager", k:"calendario", l:"Gestión Redes", n:"Gestión: Redes", i:"calendar-days" },
+  { g:"Community Manager", k:"calhistoria", l:"Gestión Historia", n:"Gestión: Historia", i:"smartphone" },
+  { g:"Community Manager", k:"calcanales", l:"Gestión Canal WhatsApp", n:"Gestión: Canal WhatsApp", i:"message-circle" },
+  { g:"Community Manager", k:"gestioncm", l:"Gestión Videos", n:"Gestión: Videos", i:"clapperboard" },
   { g:"Community Manager", k:"cargacm", l:"Carga de trabajo CM", n:"Carga de trabajo", i:"gauge" },
   { g:"Community Manager", k:"historialcm", l:"Historial CM", n:"Historial", i:"archive" },
   { g:"Recursos", k:"prompts", l:"Prompts de imágenes", i:"wand-sparkles" },
@@ -2640,6 +2647,12 @@ function profileCard(v){
       <div class="facts">${(v.skills || []).map(sk => `<span class="skill">${esc(sk)}</span>`).join("")}</div></div>
     <a class="btn" href="#perfil" data-page="perfil" style="text-decoration:none">Editar mi perfil</a></div></div>`;
 }
+// Sábados de turno en la tarjeta de Staff; si todavía no eligió los suyos, sale la alerta.
+function staffSat(pp){
+  if (!satPeople().includes(pp)) return "";
+  const l = satList(SAT_TURN[CURRENT_MONTH] || {}, pp.id);
+  return `<dt>Sábados de ${MONTHS_ES[+CURRENT_MONTH.slice(5) - 1]}</dt><dd>${l.length ? l.map(dm).join(" y ") : ""}${l.length < SATS_PER ? `<span class="satmiss" data-page="sabados" role="link" tabindex="0">${icon("triangle-alert")} ${l.length ? "Falta elegir 1 sábado" : "Todavía no eligió sus sábados"}</span>` : ""}</dd>`;
+}
 const STAFF_GROUPS = [["Admin", pp => pp.role === "Admin total" || pp.role === "Admin"], ["Diseñador gráfico", pp => pp.role === "Diseñador"], ["CM", pp => pp.role === "CM"]];
 function pStaff(){
   const sup = viewer.role === "Admin total";
@@ -2656,6 +2669,7 @@ function pStaff(){
       ${pp.email ? `<dt>E-mail empresa</dt><dd class="mail">${esc(pp.email)}</dd>` : ""}
       ${pp.personalEmail ? `<dt>E-mail personal</dt><dd class="mail">${esc(pp.personalEmail)}</dd>` : ""}
       ${pp.phone ? `<dt>Celular personal</dt><dd>${esc(fmtPhone(pp.phone))}</dd>` : ""}
+      ${staffSat(pp)}
     </dl>
     <div class="facts" style="display:flex;gap:6px;flex-wrap:wrap">${(pp.skills || []).map(sk => `<span class="skill">${esc(sk)}</span>`).join("") || `<span class="note">Sin habilidades cargadas</span>`}</div>${me ? `<p class="myedit">${icon("pencil")} Tocá tu tarjeta para editar tu perfil</p>` : ""}${sup ? `<div class="svisrow"><button class="btn sm" data-staffedit="${pp.id}">${icon("pencil")} Editar datos</button><button class="btn sm" data-staffvis="${pp.id}">${pp.staffHidden ? `${icon("eye-off")} Oculto · mostrar` : `${icon("eye")} Visible · ocultar`}</button></div>` : ""}</div>`; };
   const hidden = PEOPLE.filter(pp => pp.active && pp.staffHidden).length;
@@ -2911,38 +2925,58 @@ const adminNotifs = () => NOTIFS.filter(n => n.to === "admin" && !n.read && (n.t
 const myNotifs = () => NOTIFS.filter(n => n.to === viewer.name && !n.read);
 function notifAlerts(){
   if (viewer.role === "Admin total") return adminNotifs().map(n => {
-    if (n.type === "sug") { const x = SUGGESTIONS.find(y => y.id === n.sug); return { sev:"#22d3ee", rank:-4, ic:"message-square", t:`Llegó una sugerencia nueva ${x ? sugNo(x) : ""}`, m:`${x ? x.topic : ""}${x && x.anon ? " · anónima" : x ? " · de " + (PEOPLE.find(pp => pp.id === x.author)?.name || "") : ""} · ${dm(n.date)} ${n.time}`, acts:`<button class="btn" data-page="sugerencias">Ver sugerencia</button>` }; }
+    if (n.type === "sug") { const x = SUGGESTIONS.find(y => y.id === n.sug); return { go:"sugerencias", key:"n:" + n.id, sev:"#22d3ee", rank:-4, ic:"message-square", t:`Llegó una sugerencia nueva ${x ? sugNo(x) : ""}`, m:`${x ? x.topic : ""}${x && x.anon ? " · anónima" : x ? " · de " + (PEOPLE.find(pp => pp.id === x.author)?.name || "") : ""} · ${dm(n.date)} ${n.time}`, acts:`<button class="btn" data-page="sugerencias">Ver sugerencia</button>` }; }
     const j = jobById(n.job);
-    return { sev:"#a855f7", rank:-5, ic:"circle-check", t:`${n.who} ${n.fix ? "terminó las correcciones" : j.area === "CM" ? "terminó su trabajo" : "terminó el boceto"}: ${j.title}`, m:`${j.brand} · ${j.piece} · listo para revisar · ${dm(n.date)} ${n.time}${j.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}`,
+    return { go:"job:" + j.id, key:"n:" + n.id, sev:"#a855f7", rank:-5, ic:"circle-check", t:`${n.who} ${n.fix ? "terminó las correcciones" : j.area === "CM" ? "terminó su trabajo" : "terminó el boceto"}: ${j.title}`, m:`${j.brand} · ${j.piece} · listo para revisar · ${dm(n.date)} ${n.time}${j.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}`,
       acts:`<button class="btn primary" data-nact="approve" data-nid="${n.id}">${j.area === "CM" ? "Aprobar" : "✓ Diseño finalizado"}</button><button class="btn" data-nact="fix" data-nid="${n.id}">Pedir cambios</button><button class="btn" data-jficha="${j.id}">Ver pedido</button>` };
   });
-  return myNotifs().map(n => ({ sev:n.type === "approved" ? "#10b981" : "#f97316", rank:-5, ic:n.type === "approved" ? "badge-check" : "pencil", t:n.type === "approved" ? `Admin total aprobó tu ${jobDone(jobById(n.job) || {})}: ${jobById(n.job)?.title}` : `Admin total pidió cambios: ${jobById(n.job)?.title}`, m:`${n.type === "fix" && n.text ? `“${esc(n.text)}” · ` : ""}${dm(n.date)} ${n.time}${n.type === "fix" ? " · cuando termines, tocá “Terminé las correcciones”" : ""}`, acts:`${n.type === "fix" ? `<button class="btn primary" data-jdone="${n.job}">✓ Terminé las correcciones</button>` : ""}<button class="btn" data-jficha="${n.job}">Ver pedido</button>` }));
+  return myNotifs().map(n => ({ go:"job:" + n.job, key:"n:" + n.id, sev:n.type === "approved" ? "#10b981" : "#f97316", rank:-5, ic:n.type === "approved" ? "badge-check" : "pencil", t:n.type === "approved" ? `Admin total aprobó tu ${jobDone(jobById(n.job) || {})}: ${jobById(n.job)?.title}` : `Admin total pidió cambios: ${jobById(n.job)?.title}`, m:`${n.type === "fix" && n.text ? `“${n.text}” · ` : ""}${dm(n.date)} ${n.time}${n.type === "fix" ? " · cuando termines, tocá “Terminé las correcciones”" : ""}`, acts:`${n.type === "fix" ? `<button class="btn primary" data-jdone="${n.job}">✓ Terminé las correcciones</button>` : ""}<button class="btn" data-jficha="${n.job}">Ver pedido</button>` }));
 }
 function alerts(){
   const out = [];
   if (!isDesigner()){
     posts.filter(p => seesBrand(p.brand) && (viewer.role !== "CM" || p.cm === viewer.name)).forEach(p => {
       const u = postUrgency(p);
-      if (u) out.push({ ic:u.late ? "alarm-clock" : "calendar-clock", sev:u.c, rank: u.late ? 0 : daysTo(p.date) + 1, t:`Post: ${u.t.toLowerCase()}: ${p.title}`, m:`${p.brand} · ${p.cm} · publicación ${dm(p.date)} · está en ${p.status}` });
+      if (u) out.push({ go:p.format === "Historia" ? "calhistoria" : "calendario", ic:u.late ? "alarm-clock" : "calendar-clock", sev:u.c, rank: u.late ? 0 : daysTo(p.date) + 1, t:`Post: ${u.t.toLowerCase()}: ${p.title}`, m:`${p.brand} · ${p.cm} · publicación ${dm(p.date)} · está en ${p.status}` });
     });
   }
   jobs.filter(j => seesBrand(j.brand) && !isFin(j) && (!isDesigner() || j.owner === viewer.name)).forEach(j => {
     const u = urgency(j);
-    if (u) out.push({ ic:u.late ? "alarm-clock" : "clock", sev:u.c, rank: u.late ? 0 : daysTo(j.due) + 1, t:`${u.t}: ${j.title}`, m:`${j.brand} · ${j.owner} · entrega el ${dm(j.due)}` });
-    if (j.owner === "Sin asignar") out.push({ ic:"user-round-x", sev:"var(--warn)", t:`Pedido sin asignar: ${j.title}`, m:`${j.brand} · falta elegir diseñador` });
+    if (u) out.push({ go:"job:" + j.id, ic:u.late ? "alarm-clock" : "clock", sev:u.c, rank: u.late ? 0 : daysTo(j.due) + 1, t:`${u.t}: ${j.title}`, m:`${j.brand} · ${j.owner} · entrega el ${dm(j.due)}` });
+    if (j.owner === "Sin asignar") out.push({ go:"job:" + j.id, ic:"user-round-x", sev:"var(--warn)", t:`Pedido sin asignar: ${j.title}`, m:`${j.brand} · falta elegir diseñador` });
   });
   if (can("pauta")){
     CAMPAIGNS.filter(c => seesBrand(c.brand) && daysTo(c.end) >= 0 && daysTo(c.end) <= 3)
-      .forEach(c => out.push({ ic:"megaphone", sev:"var(--warn)", t:`Pauta por terminar: ${c.name}`, m:`${c.brand} · termina el ${dm(c.end)}` }));
+      .forEach(c => out.push({ go:"pauta", ic:"megaphone", sev:"var(--warn)", t:`Pauta por terminar: ${c.name}`, m:`${c.brand} · termina el ${dm(c.end)}` }));
   }
-  if (can("cumples")) bdayAlerts().forEach(({ pp, d }) => out.push({ sev: d === 0 ? "#ef4444" : "#f97316", rank:-2, ic:"cake", t:`${d === 0 ? `Hoy cumple años ${pp.name}` : `${d === 1 ? "Mañana" : `En ${d} días`} cumple años ${pp.name}`}`, m:bdayLabel(pp.birthday) }));
-  if (viewer.role === "Admin total"){ const np = OBJ_PROPOSALS.filter(x => x.status === "Pendiente"); if (np.length) out.push({ sev:"#eab308", rank:-3, ic:"lightbulb", t:`${np.length} ${np.length === 1 ? "propuesta" : "propuestas"} de objetivo del equipo`, m:np.map(x => `${nickOf(personById(x.by))}: ${x.title}`).join(" · "), acts:`<button class="btn" data-page="planmes">Ver propuestas</button>` }); }
-  avActiveFor(viewer).filter(a => !a.seen.includes(viewer.id)).forEach(a => out.push({ sev:AV_LEVELS[a.level].c, rank:-8, ic:AV_LEVELS[a.level].ic, t:`Aviso: ${a.title}`, m:`${a.text} · ${avRange(a)}`, acts:`<button class="btn" data-avok="${a.id}">Entendido</button>` }));
+  if (can("cumples")) bdayAlerts().forEach(({ pp, d }) => out.push({ go:"cumples", key:`bday:${pp.id}:${TODAY}`, sev: d === 0 ? "#ef4444" : "#f97316", rank:-2, ic:"cake", t:`${d === 0 ? `Hoy cumple años ${pp.name}` : `${d === 1 ? "Mañana" : `En ${d} días`} cumple años ${pp.name}`}`, m:bdayLabel(pp.birthday) }));
+  if (viewer.role === "Admin total"){ const np = OBJ_PROPOSALS.filter(x => x.status === "Pendiente"); if (np.length) out.push({ go:"planmes", sev:"#eab308", rank:-3, ic:"lightbulb", t:`${np.length} ${np.length === 1 ? "propuesta" : "propuestas"} de objetivo del equipo`, m:np.map(x => `${nickOf(personById(x.by))}: ${x.title}`).join(" · "), acts:`<button class="btn" data-page="planmes">Ver propuestas</button>` }); }
+  avActiveFor(viewer).filter(a => !a.seen.includes(viewer.id)).forEach(a => out.push({ key:"av:" + a.id, sev:AV_LEVELS[a.level].c, rank:-8, ic:AV_LEVELS[a.level].ic, t:`Aviso: ${a.title}`, m:`${a.text} · ${avRange(a)}`, acts:`<button class="btn" data-avok="${a.id}">Entendido</button>` }));
   out.push(...notifAlerts(), ...msgAlerts(), ...pendingSurveys().map(sv => ({ sev:"#a78bfa", rank:-3, ic:"clipboard-list", t:`Encuesta para responder: ${sv.title}`, m:`${sv.qs.length} preguntas · te lleva 2 minutos`, acts:`<button class="btn primary" data-svopen="${sv.id}">Responder</button>` })));
-  if (viewer.role === "Admin total") resetRequests.forEach(id => { const pp = PEOPLE.find(x => x.id === id); if (pp) out.push({ sev:"#22d3ee", rank:-1, ic:"key-round", t:`${pp.name} pidió restablecer su contraseña`, m:"Andá a Usuarios y permisos → Restablecer contraseña" }); });
-  return out.sort((a,b) => (a.rank ?? 0) - (b.rank ?? 0));
+  if (viewer.role === "Admin total") resetRequests.forEach(id => { const pp = PEOPLE.find(x => x.id === id); if (pp) out.push({ go:"usuarios", sev:"#22d3ee", rank:-1, ic:"key-round", t:`${pp.name} pidió restablecer su contraseña`, m:"Andá a Usuarios y permisos → Restablecer contraseña" }); });
+  if (satPeople().includes(viewer) && !isViewOnly()){ const n = satList(SAT_TURN[CURRENT_MONTH] || {}, viewer.id).length;
+    if (n < SATS_PER) out.push({ go:"sabados", key:`sat:${CURRENT_MONTH}:${n}`, sev:"#f97316", rank:-2, ic:"calendar-clock", t:n ? "Te falta elegir 1 sábado de turno" : "Elegí tus sábados de turno", m:`${monthLabel(CURRENT_MONTH)} · tenés que elegir ${SATS_PER} sábados para venir a la oficina` }); }
+  const gone = alertsGone();
+  return out.map(a => ({ ...a, key:a.key || "t:" + a.t })).filter(a => !gone.has(a.key)).sort((a,b) => (a.rank ?? 0) - (b.rank ?? 0));
 }
-const alertList = list => list.length ? `<div class="list alist">${list.map((a, i) => `<div class="row arow" style="--i:${Math.min(i, 12) * 60}ms"><span class="aico" style="--c:${a.sev}">${icon(a.ic || "bell")}</span><div class="grow"><div class="t">${esc(a.t)}</div><div class="m">${esc(a.m)}</div></div>${a.acts ? `<div class="aacts">${a.acts}</div>` : ""}</div>`).join("")}</div>` : `<div class="empty">Todo al día.</div>`;
+// Alertas quitadas por la persona (en este dispositivo); los avisos del equipo se marcan como leídos para todos.
+const alertsGone = () => { try { return new Set(JSON.parse(localStorage.getItem("rmh-agone-" + viewer.id) || "[]")); } catch { return new Set(); } };
+function dismissAlert(key){
+  if (key.startsWith("n:")){ const n = NOTIFS.find(x => x.id === +key.slice(2)); if (n) n.read = true; }
+  else if (key.startsWith("av:")){ const a = AVISOS.find(x => x.id == key.slice(3)); if (a && !a.seen.includes(viewer.id)) a.seen.push(viewer.id); }
+  else { const g = alertsGone(); g.add(key); try { localStorage.setItem("rmh-agone-" + viewer.id, JSON.stringify([...g].slice(-300))); } catch {} }
+  render();
+}
+document.addEventListener("click", e => {
+  const x = e.target.closest("[data-adis]"); if (x){ e.stopPropagation(); dismissAlert(x.dataset.adis); return; }
+  const r = e.target.closest(".arow[data-ago]"); if (!r || e.target.closest("button,a,select,input")) return;
+  const go = r.dataset.ago;
+  if (go.startsWith("job:")){ const j = jobById(go.slice(4)); if (!j) return; jobUI.form = null; jobUI.ficha = j.id; page = j.area === "CM" ? "gestioncm" : isMaterial(j) ? "cartel" : "pedidos"; if (!can(page)) page = "inicio"; }
+  else if (go.startsWith("sug")) page = "sugerencias";
+  else if (can(go)) page = go;
+  location.hash = page; render(); window.scrollTo({ top:0, behavior:"smooth" });
+});
+const alertList = list => list.length ? `<div class="list alist">${list.map((a, i) => `<div class="row arow${a.go ? " ago" : ""}" style="--i:${Math.min(i, 12) * 60}ms"${a.go ? ` data-ago="${a.go}" role="button" tabindex="0" title="Ir a donde está"` : ""}><span class="aico" style="--c:${a.sev}">${icon(a.ic || "bell")}</span><div class="grow"><div class="t">${esc(a.t)}</div><div class="m">${esc(a.m)}</div></div>${a.acts ? `<div class="aacts">${a.acts}</div>` : ""}<button type="button" class="adis" data-adis="${esc(a.key || "t:" + a.t)}" title="Quitar alerta" aria-label="Quitar alerta">${icon("x")}</button></div>`).join("")}</div>` : `<div class="empty">Todo al día.</div>`;
 
 /* ---------- pages ---------- */
 // Progreso del mes: trabajos finalizados (Entregado) sobre el total del mes, sin contar cancelados.
@@ -2985,7 +3019,7 @@ function progressPanel(part = "all"){
   if (part === "people") return "";
   return `<div class="panel"><h2 style="font-size:20px" class="pmh">${pmIco("gauge")}Tu carga de trabajo</h2>
     ${loadBar("Tu carga", loadStats([viewer.name]), true)}
-    <div style="margin-top:16px">${viewer.role === "CM" ? loadBar(`${icon("clapperboard")} Community Manager`, cm) : loadBar(`${icon("palette")} Diseño gráfico`, dz)}</div>${LOAD_LEGEND}</div>`;
+    <div style="margin-top:16px">${viewer.role === "CM" ? loadBar(`${icon("clapperboard")} Team Community Manager`, cm) : loadBar(`${icon("palette")} Team Diseño gráfico`, dz)}</div>${LOAD_LEGEND}</div>`;
 }
 // Frases de ánimo por área. Se elige una al azar cada vez que la persona entra a Inicio.
 // {n} se reemplaza por el nombre de quien entra.
@@ -3107,7 +3141,7 @@ function pInicio(){
     const late = mine.filter(j => daysTo(j.due) < 0).length;
     const lateJobs = mine.filter(j => urgency(j)?.late), soon = mine.filter(j => { const u = urgency(j); return u && !u.late && daysTo(j.due) <= 1; });
     const banner = lateJobs.length || soon.length ? `<div class="panel alarm-banner"><span class="urg late" style="--u:#ef4444">${ALARM_SVG}Alarma</span><div><b>${lateJobs.length ? `Tenés ${lateJobs.length} ${lateJobs.length === 1 ? "trabajo atrasado" : "trabajos atrasados"}` : ""}${lateJobs.length && soon.length ? " y " : ""}${soon.length ? `${soon.length} para entregar ${soon.length === 1 ? "mañana u hoy" : "entre hoy y mañana"}` : ""}.</b> <span>La alarma queda encendida hasta que se marque como entregado.</span></div></div>` : "";
-    return `${prioStrip()}${helloHead("Tus trabajos de diseño, ordenados por fecha de entrega.")}${banner}
+    return `${prioStrip()}${helloHead("Tus trabajos de diseño, ordenados por fecha de entrega.")}${banner}${inicioAlertsPanel()}
     ${kpiRow(progStats(jobs.filter(j => j.owner === viewer.name)))}
     ${progressPanel("team")}
     <div class="panel"><div class="head" style="margin-bottom:14px"><h2 style="margin:0" class="pmh">${pmIco("list-checks")}Mis trabajos</h2>${URG_LEGEND}</div>${mine.length ? `<div class="list">${mine.map(j => jobRow(j)).join("")}</div>` : `<div class="empty">No tenés trabajos pendientes.</div>`}</div>
@@ -3128,7 +3162,7 @@ function pInicio(){
     const lateP = minePosts.filter(p => postUrgency(p)?.late), soonP = minePosts.filter(p => { const u = postUrgency(p); return u && !u.late && daysTo(p.date) <= 1; });
     if (lateP.length || soonP.length) banner = `<div class="panel alarm-banner"><span class="urg late" style="--u:#ef4444">${ALARM_SVG}Alarma</span><div><b>${lateP.length ? `Tenés ${lateP.length} ${lateP.length === 1 ? "posteo atrasado" : "posteos atrasados"}` : ""}${lateP.length && soonP.length ? " y " : ""}${soonP.length ? `${soonP.length} para publicar entre hoy y mañana` : ""}.</b> <span>La alarma sigue hasta que el posteo quede programado o publicado.</span></div></div>`;
   }
-  return `${prioStrip()}${helloHead(`${monthLabel(MONTH)} · ${viewer.brands ? "tus calendarios: " + viewer.brands.map(g => g === "Otros" ? "Otras marcas" : g).join(", ") : "todas las marcas del grupo"}`)}${banner}
+  return `${prioStrip()}${helloHead(`${monthLabel(MONTH)} · ${viewer.brands ? "tus calendarios: " + viewer.brands.map(g => g === "Otros" ? "Otras marcas" : g).join(", ") : "todas las marcas del grupo"}`)}${banner}${inicioAlertsPanel()}
   ${kpiRow(progStats(isAdminAny() ? jobs : jobs.filter(j => j.owner === viewer.name)))}
   ${progressPanel("team")}
   <div class="grid two">
@@ -3198,7 +3232,7 @@ document.addEventListener("click", e => {
   pop.style.left = Math.max(8, Math.min(r.left, innerWidth - pw - 8)) + "px";
   pop.style.top = (r.bottom + ph + 8 > innerHeight ? Math.max(8, r.top - ph - 4) : r.bottom + 4) + "px";
 });
-document.addEventListener("keydown", e => { if (e.key === "Escape") closeStageMenu(); if ((e.key === "Enter" || e.key === " ") && e.target.matches?.(".card[data-stagemenu],[data-jficha][role=button]")){ e.preventDefault(); e.target.click(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeStageMenu(); if ((e.key === "Enter" || e.key === " ") && e.target.matches?.(".card[data-stagemenu],[data-jficha][role=button],.arow[data-ago]")){ e.preventDefault(); e.target.click(); } });
 document.addEventListener("click", e => {
   const o = e.target.closest("[data-stageset]"); if (!o) return;
   closeStageMenu();
@@ -3227,6 +3261,11 @@ function jobRow(j){
   const p = j.post && postById(j.post);
   const next = stagesOf(j)[stagesOf(j).indexOf(j.status)+1];
   return `<div class="row${urgStyle(j)}"><div class="grow"><div class="t">${esc(j.title)}</div><div class="m">${icon(j.area === "CM" ? "clapperboard" : "palette")} ${brandTag(j.brand)} · ${esc(j.piece)} · fecha límite ${dm(j.due)}${p ? ` · para el post del ${dm(p.date)}` : ""}</div></div>${urgBadge(j)}${pill(j.status, JOB_COLOR[j.status])}${isDesigner() ? designerAction(j) : next ? `<button class="btn" data-adv-job="${j.id}">Pasar a ${next}</button>` : ""}</div>`;
+}
+// Alertas y avisos, dentro de Inicio: tocar una alerta lleva a donde está la info; la ✕ la quita.
+function inicioAlertsPanel(){
+  const list = alerts();
+  return `<div class="panel" id="alertas"><div class="head" style="margin-bottom:12px"><h2 style="margin:0" class="pmh">${pmIco("bell")}Alertas${list.length ? ` <span class="note">${list.length}</span>` : ""}</h2>${can("avisos") ? `<button class="btn sm" data-page="avisos">${icon("megaphone")} ${viewer.role === "Admin total" ? "Publicar aviso" : "Ver avisos"}</button>` : ""}</div>${alertList(list)}</div>`;
 }
 function pAlertas(){
   if (isDesigner()) setTimeout(() => { let ch = false; NOTIFS.forEach(n => { if (n.to === viewer.name && n.type === "approved" && !n.read){ n.read = true; ch = true; } }); if (ch) renderNav(); }, 1500);
@@ -4369,7 +4408,7 @@ const unseenAcks = () => myThreads().flatMap(t => t.msgs.filter(m => m.from === 
 function msgAlerts(){
   const seen = new Set();
   return unreadMsgs().filter(({ t }) => !seen.has(t.id) && seen.add(t.id)).map(({ t, m }) => { const from = personById(m.from); const n = t.msgs.filter(x => x.from !== viewer.id && !x.read).length;
-    return { sev:prioOf(t).c, rank:-7 + prioOf(t).r / 10 - 1, ic:"mail", t:`${t.prio && t.prio !== "Normal" ? `[${t.prio.toUpperCase()}] ` : ""}Mensaje de ${from?.name || ""}: ${t.topic}`, m:`“${m.text.length > 110 ? m.text.slice(0, 110) + "…" : m.text}”${n > 1 ? ` · ${n} mensajes nuevos` : ""} · ${dm(m.date)} ${m.time}`, acts:`<button class="btn ackbtn" data-msgack="${t.id}">✓ Recibido</button><button class="btn primary" data-msgopen="${t.id}">Ver y responder</button>` }; })
+    return { go:"mensajes", sev:prioOf(t).c, rank:-7 + prioOf(t).r / 10 - 1, ic:"mail", t:`${t.prio && t.prio !== "Normal" ? `[${t.prio.toUpperCase()}] ` : ""}Mensaje de ${from?.name || ""}: ${t.topic}`, m:`“${m.text.length > 110 ? m.text.slice(0, 110) + "…" : m.text}”${n > 1 ? ` · ${n} mensajes nuevos` : ""} · ${dm(m.date)} ${m.time}`, acts:`<button class="btn ackbtn" data-msgack="${t.id}">✓ Recibido</button><button class="btn primary" data-msgopen="${t.id}">Ver y responder</button>` }; })
   .concat((() => { const seen2 = new Set(); return unseenAcks().filter(({ t }) => !seen2.has(t.id) && seen2.add(t.id)).map(({ t, m }) => { const o = personById(t.a === viewer.id ? t.b : t.a);
     return { sev:"#10b981", rank:-6, ic:"check-check", t:`${o?.name || ""} recibió tu mensaje: ${t.topic}`, m:`Lo marcó como recibido el ${dm(m.ack.date)} a las ${m.ack.time}`, acts:`<button class="btn" data-msgopen="${t.id}">Ver conversación</button>` }; }); })());
 }
@@ -5415,8 +5454,8 @@ const tbIcon = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 function renderTabbar(){
   const tb = document.getElementById("tabbar"); if (!tb) return;
   const work = isDesigner() ? ["pedidos","Mis pedidos","palette"] : viewer.role === "CM" ? ["plan","Posteos","list-checks"] : ["dashboard","Dashboard","layout-dashboard"];
-  const tabs = [["inicio","Inicio","house"],["alertas","Alertas","bell"],work,["mensajes","Mensajes","mail"]].filter(([k]) => can(k));
-  const cnt = k => { const n = k === "alertas" ? alerts().length : k === "mensajes" ? unreadMsgs().length : 0; return n ? `<span class="tbc">${n > 99 ? "99+" : n}</span>` : ""; };
+  const tabs = [["inicio","Inicio","house"],work,["mensajes","Mensajes","mail"]].filter(([k]) => can(k));
+  const cnt = k => { const n = k === "inicio" ? alerts().length : k === "mensajes" ? unreadMsgs().length : 0; return n ? `<span class="tbc">${n > 99 ? "99+" : n}</span>` : ""; };
   const open = document.querySelector(".side")?.classList.contains("open");
   tb.innerHTML = tabs.map(([k, l, i]) => `<a href="#${k}" data-page="${k}" class="${page === k && !open ? "on" : ""}" ${page === k ? 'aria-current="page"' : ""}><span class="tbi">${tbIcon(i)}${cnt(k)}</span><span>${l}</span></a>`).join("")
     + `<button type="button" class="${open || !tabs.some(([k]) => k === page) ? "on" : ""}" data-tabmore><span class="tbi">${tbIcon("menu")}</span><span>Más</span></button>`;
@@ -5442,7 +5481,7 @@ function renderNav(){
   const mc = document.getElementById("msgCount"), nm = unreadMsgs().length; if (mc){ mc.hidden = !nm; mc.textContent = nm; }
   const groups = [...new Set(SECTIONS.map(s => s.g))].filter(g => !navFocus || !FOCUS_GROUPS[g] || g === navFocus);
   $("#nav").innerHTML = groups.map(g => {
-    const items = SECTIONS.filter(s => s.g === g && can(s.k));
+    const items = SECTIONS.filter(s => s.g === g && can(s.k) && !s.hide);
     if (!items.length) return "";
     const fb = FOCUS_GROUPS[g] && (navFocus ? `<button type="button" class="focusbtn team" data-navfocus="">Team completo</button>` : `<button type="button" class="focusbtn" data-navfocus="${g}">${FOCUS_GROUPS[g]}</button>`);
     return `<div class="nav-group${FOCUS_GROUPS[g] ? " big" : ""}"><div class="nav-label">${g}${fb || ""}</div>${items.map(s => `<a href="#${s.k}" data-page="${s.k}" class="${page===s.k?"on":""}">${icon(s.i)}<span>${s.n || s.l}</span>${s.k==="mensajes" && unreadMsgs().length ? `<span class="count msgc">${unreadMsgs().length}</span>` : ""}${s.k==="alertas" && alerts().length ? `<span class="count">${alerts().length}</span>` : ""}</a>`).join("")}</div>`;
