@@ -2707,7 +2707,9 @@ const handledTag = pp => `<span class="multibrand" title="Trabaja para varias ma
 const mainBrandTag = (b, pp) => b === VARIAS && pp?.brandsHandled?.length ? handledTag(pp) : b === VARIAS ? `<span class="multibrand" title="Trabaja para todas las marcas, según la necesidad"><span class="mdots">${MAIN_BRANDS.map(x => `<i style="background:${BRANDS[x]}"></i>`).join("")}<i style="background:#94a3b8"></i></span>Varias marcas</span>` : b ? brandTag(b) : "—";
 const mainBrandOptions = cur => `<option value="${VARIAS}" ${cur === VARIAS ? "selected" : ""}>Varias marcas (todas, según la necesidad)</option>${Object.keys(BRANDS).map(b => `<option ${cur === b ? "selected" : ""}>${b}</option>`).join("")}`;
 const icon = n => `<i data-lucide="${n}"></i>`;
-const can = key => ["sabados","avisos","perfil","sugerencias","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
+// Vistas TV, Usuarios y Carga de trabajo: solo Admin total (aunque el permiso esté marcado).
+const ONLY_AT = ["tv","tvredes","tvimpacto","usuarios","cargadiseno","cargacm"];
+const can = key => ONLY_AT.includes(key) ? viewer.role === "Admin total" : ["sabados","avisos","perfil","sugerencias","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
 const myGroups = () => viewer.brands || GROUPS;
 const seesBrand = b => myGroups().includes(groupOf(b));
 const myBrands = () => Object.keys(BRANDS).filter(seesBrand);
@@ -2850,7 +2852,7 @@ function progressPanel(part = "all"){
   if (part === "people") return "";
   return `<div class="panel"><h2 style="font-size:20px" class="pmh">${pmIco("gauge")}Tu carga de trabajo</h2>
     ${loadBar("Tu carga", loadStats([viewer.name]), true)}
-    <div style="margin-top:16px">${loadBar("Equipo completo (Diseño gráfico + CM)", team)}</div>${LOAD_LEGEND}</div>`;
+    <div style="margin-top:16px">${viewer.role === "CM" ? loadBar(`${icon("clapperboard")} Community Manager`, cm) : loadBar(`${icon("palette")} Diseño gráfico`, dz)}</div>${LOAD_LEGEND}</div>`;
 }
 // Frases de ánimo por área. Se elige una al azar cada vez que la persona entra a Inicio.
 // {n} se reemplaza por el nombre de quien entra.
@@ -4057,7 +4059,7 @@ function pUsuarios(){
     const locked = pp.role === "Admin total";
     return `<tr><td><div class="who"><b>${pp.name}</b><span>${pp.role}</span></div></td>
     <td><div class="chips" style="flex-wrap:nowrap">${GROUPS.map(b => { const on = !pp.brands || pp.brands.includes(b); return `<button class="bchip ${on?"on":""}" style="--c:${GROUP_COLOR[b]}" data-pb="${pp.id}|${b}" ${locked?"disabled":""} aria-pressed="${on}">${b === "Otros" ? "Otras" : b}</button>`; }).join("")}</div></td>
-    ${SECTIONS.map(sc => `<td><button class="tog" aria-label="${sc.l} para ${pp.name}" aria-pressed="${pp.perms.has(sc.k)}" data-perm="${pp.id}|${sc.k}" ${locked?"disabled":""}></button></td>`).join("")}</tr>`;
+    ${SECTIONS.map(sc => { const at = ONLY_AT.includes(sc.k) && pp.role !== "Admin total"; return `<td><button class="tog" aria-label="${sc.l} para ${pp.name}" aria-pressed="${at ? false : pp.perms.has(sc.k)}" data-perm="${pp.id}|${sc.k}" ${locked || at ? "disabled" : ""} ${at ? 'title="Solo Admin total"' : ""}></button></td>`; }).join("")}</tr>`;
   }).join("")}
   </tbody></table></div>
   <p class="note">Los admins siempre ven todo. En la app real, crear personas y restablecer contraseñas lo hace una función segura del servidor que primero verifica que quien lo pide sea admin; las contraseñas se guardan cifradas y nadie puede verlas.</p>`;
