@@ -1127,9 +1127,9 @@ html.light .gname{background-image:linear-gradient(90deg,#0891b2,#2563eb)}
 .sugreplybox textarea.base{border:1px solid var(--line-3);background:var(--inner);border-radius:14px;padding:10px 12px;color:#f1f5f9;font:inherit;font-size:14px;resize:vertical;outline:none;color-scheme:dark}
 .sugreplybox textarea.base:focus{border-color:var(--cyan)}
 .sugact{border-top:0;padding-top:0}
-.trendb{display:inline-flex;align-items:center;gap:6px;padding:4px 11px 4px 8px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap;color:var(--tc);background:color-mix(in srgb,var(--tc) 14%,transparent);border:1px solid color-mix(in srgb,var(--tc) 45%,transparent)}
+.trendb{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap;color:var(--tc);background:color-mix(in srgb,var(--tc) 14%,transparent);border:1px solid color-mix(in srgb,var(--tc) 45%,transparent)}
 .trendb.up{--tc:#4ade80}.trendb.eq{--tc:#facc15}.trendb.down{--tc:#f87171}
-.trendb .tdot{width:11px;height:11px;fill:currentColor;flex:none}
+.trendb .tdot{width:12px;height:12px;fill:currentColor;flex:none}
 .trendb .tarr{width:14px;height:14px;flex:none}
 html.light .trendb.up{--tc:#16a34a}html.light .trendb.eq{--tc:#ca8a04}html.light .trendb.down{--tc:#dc2626}
 .metafold summary{cursor:pointer;font-weight:700;color:var(--ink)}
@@ -2325,7 +2325,8 @@ const folDiff = (c, p) => isNum(c) && isNum(p) ? c - p : null;
 // Tendencia de seguidores: punto de color + flecha dibujada (verde sube, amarillo se mantiene, rojo baja).
 const TREND_ARROW = { up:'<path d="M12 19V5M6 11l6-6 6 6"/>', eq:'<path d="M5 12h14"/>', down:'<path d="M12 5v14M6 13l6 6 6-6"/>' };
 const trendBadge = d => { const k = d > 0 ? "up" : d < 0 ? "down" : "eq";
-  return `<span class="trendb ${k}"><svg class="tdot" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="5"/></svg><svg class="tarr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TREND_ARROW[k]}</svg>${{ up:"Sube", eq:"Se mantiene", down:"Baja" }[k]}</span>`; };
+  const lbl = { up:"Sube", eq:"Se mantiene", down:"Baja" }[k];
+  return `<span class="trendb ${k}" role="img" aria-label="${lbl}" title="${lbl}"><svg class="tdot" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="5"/></svg><svg class="tarr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TREND_ARROW[k]}</svg></span>`; }; // solo la pelotita y la flecha: el texto queda como ayuda al pasar el mouse
 // Mes en curso todavía sin datos de Meta: se muestra el mes anterior (con aviso) hasta que llegue la primera actualización.
 const hasFol = m => Object.values(META_FOLLOWERS[m] || {}).some(f => f && (isNum(f.ig) || isNum(f.fb)));
 const folMonth = (m = MONTH) => m === CURRENT_MONTH && !hasFol(m) && hasFol(prevMonth(m)) ? prevMonth(m) : m;
