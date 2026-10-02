@@ -1122,6 +1122,12 @@ html.light .gname{background-image:linear-gradient(90deg,#0891b2,#2563eb)}
 .sugreplybox textarea.base{border:1px solid var(--line-3);background:var(--inner);border-radius:14px;padding:10px 12px;color:#f1f5f9;font:inherit;font-size:14px;resize:vertical;outline:none;color-scheme:dark}
 .sugreplybox textarea.base:focus{border-color:var(--cyan)}
 .sugact{border-top:0;padding-top:0}
+.trendb{display:inline-flex;align-items:center;gap:6px;padding:4px 11px 4px 8px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap;color:var(--tc);background:color-mix(in srgb,var(--tc) 14%,transparent);border:1px solid color-mix(in srgb,var(--tc) 45%,transparent)}
+.trendb.up{--tc:#4ade80}.trendb.eq{--tc:#facc15}.trendb.down{--tc:#f87171}
+.trendb .tdot{width:11px;height:11px;fill:currentColor;flex:none}
+.trendb .tarr{width:14px;height:14px;flex:none}
+html.light .trendb.up{--tc:#16a34a}html.light .trendb.eq{--tc:#ca8a04}html.light .trendb.down{--tc:#dc2626}
+.metafold summary{cursor:pointer;font-weight:700;color:var(--ink)}
 .sugst{font-size:12.5px;font-weight:600;color:var(--c);border:1px solid color-mix(in srgb,var(--c) 45%,transparent);border-radius:999px;padding:3px 10px}
 .sugcard.simple header{gap:10px}.sugcard.simple header .grow{flex:1}.sugcard.simple .sugtext{margin:10px 0 0}.sugcard.simple .sugreplybox{margin-top:12px}
 .sugcard header .pill{color:var(--t,#020617);font-size:12px}
@@ -2287,8 +2293,9 @@ let META_ADS = { updated:null, account:null, spendAccess:false, pages:[], ads:[]
 const META_PAGE_BRAND = { "Superseis":"Superseis", "Superseis Villarrica":"Superseis", "Supermercados Stock":"Stock", "Delimarket":"Delimarket", "Bianca":"Bianca", "DAYO":"Dayo", "Pedi WOW":"PediWOW", "Clasipar.com":"Clasipar" };
 const metaWhen = iso => { if (!iso) return "sin actualizar"; const d = new Date(iso); return new Intl.DateTimeFormat("es-PY", { timeZone:"America/Asuncion", day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit", hour12:false }).format(d).replace(",", " ·"); };
 // Anuncios activos por página (Biblioteca de anuncios de Meta, pública).
-function metaAdsPanel(){
-  const pages = META_ADS.pages.filter(pg => { const b = META_PAGE_BRAND[pg.name]; return !b || (seesBrand(b) && inFilter(b)); });
+function metaAdsPanel(simple = false){
+  const pages = META_ADS.pages.filter(pg => { const b = META_PAGE_BRAND[pg.name]; return (!b || (seesBrand(b) && inFilter(b))) && (!simple || META_ADS.ads.some(a => a.page === pg.name)); });
+  if (simple) return pages.length ? `<div class="list" style="margin-top:10px">${pages.flatMap(pg => META_ADS.ads.filter(a => a.page === pg.name).map(a => `<div class="row"><div class="grow"><div class="t">${esc(a.title || "Anuncio sin título")}</div><div class="m">${esc(pg.name)} · desde ${dm(a.start)}</div></div><a class="btn sm" href="${esc(a.url)}" target="_blank" rel="noopener">Ver</a></div>`)).join("")}</div>` : `<p class="note" style="margin:10px 0 0">No hay anuncios activos ahora.</p>`;
   if (!META_ADS.updated) return `<div class="panel"><div class="empty">Todavía no llegaron datos de Meta.</div></div>`;
   return `<div class="panel"><div class="head"><h2 class="pmh" style="margin:0">${pmIco("radio")}Anuncios activos ahora</h2><div class="tag-row"><span class="tag">Fuente: Biblioteca de anuncios de Meta</span><span class="tag">Actualizado ${metaWhen(META_ADS.updated)}</span></div></div>
     <div class="metapages">${pages.map(pg => { const ads = META_ADS.ads.filter(a => a.page === pg.name), b = META_PAGE_BRAND[pg.name];
@@ -2310,6 +2317,10 @@ const folOf = (b, m = MONTH) => { const f = META_FOLLOWERS[m]?.[b]; return f && 
 // El último mes con datos de la marca (para estimar alcances).
 const folLatest = b => { const m = Object.keys(META_FOLLOWERS).filter(k => /^\d{4}-\d{2}$/.test(k) && folOf(b, k)).sort().pop(); return m ? folOf(b, m) : null; };
 const folDiff = (c, p) => isNum(c) && isNum(p) ? c - p : null;
+// Tendencia de seguidores: punto de color + flecha dibujada (verde sube, amarillo se mantiene, rojo baja).
+const TREND_ARROW = { up:'<path d="M12 19V5M6 11l6-6 6 6"/>', eq:'<path d="M5 12h14"/>', down:'<path d="M12 5v14M6 13l6 6 6-6"/>' };
+const trendBadge = d => { const k = d > 0 ? "up" : d < 0 ? "down" : "eq";
+  return `<span class="trendb ${k}"><svg class="tdot" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="5"/></svg><svg class="tarr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TREND_ARROW[k]}</svg>${{ up:"Sube", eq:"Se mantiene", down:"Baja" }[k]}</span>`; };
 // Mes en curso todavía sin datos de Meta: se muestra el mes anterior (con aviso) hasta que llegue la primera actualización.
 const hasFol = m => Object.values(META_FOLLOWERS[m] || {}).some(f => f && (isNum(f.ig) || isNum(f.fb)));
 const folMonth = (m = MONTH) => m === CURRENT_MONTH && !hasFol(m) && hasFol(prevMonth(m)) ? prevMonth(m) : m;
@@ -2400,7 +2411,7 @@ function followersTable(showTotal = true){
   const bs = socialBrands(), fm = folMonth(), prevLbl = MONTH_ABBR_ES(prevMonth(MONTH)), curLbl = MONTH_ABBR_ES(MONTH);
   const num = v => isNum(v) ? dots(v) : "—";
   const diffB = d => d == null ? `<span class="dbadge eq">—</span>` : `<span class="dbadge ${d > 0 ? "up" : d < 0 ? "down" : "eq"}">${d > 0 ? "+" : ""}${dots(d)}</span>`;
-  const trend = r => { const a = folDiff(r.igc, r.igp), b = folDiff(r.fbc, r.fbp); if (a == null && b == null) return "—"; const d = (a || 0) + (b || 0); return d > 0 ? "↑ Sube" : d < 0 ? "↓ Baja" : "= Igual"; };
+  const trend = r => { const a = folDiff(r.igc, r.igp), b = folDiff(r.fbc, r.fbp); if (a == null && b == null) return "—"; return trendBadge((a || 0) + (b || 0)); };
   const rows = followerRows(bs), withData = rows.filter(r => r.has);
   const sumOf = k => { const v = withData.filter(r => isNum(r[k])); return v.length ? v.reduce((a, r) => a + r[k], 0) : null; };
   const full = k => withData.every(r => isNum(r[k.replace("c", "p")]) || !isNum(r[k])); // total anterior solo si todas las marcas tienen el dato
@@ -2690,6 +2701,8 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 const dots = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 const gs = n => "Gs. " + dots(n);
+// Lo gastado en Meta Ads viene en dólares (las cuentas de las marcas están en USD).
+const usd = n => "US$ " + (Number(n) || 0).toLocaleString("es-PY", { minimumFractionDigits:2, maximumFractionDigits:2 });
 const k = n => n >= 1e6 ? (n/1e6).toFixed(2).replace(".", ",") + " M" : (n/1000).toFixed(1).replace(".", ",") + "k";
 const dm = d => d.slice(8,10) + "/" + d.slice(5,7);
 const daysTo = d => Math.round((new Date(d+"T12:00") - new Date(TODAY+"T12:00")) / 86400000);
@@ -3775,10 +3788,10 @@ let PAUTA_PLAN = [
   { id:9, month:"2026-08", brand:"Stock", amount:2300000, campaign:"Semana del bebé · tráfico", by:"anibal", date:"2026-08-09", rating:4 },
   { id:10, month:"2026-08", brand:"Delimarket", amount:1800000, campaign:"Delivery express · mensajes", by:"miguel", date:"2026-08-13", rating:3 },
 ];
-let pautaUI = { tab:"plan" };
+let pautaUI = { tab:"informe" }; // arranca en el Informe de Meta Ads
 const canEditPauta = () => !isViewOnly() && !isDesigner() && !isClosed();
-const pautaTabs = () => `<div class="head"><div><h1>Pauta</h1><p class="sub">El <b>plan</b> es lo que arma el equipo con el límite de cada marca. El <b>informe</b> es lo que realmente se gastó, traído de Meta Ads.</p></div>
-  <div class="chips"><button class="chip ${pautaUI.tab === "plan" ? "on" : ""}" data-ptab="plan">Plan de pauta</button><button class="chip ${pautaUI.tab === "informe" ? "on" : ""}" data-ptab="informe">Informe Meta Ads</button></div></div>`;
+const pautaTabs = () => `<div class="head"><div><h1>Pauta</h1><p class="sub">El <b>informe</b> es lo que se invirtió en Meta Ads. El <b>plan</b> es lo que se quiere invertir, con el límite de cada marca.</p></div>
+  <div class="chips"><button class="chip ${pautaUI.tab === "informe" ? "on" : ""}" data-ptab="informe">Informe Meta Ads</button><button class="chip ${pautaUI.tab === "plan" ? "on" : ""}" data-ptab="plan">Plan de pauta</button></div></div>`;
 // Color de la barra (igual que en Plan Contenidos): celeste < 50 % · naranja 50-89 % · verde 90-100 % · rojo si se pasa del límite.
 const pautaColor = pct => pct > 100 ? "#ef4444" : pct >= 90 ? "#10b981" : pct >= 50 ? "#f97316" : "#22d3ee";
 const parseGs = v => Number(String(v).replace(/\D/g, "")) || 0;
@@ -3794,12 +3807,12 @@ function pPautaPlan(){
   const ed = canEditPauta();
   const prevMonths = [MONTH, prevMonth(MONTH), prevMonth(prevMonth(MONTH)), prevMonth(prevMonth(prevMonth(MONTH)))];
   const bar = r => { if (!r.limit) return `<p class="note" style="margin:6px 0 0">Sin límite cargado para ${monthName(MONTH)}.</p>`; const c = pautaColor(r.pct), det = r.total > r.limit ? `<b style="color:#f87171">Sobrepasado por ${gs(r.total - r.limit)}</b>` : r.total === r.limit ? `<b style="color:#34d399">Límite alcanzado</b>` : `Disponible <b style="color:#fff">${gs(r.limit - r.total)}</b>`;
-    return `<div class="plimit"><div class="plh"><span><b style="color:#fff">${gs(r.total)}</b> de ${gs(r.limit)}</span><span>${det}</span></div><div class="ptrack"><div class="pfill" style="width:${Math.min(r.pct, 100) || 1}%;background:${c};box-shadow:0 0 12px ${c}"></div></div><div class="plh"><span style="color:${c};font-weight:800">${r.pct}% del límite</span><span class="note">Gastado real en Meta: ${gs(r.real)}</span></div></div>`; };
+    return `<div class="plimit"><div class="plh"><span><b style="color:#fff">${gs(r.total)}</b> de ${gs(r.limit)}</span><span>${det}</span></div><div class="ptrack"><div class="pfill" style="width:${Math.min(r.pct, 100) || 1}%;background:${c};box-shadow:0 0 12px ${c}"></div></div><div class="plh"><span style="color:${c};font-weight:800">${r.pct}% del límite</span><span class="note">Gastado real en Meta: ${usd(r.real)}</span></div></div>`; };
   return `${pautaTabs()}
   <div class="grid kpis">
     <div class="panel kpi"><div class="l">Plan de ${monthName(MONTH)}</div><div class="n">${gs(totPlan)}</div><div class="d">${PAUTA_PLAN.filter(x => x.month === MONTH).length} pautas cargadas</div></div>
     <div class="panel kpi"><div class="l">Límite total</div><div class="n">${gs(totLim)}</div><div class="d">${totLim ? `${Math.round(totPlan / totLim * 100)}% usado del límite` : "sin límites cargados"}</div></div>
-    <div class="panel kpi"><div class="l">Gastado real (Meta Ads)</div><div class="n">${gs(totReal)}</div><div class="d">${totPlan ? `${Math.round(totReal / totPlan * 100)}% de lo planificado` : "—"}</div></div>
+    <div class="panel kpi"><div class="l">Gastado real (Meta Ads)</div><div class="n">${usd(totReal)}</div><div class="d">en dólares, según Meta Ads</div></div>
     <div class="panel kpi"><div class="l">Evaluación promedio</div><div class="n">${avg ? avg + "/5" : "—"}</div><div class="d">${rated.length} de ${PAUTA_PLAN.filter(x => x.month === MONTH).length} pautas evaluadas</div></div>
   </div>
   ${ed ? `<div class="panel"><h2 style="margin-top:0">Agregar pauta</h2><form class="pform pautaform" id="pautaForm">
@@ -3832,17 +3845,25 @@ document.addEventListener("submit", e => {
   render(); const lim = (PAUTA_LIMITS[MONTH] || {})[brand], tot = PAUTA_PLAN.filter(x => x.month === MONTH && x.brand === brand).reduce((a, x) => a + x.amount, 0);
   toast(`Pauta agregada a ${brand}: ${gs(amount)}.${lim && tot > lim ? ` Ojo: se pasa del límite por ${gs(tot - lim)}.` : ""}`);
 });
+// Informe simple: total del mes, cuánto invirtió cada marca y la lista de campañas. Los anuncios activos, plegados abajo.
 function pPautaInforme(){
-  const list = CAMPAIGNS.filter(c => c.month === MONTH && seesBrand(c.brand) && inFilter(c.brand));
-  const byBrand = myMain().filter(inFilter).map(b => [b, CAMPAIGNS.filter(c => c.brand === b && c.month === MONTH).reduce((a,c) => a + c.spend, 0)]);
-  const st = c => { const d = daysTo(c.end); return d < 0 ? pill("Finalizada","#334155") : d <= 3 ? pill("Termina pronto","#f97316") : pill("Activa","#10b981"); };
-  return `${pautaTabs()}<div class="head"><div><h2 style="margin:0">Informe de lo gastado</h2><p class="sub">Datos reales de Meta, actualizados todos los días de forma automática.</p></div>${brandChips()}</div>
-  ${META_ADS.updated && !META_ADS.spendAccess ? `<div class="panel metawarn">${icon("info")}<div><b>Falta el acceso a las cuentas publicitarias de las marcas.</b> <span>La conexión con Meta solo ve la cuenta “${esc(META_ADS.account || "Retail Hub")}”, que no tiene campañas. Para ver inversión, alcance y resultados, en el Business Manager de la empresa hay que agregar al usuario conectado en las cuentas publicitarias de cada marca (con permiso para ver rendimiento). Mientras tanto se ven los anuncios activos de cada página.</span></div></div>` : ""}
-  ${metaAdsPanel()}
-  <div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("megaphone")}Inversión de ${monthName(MONTH)}</h2><div class="tag-row"><span class="tag">Fuente: Meta Ads</span><span class="tag">Actualizado ${metaWhen(META_ADS.updated)}</span></div></div><div class="panel-b grid kpis">${byBrand.map(([b,v]) => `<div class="brandbox kpi"><div class="l">${brandTag(b)}</div><div class="n">${gs(v)}</div><div class="d">invertido en el mes</div></div>`).join("")}</div></div>
-  <div class="tw"><table><thead><tr><th>Marca</th><th>Campaña</th><th>Objetivo</th><th>Fechas</th><th class="r">Inversión</th><th class="r">Alcance</th><th class="r">Resultados</th><th class="r">Costo por resultado</th><th>Estado</th></tr></thead><tbody>
-  ${list.length ? "" : `<tr><td colspan="9" class="empty">${META_ADS.spendAccess ? `No hubo campañas con inversión en ${monthName(MONTH)}.` : "Sin datos de inversión todavía: falta el acceso a las cuentas publicitarias de las marcas."}</td></tr>`}${list.map(c => `<tr><td>${brandTag(c.brand)}</td><td>${esc(c.name)}</td><td>${c.obj}</td><td class="num">${dm(c.start)} – ${dm(c.end)}</td><td class="r num">${gs(c.spend)}</td><td class="r num">${dots(c.reach)}</td><td class="r num">${dots(c.results)} <span class="note">${c.unit}</span></td><td class="r num">${gs(c.spend / c.results)}</td><td>${st(c)}</td></tr>`).join("")}
-  </tbody></table></div>`;
+  const list = CAMPAIGNS.filter(c => c.month === MONTH && seesBrand(c.brand) && inFilter(c.brand)).sort((a, c) => c.spend - a.spend);
+  const tot = list.reduce((a, c) => a + c.spend, 0), reach = list.reduce((a, c) => a + (c.reach || 0), 0);
+  const byBrand = [...new Set(list.map(c => c.brand))].map(b => [b, list.filter(c => c.brand === b).reduce((a, c) => a + c.spend, 0)]).sort((a, c) => c[1] - a[1]);
+  const st = c => daysTo(c.end) < 0 ? `<span class="note">Finalizada</span>` : `<span style="color:#34d399">Activa</span>`;
+  const nAds = META_ADS.ads.filter(a => { const b = META_PAGE_BRAND[a.page]; return !b || (seesBrand(b) && inFilter(b)); }).length;
+  return `${pautaTabs()}<div class="head"><div><h2 style="margin:0">Inversión en Meta Ads · ${monthLabel(MONTH)}</h2><p class="sub">En dólares, tal cual figura en Meta. Actualizado ${metaWhen(META_ADS.updated)}.</p></div>${brandChips()}</div>
+  ${META_ADS.updated && !META_ADS.spendAccess ? `<div class="panel metawarn">${icon("info")}<div><b>Falta el acceso a las cuentas publicitarias de las marcas.</b></div></div>` : ""}
+  <div class="grid kpis">
+    <div class="panel kpi"><div class="l">Invertido en el mes</div><div class="n">${usd(tot)}</div></div>
+    <div class="panel kpi"><div class="l">Alcance</div><div class="n">${dots(reach)}</div><div class="d">suma de las campañas</div></div>
+    <div class="panel kpi"><div class="l">Campañas</div><div class="n">${list.length}</div></div>
+  </div>
+  ${list.length ? `<div class="panel"><h2 class="pmh" style="margin:0 0 10px">Por marca</h2><div class="list">${byBrand.map(([b, v]) => `<div class="row"><div class="grow">${brandTag(b)}</div><b style="color:#fff">${usd(v)}</b></div>`).join("")}</div></div>
+  <div class="tw"><table><thead><tr><th>Marca</th><th>Campaña</th><th class="r">Invertido</th><th class="r">Alcance</th><th class="r">Resultados</th><th>Estado</th></tr></thead><tbody>
+  ${list.map(c => `<tr><td>${brandTag(c.brand)}</td><td>${esc(c.name)}</td><td class="r num">${usd(c.spend)}</td><td class="r num">${dots(c.reach)}</td><td class="r num">${dots(c.results)} <span class="note">${esc(c.unit || "")}</span></td><td>${st(c)}</td></tr>`).join("")}
+  </tbody></table></div>` : `<div class="panel"><div class="empty">${META_ADS.spendAccess ? `No hubo inversión en Meta Ads en ${monthName(MONTH)}.` : "Sin datos de inversión todavía."}</div></div>`}
+  <details class="panel metafold"><summary>Anuncios activos ahora (${nAds})</summary>${metaAdsPanel(true)}</details>`;
 }
 const FCOLORS = ["#22d3ee","#f472b6","#a78bfa","#fbbf24","#34d399","#fb923c","#60a5fa","#f87171"];
 const FSOLID = (b, i) => BRANDS[b] || FCOLORS[i % FCOLORS.length];
@@ -3963,16 +3984,16 @@ function repPauta(){
   const sum = (l, f) => l.reduce((a,c) => a + c[f], 0);
   if (!cur.length) return `<div class="panel"><div class="empty">Todavía no hay pautas en ${monthName(MONTH)}. Se cargan solas desde Meta Ads a medida que corren las campañas.</div></div>`;
   return `<div class="grid kpis">
-    <div class="panel kpi"><div class="l">Inversión total</div><div class="n">${gs(sum(cur,"spend"))}</div>${cmpTxt(sum(cur,"spend"), sum(prev,"spend"), gs)}</div>
+    <div class="panel kpi"><div class="l">Inversión total</div><div class="n">${usd(sum(cur,"spend"))}</div>${cmpTxt(sum(cur,"spend"), sum(prev,"spend"), usd)}</div>
     <div class="panel kpi"><div class="l">Alcance total</div><div class="n">${dots(sum(cur,"reach"))}</div>${cmpTxt(sum(cur,"reach"), sum(prev,"reach"))}</div>
     <div class="panel kpi"><div class="l">Campañas</div><div class="n">${cur.length}</div>${cmpTxt(cur.length, prev.length)}</div>
   </div>
   <div class="tw"><table><thead><tr><th>Marca</th><th>Campaña</th><th>Objetivo</th><th>Fechas</th><th class="r">Inversión</th><th class="r">Alcance</th><th class="r">Resultados</th><th class="r">Costo por resultado</th></tr></thead><tbody>
-    ${cur.map(c => `<tr><td>${brandTag(c.brand)}</td><td>${esc(c.name)}</td><td>${c.obj}</td><td class="num">${dm(c.start)} – ${dm(c.end)}</td><td class="r num">${gs(c.spend)}</td><td class="r num">${dots(c.reach)}</td><td class="r num">${dots(c.results)} <span class="note">${c.unit}</span></td><td class="r num">${gs(c.spend / c.results)}</td></tr>`).join("")}
+    ${cur.map(c => `<tr><td>${brandTag(c.brand)}</td><td>${esc(c.name)}</td><td>${c.obj}</td><td class="num">${dm(c.start)} – ${dm(c.end)}</td><td class="r num">${usd(c.spend)}</td><td class="r num">${dots(c.reach)}</td><td class="r num">${dots(c.results)} <span class="note">${c.unit}</span></td><td class="r num">${c.results ? usd(c.spend / c.results) : "—"}</td></tr>`).join("")}
   </tbody></table></div>
   <div class="tw"><table><thead><tr><th>Marca</th><th class="r">Inversión ${monthName(MONTH)}</th><th class="r">Inversión ${monthName(prevMonth(MONTH))}</th><th class="r">Diferencia</th></tr></thead><tbody>
     ${myMain().map(b => { const n = sum(cur.filter(c => c.brand === b),"spend"), o = sum(prev.filter(c => c.brand === b),"spend"), d = n - o;
-      return `<tr><td>${brandTag(b)}</td><td class="r num">${gs(n)}</td><td class="r num">${gs(o)}</td><td class="r num ${d >= 0 ? "up" : "down"}">${d >= 0 ? "+" : "−"}${gs(Math.abs(d))}</td></tr>`; }).join("")}
+      return `<tr><td>${brandTag(b)}</td><td class="r num">${usd(n)}</td><td class="r num">${usd(o)}</td><td class="r num ${d >= 0 ? "up" : "down"}">${d >= 0 ? "+" : "−"}${usd(Math.abs(d))}</td></tr>`; }).join("")}
   </tbody></table></div>`;
 }
 function repAlcance(){
