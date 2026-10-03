@@ -266,6 +266,8 @@ html.light .logo-wide{background:#0f172a;border-radius:12px;padding:6px 10px;box
 .agrid .arow .adis{position:absolute;top:6px;right:6px}
 .agrid .arow{position:relative;padding-right:34px}
 .asec+.asec{margin-top:16px}
+.jformpage .jform{display:flex;flex-direction:column;gap:14px;padding:20px}
+.jformpage .jll{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
 .rtbar{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}.rtbar .btn{min-width:34px;font-weight:600}
 .rtedit,.rtview{min-height:140px;border:1px solid var(--line-2);border-radius:12px;padding:12px 14px;line-height:1.55;font-size:15px;color:var(--ink);background:rgba(148,163,184,.05);overflow-wrap:anywhere}
 .rtview{min-height:0}.rtedit:focus{outline:2px solid var(--cyan);outline-offset:1px}
@@ -3829,24 +3831,28 @@ function cleanRich(html){
   return walk(t.content).slice(0, 20000);
 }
 const canEditBrief = j => !isViewOnly() && !isClosedJob(j) && (viewer.role === "Admin total" || j.owner === viewer.name);
+// Editor reutilizable (en la página del pedido y en el formulario de crear/editar).
+function rtEditor(id, html){
+  const tb = [["bold","bold","Negrita"],["italic","italic","Cursiva"],["underline","underline","Subrayado"],["insertUnorderedList","list","Viñetas"],["insertOrderedList","list-ordered","Lista numerada"]];
+  return `<div class="rtwrap"><div class="rtbar" role="toolbar" aria-label="Formato del texto">
+      <button type="button" class="btn ib sm" data-rt="small" title="Letra más chica" aria-label="Letra más chica">A−</button><button type="button" class="btn ib sm" data-rt="big" title="Letra más grande" aria-label="Letra más grande">A+</button>
+      ${tb.map(([c, i, l]) => `<button type="button" class="btn ib sm" data-rt="${c}" title="${l}" aria-label="${l}">${icon(i)}</button>`).join("")}
+      <button type="button" class="btn ib sm" data-rt="clear" title="Quitar formato" aria-label="Quitar formato">${icon("remove-formatting")}</button></div>
+    <div class="rtedit" id="${id}" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Texto del pedido" data-ph="Escribí acá de qué se trata, el texto que va en el diseño o lo que dice el video…">${html}</div></div>`;
+}
 function jobBriefSection(j){
   const ed = canEditBrief(j), html = j.brief ? cleanRich(j.brief) : "";
   if (!ed && !html) return "";
-  const tb = [["bold","bold","Negrita"],["italic","italic","Cursiva"],["underline","underline","Subrayado"],["insertUnorderedList","list","Viñetas"],["insertOrderedList","list-ordered","Lista numerada"]];
   return `<section class="panel jp-sec"><h2 class="pmh">${pmIco("file-text")}Texto del pedido</h2>
     <p class="note" style="margin:0 0 8px">De qué se trata, el texto que tiene que ir en el diseño o lo que dice el video.${j.briefBy ? ` Última edición: ${esc(firstName(j.briefBy))} · ${dm(j.briefAt?.slice(0, 10))} ${j.briefAt?.slice(11, 16) || ""}` : ""}</p>
-    ${ed ? `<div class="rtbar" role="toolbar" aria-label="Formato del texto">
-        <button type="button" class="btn ib sm" data-rt="small" title="Letra más chica" aria-label="Letra más chica">A−</button><button type="button" class="btn ib sm" data-rt="big" title="Letra más grande" aria-label="Letra más grande">A+</button>
-        ${tb.map(([c, i, l]) => `<button type="button" class="btn ib sm" data-rt="${c}" title="${l}" aria-label="${l}">${icon(i)}</button>`).join("")}
-        <button type="button" class="btn ib sm" data-rt="clear" title="Quitar formato" aria-label="Quitar formato">${icon("remove-formatting")}</button></div>
-      <div class="rtedit" id="jBrief" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Texto del pedido" data-ph="Escribí acá el texto del pedido…">${html}</div>
+    ${ed ? `${rtEditor("jBrief", html)}
       <div class="chips" style="justify-content:flex-end;margin-top:8px"><button type="button" class="btn primary" data-briefsave="${j.id}">${icon("save")} Guardar texto</button></div>`
     : `<div class="rtview">${html}</div>`}</section>`;
 }
 document.addEventListener("mousedown", e => { if (e.target.closest("[data-rt]")) e.preventDefault(); }); // no perder la selección
-document.addEventListener("input", e => { if (e.target.id === "jBrief") e.target.dataset.dirty = "1"; });
+document.addEventListener("input", e => { if (e.target.classList?.contains("rtedit")) e.target.dataset.dirty = "1"; });
 document.addEventListener("click", e => {
-  const b = e.target.closest("[data-rt]"); if (b){ const ed = document.getElementById("jBrief"); if (!ed) return; ed.focus(); const c = b.dataset.rt;
+  const b = e.target.closest("[data-rt]"); if (b){ const ed = b.closest(".rtwrap")?.querySelector(".rtedit"); if (!ed) return; ed.dataset.dirty = "1"; ed.focus(); const c = b.dataset.rt;
     if (c === "big" || c === "small") document.execCommand("fontSize", false, c === "big" ? "5" : "2");
     else if (c === "clear") document.execCommand("removeFormat");
     else document.execCommand(c); return; }
@@ -3912,9 +3918,10 @@ function jobForm(){
   // Redes Sociales y Cartelería tienen cada una sus tipos de pieza.
   const sec = jobSection(j), types = area === "CM" ? CM_TYPES : secPieces(sec);
   const opt = (list, v) => list.map(x => `<option ${x === v ? "selected" : ""}>${x}</option>`).join("");
-  return `<div class="drawer-bg" data-jclose></div><aside class="drawer" aria-label="Formulario de trabajo">
-    <div class="drawer-h"><div><h2 style="margin:0">${f.mode === "edit" ? "Editar pedido" : f.mode === "dup" ? "Revisar pedido duplicado" : area === "CM" ? "Nuevo pedido para CM" : "Nuevo pedido de diseño gráfico"}</h2></div><button class="btn" data-jclose aria-label="Cerrar">✕</button></div>
-    <form id="jobForm" class="drawer-b jform">
+  return `<div class="jpage jformpage" aria-label="Formulario de trabajo">
+    <div class="jp-top"><button class="btn" type="button" data-jclose>${icon("arrow-left")} Volver</button></div>
+    <div class="jp-h"><span class="note">${area === "CM" ? "Pedido para Community Manager" : "Pedido de diseño gráfico"}${f.mode === "edit" ? " · " + esc(j.id) : ""}</span><h1 style="margin:4px 0 0">${f.mode === "edit" ? "Editar pedido" : f.mode === "dup" ? "Revisar pedido duplicado" : area === "CM" ? "Nuevo pedido para CM" : "Nuevo pedido de diseño gráfico"}</h1></div>
+    <form id="jobForm" class="jform panel">
       ${f.mode === "edit" ? jobReviewBox(jobById(j.id)) : ""}
       <section class="jfs"><h3><i>1</i>Qué hay que hacer</h3><div class="jfg">
       ${area === "CM" ? `<label>Área *<select class="base" id="jArea" disabled>${Object.keys(AREAS).map(a => `<option value="${a}" ${a === area ? "selected" : ""}>${AREAS[a].icon} ${areaName(a)}</option>`).join("")}</select></label>` : `<label>¿Para dónde es? *<select class="base" id="jSec"${j.post ? " disabled" : ""}>${DESIGN_SECS.map(([k, l]) => `<option value="${k}" ${k === sec ? "selected" : ""}>${l}</option>`).join("")}</select></label>`}
@@ -3924,7 +3931,8 @@ function jobForm(){
       <div class="jlinks" style="grid-column:1/-1"><span class="jll">Links al brief o archivos <span class="note">(opcional, podés poner varios)</span></span>
         ${jobLinks(j).map((l, i) => `<div class="jlrow"><input class="base" data-jl="${i}" value="${esc(l)}" placeholder="Drive, WeTransfer, Canva, carpeta compartida…"><button type="button" class="btn ib sm" data-jldel="${i}" aria-label="Quitar link">${icon("x")}</button></div>`).join("")}
         <button type="button" class="btn sm" data-jladd>${icon("plus")} ${jobLinks(j).length ? "Agregar otro link" : "Agregar link"}</button></div>
-      <label style="grid-column:1/-1">Detalle / observaciones<textarea class="base" id="jNotes" rows="3" placeholder="Qué tiene que tener, textos, precios, referencias…">${esc(j.notes)}</textarea></label>
+      <div style="grid-column:1/-1"><span class="jll">Texto del pedido <span class="note">(de qué se trata, el texto que va en el diseño o lo que dice el video)</span></span>${rtEditor("jBriefF", j.brief ? cleanRich(j.brief) : "")}</div>
+      <label style="grid-column:1/-1">Observaciones <span class="note">(opcional, algo corto)</span><textarea class="base" id="jNotes" rows="2" placeholder="Referencias, aclaraciones…">${esc(j.notes)}</textarea></label>
       </div></section>
       <section class="jfs"><h3><i>2</i>Quién y para cuándo</h3><div class="jfg">
       <label>Solicitante *<select class="base" id="jRequester">${opt(SOLICITANTES, j.requester)}</select></label>
@@ -3940,7 +3948,7 @@ function jobForm(){
       ${f.mode === "edit" && jobById(j.id) ? `<section class="jfs jfchat">${jobChain(jobById(j.id))}</section>` : ""}
       <p class="note" style="margin:0">Al guardar, le llega el aviso a quien lo tiene que hacer. La fecha de entrega se registra sola cuando marcás Diseño finalizado (CM: Publicado).</p>
       <div class="chips" style="grid-column:1/-1;justify-content:flex-end">${f.mode === "edit" && canCreateJobs() ? `<button class="btn danger" type="button" data-jdel="${esc(j.id)}" style="margin-right:auto">🗑 Borrar</button>` : ""}<button class="btn" type="button" data-jclose>Cancelar</button><button class="btn primary" type="submit">Guardar trabajo</button></div>
-    </form></aside>`;
+    </form></div>`;
 }
 // Lee lo que está escrito en el formulario de pedido (sin validar).
 document.addEventListener("click", e => { const a = e.target.closest("[data-jladd],[data-jldel]"); if (!a || !jobUI.form) return;
@@ -3950,6 +3958,7 @@ document.addEventListener("click", e => { const a = e.target.closest("[data-jlad
 // Links de un pedido (antes había uno solo, en j.link).
 const jobLinks = j => Array.isArray(j.links) ? j.links : j.link ? [j.link] : [];
 function readJobForm(j){ const v = id => document.getElementById(id)?.value;
+  const bf = document.getElementById("jBriefF"); if (bf && bf.dataset.dirty){ j.brief = cleanRich(bf.innerHTML); j.briefBy = viewer.name; j.briefAt = new Date().toISOString(); }
   const ls = [...document.querySelectorAll("#jobForm [data-jl]")]; if (ls.length || Array.isArray(j.links)){ j.links = ls.map(x => x.value.trim()); j.link = j.links.find(Boolean) || ""; }
   Object.assign(j, { requestDate:v("jReq") ?? j.requestDate, requester:v("jRequester") ?? j.requester, brand:v("jBrand") ?? j.brand, piece:v("jPiece") ?? j.piece, title:(v("jTitle") ?? j.title).trim(), owner:v("jOwner") ?? j.owner, status:v("jStatus") ?? j.status, priority:v("jPrio") ?? j.priority, complexity:v("jComp") ?? j.complexity, due:v("jDue") ?? j.due, link:(v("jLink") ?? j.link).trim(), notes:(v("jNotes") ?? j.notes).trim() }); }
 // Cuadraditos del proceso: uno por etapa; se toca el cuadradito de la etapa en la que está el trabajo.
@@ -3966,7 +3975,7 @@ function jobTable(list){
   const at = canCreateJobs(), showOwner = !pedMine(), showReq = viewer.role === "Admin total";
   const cols = 7 + (showOwner ? 1 : 0) + (showReq ? 1 : 0) + (at ? 1 : 0);
   return `<div class="tw"><table><thead><tr><th>Trabajo solicitado</th><th>Marca</th><th>Tipo</th><th>Fecha límite</th><th>Estado</th><th>Prioridad</th><th>Solicitante</th>${showOwner ? "<th>Responsable</th>" : ""}${showReq ? "<th>Solicitud</th>" : ""}${at ? "<th></th>" : ""}</tr></thead><tbody>
-    ${list.map(j => `<tr><td>${at ? `<button type="button" class="linkish" data-jedit="${j.id}" title="Editar">${esc(j.title)}</button>` : `<button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button>`}${j.link ? ` <a class="link-post" href="${esc(j.link)}" target="_blank" rel="noopener">${icon("link")} brief</a>` : ""}</td><td>${brandTag(j.brand)}</td><td>${j.area === "Diseño" ? pieceTag(j.piece) : esc(j.piece)}</td><td><div class="chips" style="flex-wrap:nowrap"><span class="num">${dm(j.due)}</span>${urgBadge(j)}</div></td><td>${jobStatusCell(j)}</td><td>${pill(j.priority, PRIO_COLOR[j.priority])}</td><td>${esc(j.requester)}</td>${showOwner ? `<td>${esc(j.owner)}</td>` : ""}${showReq ? `<td class="num">${dm(j.requestDate)}</td>` : ""}${at ? `<td>${jobActions(j)}</td>` : ""}</tr>`).join("") || `<tr><td colspan="${cols}" class="empty">No hay pedidos.</td></tr>`}
+    ${list.map(j => `<tr><td><button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button>${j.link ? ` <a class="link-post" href="${esc(j.link)}" target="_blank" rel="noopener">${icon("link")} brief</a>` : ""}</td><td>${brandTag(j.brand)}</td><td>${j.area === "Diseño" ? pieceTag(j.piece) : esc(j.piece)}</td><td><div class="chips" style="flex-wrap:nowrap"><span class="num">${dm(j.due)}</span>${urgBadge(j)}</div></td><td>${jobStatusCell(j)}</td><td>${pill(j.priority, PRIO_COLOR[j.priority])}</td><td>${esc(j.requester)}</td>${showOwner ? `<td>${esc(j.owner)}</td>` : ""}${showReq ? `<td class="num">${dm(j.requestDate)}</td>` : ""}${at ? `<td>${jobActions(j)}</td>` : ""}</tr>`).join("") || `<tr><td colspan="${cols}" class="empty">No hay pedidos.</td></tr>`}
   </tbody></table></div>`;
 }
 function jobBoard(list, A){
@@ -6457,7 +6466,8 @@ function render(){
   const keepChat = ci0 ? { v:ci0.value, s:ci0.selectionStart, e:ci0.selectionEnd, f:document.activeElement === ci0 } : null;
   const atBottom = !cm0 || cm0.scrollHeight - cm0.scrollTop - cm0.clientHeight < 60, top0 = cm0?.scrollTop;
   $("#content").innerHTML = `<div class="${animate ? (page === "pedidos" || page === "gestioncm" ? "anim" : "fade anim") : "noanim"}${["pedidos","cartel","web","pantallas","gestioncm","calendario","calhistoria","calcanales","inicio","alertas","avisos","mensajes","sugerencias","plan","reportes","usuarios","staff","perfil","pauta"].includes(page) ? " clean" : ""}" style="display:flex;flex-direction:column;gap:24px">${bar}${["tv","tvredes","tvimpacto"].includes(page) ? "" : `<p class="eyebrow">${EYEBROW[page]}</p>`}${ro}${avb}${inst}${bdays}${PAGES[page]()}${demo}</div>${installDrawer()}`;
-  if (jobUI.ficha && !jobUI.form){ const fx = jobFicha(); if (fx) $("#content").innerHTML = fx; else jobUI.ficha = null; } // el pedido se abre como página completa, desde cualquier página
+  if (jobUI.form){ const ff = jobForm(); if (ff) $("#content").innerHTML = ff; } // crear o editar un pedido: página completa
+  else if (jobUI.ficha){ const fx = jobFicha(); if (fx) $("#content").innerHTML = fx; else jobUI.ficha = null; } // el pedido se abre como página completa, desde cualquier página
   { const ci = document.getElementById("chatInput"); if (ci && keepChat){ ci.value = keepChat.v; if (keepChat.f){ ci.focus(); ci.setSelectionRange(keepChat.s, keepChat.e); } }
     const cm = document.getElementById("cvMsgs"); if (cm){ if (atBottom || chatUI.keepBottom) cm.scrollTop = cm.scrollHeight; else cm.scrollTop = top0; chatUI.keepBottom = false; } }
   chatNotify();
