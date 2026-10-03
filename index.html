@@ -201,7 +201,11 @@ html.light .logo-wide{background:#0f172a;border-radius:12px;padding:6px 10px;box
 .gifgrid .note{grid-column:1/-1;margin:6px 0}
 .cgif{display:block;margin:2px 0 4px}.cgif img{display:block;max-width:min(260px,100%);border-radius:10px}
 .schat{margin-top:10px;width:100%;justify-content:center}
-.ctime{align-self:flex-end;font-size:11px;color:var(--faint)}
+.ctime{align-self:flex-end;font-size:11px;color:var(--faint);display:inline-flex;align-items:center;gap:3px}
+.tick{display:inline-flex}.tick svg{height:11px;width:auto;fill:none;stroke:#94a3b8;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tick.sent svg{width:12px}.tick.got svg{width:16px}.tick.read svg{width:16px;stroke:#22c55e}
+.cbub.cbare,.cmsg.me .cbub.cbare{background:none;border:0;padding:0}
+.cbub.cbare .cgif img{border-radius:12px}.cbub.cbare .ctime{background:rgba(15,23,42,.6);padding:1px 6px;border-radius:8px;color:#e2e8f0}
 .creact{all:unset;cursor:pointer;position:absolute;top:-10px;right:-10px;width:24px;height:24px;border-radius:50%;display:none;place-items:center;background:var(--panel);border:1px solid var(--line-3);color:var(--muted)}
 .creact svg{width:14px;height:14px}
 .cbub:hover .creact,.cbub:focus-within .creact{display:grid}
@@ -4865,7 +4869,7 @@ function bubbles(c){
     const re = Object.entries(m.re || {}).filter(([, ids]) => ids.length);
     const mid = m.id || `${c.kind}${i}`;
     return `${sep}<div class="cmsg ${mine ? "me" : ""}" data-mid="${esc(mid)}">${!mine && c.kind === "g" ? (head ? `<span class="cmav">${who ? avatarHTML(who) : ""}</span>` : `<span class="cmav"></span>`) : ""}
-      <div class="cbub">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.stk && stkSrc(m.stk) ? `<img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer">` : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${esc(m.text)}</div>` : ""}<span class="ctime">${(m.time || msgTs(m).slice(11, 16))}${mine && c.kind === "p" ? (m.read ? " ✓✓" : " ✓") : ""}</span>
+      <div class="cbub${!m.text && ((m.stk && stkSrc(m.stk)) || m.gif) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.stk && stkSrc(m.stk) ? `<img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer">` : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${esc(m.text)}</div>` : ""}<span class="ctime">${(m.time || msgTs(m).slice(11, 16))}${mine ? msgTicks(m, c) : ""}</span>
         <button type="button" class="creact" data-react="${esc(mid)}" aria-label="Reaccionar">${icon("smile-plus")}</button>
         ${chatUI.react === mid ? `<div class="rqpick">${QUICK_RE.map(x => `<button type="button" data-re="${x}" data-rmid="${esc(mid)}">${x}</button>`).join("")}<button type="button" data-remore="${esc(mid)}" aria-label="Más emojis">＋</button></div>${chatUI.reactMore === mid ? emojiPanel("re:" + mid) : ""}` : ""}
       </div>
@@ -4882,6 +4886,26 @@ function emojiOnly(t){
 const CHAT_FS = [13, 14.5, 16, 18, 20, 22];
 let chatFs = (() => { try { const v = +localStorage.getItem("rmh-chatfs"); return CHAT_FS.includes(v) ? v : 14.5; } catch { return 14.5; } })();
 function setChatFs(d){ const i = Math.max(0, Math.min(CHAT_FS.length - 1, CHAT_FS.indexOf(chatFs) + d)); chatFs = CHAT_FS[i]; try { localStorage.setItem("rmh-chatfs", chatFs); } catch {} render(); }
+// Checks como WhatsApp: ✓ enviado · ✓✓ gris: le llegó · ✓✓ verde: lo leyó (en grupos: todos).
+const TICK1 = '<svg viewBox="0 0 16 11" aria-hidden="true"><path d="M1 6l3.5 3.5L11 2"/></svg>';
+const TICK2 = '<svg viewBox="0 0 20 11" aria-hidden="true"><path d="M1 6l3.5 3.5L11 2"/><path d="M8.5 8.5l1 1L16 2"/></svg>';
+function msgTicks(m, c){
+  const ts = msgTs(m); let read, got;
+  if (c.kind === "p"){ read = !!m.read; got = read || !!m.dlv; }
+  else { const ch = CHATS[c.id] || {}, others = PEOPLE.filter(pp => pp.active && pp.id !== viewer.id && chatMember(c.g, pp)).map(pp => pp.id);
+    read = others.length > 0 && others.every(id => (ch.seen?.[id] || "") >= ts);
+    got = read || (others.length > 0 && others.every(id => (ch.got?.[id] || "") >= ts || (ch.seen?.[id] || "") >= ts)); }
+  const st = read ? "read" : got ? "got" : "sent";
+  return ` <span class="tick ${st}" title="${read ? (c.kind === "g" ? "Lo leyeron todos" : "Leído") : got ? "Recibido" : "Enviado"}">${st === "sent" ? TICK1 : TICK2}</span>`;
+}
+// Cuando el mensaje llega a la app de la otra persona, queda “recibido” (aunque todavía no lo haya abierto).
+function markDelivered(){
+  if (!viewer || window.RMH?.previewing) return;
+  myThreads().forEach(t => (t.msgs || []).forEach(m => { if (m.from !== viewer.id && !m.dlv) m.dlv = true; }));
+  chatGroupsMine().forEach(g => { const ch = CHATS[g.id]; if (!ch?.msgs?.length) return;
+    const last = ch.msgs.filter(m => m.from !== viewer.id).map(msgTs).sort().pop();
+    if (last && (ch.got?.[viewer.id] || "") < last) ch.got = { ...(ch.got || {}), [viewer.id]:last }; });
+}
 function findMsg(c, mid){ return c.msgs.find((m, i) => (m.id || `${c.kind}${i}`) === mid); }
 function pMensajes(){
   const c = chatUI.open ? chatConv() : null; // se elige la conversación: así lo no leído queda marcado hasta abrirla
@@ -5072,7 +5096,7 @@ document.addEventListener("input", e => { if (e.target.id === "chSearch"){ chatU
 // El contador siempre se anima al instante (también en conversaciones silenciadas); el aviso, solo si no está silenciada.
 let chatLastTotal = null, chatLastLoud = null;
 function chatNotify(){
-  if (!viewer) return; const n = chatUnreadTotal(), loud = chatUnreadLoud();
+  if (!viewer) return; markDelivered(); const n = chatUnreadTotal(), loud = chatUnreadLoud();
   if (chatLastTotal !== null && n > chatLastTotal) setTimeout(bumpChatBadges, 0);
   if (chatLastLoud !== null && loud > chatLastLoud && !isDnd()){
     localNotify(loud);
