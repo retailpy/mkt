@@ -192,6 +192,10 @@ html.light .logo-wide{background:#0f172a;border-radius:12px;padding:6px 10px;box
 .stkfav{position:absolute;top:2px;right:2px;border:0;background:rgba(15,23,42,.7);color:#fbbf24;border-radius:8px;font-size:13px;line-height:1;padding:3px 4px;cursor:pointer}
 .stkup{display:flex;flex-direction:column;gap:8px;align-items:flex-start}.stkrule{margin:0;font-size:13px;padding:8px 10px;border-radius:10px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35)}
 .stkrule svg{width:14px;height:14px;vertical-align:-2px}.stkpick{cursor:pointer}
+.cstkw{position:relative;display:inline-block}
+.cstkfav{position:absolute;top:2px;right:2px;border:0;background:rgba(15,23,42,.75);color:#fbbf24;border-radius:10px;font-size:15px;line-height:1;padding:4px 6px;cursor:pointer;opacity:0;transition:opacity .15s}
+.cstkw:hover .cstkfav,.cstkfav.on,.cstkfav:focus-visible{opacity:1}
+@media (hover:none){.cstkfav{opacity:.85}}
 .cstk{display:block;width:clamp(96px,30vw,140px);height:auto;margin:2px 0}
 .cgifbtn{font-size:11px;font-weight:700;letter-spacing:.04em}
 .gifpanel{position:absolute;bottom:calc(100% + 6px);left:8px;right:8px;max-width:420px;background:var(--panel,#0f172a);border:1px solid var(--line-2);border-radius:14px;padding:10px;box-shadow:0 12px 30px rgba(0,0,0,.35);z-index:20;display:flex;flex-direction:column;gap:8px}
@@ -4943,7 +4947,7 @@ function bubbles(c){
     const re = Object.entries(m.re || {}).filter(([, ids]) => ids.length);
     const mid = m.id || `${c.kind}${i}`;
     return `${sep}<div class="cmsg ${mine ? "me" : ""}" data-mid="${esc(mid)}">${!mine && c.kind === "g" ? (head ? `<span class="cmav">${who ? avatarHTML(who) : ""}</span>` : `<span class="cmav"></span>`) : ""}
-      <div class="cbub${!m.text && ((m.stk && stkSrc(m.stk)) || m.gif) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.stk && stkSrc(m.stk) ? `<img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer">` : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${esc(m.text)}</div>` : ""}${m.via ? `<span class="cvia">Prueba enviada por ${esc(nickOf(personById(m.via)) || m.via)} como ${esc(nickOf(who) || m.from)}</span>` : ""}<span class="ctime">${(m.time || msgTs(m).slice(11, 16))}${mine ? msgTicks(m, c) : ""}</span>
+      <div class="cbub${!m.text && ((m.stk && stkSrc(m.stk)) || m.gif) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.stk && stkSrc(m.stk) ? `<span class="cstkw"><img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer"><button type="button" class="cstkfav${stkFavs().includes(m.stk) ? " on" : ""}" data-stkfav="${esc(m.stk)}" title="${stkFavs().includes(m.stk) ? "Está en tus favoritos (tocá para quitarlo)" : "Guardar en mis favoritos"}" aria-label="${stkFavs().includes(m.stk) ? "Quitar de favoritos" : "Guardar en favoritos"}">${stkFavs().includes(m.stk) ? "★" : "☆"}</button></span>` : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${esc(m.text)}</div>` : ""}${m.via ? `<span class="cvia">Prueba enviada por ${esc(nickOf(personById(m.via)) || m.via)} como ${esc(nickOf(who) || m.from)}</span>` : ""}<span class="ctime">${(m.time || msgTs(m).slice(11, 16))}${mine ? msgTicks(m, c) : ""}</span>
         <button type="button" class="creact" data-react="${esc(mid)}" aria-label="Reaccionar">${icon("smile-plus")}</button>
         ${chatUI.react === mid ? `<div class="rqpick">${QUICK_RE.map(x => `<button type="button" data-re="${x}" data-rmid="${esc(mid)}">${x}</button>`).join("")}<button type="button" data-remore="${esc(mid)}" aria-label="Más emojis">＋</button></div>${chatUI.reactMore === mid ? emojiPanel("re:" + mid) : ""}` : ""}
       </div>
@@ -5152,7 +5156,8 @@ function sendSticker(k){
   try { localStorage.setItem("rmh-stkrec-" + viewer.id, JSON.stringify([k, ...stkRecents().filter(x => x !== k)].slice(0, 16))); } catch {}
   chatUI.stk = false; chatUI.keepBottom = true; render(); window.RMH?.flushNow?.();
 }
-function toggleStkFav(k){ const l = stkFavs(); STICKER_FAVS[viewer.id] = l.includes(k) ? l.filter(x => x !== k) : [k, ...l].slice(0, 40); render(); }
+function toggleStkFav(k){ const l = stkFavs(), had = l.includes(k); STICKER_FAVS[viewer.id] = had ? l.filter(x => x !== k) : [k, ...l].slice(0, 40); render();
+  if (!chatUI.stk) toast(had ? "Sticker quitado de tus favoritos." : "¡Guardado! Lo encontrás en Stickers → Favoritos."); }
 const fileToB64 = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(f); });
 function stkResize(file){ return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => { const im = new Image(); im.onload = () => {
   const k = Math.min(1, 320 / Math.max(im.width, im.height)), w = Math.round(im.width * k), h = Math.round(im.height * k), c = document.createElement("canvas"); c.width = w; c.height = h;
