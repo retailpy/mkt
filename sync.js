@@ -399,3 +399,5 @@ const RMH = (() => {
     flush,
   };
 })();
+// Visible para index.html (window.RMH): GIFs, stickers, envío inmediato del chat y notificaciones lo usan.
+window.RMH = RMH;
