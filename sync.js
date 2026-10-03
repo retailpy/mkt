@@ -255,8 +255,33 @@ const RMH = (() => {
       if ((base.get(key)?.v || 0) >= (p.new.version || 0)) return;
       const { data: row } = await sb.from("app_state").select("key, data, version").eq("key", key).maybeSingle();
       if (row && applyRow(row)) scheduleRender();
-    }).subscribe();
+    }).subscribe(status => { if (status === "SUBSCRIBED") catchUp(); }); // al (re)conectar se trae lo que llegó mientras tanto
   }
+  // La conexión en vivo se corta (celular bloqueado, pestaña en segundo plano, wifi, sesión renovada) y lo que llega
+  // durante el corte no se repite. Por eso, además, se revisa qué cambió: cada 10 s, al volver a la app y al volver internet.
+  let catching = false;
+  async function catchUp(){
+    if (!ready || previewing || catching) return; catching = true;
+    try {
+      const { data, error } = await sb.from("app_state").select("key, version");
+      if (error || !Array.isArray(data)) return;
+      const stale = data.filter(r => (base.get(r.key)?.v || 0) < r.version).map(r => r.key);
+      if (!stale.length) return;
+      let changed = false;
+      for (let i = 0; i < stale.length; i += 50){
+        const { data: rows } = await sb.from("app_state").select("key, data, version").in("key", stale.slice(i, i + 50));
+        (rows || []).forEach(r => { if (applyRow(r)) changed = true; });
+      }
+      if (changed) scheduleRender();
+    } catch (e) { console.warn("catchUp", e); }
+    finally { catching = false; }
+  }
+  setInterval(catchUp, 10000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") catchUp(); });
+  addEventListener("online", () => catchUp());
+  addEventListener("focus", () => catchUp());
+  // La sesión se renueva cada hora: la conexión en vivo tiene que usar el token nuevo.
+  try { sb.auth.onAuthStateChange((ev, s) => { if (s?.access_token && sb.realtime?.setAuth) sb.realtime.setAuth(s.access_token); }); } catch (e) {}
 
   // ---------- login ----------
   const $id = id => document.getElementById(id);
@@ -348,8 +373,13 @@ const RMH = (() => {
     // Notificaciones push del chat: clave pública del servidor y los dispositivos de cada persona.
     // Guarda ya (sin esperar el segundo de pausa): los mensajes del chat salen al instante.
     flushNow(){ return flush(); },
-    // Token de la sesión, para las funciones de Vercel que necesitan saber que la persona inició sesión (stickers).
-    async token(){ const { data } = await sb.auth.getSession(); return data.session?.access_token || null; },
+    // GIFs y stickers (función "integraciones" de Supabase: las claves quedan en el servidor).
+    async integ(body){
+      if (previewing && !["gifs", "stickers"].includes(body.action)) return { ok:false, error:"No disponible en la vista previa" };
+      const { data, error } = await sb.functions.invoke("integraciones", { body });
+      if (error){ let t = "No se pudo conectar. Probá de nuevo."; try { t = (await error.context.json()).error || t; } catch (e) {} return { ok:false, error:t }; }
+      return data || { ok:false, error:"Sin respuesta" };
+    },
     async pushKey(){ const { data, error } = await sb.functions.invoke("chat-push", { method:"GET" }); return error ? null : data?.key || null; },
     async pushSave(sub){ if (!me || previewing) return false; const { error } = await sb.from("push_subs").upsert({ endpoint:sub.endpoint, person_id:me, sub }); return !error; },
     async pushDel(endpoint){ await sb.from("push_subs").delete().eq("endpoint", endpoint); },

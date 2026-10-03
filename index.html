@@ -256,6 +256,9 @@ html.light .logo-wide{background:#0f172a;border-radius:12px;padding:6px 10px;box
 .agrid .arow .adis{position:absolute;top:6px;right:6px}
 .agrid .arow{position:relative;padding-right:34px}
 .asec+.asec{margin-top:16px}
+.isteps{margin:6px 0 10px;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.45}
+.isteps a{color:var(--cyan)}.irow{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}.irow .base{flex:1 1 260px}
+#iScript{width:100%;font-family:var(--mono,monospace);font-size:12px;margin:6px 0}
 @keyframes cbump{0%{transform:scale(1)}20%{transform:scale(1.45)}40%{transform:scale(.9)}60%{transform:scale(1.2)}100%{transform:scale(1)}}
 @keyframes cglow{0%{box-shadow:0 0 0 0 rgba(34,211,238,.7)}100%{box-shadow:0 0 0 14px rgba(34,211,238,0)}}
 .cbump.msgc,.cbump#msgCount,.cbump#menuCount,.cbump.tbc{animation:cbump .7s ease,cglow 1.2s ease 2}
@@ -4918,7 +4921,10 @@ function pMensajes(){
     ${chatUI.grpForm ? grpForm() : ""}
   </div>`;
 }
+// En “ver como” (vista previa de Admin total) nada se guarda: un mensaje escrito ahí no le llega a nadie.
+const previewBlock = () => { if (!window.RMH?.previewing) return false; toast("Estás en vista previa (“ver como”): los mensajes no se envían. Para probar el chat, entrá con el usuario de esa persona."); return true; };
 function sendChat(){
+  if (previewBlock()) return;
   const inp = document.getElementById("chatInput"), text = inp?.value.trim(); const c = chatConv(); if (!text || !c) return;
   const now = new Date(), m = { id:newMsgId(), from:viewer.id, text, ts:now.toISOString(), date:TODAY, time:nowTime(), read:false, re:{} };
   if (c.kind === "g"){ const ch = CHATS[c.id] || (CHATS[c.id] = { id:c.id, msgs:[], seen:{} }); ch.msgs.push(m); ch.seen = { ...(ch.seen || {}), [viewer.id]:m.ts }; }
@@ -4958,7 +4964,7 @@ document.addEventListener("click", e => {
   else if (chatUI.emoji && !e.target.closest(".empanel")){ chatUI.emoji = false; render(); }
   else if (chatUI.react && !e.target.closest(".rqpick,.empanel")){ chatUI.react = null; chatUI.reactMore = null; render(); }
 });
-// ----- Stickers: 10 bocetos con emociones que trae la app + la biblioteca del equipo en Google Drive (/api/stickers) -----
+// ----- Stickers: 10 bocetos con emociones que trae la app + la biblioteca del equipo en Google Drive (función “integraciones” de Supabase) -----
 const SK_FACE = (fill, inner) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" stroke="#1f2937" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M60 12C88 10 108 30 108 60c2 30-20 48-48 48-30 2-48-18-48-48-2-30 20-46 48-48z" fill="${fill}"/><path d="M58 15c27-1 46 18 47 44M16 66c2 24 18 40 42 41" stroke-width="2" opacity=".35"/>${inner}</svg>`;
 const STICKERS_B = {
   feliz:["¡Bien!", SK_FACE("#fde68a", '<path d="M42 50v4M78 50v4"/><path d="M38 70c8 14 36 14 44 0"/>')],
@@ -4980,8 +4986,7 @@ const stkRecents = () => { try { return JSON.parse(localStorage.getItem("rmh-stk
 let stkLib = null; // biblioteca de Drive: null | "loading" | "nokey" | "err" | [...]
 async function stkLoad(force){
   if (!force && (stkLib === "loading" || Array.isArray(stkLib))) return; stkLib = "loading";
-  try { const t = await window.RMH?.token?.(); const r = await fetch("/api/stickers", { headers: t ? { Authorization:"Bearer " + t } : {} }); const j = await r.json().catch(() => ({}));
-    stkLib = r.status === 503 ? "nokey" : j.ok ? j.stickers : "err"; } catch { stkLib = "err"; }
+  try { const j = await integ({ action:"stickers" }); stkLib = j.nokey ? "nokey" : j.ok && Array.isArray(j.stickers) ? j.stickers : "err"; } catch { stkLib = "err"; }
   if (chatUI.stk && page === "mensajes") render();
 }
 function stkPanel(){
@@ -4994,7 +4999,7 @@ function stkPanel(){
   else if (tab === "fav") body = grid(stkFavs()) || `<p class="note">Tocá la ☆ de un sticker para guardarlo en tus favoritos.</p>`;
   else if (tab === "boc") body = grid(Object.keys(STICKERS_B).map(k => "b:" + k));
   else if (tab === "lib"){ if (stkLib === null) setTimeout(() => stkLoad(), 0);
-    body = stkLib === null || stkLib === "loading" ? `<p class="note">Cargando la biblioteca…</p>` : stkLib === "nokey" ? `<p class="note">La biblioteca de Google Drive todavía no está conectada. Mientras tanto podés usar los bocetos.</p>` : stkLib === "err" ? `<p class="note">No se pudo abrir la biblioteca. Probá de nuevo.</p>` : grid(stkLib.map(x => "d:" + x.id)) || `<p class="note">La biblioteca está vacía: ¡subí el primero!</p>`; }
+    body = stkLib === null || stkLib === "loading" ? `<p class="note">Cargando la biblioteca…</p>` : stkLib === "nokey" ? `<p class="note">La biblioteca de Google Drive todavía no está conectada${viewer.role === "Admin total" ? ": conectala en Configuración → Integraciones" : " (la conecta Admin total)"}. Mientras tanto podés usar los bocetos.</p>` : stkLib === "err" ? `<p class="note">No se pudo abrir la biblioteca. Probá de nuevo.</p>` : grid(stkLib.map(x => "d:" + x.id)) || `<p class="note">La biblioteca está vacía: ¡subí el primero!</p>`; }
   else body = `<div class="stkup"><p class="note" style="margin:0">Subí una imagen para usarla como sticker. Se guarda en la carpeta <b>Stickers Retail MKT</b> de Google Drive y la ve todo el equipo.</p>
     <p class="stkrule">${icon("info")} Que sea <b>liviana y chica</b>: PNG, WEBP, GIF o JPG de hasta <b>2 MB</b>. La app la achica sola a <b>320 × 320 px</b> (queda en menos de 400 KB). Los <b>GIF animados</b> no se achican: tienen que pesar <b>400 KB o menos</b>. Mejor con fondo transparente.</p>
     <label class="btn primary stkpick">${icon("upload")} Elegir imagen<input type="file" id="stkFile" accept="image/png,image/webp,image/gif,image/jpeg" hidden></label>${chatUI.stkBusy ? `<span class="note">Subiendo…</span>` : ""}</div>`;
@@ -5002,6 +5007,7 @@ function stkPanel(){
   return `<div class="stkpanel" role="dialog" aria-label="Stickers"><div class="chips stktabs">${tabs.map(([k, l]) => `<button type="button" class="chip ${tab === k ? "on" : ""}" data-stktab="${k}">${l}</button>`).join("")}</div><div class="stkbody">${body}</div></div>`;
 }
 function sendSticker(k){
+  if (previewBlock()) return;
   const c = chatConv(); if (!c || !stkSrc(k)) return;
   const now = new Date(), m = { id:newMsgId(), from:viewer.id, text:"", stk:k, ts:now.toISOString(), date:TODAY, time:nowTime(), read:false, re:{} };
   if (c.kind === "g"){ const ch = CHATS[c.id] || (CHATS[c.id] = { id:c.id, msgs:[], seen:{} }); ch.msgs.push(m); ch.seen = { ...(ch.seen || {}), [viewer.id]:m.ts }; }
@@ -5022,30 +5028,29 @@ async function uploadSticker(file){
   chatUI.stkBusy = true; render();
   try { const img = file.type === "image/gif" ? { type:file.type, data:await fileToB64(file) } : await stkResize(file);
     if (img.data.length * 0.75 > 400 * 1024) throw new Error("Quedó en más de 400 KB: probá con una imagen más simple.");
-    const t = await window.RMH?.token?.();
-    const r = await fetch("/api/stickers", { method:"POST", headers:{ "Content-Type":"application/json", ...(t ? { Authorization:"Bearer " + t } : {}) }, body:JSON.stringify({ name:file.name.replace(/\.[^.]+$/, "").slice(0, 40), ...img }) });
-    const j = await r.json().catch(() => ({}));
-    if (r.status === 503) throw new Error("La biblioteca de Google Drive todavía no está conectada.");
-    if (!j.ok) throw new Error(j.error || "No se pudo subir.");
+    const j = await integ({ action:"sticker_upload", name:file.name.replace(/\.[^.]+$/, "").slice(0, 40), ...img });
+    if (j.nokey) throw new Error(viewer.role === "Admin total" ? "La biblioteca de Google Drive todavía no está conectada: conectala en Configuración → Integraciones." : "La biblioteca de Google Drive todavía no está conectada (la conecta Admin total).");
+    if (!j.ok || !j.sticker) throw new Error(j.error || "No se pudo subir.");
     if (Array.isArray(stkLib)) stkLib.unshift(j.sticker);
     STICKER_FAVS[viewer.id] = ["d:" + j.sticker.id, ...stkFavs()].slice(0, 40); chatUI.stkTab = "fav"; toast("¡Listo! El sticker quedó en la biblioteca y en tus favoritos.");
   } catch (e){ toast(e.message || "No se pudo subir el sticker."); }
   chatUI.stkBusy = false; render();
 }
 document.addEventListener("change", e => { if (e.target.id === "stkFile" && e.target.files?.[0]) uploadSticker(e.target.files[0]); });
-// ----- GIFs (búsqueda por /api/gifs: la clave queda en el servidor) -----
+// ----- GIFs (GIPHY por la función “integraciones” de Supabase: la clave queda en el servidor) -----
 const gifCache = {};
+const integ = body => window.RMH?.integ ? RMH.integ(body) : Promise.resolve({ ok:false, error:"Sin conexión" });
 function gifPanel(){ return `<div class="gifpanel" role="dialog" aria-label="GIFs"><input class="base" id="gifQ" placeholder="Buscar GIFs…" value="${esc(chatUI.gifQ || "")}" aria-label="Buscar GIFs"><div class="gifgrid" id="gifGrid">${gifGridHTML(chatUI.gifQ || "")}</div></div>`; }
 function gifGridHTML(q){
   const r = gifCache[q]; if (!r){ setTimeout(() => gifLoad(q), 0); return `<p class="note">Buscando GIFs…</p>`; }
-  if (r === "nokey") return `<p class="note">La búsqueda de GIFs todavía no está configurada: falta cargar la clave de GIPHY en Vercel.</p>`;
+  if (r === "nokey"){ setTimeout(() => delete gifCache[q], 30000); return `<p class="note">La búsqueda de GIFs todavía no está conectada${viewer.role === "Admin total" ? ": cargá la clave de GIPHY en Configuración → Integraciones" : " (la conecta Admin total)"}.</p>`; }
   if (r === "err") return `<p class="note">No se pudieron cargar los GIFs. Probá de nuevo.</p>`;
   return r.length ? r.map(x => `<button type="button" data-gif="${esc(x.url)}" title="${esc(x.title)}"><img src="${esc(x.preview)}" alt="${esc(x.title || "GIF")}" loading="lazy"></button>`).join("") : `<p class="note">No hay GIFs para “${esc(q)}”.</p>`;
 }
 async function gifLoad(q){
   if (gifLoad.busy === q) return; gifLoad.busy = q;
-  try { const r = await fetch("/api/gifs?q=" + encodeURIComponent(q)); const j = await r.json().catch(() => ({}));
-    gifCache[q] = r.status === 503 ? "nokey" : j.ok ? j.gifs.filter(x => /^https:\/\//.test(x.url) && /^https:\/\//.test(x.preview)) : "err"; }
+  try { const j = await integ({ action:"gifs", q });
+    gifCache[q] = j.nokey ? "nokey" : j.ok && Array.isArray(j.gifs) ? j.gifs.filter(x => /^https:\/\//.test(x.url) && /^https:\/\//.test(x.preview)) : "err"; }
   catch { gifCache[q] = "err"; }
   gifLoad.busy = null; if (q === "" && gifCache[q] === "err") setTimeout(() => delete gifCache[q], 10000);
   const g = document.getElementById("gifGrid"); if (g && (chatUI.gifQ || "") === q) g.innerHTML = gifGridHTML(q);
@@ -5054,6 +5059,7 @@ let gifT = null;
 document.addEventListener("input", e => { if (e.target.id !== "gifQ") return; chatUI.gifQ = e.target.value.trim(); clearTimeout(gifT);
   gifT = setTimeout(() => { const g = document.getElementById("gifGrid"); if (g) g.innerHTML = gifGridHTML(chatUI.gifQ); }, 400); });
 function sendGif(url){
+  if (previewBlock()) return;
   const c = chatConv(); if (!c || !/^https:\/\//.test(url)) return;
   const now = new Date(), m = { id:newMsgId(), from:viewer.id, text:"", gif:url, ts:now.toISOString(), date:TODAY, time:nowTime(), read:false, re:{} };
   if (c.kind === "g"){ const ch = CHATS[c.id] || (CHATS[c.id] = { id:c.id, msgs:[], seen:{} }); ch.msgs.push(m); ch.seen = { ...(ch.seen || {}), [viewer.id]:m.ts }; }
@@ -6121,6 +6127,45 @@ function notifCfg(){
     <div class="chips">${on ? `<button class="btn" type="button" data-notifoff>${icon("bell-off")} Apagar en este dispositivo</button>` : perm === "unsupported" || perm === "denied" ? "" : `<button class="btn primary" type="button" data-notifon ${notifBusy ? "disabled" : ""}>${icon("bell-ring")} ${notifBusy ? "Activando…" : "Activar en este dispositivo"}</button>`}</div></section>`;
 }
 document.addEventListener("click", e => { if (e.target.closest("[data-notifon]")) enableNotif(); else if (e.target.closest("[data-notifoff]")) disableNotif(); });
+// ----- Integraciones (solo Admin total): GIPHY para buscar GIFs y la carpeta de Google Drive para los stickers -----
+let integSt = null, integScript = "";
+async function integRefresh(){ const j = await integ({ action:"status" }); integSt = j.ok ? j : { err:j.error }; if (page === "config" && cfgTab === "integ") render(); }
+function integCfg(){
+  if (integSt === null){ integSt = "loading"; setTimeout(integRefresh, 0); }
+  const st = integSt && integSt !== "loading" ? integSt : {}, on = ok => ok ? `<span class="pfid" style="margin:0">${icon("check")} Conectado</span>` : `<span class="note">Sin conectar</span>`;
+  return `<section class="panel cfgsec"><h2 class="pmh">${pmIco("image-play")}Búsqueda de GIFs (GIPHY) ${integSt === "loading" ? "" : on(st.giphy)}</h2>
+    <ol class="isteps"><li>Entrá a <a href="https://developers.giphy.com/dashboard/" target="_blank" rel="noopener">developers.giphy.com</a> y creá una cuenta gratis (o iniciá sesión).</li>
+      <li>Tocá <b>Create an App</b> → elegí <b>API</b> (no SDK) → poné un nombre (ej.: Retail MKT Hub) y una descripción corta → aceptá los términos → <b>Create App</b>.</li>
+      <li>Copiá la <b>API Key</b> que aparece y pegala acá abajo.</li></ol>
+    <div class="irow"><input class="base" id="iGiphy" placeholder="Pegá la API Key de GIPHY" autocomplete="off"><button class="btn primary" type="button" data-isave="giphy">Guardar</button>${st.giphy ? `<button class="btn" type="button" data-iclear="giphy">Desconectar</button>` : ""}</div>
+    <p class="note" style="margin:0">La clave se guarda en el servidor: nadie la ve en la app.</p></section>
+  <section class="panel cfgsec"><h2 class="pmh">${pmIco("sticker")}Stickers en Google Drive ${integSt === "loading" ? "" : on(st.stickers)}</h2>
+    <p class="note">Los stickers que sube el equipo se guardan en tu carpeta <a href="https://drive.google.com/drive/folders/1EwWLkJ3XCl927Yi0ryCvFC807Vdp0iFk" target="_blank" rel="noopener">Stickers Retail MKT</a>. Se conecta una sola vez, con la cuenta dueña de la carpeta (retailmarketingpy).</p>
+    <ol class="isteps"><li>Tocá <b>Copiar el script</b>.</li>
+      <li>Abrí <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com → Nuevo proyecto</a>. Borrá lo que aparece escrito y pegá el script. Arriba, cambiá el nombre a “Stickers Retail MKT” y tocá el disquete (Guardar).</li>
+      <li>Arriba a la derecha: <b>Implementar → Nueva implementación</b>. En el engranaje de “Seleccionar tipo” elegí <b>Aplicación web</b>.</li>
+      <li>Ejecutar como: <b>Yo</b> · Quién tiene acceso: <b>Cualquier usuario</b> → <b>Implementar</b>.</li>
+      <li>Google pide permisos: <b>Autorizar acceso</b> → elegí tu cuenta → si dice “Google no verificó esta app”: <b>Configuración avanzada → Ir a Stickers Retail MKT (no seguro)</b> → <b>Permitir</b>. (Es tu propio script.)</li>
+      <li>Copiá la <b>URL de la aplicación web</b> (termina en <code>/exec</code>) y pegala acá abajo.</li></ol>
+    <div class="irow"><button class="btn" type="button" data-iscript>${icon("copy")} Copiar el script</button></div>
+    ${integScript ? `<textarea class="base" id="iScript" rows="6" readonly>${esc(integScript)}</textarea>` : ""}
+    <div class="irow"><input class="base" id="iSticker" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"><button class="btn primary" type="button" data-isave="stickers">Conectar</button>${st.stickers ? `<button class="btn" type="button" data-iclear="stickers">Desconectar</button>` : ""}</div>
+    <p class="note" style="margin:0">El script tiene una clave secreta adentro: no lo compartas. Si lo cambiás o lo borrás, copialo de nuevo desde acá.</p></section>`;
+}
+document.addEventListener("click", async e => {
+  if (viewer?.role !== "Admin total") return;
+  const sv = e.target.closest("[data-isave]"), cl = e.target.closest("[data-iclear]");
+  if (sv || cl){ const k = (sv || cl).dataset[sv ? "isave" : "iclear"], val = sv ? (document.getElementById(k === "giphy" ? "iGiphy" : "iSticker")?.value || "").trim() : "";
+    if (sv && !val) return toast(k === "giphy" ? "Pegá la API Key de GIPHY." : "Pegá la URL de la aplicación web.");
+    (sv || cl).disabled = true; toast(sv ? "Probando la conexión…" : "Desconectando…");
+    const j = await integ(k === "giphy" ? { action:"set_giphy", key:val } : { action:"set_sticker_url", url:val });
+    if (!j.ok) { toast(j.error || "No se pudo."); (sv || cl).disabled = false; return; }
+    toast(sv ? (k === "giphy" ? "¡Listo! Ya se pueden buscar GIFs en el chat." : `¡Listo! Biblioteca conectada (${j.count} stickers en la carpeta).`) : "Desconectado.");
+    Object.keys(gifCache).forEach(x => delete gifCache[x]); stkLib = null; integSt = null; render(); return; }
+  if (e.target.closest("[data-iscript]")){ const j = await integ({ action:"script" }); if (!j.ok) return toast(j.error || "No se pudo.");
+    integScript = j.script; render();
+    try { await navigator.clipboard.writeText(j.script); toast("Script copiado: pegalo en script.google.com."); } catch { toast("Seleccioná todo el texto del cuadro y copialo."); document.getElementById("iScript")?.select(); } }
+});
 // Tocar la notificación abre esa conversación.
 const openChatFrom = open => { if (!open || !viewer) return; chatUI.open = open; chatUI.mob = true; chatUI.keepBottom = true; page = "mensajes"; location.hash = page; render(); };
 navigator.serviceWorker?.addEventListener("message", e => { if (e.data?.type === "openChat") openChatFrom(e.data.open); });
@@ -6137,14 +6182,14 @@ function pConfig(){
     <p class="note">Las personas que todavía no eligieron su contraseña. Desaparece cuando la cambian. Para dar una nueva, andá a Usuarios y permisos → Restablecer contraseña.</p>
     ${pend.length ? `<div class="list">${pend.map(pp => `<div class="row"><div class="person" style="min-width:0">${avatarHTML(pp)}<div><b>${esc(pp.name)}</b><span>${esc(pp.cargo || pp.role)}</span></div></div><span class="grow"></span><code style="font-family:var(--mono);color:#a5f3fc;font-size:15px">${esc(pp.tempPass)}</code></div>`).join("")}</div>` : `<div class="empty">Todos ya eligieron su contraseña.</div>`}</section>` : "";
   // Mi Perfil se edita solo acá; Instalar la app también está solo acá.
-  const tabs = [["perfil","Mi Perfil","user"],["apariencia","Apariencia","palette"],["notif","Notificaciones","bell"],["instalar","Instalar la app","download"]];
+  const tabs = [["perfil","Mi Perfil","user"],["apariencia","Apariencia","palette"],["notif","Notificaciones","bell"],["instalar","Instalar la app","download"], ...(v.role === "Admin total" ? [["integ","Integraciones","plug"]] : [])];
   const perfil = pPerfil().replace(/^<div><h1>Mi perfil<\/h1>.*?<\/div>/s, "");
   const inst = `<section class="panel cfgsec"><h2 class="pmh">${pmIco("smartphone")}Instalar la app</h2><p class="note">Tenela con su ícono en el celular, la tablet o la computadora: abre a pantalla completa, como cualquier app.</p>
     ${isInstalledApp() ? `<p class="pfid">${icon("check")} Ya la estás usando instalada.</p>` : ""}
     <div class="chips">${installPrompt ? `<button class="btn pgen" type="button" data-installnow>${icon("download")} Instalar ahora</button>` : ""}<button class="btn primary" type="button" data-install>${icon("list-ordered")} Ver cómo instalarla</button></div></section>`;
   return `<div><h1>Configuración</h1><p class="sub">Tu perfil, cómo querés ver la app e instalarla. Se guarda para vos: cada persona elige lo suyo.</p></div>
   <div class="chips cfgtabs" role="tablist">${tabs.map(([k, l, i]) => `<button type="button" role="tab" aria-selected="${cfgTab === k}" class="chip ${cfgTab === k ? "on" : ""}" data-cfgtab="${k}">${icon(i)} ${l}</button>`).join("")}</div>
-  ${cfgTab === "perfil" ? `${perfil}` : cfgTab === "instalar" ? inst : cfgTab === "notif" ? notifCfg() : `<div class="cfggrid">
+  ${cfgTab === "perfil" ? `${perfil}` : cfgTab === "instalar" ? inst : cfgTab === "notif" ? notifCfg() : cfgTab === "integ" && v.role === "Admin total" ? integCfg() : `<div class="cfggrid">
     <section class="panel cfgsec"><h2>Apariencia</h2><p class="note">Elegí la versión oscura o la clara.</p>
       <div class="cfgopts">${opt("theme", "dark", "Oscura", "Fondo oscuro, ideal para pantallas y poca luz.", `<span class="thprev dark"><i></i><i></i><i></i></span>`)}${opt("theme", "light", "Clara", "Fondo blanco, ideal para oficinas con mucha luz.", `<span class="thprev light"><i></i><i></i><i></i></span>`)}</div></section>
     <section class="panel cfgsec"><h2>Tamaño del texto</h2><p class="note">Para leer más cómodo.</p>
