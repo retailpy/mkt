@@ -50,9 +50,12 @@ Dos funciones en Vercel consultan la Graph API de Meta todos los días y guardan
 |---|---|---|
 | `api/seguidores.js` | `s:META_FOLLOWERS` (un bloque por mes) | 07:00 |
 | `api/demograficos.js` | `s:META_DEMO` (ciudades, edades y sexo de Instagram) | 07:15 |
+| `api/publicaciones.js` | `s:META_POSTS` (publicaciones de Instagram por marca: imagen, me gusta, alcance) | 07:30 |
+| `api/anuncios.js` | `s:META_CREATIVES` (anuncios del mes con imagen y copy, por marca) | 07:45 |
 
 - Las marcas y su orden están en `api/_lib/meta.js` (`NOMBRES` y `ORDEN`).
-- Variables en Vercel: `META_TOKEN` (vence cada 60 días), `SUPABASE_URL`, `SUPABASE_KEY`, `CRON_SECRET`, `INGEST_KEY`.
+- Variables en Vercel: `META_TOKEN` (conviene un token de **usuario del sistema** del Business Manager, que no vence; necesita
+  `pages_show_list`, `pages_read_engagement`, `instagram_basic`, `instagram_manage_insights`, `read_insights`, `ads_read` y `business_management`), `SUPABASE_URL`, `SUPABASE_KEY`, `CRON_SECRET`, `INGEST_KEY`.
 - Escriben con la clave publicable a través de `ingest_meta()`, que exige `INGEST_KEY` y solo acepta esas dos claves
   (ver `supabase/migrations/20260930030000_meta_ingest.sql`).
 - Probar sin guardar: `https://mkt-two.vercel.app/api/demograficos?dry=1&secret=CRON_SECRET`.
