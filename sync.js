@@ -5,7 +5,9 @@
 //   s:<nombre>          compartida con todo el equipo
 //   notes:<persona>     bloc de notas (solo lo ve su dueño)
 //   prompts:<persona>   historial de prompts (solo lo ve su dueño)
-//   thread:<id>         conversación (solo la ven sus dos participantes)
+//   thread:<id>         conversación privada (solo la ven sus dos participantes)
+//   chat:<grupo>        mensajes de un grupo del Chat (solo los ven sus integrantes, según s:CHAT_GROUPS)
+// Encuestas y sugerencias (s:SURVEYS, s:SUGGESTIONS) solo las lee y guarda Admin total; los grupos los edita solo Admin total.
 // Los cambios se detectan solos y se guardan a los segundos. Si dos personas cambian lo mismo a la vez,
 // se combinan los cambios por elemento (id) en vez de pisarse.
 const RMH = (() => {
@@ -55,24 +57,35 @@ const RMH = (() => {
     META_DEMO:[() => META_DEMO, v => { META_DEMO = v || {}; }],
     CHANNEL_POSTS:[() => CHANNEL_POSTS, v => { CHANNEL_POSTS = v; }],
     MAIN_PRIORITIES:[() => MAIN_PRIORITIES, v => { MAIN_PRIORITIES = v; }],
+    CHAT_GROUPS:[() => CHAT_GROUPS, v => { CHAT_GROUPS = v; }],
+    PRESENCE:[() => PRESENCE, v => { PRESENCE = v || {}; }],
   };
+  // Claves que solo existen para Admin total (la base no se las deja leer ni guardar al resto).
+  const ADMIN_ONLY = new Set(["s:SUGGESTIONS", "s:SURVEYS"]);
+  // Claves que todos leen pero solo Admin total guarda.
+  const ADMIN_WRITE = new Set(["s:CHAT_GROUPS"]);
+  const isAT = () => member?.role === "Admin total";
 
   let me = null, member = null, previewing = false, ready = false;
   const base = new Map(); // clave → { v: versión en el servidor, json: lo último que coincidió con el servidor }
 
   function localKeys(){
-    return [...Object.keys(SHARED).map(k => "s:" + k), "notes:" + me, "prompts:" + me, ...THREADS.filter(t => t.a === me || t.b === me).map(t => "thread:" + t.id)];
+    return [...Object.keys(SHARED).map(k => "s:" + k).filter(k => isAT() || !ADMIN_ONLY.has(k)), "notes:" + me, "prompts:" + me,
+      ...THREADS.filter(t => t.a === me || t.b === me).map(t => "thread:" + t.id),
+      ...CHAT_GROUPS.filter(g => chatMember(g, { id:me, role:member?.role })).map(g => "chat:" + g.id)]; // siempre con quien inició sesión
   }
   function getLocal(key){
     if (key.startsWith("s:")) return SHARED[key.slice(2)][0]();
     if (key.startsWith("notes:")) return NOTES[me] || [];
     if (key.startsWith("prompts:")) return PROMPT_HISTORY[me] || [];
+    if (key.startsWith("chat:")){ const id = key.slice(5); return CHATS[id] || (CHATS[id] = { id, msgs:[], seen:{} }); }
     return THREADS.find(t => "thread:" + t.id === key);
   }
   function setLocal(key, v){
     if (key.startsWith("s:")){ const h = SHARED[key.slice(2)]; if (h) h[1](v); }
     else if (key.startsWith("notes:")){ if (key === "notes:" + me) NOTES[me] = v; }
     else if (key.startsWith("prompts:")){ if (key === "prompts:" + me) PROMPT_HISTORY[me] = v; }
+    else if (key.startsWith("chat:")) CHATS[key.slice(5)] = v;
     else if (key.startsWith("thread:")){ const i = THREADS.findIndex(t => "thread:" + t.id === key); if (i >= 0) THREADS[i] = v; else THREADS.push(v); }
   }
 
@@ -122,9 +135,10 @@ const RMH = (() => {
   // Pendiente de guardar: cambió desde lo último del servidor, o todavía no existe en la base (v 0: se crea).
   // De solo lectura: las escriben las funciones de Meta; la app las lee pero nunca las guarda.
   const READONLY = new Set(["s:META_FOLLOWERS", "s:META_DEMO"]);
-  function dirtyKeys(){ return localKeys().filter(k => { if (READONLY.has(k) || getLocal(k) === undefined) return false; const b = base.get(k); return !b || b.v === 0 || C(enc(getLocal(k))) !== b.json; }); }
+  const noSave = k => READONLY.has(k) || (ADMIN_WRITE.has(k) && !isAT());
+  function dirtyKeys(){ return localKeys().filter(k => { if (noSave(k) || getLocal(k) === undefined) return false; const b = base.get(k); return !b || b.v === 0 || C(enc(getLocal(k))) !== b.json; }); }
   async function saveKey(key){
-    if (READONLY.has(key)) return;
+    if (noSave(key)) return;
     for (let attempt = 0; attempt < 4; attempt++){
       const data = enc(getLocal(key)), json = C(data), b = base.get(key);
       if (b && b.v > 0 && b.json === json) return;
@@ -185,7 +199,8 @@ const RMH = (() => {
     if (error) throw error;
     base.clear();
     THREADS = []; // solo las conversaciones que vienen del servidor
-    data.forEach(row => { if (row.key.startsWith("thread:") || localKeys().includes(row.key)) applyRow(row); });
+    data.sort((a, b) => (a.key.startsWith("s:") ? 0 : 1) - (b.key.startsWith("s:") ? 0 : 1)); // primero los grupos, después sus mensajes
+    data.forEach(row => { if (row.key.startsWith("thread:") || row.key.startsWith("chat:") || localKeys().includes(row.key)) applyRow(row); });
     // Las que todavía no están en la base: su base es el valor inicial (versión 0). Así, si otra persona la crea
     // mientras tanto, lo que se cargó acá se combina en vez de perderse.
     localKeys().forEach(k => { if (!base.has(k) && getLocal(k) !== undefined) base.set(k, { v:0, json:C(enc(getLocal(k))) }); });
@@ -199,6 +214,7 @@ const RMH = (() => {
   document.addEventListener("submit", () => { typingForm = null; setTimeout(() => { if (rerenderPending) scheduleRender(); }, 0); }, true);
   function busy(){
     const f = document.activeElement;
+    if (f && f.id === "chatInput" && !document.querySelector("#content aside.drawer")) return false; // el chat se actualiza en vivo; render conserva lo que se está escribiendo
     if (f && f.closest && f.closest("#content") && /^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName)) return true;
     if (document.querySelector("#content aside.drawer, #content .imodal")) return true;
     return !!(typingForm && document.body.contains(typingForm));
@@ -210,6 +226,23 @@ const RMH = (() => {
   }
   document.addEventListener("focusout", () => setTimeout(() => { if (rerenderPending) scheduleRender(); }, 150));
   document.addEventListener("click", () => setTimeout(() => { if (rerenderPending) scheduleRender(); }, 200));
+  // Presencia: quien tiene la app abierta aparece "Disponible" solo, y desde cuándo está activo.
+  let presenceCh = null;
+  const since = new Date().toISOString();
+  function presence(){
+    ONLINE = { [me]:since };
+    try {
+      const ch = sb.channel("presencia", { config:{ presence:{ key:me } } });
+      if (typeof ch.track !== "function") return; // sin soporte (pruebas): solo se ve a sí mismo en línea
+      presenceCh = ch;
+      ch.on("presence", { event:"sync" }, () => {
+        const st = ch.presenceState(), o = {};
+        Object.entries(st).forEach(([id, arr]) => { const t = (arr || []).map(x => x.since).filter(Boolean).sort()[0]; if (t) o[id] = t; });
+        o[me] = o[me] || since; ONLINE = o; scheduleRender();
+      });
+      ch.subscribe(status => { if (status === "SUBSCRIBED") ch.track({ since }); });
+    } catch (e){ console.error(e); }
+  }
   let channel = null;
   function subscribe(){
     channel = sb.channel("app_state").on("postgres_changes", { event:"*", schema:"public", table:"app_state" }, async p => {
@@ -241,13 +274,14 @@ const RMH = (() => {
     const { data: m, error } = await sb.from("members").select("*").eq("user_id", user.id).maybeSingle();
     if (error || !m || !m.active){ await sb.auth.signOut(); showLogin(); msg(error ? "No se pudo conectar. Probá de nuevo." : "Tu usuario no tiene acceso a la app. Pedíselo a un Admin total.", true); return; }
     member = m; me = m.person_id;
+    if (m.role !== "Admin total"){ SUGGESTIONS = []; SURVEYS = []; } // no se muestran ni se guardan: son solo de Admin total
     try { await loadAll(); }
     catch (e){ console.error(e); showLogin(); msg("No se pudieron cargar los datos. Revisá la conexión y probá de nuevo.", true); return; }
     const pp = PEOPLE.find(x => x.id === me);
     if (!pp){ await sb.auth.signOut(); showLogin(); msg("Tu usuario no está en la lista del equipo. Pedile a un Admin total que lo revise.", true); return; }
     viewer = pp; viewer.role = m.role; viewer.mustChange = false; viewer.active = true;
     document.querySelectorAll('label[for="viewas"], #viewas').forEach(el => el.hidden = m.role !== "Admin total");
-    ready = true; subscribe(); enterApp();
+    ready = true; subscribe(); presence(); enterApp();
   }
 
   $id("loginForm").addEventListener("submit", async e => {
