@@ -204,6 +204,7 @@ html.light .logo-wide{background:#0f172a;border-radius:12px;padding:6px 10px;box
 .ctime{align-self:flex-end;font-size:11px;color:var(--faint);display:inline-flex;align-items:center;gap:3px}
 .tick{display:inline-flex}.tick svg{height:11px;width:auto;fill:none;stroke:#94a3b8;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tick.sent svg{width:12px}.tick.got svg{width:16px}.tick.read svg{width:16px;stroke:#22c55e}
+.cvia{font-size:10.5px;color:#f59e0b;font-style:italic}
 .cbub.cbare,.cmsg.me .cbub.cbare{background:none;border:0;padding:0}
 .cbub.cbare .cgif img{border-radius:12px}.cbub.cbare .ctime{background:rgba(15,23,42,.6);padding:1px 6px;border-radius:8px;color:#e2e8f0}
 .creact{all:unset;cursor:pointer;position:absolute;top:-10px;right:-10px;width:24px;height:24px;border-radius:50%;display:none;place-items:center;background:var(--panel);border:1px solid var(--line-3);color:var(--muted)}
@@ -4869,7 +4870,7 @@ function bubbles(c){
     const re = Object.entries(m.re || {}).filter(([, ids]) => ids.length);
     const mid = m.id || `${c.kind}${i}`;
     return `${sep}<div class="cmsg ${mine ? "me" : ""}" data-mid="${esc(mid)}">${!mine && c.kind === "g" ? (head ? `<span class="cmav">${who ? avatarHTML(who) : ""}</span>` : `<span class="cmav"></span>`) : ""}
-      <div class="cbub${!m.text && ((m.stk && stkSrc(m.stk)) || m.gif) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.stk && stkSrc(m.stk) ? `<img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer">` : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${esc(m.text)}</div>` : ""}<span class="ctime">${(m.time || msgTs(m).slice(11, 16))}${mine ? msgTicks(m, c) : ""}</span>
+      <div class="cbub${!m.text && ((m.stk && stkSrc(m.stk)) || m.gif) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.stk && stkSrc(m.stk) ? `<img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer">` : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${esc(m.text)}</div>` : ""}${m.via ? `<span class="cvia">Prueba enviada por ${esc(nickOf(personById(m.via)) || m.via)} como ${esc(nickOf(who) || m.from)}</span>` : ""}<span class="ctime">${(m.time || msgTs(m).slice(11, 16))}${mine ? msgTicks(m, c) : ""}</span>
         <button type="button" class="creact" data-react="${esc(mid)}" aria-label="Reaccionar">${icon("smile-plus")}</button>
         ${chatUI.react === mid ? `<div class="rqpick">${QUICK_RE.map(x => `<button type="button" data-re="${x}" data-rmid="${esc(mid)}">${x}</button>`).join("")}<button type="button" data-remore="${esc(mid)}" aria-label="Más emojis">＋</button></div>${chatUI.reactMore === mid ? emojiPanel("re:" + mid) : ""}` : ""}
       </div>
@@ -4945,10 +4946,27 @@ function pMensajes(){
     ${chatUI.grpForm ? grpForm() : ""}
   </div>`;
 }
-// En “ver como” (vista previa de Admin total) nada se guarda: un mensaje escrito ahí no le llega a nadie.
-const previewBlock = () => { if (!window.RMH?.previewing) return false; toast("Estás en vista previa (“ver como”): los mensajes no se envían. Para probar el chat, entrá con el usuario de esa persona."); return true; };
+// En “ver como” (vista previa de Admin total) nada se guarda.
+// TEMPORAL para probar el chat: el mensaje sí se envía en nombre de esa persona, por el servidor, y queda marcado
+// como “prueba enviada por <Admin> como <persona>”. Para quitarlo: PREVIEW_SEND = false.
+const PREVIEW_SEND = true;
+function previewBlock(msg){
+  if (!window.RMH?.previewing) return false;
+  if (!PREVIEW_SEND || !msg){ toast("Estás en vista previa (“ver como”): los mensajes no se envían."); return true; }
+  const c = chatConv(); if (!c) return true;
+  integ({ action:"preview_send", as:viewer.id, to:chatUI.open, msg }).then(j => {
+    if (!j.ok) return toast(j.error || "No se pudo enviar la prueba.");
+    const m = j.msg;
+    if (c.kind === "g"){ const ch = CHATS[c.id] || (CHATS[c.id] = { id:c.id, msgs:[], seen:{} }); ch.msgs.push(m); }
+    else { const id = dmId(viewer.id, c.id); let t = THREADS.find(x => x.id === id); if (!t){ t = { id, dm:true, topic:"Chat", prio:"Normal", a:viewer.id, b:c.id, msgs:[] }; THREADS.push(t); } t.msgs.push(m); }
+    chatUI.keepBottom = true; render(); toast(`Prueba enviada como ${nickOf(viewer) || viewer.name}.`);
+  });
+  const inp = document.getElementById("chatInput"); if (inp && msg.text) inp.value = "";
+  chatUI.gif = false; chatUI.stk = false;
+  return true;
+}
 function sendChat(){
-  if (previewBlock()) return;
+  if (window.RMH?.previewing){ const t = document.getElementById("chatInput")?.value.trim(); if (t) previewBlock({ text:t }); return; }
   const inp = document.getElementById("chatInput"), text = inp?.value.trim(); const c = chatConv(); if (!text || !c) return;
   const now = new Date(), m = { id:newMsgId(), from:viewer.id, text, ts:now.toISOString(), date:TODAY, time:nowTime(), read:false, re:{} };
   if (c.kind === "g"){ const ch = CHATS[c.id] || (CHATS[c.id] = { id:c.id, msgs:[], seen:{} }); ch.msgs.push(m); ch.seen = { ...(ch.seen || {}), [viewer.id]:m.ts }; }
@@ -5031,7 +5049,7 @@ function stkPanel(){
   return `<div class="stkpanel" role="dialog" aria-label="Stickers"><div class="chips stktabs">${tabs.map(([k, l]) => `<button type="button" class="chip ${tab === k ? "on" : ""}" data-stktab="${k}">${l}</button>`).join("")}</div><div class="stkbody">${body}</div></div>`;
 }
 function sendSticker(k){
-  if (previewBlock()) return;
+  if (previewBlock({ stk:k })) return;
   const c = chatConv(); if (!c || !stkSrc(k)) return;
   const now = new Date(), m = { id:newMsgId(), from:viewer.id, text:"", stk:k, ts:now.toISOString(), date:TODAY, time:nowTime(), read:false, re:{} };
   if (c.kind === "g"){ const ch = CHATS[c.id] || (CHATS[c.id] = { id:c.id, msgs:[], seen:{} }); ch.msgs.push(m); ch.seen = { ...(ch.seen || {}), [viewer.id]:m.ts }; }
@@ -5083,7 +5101,7 @@ let gifT = null;
 document.addEventListener("input", e => { if (e.target.id !== "gifQ") return; chatUI.gifQ = e.target.value.trim(); clearTimeout(gifT);
   gifT = setTimeout(() => { const g = document.getElementById("gifGrid"); if (g) g.innerHTML = gifGridHTML(chatUI.gifQ); }, 400); });
 function sendGif(url){
-  if (previewBlock()) return;
+  if (previewBlock({ gif:url })) return;
   const c = chatConv(); if (!c || !/^https:\/\//.test(url)) return;
   const now = new Date(), m = { id:newMsgId(), from:viewer.id, text:"", gif:url, ts:now.toISOString(), date:TODAY, time:nowTime(), read:false, re:{} };
   if (c.kind === "g"){ const ch = CHATS[c.id] || (CHATS[c.id] = { id:c.id, msgs:[], seen:{} }); ch.msgs.push(m); ch.seen = { ...(ch.seen || {}), [viewer.id]:m.ts }; }

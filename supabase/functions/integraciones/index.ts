@@ -129,6 +129,38 @@ Deno.serve(async (req) => {
         if (!j.ok) return json({ ok: false, error: j.error || "No se pudo guardar" });
         return json({ ok: true, sticker: { ...j.sticker, url: thumb(j.sticker.id) } });
       }
+      // TEMPORAL (para probar el chat): Admin total, en "ver como", envía un mensaje en nombre de otra persona.
+      // Queda marcado con via = quién lo envió de verdad, y la app lo muestra como prueba.
+      case "preview_send": {
+        if (!admin) return json({ ok: false, error: "Solo Admin total" }, 403);
+        const as = String(b.as || ""), to = String(b.to || ""), msg = b.msg || {};
+        const people: any[] = (await db.from("app_state").select("data").eq("key", "s:PEOPLE").maybeSingle()).data?.data || [];
+        const asP = people.find((p) => p.id === as && p.active !== false);
+        if (!asP || as === m.person_id) return json({ ok: false, error: "Persona inválida" });
+        const text = String(msg.text || "").slice(0, 4000), gif = /^https:\/\//.test(msg.gif || "") ? msg.gif : undefined, stk = typeof msg.stk === "string" ? msg.stk.slice(0, 120) : undefined;
+        if (!text && !gif && !stk) return json({ ok: false, error: "Mensaje vacío" });
+        const now = new Date();
+        const nm = { id: "pv" + now.getTime().toString(36), from: as, text, ...(gif ? { gif } : {}), ...(stk ? { stk } : {}), ts: now.toISOString(),
+          date: now.toISOString().slice(0, 10), time: new Intl.DateTimeFormat("es-PY", { timeZone: "America/Asuncion", hour: "2-digit", minute: "2-digit", hour12: false }).format(now), read: false, re: {}, via: m.person_id };
+        let key: string, init: any;
+        if (to.startsWith("p:")){
+          const other = to.slice(2); if (!people.some((p) => p.id === other) || other === as) return json({ ok: false, error: "Destino inválido" });
+          const [x, y] = [as, other].sort(); key = `thread:dm-${x}-${y}`; init = { id: `dm-${x}-${y}`, dm: true, topic: "Chat", prio: "Normal", a: as, b: other, msgs: [] };
+        } else if (to.startsWith("g:")){
+          const gid = to.slice(2), groups: any[] = (await db.from("app_state").select("data").eq("key", "s:CHAT_GROUPS").maybeSingle()).data?.data || [];
+          const g = groups.find((x) => x.id === gid);
+          if (!g || g.archived || !(g.all || (g.members || []).includes(as) || (g.roles || []).includes(asP.role))) return json({ ok: false, error: "Esa persona no está en el grupo" });
+          key = `chat:${gid}`; init = { id: gid, msgs: [], seen: {} };
+        } else return json({ ok: false, error: "Destino inválido" });
+        for (let i = 0; i < 4; i++){
+          const { data: row } = await db.from("app_state").select("data, version").eq("key", key).maybeSingle();
+          if (!row){ const { error } = await db.from("app_state").insert({ key, data: { ...init, msgs: [nm] } }); if (!error) return json({ ok: true, msg: nm }); continue; }
+          const data = { ...row.data, msgs: [...(row.data.msgs || []), nm] };
+          const { data: up } = await db.from("app_state").update({ data, version: row.version + 1, updated_at: new Date().toISOString() }).eq("key", key).eq("version", row.version).select("version");
+          if (up && up.length) return json({ ok: true, msg: nm });
+        }
+        return json({ ok: false, error: "No se pudo guardar, probá de nuevo" });
+      }
     }
     return json({ ok: false, error: "Acción desconocida" }, 400);
   } catch (e: any){
