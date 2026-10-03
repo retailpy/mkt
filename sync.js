@@ -375,7 +375,7 @@ const RMH = (() => {
     flushNow(){ return flush(); },
     // GIFs y stickers (función "integraciones" de Supabase: las claves quedan en el servidor).
     async integ(body){
-      if (previewing && !["gifs", "stickers"].includes(body.action)) return { ok:false, error:"No disponible en la vista previa" };
+      if (previewing && !["gifs", "stickers", "preview_send"].includes(body.action)) return { ok:false, error:"No disponible en la vista previa" };
       const { data, error } = await sb.functions.invoke("integraciones", { body });
       if (error){ let t = "No se pudo conectar. Probá de nuevo."; try { t = (await error.context.json()).error || t; } catch (e) {} return { ok:false, error:t }; }
       return data || { ok:false, error:"Sin respuesta" };
