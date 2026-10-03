@@ -2263,18 +2263,19 @@ const groupOf = b => MAIN_BRANDS.includes(b) ? b : "Otros";
 const SECTIONS = [
   { g:"General", k:"dashboard", l:"Dashboard", i:"layout-dashboard" },
   { g:"General", k:"inicio", l:"Inicio", i:"house" },
-  { g:"General", k:"panel", l:"Panel de Trabajo", i:"layout-grid", virtual:true }, // acceso visual a las áreas de trabajo (no es un permiso aparte)
   { g:"General", k:"planmes", l:"Planificación del mes", i:"target" },
   { g:"General", k:"alertas", l:"Alertas", i:"bell", hide:true }, // ahora están en Inicio
   { g:"General", k:"avisos", l:"Avisos", i:"megaphone", hide:true }, // se ven en Inicio
   { g:"General", k:"mensajes", l:"Chat Retail MKT", i:"messages-square" },
   { g:"General", k:"notas", l:"Bloc de notas", i:"notebook-pen" },
+  { g:"Diseño gráfico", k:"paneldg", l:"Panel de Trabajo Diseño gráfico", n:"Panel de Trabajo", i:"layout-grid", virtual:true }, // acceso visual a las categorías de Diseño (no es un permiso aparte)
   { g:"Diseño gráfico", k:"pedidos", l:"Diseño para Redes", n:"Diseño: Redes", i:"image", hide:true },
   { g:"Diseño gráfico", k:"cartel", l:"Diseño para Cartelería", n:"Diseño: Cartelería", i:"signpost", hide:true },
   { g:"Diseño gráfico", k:"web", l:"Diseño para Web", n:"Diseño: Web", i:"monitor", hide:true },
   { g:"Diseño gráfico", k:"pantallas", l:"Diseño para Pantallas", n:"Diseño: Pantallas", i:"tv", hide:true },
   { g:"Diseño gráfico", k:"cargadiseno", l:"Carga de trabajo Diseño gráfico", n:"Carga de trabajo", i:"gauge", hide:true },
   { g:"Diseño gráfico", k:"historial", l:"Historial Diseño gráfico", n:"Historial", i:"archive", hide:true },
+  { g:"Community Manager", k:"panelcm", l:"Panel de Trabajo Community Manager", n:"Panel de Trabajo", i:"layout-grid", virtual:true }, // acceso visual a las categorías de CM
   { g:"Community Manager", k:"plan", l:"Plan de posteo", i:"list-checks", hide:true },
   { g:"Community Manager", k:"calendario", l:"Gestión Redes", n:"Gestión: Redes", i:"calendar-days", hide:true },
   { g:"Community Manager", k:"calhistoria", l:"Gestión Historia", n:"Gestión: Historia", i:"smartphone", hide:true },
@@ -3165,7 +3166,7 @@ const icon = n => `<i data-lucide="${n}"></i>`;
 // Vistas TV, Usuarios y Carga de trabajo: solo Admin total (aunque el permiso esté marcado).
 const ONLY_AT = ["tv","tvredes","tvimpacto","usuarios","cargadiseno","cargacm","sugerencias","encuestas"]; // Encuestas y sugerencias: solo Admin total (también en la base)
 const ONLY_ADMINS = ["historial","historialcm"]; // Historial de Diseño y de CM: solo Admin total y Admin
-const can = key => key === "panel" ? PANEL_KEYS.some(k => can(k)) : ONLY_AT.includes(key) ? viewer.role === "Admin total" : ONLY_ADMINS.includes(key) ? isAdminAny() && viewer.perms.has(key) : ["sabados","avisos","perfil","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
+const can = key => key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : ONLY_AT.includes(key) ? viewer.role === "Admin total" : ONLY_ADMINS.includes(key) ? isAdminAny() && viewer.perms.has(key) : ["sabados","avisos","perfil","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
 const myGroups = () => viewer.brands || GROUPS;
 const seesBrand = b => myGroups().includes(groupOf(b));
 const myBrands = () => Object.keys(BRANDS).filter(seesBrand);
@@ -3466,16 +3467,20 @@ const PANEL_TOOLS = [
   { k:"cargadiseno", t:"Carga de trabajo", a:"Diseño", i:"gauge" }, { k:"historial", t:"Historial", a:"Diseño", i:"archive" },
   { k:"cargacm", t:"Carga de trabajo", a:"CM", i:"gauge" }, { k:"historialcm", t:"Historial", a:"CM", i:"archive" },
 ];
-const PANEL_KEYS = [...PANEL_DESIGN, ...PANEL_CM, ...PANEL_TOOLS].map(x => x.k);
+const PANEL_DG_KEYS = [...PANEL_DESIGN, ...PANEL_TOOLS.filter(x => x.a === "Diseño")].map(x => x.k);
+const PANEL_CM_KEYS = [...PANEL_CM, ...PANEL_TOOLS.filter(x => x.a === "CM")].map(x => x.k);
+const PANEL_KEYS = [...PANEL_DG_KEYS, ...PANEL_CM_KEYS];
+const panelOf = k => PANEL_DG_KEYS.includes(k) ? "paneldg" : PANEL_CM_KEYS.includes(k) ? "panelcm" : null;
 let panelAll = false;
 // Pedidos que ve esta persona (mismos criterios que las páginas de pedidos).
 const panelJobs = () => jobs.filter(j => seesBrand(j.brand) && !isClosedJob(j) && (!isDesigner() || j.owner === viewer.name));
-function panelAlerts(){
-  const work = alerts().filter(a => ["pedidos","gestion","calendario"].includes(alertSrc(a)));
+function panelAlerts(ar){
+  const srcs = ar === "dg" ? ["pedidos"] : ar === "cm" ? ["gestion","calendario"] : ["pedidos","gestion","calendario"];
+  const work = alerts().filter(a => srcs.includes(alertSrc(a)));
   const seen = new Set(work.map(a => a.go));
   const gone = alertsGone();
   // Lo que todavía no aparece como alerta pero pide atención: pedidos urgentes o de prioridad alta y cambios pendientes.
-  panelJobs().forEach(j => {
+  panelJobs().filter(j => !ar || (ar === "cm") === (j.area === "CM")).forEach(j => {
     const go = "job:" + j.id;
     if (j.status === "En corrección" && !seen.has(go)) work.push({ go, key:"pc:" + j.id + ":" + jobRounds(j), ic:"pencil", sev:"#f97316", rank:1, t:`Cambios pendientes: ${j.title}`, m:`${j.brand} · ${j.owner} · entrega el ${dm(j.due)}` });
     else if (["Urgente","Alta"].includes(j.priority) && !seen.has(go)) work.push({ go, key:"pp:" + j.id, ic:"flame", sev:j.priority === "Urgente" ? "#ef4444" : "#f59e0b", rank:j.priority === "Urgente" ? 1 : 3, t:`Prioridad ${j.priority.toLowerCase()}: ${j.title}`, m:`${j.brand} · ${j.owner} · entrega el ${dm(j.due)} · ${j.status}` });
@@ -3488,8 +3493,8 @@ function panelCard(x, meta){
     <span class="pctxt"><b>${x.t}</b><small>${x.d}</small>${meta ? `<span class="pcmeta">${meta}</span>` : ""}</span>
     <span class="pcgo" aria-hidden="true">${icon("arrow-right")}</span></button>`;
 }
-function pPanel(){
-  const pj = panelJobs(), vp = visiblePosts();
+function pPanel(ar){
+  const pj = panelJobs(), vp = visiblePosts(), dg = ar === "dg";
   const late = list => list.filter(j => urgency(j)?.late).length;
   const jm = list => { const n = list.length, l = late(list); return n ? `${n} ${n === 1 ? "activo" : "activos"}${l ? ` · <em>${l} ${l === 1 ? "atrasado" : "atrasados"}</em>` : ""}` : "Sin pedidos activos"; };
   const pm = list => { const n = list.length, d = list.filter(isDone).length; return n ? `${d} de ${n} listos este mes` : "Nada cargado este mes"; };
@@ -3497,19 +3502,15 @@ function pPanel(){
   const meta = { pedidos:jm(pj.filter(j => jobSection(j) === "pedidos")), cartel:jm(pj.filter(j => jobSection(j) === "cartel")), web:jm(pj.filter(j => jobSection(j) === "web")),
     pantallas:jm(pj.filter(j => jobSection(j) === "pantallas")), gestioncm:jm(pj.filter(j => j.area === "CM")), plan:pm(vp),
     calendario:pm(vp.filter(p => p.format !== "Historia")), calhistoria:pm(vp.filter(p => p.format === "Historia")), calcanales:canales.length ? `${canales.length} este mes` : "Nada cargado este mes" };
-  const focus = navFocus === "Diseño gráfico" ? "dg" : navFocus === "Community Manager" ? "cm" : "";
-  const dg = PANEL_DESIGN.filter(x => can(x.k)), cm = PANEL_CM.filter(x => can(x.k));
-  const tools = a => PANEL_TOOLS.filter(x => x.a === a && can(x.k)).map(x => `<button type="button" class="ptool" data-page="${x.k}">${icon(x.i)} ${x.t}</button>`).join("");
-  const al = panelAlerts(), shown = panelAll ? al : al.slice(0, 5);
-  const area = (key, title, ic, list, a) => list.length && (!focus || focus === key) ? `<section class="parea"><div class="parea-h"><h2 class="pmh">${pmIco(ic)}${title}</h2><div class="ptools">${tools(a)}</div></div>
-    <div class="pgrid">${list.map(x => panelCard(x, meta[x.k])).join("")}</div></section>` : "";
-  return `<div><h1>Panel de Trabajo</h1><p class="sub">Lo urgente arriba y, abajo, cada área de trabajo. Tocá una tarjeta para entrar.</p></div>
-  ${dg.length && cm.length ? `<div class="chips pfocus" role="group" aria-label="Qué áreas ver">${[["","Todo el equipo"],["Diseño gráfico","Solo Diseño"],["Community Manager","Solo CM"]].map(([v, l]) => `<button type="button" class="chip ${navFocus === v ? "on" : ""}" data-navfocus="${v}">${l}</button>`).join("")}</div>` : ""}
+  const cards = (dg ? PANEL_DESIGN : PANEL_CM).filter(x => can(x.k));
+  const tools = PANEL_TOOLS.filter(x => x.a === (dg ? "Diseño" : "CM") && can(x.k)).map(x => `<button type="button" class="ptool" data-page="${x.k}">${icon(x.i)} ${x.t}</button>`).join("");
+  const al = panelAlerts(ar), shown = panelAll ? al : al.slice(0, 5);
+  return `<div class="head"><div><h1>Panel de Trabajo</h1><p class="sub">${dg ? "Diseño gráfico" : "Community Manager"}: lo urgente arriba y, abajo, cada categoría. Tocá una tarjeta para entrar.</p></div>${tools ? `<div class="ptools">${tools}</div>` : ""}</div>
   <section class="panel palerts"><div class="head" style="margin-bottom:10px"><h2 style="margin:0" class="pmh">${pmIco("siren")}Alertas y prioridades${al.length ? ` <span class="note">${al.length}</span>` : ""}</h2>
     ${al.length > 5 ? `<button type="button" class="btn sm" data-panelall>${panelAll ? "Ver menos" : `Ver más (${al.length - 5})`}</button>` : ""}</div>
     ${al.length ? `<div class="agrid">${alertList(shown)}</div>` : `<div class="empty">${icon("check")} Nada urgente: todo al día.</div>`}</section>
-  ${area("dg", "Diseño gráfico", "palette", dg, "Diseño")}
-  ${area("cm", "Community Manager", "clapperboard", cm, "CM")}`;
+  <section class="parea"><h2 class="pmh" style="margin:0">${pmIco(dg ? "palette" : "clapperboard")}Categorías</h2>
+    <div class="pgrid">${cards.map(x => panelCard(x, meta[x.k])).join("") || `<div class="empty">No tenés categorías habilitadas.</div>`}</div></section>`;
 }
 document.addEventListener("click", e => { if (e.target.closest("[data-panelall]")){ panelAll = !panelAll; render(); } });
 function pInicio(){
@@ -6435,8 +6436,8 @@ function pConfig(){
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-pref]"); if (!b) return; const [k, val] = b.dataset.pref.split("|"); viewer[k] = val; savePrefs(viewer); applyPrefs(); render();
   toast(k === "theme" ? `Listo: versión ${val === "light" ? "clara" : "oscura"}.` : k === "textSize" ? `Texto ${val === "big" ? "grande" : "normal"}.` : val === "off" ? "Animaciones desactivadas." : "Animaciones activadas."); });
-const EYEBROW = { panel:"Áreas de trabajo", web:"Diseño gráfico", pantallas:"Diseño gráfico", sabados:"Equipo", caldiseno:"Redes sociales", cartel:"Diseño gráfico", calcartel:"Cartelería", historialcm:"Community managers", gestioncm:"Community managers", avisos:"Comunicados del equipo", prompts:"Inteligencia artificial", guia:"Ayuda", archivos:"Diseños y archivos", encuestas:"La voz del equipo", planmes:"Hacia dónde vamos", notas:"Tu espacio", mensajes:"Comunicación interna", sugerencias:"Buzón confidencial", tvimpacto:"Pantalla de oficina", inicio:"Panel general", alertas:"Control", calendario:"Community managers", calhistoria:"Community managers", calcanales:"Community managers", cargadiseno:"Diseño gráfico", cargacm:"Community managers", plan:"Contenidos", pedidos:"Diseño gráfico", tv:"Equipo de diseño", historial:"Diseño gráfico", pauta:"Meta Ads", redes:"Audiencia", reportes:"Resultados del mes", usuarios:"Administración", perfil:"Tu cuenta", cumples:"Equipo", dashboard:"Visión general", tvredes:"Pantalla de oficina", staff:"Equipo", config:"Tu cuenta" };
-const PAGES = { panel:pPanel, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
+const EYEBROW = { paneldg:"Diseño gráfico", panelcm:"Community Manager", web:"Diseño gráfico", pantallas:"Diseño gráfico", sabados:"Equipo", caldiseno:"Redes sociales", cartel:"Diseño gráfico", calcartel:"Cartelería", historialcm:"Community managers", gestioncm:"Community managers", avisos:"Comunicados del equipo", prompts:"Inteligencia artificial", guia:"Ayuda", archivos:"Diseños y archivos", encuestas:"La voz del equipo", planmes:"Hacia dónde vamos", notas:"Tu espacio", mensajes:"Comunicación interna", sugerencias:"Buzón confidencial", tvimpacto:"Pantalla de oficina", inicio:"Panel general", alertas:"Control", calendario:"Community managers", calhistoria:"Community managers", calcanales:"Community managers", cargadiseno:"Diseño gráfico", cargacm:"Community managers", plan:"Contenidos", pedidos:"Diseño gráfico", tv:"Equipo de diseño", historial:"Diseño gráfico", pauta:"Meta Ads", redes:"Audiencia", reportes:"Resultados del mes", usuarios:"Administración", perfil:"Tu cuenta", cumples:"Equipo", dashboard:"Visión general", tvredes:"Pantalla de oficina", staff:"Equipo", config:"Tu cuenta" };
+const PAGES = { paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
 
 /* ---------- render ---------- */
 // Barra de pestañas abajo (celular), como en cualquier app: lo que más usa cada rol + “Más” para el menú completo.
@@ -6454,7 +6455,7 @@ const TB_ICO = { "messages-square":'<path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 
 const tbIcon = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TB_ICO[n]}</svg>`;
 function renderTabbar(){
   const tb = document.getElementById("tabbar"); if (!tb) return;
-  const work = isDesigner() || viewer.role === "CM" ? ["panel","Trabajo","layout-grid"] : ["dashboard","Dashboard","layout-dashboard"];
+  const work = isDesigner() ? ["paneldg","Trabajo","layout-grid"] : viewer.role === "CM" ? ["panelcm","Trabajo","layout-grid"] : ["dashboard","Dashboard","layout-dashboard"];
   const tabs = [["inicio","Inicio","house"],work,["mensajes","Chat","messages-square"]].filter(([k]) => can(k));
   const cnt = k => { const n = k === "inicio" ? alerts().length : k === "mensajes" ? chatUnreadTotal() : 0; return n ? `<span class="tbc">${n > 99 ? "99+" : n}</span>` : ""; };
   const open = document.querySelector(".side")?.classList.contains("open");
@@ -6467,7 +6468,7 @@ const FOCUS_GROUPS = { "Diseño gráfico":"Solo Diseño", "Community Manager":"S
 let navFocus = (() => { try { const v = localStorage.getItem("rmh-focus") || ""; return FOCUS_GROUPS[v] ? v : ""; } catch { return ""; } })();
 document.addEventListener("click", e => { const b = e.target.closest("[data-navfocus]"); if (!b) return; e.preventDefault();
   navFocus = b.dataset.navfocus; try { localStorage.setItem("rmh-focus", navFocus); } catch {}
-  if (navFocus && page !== "panel"){ const items = SECTIONS.filter(s => s.g === navFocus && can(s.k)); if (items.length && !items.some(s => s.k === page)){ page = items[0].k; location.hash = page; } }
+  if (navFocus){ const items = SECTIONS.filter(s => s.g === navFocus && can(s.k)); if (items.length && !items.some(s => s.k === page)){ page = items[0].k; location.hash = page; } }
   render(); });
 // Menú lateral en computadora: completo → reducido (solo íconos) → oculto, y de vuelta. El contenido usa el espacio libre.
 const NAV_MODES = ["full","mini","hidden"];
@@ -6495,7 +6496,7 @@ function renderNav(){
     const items = SECTIONS.filter(s => s.g === g && can(s.k) && !s.hide);
     if (!items.length) return "";
     const fb = FOCUS_GROUPS[g] && (navFocus ? `<button type="button" class="focusbtn team" data-navfocus="">Team completo</button>` : `<button type="button" class="focusbtn" data-navfocus="${g}">${FOCUS_GROUPS[g]}</button>`);
-    return `<div class="nav-group${FOCUS_GROUPS[g] ? " big" : ""}"><div class="nav-label">${g}${fb || ""}</div>${items.map(s => `<a href="#${s.k}" data-page="${s.k}" title="${esc(s.n || s.l)}" class="${page===s.k || (s.k === "panel" && PANEL_KEYS.includes(page)) ?"on":""}">${icon(s.i)}<span>${s.n || s.l}</span>${s.k==="mensajes" && chatUnreadTotal() ? `<span class="count msgc">${chatUnreadTotal()}</span>` : ""}${s.k==="alertas" && alerts().length ? `<span class="count">${alerts().length}</span>` : ""}</a>`).join("")}</div>`;
+    return `<div class="nav-group${FOCUS_GROUPS[g] ? " big" : ""}"><div class="nav-label">${g}${fb || ""}</div>${items.map(s => `<a href="#${s.k}" data-page="${s.k}" title="${esc(s.n || s.l)}" class="${page===s.k || (s.k === "paneldg" && PANEL_DG_KEYS.includes(page)) || (s.k === "panelcm" && PANEL_CM_KEYS.includes(page)) ?"on":""}">${icon(s.i)}<span>${s.n || s.l}</span>${s.k==="mensajes" && chatUnreadTotal() ? `<span class="count msgc">${chatUnreadTotal()}</span>` : ""}${s.k==="alertas" && alerts().length ? `<span class="count">${alerts().length}</span>` : ""}</a>`).join("")}</div>`;
   }).join("");
 }
 // Aparición animada de todo lo que se ve: paneles, tablas (fila por fila), calendarios (día por día), tableros, listas y tarjetas.
@@ -6551,8 +6552,8 @@ function render(){
   const atBottom = !cm0 || cm0.scrollHeight - cm0.scrollTop - cm0.clientHeight < 60, top0 = cm0?.scrollTop;
   $("#content").innerHTML = `<div class="${animate ? (page === "pedidos" || page === "gestioncm" ? "anim" : "fade anim") : "noanim"}${["pedidos","cartel","web","pantallas","gestioncm","calendario","calhistoria","calcanales","inicio","alertas","avisos","mensajes","sugerencias","plan","reportes","usuarios","staff","perfil","pauta"].includes(page) ? " clean" : ""}" style="display:flex;flex-direction:column;gap:24px">${bar}${["tv","tvredes","tvimpacto"].includes(page) ? "" : `<p class="eyebrow">${EYEBROW[page]}</p>`}${ro}${avb}${inst}${bdays}${PAGES[page]()}${demo}</div>${installDrawer()}`;
   if (jobUI.form){ const ff = jobForm(); if (ff) $("#content").innerHTML = ff; } // crear o editar un pedido: página completa
-  else if (PANEL_KEYS.includes(page) && !jobUI.ficha && can("panel")){ const x = [...PANEL_DESIGN, ...PANEL_CM, ...PANEL_TOOLS].find(y => y.k === page);
-    $("#content").insertAdjacentHTML("afterbegin", `<nav class="pcrumb" aria-label="Ubicación"><button type="button" class="btn sm" data-page="panel">${icon("layout-grid")} Panel de Trabajo</button><span>›</span><b>${esc(x.a ? `${x.t} ${x.a === "CM" ? "CM" : "Diseño"}` : x.t)}</b></nav>`); }
+  else if (PANEL_KEYS.includes(page) && !jobUI.ficha && can(panelOf(page))){ const x = [...PANEL_DESIGN, ...PANEL_CM, ...PANEL_TOOLS].find(y => y.k === page), pk = panelOf(page);
+    $("#content").insertAdjacentHTML("afterbegin", `<nav class="pcrumb" aria-label="Ubicación"><button type="button" class="btn sm" data-page="${pk}">${icon("layout-grid")} Panel de Trabajo ${pk === "paneldg" ? "Diseño" : "CM"}</button><span>›</span><b>${esc(x.t)}</b></nav>`); }
   else if (jobUI.ficha){ const fx = jobFicha(); if (fx) $("#content").innerHTML = fx; else jobUI.ficha = null; } // el pedido se abre como página completa, desde cualquier página
   { const ci = document.getElementById("chatInput"); if (ci && keepChat){ ci.value = keepChat.v; if (keepChat.f){ ci.focus(); ci.setSelectionRange(keepChat.s, keepChat.e); } }
     const cm = document.getElementById("cvMsgs"); if (cm){ if (atBottom || chatUI.keepBottom) cm.scrollTop = cm.scrollHeight; else cm.scrollTop = top0; chatUI.keepBottom = false; } }
