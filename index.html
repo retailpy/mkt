@@ -63,6 +63,27 @@ html.light .logo-wide{background:#0f172a;border-radius:12px;padding:6px 10px;box
 .focusbtn:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .jficha .jf{display:flex;flex-direction:column;gap:14px}
 .jform{display:flex;flex-direction:column;gap:16px}
+.jlinks{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.jfchat .jchain{border-top:0;padding-top:0}
+.jlinks .jll{font-size:13px;color:var(--muted)}
+.jlrow{display:flex;gap:8px;width:100%}
+.jlrow input{flex:1}
+.jchain ol{gap:10px !important;padding:0 !important}
+.jchain li.msg{display:flex;padding:0}
+.jchain li.msg.me{justify-content:flex-end}
+.jchain li.msg::before,.jchain li.ev::before{display:none}
+.jchain .bub{max-width:80%;background:rgba(148,163,184,.1);border:1px solid var(--line-2);border-radius:16px 16px 16px 4px;padding:9px 12px;display:flex;flex-direction:column;gap:2px}
+.jchain li.msg.me .bub{background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.35);border-radius:16px 16px 4px 16px}
+.jchain li.msg.fx .bub{border-left:3px solid #f97316}
+.jchain li.msg.me.fx .bub{border-left:1px solid rgba(34,211,238,.35);border-right:3px solid #f97316}
+.jchain .bub b{font-size:12px;color:var(--muted);font-weight:600}
+.jchain .bub span{align-self:flex-end}
+.jchain li.ev{justify-content:center;padding:0}
+.jchain li.ev>span{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;font-size:12px;color:var(--muted);border:1px solid var(--line-2);border-radius:999px;padding:4px 12px}
+.jchain li.ev>span svg{width:13px;height:13px}
+.jchain li.ev.ok>span{color:#6ee7b7;border-color:rgba(16,185,129,.4)}
+.jchain li.ev.bo>span{color:#67e8f9;border-color:rgba(6,182,212,.4)}
+.jchain li.ev a{color:inherit}
 .jlink{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
 .jlink label{flex:1;min-width:220px;display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
 .jlink input{border:1px solid var(--line-3);background:var(--inner);border-radius:14px;padding:9px 12px;color:#f1f5f9;outline:none;font:inherit}
@@ -2117,12 +2138,13 @@ function openApproveModal(j){
   const p = j.post && postById(j.post), cms = CM_NAMES(), pre = p?.cm || "";
   const w = document.createElement("div"); w.id = "fixpop"; w.className = "fixpop";
   w.innerHTML = `<div class="fixbox" role="dialog" aria-modal="true" aria-labelledby="okh"><h2 id="okh">Diseño finalizado</h2><p class="note">${esc(j.title)} · ${esc(j.owner)}</p>
+    <label>Link del resultado final<input class="base" id="okLink" value="${esc(j.finalLink || j.designLink || "")}" placeholder="Drive, Canva…"></label>
     <label>¿A qué CM le avisamos para que lo sume a su grilla?<select class="base" id="okCm"><option value="">No avisar a nadie</option>${cms.map(n => `<option ${n === pre ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label>
     <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-oksend="${j.id}">✓ Diseño finalizado</button></div></div>`;
   document.body.appendChild(w);
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-oksend]"); if (!b) return;
-  const j = jobById(b.dataset.oksend), cm = document.getElementById("okCm")?.value || ""; document.getElementById("fixpop")?.remove(); if (j) approveJob(j, cm); });
+  const j = jobById(b.dataset.oksend), cm = document.getElementById("okCm")?.value || "", fl = document.getElementById("okLink")?.value.trim() || ""; document.getElementById("fixpop")?.remove(); if (j){ if (fl) j.finalLink = fl; approveJob(j, cm); } });
 function approveJob(j, cm = ""){
   j.status = j.area === "CM" ? "Aprobado" : "Entregado"; if (!j.approved) j.approved = TODAY; // en Diseño, aprobar cierra el ciclo: Diseño finalizado
   if (j.status === "Entregado"){ if (!j.delivered) j.delivered = TODAY; const p = j.post && postById(j.post); if (p && p.status === "En diseño") p.status = "Listo"; }
@@ -3521,9 +3543,9 @@ function jobsFiltered(allStates){
 function jobReviewBox(j){
   if (!j || viewer.role !== "Admin total") return "";
   const hist = (j.changes || []).slice().reverse(), wait = REVIEW_WAIT.includes(j.status);
-  if (!wait && !hist.length) return "";
-  return `<div class="jrevbox" style="grid-column:1/-1"><span class="note">Cambios pedidos: <b>${jobRounds(j)}</b></span>${wait ? `<div class="jrevh"><b>${icon("hourglass")} ${esc(firstName(j.owner))} terminó ${j.area === "CM" ? "su trabajo" : "el boceto"}: esperando tu revisión</b><div class="chips"><button class="btn primary" type="button" data-jrev="approve:${j.id}">${j.area === "CM" ? "Aprobar" : "✓ Diseño finalizado"}</button><button class="btn" type="button" data-jrev="fix:${j.id}">Pedir cambios</button></div></div>` : ""}
-    ${jobChain(j, false)}</div>`;
+  if (!wait) return "";
+  return `<div class="jrevbox" style="grid-column:1/-1">${wait ? `<div class="jrevh"><b>${icon("hourglass")} ${esc(firstName(j.owner))} terminó ${j.area === "CM" ? "su trabajo" : "el boceto"}: esperando tu revisión</b><div class="chips"><button class="btn primary" type="button" data-jrev="approve:${j.id}">${j.area === "CM" ? "Aprobar" : "✓ Diseño finalizado"}</button><button class="btn" type="button" data-jrev="fix:${j.id}">Pedir cambios</button></div></div>` : ""}
+</div>`;
 }
 // Cadena de cambios: cada boceto entregado, cada pedido de cambios, los mensajes de ida y vuelta y el cierre, en orden.
 function jobChain(j, input = true){
@@ -3531,10 +3553,11 @@ function jobChain(j, input = true){
   const canWrite = input && !isViewOnly() && !isClosed() && (viewer.role === "Admin total" || j.owner === viewer.name) && !isFin(j);
   let round = 0;
   const item = c => {
-    if (c.ok) return `<li class="ok"><i>${icon("badge-check")}</i><div><b>${j.area === "CM" ? "Aprobado" : "Diseño finalizado"}</b><span>${who(c.by)} · ${dm(c.date)} ${c.time}</span></div></li>`;
-    if (c.kind === "boceto") return `<li class="bo"><i>${icon("send")}</i><div><b>${c.fix ? "Correcciones entregadas" : "Boceto finalizado"}</b>${c.link ? `<p><a class="link-post" href="${esc(c.link)}" target="_blank" rel="noopener">${icon("link")} Ver el diseño</a></p>` : ""}<span>${who(c.by)} · ${dm(c.date)} ${c.time}</span></div></li>`;
-    if (c.kind === "nota") return `<li class="nt"><i>${icon("message-circle")}</i><div><b>${esc(who(c.by))}</b><p>${esc(c.text)}</p><span>${dm(c.date)} ${c.time}</span></div></li>`;
-    round++; return `<li class="fx"><i>${icon("pencil")}</i><div><b>Cambios pedidos · ronda ${round}${c.ext ? ` <small class="note">(anotado por ${esc(who(c.by))})</small>` : ""}</b><p>${esc(c.text)}</p><span>${who(c.by)} · ${dm(c.date)} ${c.time}</span></div></li>`;
+    if (c.ok) return `<li class="ev ok"><span>${icon("badge-check")} ${j.area === "CM" ? "Aprobado" : "Diseño finalizado"} · ${who(c.by)} · ${dm(c.date)} ${c.time}${j.finalLink ? ` · <a href="${esc(j.finalLink)}" target="_blank" rel="noopener">ver resultado</a>` : ""}</span></li>`;
+    if (c.kind === "boceto") return `<li class="ev bo"><span>${icon("send")} ${c.fix ? "Correcciones entregadas" : "Boceto finalizado"} · ${who(c.by)} · ${dm(c.date)} ${c.time}${c.link ? ` · <a href="${esc(c.link)}" target="_blank" rel="noopener">ver diseño</a>` : ""}</span></li>`;
+    const me = c.by === viewer.name || (!c.by && viewer.role === "Admin total");
+    if (c.kind === "nota") return `<li class="msg ${me ? "me" : ""}"><div class="bub"><b>${esc(who(c.by))}</b><p>${esc(c.text)}</p><span>${dm(c.date)} ${c.time}</span></div></li>`;
+    round++; return `<li class="msg fx ${me ? "me" : ""}"><div class="bub"><b>${esc(who(c.by))} · cambios, ronda ${round}${c.ext ? " (anotados)" : ""}</b><p>${esc(c.text)}</p><span>${dm(c.date)} ${c.time}</span></div></li>`;
   };
   if (!list.length && !canWrite) return "";
   return `<div class="jchain"><h3>Cadena de cambios <span class="note">${jobRounds(j)} ${jobRounds(j) === 1 ? "cambio pedido" : "cambios pedidos"}</span></h3>
@@ -3546,6 +3569,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-jdli
   const j = jobById(b.dataset.jdlink), v = document.getElementById("jDesignLink")?.value.trim(); if (!j) return; j.designLink = v; render(); toast(v ? "Link guardado: Admin total lo ve en la ficha." : "Quitaste el link."); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-jcsend]"); if (!b) return;
   const j = jobById(b.dataset.jcsend), t = document.getElementById("jcText")?.value.trim(); if (!j || !t) return;
+  if (jobUI.form) readJobForm(jobUI.form.job); // no se pierde lo que estabas editando
   const ext = !!document.getElementById("jcExt")?.checked;
   (j.changes = j.changes || []).push(ext ? { date:TODAY, time:nowTime(), text:t, by:viewer.name, ext:true } : { date:TODAY, time:nowTime(), kind:"nota", text:t, by:viewer.name });
   notify(viewer.role === "Admin total" ? { to:j.owner, type:"nota", job:j.id, text:t } : { to:"admin", type:"nota", job:j.id, who:viewer.name, text:t });
@@ -3567,7 +3591,8 @@ function jobFicha(){
       <div class="chips">${pill(j.status, JOB_COLOR[j.status])}${urgBadge(j)}</div>
       ${last ? `<div class="jfmsg"><b>${icon("pencil")} Cambios que pidió Admin total</b><p>${esc(last.text)}</p><span>${dm(last.date)} · ${last.time}</span></div>` : ""}
       <div class="jfgrid">${row("Marca", brandTag(j.brand))}${row("Tipo de trabajo", esc(j.piece))}${row("Solicitante", esc(j.requester))}${row("Responsable", esc(j.owner))}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", pill(j.priority, PRIO_COLOR[j.priority]))}${row("Complejidad", esc(j.complexity))}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}</div>
-      ${j.link ? `<a class="btn" href="${esc(j.link)}" target="_blank" rel="noopener">${icon("link")} Abrir brief y archivos</a>` : ""}
+      ${j.finalLink ? `<a class="btn primary" href="${esc(j.finalLink)}" target="_blank" rel="noopener">${icon("badge-check")} Ver el resultado final</a>` : ""}
+      ${jobLinks(j).length ? `<div class="jfnotes"><span>Brief y archivos</span><div class="chips">${jobLinks(j).map((l, i) => `<a class="btn sm" href="${esc(l)}" target="_blank" rel="noopener">${icon("link")} Link ${i + 1}</a>`).join("")}</div></div>` : ""}
       ${j.notes ? `<div class="jfnotes"><span>Observaciones</span><p>${esc(j.notes)}</p></div>` : ""}
       ${j.owner === viewer.name && !isFin(j) && !isViewOnly() && j.area !== "CM" ? `<div class="jlink"><label>Link del diseño para revisar<input class="base" id="jDesignLink" value="${esc(j.designLink || "")}" placeholder="Drive, Canva, Figma…"></label><button class="btn" type="button" data-jdlink="${j.id}">${icon("link")} Guardar link</button></div>`
         : j.designLink ? `<a class="btn" href="${esc(j.designLink)}" target="_blank" rel="noopener">${icon("eye")} Ver el diseño</a>` : ""}
@@ -3600,7 +3625,9 @@ function jobForm(){
       <label>Tipo de trabajo *<select class="base" id="jPiece">${opt(types, j.piece)}</select></label>
       <label>Marca *<select class="base" id="jBrand">${opt(myBrands(), j.brand)}</select></label>
       <label class="wide" style="grid-column:1/-1">Trabajo solicitado *<input class="base" id="jTitle" value="${esc(j.title)}" placeholder="${area === "CM" ? "Ej.: Edición del reel de la semana del vino" : "Ej.: Banner web liquidación de invierno"}" required></label>
-      <label style="grid-column:1/-1">Link al brief o archivos<input class="base" id="jLink" value="${esc(j.link)}" placeholder="Drive, WeTransfer, carpeta compartida…"></label>
+      <div class="jlinks" style="grid-column:1/-1"><span class="jll">Links al brief o archivos <span class="note">(opcional, podés poner varios)</span></span>
+        ${jobLinks(j).map((l, i) => `<div class="jlrow"><input class="base" data-jl="${i}" value="${esc(l)}" placeholder="Drive, WeTransfer, Canva, carpeta compartida…"><button type="button" class="btn ib sm" data-jldel="${i}" aria-label="Quitar link">${icon("x")}</button></div>`).join("")}
+        <button type="button" class="btn sm" data-jladd>${icon("plus")} ${jobLinks(j).length ? "Agregar otro link" : "Agregar link"}</button></div>
       <label style="grid-column:1/-1">Detalle / observaciones<textarea class="base" id="jNotes" rows="3" placeholder="Qué tiene que tener, textos, precios, referencias…">${esc(j.notes)}</textarea></label>
       </div></section>
       <section class="jfs"><h3><i>2</i>Quién y para cuándo</h3><div class="jfg">
@@ -3614,12 +3641,20 @@ function jobForm(){
       <label>Prioridad *<select class="base" id="jPrio">${opt(PRIORIDADES, j.priority)}</select></label>
       <label>Complejidad *<select class="base" id="jComp">${opt(COMPLEJIDAD, j.complexity)}</select></label>
       </div></section>
+      ${f.mode === "edit" && jobById(j.id) ? `<section class="jfs jfchat">${jobChain(jobById(j.id))}</section>` : ""}
       <p class="note" style="margin:0">Al guardar, le llega el aviso a quien lo tiene que hacer. La fecha de entrega se registra sola cuando marcás Diseño finalizado (CM: Publicado).</p>
       <div class="chips" style="grid-column:1/-1;justify-content:flex-end">${f.mode === "edit" && canCreateJobs() ? `<button class="btn danger" type="button" data-jdel="${esc(j.id)}" style="margin-right:auto">🗑 Borrar</button>` : ""}<button class="btn" type="button" data-jclose>Cancelar</button><button class="btn primary" type="submit">Guardar trabajo</button></div>
     </form></aside>`;
 }
 // Lee lo que está escrito en el formulario de pedido (sin validar).
+document.addEventListener("click", e => { const a = e.target.closest("[data-jladd],[data-jldel]"); if (!a || !jobUI.form) return;
+  const j = jobUI.form.job; readJobForm(j); j.links = jobLinks(j).slice();
+  if (a.dataset.jldel !== undefined) j.links.splice(+a.dataset.jldel, 1); else j.links.push("");
+  j.link = j.links.find(Boolean) || ""; render(); if (a.dataset.jldel === undefined) [...document.querySelectorAll("#jobForm [data-jl]")].pop()?.focus(); });
+// Links de un pedido (antes había uno solo, en j.link).
+const jobLinks = j => Array.isArray(j.links) ? j.links : j.link ? [j.link] : [];
 function readJobForm(j){ const v = id => document.getElementById(id)?.value;
+  const ls = [...document.querySelectorAll("#jobForm [data-jl]")]; if (ls.length || Array.isArray(j.links)){ j.links = ls.map(x => x.value.trim()); j.link = j.links.find(Boolean) || ""; }
   Object.assign(j, { requestDate:v("jReq") ?? j.requestDate, requester:v("jRequester") ?? j.requester, brand:v("jBrand") ?? j.brand, piece:v("jPiece") ?? j.piece, title:(v("jTitle") ?? j.title).trim(), owner:v("jOwner") ?? j.owner, status:v("jStatus") ?? j.status, priority:v("jPrio") ?? j.priority, complexity:v("jComp") ?? j.complexity, due:v("jDue") ?? j.due, link:(v("jLink") ?? j.link).trim(), notes:(v("jNotes") ?? j.notes).trim() }); }
 // Cuadraditos del proceso: uno por etapa; se toca el cuadradito de la etapa en la que está el trabajo.
 function stagePicker(j, editable){
@@ -5793,7 +5828,7 @@ document.addEventListener("submit", e => {
     const past = f.mode !== "edit" && due < TODAY, key = "jpast:" + j.id + ":" + due;
     if (past && !(sureKey === key && Date.now() - sureAt < 8000)){ sureKey = key; sureAt = Date.now(); toast(`Ojo: la fecha límite ${dm(due)} ya pasó. Si está bien, tocá “Guardar” de nuevo.`); return; }
     sureKey = "";
-    readJobForm(j); j.title = title; j.due = due;
+    readJobForm(j); j.title = title; j.due = due; if (Array.isArray(j.links)) j.links = j.links.filter(Boolean);
     if (isFin(j) && !j.delivered) j.delivered = TODAY;
     const prevOwner = f.mode === "edit" ? jobById(j.id)?.owner : null;
     if (f.mode === "edit"){ Object.assign(jobs.find(x => x.id === j.id), j); } else jobs.push(j);
