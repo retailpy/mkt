@@ -55,15 +55,20 @@ const RMH = (() => {
     META_ADS:[() => META_ADS, v => { META_ADS = v; }],
     META_FOLLOWERS:[() => META_FOLLOWERS, v => { META_FOLLOWERS = v || {}; }],
     META_DEMO:[() => META_DEMO, v => { META_DEMO = v || {}; }],
+    META_POSTS:[() => META_POSTS, v => { META_POSTS = v || {}; }],
+    META_CREATIVES:[() => META_CREATIVES, v => { META_CREATIVES = v || {}; }],
     CHANNEL_POSTS:[() => CHANNEL_POSTS, v => { CHANNEL_POSTS = v; }],
     MAIN_PRIORITIES:[() => MAIN_PRIORITIES, v => { MAIN_PRIORITIES = v; }],
     CHAT_GROUPS:[() => CHAT_GROUPS, v => { CHAT_GROUPS = v; }],
     PRESENCE:[() => PRESENCE, v => { PRESENCE = v || {}; }],
+    CHAT_MUTES:[() => CHAT_MUTES, v => { CHAT_MUTES = v || {}; }],
+    STICKER_FAVS:[() => STICKER_FAVS, v => { STICKER_FAVS = v || {}; }],
   };
   // Claves que solo existen para Admin total (la base no se las deja leer ni guardar al resto).
   const ADMIN_ONLY = new Set(["s:SUGGESTIONS", "s:SURVEYS"]);
-  // Claves que todos leen pero solo Admin total guarda.
-  const ADMIN_WRITE = new Set(["s:CHAT_GROUPS"]);
+  // Claves que todos leen pero solo Admin total guarda. (Los grupos de chat los crea cualquiera: la base controla
+  // que cada uno cambie solo los suyos.)
+  const ADMIN_WRITE = new Set([]);
   const isAT = () => member?.role === "Admin total";
 
   let me = null, member = null, previewing = false, ready = false;
@@ -134,7 +139,7 @@ const RMH = (() => {
   let flushing = null, lastSeen = "", changedAt = 0, dirtySince = 0, rerenderPending = false, saveErrShown = false, retryAt = 0;
   // Pendiente de guardar: cambió desde lo último del servidor, o todavía no existe en la base (v 0: se crea).
   // De solo lectura: las escriben las funciones de Meta; la app las lee pero nunca las guarda.
-  const READONLY = new Set(["s:META_FOLLOWERS", "s:META_DEMO"]);
+  const READONLY = new Set(["s:META_FOLLOWERS", "s:META_DEMO", "s:META_POSTS", "s:META_CREATIVES"]);
   const noSave = k => READONLY.has(k) || (ADMIN_WRITE.has(k) && !isAT());
   function dirtyKeys(){ return localKeys().filter(k => { if (noSave(k) || getLocal(k) === undefined) return false; const b = base.get(k); return !b || b.v === 0 || C(enc(getLocal(k))) !== b.json; }); }
   async function saveKey(key){
@@ -221,7 +226,7 @@ const RMH = (() => {
   }
   function scheduleRender(){
     if (!ready) return;
-    if (busy()){ rerenderPending = true; return; }
+    if (busy()){ rerenderPending = true; try { renderNav(); chatNotify(); } catch (e) {} return; } // el aviso de chat nuevo llega igual, aunque estés escribiendo
     rerenderPending = false; render();
   }
   document.addEventListener("focusout", () => setTimeout(() => { if (rerenderPending) scheduleRender(); }, 150));
@@ -318,7 +323,10 @@ const RMH = (() => {
     msg("Listo: si ese email tiene cuenta, avisamos a los admins. Te van a pasar una contraseña provisoria.");
   });
   $id("logout").addEventListener("click", async () => {
-    await flush(); ready = false; await sb.auth.signOut(); location.reload();
+    await flush(); ready = false;
+    // Al salir, este dispositivo deja de recibir los mensajes de esta persona.
+    try { const reg = await navigator.serviceWorker?.getRegistration(), sub = await reg?.pushManager?.getSubscription(); if (sub) await sb.from("push_subs").delete().eq("endpoint", sub.endpoint); } catch (e) {}
+    await sb.auth.signOut(); location.reload();
   });
 
   (async () => {
@@ -337,6 +345,14 @@ const RMH = (() => {
       if (error){ let t = "No se pudo completar."; try { t = (await error.context.json()).error || t; } catch (e) {} toast(t); return false; }
       return data;
     },
+    // Notificaciones push del chat: clave pública del servidor y los dispositivos de cada persona.
+    // Guarda ya (sin esperar el segundo de pausa): los mensajes del chat salen al instante.
+    flushNow(){ return flush(); },
+    // Token de la sesión, para las funciones de Vercel que necesitan saber que la persona inició sesión (stickers).
+    async token(){ const { data } = await sb.auth.getSession(); return data.session?.access_token || null; },
+    async pushKey(){ const { data, error } = await sb.functions.invoke("chat-push", { method:"GET" }); return error ? null : data?.key || null; },
+    async pushSave(sub){ if (!me || previewing) return false; const { error } = await sb.from("push_subs").upsert({ endpoint:sub.endpoint, person_id:me, sub }); return !error; },
+    async pushDel(endpoint){ await sb.from("push_subs").delete().eq("endpoint", endpoint); },
     async changePassword(oldPass, newPass){
       const { data: u } = await sb.auth.getUser();
       const { error: e1 } = await sb.auth.signInWithPassword({ email:u.user.email, password:oldPass });
