@@ -220,7 +220,8 @@ const RMH = (() => {
   function busy(){
     const f = document.activeElement;
     if (f && f.id === "chatInput" && !document.querySelector("#content aside.drawer")) return false; // el chat se actualiza en vivo; render conserva lo que se está escribiendo
-    if (f && f.closest && f.closest("#content") && /^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName)) return true;
+    if (f && f.closest && f.closest("#content") && (/^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName) || f.isContentEditable)) return true;
+    if (document.querySelector("#jBrief") && document.getElementById("jBrief").dataset.dirty) return true; // texto del pedido sin guardar
     if (document.querySelector("#content aside.drawer, #content .imodal")) return true;
     return !!(typingForm && document.body.contains(typingForm));
   }
