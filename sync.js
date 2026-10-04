@@ -376,11 +376,19 @@ const RMH = (() => {
     flushNow(){ return flush(); },
     // GIFs y stickers (función "integraciones" de Supabase: las claves quedan en el servidor).
     async integ(body){
-      if (previewing && !["gifs", "stickers", "preview_send"].includes(body.action)) return { ok:false, error:"No disponible en la vista previa" };
+      if (previewing && !["gifs", "stickers", "preview_send", "tendencias"].includes(body.action)) return { ok:false, error:"No disponible en la vista previa" };
       const { data, error } = await sb.functions.invoke("integraciones", { body });
       if (error){ let t = "No se pudo conectar. Probá de nuevo."; try { t = (await error.context.json()).error || t; } catch (e) {} return { ok:false, error:t }; }
       return data || { ok:false, error:"Sin respuesta" };
     },
+    // Material adjunto de los pedidos: archivos privados del equipo (bucket "material" de Supabase Storage).
+    async upload(path, file){
+      if (previewing) return { ok:false, error:"No disponible en la vista previa" };
+      const { error } = await sb.storage.from("material").upload(path, file, { contentType:file.type || "application/octet-stream", upsert:false });
+      return error ? { ok:false, error:/size|large|exceed/i.test(error.message) ? "El archivo supera 15 MB" : "No se pudo subir el archivo" } : { ok:true };
+    },
+    async fileUrl(path, name){ const { data, error } = await sb.storage.from("material").createSignedUrl(path, 600, name ? { download:name } : undefined); return error ? null : data?.signedUrl || null; },
+    async fileDel(path){ const { error } = await sb.storage.from("material").remove([path]); return !error; },
     async pushKey(){ const { data, error } = await sb.functions.invoke("chat-push", { method:"GET" }); return error ? null : data?.key || null; },
     async pushSave(sub){ if (!me || previewing) return false; const { error } = await sb.from("push_subs").upsert({ endpoint:sub.endpoint, person_id:me, sub }); return !error; },
     async pushDel(endpoint){ await sb.from("push_subs").delete().eq("endpoint", endpoint); },
