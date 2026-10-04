@@ -4,7 +4,7 @@
 // Las imágenes de Instagram vencen a los pocos días: por eso corre todos los días.
 //
 // Probar sin guardar:  /api/publicaciones?dry=1&secret=EL_CRON_SECRET
-const { ORDEN, authorized, graph, brandPages, save, today, tokenHint } = require("./_lib/meta");
+const { ORDEN, cronOrUser, graph, brandPages, save, today, tokenHint } = require("./_lib/meta");
 
 const FIELDS = "id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count";
 const MAX = 40;          // publicaciones guardadas por marca
@@ -20,9 +20,10 @@ async function insights(id){
 }
 
 module.exports = async (req, res) => {
-  if (!authorized(req)) return res.status(401).json({ ok: false, error: "No autorizado: falta ?secret= o es incorrecto" });
+  const who = await cronOrUser(req); // el cron o el botón “Actualizar” de la app (Admin total, Admin o CM)
+  if (!who) return res.status(401).json({ ok: false, error: "No autorizado: falta ?secret= o es incorrecto" });
   if (!process.env.META_TOKEN){ console.error("ERROR: falta la variable META_TOKEN en Vercel"); return res.status(500).json({ ok: false, error: "Falta la variable META_TOKEN en Vercel" }); }
-  const dry = req.query.dry === "1";
+  const dry = req.query.dry === "1" && who === "cron";
   try {
     const { byBrand } = await brandPages();
     const { at } = today();

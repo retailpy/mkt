@@ -3,12 +3,13 @@
 // Cada mes queda con el último dato del mes (corre a la mañana y a las 23 h de Paraguay), así la app compara contra el mes anterior.
 //
 // Probar sin guardar:  /api/seguidores?dry=1&secret=EL_CRON_SECRET
-const { ORDEN, authorized, brandPages, save, today, tokenHint } = require("./_lib/meta");
+const { ORDEN, cronOrUser, brandPages, save, today, tokenHint } = require("./_lib/meta");
 
 module.exports = async (req, res) => {
-  if (!authorized(req)) return res.status(401).json({ ok: false, error: "No autorizado: falta ?secret= o es incorrecto" });
+  const who = await cronOrUser(req); // el cron o el botón “Actualizar” de la app (Admin total, Admin o CM)
+  if (!who) return res.status(401).json({ ok: false, error: "No autorizado: falta ?secret= o es incorrecto" });
   if (!process.env.META_TOKEN){ console.error("ERROR: falta la variable META_TOKEN en Vercel"); return res.status(500).json({ ok: false, error: "Falta la variable META_TOKEN en Vercel" }); }
-  const dry = req.query.dry === "1";
+  const dry = req.query.dry === "1" && who === "cron";
   try {
     const { byBrand, unmatched, missing, total } = await brandPages();
     const { month, at } = today();
