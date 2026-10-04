@@ -353,6 +353,21 @@ html.nomotion .picon{animation:none}
   .kanban .col{flex:0 0 84%;scroll-snap-align:start;min-width:0}
 }
 @media (max-width:900px){ .jproc{overflow-x:auto} }
+/* Celular: una conversación abierta ocupa toda la pantalla, con solo la flecha de volver (como WhatsApp) */
+@media (max-width:760px){
+  html.chatfull,html.chatfull body{overflow:hidden;height:100%}
+  html.chatfull .side,html.chatfull .brandbar,html.chatfull .tabbar,html.chatfull .navshow,html.chatfull .pcrumb,html.chatfull .toast:empty{display:none !important}
+  html.chatfull .main{padding:0 !important;margin:0 !important}
+  html.chatfull #content{padding:0 !important;margin:0 !important}
+  html.chatfull #content > div{gap:0 !important;padding:0 !important}
+  html.chatfull .chatapp{height:var(--vvh,100dvh) !important;min-height:0;gap:0}
+  html.chatfull .chatapp .chconv{border-radius:0;border:0;margin:0;height:100%;padding-top:env(safe-area-inset-top)}
+  html.chatfull .cvhead{position:sticky;top:0;z-index:2;padding:8px 10px;gap:8px;background:var(--panel)}
+  html.chatfull .cvhead .cfsz{display:none}
+  html.chatfull .cvcomp{padding-bottom:max(8px,env(safe-area-inset-bottom))}
+  html.chatfull #chatInput{font-size:16px;min-width:0;flex:1} /* 16px: el iPhone no hace zoom al escribir */
+  html.chatfull .cvcomp{gap:6px}html.chatfull .cvcomp > .btn.ib{width:36px;height:36px;padding:0;flex:none}html.chatfull .cvcomp .cgifbtn{width:auto;padding:0 8px}
+}
 .gback{gap:6px}.amore{margin-top:10px}
 .vtabs.pedv{margin:0}
 .pcrumb{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--faint);margin-bottom:-6px}.pcrumb b{color:var(--ink);font-weight:600}
@@ -5314,7 +5329,7 @@ function pMensajes(){
         <button type="button" class="btn ib" data-stkopen aria-label="Stickers" title="Stickers" aria-expanded="${!!chatUI.stk}">${icon("sticker")}</button>
         <button type="button" class="btn ib cgifbtn" data-gifopen aria-label="GIFs" aria-expanded="${!!chatUI.gif}">GIF</button>
         ${chatUI.emoji ? emojiPanel("in") : ""}${chatUI.gif ? gifPanel() : ""}${chatUI.stk ? stkPanel() : ""}
-        <textarea class="base" id="chatInput" rows="1" placeholder="Escribí un mensaje…" aria-label="Mensaje"></textarea>
+        <textarea class="base" id="chatInput" rows="1" placeholder="${touchUI() ? "Mensaje" : "Escribí un mensaje…"}" aria-label="Mensaje"></textarea>
         <button type="button" class="btn primary" data-csend aria-label="Enviar">${icon("send")}</button></div>`}` : `<div class="cempty">Elegí una conversación.</div>`}
     </section>
     ${chatUI.grpForm ? grpForm() : ""}
@@ -5360,7 +5375,7 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-cback]")){ chatUI.mob = false; render(); return; }
   const fz = e.target.closest("[data-cfs]"); if (fz) return setChatFs(+fz.dataset.cfs);
   const mu = e.target.closest("[data-cmute]"); if (mu) return toggleMute(mu.dataset.cmute);
-  const op = e.target.closest("[data-copen]"); if (op){ chatUI.mob = true; chatUI.open = op.dataset.copen; chatUI.emoji = false; chatUI.react = null; chatUI.keepBottom = true; render(); document.getElementById("chatInput")?.focus(); return; }
+  const op = e.target.closest("[data-copen]"); if (op){ chatUI.mob = true; chatUI.open = op.dataset.copen; chatUI.emoji = false; chatUI.react = null; chatUI.keepBottom = true; render(); if (!touchUI()) document.getElementById("chatInput")?.focus(); return; } // en el celular el teclado sale solo al tocar para escribir
   if (e.target.closest("[data-csend]")) return sendChat();
   if (e.target.closest("[data-emopen]")){ chatUI.emoji = !chatUI.emoji; chatUI.gif = false; render(); return; }
   if (e.target.closest("[data-stkopen]")){ chatUI.stk = !chatUI.stk; chatUI.gif = false; chatUI.emoji = false; render(); return; }
@@ -5573,7 +5588,7 @@ document.addEventListener("submit", async e => {
 });
 // Desde Staff: abre el chat privado con esa persona.
 document.addEventListener("click", e => { const b = e.target.closest("[data-chatwith]"); if (!b) return; e.stopPropagation();
-  chatUI.open = "p:" + b.dataset.chatwith; chatUI.mob = true; chatUI.keepBottom = true; page = "mensajes"; location.hash = page; render(); window.scrollTo(0, 0); document.getElementById("chatInput")?.focus(); });
+  chatUI.open = "p:" + b.dataset.chatwith; chatUI.mob = true; chatUI.keepBottom = true; page = "mensajes"; location.hash = page; render(); window.scrollTo(0, 0); if (!touchUI()) document.getElementById("chatInput")?.focus(); });
 // ---------- Planificación del mes: objetivos (medibles), campañas en destaque y lo que se viene ----------
 // Lo carga Admin total; el resto del equipo lo ve. Cada objetivo tiene línea base, meta y valor actual para medir el avance.
 // Áreas de los objetivos: mismo color tranquilo para todas (más fácil de leer); el ícono dice el área.
@@ -6529,8 +6544,19 @@ function applyPrefs(){
 let cfgTab = "perfil";
 // ----- Notificaciones del Chat en este dispositivo (celular o compu) -----
 // Con push activado llegan aunque la app esté cerrada; se prenden y apagan por dispositivo.
+const touchUI = () => matchMedia("(pointer:coarse)").matches;
 const NOTIF_KEY = "rmh-notif";
-const notifOn = () => { try { return localStorage.getItem(NOTIF_KEY) === "on"; } catch { return false; } };
+const notifOn = () => { try { return localStorage.getItem(NOTIF_KEY) !== "off"; } catch { return true; } }; // predeterminado: activadas (salvo que la persona las apague)
+// La primera vez que se toca la app en este dispositivo se pide el permiso del navegador (necesita un toque); si dice que no, no se vuelve a pedir.
+// Con el teclado abierto, el chat ocupa solo lo que queda visible (como WhatsApp): la caja de escribir queda arriba del teclado.
+if (window.visualViewport){ const vv = window.visualViewport, setVV = () => { document.documentElement.style.setProperty("--vvh", vv.height + "px"); if (document.documentElement.classList.contains("chatfull")) window.scrollTo(0, 0); };
+  vv.addEventListener("resize", setVV); vv.addEventListener("scroll", setVV); setVV(); }
+function askNotifOnce(){
+  if (!viewer || !notifOn() || !notifSupported() || Notification.permission !== "default") return;
+  try { if (localStorage.getItem("rmh-notif-asked")) return; localStorage.setItem("rmh-notif-asked", "1"); } catch {}
+  Notification.requestPermission().then(p => { if (p === "granted") pushSubscribe().then(ok => toast(ok ? "Listo: te van a llegar los mensajes del chat en este dispositivo." : "Avisos activados mientras la app esté abierta.")); });
+}
+document.addEventListener("pointerup", () => { if (viewer && $("#login").hidden) askNotifOnce(); }, true);
 const notifSupported = () => "Notification" in window && "serviceWorker" in navigator;
 const pushSupported = () => notifSupported() && "PushManager" in window;
 let pushActive = false, notifBusy = false;
@@ -6855,6 +6881,7 @@ function render(){
   else if (jobUI.ficha){ const fx = jobFicha(); if (fx) $("#content").innerHTML = fx; else jobUI.ficha = null; } // el pedido se abre como página completa, desde cualquier página
   { const ci = document.getElementById("chatInput"); if (ci && keepChat){ ci.value = keepChat.v; if (keepChat.f){ ci.focus(); ci.setSelectionRange(keepChat.s, keepChat.e); } }
     const cm = document.getElementById("cvMsgs"); if (cm){ if (atBottom || chatUI.keepBottom) cm.scrollTop = cm.scrollHeight; else cm.scrollTop = top0; chatUI.keepBottom = false; } }
+  document.documentElement.classList.toggle("chatfull", page === "mensajes" && !!chatUI.mob && !!chatUI.open);
   chatNotify();
   if (window.lucide) lucide.createIcons();
   if (page === "tvredes"){ tvShow(animate ? 0 : tv.i); tvStart(); } else tvStop();
