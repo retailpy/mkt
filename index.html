@@ -368,6 +368,16 @@ html.nomotion .picon{animation:none}
   html.chatfull #chatInput{font-size:16px;min-width:0;flex:1} /* 16px: el iPhone no hace zoom al escribir */
   html.chatfull .cvcomp{gap:6px}html.chatfull .cvcomp > .btn.ib{width:36px;height:36px;padding:0;flex:none}html.chatfull .cvcomp .cgifbtn{width:auto;padding:0 8px}
 }
+.cacts{display:flex;flex-direction:column;margin-top:6px;min-width:190px;background:#0b1222;border:1px solid var(--line-3);border-radius:14px;padding:4px;box-shadow:0 16px 40px -12px rgba(0,0,0,.7)}
+.cacts button{all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:10px;font-size:15px;color:var(--ink)}.cacts button:hover{background:rgba(148,163,184,.12)}
+.cacts button svg{width:18px;height:18px}.cacts button.danger{color:#f87171}
+.cdel{color:var(--muted);display:flex;align-items:center;gap:6px}.cdel svg{width:15px;height:15px}.cdelb{opacity:.85}
+.cfw{display:flex;align-items:center;gap:4px;font-size:12px;font-style:italic;color:var(--muted)}.cfw svg{width:13px;height:13px}
+.crq{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:1px;border-left:3px solid var(--cyan);background:rgba(148,163,184,.12);border-radius:8px;padding:5px 9px;margin:2px 0 4px;max-width:100%}.crq b{font-size:12px;color:var(--cyan)}.crq span{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cbar{display:flex;align-items:center;gap:10px;flex-basis:100%;order:-1;padding:8px 10px;border-left:3px solid var(--cyan);background:rgba(148,163,184,.1);border-radius:10px}.cbar > svg{width:18px;height:18px;color:var(--cyan);flex:none}.cbar b{display:block;font-size:12.5px;color:var(--cyan)}.cbar span{display:block;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cbar .grow{min-width:0}
+.cvcomp:has(.cbar){flex-wrap:wrap}
+.cmsg.cflash .cbub{box-shadow:0 0 0 2px var(--cyan)}
+.fwbox{max-width:420px}.fwlist{display:flex;flex-direction:column;gap:4px;max-height:55vh;overflow-y:auto;margin:6px 0 10px}.fwit{all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px}.fwit:hover{background:rgba(148,163,184,.12)}.fwit .cav,.fwit .cavw img,.fwit .cavw .av{width:34px;height:34px}
 .btn.gback{gap:8px;padding:9px 18px 9px 14px;border:0;border-radius:999px;font-weight:800;font-size:15px;color:#02131a;background:linear-gradient(90deg,#22d3ee,#38bdf8);box-shadow:0 8px 22px -10px rgba(34,211,238,.9)}
 .btn.gback svg{width:18px;height:18px;stroke-width:2.6}.btn.gback{max-width:100%;min-width:0}.btn.gback small{font-weight:600;font-size:12.5px;opacity:.75;max-width:min(40vw,320px);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.btn.gback small::before{content:"·";margin:0 6px 0 2px}
 .btn.gback:hover{filter:brightness(1.08);transform:translateX(-2px)}.amore{margin-top:10px}
@@ -2978,7 +2988,7 @@ function tvBrandHero(b){
 // Ciclo: general → tabla de seguidores → demográfico de una marca → general → tabla → siguiente marca…
 // ---------- TV Impacto Redes: 1) lo mejor de cada marca  2…) top 10 de cada marca. 10 segundos cada pantalla ----------
 // Últimas 6 publicaciones de Instagram de cada marca (imagen reducida), debajo de Seguidores por marca.
-const IG_MAIN = ["Superseis","Stock","Delimarket"]; // las marcas principales: sus últimas fotos de Instagram en Dashboard e Informes
+const IG_MAIN = ["Superseis","Stock","Delimarket"]; // las marcas principales: sus últimas fotos de Instagram en el Informe mensual (en el Dashboard todavía no)
 function lastPostsPanel(bs){
   const rows = bs.map(b => ({ b, list:(META_POSTS[b]?.posts || []).slice().sort((x, y) => y.ts.localeCompare(x.ts)).slice(0, 6), h:META_POSTS[b]?.handle })).filter(r => r.list.length);
   return `<div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram</h2><div class="tag-row"><span class="tag">Fuente: Meta</span>${updTag(postsUpdated())}</div></div>
@@ -3072,7 +3082,6 @@ function pDashboard(){
   return `<div><h1>${helloHTML()}</h1><p class="sub">Dashboard · seguidores y público de todas las cuentas, actualizados todos los días desde Meta.</p></div>
   ${folNote()}
   ${followersPanel()}
-  ${lastPostsPanel(IG_MAIN.filter(b => bs.includes(b) || META_POSTS[b]))}
   ${followersTable(false)}
   <div class="head"><h2 style="margin:0">Demográfico por marca</h2><div class="chips">${bs.map(b => `<button class="chip ${dashBrand === b ? "on" : ""}" data-dbrand="${b}">${b}</button>`).join("")}</div></div>
   <div class="dash-demo" id="dashDemo">${demoBlock(bs.includes(dashBrand) ? dashBrand : bs[0], 0)}</div>`;
@@ -5246,6 +5255,42 @@ const GRP_DEF_ICO = { cm:"megaphone", diseno:"palette", equipo:"users", marketin
 const grpIco = g => GRP_ICOS.includes(g.ico) ? g.ico : GRP_DEF_ICO[g.id] || "messages-square";
 const grpAvatar = g => g.img ? `<img class="cav" src="${g.img}" alt="">` : g.emo ? `<span class="cav" style="--c:${g.color || "#64748b"}">${esc(g.emo)}</span>` : `<span class="cav cavi" style="--c:${g.color || "#64748b"}">${icon(grpIco(g))}</span>`;
 const dayLbl = d => d === TODAY ? "Hoy" : daysTo(d) === -1 ? "Ayer" : `${["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][new Date(d + "T12:00").getDay()]} ${dm(d)}`;
+// Menú de un mensaje (como WhatsApp): Responder, Reenviar, Copiar y, si es tuyo, Editar y Eliminar.
+const msgSnippet = m => (m.text || (m.gif ? "GIF" : m.stk ? "Sticker" : "")).slice(0, 90);
+function msgActions(m, mid, mine){
+  const it = (a, ic, t, cls = "") => `<button type="button" class="${cls}" data-cact="${a}|${esc(mid)}">${icon(ic)}<span>${t}</span></button>`;
+  return `<div class="cacts" role="menu">${it("reply", "reply", "Responder")}${it("fwd", "forward", "Reenviar")}${m.text || m.gif ? it("copy", "copy", "Copiar") : ""}${mine && m.text ? it("edit", "pencil", "Editar") : ""}${mine ? it("del", "trash-2", "Eliminar", "danger") : ""}</div>`;
+}
+function convPush(open, m){ // agrega un mensaje a una conversación (grupo o privada)
+  const [k, id] = open.split(/:(.*)/s);
+  if (k === "g"){ const ch = CHATS[id] || (CHATS[id] = { id, msgs:[], seen:{} }); ch.msgs.push(m); ch.seen = { ...(ch.seen || {}), [viewer.id]:m.ts }; }
+  else { const tid = dmId(viewer.id, id); let t = THREADS.find(x => x.id === tid); if (!t){ t = { id:tid, dm:true, topic:"Chat", prio:"Normal", a:viewer.id, b:id, msgs:[] }; THREADS.push(t); } t.msgs.push(m); }
+}
+document.addEventListener("click", async e => {
+  if (page !== "mensajes") return;
+  const j = e.target.closest("[data-cjump]"); if (j){ const el = document.querySelector(`.cmsg[data-mid="${CSS.escape(j.dataset.cjump)}"]`); if (el){ el.scrollIntoView({ block:"center", behavior:"smooth" }); el.classList.add("cflash"); setTimeout(() => el.classList.remove("cflash"), 1400); } return; }
+  const x = e.target.closest("[data-cbarx]"); if (x){ chatUI.reply = null; chatUI.edit = null; const inp = document.getElementById("chatInput"); if (inp && x.dataset.cbarx === "edit") inp.value = ""; render(); return; }
+  const fw = e.target.closest("[data-fwto]"); if (fw){ const src = chatUI.fwd; document.getElementById("fwpop")?.remove(); chatUI.fwd = null; if (!src) return;
+    if (window.RMH?.previewing) return toast("Estás en vista previa: no se reenvía.");
+    const now = new Date(); convPush(fw.dataset.fwto, { id:newMsgId(), from:viewer.id, text:src.text || "", ...(src.gif ? { gif:src.gif } : {}), ...(src.stk ? { stk:src.stk } : {}), fw:true, ts:now.toISOString(), date:TODAY, time:nowTime(), read:false, re:{} });
+    render(); window.RMH?.flushNow?.(); toast(`Reenviado a ${fw.dataset.fwname}.`); return; }
+  if (e.target.closest("[data-fwclose]")){ document.getElementById("fwpop")?.remove(); chatUI.fwd = null; return; }
+  const b = e.target.closest("[data-cact]"); if (!b) return; e.stopPropagation();
+  const [a, mid] = b.dataset.cact.split("|"), c = chatConv(), m = c && findMsg(c, mid); if (!m) return;
+  chatUI.react = null; chatUI.reactMore = null;
+  if (a === "copy"){ try { await navigator.clipboard.writeText(m.text || m.gif || ""); toast("Copiado."); } catch { toast("No se pudo copiar."); } render(); return; }
+  if (a === "reply"){ chatUI.edit = null; chatUI.reply = { id:mid, from:m.from, t:msgSnippet(m) }; render(); document.getElementById("chatInput")?.focus(); return; }
+  if (a === "edit"){ if (m.from !== viewer.id) return; chatUI.reply = null; chatUI.edit = mid; render(); const inp = document.getElementById("chatInput"); if (inp){ inp.value = m.text; inp.focus(); } return; }
+  if (a === "del"){ if (m.from !== viewer.id) return; if (!confirmTap(b.querySelector("span"), "cdel:" + mid, "¿Seguro? Tocá de nuevo")){ chatUI.react = mid; return; }
+    if (window.RMH?.previewing) return toast("Estás en vista previa: no se elimina.");
+    Object.assign(m, { del:true, text:"", gif:null, stk:null, re:{}, rp:null }); render(); window.RMH?.flushNow?.(); return; }
+  if (a === "fwd"){ chatUI.fwd = { text:m.text, gif:m.gif, stk:m.stk }; render();
+    const groups = CHAT_GROUPS.filter(g => !g.archived && chatMember(g, viewer)), people = PEOPLE.filter(pp => pp.active && pp.id !== viewer.id);
+    const w = document.createElement("div"); w.id = "fwpop"; w.className = "fixpop";
+    w.innerHTML = `<div class="fixbox fwbox" role="dialog" aria-modal="true" aria-labelledby="fwh"><h2 id="fwh">Reenviar a…</h2><div class="fwlist">${[...groups.map(g => ["g:" + g.id, g.name, grpAvatar(g)]), ...people.map(pp => ["p:" + pp.id, chatName(pp), `<span class="cavw">${avatarHTML(pp)}</span>`])].map(([k, n, av]) => `<button type="button" class="fwit" data-fwto="${esc(k)}" data-fwname="${esc(n)}">${av}<b>${esc(n)}</b></button>`).join("")}</div>
+      <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fwclose>Cancelar</button></div></div>`;
+    document.body.appendChild(w); if (window.lucide) lucide.createIcons(); return; }
+}, true);
 function bubbles(c){
   let lastDay = "", lastFrom = "";
   return c.msgs.map((m, i) => {
@@ -5255,10 +5300,12 @@ function bubbles(c){
     lastDay = day; lastFrom = m.from;
     const re = Object.entries(m.re || {}).filter(([, ids]) => ids.length);
     const mid = m.id || `${c.kind}${i}`;
+    if (m.del) return `${sep}<div class="cmsg ${mine ? "me" : ""}" data-mid="${esc(mid)}">${!mine && c.kind === "g" ? (head ? `<span class="cmav">${who ? avatarHTML(who) : ""}</span>` : `<span class="cmav"></span>`) : ""}
+      <div class="cbub cdelb">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}<div class="ctext cdel">${icon("ban")} <i>${mine ? "Eliminaste este mensaje." : "Se eliminó este mensaje."}</i></div><span class="ctime">${(m.time || msgTs(m).slice(11, 16))}</span></div></div>`;
     return `${sep}<div class="cmsg ${mine ? "me" : ""}" data-mid="${esc(mid)}">${!mine && c.kind === "g" ? (head ? `<span class="cmav">${who ? avatarHTML(who) : ""}</span>` : `<span class="cmav"></span>`) : ""}
-      <div class="cbub${!m.text && ((m.stk && stkSrc(m.stk)) || m.gif) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.stk && stkSrc(m.stk) ? `<span class="cstkw"><img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer"><button type="button" class="cstkfav${stkFavs().includes(m.stk) ? " on" : ""}" data-stkfav="${esc(m.stk)}" title="${stkFavs().includes(m.stk) ? "Está en tus favoritos (tocá para quitarlo)" : "Guardar en mis favoritos"}" aria-label="${stkFavs().includes(m.stk) ? "Quitar de favoritos" : "Guardar en favoritos"}">${stkFavs().includes(m.stk) ? "★" : "☆"}</button></span>` : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${esc(m.text)}</div>` : ""}${m.via ? `<span class="cvia">Prueba enviada por ${esc(nickOf(personById(m.via)) || m.via)} como ${esc(nickOf(who) || m.from)}</span>` : ""}<span class="ctime">${(m.time || msgTs(m).slice(11, 16))}${mine ? msgTicks(m, c) : ""}</span>
+      <div class="cbub${!m.text && !m.rp && !m.fw && ((m.stk && stkSrc(m.stk)) || m.gif) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.fw ? `<span class="cfw">${icon("forward")} Reenviado</span>` : ""}${m.rp ? `<button type="button" class="crq" data-cjump="${esc(m.rp.id)}"><b>${esc(m.rp.from === viewer.id ? "Vos" : nickOf(personById(m.rp.from)) || "")}</b><span>${esc(m.rp.t || "")}</span></button>` : ""}${m.stk && stkSrc(m.stk) ? `<span class="cstkw"><img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer"><button type="button" class="cstkfav${stkFavs().includes(m.stk) ? " on" : ""}" data-stkfav="${esc(m.stk)}" title="${stkFavs().includes(m.stk) ? "Está en tus favoritos (tocá para quitarlo)" : "Guardar en mis favoritos"}" aria-label="${stkFavs().includes(m.stk) ? "Quitar de favoritos" : "Guardar en favoritos"}">${stkFavs().includes(m.stk) ? "★" : "☆"}</button></span>` : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${esc(m.text)}</div>` : ""}${m.via ? `<span class="cvia">Prueba enviada por ${esc(nickOf(personById(m.via)) || m.via)} como ${esc(nickOf(who) || m.from)}</span>` : ""}<span class="ctime">${m.ed ? "editado · " : ""}${(m.time || msgTs(m).slice(11, 16))}${mine ? msgTicks(m, c) : ""}</span>
         <button type="button" class="creact" data-react="${esc(mid)}" aria-label="Reaccionar">${icon("smile-plus")}</button>
-        ${chatUI.react === mid ? `<div class="rqpick">${QUICK_RE.map(x => `<button type="button" data-re="${x}" data-rmid="${esc(mid)}">${x}</button>`).join("")}<button type="button" data-remore="${esc(mid)}" aria-label="Más emojis">＋</button></div>${chatUI.reactMore === mid ? emojiPanel("re:" + mid) : ""}` : ""}
+        ${chatUI.react === mid ? `<div class="rqpick">${QUICK_RE.map(x => `<button type="button" data-re="${x}" data-rmid="${esc(mid)}">${x}</button>`).join("")}<button type="button" data-remore="${esc(mid)}" aria-label="Más emojis">＋</button></div>${chatUI.reactMore === mid ? emojiPanel("re:" + mid) : ""}${msgActions(m, mid, mine)}` : ""}
       </div>
       ${re.length ? `<div class="cres">${re.map(([e, ids]) => `<button type="button" class="rchip ${ids.includes(viewer.id) ? "mine" : ""}" data-re="${e}" data-rmid="${esc(mid)}" title="${esc(ids.map(id => nickOf(personById(id)) || id).join(", "))}">${e} ${ids.length}</button>`).join("")}</div>` : ""}</div>`;
   }).join("") || `<div class="cempty">Todavía no hay mensajes. ¡Escribí el primero!</div>`;
@@ -5301,7 +5348,7 @@ function pMensajes(){
   markRead(c);
   const q = chatUI.q.trim().toLowerCase(), fits = t => !q || t.toLowerCase().includes(q);
   const lastOf = list => list.length ? list[list.length - 1] : null;
-  const prev = m => m ? `${m.from === viewer.id ? "Vos: " : ""}${m.text || (m.gif ? "GIF" : m.stk ? "Sticker" : "")}` : "";
+  const prev = m => m ? (m.del ? (m.from === viewer.id ? "Eliminaste este mensaje" : "Se eliminó este mensaje") : `${m.from === viewer.id ? "Vos: " : ""}${m.text || (m.gif ? "GIF" : m.stk ? "Sticker" : "")}`) : "";
   const when = m => m ? (msgTs(m).slice(0, 10) === TODAY ? (m.time || msgTs(m).slice(11, 16)) : dm(msgTs(m).slice(0, 10))) : "";
   const groups = chatGroupsMine().filter(g => fits(g.name)).map(g => ({ g, last:lastOf(grpMsgs(g.id)), n:grpUnread(g.id) }));
   const people = PEOPLE.filter(pp => pp.active && pp.id !== viewer.id && (fits(pp.name) || fits(pp.nick || ""))).map(pp => ({ pp, last:lastOf(dmMsgs(pp.id)), n:dmUnread(pp.id) }))
@@ -5327,6 +5374,7 @@ function pMensajes(){
         <button type="button" class="btn ib" data-emopen aria-label="Emojis" aria-expanded="${chatUI.emoji}">${icon("smile")}</button>
         <button type="button" class="btn ib" data-stkopen aria-label="Stickers" title="Stickers" aria-expanded="${!!chatUI.stk}">${icon("sticker")}</button>
         <button type="button" class="btn ib cgifbtn" data-gifopen aria-label="GIFs" aria-expanded="${!!chatUI.gif}">GIF</button>
+        ${chatUI.reply || chatUI.edit ? `<div class="cbar">${icon(chatUI.edit ? "pencil" : "reply")}<div class="grow"><b>${chatUI.edit ? "Editando el mensaje" : `Respondiendo a ${esc(chatUI.reply.from === viewer.id ? "vos" : nickOf(personById(chatUI.reply.from)) || "")}`}</b>${chatUI.reply ? `<span>${esc(chatUI.reply.t)}</span>` : ""}</div><button type="button" class="btn ib sm" data-cbarx="${chatUI.edit ? "edit" : "reply"}" aria-label="Cancelar">${icon("x")}</button></div>` : ""}
         ${chatUI.emoji ? emojiPanel("in") : ""}${chatUI.gif ? gifPanel() : ""}${chatUI.stk ? stkPanel() : ""}
         <textarea class="base" id="chatInput" rows="1" placeholder="${touchUI() ? "Mensaje" : "Escribí un mensaje…"}" aria-label="Mensaje"></textarea>
         <button type="button" class="btn primary" data-csend aria-label="Enviar">${icon("send")}</button></div>`}` : `<div class="cempty">Elegí una conversación.</div>`}
@@ -5356,7 +5404,9 @@ function previewBlock(msg){
 function sendChat(){
   if (window.RMH?.previewing){ const t = document.getElementById("chatInput")?.value.trim(); if (t) previewBlock({ text:t }); return; }
   const inp = document.getElementById("chatInput"), text = inp?.value.trim(); const c = chatConv(); if (!text || !c) return;
-  const now = new Date(), m = { id:newMsgId(), from:viewer.id, text, ts:now.toISOString(), date:TODAY, time:nowTime(), read:false, re:{} };
+  if (chatUI.edit){ const em = findMsg(c, chatUI.edit); chatUI.edit = null; if (em && em.from === viewer.id && !em.del && em.text !== text){ em.text = text; em.ed = new Date().toISOString(); } inp.value = ""; render(); window.RMH?.flushNow?.(); return; }
+  const now = new Date(), m = { id:newMsgId(), from:viewer.id, text, ts:now.toISOString(), date:TODAY, time:nowTime(), read:false, re:{}, ...(chatUI.reply ? { rp:chatUI.reply } : {}) };
+  chatUI.reply = null;
   if (c.kind === "g"){ const ch = CHATS[c.id] || (CHATS[c.id] = { id:c.id, msgs:[], seen:{} }); ch.msgs.push(m); ch.seen = { ...(ch.seen || {}), [viewer.id]:m.ts }; }
   else { const id = dmId(viewer.id, c.id); let t = THREADS.find(x => x.id === id); if (!t){ t = { id, dm:true, topic:"Chat", prio:"Normal", a:viewer.id, b:c.id, msgs:[] }; THREADS.push(t); } t.msgs.push(m); }
   inp.value = ""; chatUI.emoji = false; chatUI.keepBottom = true; render(); document.getElementById("chatInput")?.focus();
