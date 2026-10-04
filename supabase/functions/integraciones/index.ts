@@ -78,7 +78,7 @@ async function scriptList(url: string, secret: string){
 
 // ---------- Tendencias: novedades de medios especializados (RSS), en español, en 2 grupos de 8 por área ----------
 // (el grupo del medio, “Campañas de temporada”, lo arma la app con el calendario de fechas de Latinoamérica).
-type Feed = { u: string; src: string; lang: string; need?: RegExp };
+type Feed = { u: string; src: string; lang: string; need?: RegExp; gn?: boolean };
 const F = {
   brandemia: { u: "https://www.brandemia.org/feed", src: "Brandemia", lang: "es" },
   graffica: { u: "https://graffica.info/feed/", src: "Gràffica", lang: "es" },
@@ -92,20 +92,42 @@ const F = {
   smt: { u: "https://www.socialmediatoday.com/feeds/news/", src: "Social Media Today", lang: "en" },
   grocery: { u: "https://www.grocerydive.com/feeds/news/", src: "Grocery Dive", lang: "en" },
 };
+// Noticias de las cadenas que el equipo toma como referencia (Google Noticias), separadas para Diseño y para CM.
+const gn = (q: string, es: boolean) => `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&${es ? "hl=es-419&gl=US&ceid=US:es-419" : "hl=en-US&gl=US&ceid=US:en"}`;
+const GN = {
+  dgEs: { u: gn('("Ametller Origen" OR "Pão de Açúcar" OR "St Marche" OR "City Market" OR OXXO OR Monoprix OR Waitrose OR "M&S Food" OR "Whole Foods" OR "Trader Joe\'s" OR "Albert Heijn" OR Freshippo OR Jumbo OR Mercadona) (campaña OR packaging OR branding OR diseño OR "nueva imagen" OR cartelería OR tienda) when:45d', true), src: "Google Noticias", lang: "es", gn: true },
+  dgEn: { u: gn('("Ametller Origen" OR "Pao de Acucar" OR Monoprix OR Waitrose OR "M&S Food" OR "Whole Foods" OR "Trader Joe\'s" OR "Albert Heijn" OR Freshippo OR Hema OR Wegmans) (campaign OR packaging OR rebrand OR "store design" OR advertising OR "visual merchandising") when:45d', false), src: "Google News", lang: "en", gn: true },
+  cmEs: { u: gn('(OXXO OR Walmart OR Mercadona OR Lidl OR Aldi OR Carrefour OR Jumbo OR Chedraui OR Tottus OR Soriana OR "Pão de Açúcar" OR Coto) (TikTok OR Instagram OR "redes sociales" OR viral OR influencer OR campaña) when:30d', true), src: "Google Noticias", lang: "es", gn: true },
+  cmEn: { u: gn('("Trader Joe\'s" OR "Whole Foods" OR Walmart OR Aldi OR Lidl OR Tesco OR Waitrose OR "M&S Food" OR Carrefour) (TikTok OR Instagram OR "social media" OR viral OR influencer OR "ad campaign") when:30d', false), src: "Google News", lang: "en", gn: true },
+};
+// Cadenas de referencia → país (para la banderita) y nombre.
+const CHAINS: [RegExp, string, string][] = [
+  [/p[aã]o de a[cç][uú]car/i, "BR", "Pão de Açúcar"], [/\bst\.? ?marche\b/i, "BR", "St. Marche"], [/zona sul/i, "BR", "Zona Sul"],
+  [/\boxxo\b/i, "MX", "OXXO"], [/city market/i, "MX", "City Market"], [/\bla comer\b/i, "MX", "La Comer"], [/chedraui/i, "MX", "Chedraui"], [/soriana/i, "MX", "Soriana"],
+  [/ametller/i, "ES", "Ametller Origen"], [/corte ingl[eé]s/i, "ES", "El Corte Inglés"], [/hipercor/i, "ES", "Hipercor"], [/mercadona/i, "ES", "Mercadona"], [/bonpreu|esclat/i, "ES", "Bonpreu"],
+  [/whole foods/i, "US", "Whole Foods"], [/trader joe/i, "US", "Trader Joe's"], [/wegmans/i, "US", "Wegmans"], [/sprouts farmers/i, "US", "Sprouts"], [/\bwalmart\b/i, "US", "Walmart"], [/costco/i, "US", "Costco"], [/kroger/i, "US", "Kroger"],
+  [/waitrose/i, "GB", "Waitrose"], [/\bm&s\b|marks (&|and) spencer/i, "GB", "M&S Food"], [/\btesco\b/i, "GB", "Tesco"], [/sainsbury/i, "GB", "Sainsbury's"],
+  [/monoprix/i, "FR", "Monoprix"], [/carrefour/i, "FR", "Carrefour"], [/albert heijn/i, "NL", "Albert Heijn"], [/\blidl\b/i, "DE", "Lidl"], [/\baldi\b/i, "DE", "Aldi"],
+  [/\bjumbo\b/i, "CL", "Jumbo"], [/tottus/i, "CL", "Tottus"], [/unimarc/i, "CL", "Unimarc"], [/\bcoto\b/i, "AR", "Coto"],
+  [/freshippo|\bhema\b/i, "CN", "Freshippo / Hema"], [/\baeon\b/i, "JP", "AEON"], [/\be-?mart\b/i, "KR", "Emart"],
+];
+const SRC_CC: Record<string, string> = { "Brandemia": "ES", "Gràffica": "ES", "Creativos Online": "ES", "Marketing Directo": "ES", "Roastbrief": "MX", "LatamClick": "LA",
+  "The Dieline": "US", "Packaging of the World": "WW", "Retail Design Blog": "WW", "Grocery Dive": "US", "Social Media Today": "US" };
+const chainOf = (t: string) => { for (const [re, cc, n] of CHAINS) if (re.test(t)) return { cc, n }; return null; };
 const RETAIL = /supermarket|supermercado|s[uú]per\b|hipermercado|grocery|grocer|retail|minorista|walmart|tesco|aldi|lidl|carrefour|mercadona|whole foods|trader joe|kroger|costco|albert heijn|coles|woolworths|jumbo|sainsbury|waitrose|marks & spencer|oxxo|[ée]xito|eroski|alcampo|dia\b|food|alimento|comida|snack|bebida|beverage|cerveza|caf[eé]|coffee|helado|chocolate|galleta|marca blanca|private label/i;
 const DESIGN = /packag|envase|etiqueta|label|design|diseño|brand|marca|identity|identidad|logo|tipograf|typograph|ilustra|illustrat|cartel|afiche|póster|poster|store|tienda|rebrand|visual/i;
 const SOCIAL = /tiktok|instagram|facebook|whatsapp|threads|youtube|social|redes|viral|influencer|creator|creador|reel|video|meme|contenido|community|algoritmo|algorithm|hashtag/i;
 const CAMPAIGN = /campa|campaign|anuncio|spot|publicidad|advertis|\bad\b|ads\b|activaci|promo/i;
 const GROUPS: Record<string, { k: string; feeds: Feed[]; score: (txt: string) => number; need?: (txt: string) => boolean }[]> = {
   dg: [
-    { k: "super", feeds: [F.brandemia, F.dieline, F.potw, F.rdb, F.grocery, F.mdirecto, F.graffica],
-      need: (t) => RETAIL.test(t) && DESIGN.test(t), score: (t) => (RETAIL.test(t) ? 3 : 0) + (DESIGN.test(t) ? 2 : 0) },
+    { k: "super", feeds: [F.brandemia, F.dieline, F.potw, F.rdb, F.grocery, F.mdirecto, F.graffica, GN.dgEs, GN.dgEn],
+      need: (t) => (RETAIL.test(t) || !!chainOf(t)) && DESIGN.test(t), score: (t) => (chainOf(t) ? 3 : 0) + (RETAIL.test(t) ? 2 : 0) + (DESIGN.test(t) ? 2 : 0) },
     { k: "insp", feeds: [F.brandemia, F.graffica, F.creativos, F.dieline, F.potw],
       score: (t) => (DESIGN.test(t) ? 2 : 0) + (RETAIL.test(t) ? 1 : 0) },
   ],
   cm: [
-    { k: "super", feeds: [F.mdirecto, F.roast, F.latam, F.grocery, F.smt],
-      need: (t) => RETAIL.test(t) && (SOCIAL.test(t) || CAMPAIGN.test(t)), score: (t) => (RETAIL.test(t) ? 3 : 0) + (SOCIAL.test(t) ? 2 : 0) + (CAMPAIGN.test(t) ? 1 : 0) },
+    { k: "super", feeds: [F.mdirecto, F.roast, F.latam, F.grocery, F.smt, GN.cmEs, GN.cmEn],
+      need: (t) => (RETAIL.test(t) || !!chainOf(t)) && (SOCIAL.test(t) || CAMPAIGN.test(t)), score: (t) => (chainOf(t) ? 3 : 0) + (RETAIL.test(t) ? 2 : 0) + (SOCIAL.test(t) ? 2 : 0) + (CAMPAIGN.test(t) ? 1 : 0) },
     { k: "redes", feeds: [F.smt, F.mdirecto, F.latam, F.roast],
       need: (t) => SOCIAL.test(t), score: (t) => (SOCIAL.test(t) ? 3 : 0) + (RETAIL.test(t) ? 1 : 0) },
   ],
@@ -125,9 +147,12 @@ async function readFeed(f: Feed){
     const items = [...xml.matchAll(/<item[\s>][\s\S]*?<\/item>/g)].slice(0, 40).map(([it]) => {
       const desc = tag(it, "description"), body = tag(it, "content:encoded");
       const img = (it.match(/<media:(?:content|thumbnail)[^>]+url="([^"]+)"/) || it.match(/<enclosure[^>]+url="([^"]+)"[^>]+image/) || decode(desc + body).match(/<img[^>]+src="([^"]+)"/) || [])[1] || "";
-      const t = strip(tag(it, "title")), u = decode(tag(it, "link")).trim(), x = strip(desc).slice(0, 220);
+      let t = strip(tag(it, "title")); const u = decode(tag(it, "link")).trim(); let x = strip(desc).slice(0, 220), src = f.src;
+      if (f.gn){ const so = strip(tag(it, "source")); if (so){ src = so; t = t.replace(new RegExp("\\s+-\\s+" + so.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$"), ""); } x = ""; } // Google Noticias: el medio va aparte y no trae resumen
       const pd = Date.parse(decode(tag(it, "pubDate") || tag(it, "dc:date")).trim());
-      return { t, u, x, img: /^https:\/\//.test(img) ? decode(img) : "", d: isNaN(pd) ? "" : new Date(pd).toISOString(), src: f.src, lang: f.lang };
+      const ch = chainOf(t + " " + x);
+      return { t, u, x, img: /^https:\/\//.test(img) ? decode(img) : "", d: isNaN(pd) ? "" : new Date(pd).toISOString(), src, lang: f.lang, gn: !!f.gn,
+        chain: ch?.n || "", cc: ch?.cc || SRC_CC[src] || (f.lang === "es" ? "LA" : "US") };
     }).filter((i) => i.t && i.d && /^https?:\/\//.test(i.u));
     feedMemo.set(f.u, { at: Date.now(), items });
     return items;
@@ -154,14 +179,14 @@ async function tendencias(area: string, force: boolean){
   for (const g of GROUPS[area]){
     const all = (await Promise.all(g.feeds.map(readFeed))).flat();
     const seen = new Set<string>();
-    const scored = all.filter((i) => { const k = i.t.toLowerCase().slice(0, 60); if (seen.has(k) || used.has(i.u)) return false; seen.add(k); return now - Date.parse(i.d) < 60 * 864e5; })
+    const scored = all.filter((i) => { const k = i.t.toLowerCase().slice(0, 60); if ((i.gn && !i.chain) || seen.has(k) || used.has(i.u)) return false; seen.add(k); return now - Date.parse(i.d) < 60 * 864e5; })
       .map((i) => { const txt = i.t + " " + i.x, age = (now - Date.parse(i.d)) / 864e5;
         return { ...i, ok: !g.need || g.need(txt), s: g.score(txt) + (i.img ? 1 : 0) + (i.lang === "es" ? 2 : 0) - age / 6 }; })
       .sort((a, b) => (Number(b.ok) - Number(a.ok)) || b.s - a.s);
     const per: Record<string, number> = {}, out: any[] = [];
     for (const i of scored){ if ((per[i.src] = (per[i.src] || 0) + 1) > 3) continue; out.push(i); used.add(i.u); if (out.length === 8) break; }
     const items = await Promise.all(out.map(async (i) => {
-      const base = { t: i.t, u: i.u, x: i.x, img: i.img, d: i.d, src: i.src, lang: i.lang };
+      const base = { t: i.t, u: i.u, x: i.x, img: i.img, d: i.d, src: i.src, lang: i.lang, chain: i.chain, cc: i.cc };
       if (i.lang === "es") return base;
       const k = known.get(i.u); if (k?.tr) return { ...base, t: k.t, x: k.x, tr: true };
       const [t, x] = await Promise.all([toEs(i.t), toEs(i.x.slice(0, 200))]);
