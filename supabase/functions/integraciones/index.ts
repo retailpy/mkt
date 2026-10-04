@@ -3,6 +3,7 @@
 // Acciones (POST { action, ... }, con la sesión de la persona):
 //   status · set_giphy {key} · script · set_sticker_url {url}       → solo Admin total
 //   gifs {q} · stickers · sticker_upload {name,type,data}           → cualquier persona del equipo
+//   tendencias {area:"dg"|"cm", force?}                              → las 10 novedades más llamativas (medios especializados)
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const cors = {
@@ -75,6 +76,63 @@ async function scriptList(url: string, secret: string){
   return j.stickers;
 }
 
+// ---------- Tendencias: novedades de medios especializados (RSS), filtradas y ordenadas para Diseño o para CM ----------
+const FEEDS: Record<string, { u: string; src: string; lang: string; need?: RegExp }[]> = {
+  dg: [
+    { u: "https://thedieline.com/feed", src: "The Dieline", lang: "en" },
+    { u: "https://packagingoftheworld.com/feed", src: "Packaging of the World", lang: "en" },
+    { u: "https://retaildesignblog.net/feed/", src: "Retail Design Blog", lang: "en" },
+    { u: "https://www.packagingdive.com/feeds/news/", src: "Packaging Dive", lang: "en" },
+    { u: "https://www.grocerydive.com/feeds/news/", src: "Grocery Dive", lang: "en", need: /brand|design|packag|private label|store format|remodel|new look|logo/i },
+    { u: "https://www.marketingdirecto.com/feed", src: "Marketing Directo", lang: "es", need: /diseño|packaging|envase|logo|identidad|imagen de marca|rebranding|tienda/i },
+  ],
+  cm: [
+    { u: "https://www.marketingdirecto.com/feed", src: "Marketing Directo", lang: "es" },
+    { u: "https://roastbrief.com.mx/feed/", src: "Roastbrief", lang: "es" },
+    { u: "https://www.socialmediatoday.com/feeds/news/", src: "Social Media Today", lang: "en" },
+    { u: "https://www.marketingdive.com/feeds/news/", src: "Marketing Dive", lang: "en" },
+    { u: "https://www.grocerydive.com/feeds/news/", src: "Grocery Dive", lang: "en", need: /social|tiktok|instagram|campaign|ad |ads|marketing|influencer|creator|viral/i },
+  ],
+};
+const RETAIL = /supermarket|supermercado|s[uú]per\b|hipermercado|grocery|grocer|retail|minorista|walmart|tesco|aldi|lidl|carrefour|mercadona|whole foods|trader joe|kroger|costco|albert heijn|coles|woolworths|jumbo|sainsbury|waitrose|m&s|marks & spencer|target|instacart|oxxo|[ée]xito|d[ií]a\b|eroski|consum|alcampo|food|alimento|snack|bebida|beverage|cerveza|caf[eé]|coffee/i;
+const AREA_RE: Record<string, RegExp> = {
+  dg: /packag|design|diseño|brand|marca|identity|identidad|logo|label|etiqueta|store|tienda|rebrand|illustrat|typograph|tipograf/i,
+  cm: /tiktok|instagram|social|redes|viral|influencer|creator|creador|campaign|campaña|reel|video|meme|ad\b|anuncio|spot|community/i,
+};
+const trendCache: Record<string, { at: number; items: any[] }> = {};
+const decode = (t: string) => t.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/&#8230;/g, "…").replace(/&#8217;|&rsquo;/g, "’").replace(/&#8216;|&lsquo;/g, "‘").replace(/&#822[01];|&[lr]dquo;/g, "\"")
+  .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)).replace(/&amp;/g, "&").replace(/&quot;/g, "\"").replace(/&#039;|&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;/g, " ");
+const strip = (h: string) => decode(h).replace(/<[^>]+>/g, " ").replace(/La entrada .*? se publicó primero en .*$/s, "").replace(/\s+/g, " ").trim();
+const tag = (x: string, n: string) => { const m = x.match(new RegExp(`<${n}[^>]*>([\\s\\S]*?)</${n}>`)); return m ? m[1] : ""; };
+async function readFeed(f: { u: string; src: string; lang: string; need?: RegExp }){
+  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 8000);
+  try {
+    const r = await fetch(f.u, { headers: { "User-Agent": "Mozilla/5.0 (RetailMKTHub; tendencias)" }, signal: ctl.signal });
+    if (!r.ok) return [];
+    const xml = await r.text();
+    return [...xml.matchAll(/<item[\s>][\s\S]*?<\/item>/g)].slice(0, 40).map(([it]) => {
+      const desc = tag(it, "description"), body = tag(it, "content:encoded");
+      const img = (it.match(/<media:(?:content|thumbnail)[^>]+url="([^"]+)"/) || it.match(/<enclosure[^>]+url="([^"]+)"[^>]+image/) || decode(desc + body).match(/<img[^>]+src="([^"]+)"/) || [])[1] || "";
+      const t = strip(tag(it, "title")), u = decode(tag(it, "link")).trim(), x = strip(desc).slice(0, 220);
+      return { t, u, x, img: /^https:\/\//.test(img) ? decode(img) : "", d: (() => { const t = Date.parse(decode(tag(it, "pubDate") || tag(it, "dc:date")).trim()); return isNaN(t) ? "" : new Date(t).toISOString(); })(), src: f.src, lang: f.lang, need: f.need };
+    }).filter((i) => i.t && /^https?:\/\//.test(i.u) && (!i.need || i.need.test(i.t + " " + i.x)));
+  } catch { return []; } finally { clearTimeout(tm); }
+}
+async function tendencias(area: string, force: boolean){
+  const c = trendCache[area];
+  if (c && !force && Date.now() - c.at < 3 * 3600e3) return c.items;
+  const all = (await Promise.all(FEEDS[area].map(readFeed))).flat();
+  const now = Date.now(), seen = new Set<string>();
+  const scored = all.filter((i) => { const k = i.t.toLowerCase().slice(0, 60); if (seen.has(k)) return false; seen.add(k); return now - Date.parse(i.d) < 60 * 864e5; })
+    .map((i) => { const txt = i.t + " " + i.x, age = (now - Date.parse(i.d)) / 864e5;
+      return { ...i, s: (RETAIL.test(txt) ? 3 : 0) + (AREA_RE[area].test(txt) ? 2 : 0) + (i.img ? 1 : 0) + (i.lang === "es" ? 0.5 : 0) - age / 7 }; })
+    .sort((a, b) => b.s - a.s);
+  const per: Record<string, number> = {}, out: any[] = [];
+  for (const i of scored){ if ((per[i.src] = (per[i.src] || 0) + 1) > 3) continue; out.push({ t: i.t, u: i.u, x: i.x, img: i.img, d: i.d, src: i.src, lang: i.lang }); if (out.length === 10) break; }
+  if (out.length) trendCache[area] = { at: Date.now(), items: out };
+  return out;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ ok: false, error: "Método no permitido" }, 405);
@@ -115,6 +173,11 @@ Deno.serve(async (req) => {
       case "gifs":
         if (!c.giphy_key) return json({ ok: false, nokey: true, error: "La búsqueda de GIFs no está conectada" });
         return json({ ok: true, gifs: await giphy(c.giphy_key, String(b.q || "").trim().slice(0, 60)) });
+      case "tendencias": {
+        const area = b.area === "cm" ? "cm" : "dg";
+        const items = await tendencias(area, !!b.force);
+        return items.length ? json({ ok: true, items }) : json({ ok: false, error: "No se pudieron traer las novedades" });
+      }
       case "stickers":
         if (!c.sticker_url) return json({ ok: false, nokey: true, error: "La biblioteca de stickers no está conectada" });
         return json({ ok: true, stickers: (await scriptList(c.sticker_url, c.sticker_secret)).map((s: any) => ({ ...s, url: thumb(s.id) })) });
