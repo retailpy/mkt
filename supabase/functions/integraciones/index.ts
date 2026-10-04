@@ -3,7 +3,7 @@
 // Acciones (POST { action, ... }, con la sesión de la persona):
 //   status · set_giphy {key} · script · set_sticker_url {url}       → solo Admin total
 //   gifs {q} · stickers · sticker_upload {name,type,data}           → cualquier persona del equipo
-//   tendencias {area:"dg"|"cm", force?}                              → las 10 novedades más llamativas (medios especializados)
+//   tendencias {area:"dg"|"cm", force?}                              → novedades en español, en 2 grupos de 8 (force: solo Admin total)
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const cors = {
@@ -76,61 +76,106 @@ async function scriptList(url: string, secret: string){
   return j.stickers;
 }
 
-// ---------- Tendencias: novedades de medios especializados (RSS), filtradas y ordenadas para Diseño o para CM ----------
-const FEEDS: Record<string, { u: string; src: string; lang: string; need?: RegExp }[]> = {
+// ---------- Tendencias: novedades de medios especializados (RSS), en español, en 2 grupos de 8 por área ----------
+// (el grupo del medio, “Campañas de temporada”, lo arma la app con el calendario de fechas de Latinoamérica).
+type Feed = { u: string; src: string; lang: string; need?: RegExp };
+const F = {
+  brandemia: { u: "https://www.brandemia.org/feed", src: "Brandemia", lang: "es" },
+  graffica: { u: "https://graffica.info/feed/", src: "Gràffica", lang: "es" },
+  creativos: { u: "https://www.creativosonline.org/feed", src: "Creativos Online", lang: "es" },
+  dieline: { u: "https://thedieline.com/feed", src: "The Dieline", lang: "en" },
+  potw: { u: "https://packagingoftheworld.com/feed", src: "Packaging of the World", lang: "en" },
+  rdb: { u: "https://retaildesignblog.net/feed/", src: "Retail Design Blog", lang: "en" },
+  mdirecto: { u: "https://www.marketingdirecto.com/feed", src: "Marketing Directo", lang: "es" },
+  roast: { u: "https://roastbrief.com.mx/feed/", src: "Roastbrief", lang: "es" },
+  latam: { u: "https://www.latamclick.com/feed/", src: "LatamClick", lang: "es" },
+  smt: { u: "https://www.socialmediatoday.com/feeds/news/", src: "Social Media Today", lang: "en" },
+  grocery: { u: "https://www.grocerydive.com/feeds/news/", src: "Grocery Dive", lang: "en" },
+};
+const RETAIL = /supermarket|supermercado|s[uú]per\b|hipermercado|grocery|grocer|retail|minorista|walmart|tesco|aldi|lidl|carrefour|mercadona|whole foods|trader joe|kroger|costco|albert heijn|coles|woolworths|jumbo|sainsbury|waitrose|marks & spencer|oxxo|[ée]xito|eroski|alcampo|dia\b|food|alimento|comida|snack|bebida|beverage|cerveza|caf[eé]|coffee|helado|chocolate|galleta|marca blanca|private label/i;
+const DESIGN = /packag|envase|etiqueta|label|design|diseño|brand|marca|identity|identidad|logo|tipograf|typograph|ilustra|illustrat|cartel|afiche|póster|poster|store|tienda|rebrand|visual/i;
+const SOCIAL = /tiktok|instagram|facebook|whatsapp|threads|youtube|social|redes|viral|influencer|creator|creador|reel|video|meme|contenido|community|algoritmo|algorithm|hashtag/i;
+const CAMPAIGN = /campa|campaign|anuncio|spot|publicidad|advertis|\bad\b|ads\b|activaci|promo/i;
+const GROUPS: Record<string, { k: string; feeds: Feed[]; score: (txt: string) => number; need?: (txt: string) => boolean }[]> = {
   dg: [
-    { u: "https://thedieline.com/feed", src: "The Dieline", lang: "en" },
-    { u: "https://packagingoftheworld.com/feed", src: "Packaging of the World", lang: "en" },
-    { u: "https://retaildesignblog.net/feed/", src: "Retail Design Blog", lang: "en" },
-    { u: "https://www.packagingdive.com/feeds/news/", src: "Packaging Dive", lang: "en" },
-    { u: "https://www.grocerydive.com/feeds/news/", src: "Grocery Dive", lang: "en", need: /brand|design|packag|private label|store format|remodel|new look|logo/i },
-    { u: "https://www.marketingdirecto.com/feed", src: "Marketing Directo", lang: "es", need: /diseño|packaging|envase|logo|identidad|imagen de marca|rebranding|tienda/i },
+    { k: "super", feeds: [F.brandemia, F.dieline, F.potw, F.rdb, F.grocery, F.mdirecto, F.graffica],
+      need: (t) => RETAIL.test(t) && DESIGN.test(t), score: (t) => (RETAIL.test(t) ? 3 : 0) + (DESIGN.test(t) ? 2 : 0) },
+    { k: "insp", feeds: [F.brandemia, F.graffica, F.creativos, F.dieline, F.potw],
+      score: (t) => (DESIGN.test(t) ? 2 : 0) + (RETAIL.test(t) ? 1 : 0) },
   ],
   cm: [
-    { u: "https://www.marketingdirecto.com/feed", src: "Marketing Directo", lang: "es" },
-    { u: "https://roastbrief.com.mx/feed/", src: "Roastbrief", lang: "es" },
-    { u: "https://www.socialmediatoday.com/feeds/news/", src: "Social Media Today", lang: "en" },
-    { u: "https://www.marketingdive.com/feeds/news/", src: "Marketing Dive", lang: "en" },
-    { u: "https://www.grocerydive.com/feeds/news/", src: "Grocery Dive", lang: "en", need: /social|tiktok|instagram|campaign|ad |ads|marketing|influencer|creator|viral/i },
+    { k: "super", feeds: [F.mdirecto, F.roast, F.latam, F.grocery, F.smt],
+      need: (t) => RETAIL.test(t) && (SOCIAL.test(t) || CAMPAIGN.test(t)), score: (t) => (RETAIL.test(t) ? 3 : 0) + (SOCIAL.test(t) ? 2 : 0) + (CAMPAIGN.test(t) ? 1 : 0) },
+    { k: "redes", feeds: [F.smt, F.mdirecto, F.latam, F.roast],
+      need: (t) => SOCIAL.test(t), score: (t) => (SOCIAL.test(t) ? 3 : 0) + (RETAIL.test(t) ? 1 : 0) },
   ],
 };
-const RETAIL = /supermarket|supermercado|s[uú]per\b|hipermercado|grocery|grocer|retail|minorista|walmart|tesco|aldi|lidl|carrefour|mercadona|whole foods|trader joe|kroger|costco|albert heijn|coles|woolworths|jumbo|sainsbury|waitrose|m&s|marks & spencer|target|instacart|oxxo|[ée]xito|d[ií]a\b|eroski|consum|alcampo|food|alimento|snack|bebida|beverage|cerveza|caf[eé]|coffee/i;
-const AREA_RE: Record<string, RegExp> = {
-  dg: /packag|design|diseño|brand|marca|identity|identidad|logo|label|etiqueta|store|tienda|rebrand|illustrat|typograph|tipograf/i,
-  cm: /tiktok|instagram|social|redes|viral|influencer|creator|creador|campaign|campaña|reel|video|meme|ad\b|anuncio|spot|community/i,
-};
-const trendCache: Record<string, { at: number; items: any[] }> = {};
 const decode = (t: string) => t.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/&#8230;/g, "…").replace(/&#8217;|&rsquo;/g, "’").replace(/&#8216;|&lsquo;/g, "‘").replace(/&#822[01];|&[lr]dquo;/g, "\"")
   .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)).replace(/&amp;/g, "&").replace(/&quot;/g, "\"").replace(/&#039;|&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;/g, " ");
-const strip = (h: string) => decode(h).replace(/<[^>]+>/g, " ").replace(/La entrada .*? se publicó primero en .*$/s, "").replace(/\s+/g, " ").trim();
+const strip = (h: string) => decode(h).replace(/<[^>]+>/g, " ").replace(/La entrada .*? se publicó primero en .*$/s, "").replace(/The post .*? appeared first on .*$/s, "").replace(/\s+/g, " ").trim();
 const tag = (x: string, n: string) => { const m = x.match(new RegExp(`<${n}[^>]*>([\\s\\S]*?)</${n}>`)); return m ? m[1] : ""; };
-async function readFeed(f: { u: string; src: string; lang: string; need?: RegExp }){
+const feedMemo = new Map<string, { at: number; items: any[] }>();
+async function readFeed(f: Feed){
+  const m = feedMemo.get(f.u); if (m && Date.now() - m.at < 20 * 60e3) return m.items;
   const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 8000);
   try {
     const r = await fetch(f.u, { headers: { "User-Agent": "Mozilla/5.0 (RetailMKTHub; tendencias)" }, signal: ctl.signal });
     if (!r.ok) return [];
-    const xml = await r.text();
-    return [...xml.matchAll(/<item[\s>][\s\S]*?<\/item>/g)].slice(0, 40).map(([it]) => {
+    const xml = (await r.text()).slice(0, 1_500_000);
+    const items = [...xml.matchAll(/<item[\s>][\s\S]*?<\/item>/g)].slice(0, 40).map(([it]) => {
       const desc = tag(it, "description"), body = tag(it, "content:encoded");
       const img = (it.match(/<media:(?:content|thumbnail)[^>]+url="([^"]+)"/) || it.match(/<enclosure[^>]+url="([^"]+)"[^>]+image/) || decode(desc + body).match(/<img[^>]+src="([^"]+)"/) || [])[1] || "";
       const t = strip(tag(it, "title")), u = decode(tag(it, "link")).trim(), x = strip(desc).slice(0, 220);
-      return { t, u, x, img: /^https:\/\//.test(img) ? decode(img) : "", d: (() => { const t = Date.parse(decode(tag(it, "pubDate") || tag(it, "dc:date")).trim()); return isNaN(t) ? "" : new Date(t).toISOString(); })(), src: f.src, lang: f.lang, need: f.need };
-    }).filter((i) => i.t && /^https?:\/\//.test(i.u) && (!i.need || i.need.test(i.t + " " + i.x)));
+      const pd = Date.parse(decode(tag(it, "pubDate") || tag(it, "dc:date")).trim());
+      return { t, u, x, img: /^https:\/\//.test(img) ? decode(img) : "", d: isNaN(pd) ? "" : new Date(pd).toISOString(), src: f.src, lang: f.lang };
+    }).filter((i) => i.t && i.d && /^https?:\/\//.test(i.u));
+    feedMemo.set(f.u, { at: Date.now(), items });
+    return items;
   } catch { return []; } finally { clearTimeout(tm); }
 }
+// Traducción al español de lo que viene en inglés (MyMemory, gratis). Lo ya traducido se reutiliza del caché.
+async function toEs(text: string){
+  if (!text) return "";
+  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 6000);
+  try {
+    const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 480))}&langpair=en|es`, { signal: ctl.signal });
+    const j = await r.json();
+    const out = String(j?.responseData?.translatedText || "");
+    return j?.responseStatus === 200 && out && !/MYMEMORY WARNING|QUERY LENGTH LIMIT/i.test(out) ? decode(out) : "";
+  } catch { return ""; } finally { clearTimeout(tm); }
+}
 async function tendencias(area: string, force: boolean){
-  const c = trendCache[area];
-  if (c && !force && Date.now() - c.at < 3 * 3600e3) return c.items;
-  const all = (await Promise.all(FEEDS[area].map(readFeed))).flat();
-  const now = Date.now(), seen = new Set<string>();
-  const scored = all.filter((i) => { const k = i.t.toLowerCase().slice(0, 60); if (seen.has(k)) return false; seen.add(k); return now - Date.parse(i.d) < 60 * 864e5; })
-    .map((i) => { const txt = i.t + " " + i.x, age = (now - Date.parse(i.d)) / 864e5;
-      return { ...i, s: (RETAIL.test(txt) ? 3 : 0) + (AREA_RE[area].test(txt) ? 2 : 0) + (i.img ? 1 : 0) + (i.lang === "es" ? 0.5 : 0) - age / 7 }; })
-    .sort((a, b) => b.s - a.s);
-  const per: Record<string, number> = {}, out: any[] = [];
-  for (const i of scored){ if ((per[i.src] = (per[i.src] || 0) + 1) > 3) continue; out.push({ t: i.t, u: i.u, x: i.x, img: i.img, d: i.d, src: i.src, lang: i.lang }); if (out.length === 10) break; }
-  if (out.length) trendCache[area] = { at: Date.now(), items: out };
-  return out;
+  const key = `cache:trends:${area}`;
+  const { data: row } = await db.from("app_state").select("data").eq("key", key).maybeSingle();
+  const prev = row?.data;
+  if (prev?.groups && !force && Date.now() - (prev.at || 0) < 3 * 3600e3) return prev.groups;
+  const known = new Map<string, any>(); (prev?.groups || []).forEach((g: any) => (g.items || []).forEach((i: any) => known.set(i.u, i)));
+  const now = Date.now(), used = new Set<string>(), groups: any[] = [];
+  for (const g of GROUPS[area]){
+    const all = (await Promise.all(g.feeds.map(readFeed))).flat();
+    const seen = new Set<string>();
+    const scored = all.filter((i) => { const k = i.t.toLowerCase().slice(0, 60); if (seen.has(k) || used.has(i.u)) return false; seen.add(k); return now - Date.parse(i.d) < 60 * 864e5; })
+      .map((i) => { const txt = i.t + " " + i.x, age = (now - Date.parse(i.d)) / 864e5;
+        return { ...i, ok: !g.need || g.need(txt), s: g.score(txt) + (i.img ? 1 : 0) + (i.lang === "es" ? 2 : 0) - age / 6 }; })
+      .sort((a, b) => (Number(b.ok) - Number(a.ok)) || b.s - a.s);
+    const per: Record<string, number> = {}, out: any[] = [];
+    for (const i of scored){ if ((per[i.src] = (per[i.src] || 0) + 1) > 3) continue; out.push(i); used.add(i.u); if (out.length === 8) break; }
+    const items = await Promise.all(out.map(async (i) => {
+      const base = { t: i.t, u: i.u, x: i.x, img: i.img, d: i.d, src: i.src, lang: i.lang };
+      if (i.lang === "es") return base;
+      const k = known.get(i.u); if (k?.tr) return { ...base, t: k.t, x: k.x, tr: true };
+      const [t, x] = await Promise.all([toEs(i.t), toEs(i.x.slice(0, 200))]);
+      return t ? { ...base, t, x: x || "", tr: true } : base;
+    }));
+    groups.push({ k: g.k, items });
+  }
+  if (groups.some((g) => g.items.length)){
+    const data = { at: Date.now(), groups };
+    if (row) await db.from("app_state").update({ data, updated_at: new Date().toISOString() }).eq("key", key);
+    else await db.from("app_state").insert({ key, data });
+    return groups;
+  }
+  return prev?.groups || [];
 }
 
 Deno.serve(async (req) => {
@@ -175,8 +220,8 @@ Deno.serve(async (req) => {
         return json({ ok: true, gifs: await giphy(c.giphy_key, String(b.q || "").trim().slice(0, 60)) });
       case "tendencias": {
         const area = b.area === "cm" ? "cm" : "dg";
-        const items = await tendencias(area, !!b.force);
-        return items.length ? json({ ok: true, items }) : json({ ok: false, error: "No se pudieron traer las novedades" });
+        const groups = await tendencias(area, !!b.force && admin);
+        return groups.some((g: any) => g.items.length) ? json({ ok: true, groups }) : json({ ok: false, error: "No se pudieron traer las novedades" });
       }
       case "stickers":
         if (!c.sticker_url) return json({ ok: false, nokey: true, error: "La biblioteca de stickers no está conectada" });
