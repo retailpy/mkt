@@ -3647,10 +3647,10 @@ function pPanel(ar){
   return `<div class="phero"><h1>Panel de Trabajo</h1><p class="sub">${dg ? "Elegí qué tipo de pieza vas a trabajar: cada categoría tiene sus pedidos, su tabla y sus procesos." : "Elegí qué vas a gestionar: el plan del mes, cada red y los pedidos de video."}</p></div>
   ${kpiRow(progStats(scope))}
   <nav class="picons" aria-label="Categorías">${icons || `<div class="empty">No tenés categorías habilitadas.</div>`}</nav>
-  <section class="panel palerts"><div class="head" style="margin-bottom:10px"><h2 style="margin:0" class="pmh">${pmIco("list-todo")}Mis trabajos pendientes${al.length ? ` <span class="note">${al.length}</span>` : ""}</h2>
+  <section class="panel palerts"><div class="head" style="margin-bottom:10px"><h2 style="margin:0" class="pmh">${pmIco("list-todo")}Trabajos pendientes${al.length ? ` <span class="note">${al.length}</span>` : ""}</h2>
     ${al.length > 5 ? `<button type="button" class="btn sm" data-panelall>${panelAll ? "Ver menos" : `Ver más (${al.length - 5})`}</button>` : ""}</div>
     ${al.length ? `<div class="agrid">${alertList(shown)}</div>` : `<div class="empty">${icon("check")} No tenés nada pendiente a tu nombre.</div>`}</section>
-  <section class="panel pdone"><div class="head" style="margin-bottom:10px"><h2 style="margin:0" class="pmh">${pmIco("circle-check")}${mineOnly ? "Mis trabajos finalizados" : `Trabajos finalizados de ${dg ? "Diseño" : "CM"}`}${done.length ? ` <span class="note">${done.length} en ${monthName(MONTH)}</span>` : ""}</h2>
+  <section class="panel pdone"><div class="head" style="margin-bottom:10px"><h2 style="margin:0" class="pmh">${pmIco("circle-check")}Trabajos finalizados${done.length ? ` <span class="note">${done.length} en ${monthName(MONTH)}</span>` : ""}</h2>
     ${done.length > 5 ? `<button type="button" class="btn sm" data-paneldone>${panelDoneAll ? "Ver menos" : `Ver más (${done.length - 5})`}</button>` : ""}</div>${doneList}</section>`;
 }
 let panelDoneAll = false;
@@ -6944,7 +6944,7 @@ function render(){
   $("#content").innerHTML = `<div class="${animate ? (page === "pedidos" || page === "gestioncm" ? "anim" : "fade anim") : "noanim"}${["pedidos","cartel","web","pantallas","gestioncm","calendario","calhistoria","calcanales","inicio","alertas","avisos","mensajes","sugerencias","plan","calcm","caldg","reportes","usuarios","staff","perfil","pauta"].includes(page) ? " clean" : ""}" style="display:flex;flex-direction:column;gap:24px">${bar}${["tv","tvredes","tvimpacto"].includes(page) ? "" : `<p class="eyebrow">${EYEBROW[page]}</p>`}${ro}${avb}${inst}${bdays}${PAGES[page]()}${demo}</div>${installDrawer()}`;
   if (jobUI.form){ const ff = jobForm(); if (ff) $("#content").innerHTML = ff; } // crear o editar un pedido: página completa
   else if (!jobUI.ficha && backTo() && !$("#content .pback")){ const b = backTo(), x = [...PANEL_DESIGN, ...PANEL_CM, ...PANEL_TOOLS].find(y => y.k === page);
-    $("#content").insertAdjacentHTML("afterbegin", `<nav class="pcrumb" aria-label="Ubicación"><button type="button" class="btn gback" data-page="${b.k}"${b.back ? " data-back" : ""} title="Volver a ${esc(b.t)}">${icon("arrow-left")} Volver<small>${esc(b.t)}</small></button>${x && b.k.startsWith("panel") ? `<span>›</span><b>${esc(x.t)}</b>` : ""}</nav>`); }
+    $("#content").insertAdjacentHTML("afterbegin", `<nav class="pcrumb" aria-label="Ubicación"><button type="button" class="btn gback" data-page="${b.k}"${b.back ? " data-back" : ""} title="Volver a ${esc(b.t)}">${icon("arrow-left")} Volver</button>${x && b.k.startsWith("panel") ? `<span>›</span><b>${esc(x.t)}</b>` : ""}</nav>`); }
   else if (jobUI.ficha){ const fx = jobFicha(); if (fx) $("#content").innerHTML = fx; else jobUI.ficha = null; } // el pedido se abre como página completa, desde cualquier página
   { const ci = document.getElementById("chatInput"); if (ci && keepChat){ ci.value = keepChat.v; if (keepChat.f){ ci.focus(); ci.setSelectionRange(keepChat.s, keepChat.e); } }
     const cm = document.getElementById("cvMsgs"); if (cm){ const pin = atBottom || chatUI.keepBottom || chatUI.lastOpen !== chatUI.open; chatUI.lastOpen = chatUI.open; chatUI.keepBottom = false;
