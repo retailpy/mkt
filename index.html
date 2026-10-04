@@ -6887,10 +6887,14 @@ let navHist = [];
 const pageName = k => k === "inicio" ? "Inicio" : k === "config" ? "Configuración" : k === "mensajes" ? "Chat" : (SECTIONS.find(s => s.k === k) || {}).l || k;
 function backTo(){
   const home = can("inicio") ? "inicio" : "dashboard", pk = panelOf(page);
+  if (page === home) return null;
+  // Secciones principales del menú (Panel de Trabajo, Planificación, Carga, Tendencias, Dashboard…): Volver = Inicio.
+  const top = SECTIONS.some(x => x.k === page && !x.hide) && !pk;
+  if (top) return { k:home, t:home === "inicio" ? "Inicio" : "Dashboard" };
+  // Dentro de una categoría (o de una página secundaria): a lo que se estaba haciendo; si no, a su Panel de Trabajo.
   while (navHist.length && (navHist[navHist.length - 1] === page || !can(navHist[navHist.length - 1]))) navHist.pop();
   const prev = navHist[navHist.length - 1];
   if (prev) return { k:prev, t:pageName(prev), back:true };
-  if (page === home) return null;
   if (pk && can(pk)) return { k:pk, t:`Panel de Trabajo ${pk === "paneldg" ? "Diseño" : "CM"}` };
   return { k:home, t:home === "inicio" ? "Inicio" : "Dashboard" };
 }
