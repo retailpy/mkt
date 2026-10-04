@@ -6895,6 +6895,14 @@ function backTo(){
   return { k:home, t:home === "inicio" ? "Inicio" : "Dashboard" };
 }
 function animate0(pg){ const ch = (pg === "pedidos" || pg === "gestioncm") && render.jobPage !== pg; if (pg === "pedidos" || pg === "gestioncm") render.jobPage = pg; return ch; }
+// Chat: al abrir una conversación se ve lo último (abajo de todo). Si después cargan GIFs, stickers o fotos, sigue abajo
+// mientras la persona no haya subido a leer mensajes viejos.
+function stickBottom(cm){
+  const go = () => { cm.scrollTop = cm.scrollHeight; }; go(); requestAnimationFrame(go); setTimeout(go, 120);
+  cm.dataset.pin = "1";
+  if (!cm.dataset.pinWired){ cm.dataset.pinWired = "1"; cm.addEventListener("scroll", () => { cm.dataset.pin = cm.scrollHeight - cm.scrollTop - cm.clientHeight < 80 ? "1" : ""; }, { passive:true }); }
+  cm.querySelectorAll("img").forEach(im => { if (!im.complete) im.addEventListener("load", () => { if (cm.dataset.pin) go(); }, { once:true }); });
+}
 function render(){
   for (const j of jobs){ if (j.status === "Diseño finalizado") j.status = "Boceto finalizado"; // nombre anterior de la etapa
     if (j.status === "Entregado"){ j.status = "Aprobado"; if (!j.approved) j.approved = j.delivered || TODAY; } } // ya no hay etapa “Entregado”: Aprobado es el final
@@ -6935,7 +6943,8 @@ function render(){
     $("#content").insertAdjacentHTML("afterbegin", `<nav class="pcrumb" aria-label="Ubicación"><button type="button" class="btn gback" data-page="${b.k}"${b.back ? " data-back" : ""} title="Volver a ${esc(b.t)}">${icon("arrow-left")} Volver<small>${esc(b.t)}</small></button>${x && b.k.startsWith("panel") ? `<span>›</span><b>${esc(x.t)}</b>` : ""}</nav>`); }
   else if (jobUI.ficha){ const fx = jobFicha(); if (fx) $("#content").innerHTML = fx; else jobUI.ficha = null; } // el pedido se abre como página completa, desde cualquier página
   { const ci = document.getElementById("chatInput"); if (ci && keepChat){ ci.value = keepChat.v; if (keepChat.f){ ci.focus(); ci.setSelectionRange(keepChat.s, keepChat.e); } }
-    const cm = document.getElementById("cvMsgs"); if (cm){ if (atBottom || chatUI.keepBottom) cm.scrollTop = cm.scrollHeight; else cm.scrollTop = top0; chatUI.keepBottom = false; } }
+    const cm = document.getElementById("cvMsgs"); if (cm){ const pin = atBottom || chatUI.keepBottom || chatUI.lastOpen !== chatUI.open; chatUI.lastOpen = chatUI.open; chatUI.keepBottom = false;
+      if (pin) stickBottom(cm); else cm.scrollTop = top0; } }
   if (animate) document.querySelectorAll("#content .calw").forEach(w => { const t = w.querySelector(".d.today"); if (t && w.scrollWidth > w.clientWidth + 4) w.scrollLeft = Math.max(0, t.offsetLeft - 8); }); // celular: el calendario arranca mostrando hoy
   document.documentElement.classList.toggle("chatfull", page === "mensajes" && !!chatUI.mob && !!chatUI.open);
   chatNotify();
