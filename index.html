@@ -2791,6 +2791,16 @@ const MONTHS_APP = (() => { const out = [], end = +CURRENT_MONTH.slice(0,4) * 12
     out.push({ v:`${y}-${String(m).padStart(2,"0")}`, l:`${name[0].toUpperCase()}${name.slice(1)} ${y}` }); }
   return out; })();
 let MONTH = CURRENT_MONTH;
+// Si la app queda abierta y cambia el día (o el mes), se recarga sola para mostrar la fecha y el mes actuales
+// (espera a que no haya un formulario o un texto a medio escribir).
+function dayChanged(){ return new Intl.DateTimeFormat("en-CA", { timeZone:"America/Asuncion" }).format(new Date()) !== TODAY; }
+function reloadIfNewDay(){
+  if (!dayChanged()) return;
+  const typing = (typeof jobUI !== "undefined" && jobUI.form) || (typeof postUI !== "undefined" && postUI.form) || document.querySelector(".rtedit[data-dirty]") || (document.getElementById("chatInput")?.value || "").trim();
+  if (!typing) location.reload();
+}
+setInterval(reloadIfNewDay, 60000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") reloadIfNewDay(); });
 const monthLabel = v => (MONTHS_APP.find(m => m.v === v) || { l:v }).l;
 const monthName = v => monthLabel(v).split(" ")[0].toLowerCase();
 const isClosed = () => MONTH < CURRENT_MONTH;
@@ -7240,7 +7250,7 @@ document.addEventListener("click", e => {
   else if (t.dataset.rbrand){ reportBrand = t.dataset.rbrand; render(); }
   else if (t.dataset.dl){ toast(`En la app real se descarga “${t.dataset.dl}”. Acá la maqueta no puede descargar archivos.`); }
   else if (t.dataset.close !== undefined){ toast(`En la app real, esto deja ${monthName(MONTH)} fijo: se puede consultar pero ya no modificar.`); }
-  else if (t.dataset.page){ e.preventDefault(); if (t.dataset.back !== undefined){ navHist.pop(); render.goingBack = true; } jobUI.ficha = null; jobUI.form = null; if (typeof postUI !== "undefined") postUI.form = null; page = t.dataset.page; render(); window.scrollTo(0,0); } // ir a otra sección cierra el pedido abierto
+  else if (t.dataset.page){ e.preventDefault(); if (t.dataset.back !== undefined){ navHist.pop(); render.goingBack = true; } if (t.dataset.page !== page) MONTH = CURRENT_MONTH; /* cada sección arranca en el mes actual */ jobUI.ficha = null; jobUI.form = null; if (typeof postUI !== "undefined") postUI.form = null; page = t.dataset.page; render(); window.scrollTo(0,0); } // ir a otra sección cierra el pedido abierto
   else if (t.dataset.brand){ brandFilter = t.dataset.brand; render(); }
   else if (t.dataset.redes){ redesBrand = t.dataset.redes; render(); }
   else if (t.dataset.pedir) pedirDiseno(t.dataset.pedir);
