@@ -378,6 +378,17 @@ html.nomotion .picon{animation:none}
 .cvcomp:has(.cbar){flex-wrap:wrap}
 .cmsg.cflash .cbub{box-shadow:0 0 0 2px var(--cyan)}
 .fwbox{max-width:420px}.fwlist{display:flex;flex-direction:column;gap:4px;max-height:55vh;overflow-y:auto;margin:6px 0 10px}.fwit{all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px}.fwit:hover{background:rgba(148,163,184,.12)}.fwit .cav,.fwit .cavw img,.fwit .cavw .av{width:34px;height:34px}
+.iblist{display:flex;flex-direction:column;gap:8px}
+.ibrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;padding:12px 14px;border:1px solid var(--line-2);border-radius:16px;background:var(--inner-2);cursor:pointer}
+.ibrow.pend{border-left:3px solid #f97316}.ibrow:hover{border-color:var(--line-3)}
+.ibnet{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center}.ibnet svg{width:18px;height:18px}.ibnet.ig{background:rgba(236,72,153,.15);color:#f472b6}.ibnet.fb{background:rgba(59,130,246,.15);color:#60a5fa}
+.ibrow .grow{min-width:0;flex:1 1 200px}.ibh{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ibh small{color:var(--faint);font-size:12px}
+.ibl{color:var(--muted);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ibl em{font-style:normal;color:#34d399}
+.ibst{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;border-radius:999px;padding:3px 10px;white-space:nowrap}.ibst svg{width:14px;height:14px}.ibst.ok{color:#34d399;background:rgba(16,185,129,.12)}.ibst.no{color:#fdba74;background:rgba(249,115,22,.14)}
+.ibthread{flex-basis:100%;display:flex;flex-direction:column;gap:6px;padding:8px 0 2px;cursor:default}
+.ibm{align-self:flex-start;max-width:80%;display:flex;flex-direction:column;gap:2px;background:rgba(148,163,184,.12);border-radius:14px 14px 14px 4px;padding:7px 11px}.ibm.me{align-self:flex-end;background:rgba(34,211,238,.12);border-radius:14px 14px 4px 14px}.ibm small{font-size:11px;color:var(--faint)}
+.ibthread .btn{align-self:flex-start;margin-top:4px}
+.ibwarn{display:flex;gap:10px;align-items:flex-start;border-color:rgba(249,115,22,.5)}.ibwarn > svg{color:#fb923c;flex:none}.ibwarn span{display:block;font-size:13px;color:var(--muted);margin-top:3px}
 .btn.gback{gap:8px;padding:9px 18px 9px 14px;border:0;border-radius:999px;font-weight:800;font-size:15px;color:#02131a;background:linear-gradient(90deg,#22d3ee,#38bdf8);box-shadow:0 8px 22px -10px rgba(34,211,238,.9)}
 .btn.gback svg{width:18px;height:18px;stroke-width:2.6}.btn.gback{max-width:100%;min-width:0}.btn.gback small{font-weight:600;font-size:12.5px;opacity:.75;max-width:min(40vw,320px);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.btn.gback small::before{content:"·";margin:0 6px 0 2px}
 .btn.gback:hover{filter:brightness(1.08);transform:translateX(-2px)}.amore{margin-top:10px}
@@ -2386,6 +2397,7 @@ const SECTIONS = [
   { g:"Community Manager", k:"calcanales", l:"Gestión Canal WhatsApp", n:"Gestión: Canal WhatsApp", i:"message-circle", hide:true },
   { g:"Community Manager", k:"gestioncm", l:"Gestión Videos", n:"Gestión: Videos", i:"clapperboard", hide:true },
   { g:"Community Manager", k:"historialcm", l:"Historial CM", n:"Historial", i:"archive", hide:true },
+  { g:"Community Manager", k:"inbox", l:"Mensajes de las cuentas", n:"Mensajes", i:"inbox", hide:true, virtual:true }, // DM reales de Instagram y Facebook de cada marca (solo lectura)
   { g:"Recursos", k:"prompts", l:"Prompts de imágenes", i:"wand-sparkles" },
   { g:"Recursos", k:"archivos", l:"Archivos y enlaces", i:"link" },
   { g:"Informes", k:"pauta", l:"Meta Ads", i:"megaphone" },
@@ -2864,7 +2876,7 @@ function metaAdsPanel(simple = false){
 
 // Seguidores y público reales de Meta: los escriben las funciones diarias en Supabase (solo lectura en la app).
 // META_FOLLOWERS = { updated, "AAAA-MM": { Marca: { ig, fb, handle, page } } } · META_DEMO = { updated, Marca: { handle, foll, cities, ages, gender } } (cantidades).
-let META_FOLLOWERS = {}, META_DEMO = {}, META_POSTS = {}, META_CREATIVES = {};
+let META_FOLLOWERS = {}, META_DEMO = {}, META_POSTS = {}, META_CREATIVES = {}, META_INBOX = {};
 const NO_DATA = "Sin datos todavía";
 const BRAND_RANK = b => MAIN_BRANDS.includes(b) ? MAIN_BRANDS.indexOf(b) : 10;
 // Retail Institucional no va en los informes de redes (no tiene página propia en Meta).
@@ -3306,7 +3318,7 @@ const icon = n => `<i data-lucide="${n}"></i>`;
 // Vistas TV, Usuarios y Carga de trabajo: solo Admin total (aunque el permiso esté marcado).
 const ONLY_AT = ["tv","tvredes","tvimpacto","usuarios","cargadiseno","cargacm","sugerencias","encuestas"]; // Encuestas y sugerencias: solo Admin total (también en la base)
 const ONLY_ADMINS = ["historial","historialcm"]; // Historial de Diseño y de CM: solo Admin total y Admin
-const can = key => key === "encuestas" || key === "sugerencias" ? viewer.id === "fede" && viewer.role === "Admin total" : key === "tendg" ? can("paneldg") : key === "tencm" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : ONLY_AT.includes(key) ? viewer.role === "Admin total" : ONLY_ADMINS.includes(key) ? isAdminAny() && viewer.perms.has(key) : ["sabados","avisos","perfil","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
+const can = key => key === "inbox" ? ["Admin total","Admin","CM"].includes(viewer.role) : key === "encuestas" || key === "sugerencias" ? viewer.id === "fede" && viewer.role === "Admin total" : key === "tendg" ? can("paneldg") : key === "tencm" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : ONLY_AT.includes(key) ? viewer.role === "Admin total" : ONLY_ADMINS.includes(key) ? isAdminAny() && viewer.perms.has(key) : ["sabados","avisos","perfil","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
 const myGroups = () => viewer.brands || GROUPS;
 const seesBrand = b => myGroups().includes(groupOf(b));
 const myBrands = () => Object.keys(BRANDS).filter(seesBrand);
@@ -3603,6 +3615,7 @@ const PANEL_CM = [
   { k:"calhistoria", t:"Historias", d:"Historias de Instagram y Facebook, día por día.", i:"smartphone" },
   { k:"calcanales", t:"Canal de WhatsApp", d:"Ofertas y novedades del canal, y los envíos repetitivos.", i:"message-circle" },
   { k:"gestioncm", t:"Gestión de Videos", d:"Grabaciones, ediciones, coberturas, copys y armado de pauta.", i:"clapperboard" },
+  { k:"inbox", t:"Mensajes", d:"Los mensajes directos de Instagram y Facebook de cada marca: quién escribió y si ya se contestó.", i:"inbox" },
 ];
 const PANEL_TOOLS = [
   { k:"historial", t:"Historial", a:"Diseño", i:"archive", d:"Todo lo que ya se entregó, por mes, marca y diseñador." }, { k:"historialcm", t:"Historial", a:"CM", i:"archive", d:"Lo publicado y los pedidos terminados de cada mes." },
@@ -3632,7 +3645,8 @@ function panelStats(){
   const sec = k => pj.filter(j => j.area === "Diseño" && jobSection(j) === k);
   return { pedidos:jm(sec("pedidos")), cartel:jm(sec("cartel")), web:jm(sec("web")), pantallas:jm(sec("pantallas")), gestioncm:jm(pj.filter(j => j.area === "CM")),
     plan:pm(vp), calendario:pm(vp.filter(p => p.format !== "Historia")), calhistoria:pm(vp.filter(p => p.format === "Historia")), calcanales:canales.length ? `${canales.length} este mes` : "Nada cargado este mes",
-    historial:"Meses anteriores", historialcm:"Meses anteriores" };
+    historial:"Meses anteriores", historialcm:"Meses anteriores",
+    inbox:(() => { const n = Object.keys(META_INBOX).filter(b => b !== "updated").reduce((t, b) => t + (META_INBOX[b]?.convs || []).filter(c => !c.answered).length, 0); return Object.keys(META_INBOX).length ? (n ? `<em>${n} sin contestar</em>` : "Todo contestado") : "Sin datos todavía"; })() };
 }
 function pPanel(ar){
   const dg = ar === "dg", st = panelStats();
@@ -6715,8 +6729,8 @@ function pConfig(){
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-pref]"); if (!b) return; const [k, val] = b.dataset.pref.split("|"); viewer[k] = val; savePrefs(viewer); applyPrefs(); render();
   toast(k === "theme" ? `Listo: versión ${val === "light" ? "clara" : "oscura"}.` : k === "textSize" ? `Texto ${val === "big" ? "grande" : "normal"}.` : val === "off" ? "Animaciones desactivadas." : "Animaciones activadas."); });
-const EYEBROW = { tendg:"Diseño gráfico", tencm:"Community Manager", paneldg:"Diseño gráfico", panelcm:"Community Manager", caldg:"Diseño gráfico", calcm:"Community Manager", web:"Diseño gráfico", pantallas:"Diseño gráfico", sabados:"Equipo", caldiseno:"Redes sociales", cartel:"Diseño gráfico", calcartel:"Cartelería", historialcm:"Community managers", gestioncm:"Community managers", avisos:"Comunicados del equipo", prompts:"Inteligencia artificial", guia:"Ayuda", archivos:"Diseños y archivos", encuestas:"La voz del equipo", planmes:"Hacia dónde vamos", notas:"Tu espacio", mensajes:"Comunicación interna", sugerencias:"Buzón confidencial", tvimpacto:"Pantalla de oficina", inicio:"Panel general", alertas:"Control", calendario:"Community managers", calhistoria:"Community managers", calcanales:"Community managers", cargadiseno:"Diseño gráfico", cargacm:"Community managers", plan:"Contenidos", pedidos:"Diseño gráfico", tv:"Equipo de diseño", historial:"Diseño gráfico", pauta:"Meta Ads", redes:"Audiencia", reportes:"Resultados del mes", usuarios:"Administración", perfil:"Tu cuenta", cumples:"Equipo", dashboard:"Visión general", tvredes:"Pantalla de oficina", staff:"Equipo", config:"Tu cuenta" };
-const PAGES = { tendg:() => pTend("dg"), tencm:() => pTend("cm"), paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), caldg:pCalDG, calcm:pPlan, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
+const EYEBROW = { inbox:"Community Manager", tendg:"Diseño gráfico", tencm:"Community Manager", paneldg:"Diseño gráfico", panelcm:"Community Manager", caldg:"Diseño gráfico", calcm:"Community Manager", web:"Diseño gráfico", pantallas:"Diseño gráfico", sabados:"Equipo", caldiseno:"Redes sociales", cartel:"Diseño gráfico", calcartel:"Cartelería", historialcm:"Community managers", gestioncm:"Community managers", avisos:"Comunicados del equipo", prompts:"Inteligencia artificial", guia:"Ayuda", archivos:"Diseños y archivos", encuestas:"La voz del equipo", planmes:"Hacia dónde vamos", notas:"Tu espacio", mensajes:"Comunicación interna", sugerencias:"Buzón confidencial", tvimpacto:"Pantalla de oficina", inicio:"Panel general", alertas:"Control", calendario:"Community managers", calhistoria:"Community managers", calcanales:"Community managers", cargadiseno:"Diseño gráfico", cargacm:"Community managers", plan:"Contenidos", pedidos:"Diseño gráfico", tv:"Equipo de diseño", historial:"Diseño gráfico", pauta:"Meta Ads", redes:"Audiencia", reportes:"Resultados del mes", usuarios:"Administración", perfil:"Tu cuenta", cumples:"Equipo", dashboard:"Visión general", tvredes:"Pantalla de oficina", staff:"Equipo", config:"Tu cuenta" };
+const PAGES = { inbox:pInbox, tendg:() => pTend("dg"), tencm:() => pTend("cm"), paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), caldg:pCalDG, calcm:pPlan, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
 
 /* ---------- render ---------- */
 // Barra de pestañas abajo (celular), como en cualquier app: lo que más usa cada rol + “Más” para el menú completo.
@@ -6799,6 +6813,50 @@ function reveal(){
   els.forEach(el => { const par = el.parentElement, k = idx.get(par) || 0; idx.set(par, k + 1);
     el.style.setProperty("--rd", Math.round(k * Math.min(45, 800 / size.get(par))) + "ms"); el.classList.add("rv"); io.observe(el); });
 }
+// ---------- Mensajes de las cuentas: los DM reales de Instagram y Facebook (Messenger) de cada marca ----------
+// Los trae la función /api/mensajes (todos los días y con “Actualizar”) a s:META_INBOX. Es solo para controlar:
+// quién escribió y si ya se contestó. Para contestar se abre la bandeja de Meta Business Suite.
+let inboxUI = { brand:"Todas", st:"sin", net:"Todas", open:null, busy:false };
+const inboxAge = ts => { if (!ts) return ""; const m = Math.round((Date.now() - new Date(ts)) / 60000); return m < 1 ? "recién" : m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} d`; };
+async function inboxRefresh(){
+  if (inboxUI.busy) return; inboxUI.busy = true; render();
+  try { const tok = window.RMH?.token ? await RMH.token() : null;
+    const r = await fetch("/api/mensajes", { headers: tok ? { Authorization:"Bearer " + tok } : {} }); const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) toast(j.error ? `No se pudo actualizar: ${j.error}` : "No se pudo actualizar los mensajes."); else { toast("Mensajes actualizados."); await window.RMH?.catchUp?.(); }
+  } catch { toast("No se pudo conectar para actualizar."); }
+  inboxUI.busy = false; render();
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-ibf]"); if (b){ const [k, v] = b.dataset.ibf.split("|"); inboxUI[k] = v; inboxUI.open = null; render(); return; }
+  const o = e.target.closest("[data-ibopen]"); if (o && !e.target.closest("a")){ inboxUI.open = inboxUI.open === o.dataset.ibopen ? null : o.dataset.ibopen; render(); return; }
+  if (e.target.closest("[data-ibre]")) inboxRefresh();
+});
+function pInbox(){
+  const bs = ORDER_INBOX().filter(b => META_INBOX[b]), all = [];
+  bs.forEach(b => (META_INBOX[b].convs || []).forEach(c => all.push({ ...c, b })));
+  const list = all.filter(c => (inboxUI.brand === "Todas" || c.b === inboxUI.brand) && (inboxUI.net === "Todas" || c.net === inboxUI.net) && (inboxUI.st === "todos" || (inboxUI.st === "sin" ? !c.answered : c.answered)))
+    .sort((a, c) => inboxUI.st === "sin" ? String(a.waitSince || a.ts).localeCompare(String(c.waitSince || c.ts)) : String(c.ts).localeCompare(String(a.ts)));
+  const sin = all.filter(c => !c.answered).length, errs = bs.filter(b => META_INBOX[b].err);
+  const chip = (k, v, l) => `<button type="button" class="chip ${inboxUI[k] === v ? "on" : ""}" data-ibf="${k}|${v}">${l}</button>`;
+  const suite = b => META_INBOX[b]?.pageId ? `https://business.facebook.com/latest/inbox/all?asset_id=${encodeURIComponent(META_INBOX[b].pageId)}` : "https://business.facebook.com/latest/inbox";
+  const row = c => { const last = c.msgs[c.msgs.length - 1] || {}, key = c.b + "|" + c.id, open = inboxUI.open === key;
+    return `<div class="ibrow${c.answered ? "" : " pend"}${open ? " open" : ""}" data-ibopen="${esc(key)}" role="button" tabindex="0">
+      <span class="ibnet ${c.net === "IG" ? "ig" : "fb"}">${c.net === "IG" ? ICO.IG : ICO.FB}</span>
+      <div class="grow"><div class="ibh"><b>${esc(c.who)}</b>${brandTag(c.b)}<small>${inboxAge(c.ts)}</small></div>
+        <div class="ibl">${last.me ? `<em>Respuesta:</em> ` : ""}${esc(last.t || (last.att ? "📎 Adjunto" : ""))}</div></div>
+      ${c.answered ? `<span class="ibst ok">${icon("check-check")} Contestado</span>` : `<span class="ibst no">${icon("clock")} Sin contestar${c.waitSince ? ` · ${inboxAge(c.waitSince).replace("hace ", "")}` : ""}</span>`}
+      ${open ? `<div class="ibthread">${c.msgs.map(m => `<div class="ibm ${m.me ? "me" : ""}"><span>${esc(m.t || (m.att ? "📎 Adjunto" : ""))}</span><small>${m.me ? esc(c.b) + " · " : ""}${new Date(m.ts).toLocaleString("es-PY", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })}</small></div>`).join("")}
+        <a class="btn sm" href="${suite(c.b)}" target="_blank" rel="noopener">${icon("external-link")} Contestar en Meta Business Suite</a></div>` : ""}</div>`; };
+  return `<div class="head"><div><h1 class="pmh">${pmIco("inbox")}Mensajes</h1><p class="sub">Los mensajes directos reales de Instagram y Facebook de cada marca: quién escribió y si ya se contestó. Para contestar, se abre la bandeja de Meta Business Suite.</p></div>
+    <button type="button" class="btn" data-ibre ${inboxUI.busy ? "disabled" : ""}>${icon("refresh-cw")} ${inboxUI.busy ? "Actualizando…" : "Actualizar"}</button></div>
+  ${bs.length ? `<div class="grid kpis">${[["Sin contestar", sin, sin ? "warn" : "up"], ["Contestados", all.length - sin, "up"], ["Conversaciones", all.length, ""]].map(([l, n, c]) => `<div class="panel kpi"><div class="l">${l}</div><div class="n ${c}">${n}</div></div>`).join("")}<div class="panel kpi"><div class="l">Actualizado</div><div class="n" style="font-size:20px">${inboxAge(META_INBOX.updated) || "—"}</div></div></div>` : ""}
+  ${errs.length ? `<div class="panel ibwarn">${icon("circle-alert")} <div><b>Algunas cuentas no se pudieron leer.</b>${errs.map(b => `<span>${esc(b)}: ${esc(META_INBOX[b].err)}</span>`).join("")}<span class="note">Al token de Meta le tienen que dar los permisos pages_messaging, instagram_manage_messages y pages_manage_metadata, y en cada Instagram activar “Permitir acceso a los mensajes”.</span></div></div>` : ""}
+  ${bs.length ? `<div class="panel" style="padding:12px;display:flex;flex-direction:column;gap:8px"><div class="chips">${chip("st", "sin", `Sin contestar${sin ? ` (${sin})` : ""}`)}${chip("st", "ok", "Contestados")}${chip("st", "todos", "Todos")}</div>
+    <div class="chips">${chip("brand", "Todas", "Todas las marcas")}${bs.map(b => chip("brand", b, b)).join("")}</div><div class="chips">${chip("net", "Todas", "Instagram y Facebook")}${chip("net", "IG", "Instagram")}${chip("net", "FB", "Facebook")}</div></div>
+  <div class="iblist">${list.map(row).join("") || `<div class="empty">${inboxUI.st === "sin" ? `${icon("check")} No hay mensajes sin contestar.` : "No hay conversaciones con estos filtros."}</div>`}</div>`
+  : `<div class="panel empty">${icon("inbox")} Todavía no hay mensajes cargados. Tocá “Actualizar” para traerlos de Meta. Para que funcione, al token de Meta le tienen que dar los permisos de mensajes (pages_messaging, instagram_manage_messages y pages_manage_metadata).</div>`}`;
+}
+const ORDER_INBOX = () => ["Superseis","Stock","Delimarket","Bianca","Clasipar","Dayo","PediWOW"].filter(b => seesBrand(b));
 // Tendencias: las 10 novedades más llamativas para Diseño (packaging, marcas y tiendas) o para CM (campañas y redes),
 // tomadas de medios especializados por la función "integraciones" (se actualiza sola cada 3 horas). Cada una abre su nota.
 const TREND_LINKS = {
