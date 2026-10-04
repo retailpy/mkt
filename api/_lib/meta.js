@@ -35,6 +35,19 @@ function authorized(req){
   return h === `Bearer ${secret}` || q === secret;
 }
 
+// Desde la app (botón “Actualizar”): la sesión de la persona. Solo Admin total, Admin y CM pueden pedir que se actualice.
+async function allowedUser(req){
+  const h = req.headers.authorization || "", tok = h.replace(/^Bearer\s+/i, "");
+  const url = process.env.SUPABASE_URL, apikey = process.env.SUPABASE_KEY;
+  if (!tok || !url || !apikey || tok === process.env.CRON_SECRET) return false;
+  const u = await fetch(`${url}/auth/v1/user`, { headers: { apikey, Authorization: `Bearer ${tok}` } }).then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!u?.id) return false;
+  const rows = await fetch(`${url}/rest/v1/members?select=role,active&user_id=eq.${encodeURIComponent(u.id)}`, { headers: { apikey, Authorization: `Bearer ${tok}` } }).then(r => r.ok ? r.json() : []).catch(() => []);
+  return Array.isArray(rows) && rows.some(m => m.active && ["Admin total", "Admin", "CM"].includes(m.role));
+}
+// El cron (CRON_SECRET) o una persona con permiso desde la app.
+async function cronOrUser(req){ return authorized(req) ? "cron" : (await allowedUser(req)) ? "user" : null; }
+
 async function graph(path, params = {}){
   const url = new URL(GRAPH + path);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
@@ -102,4 +115,4 @@ function tokenHint(e){
   return null;
 }
 
-module.exports = { NOMBRES, ORDEN, authorized, graph, brandPages, save, today, tokenHint };
+module.exports = { NOMBRES, ORDEN, authorized, allowedUser, cronOrUser, graph, brandPages, save, today, tokenHint };

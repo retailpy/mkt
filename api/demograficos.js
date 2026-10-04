@@ -6,7 +6,7 @@
 // Meta no entrega demografía de cuentas con menos de 100 seguidores: esas marcas quedan en "sinDatos".
 //
 // Probar sin guardar:  /api/demograficos?dry=1&secret=EL_CRON_SECRET
-const { ORDEN, authorized, graph, brandPages, save, today, tokenHint } = require("./_lib/meta");
+const { ORDEN, cronOrUser, graph, brandPages, save, today, tokenHint } = require("./_lib/meta");
 
 async function breakdown(igId, by){
   const j = await graph(`/${igId}/insights`, {
@@ -17,9 +17,10 @@ async function breakdown(igId, by){
 }
 
 module.exports = async (req, res) => {
-  if (!authorized(req)) return res.status(401).json({ ok: false, error: "No autorizado: falta ?secret= o es incorrecto" });
+  const who = await cronOrUser(req); // el cron o el botón “Actualizar” de la app (Admin total, Admin o CM)
+  if (!who) return res.status(401).json({ ok: false, error: "No autorizado: falta ?secret= o es incorrecto" });
   if (!process.env.META_TOKEN){ console.error("ERROR: falta la variable META_TOKEN en Vercel"); return res.status(500).json({ ok: false, error: "Falta la variable META_TOKEN en Vercel" }); }
-  const dry = req.query.dry === "1";
+  const dry = req.query.dry === "1" && who === "cron";
   try {
     const { byBrand, missing } = await brandPages();
     const out = {}, sinDatos = {};

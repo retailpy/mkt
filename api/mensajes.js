@@ -8,7 +8,7 @@
 // Probar sin guardar:  /api/mensajes?dry=1&secret=EL_CRON_SECRET
 // Permisos que necesita el META_TOKEN además de los de siempre: pages_messaging, instagram_manage_messages y
 // pages_manage_metadata. En cada cuenta de Instagram tiene que estar activado “Permitir acceso a los mensajes”.
-const { ORDEN, authorized, brandPages, save, tokenHint } = require("./_lib/meta");
+const { ORDEN, cronOrUser, brandPages, save, tokenHint } = require("./_lib/meta");
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 const CONVS = 40; // conversaciones por red y por marca (las más recientes)
@@ -21,17 +21,6 @@ async function g(path, params, token){
   const r = await fetch(url), j = await r.json().catch(() => ({}));
   if (!r.ok || j.error){ const e = j.error || {}, err = new Error(e.message || `HTTP ${r.status}`); err.code = e.code; throw err; }
   return j;
-}
-
-// La app manda la sesión de la persona: solo Admin total, Admin y CM pueden pedir que se actualice.
-async function userAllowed(req){
-  const h = req.headers.authorization || "", tok = h.replace(/^Bearer\s+/i, "");
-  const url = process.env.SUPABASE_URL, apikey = process.env.SUPABASE_KEY;
-  if (!tok || !url || !apikey || tok === process.env.CRON_SECRET) return false;
-  const u = await fetch(`${url}/auth/v1/user`, { headers: { apikey, Authorization: `Bearer ${tok}` } }).then(r => r.ok ? r.json() : null).catch(() => null);
-  if (!u?.id) return false;
-  const rows = await fetch(`${url}/rest/v1/members?select=role,active&user_id=eq.${encodeURIComponent(u.id)}`, { headers: { apikey, Authorization: `Bearer ${tok}` } }).then(r => r.ok ? r.json() : []).catch(() => []);
-  return rows.some(m => m.active && ["Admin total", "Admin", "CM"].includes(m.role));
 }
 
 const short = (s, n = 400) => { s = String(s || ""); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
@@ -49,8 +38,8 @@ function shape(c, net, meIds){
 }
 
 module.exports = async (req, res) => {
-  const cron = authorized(req);
-  if (!cron && !(await userAllowed(req))) return res.status(401).json({ ok: false, error: "No autorizado" });
+  const who = await cronOrUser(req), cron = who === "cron";
+  if (!who) return res.status(401).json({ ok: false, error: "No autorizado" });
   if (!process.env.META_TOKEN) return res.status(500).json({ ok: false, error: "Falta la variable META_TOKEN en Vercel" });
   const dry = req.query.dry === "1" && cron;
   try {

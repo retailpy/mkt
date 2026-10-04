@@ -2977,7 +2977,7 @@ function followersPanel(){
   const card = (net, title, color) => { const list = bs.map((b,i) => ({ b, v:folOf(b, fm)?.[net], c:FCOL(b,i) })), max = Math.max(1, ...list.map(x => isNum(x.v) ? x.v : 0));
     return `<div><div class="fhead"><b style="color:${color}">${title}</b><span>${ml}</span></div><div class="fcard">${list.map((x,i) => isNum(x.v) ? `<div class="fbar"><span class="lb" title="${x.b}">${x.b}</span><div class="tr"><div class="fl" style="width:${Math.max(x.v/max*100,1.5)}%;background:${x.c};--dl:${i*60}ms"></div></div><span class="v">${dots(x.v)}</span></div>`
       : `<div class="fbar nodata"><span class="lb" title="${x.b}">${x.b}</span><span class="note">${NO_DATA}</span></div>`).join("")}</div></div>`; };
-  return `<div class="panel"><div class="head"><h2 style="font-size:26px;margin:0">Seguidores por cuenta</h2><div class="tag-row"><span class="tag">Fuente: Meta</span>${updTag(META_FOLLOWERS.updated)}</div></div><p class="sub" style="margin:4px 0 18px">Cantidad de seguidores de cada marca en ${ml}. Instagram y Facebook por separado.</p>
+  return `<div class="panel"><div class="head"><h2 style="font-size:26px;margin:0">Seguidores por cuenta</h2><div class="tag-row"><span class="tag">Fuente: Meta</span>${updTag(META_FOLLOWERS.updated)}${metaBtn("seguidores", "Seguidores")}</div></div><p class="sub" style="margin:4px 0 18px">Cantidad de seguidores de cada marca en ${ml}. Instagram y Facebook por separado.</p>
     <div class="grid two">${card("ig","Instagram","#f9a8d4")}${card("fb","Facebook","#7dd3fc")}</div></div>`;
 }
 // Filas de seguidores: mes elegido contra el mes anterior. Sin dato → "Sin datos todavía" o "—".
@@ -6828,18 +6828,27 @@ function reveal(){
 // quién escribió y si ya se contestó. Para contestar se abre la bandeja de Meta Business Suite.
 let inboxUI = { brand:"Todas", st:"sin", net:"Todas", open:null, busy:false };
 const inboxAge = ts => { if (!ts) return ""; const m = Math.round((Date.now() - new Date(ts)) / 60000); return m < 1 ? "recién" : m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} d`; };
-async function inboxRefresh(){
-  if (inboxUI.busy) return; inboxUI.busy = true; render();
+// “Actualizar”: le pide a las funciones de Meta (en Vercel) que traigan lo último ahora, con la sesión de la persona.
+const canMetaRefresh = () => ["Admin total","Admin","CM"].includes(viewer.role) && !window.RMH?.previewing;
+const metaBusy = {};
+async function metaRefresh(what, label){
+  if (metaBusy[what]) return; metaBusy[what] = true; render();
+  const eps = { mensajes:["mensajes"], seguidores:["seguidores","demograficos","publicaciones"] }[what] || [what];
+  let ok = 0, err = "";
   try { const tok = window.RMH?.token ? await RMH.token() : null;
-    const r = await fetch("/api/mensajes", { headers: tok ? { Authorization:"Bearer " + tok } : {} }); const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j.ok) toast(j.error ? `No se pudo actualizar: ${j.error}` : "No se pudo actualizar los mensajes."); else { toast("Mensajes actualizados."); await window.RMH?.catchUp?.(); }
-  } catch { toast("No se pudo conectar para actualizar."); }
-  inboxUI.busy = false; render();
+    for (const ep of eps){ const r = await fetch("/api/" + ep, { headers: tok ? { Authorization:"Bearer " + tok } : {} }); const j = await r.json().catch(() => ({}));
+      if (r.ok && j.ok) ok++; else err = err || j.hint || j.error || `HTTP ${r.status}`; }
+    if (ok) await window.RMH?.catchUp?.();
+  } catch { err = "No se pudo conectar"; }
+  metaBusy[what] = false; render();
+  toast(ok === eps.length ? `${label} actualizados con lo último de Meta.` : ok ? `${label}: se actualizó una parte (${err}).` : `No se pudo actualizar: ${err}.`);
 }
+document.addEventListener("click", e => { const b = e.target.closest("[data-metare]"); if (b) metaRefresh(b.dataset.metare, b.dataset.metal || "Datos"); });
+const metaBtn = (what, label) => canMetaRefresh() ? `<button type="button" class="btn sm" data-metare="${what}" data-metal="${label}" ${metaBusy[what] ? "disabled" : ""}>${icon("refresh-cw")} ${metaBusy[what] ? "Actualizando…" : "Actualizar"}</button>` : "";
+function inboxRefresh(){ return metaRefresh("mensajes", "Mensajes"); }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-ibf]"); if (b){ const [k, v] = b.dataset.ibf.split("|"); inboxUI[k] = v; inboxUI.open = null; render(); return; }
   const o = e.target.closest("[data-ibopen]"); if (o && !e.target.closest("a")){ inboxUI.open = inboxUI.open === o.dataset.ibopen ? null : o.dataset.ibopen; render(); return; }
-  if (e.target.closest("[data-ibre]")) inboxRefresh();
 });
 function pInbox(){
   const bs = ORDER_INBOX().filter(b => META_INBOX[b]), all = [];
@@ -6858,7 +6867,7 @@ function pInbox(){
       ${open ? `<div class="ibthread">${c.msgs.map(m => `<div class="ibm ${m.me ? "me" : ""}"><span>${esc(m.t || (m.att ? "📎 Adjunto" : ""))}</span><small>${m.me ? esc(c.b) + " · " : ""}${new Date(m.ts).toLocaleString("es-PY", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })}</small></div>`).join("")}
         <a class="btn sm" href="${suite(c.b)}" target="_blank" rel="noopener">${icon("external-link")} Contestar en Meta Business Suite</a></div>` : ""}</div>`; };
   return `<div class="head"><div><h1 class="pmh">${pmIco("inbox")}Mensajes</h1><p class="sub">Los mensajes directos reales de Instagram y Facebook de cada marca: quién escribió y si ya se contestó. Para contestar, se abre la bandeja de Meta Business Suite.</p></div>
-    <button type="button" class="btn" data-ibre ${inboxUI.busy ? "disabled" : ""}>${icon("refresh-cw")} ${inboxUI.busy ? "Actualizando…" : "Actualizar"}</button></div>
+    ${metaBtn("mensajes", "Mensajes")}</div>
   ${bs.length ? `<div class="grid kpis">${[["Sin contestar", sin, sin ? "warn" : "up"], ["Contestados", all.length - sin, "up"], ["Conversaciones", all.length, ""]].map(([l, n, c]) => `<div class="panel kpi"><div class="l">${l}</div><div class="n ${c}">${n}</div></div>`).join("")}<div class="panel kpi"><div class="l">Actualizado</div><div class="n" style="font-size:20px">${inboxAge(META_INBOX.updated) || "—"}</div></div></div>` : ""}
   ${errs.length ? `<div class="panel ibwarn">${icon("circle-alert")} <div><b>Algunas cuentas no se pudieron leer.</b>${errs.map(b => `<span>${esc(b)}: ${esc(META_INBOX[b].err)}</span>`).join("")}<span class="note">Al token de Meta le tienen que dar los permisos pages_messaging, instagram_manage_messages y pages_manage_metadata, y en cada Instagram activar “Permitir acceso a los mensajes”.</span></div></div>` : ""}
   ${bs.length ? `<div class="panel" style="padding:12px;display:flex;flex-direction:column;gap:8px"><div class="chips">${chip("st", "sin", `Sin contestar${sin ? ` (${sin})` : ""}`)}${chip("st", "ok", "Contestados")}${chip("st", "todos", "Todos")}</div>
