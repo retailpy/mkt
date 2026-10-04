@@ -325,6 +325,34 @@ html.nomotion .picon{animation:none}
 .sgo{align-self:flex-start;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--muted);border:1px solid var(--line-3);border-radius:999px;padding:2px 9px}.sgo svg{width:13px;height:13px}.sgo.now{color:#fde047;border-color:rgba(253,224,71,.5)}
 .scard p{margin:0;color:var(--ink);font-size:13.5px;line-height:1.45}
 .slinks{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}.slinks a{display:inline-flex;align-items:center;gap:3px;font-size:12.5px;color:var(--cyan);text-decoration:none;border:1px solid color-mix(in srgb,var(--cyan) 35%,transparent);border-radius:999px;padding:3px 10px}.slinks a:hover{background:color-mix(in srgb,var(--cyan) 12%,transparent)}.slinks svg{width:12px;height:12px}
+.jp-changes{border-color:color-mix(in srgb,var(--cyan) 30%,var(--line-2))}.jp-changes.has{border-color:rgba(249,115,22,.55);box-shadow:0 0 0 1px rgba(249,115,22,.18),0 14px 30px -18px rgba(249,115,22,.5)}
+.jp-changes .jchain h3{display:flex;align-items:center;gap:8px;font-size:19px;margin:0 0 10px}.jp-changes .jchain h3 svg{width:18px;height:18px;color:#fb923c}
+.jcount{font-size:12.5px;font-weight:700;border-radius:999px;padding:2px 10px;border:1px solid var(--line-3);color:var(--muted)}.jcount.on{color:#fff;background:#ea580c;border-color:#ea580c}
+.jlinklist{display:flex;flex-wrap:wrap;gap:8px}.jlinklist a{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid var(--line-3);color:var(--cyan);text-decoration:none;font-size:13.5px}.jlinklist a:hover{border-color:var(--cyan)}.jlinklist svg{width:14px;height:14px}
+.jfiles{display:flex;flex-direction:column;gap:8px;margin:4px 0 8px}.jfile{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line-2);border-radius:12px}.jfile b{display:block;font-size:14px;word-break:break-all}.jfile small{color:var(--muted);font-size:12px}
+.jfic{flex:none;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:var(--cyan);background:color-mix(in srgb,var(--cyan) 12%,transparent)}.jfic svg{width:17px;height:17px}
+.fup{cursor:pointer;margin-right:8px}
+/* Nada se sale de la pantalla: textos y links largos (por ejemplo en el texto del pedido) bajan de línea */
+.main,#content,.jpage,.jp-sec,.panel{min-width:0}
+.jpage{overflow-wrap:anywhere}.jpage img,.rtview img,.rtedit img{max-width:100%;height:auto}
+.jpnow .chips,.jp-top{flex-wrap:wrap}
+.jfgrid > div{min-width:0}
+@media (max-width:600px){ .jfgrid{grid-template-columns:repeat(2,minmax(0,1fr)) !important} }
+/* Celular: las filas de listas bajan a otra línea en vez de salirse de la pantalla; la ficha y el recorrido se ajustan */
+.row > .grow{min-width:0}
+@media (max-width:600px){
+  .row{flex-wrap:wrap;row-gap:6px}.row > .grow{flex:1 1 170px}
+  .jproc{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+  .jp-top{flex-wrap:wrap;gap:8px}.jpnow .chips{flex-wrap:wrap}
+  .jfile{flex-wrap:wrap}.picons{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tsec-h h2{font-size:18px}.phero h1{font-size:28px}
+}
+@media (max-width:600px){
+  .grid.kpis{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:10px}.grid.kpis .kpi{padding:14px}.grid.kpis .kpi .n{font-size:24px}
+  .kanban{display:flex !important;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;gap:12px;padding-bottom:8px}
+  .kanban .col{flex:0 0 84%;scroll-snap-align:start;min-width:0}
+}
+@media (max-width:900px){ .jproc{overflow-x:auto} }
 .gback{gap:6px}.amore{margin-top:10px}
 .vtabs.pedv{margin:0}
 .pcrumb{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--faint);margin-bottom:-6px}.pcrumb b{color:var(--ink);font-weight:600}
@@ -2336,9 +2364,9 @@ const SECTIONS = [
   { g:"Community Manager", k:"historialcm", l:"Historial CM", n:"Historial", i:"archive", hide:true },
   { g:"Recursos", k:"prompts", l:"Prompts de imágenes", i:"wand-sparkles" },
   { g:"Recursos", k:"archivos", l:"Archivos y enlaces", i:"link" },
-  { g:"Resultados", k:"pauta", l:"Pauta", i:"megaphone" },
-  { g:"Resultados", k:"redes", l:"Informe Redes", i:"share-2" },
-  { g:"Resultados", k:"reportes", l:"Informe mensual", i:"file-text" },
+  { g:"Informes", k:"pauta", l:"Meta Ads", i:"megaphone" },
+  { g:"Informes", k:"redes", l:"Informe Redes", i:"share-2" },
+  { g:"Informes", k:"reportes", l:"Informe mensual", i:"file-text" },
   { g:"Vista TV", k:"tv", l:"Vista TV Team", i:"tv" },
   { g:"Vista TV", k:"tvredes", l:"Vista TV Redes", i:"monitor-play" },
   { g:"Vista TV", k:"tvimpacto", l:"TV Impacto Redes", i:"trophy" },
@@ -2936,6 +2964,7 @@ function tvBrandHero(b){
 // Ciclo: general → tabla de seguidores → demográfico de una marca → general → tabla → siguiente marca…
 // ---------- TV Impacto Redes: 1) lo mejor de cada marca  2…) top 10 de cada marca. 10 segundos cada pantalla ----------
 // Últimas 6 publicaciones de Instagram de cada marca (imagen reducida), debajo de Seguidores por marca.
+const IG_MAIN = ["Superseis","Stock","Delimarket"]; // las marcas principales: sus últimas fotos de Instagram en Dashboard e Informes
 function lastPostsPanel(bs){
   const rows = bs.map(b => ({ b, list:(META_POSTS[b]?.posts || []).slice().sort((x, y) => y.ts.localeCompare(x.ts)).slice(0, 6), h:META_POSTS[b]?.handle })).filter(r => r.list.length);
   return `<div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram</h2><div class="tag-row"><span class="tag">Fuente: Meta</span>${updTag(postsUpdated())}</div></div>
@@ -3029,6 +3058,7 @@ function pDashboard(){
   return `<div><h1>${helloHTML()}</h1><p class="sub">Dashboard · seguidores y público de todas las cuentas, actualizados todos los días desde Meta.</p></div>
   ${folNote()}
   ${followersPanel()}
+  ${lastPostsPanel(IG_MAIN.filter(b => bs.includes(b) || META_POSTS[b]))}
   ${followersTable(false)}
   <div class="head"><h2 style="margin:0">Demográfico por marca</h2><div class="chips">${bs.map(b => `<button class="chip ${dashBrand === b ? "on" : ""}" data-dbrand="${b}">${b}</button>`).join("")}</div></div>
   <div class="dash-demo" id="dashDemo">${demoBlock(bs.includes(dashBrand) ? dashBrand : bs[0], 0)}</div>`;
@@ -3732,7 +3762,7 @@ function jobRow(j){
 }
 // Alertas y avisos, dentro de Inicio: tocar una alerta lleva a donde está la info; la ✕ la quita.
 // De dónde viene cada alerta: así Inicio las muestra separadas por sección.
-const ALERT_SRC = [["avisos","Avisos del equipo","megaphone"],["pedidos","Pedidos de diseño","palette"],["gestion","Gestión de redes","layout-grid"],["calendario","Calendario de publicaciones","calendar-days"],["pautas","Pautas","target"],["equipo","Equipo","users"],["otros","Otros","bell"]];
+const ALERT_SRC = [["avisos","Avisos del equipo","megaphone"],["pedidos","Pedidos de diseño","palette"],["gestion","Gestión de redes","layout-grid"],["calendario","Calendario de publicaciones","calendar-days"],["pautas","Meta Ads","target"],["equipo","Equipo","users"],["otros","Otros","bell"]];
 function alertSrc(a){
   const g = a.go || "", k = a.key || "";
   if (k.startsWith("av:")) return "avisos";
@@ -3979,7 +4009,7 @@ function jobChain(j, input = true){
     round++; return `<li class="msg fx ${me ? "me" : ""}"><div class="bub"><b>${esc(who(c.by))} · cambios${ver ? ` sobre la versión ${ver}` : ""} (ronda ${round})${c.ext ? " · anotados" : ""}</b><p>${esc(c.text)}</p><span>${dm(c.date)} ${c.time}</span></div></li>`;
   };
   if (!list.length && !canWrite) return "";
-  return `<div class="jchain"><h3>Cadena de cambios <span class="note">${jobRounds(j)} ${jobRounds(j) === 1 ? "cambio pedido" : "cambios pedidos"}</span></h3>
+  return `<div class="jchain"><h3>${icon("pencil")} Cambios pedidos <span class="jcount${jobRounds(j) ? " on" : ""}">${jobRounds(j)} ${jobRounds(j) === 1 ? "ronda" : "rondas"}</span></h3>
     ${list.length ? `<ol>${list.map(item).join("")}</ol>` : `<p class="note" style="margin:0">Todavía no hay movimientos.</p>`}
     ${canWrite ? `<div class="jcin"><textarea class="base" id="jcText" rows="2" placeholder="${viewer.role === "Admin total" ? "Escribí un comentario para " + esc(firstName(j.owner)) + "…" : "Escribí un comentario, o anotá los cambios que te pidieron (ej.: Comercial)…"}"></textarea><button class="btn" type="button" data-jcsend="${j.id}">${icon("send")} Enviar</button></div>
       ${viewer.role === "Admin total" ? "" : `<label class="jcext"><input type="checkbox" id="jcExt"> Es un pedido de cambios (se cuenta como ronda)</label>`}` : ""}</div>`;
@@ -4051,35 +4081,70 @@ function jobProcess(j){
     <p class="jpnext">${j.status === "Cancelado" ? `${icon("ban")} Pedido cancelado.` : `<b>Ahora:</b> ${esc(j.status)}${next ? ` · <b>Sigue:</b> ${next}` : " · Proceso terminado."}`}${!cm && v ? ` · Versiones entregadas: ${v}` : ""}${rounds ? ` · Rondas de cambios: ${rounds}` : ""}</p>`;
 }
 // Ficha del pedido: todo lo que cargó Admin total, los cambios pedidos y lo que la persona puede hacer.
+// Material adjunto: archivos guardados en el bucket privado "material" (cada pedido en su carpeta) + los links.
+const linkLabel = l => { try { const u = new URL(l); const h = u.hostname.replace(/^www\./, ""); return ({ "drive.google.com":"Google Drive", "docs.google.com":"Google Docs", "canva.com":"Canva", "figma.com":"Figma", "wetransfer.com":"WeTransfer", "we.tl":"WeTransfer", "dropbox.com":"Dropbox", "onedrive.live.com":"OneDrive" })[h] || h; } catch { return String(l).slice(0, 40); } };
+const fileSize = n => n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB";
+const canAttach = j => !isViewOnly() && !isClosed() && (viewer.role === "Admin total" || canCreateJobs() || j.owner === viewer.name);
+function filesBlock(j, edit){
+  const fl = j.files || [];
+  return `<div class="jfnotes"><span>Archivos adjuntos</span>${fl.length ? `<div class="jfiles">${fl.map((f, i) => `<div class="jfile"><span class="jfic">${icon(/^image\//.test(f.t) ? "image" : /pdf/.test(f.t) ? "file-text" : "file")}</span><div class="grow"><b>${esc(f.n)}</b><small>${fileSize(f.s || 0)} · ${esc(firstName(f.by || ""))} · ${dm(String(f.at || "").slice(0, 10))}</small></div>
+      <button type="button" class="btn sm" data-fdl="${esc(j.id)}|${i}">${icon("download")} Ver</button>${edit && (viewer.role === "Admin total" || f.by === viewer.name) ? `<button type="button" class="btn ib sm" data-fdel="${esc(j.id)}|${i}" aria-label="Quitar archivo">${icon("x")}</button>` : ""}</div>`).join("")}</div>` : `<p class="note" style="margin:0">Todavía no hay archivos.</p>`}
+    ${edit ? `<label class="btn sm fup">${icon("upload")} Adjuntar material<input type="file" multiple data-fup="${esc(j.id)}" hidden></label><span class="note">Imágenes, PDF, logos o textos · hasta 15 MB cada uno</span>` : ""}</div>`;
+}
+const fileJob = id => jobUI.form?.job?.id === id ? jobUI.form.job : jobById(id);
+document.addEventListener("change", async e => {
+  const inp = e.target.closest?.("[data-fup]"); if (!inp) return;
+  const j = fileJob(inp.dataset.fup), files = [...inp.files]; inp.value = ""; if (!j || !files.length) return;
+  if (jobUI.form?.job === j) readJobForm(j);
+  for (const f of files){
+    if (f.size > 15 * 1048576){ toast(`“${f.name}” supera 15 MB.`); continue; }
+    const path = `${j.id}/${Date.now().toString(36)}-${f.name.replace(/[^\w.\-]+/g, "_").slice(-80)}`;
+    toast(`Subiendo “${f.name}”…`);
+    const r = window.RMH?.upload ? await RMH.upload(path, f) : { ok:false, error:"Sin conexión" };
+    if (!r.ok){ toast(`${r.error || "No se pudo subir"}: ${f.name}`); continue; }
+    (j.files = j.files || []).push({ p:path, n:f.name, s:f.size, t:f.type, by:viewer.name, at:new Date().toISOString() });
+    toast(`Listo: “${f.name}” quedó adjunto.`);
+  }
+  render();
+});
+document.addEventListener("click", async e => {
+  const d = e.target.closest("[data-fdl]"), x = e.target.closest("[data-fdel]"); if (!d && !x) return;
+  const [id, i] = (d || x).dataset[d ? "fdl" : "fdel"].split("|"), j = fileJob(id), f = j?.files?.[+i]; if (!f) return;
+  if (d){ const w = window.open("", "_blank"); const u = window.RMH?.fileUrl ? await RMH.fileUrl(f.p) : null; if (u && w) w.location = u; else { w?.close(); toast("No se pudo abrir el archivo."); } return; }
+  if (!confirmTap(x, "fdel:" + f.p, "¿Quitar? Tocá de nuevo")) return;
+  if (jobUI.form?.job === j) readJobForm(j);
+  if (window.RMH?.fileDel) await RMH.fileDel(f.p);
+  j.files.splice(+i, 1); render(); toast(`Quitaste “${f.n}”.`);
+});
 function jobFicha(){
   const j = jobUI.ficha && jobById(jobUI.ficha); if (!j) return "";
   const at = viewer.role === "Admin total", p = j.post && postById(j.post), hist = (j.changes || []).slice().reverse();
   const row = (k, v) => v ? `<div><span>${k}</span><b>${v}</b></div>` : "";
   const last = j.status === "En corrección" && hist.find(c => !c.ok && !c.kind);
-  const label = st => st === reviewStage(j) ? `✓ ${st} · avisar a Admin total` : st === "Publicado" ? "✓ Publicado" : st;
+  const label = st => st === reviewStage(j) && !at ? `✓ ${st} · avisar a Admin total` : st === "Publicado" ? "✓ Publicado" : st;
   const opts = stageOptions("job", j).filter(st => st !== j.status);
   const acts = at && REVIEW_WAIT.includes(j.status) ? `<div class="chips"><button class="btn primary" data-jrev="approve:${j.id}">${j.area === "CM" ? "Aprobar" : "✓ Aprobar"}</button><button class="btn" data-jrev="fix:${j.id}">Pedir cambios</button></div>`
     : REVIEW_WAIT.includes(j.status) ? `<span class="waitchip">${icon("hourglass")} Esperando la revisión de Admin total</span>`
     : opts.length ? `<div class="chips">${opts.map(st => `<button class="btn${st === reviewStage(j) || st === "Publicado" ? " primary" : ""}" data-jmove="${j.id}|${st}">${label(st)}</button>`).join("")}</div>` : "";
   const mine = j.owner === viewer.name && !isFin(j) && !isViewOnly() && j.area !== "CM";
-  const links = jobLinks(j).length || j.finalLink || j.designLink || mine;
   // Página completa del pedido: arriba los datos, después lo que la persona puede hacer y al final la cadena de cambios.
   return `<div class="jpage jficha" aria-label="Pedido completo">
     <div class="jp-top"><button class="btn" data-jfclose>${icon("arrow-left")} Volver</button>${at ? `<button class="btn" data-jedit="${j.id}">${icon("pencil")} Editar pedido</button>` : ""}</div>
-    <header class="jp-h"><span class="note">${j.area === "CM" ? "Pedido para Community Manager" : "Pedido de diseño gráfico"} · ${esc(j.id)}</span><h1>${esc(j.title)}</h1><div class="chips">${pill(j.status, JOB_COLOR[j.status])}${urgBadge(j)}</div></header>
+    <header class="jp-h"><span class="note">${j.area === "CM" ? "Pedido para Community Manager" : "Pedido de diseño gráfico"}</span><h1>${esc(j.title)}</h1><div class="chips">${pill(j.status, JOB_COLOR[j.status])}${urgBadge(j)}</div></header>
     ${last ? `<div class="jfmsg"><b>${icon("pencil")} Cambios que pidió Admin total</b><p>${esc(last.text)}</p><span>${dm(last.date)} · ${last.time}</span></div>` : ""}
     <section class="panel jp-sec"><h2 class="pmh">${pmIco("clipboard-list")}Datos del pedido</h2>
       <div class="jfgrid">${row("Marca", brandTag(j.brand))}${row("Tipo de trabajo", esc(j.piece))}${row("Solicitante", esc(j.requester))}${row("Responsable", esc(j.owner))}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", prioTag(j.priority))}${row("Complejidad", esc(j.complexity))}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}</div>
       ${j.notes ? `<div class="jfnotes"><span>Observaciones</span><p>${esc(j.notes)}</p></div>` : ""}</section>
-    ${links ? `<section class="panel jp-sec"><h2 class="pmh">${pmIco("link")}Links</h2><div class="jp-links">
+    <section class="panel jp-sec jp-changes${jobRounds(j) ? " has" : ""}">${jobChain(j) || `<div class="jchain"><h3>Cambios pedidos</h3><p class="note" style="margin:0">Todavía no hay cambios ni comentarios.</p></div>`}</section>
+    <section class="panel jp-sec jp-mat"><h2 class="pmh">${pmIco("paperclip")}Material adjunto</h2><div class="jp-links">
       ${j.finalLink ? `<a class="btn primary" href="${esc(j.finalLink)}" target="_blank" rel="noopener">${icon("badge-check")} Ver el resultado final</a>` : ""}
-      ${jobLinks(j).length ? `<div class="jfnotes"><span>Brief y archivos</span><div class="chips">${jobLinks(j).map((l, i) => `<a class="btn sm" href="${esc(l)}" target="_blank" rel="noopener">${icon("link")} Link ${i + 1}</a>`).join("")}</div></div>` : ""}
+      ${jobLinks(j).length ? `<div class="jfnotes"><span>Links del material</span><div class="jlinklist">${jobLinks(j).map(l => `<a href="${esc(safeUrl(l) || "#")}" target="_blank" rel="noopener">${icon("link")} ${esc(linkLabel(l))}</a>`).join("")}</div></div>` : ""}
+      ${filesBlock(j, canAttach(j))}
       ${mine ? `<div class="jlink"><label>Link del diseño para revisar<input class="base" id="jDesignLink" value="${esc(j.designLink || "")}" placeholder="Drive, Canva, Figma…"></label><button class="btn" type="button" data-jdlink="${j.id}">${icon("link")} Guardar link</button></div>`
-        : j.designLink ? `<a class="btn" href="${esc(j.designLink)}" target="_blank" rel="noopener">${icon("eye")} Ver el diseño</a>` : ""}</div></section>` : ""}
+        : j.designLink ? `<a class="btn" href="${esc(j.designLink)}" target="_blank" rel="noopener">${icon("eye")} Ver el diseño</a>` : ""}</div></section>
     ${jobBriefSection(j)}
     <section class="panel jp-sec jfact"><h2 class="pmh">${pmIco("route")}Recorrido del pedido</h2>${jobProcess(j)}
       ${acts ? `<div class="jpnow"><b>Lo que podés hacer ahora</b>${acts}</div>` : ""}</section>
-    <section class="panel jp-sec">${jobChain(j) || `<div class="jchain"><h3>Cadena de cambios</h3><p class="note" style="margin:0">Todavía no hay movimientos.</p></div>`}</section>
   </div>`;
 }
 document.addEventListener("click", e => {
@@ -4099,7 +4164,7 @@ function jobForm(){
   const opt = (list, v) => list.map(x => `<option ${x === v ? "selected" : ""}>${x}</option>`).join("");
   return `<div class="jpage jformpage" aria-label="Formulario de trabajo">
     <div class="jp-top"><button class="btn" type="button" data-jclose>${icon("arrow-left")} Volver</button></div>
-    <div class="jp-h"><span class="note">${area === "CM" ? "Pedido para Community Manager" : "Pedido de diseño gráfico"}${f.mode === "edit" ? " · " + esc(j.id) : ""}</span><h1 style="margin:4px 0 0">${f.mode === "edit" ? "Editar pedido" : f.mode === "dup" ? "Revisar pedido duplicado" : area === "CM" ? "Nuevo pedido para CM" : "Nuevo pedido de diseño gráfico"}</h1></div>
+    <div class="jp-h"><span class="note">${area === "CM" ? "Pedido para Community Manager" : "Pedido de diseño gráfico"}</span><h1 style="margin:4px 0 0">${f.mode === "edit" ? "Editar pedido" : f.mode === "dup" ? "Revisar pedido duplicado" : area === "CM" ? "Nuevo pedido para CM" : "Nuevo pedido de diseño gráfico"}</h1></div>
     <form id="jobForm" class="jform panel">
       ${f.mode === "edit" ? jobReviewBox(jobById(j.id)) : ""}
       <section class="jfs"><h3><i>1</i>Qué hay que hacer</h3><div class="jfg">
@@ -4107,9 +4172,10 @@ function jobForm(){
       <label>Tipo de trabajo *<select class="base" id="jPiece">${opt(types, j.piece)}</select></label>
       <label>Marca *<select class="base" id="jBrand">${opt(myBrands(), j.brand)}</select></label>
       <label class="wide" style="grid-column:1/-1">Trabajo solicitado *<input class="base" id="jTitle" value="${esc(j.title)}" placeholder="${area === "CM" ? "Ej.: Edición del reel de la semana del vino" : "Ej.: Banner web liquidación de invierno"}" required></label>
-      <div class="jlinks" style="grid-column:1/-1"><span class="jll">Links al brief o archivos <span class="note">(opcional, podés poner varios)</span></span>
+      <div class="jlinks" style="grid-column:1/-1"><span class="jll">Link del material <span class="note">(Drive, WeTransfer, Canva… opcional, podés poner varios)</span></span>
         ${jobLinks(j).map((l, i) => `<div class="jlrow"><input class="base" data-jl="${i}" value="${esc(l)}" placeholder="Drive, WeTransfer, Canva, carpeta compartida…"><button type="button" class="btn ib sm" data-jldel="${i}" aria-label="Quitar link">${icon("x")}</button></div>`).join("")}
         <button type="button" class="btn sm" data-jladd>${icon("plus")} ${jobLinks(j).length ? "Agregar otro link" : "Agregar link"}</button></div>
+      <div style="grid-column:1/-1">${filesBlock(j, true)}</div>
       <div style="grid-column:1/-1"><span class="jll">Texto del pedido <span class="note">(de qué se trata, el texto que va en el diseño o lo que dice el video)</span></span>${rtEditor("jBriefF", j.brief ? cleanRich(j.brief) : "")}</div>
       <label style="grid-column:1/-1">Observaciones <span class="note">(opcional, algo corto)</span><textarea class="base" id="jNotes" rows="2" placeholder="Referencias, aclaraciones…">${esc(j.notes)}</textarea></label>
       </div></section>
@@ -4642,7 +4708,7 @@ let PAUTA_PLAN = [
 ];
 let pautaUI = { tab:"informe" }; // arranca en el Informe de Meta Ads
 const canEditPauta = () => !isViewOnly() && !isDesigner() && !isClosed();
-const pautaTabs = () => `<div class="head"><div><h1>Pauta</h1><p class="sub">El <b>informe</b> es lo que se invirtió en Meta Ads. El <b>plan</b> es lo que se quiere invertir, con el límite de cada marca.</p></div>
+const pautaTabs = () => `<div class="head"><div><h1>Meta Ads</h1><p class="sub">El <b>informe</b> es lo que se invirtió en Meta Ads. El <b>plan</b> es lo que se quiere invertir, con el límite de cada marca.</p></div>
   <div class="chips"><button class="chip ${pautaUI.tab === "informe" ? "on" : ""}" data-ptab="informe">Informe Meta Ads</button><button class="chip ${pautaUI.tab === "plan" ? "on" : ""}" data-ptab="plan">Plan de pauta</button></div></div>`;
 // Color de la barra (igual que en Plan Contenidos): celeste < 50 % · naranja 50-89 % · verde 90-100 % · rojo si se pasa del límite.
 const pautaColor = pct => pct > 100 ? "#ef4444" : pct >= 90 ? "#10b981" : pct >= 50 ? "#f97316" : "#22d3ee";
@@ -4889,7 +4955,7 @@ function pReportes(){
   const tabs = REPORT_TABS.filter(t => can(t.perm));
   if (!tabs.find(t => t.k === reportTab)) reportTab = tabs[0] ? tabs[0].k : "diseno";
   const estado = isClosed() ? "🔒 Mes cerrado · datos fijos" : isFuture() ? "En planificación" : `En curso · cierra el ${lastDay(MONTH)}/${MONTH.slice(5)}`;
-  const body = { diseno:repDiseno, cm:repCM, redes:() => repAlcance() + (can("pauta") ? `<h2 style="margin:8px 0 -8px" class="pmh">${pmIco("megaphone")}Pauta en Meta Ads</h2>` + repPauta() : "") }[reportTab];
+  const body = { diseno:repDiseno, cm:repCM, redes:() => repAlcance() + lastPostsPanel(IG_MAIN) + (can("pauta") ? `<h2 style="margin:8px 0 -8px" class="pmh">${pmIco("megaphone")}Pauta en Meta Ads</h2>` + repPauta() : "") }[reportTab];
   const fn = t => `Informe_${t.file}_${monthLabel(MONTH).replace(" ","_")}`;
   const cur = tabs.find(t => t.k === reportTab);
   return `<div class="panel flush"><div class="panel-h cyan">
@@ -6318,8 +6384,8 @@ const GUIDE = [
   ["Recursos", [
     ["wand-sparkles","Prompts de imágenes","Primero elegís la marca (Superseis, Stock o Delimarket): se carga su estilo de fotos (luz, cámara, colores de la escena y emoción) y el prompt lo respeta siempre, aunque cambies el escenario. Después armás el prompt para ChatGPT, Gemini o Nano Banana en seis modalidades: producto en escenario, varios productos, producto con modelos, modelos en locación, fondo pleno o transparente y opción libre. Si adjuntás fotos (producto, fondo o persona), el prompt pide respetarlas al 100%: sin deformar productos, logos, letras ni caras. La cámara, el lente y la exposición se eligen solos; se suman bloques de realismo y la lista de lo que hay que evitar."],
     ["link","Archivos y enlaces","Los links de Canva, Drive y descarga de cada marca por mes, más los que quieras agregar. Arriba las marcas que ya tienen links; abajo las pendientes. Botones para abrir y copiar."]]],
-  ["Resultados", [
-    ["megaphone","Pauta","Plan de pauta: el límite de cada marca por mes, lo cargado y la calificación de cada pauta. Informe Meta Ads: lo gastado, alcance y resultados."],
+  ["Informes", [
+    ["megaphone","Meta Ads","Plan de pauta: el límite de cada marca por mes, lo cargado y la calificación de cada pauta. Informe Meta Ads: lo gastado, alcance y resultados."],
     ["share-2","Informe Redes","Seguidores, crecimiento, público (ciudades, edades, género) y las publicaciones con más y menos alcance, con filtros."],
     ["file-text","Informe mensual","Tres informes que se descargan por separado, en Excel o PDF: Diseño gráfico, Community Manager y Redes sociales. Tocá “Ver” para mirarlo antes de bajarlo."]]],
   ["Vista TV", [
@@ -6754,6 +6820,9 @@ function render(){
   if (page === "calcartel"){ page = "cartel"; cartUI.view = "calendario"; } // el calendario de cartelería ahora está dentro de Diseño para Cartelería
   if (page === "caldiseno") page = "caldg";
   if (page === "guia"){ page = "config"; cfgTab = "guia"; } // la Guía de uso está dentro de Configuración
+  // Si se cambió de sección y el pedido abierto es el mismo de antes, se cierra (el pedido o el formulario no “persiguen” a la persona).
+  if (render.prevPage && page !== render.prevPage){ if (jobUI.ficha && jobUI.ficha === render.prevFicha) jobUI.ficha = null; if (jobUI.form && jobUI.form === render.prevForm) jobUI.form = null; }
+  render.prevPage = page; render.prevFicha = jobUI.ficha; render.prevForm = jobUI.form;
   if (page === "perfil"){ page = "config"; cfgTab = "perfil"; } // Mi Perfil se edita solo en Configuración // y el de redes, dentro de Diseño para Redes
   if (!can(page)) page = can("dashboard") ? "dashboard" : "inicio";
   if (isCalPage() && (brandFilter === "Todas" || brandFilter === "Materiales")) brandFilter = myGroups()[0]; // calendarios: una marca a la vez
@@ -7017,7 +7086,7 @@ document.addEventListener("click", e => {
   else if (t.dataset.rbrand){ reportBrand = t.dataset.rbrand; render(); }
   else if (t.dataset.dl){ toast(`En la app real se descarga “${t.dataset.dl}”. Acá la maqueta no puede descargar archivos.`); }
   else if (t.dataset.close !== undefined){ toast(`En la app real, esto deja ${monthName(MONTH)} fijo: se puede consultar pero ya no modificar.`); }
-  else if (t.dataset.page){ e.preventDefault(); page = t.dataset.page; render(); window.scrollTo(0,0); }
+  else if (t.dataset.page){ e.preventDefault(); jobUI.ficha = null; jobUI.form = null; if (typeof postUI !== "undefined") postUI.form = null; page = t.dataset.page; render(); window.scrollTo(0,0); } // ir a otra sección cierra el pedido abierto
   else if (t.dataset.brand){ brandFilter = t.dataset.brand; render(); }
   else if (t.dataset.redes){ redesBrand = t.dataset.redes; render(); }
   else if (t.dataset.pedir) pedirDiseno(t.dataset.pedir);
