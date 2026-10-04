@@ -368,7 +368,9 @@ html.nomotion .picon{animation:none}
   html.chatfull #chatInput{font-size:16px;min-width:0;flex:1} /* 16px: el iPhone no hace zoom al escribir */
   html.chatfull .cvcomp{gap:6px}html.chatfull .cvcomp > .btn.ib{width:36px;height:36px;padding:0;flex:none}html.chatfull .cvcomp .cgifbtn{width:auto;padding:0 8px}
 }
-.gback{gap:6px}.amore{margin-top:10px}
+.btn.gback{gap:8px;padding:9px 18px 9px 14px;border:0;border-radius:999px;font-weight:800;font-size:15px;color:#02131a;background:linear-gradient(90deg,#22d3ee,#38bdf8);box-shadow:0 8px 22px -10px rgba(34,211,238,.9)}
+.btn.gback svg{width:18px;height:18px;stroke-width:2.6}.btn.gback{max-width:100%;min-width:0}.btn.gback small{font-weight:600;font-size:12.5px;opacity:.75;max-width:min(40vw,320px);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.btn.gback small::before{content:"·";margin:0 6px 0 2px}
+.btn.gback:hover{filter:brightness(1.08);transform:translateX(-2px)}.amore{margin-top:10px}
 .vtabs.pedv{margin:0}
 .pcrumb{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--faint);margin-bottom:-6px}.pcrumb b{color:var(--ink);font-weight:600}
 .jformpage .jform{display:flex;flex-direction:column;gap:14px;padding:20px}
@@ -558,7 +560,7 @@ td.r,th.r{text-align:right}
 .cal .d:hover{border-color:#475569}
 .cal .d.out{background:rgba(2,6,23,.8);opacity:.6}
 .cal .d .dn{font-size:13px;font-weight:600;color:#f1f5f9;padding:0 6px;align-self:flex-start;border-radius:99px}
-.cal .d.today{border-color:#67e8f9;box-shadow:0 0 0 2px rgba(103,232,249,.5)}
+.cal .d.today{border:2px solid #67e8f9;box-shadow:0 0 0 3px rgba(103,232,249,.28),0 12px 28px -14px rgba(103,232,249,.55);background:linear-gradient(180deg,rgba(103,232,249,.08),rgba(15,23,42,.9) 40%)}
 .cal .d.today .dn{background:#67e8f9;color:#020617}
 .ev{font-size:10.5px;line-height:1.25;border-radius:8px;overflow:hidden;border:1px solid color-mix(in srgb,var(--s) 45%,transparent);background:color-mix(in srgb,var(--s) 12%,#0f172a)}
 .ev::before{content:"";display:block;height:3px;background:var(--c)}
@@ -1781,15 +1783,14 @@ html.light img,html.light .thprev,html.light video{filter:invert(1) hue-rotate(1
 
 .cal .dwk{display:none}
 @media (max-width:640px){
-  /* calendario en celular: lista por día (solo los días con algo), sin scroll lateral */
-  .calw{overflow:visible}
-  .cal{display:flex;flex-direction:column;gap:8px;min-width:0}
-  .cal .dh,.cal .d.out,.cal .d.emptyday:not(.today){display:none}
-  .cal .d{min-height:0;display:grid;grid-template-columns:48px 1fr;column-gap:10px;row-gap:5px;align-items:start;padding:10px 12px}
-  .cal .d .dn{grid-row:1 / span 20;align-self:start;font-size:20px;font-weight:900;padding:0;text-align:center;width:100%}
-  .cal .d .dwk{display:block;grid-column:2;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
-  .cal .d.today .dn{border-radius:12px;padding:4px 0}
-  .cal .ev{grid-column:2;font-size:12.5px}
+  /* calendario en celular: el mes completo, deslizable de costado (como una agenda); hoy queda remarcado */
+  .calw{overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding-bottom:8px;margin:0 -4px}
+  .cal{grid-template-columns:repeat(7,132px);gap:8px;min-width:0;width:max-content}
+  .cal .d{min-width:0;overflow:hidden}
+  .cal .dh{position:sticky;top:0;z-index:1;background:var(--bg);scroll-snap-align:start}
+  .cal .d{min-height:150px;scroll-snap-align:start;padding:8px}
+  .cal .d .dn{font-size:18px;font-weight:900}
+  .cal .ev{font-size:12px}
   .cal .ev span{white-space:normal}
   .draghint{display:none}
   /* TV en celular */
@@ -1811,10 +1812,6 @@ html.light img,html.light .thprev,html.light video{filter:invert(1) hue-rotate(1
 }
 
 @media (max-width:640px){
-  .cal .d{display:block;position:relative;min-height:0!important;padding:10px 12px 10px 66px}
-  .cal .d .dn{position:absolute;left:10px;top:10px;width:44px}
-  .cal .d .dwk{margin-bottom:5px}
-  .cal .d .ev{margin-top:5px}
   .lgroups,.loadchart.tv .lgroups{min-height:0!important;height:auto!important}
   .lgroup .lcols,.loadchart.tv .lcols{height:210px!important;flex:none}
   .lcol{min-width:0}
@@ -2359,7 +2356,7 @@ const SECTIONS = [
   { g:"General", k:"mensajes", l:"Chat Retail MKT", i:"messages-square" },
   { g:"General", k:"notas", l:"Bloc de notas", i:"notebook-pen" },
   { g:"Diseño gráfico", k:"paneldg", l:"Panel de Trabajo Diseño gráfico", n:"Panel de Trabajo", i:"layout-grid", virtual:true }, // acceso visual a las categorías de Diseño (no es un permiso aparte)
-  { g:"Diseño gráfico", k:"caldg", l:"Calendario Diseño gráfico", n:"Calendario", i:"calendar-days", virtual:true }, // todas las entregas de Diseño en su fecha (mías o de todo el equipo)
+  { g:"Diseño gráfico", k:"caldg", l:"Planificación Diseño gráfico", n:"Planificación", i:"calendar-days", virtual:true }, // todas las entregas de Diseño en su fecha (mías o de todo el equipo)
   { g:"Diseño gráfico", k:"cargadiseno", l:"Carga de trabajo Diseño gráfico", n:"Carga de trabajo", i:"gauge" },
   { g:"Diseño gráfico", k:"tendg", l:"Tendencias Diseño gráfico", n:"Tendencias", i:"sparkles", virtual:true }, // 10 novedades de diseño, packaging y supermercados del mundo, con su link
   { g:"Diseño gráfico", k:"pedidos", l:"Diseño para Redes", n:"Diseño: Redes", i:"image", hide:true },
@@ -2368,7 +2365,7 @@ const SECTIONS = [
   { g:"Diseño gráfico", k:"pantallas", l:"Diseño para Pantallas", n:"Diseño: Pantallas", i:"tv", hide:true },
   { g:"Diseño gráfico", k:"historial", l:"Historial Diseño gráfico", n:"Historial", i:"archive", hide:true },
   { g:"Community Manager", k:"panelcm", l:"Panel de Trabajo Community Manager", n:"Panel de Trabajo", i:"layout-grid", virtual:true }, // acceso visual a las categorías de CM
-  { g:"Community Manager", k:"calcm", l:"Calendario Community Manager", n:"Calendario", i:"calendar-days", virtual:true }, // el calendario del Plan de posteo (mío o de todo el equipo)
+  { g:"Community Manager", k:"calcm", l:"Planificación Community Manager", n:"Planificación", i:"calendar-days", virtual:true }, // el calendario del Plan de posteo (mío o de todo el equipo)
   { g:"Community Manager", k:"cargacm", l:"Carga de trabajo CM", n:"Carga de trabajo", i:"gauge" },
   { g:"Community Manager", k:"tencm", l:"Tendencias Community Manager", n:"Tendencias", i:"sparkles", virtual:true }, // 10 novedades de redes y campañas de supermercados, con su link
   { g:"Community Manager", k:"plan", l:"Plan de posteo", i:"list-checks", hide:true },
@@ -3938,7 +3935,7 @@ function pPlan(){
     const lbl = canEditPost() && { "Listo":"Programar", "Programado":"Marcar publicado", "Publicado":"Pautar" }[x.status];
     return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${canEditPost() ? `<select class="base sm" data-pcm="${x.id}" aria-label="CM de ${esc(x.title)}">${[...new Set([...CM_NAMES(), x.cm].filter(Boolean))].map(n => `<option value="${esc(n)}" ${n === x.cm ? "selected" : ""}>${esc(firstName(n))}</option>`).join("")}</select>` : esc(firstName(x.cm))}</td><td style="white-space:nowrap">${icon(x.format === "Historia" ? "smartphone" : "image")} <span class="net">${x.net}</span> ${x.format}</td><td style="min-width:190px">${tema(x, "post")}${x.carried ? `<span class="carried">↩ Arrastrado de ${x.carried}</span>` : ""}</td><td style="white-space:nowrap">${postDesignCell(x)}</td><td><div class="chips" style="flex-wrap:nowrap">${postStatusCell(x)}${postUrgBadge(x)}</div></td><td>${lbl ? `<button class="btn" data-adv-post="${x.id}">${lbl}</button>` : `<span class="note">—</span>`}</td></tr>`;
   };
-  return `<div class="head"><div><h1 class="pmh">${pmIco(calOnly ? "calendar-days" : "list-checks")}${calOnly ? "Calendario" : "Plan de posteo"}</h1><p class="sub">${monthLabel(MONTH)} · todo lo de CM del mes, junto: feed (posts, carruseles y reels), historias, Canal de WhatsApp, videos y repetitivos. ${calOnly ? "Mirá solo lo tuyo o lo de todo el equipo." : "Cargalo desde acá o desde cada Gestión."}</p></div>${calOnly ? "" : viewTabs([["tabla","Tabla","table-2"],["calendario","Calendario","calendar-days"]], planUI.view, "data-plview")}</div>
+  return `<div class="head"><div><h1 class="pmh">${pmIco(calOnly ? "calendar-days" : "list-checks")}${calOnly ? "Planificación" : "Plan de posteo"}</h1><p class="sub">${monthLabel(MONTH)} · todo lo de CM del mes, junto: feed (posts, carruseles y reels), historias, Canal de WhatsApp, videos y repetitivos. ${calOnly ? "Mirá solo lo tuyo o lo de todo el equipo." : "Cargalo desde acá o desde cada Gestión."}</p></div>${calOnly ? "" : viewTabs([["tabla","Tabla","table-2"],["calendario","Calendario","calendar-days"]], planUI.view, "data-plview")}</div>
   ${isClosed() ? `<div class="ro">${icon("lock")} ${monthLabel(MONTH)} está cerrado: se puede consultar, pero no modificar. Lo que no se cumplió pasó al mes siguiente como “arrastrado”.</div>` : ""}
   ${calAdds(canEditPost() ? [['data-pnew="Feed"', "image", "Cargar publicación", "Post, carrusel o reel para el feed."], ['data-pnew="Historia"', "smartphone", "Cargar historia", "Una historia en su fecha."], ['data-pnew="Canal"', "message-circle", "Cargar para el Canal de WhatsApp", "Un contenido para el canal."], ...(canCreateJobs() && can("gestioncm") ? [['data-plvid', "clapperboard", "Cargar pedido de video", "Grabación, edición o cobertura, con su fecha."]] : [])] : [])}
   ${summary}${filters}
@@ -4345,7 +4342,7 @@ function pedPage(A, title, ico, sub, newHint, extra = ""){
 function pCalDG(){
   const list = jobs.filter(j => j.area === "Diseño" && seesBrand(j.brand) && j.status !== "Cancelado" && (!pedMine() || j.owner === viewer.name)).sort((a, b) => a.due.localeCompare(b.due));
   const n = list.filter(j => j.due.slice(0, 7) === MONTH).length;
-  return `<div class="head"><div><h1 class="pmh">${pmIco("calendar-days")}Calendario de entregas</h1><p class="sub">${monthLabel(MONTH)} · cada trabajo de Diseño gráfico (redes, cartelería, web y pantallas) en su fecha de entrega.</p></div></div>
+  return `<div class="head"><div><h1 class="pmh">${pmIco("calendar-days")}Planificación de entregas</h1><p class="sub">${monthLabel(MONTH)} · cada trabajo de Diseño gráfico (redes, cartelería, web y pantallas) en su fecha de entrega.</p></div></div>
   ${canCreateJobs() ? `<button class="panel cmnew" data-jnew><span class="cmplus">${icon("plus")}</span><span><b>Cargar pedido</b><small>Qué pieza, para qué marca, quién la hace y para cuándo. También podés tocar un día del calendario.</small></span></button>` : ""}
   ${ownsJobs() ? `<div class="chips pedscope"><button type="button" class="chip ${pedMine() ? "on" : ""}" data-pedscope="mine">${icon("user-round")} Mis trabajos</button><button type="button" class="chip ${pedMine() ? "" : "on"}" data-pedscope="team">${icon("users")} Todo el equipo</button></div>` : ""}
   ${jobDeliveryCal(list, "Diseño")}${n ? "" : `<p class="note">No hay entregas en ${monthName(MONTH)}${pedMine() ? " a tu nombre" : ""}.</p>`}
@@ -6833,8 +6830,14 @@ function pTend(ar){
     <div class="tlinks">${TREND_LINKS[ar].map(([n, u, d]) => `<a class="tlink" href="${u}" target="_blank" rel="noopener noreferrer"><b>${n} ${icon("arrow-up-right")}</b><small>${d}</small></a>`).join("")}</div></section>`;
 }
 // “Volver”: en todas las secciones. Desde una categoría vuelve a su Panel de Trabajo; desde lo demás, a Inicio.
+// “Volver”: primero a lo que se estaba haciendo (la sección anterior); si no hay, al inicio de su área (su Panel de Trabajo) y, en último caso, a Inicio.
+let navHist = [];
+const pageName = k => k === "inicio" ? "Inicio" : k === "config" ? "Configuración" : k === "mensajes" ? "Chat" : (SECTIONS.find(s => s.k === k) || {}).l || k;
 function backTo(){
   const home = can("inicio") ? "inicio" : "dashboard", pk = panelOf(page);
+  while (navHist.length && (navHist[navHist.length - 1] === page || !can(navHist[navHist.length - 1]))) navHist.pop();
+  const prev = navHist[navHist.length - 1];
+  if (prev) return { k:prev, t:pageName(prev), back:true };
   if (page === home) return null;
   if (pk && can(pk)) return { k:pk, t:`Panel de Trabajo ${pk === "paneldg" ? "Diseño" : "CM"}` };
   return { k:home, t:home === "inicio" ? "Inicio" : "Dashboard" };
@@ -6847,8 +6850,8 @@ function render(){
   if (page === "caldiseno") page = "caldg";
   if (page === "guia"){ page = "config"; cfgTab = "guia"; } // la Guía de uso está dentro de Configuración
   // Si se cambió de sección y el pedido abierto es el mismo de antes, se cierra (el pedido o el formulario no “persiguen” a la persona).
-  if (render.prevPage && page !== render.prevPage){ if (jobUI.ficha && jobUI.ficha === render.prevFicha) jobUI.ficha = null; if (jobUI.form && jobUI.form === render.prevForm) jobUI.form = null; }
-  render.prevPage = page; render.prevFicha = jobUI.ficha; render.prevForm = jobUI.form;
+  if (render.prevPage && page !== render.prevPage){ if (!render.goingBack){ navHist.push(render.prevPage); if (navHist.length > 30) navHist.shift(); } if (jobUI.ficha && jobUI.ficha === render.prevFicha) jobUI.ficha = null; if (jobUI.form && jobUI.form === render.prevForm) jobUI.form = null; }
+  render.goingBack = false; render.prevPage = page; render.prevFicha = jobUI.ficha; render.prevForm = jobUI.form;
   if (page === "perfil"){ page = "config"; cfgTab = "perfil"; } // Mi Perfil se edita solo en Configuración // y el de redes, dentro de Diseño para Redes
   if (!can(page)) page = can("dashboard") ? "dashboard" : "inicio";
   if (isCalPage() && (brandFilter === "Todas" || brandFilter === "Materiales")) brandFilter = myGroups()[0]; // calendarios: una marca a la vez
@@ -6877,10 +6880,11 @@ function render(){
   $("#content").innerHTML = `<div class="${animate ? (page === "pedidos" || page === "gestioncm" ? "anim" : "fade anim") : "noanim"}${["pedidos","cartel","web","pantallas","gestioncm","calendario","calhistoria","calcanales","inicio","alertas","avisos","mensajes","sugerencias","plan","calcm","caldg","reportes","usuarios","staff","perfil","pauta"].includes(page) ? " clean" : ""}" style="display:flex;flex-direction:column;gap:24px">${bar}${["tv","tvredes","tvimpacto"].includes(page) ? "" : `<p class="eyebrow">${EYEBROW[page]}</p>`}${ro}${avb}${inst}${bdays}${PAGES[page]()}${demo}</div>${installDrawer()}`;
   if (jobUI.form){ const ff = jobForm(); if (ff) $("#content").innerHTML = ff; } // crear o editar un pedido: página completa
   else if (!jobUI.ficha && backTo() && !$("#content .pback")){ const b = backTo(), x = [...PANEL_DESIGN, ...PANEL_CM, ...PANEL_TOOLS].find(y => y.k === page);
-    $("#content").insertAdjacentHTML("afterbegin", `<nav class="pcrumb" aria-label="Ubicación"><button type="button" class="btn sm gback" data-page="${b.k}">${icon("arrow-left")} Volver</button><span>${esc(b.t)}</span>${x && b.k.startsWith("panel") ? `<span>›</span><b>${esc(x.t)}</b>` : ""}</nav>`); }
+    $("#content").insertAdjacentHTML("afterbegin", `<nav class="pcrumb" aria-label="Ubicación"><button type="button" class="btn gback" data-page="${b.k}"${b.back ? " data-back" : ""} title="Volver a ${esc(b.t)}">${icon("arrow-left")} Volver<small>${esc(b.t)}</small></button>${x && b.k.startsWith("panel") ? `<span>›</span><b>${esc(x.t)}</b>` : ""}</nav>`); }
   else if (jobUI.ficha){ const fx = jobFicha(); if (fx) $("#content").innerHTML = fx; else jobUI.ficha = null; } // el pedido se abre como página completa, desde cualquier página
   { const ci = document.getElementById("chatInput"); if (ci && keepChat){ ci.value = keepChat.v; if (keepChat.f){ ci.focus(); ci.setSelectionRange(keepChat.s, keepChat.e); } }
     const cm = document.getElementById("cvMsgs"); if (cm){ if (atBottom || chatUI.keepBottom) cm.scrollTop = cm.scrollHeight; else cm.scrollTop = top0; chatUI.keepBottom = false; } }
+  if (animate) document.querySelectorAll("#content .calw").forEach(w => { const t = w.querySelector(".d.today"); if (t && w.scrollWidth > w.clientWidth + 4) w.scrollLeft = Math.max(0, t.offsetLeft - 8); }); // celular: el calendario arranca mostrando hoy
   document.documentElement.classList.toggle("chatfull", page === "mensajes" && !!chatUI.mob && !!chatUI.open);
   chatNotify();
   if (window.lucide) lucide.createIcons();
@@ -7113,7 +7117,7 @@ document.addEventListener("click", e => {
   else if (t.dataset.rbrand){ reportBrand = t.dataset.rbrand; render(); }
   else if (t.dataset.dl){ toast(`En la app real se descarga “${t.dataset.dl}”. Acá la maqueta no puede descargar archivos.`); }
   else if (t.dataset.close !== undefined){ toast(`En la app real, esto deja ${monthName(MONTH)} fijo: se puede consultar pero ya no modificar.`); }
-  else if (t.dataset.page){ e.preventDefault(); jobUI.ficha = null; jobUI.form = null; if (typeof postUI !== "undefined") postUI.form = null; page = t.dataset.page; render(); window.scrollTo(0,0); } // ir a otra sección cierra el pedido abierto
+  else if (t.dataset.page){ e.preventDefault(); if (t.dataset.back !== undefined){ navHist.pop(); render.goingBack = true; } jobUI.ficha = null; jobUI.form = null; if (typeof postUI !== "undefined") postUI.form = null; page = t.dataset.page; render(); window.scrollTo(0,0); } // ir a otra sección cierra el pedido abierto
   else if (t.dataset.brand){ brandFilter = t.dataset.brand; render(); }
   else if (t.dataset.redes){ redesBrand = t.dataset.redes; render(); }
   else if (t.dataset.pedir) pedirDiseno(t.dataset.pedir);
