@@ -327,6 +327,26 @@ html.nomotion .picon{animation:none}
 .jlrow2 .jlgo{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:13.5px;color:var(--lc,var(--cyan));flex:none}.jlrow2 .jlgo svg{width:15px;height:15px}
 .jlrow2.drive{--lc:#22c55e}.jlrow2.canva{--lc:#a78bfa}.jlrow2.final{--lc:#10b981}.jlrow2.design{--lc:#f59e0b}
 .jlbig{font-weight:700}
+/* Ideas Random: limpio, íconos de un solo color, sin recuadros */
+.ideas{display:flex;flex-direction:column;gap:18px;max-width:980px}
+.ideas .imuted{margin:0;color:var(--muted);font-size:13.5px;line-height:1.5}
+.ifil{display:flex;gap:6px;flex-wrap:wrap}.ichip{all:unset;cursor:pointer;padding:7px 14px;border-radius:999px;font-size:14px;font-weight:600;color:var(--muted);border:1px solid transparent}
+.ichip:hover{color:var(--ink)}.ichip.on{color:var(--ink);border-color:var(--line-3);background:rgba(148,163,184,.08)}.ichip:focus-visible{outline:2px solid var(--cyan)}
+.iess{display:flex;flex-direction:column;gap:6px;padding-left:14px;border-left:2px solid var(--cyan)}.iess p{margin:0;line-height:1.5}.iess .ikey{font-size:17px;font-weight:700}
+.ilist2,.inews,.iteam{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.irow{display:flex;gap:14px;align-items:flex-start;padding:14px 2px;border-bottom:1px solid var(--line-2)}.irow:last-child{border-bottom:0}
+.iic{flex:none;color:var(--cyan);padding-top:2px}.iic svg,.ih svg,.ilinks svg,.ibtn svg{width:20px;height:20px;stroke-width:1.6}
+.itx{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}.itx b{font-size:15.5px}.itx span{color:var(--muted);font-size:14px;line-height:1.45}.itx em{font-size:14px;color:var(--ink);opacity:.85}.itx small{color:var(--faint,#64748b);font-size:12px;letter-spacing:.02em}
+.irow.team .iic{color:var(--muted)}
+.ibtn{all:unset;cursor:pointer;color:var(--muted);padding:6px;border-radius:10px;display:inline-grid;place-items:center}.ibtn:hover,.ibtn:focus-visible{color:var(--cyan);background:rgba(148,163,184,.08)}.ibtn[disabled]{opacity:.4;pointer-events:none}
+.ih{display:flex;align-items:center;gap:8px;margin:10px 0 0;font-size:17px}.ih svg{color:var(--cyan)}
+.ilinks{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(270px,100%),1fr));gap:2px 18px}
+.ilinks a{display:flex;align-items:center;gap:10px;padding:9px 2px;color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line-2);font-size:14px}.ilinks a svg{color:var(--cyan)}.ilinks a svg:last-child{width:15px;height:15px;margin-left:auto;color:var(--muted)}.ilinks a:hover span{color:var(--cyan)}
+.iq{color:var(--cyan);text-decoration:none}.iq:hover{text-decoration:underline}
+.inews li a{display:flex;gap:12px;align-items:center;padding:9px 2px;color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line-2)}.inews img{width:72px;height:48px;object-fit:cover;border-radius:8px;flex:none}.inews span{display:flex;flex-direction:column;gap:2px;min-width:0}.inews b{font-size:14px;font-weight:600;line-height:1.35}.inews small{color:var(--muted);font-size:12px}.inews a:hover b{color:var(--cyan)}
+.ideas .iform{display:grid;grid-template-columns:150px 1fr auto;gap:8px}
+@media (max-width:640px){.ideas .iform{grid-template-columns:1fr}}
+.iteam li{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line-2)}.iteam li span{flex:1;min-width:0}.iteam li small{color:var(--muted);white-space:nowrap;font-size:12px}
 .lked{display:flex;flex-direction:column;gap:10px}
 .lkrow{display:grid;grid-template-columns:minmax(150px,220px) 1fr auto auto auto;gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--line-2);border-radius:16px;background:rgba(148,163,184,.04);--lc:var(--cyan)}
 .lkrow.drive{--lc:#22c55e}.lkrow.canva{--lc:#a78bfa}.lkrow.designLink{--lc:#f59e0b}
@@ -7063,72 +7083,111 @@ document.addEventListener("click", e => {
   const b = e.target.closest("[data-ibf]"); if (b){ const [k, v] = b.dataset.ibf.split("|"); inboxUI[k] = v; inboxUI.open = null; render(); return; }
   const o = e.target.closest("[data-ibopen]"); if (o && !e.target.closest("a")){ inboxUI.open = inboxUI.open === o.dataset.ibopen ? null : o.dataset.ibopen; render(); return; }
 });
-// ---------- Ideas Random (CM): ideas de contenido para creadores, para Superseis, Stock y Delimarket ----------
-// Se arman con formatos que son tendencia (TikTok, Reels, historias), lo típico de cada marca, las fechas que vienen en Paraguay
-// y las ideas que carga el equipo. “Otras ideas” las cambia; “Guardar” deja una idea en la lista del equipo.
+// ---------- Ideas Random (CM): ideas de contenido para creadores, según la esencia de cada marca ----------
+// Stock (precio, ahorro, cercanía), Superseis (servicio, calidad, comodidad) y Delimarket (premium, gastronomía, descubrimiento).
+// Las ideas se arman con formatos que son tendencia + las fechas que vienen en Paraguay + las ideas del equipo.
+// “Otras ideas” las cambia; el marcador guarda una idea en la lista del equipo. Arriba: links para buscar tendencias en TikTok e Instagram.
 const IDEA_BRANDS = {
-  Superseis:{ tono:"familia, calidad y frescura", cats:["panadería","frutas y verduras","carnicería","lácteos","rotisería"], extra:"la panadería recién salida del horno" },
-  Stock:{ tono:"precio bajo y ahorro en la compra grande", cats:["almacén","limpieza","bebidas","compras por mayor","ofertas de la semana"], extra:"el ahorro en el carrito lleno" },
-  Delimarket:{ tono:"rápido, rico y a mano", cats:["snacks","comidas listas","bebidas frías","café para llevar","antojos de la noche"], extra:"el antojo resuelto en 5 minutos" },
+  Stock:{ key:"“Stock me conviene y está cerca de mí”", esencia:"La más masiva, popular y cercana: familias paraguayas que valoran precio, promociones, ahorro, variedad y el local cerca.",
+    pilares:["Ofertas y ahorro","Consumo diario","Fechas comerciales","Soluciones para la casa","Momentos familiares"], tono:"Directo, cotidiano y fácil de entender; titulares claros y el precio como protagonista.",
+    tiktok:["ofertas supermercado","ahorro en el super","compra del mes barata"], ig:["ofertas","ahorro","supermercado"] },
+  Superseis:{ key:"“Superseis hace mi compra más fácil y agradable”", esencia:"Servicio, calidad, comodidad e innovación: una compra cuidada, con surtido, practicidad, compra online, delivery, pick up y gastronomía.",
+    pilares:["Soluciones para comer","Recetas y frescos","Panadería y rotisería","Servicios (online, delivery, pick up)","Novedades y experiencias"], tono:"Aspiracional, limpio y contemporáneo; personas, momentos y beneficios.",
+    tiktok:["receta fácil","cena rápida","pan casero"], ig:["recetasfaciles","panaderia","comidacasera"] },
+  Delimarket:{ key:"“Delimarket me inspira a descubrir, cocinar y disfrutar algo diferente”", esencia:"Premium, gastronómica y especializada: el ingrediente diferente, no el precio. Para quien busca descubrir y disfrutar.",
+    pilares:["Importados y especiales","Vinos, quesos y café","Recetas y maridajes","Tendencias gastronómicas","Experiencias"], tono:"Editorial, elegante, sensorial y muy visual; foto cuidada y poco ruido promocional.",
+    tiktok:["maridaje vino queso","tabla de quesos","café de especialidad"], ig:["maridaje","gourmet","cafedeespecialidad"] },
 };
-const PY_FOOD = ["chipa","sopa paraguaya","mbejú","chipa guasu","tereré","asado","pastel mandi’o","vori vori","empanadas","milanesa con mandioca"];
-const IDEA_TPL = [
-  { f:"TikTok / Reel", t:"Adiviná el precio", how:"Mostrá 3 productos de {cat} y que la gente adivine cuánto salen. Al final revelás el precio con la oferta.", hook:"¿Cuánto creés que sale esto en {brand}? 👀" },
-  { f:"TikTok / Reel", t:"POV: llegaste a {brand} con hambre", how:"Cámara en primera persona recorriendo {cat}, cortes rápidos al ritmo de un audio en tendencia.", hook:"POV: entrás “solo por pan” a {brand}…" },
-  { f:"Reel", t:"Receta en 60 segundos: {food}", how:"Todos los ingredientes de la góndola en un plano y la receta paso a paso con texto en pantalla.", hook:"{food} en 1 minuto, con todo de {brand}" },
-  { f:"TikTok", t:"Un día en {brand}", how:"Detrás de escena: quién abre el local, cómo se arma {extra}, el equipo saludando. Cercano y real.", hook:"Así arranca un día en {brand} ☀️" },
-  { f:"Reel", t:"ASMR de {cat}", how:"Sonidos reales: crujido, corte, envoltorio. Sin música, planos muy cerca.", hook:"Subí el volumen 🔊" },
-  { f:"TikTok / Reel", t:"Reto: la compra de la semana con ₲150.000", how:"Una persona del equipo arma el carrito con un presupuesto y muestra el ticket final.", hook:"¿Alcanza ₲150.000 para toda la semana? Lo probamos en {brand}" },
-  { f:"Carrusel", t:"5 ideas para {season}", how:"Una idea por placa con el producto y el precio. Última placa: dónde encontrarlo.", hook:"Guardalo para {season} 📌" },
-  { f:"Historias", t:"Encuesta: ¿{a} o {b}?", how:"Encuesta de 2 opciones y al día siguiente mostrás el resultado con la oferta del ganador.", hook:"Votá y mañana te contamos 👇" },
-  { f:"TikTok", t:"Mito o verdad sobre {cat}", how:"3 frases rápidas, la gente comenta antes de ver la respuesta. Respuestas con dato simple.", hook:"Mito o verdad: ¿vos qué decís?" },
-  { f:"Reel", t:"Antes y después del carrito", how:"Transición: carrito vacío → lleno al chasquido de dedos, con el total del ahorro.", hook:"Así se ve ahorrar en {brand}" },
-  { f:"TikTok", t:"Respondemos sus comentarios", how:"Elegí un comentario real y respondelo en video mostrando el producto en la góndola.", hook:"Nos preguntaron… y acá está la respuesta" },
-  { f:"Reel", t:"El combo perfecto para el tereré", how:"Termo, yuyos y snacks: armá el combo ideal y mostrás el precio total.", hook:"Combo tereré nivel experto 🧉" },
-  { f:"Carrusel", t:"Top 5 de {cat} que casi nadie conoce", how:"Productos poco conocidos con una frase de por qué probarlos.", hook:"El #3 te va a sorprender" },
-  { f:"TikTok / Reel", t:"Trend del momento, versión {brand}", how:"Tomá el audio o formato que más se está usando esta semana (mirá “Lo que está pegando”) y adaptalo con productos de {cat}.", hook:"Nos sumamos al trend 😎" },
-  { f:"Historias", t:"Cuenta regresiva para {season}", how:"Sticker de cuenta regresiva + una oferta distinta cada día hasta la fecha.", hook:"Faltan pocos días para {season} ⏳" },
-  { f:"Reel", t:"Errores al hacer {food}", how:"3 errores comunes y cómo evitarlos, con los productos de la tienda.", hook:"¿Vos también hacés esto? 😅" },
-];
-const IDEA_AB = [["chipa","sopa paraguaya"],["dulce","salado"],["tereré","mate"],["asado","pizza"],["café","cocido"],["helado","torta"]];
+const IDEA_TPL = {
+  Stock:[
+    { f:"Reel", ic:"tag", t:"Adiviná el precio", how:"Tres productos de consumo diario y la gente adivina cuánto salen; al final, el precio de oferta grande en pantalla.", hook:"¿Cuánto creés que sale esto en Stock?" },
+    { f:"TikTok", ic:"shopping-cart", t:"La compra de la semana con ₲150.000", how:"Alguien del equipo llena el carrito con un presupuesto y muestra el ticket final. Real y cotidiano.", hook:"¿Alcanza ₲150.000 para toda la semana?" },
+    { f:"Reel", ic:"zap", t:"La oferta del día en 10 segundos", how:"Titular claro, producto y precio protagonista, y en qué local está. Sin vueltas.", hook:"Hoy en Stock: ¡mirá este precio!" },
+    { f:"Carrusel", ic:"home", t:"Tu casa resuelta con menos de ₲50.000", how:"Limpieza y básicos para la casa, una placa por producto con su precio.", hook:"Guardalo para tu próxima compra" },
+    { f:"Reel", ic:"users", t:"El combo familiar del domingo", how:"Asado o almuerzo para toda la familia con el total de la compra.", hook:"Domingo en familia, sin gastar de más" },
+    { f:"TikTok", ic:"map-pin", t:"El Stock de tu barrio", how:"Un local, su gente y lo que más compran los vecinos. Cercanía real.", hook:"¿Cuál es tu Stock de siempre?" },
+    { f:"Historias", ic:"timer", t:"Cuenta regresiva para {season}", how:"Una oferta distinta cada día hasta la fecha, con sticker de cuenta regresiva.", hook:"Faltan pocos días para {season}" },
+    { f:"Historias", ic:"list-checks", t:"Encuesta: ¿{a} o {b}?", how:"Encuesta de dos opciones y al día siguiente la oferta del ganador.", hook:"Votá y mañana te contamos" },
+  ],
+  Superseis:[
+    { f:"Reel", ic:"chef-hat", t:"Cena resuelta en 15 minutos", how:"Un plato con rotisería y frescos de Superseis, paso a paso y con texto en pantalla.", hook:"¿No sabés qué cenar? Resuelto." },
+    { f:"Reel", ic:"croissant", t:"Recién salido del horno", how:"Panadería a primera hora: sonidos reales, planos cerca y gente del equipo.", hook:"Así huele una mañana en Superseis" },
+    { f:"TikTok", ic:"smartphone", t:"Comprá online en 30 segundos", how:"Tutorial rápido de compra online, delivery o pick up, mostrando el beneficio.", hook:"Tu compra sin hacer fila" },
+    { f:"Reel", ic:"salad", t:"Receta con {food}", how:"Receta simple con ingredientes frescos, foto limpia y cálida.", hook:"{food} como en casa, más fácil" },
+    { f:"Carrusel", ic:"sparkles", t:"El producto destacado y 3 formas de usarlo", how:"Una placa por idea, estética limpia y contemporánea.", hook:"Tres ideas, un producto" },
+    { f:"TikTok", ic:"sun", t:"Un día en Superseis", how:"Detrás de escena de frescos, panadería y atención; personas reales.", hook:"Así arranca un día en Superseis" },
+    { f:"Reel", ic:"utensils", t:"La mesa de {season}, resuelta", how:"Rotisería, postres y bebidas listas para llevar o pedir por delivery.", hook:"Vos disfrutá, nosotros cocinamos" },
+    { f:"Historias", ic:"message-circle-question", t:"¿Qué cocinamos hoy?", how:"Caja de preguntas y respuestas en video con recetas rápidas.", hook:"Preguntanos y te damos la receta" },
+  ],
+  Delimarket:[
+    { f:"Reel", ic:"gem", t:"El ingrediente diferente de la semana", how:"Un producto especial o importado, de dónde viene y cómo usarlo. Foto cuidada, sin precio.", hook:"Algo que todavía no probaste" },
+    { f:"Reel", ic:"wine", t:"Maridaje en 30 segundos", how:"Un vino y un queso, por qué combinan y cómo servirlos. Tono editorial.", hook:"El maridaje perfecto para esta noche" },
+    { f:"Carrusel", ic:"layers", t:"Tabla de quesos para {season}", how:"Cómo armarla paso a paso, una placa por elemento, muy visual.", hook:"La tabla que todos van a fotografiar" },
+    { f:"Reel", ic:"coffee", t:"Café de origen: cómo prepararlo", how:"Molienda, método y taza final. Sonidos reales y planos cerca.", hook:"Un café que se disfruta despacio" },
+    { f:"TikTok", ic:"book-open", t:"Receta de autor con un importado", how:"Un plato distinto con un ingrediente de la góndola gourmet.", hook:"Cociná algo diferente esta semana" },
+    { f:"Reel", ic:"globe", t:"Detrás del producto", how:"La historia de un producto: origen, productor y por qué lo elegimos.", hook:"De dónde viene lo que comés" },
+    { f:"Carrusel", ic:"compass", t:"3 descubrimientos de la semana", how:"Productos nuevos o especiales con una frase sensorial cada uno.", hook:"Para descubrir y disfrutar" },
+    { f:"Reel", ic:"cake-slice", t:"Brunch de fin de semana", how:"Mesa editorial con panes, mermeladas, quesos y café. Poco texto, mucha imagen.", hook:"El plan del domingo" },
+  ],
+};
+const PY_FOOD = ["chipa","sopa paraguaya","mbejú","chipa guasu","vori vori","milanesa con mandioca","empanadas","pastel mandi’o"];
+const IDEA_AB = [["chipa","sopa paraguaya"],["dulce","salado"],["tereré","mate"],["asado","pizza"],["café","cocido"]];
+let ideaUI = (() => { try { return { brand:localStorage.getItem("rmh-ideabrand") || "Todas" }; } catch { return { brand:"Todas" }; } })();
 let ideaSeed = (() => { try { return +localStorage.getItem("rmh-ideaseed") || 1; } catch { return 1; } })();
 const rnd = n => { ideaSeed = (ideaSeed * 9301 + 49297) % 233280; return Math.floor(ideaSeed / 233280 * n); };
-function ideaBatch(){
-  let seed0 = ideaSeed; const pick = a => a[rnd(a.length)];
-  const seasons = seasonsAhead(4), out = [], used = new Set();
-  ["Superseis","Stock","Delimarket"].forEach(brand => {
-    for (let k = 0; k < 3; k++){
-      let tp; do { tp = pick(IDEA_TPL); } while (used.has(tp.t + brand) && used.size < 40); used.add(tp.t + brand);
-      const B = IDEA_BRANDS[brand], s = pick(seasons), ab = pick(IDEA_AB), v = { brand, cat:pick(B.cats), food:pick(PY_FOOD), season:s.t, extra:B.extra, a:ab[0], b:ab[1] };
+function ideaBatch(brands){
+  const seed0 = ideaSeed, pick = a => a[rnd(a.length)], seasons = seasonsAhead(3), out = [], per = brands.length === 1 ? 6 : 3;
+  brands.forEach(brand => {
+    const pool = IDEA_TPL[brand].slice();
+    for (let k = 0; k < per && pool.length; k++){
+      const tp = pool.splice(rnd(pool.length), 1)[0], s = pick(seasons), ab = pick(IDEA_AB), v = { season:s.t, food:pick(PY_FOOD), a:ab[0], b:ab[1] };
       const fill = x => x.replace(/\{(\w+)\}/g, (_, m) => v[m] ?? "");
-      out.push({ brand, f:tp.f, t:fill(tp.t), how:fill(tp.how), hook:fill(tp.hook), tag:/season/.test(tp.t + tp.how + tp.hook) ? s.t : B.tono });
+      out.push({ brand, f:tp.f, ic:tp.ic, t:fill(tp.t), how:fill(tp.how), hook:fill(tp.hook) });
     }
   });
   ideaSeed = seed0; return out;
 }
+// Links para buscar tendencias (los de siempre de Tendencias CM + búsquedas para la marca elegida).
+const TREND_SEARCH = [
+  ["music", "TikTok · canciones en tendencia", "https://ads.tiktok.com/business/creativecenter/inspiration/popular/music/pc/es"],
+  ["hash", "TikTok · hashtags en tendencia", "https://ads.tiktok.com/business/creativecenter/inspiration/popular/hashtag/pc/es"],
+  ["clapperboard", "TikTok · anuncios que funcionan", "https://ads.tiktok.com/business/creativecenter/inspiration/topads/pc/es"],
+  ["instagram", "Instagram · Reels", "https://www.instagram.com/reels/"],
+  ["newspaper", "Instagram · novedades y tendencias", "https://about.instagram.com/es-la/blog"],
+  ["library", "Meta · biblioteca de anuncios", "https://www.facebook.com/ads/library/"],
+  ["trending-up", "Google Trends · Paraguay", "https://trends.google.com/trending?geo=PY"],
+  ["pin", "Pinterest · tendencias", "https://trends.pinterest.com/"],
+];
 function pIdeas(){
-  const c = trendGet("ideas"), busy = trendSt.busyideas, news = (c?.groups?.[0]?.items || []).filter(x => safeUrl(x.img)).slice(0, 8);
-  const team = TEAM_IDEAS.slice().sort((a, b) => String(b.at).localeCompare(String(a.at)));
-  const gen = ideaBatch(), mix = [...gen];
-  team.slice(0, 3).forEach((x, i) => mix.splice(Math.min(mix.length, 1 + i * 3), 0, { brand:x.brand, f:"Idea del equipo", t:x.text, how:"", hook:"", tag:"Cargada por " + (personById(x.by) ? nickOf(personById(x.by)) : ""), team:true }));
-  const next = seasonsAhead(3);
-  const card = (x, i) => `<article class="icard${x.team ? " team" : ""}" style="--c:${BRANDS[x.brand] || "var(--cyan)"};--i:${i}"><div class="ich"><span class="ibrand">${esc(x.brand || "Todas")}</span><span class="ifmt">${esc(x.f)}</span></div>
-    <h3>${esc(x.t)}</h3>${x.how ? `<p>${esc(x.how)}</p>` : ""}${x.hook ? `<p class="ihook">${icon("message-square-quote")} ${esc(x.hook)}</p>` : ""}
-    <div class="ift"><span class="itag">${esc(x.tag)}</span>${x.team ? "" : `<button type="button" class="btn sm" data-ideasave="${esc(JSON.stringify({ b:x.brand, t:x.t + (x.how ? " — " + x.how : "") }))}">${icon("bookmark-plus")} Guardar</button>`}</div></article>`;
-  return `<div class="head"><div><h1 class="pmh">${pmIco("lightbulb")}Ideas Random</h1><p class="sub">Ideas para creadores de contenido de Superseis, Stock y Delimarket: formatos que son tendencia en TikTok, Instagram y Facebook, las fechas que vienen en Paraguay y las ideas del equipo.</p></div>
-    <button type="button" class="btn primary" data-ideasnew>${icon("shuffle")} Otras ideas</button></div>
-  <div class="iseason">${next.map(s => `<span class="chip">${icon(s.ic)} ${esc(s.t)} · ${s.days <= 0 ? "hoy" : `en ${s.days} días`}</span>`).join("")}</div>
-  <div class="igrid">${mix.map(card).join("")}</div>
-  <section class="tsec"><div class="tsec-h"><span class="tsec-ic">${icon("flame")}</span><div><h2>Lo que está pegando en redes</h2><p>Lo más nuevo y viral en TikTok, Instagram y Facebook, con foto. Tocá una para verla y adaptala a la marca.</p></div>
-    ${viewer.role === "Admin total" ? `<button type="button" class="btn sm" data-trendre="ideas" ${busy ? "disabled" : ""}>${icon("refresh-cw")} ${busy ? "Actualizando…" : "Actualizar"}</button>` : ""}</div>
-    <div class="tgrid">${news.length ? news.map((x, i) => `<a class="tcard" href="${esc(safeUrl(x.u))}" target="_blank" rel="noopener noreferrer" style="--i:${i}"><span class="tthumb"><img src="${esc(safeUrl(x.img))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.tcard').remove()"></span><span class="tbody"><span class="tsrc">${esc(x.src || "")}${x.tr ? " · <i>traducido</i>" : ""}</span><b>${esc(x.t)}</b>${x.x ? `<small>${esc(x.x)}</small>` : ""}<span class="tgo">Ver ${icon("arrow-up-right")}</span></span></a>`).join("")
-      : busy || !c ? Array.from({ length:4 }, () => `<div class="tcard tskel"><span class="tthumb"></span><span class="tbody"><b>&nbsp;</b><small>&nbsp;</small></span></div>`).join("") : `<div class="empty">${icon("wifi-off")} ${esc(c?.err || "Sin novedades por ahora")}.</div>`}</div></section>
-  <section class="panel ishare"><h2 class="pmh" style="margin:0">${pmIco("message-square-plus")}Ideas del equipo</h2>
-    <p class="note" style="margin:0">¿Viste algo que puede funcionar? Cargalo acá: se suma a las ideas de arriba para todo el equipo.</p>
-    <div class="iform"><select class="base" id="ideaBrand">${["Superseis","Stock","Delimarket","Todas"].map(b => `<option>${b}</option>`).join("")}</select><textarea class="base" id="ideaText" rows="2" placeholder="Ej.: Reel “¿qué llevo para el asado del domingo?” con el carrito de Stock y el precio total"></textarea><button type="button" class="btn primary" data-ideaadd>${icon("plus")} Sumar idea</button></div>
-    ${team.length ? `<ul class="ilist">${team.map(x => `<li style="--c:${BRANDS[x.brand] || "var(--cyan)"}"><span class="ibrand">${esc(x.brand)}</span><span class="grow">${esc(x.text)}</span><small>${esc((personById(x.by) ? nickOf(personById(x.by)) : ""))} · ${dm(String(x.at).slice(0, 10))}</small>${x.by === viewer.id || viewer.role === "Admin total" ? `<button type="button" class="btn ib sm" data-ideadel="${esc(x.id)}" aria-label="Borrar idea">${icon("trash-2")}</button>` : ""}</li>`).join("")}</ul>` : `<p class="note" style="margin:0">Todavía no hay ideas cargadas.</p>`}</section>`;
+  const sel = ideaUI.brand, brands = sel === "Todas" ? ["Stock","Superseis","Delimarket"] : [sel], B = IDEA_BRANDS[sel];
+  const c = trendGet("ideas"), busy = trendSt.busyideas, news = (c?.groups?.[0]?.items || []).filter(x => safeUrl(x.img)).slice(0, 6);
+  const team = TEAM_IDEAS.filter(x => sel === "Todas" || x.brand === sel || x.brand === "Todas").slice().sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  const ideas = ideaBatch(brands);
+  team.slice(0, 2).forEach((x, i) => ideas.splice(Math.min(ideas.length, 2 + i * 3), 0, { brand:x.brand, f:"Del equipo", ic:"user-round", t:x.text, how:"", hook:"", team:true }));
+  const tk = brands.flatMap(b => IDEA_BRANDS[b].tiktok.map(q => [b, q])), ig = brands.flatMap(b => IDEA_BRANDS[b].ig.map(t => [b, t]));
+  const row = x => `<li class="irow${x.team ? " team" : ""}"><span class="iic">${icon(x.ic)}</span><div class="itx"><b>${esc(x.t)}</b>${x.how ? `<span>${esc(x.how)}</span>` : ""}${x.hook ? `<em>“${esc(x.hook)}”</em>` : ""}<small>${esc(x.brand)} · ${esc(x.f)}</small></div>
+    ${x.team ? "" : `<button type="button" class="ibtn" data-ideasave="${esc(JSON.stringify({ b:x.brand, t:x.t + (x.how ? " — " + x.how : "") }))}" title="Guardar en las ideas del equipo" aria-label="Guardar idea">${icon("bookmark")}</button>`}</li>`;
+  return `<div class="ideas">
+  <div class="head"><div><h1 class="pmh">${pmIco("lightbulb")}Ideas Random</h1><p class="sub">Ideas para creadores de contenido, pensadas para la esencia de cada marca y las fechas que vienen en Paraguay.</p></div>
+    <button type="button" class="btn" data-ideasnew>${icon("shuffle")} Otras ideas</button></div>
+  <div class="ifil" role="tablist">${["Todas","Stock","Superseis","Delimarket"].map(b => `<button type="button" role="tab" class="ichip${sel === b ? " on" : ""}" aria-selected="${sel === b}" data-ideabrand="${b}">${b}</button>`).join("")}</div>
+  ${B ? `<div class="iess"><p class="ikey">${esc(B.key)}</p><p>${esc(B.esencia)}</p><p class="imuted">${esc(B.tono)}</p><p class="imuted">${B.pilares.map(esc).join(" · ")}</p></div>` : ""}
+  <p class="imuted">Fechas que vienen: ${seasonsAhead(3).map(s => `${esc(s.t)} (${s.days <= 0 ? "hoy" : `en ${s.days} días`})`).join(" · ")}</p>
+  <ul class="ilist2">${ideas.map(row).join("")}</ul>
+  <h2 class="ih">${icon("search")} Buscar tendencias</h2>
+  <div class="ilinks">${TREND_SEARCH.map(([ic, t, u]) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${icon(ic)}<span>${t}</span>${icon("arrow-up-right")}</a>`).join("")}</div>
+  <p class="imuted">Buscar en TikTok: ${tk.map(([b, q]) => `<a class="iq" href="https://www.tiktok.com/search?q=${encodeURIComponent(q)}" target="_blank" rel="noopener noreferrer" title="${esc(b)}">${esc(q)}</a>`).join(" · ")}</p>
+  <p class="imuted">Hashtags en Instagram: ${ig.map(([b, t]) => `<a class="iq" href="https://www.instagram.com/explore/tags/${encodeURIComponent(t)}/" target="_blank" rel="noopener noreferrer" title="${esc(b)}">#${esc(t)}</a>`).join(" · ")}</p>
+  <h2 class="ih">${icon("flame")} Lo que está pegando en redes ${viewer.role === "Admin total" ? `<button type="button" class="ibtn" data-trendre="ideas" ${busy ? "disabled" : ""} title="Actualizar" aria-label="Actualizar">${icon("refresh-cw")}</button>` : ""}</h2>
+  ${news.length ? `<ul class="inews">${news.map(x => `<li><a href="${esc(safeUrl(x.u))}" target="_blank" rel="noopener noreferrer"><img src="${esc(safeUrl(x.img))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('li').remove()"><span><b>${esc(x.t)}</b><small>${esc(x.src || "")}${x.tr ? " · traducido" : ""}</small></span></a></li>`).join("")}</ul>`
+    : `<p class="imuted">${busy || !c ? "Buscando lo más nuevo…" : esc(c?.err || "Sin novedades por ahora") + "."}</p>`}
+  <h2 class="ih">${icon("message-square-plus")} Ideas del equipo</h2>
+  <div class="iform"><select class="base" id="ideaBrand">${["Stock","Superseis","Delimarket","Todas"].map(b => `<option ${b === (sel === "Todas" ? "Stock" : sel) ? "selected" : ""}>${b}</option>`).join("")}</select><input class="base" id="ideaText" placeholder="Cargá una idea: se suma a las de arriba para todo el equipo"><button type="button" class="btn" data-ideaadd>${icon("plus")} Sumar</button></div>
+  ${team.length ? `<ul class="iteam">${team.map(x => `<li><span>${esc(x.text)}</span><small>${esc(x.brand)} · ${esc(personById(x.by) ? nickOf(personById(x.by)) : "")} · ${dm(String(x.at).slice(0, 10))}</small>${x.by === viewer.id || viewer.role === "Admin total" ? `<button type="button" class="ibtn" data-ideadel="${esc(x.id)}" aria-label="Borrar idea">${icon("trash-2")}</button>` : ""}</li>`).join("")}</ul>` : `<p class="imuted">Todavía no hay ideas cargadas.</p>`}
+  </div>`;
 }
 document.addEventListener("click", e => {
+  const fb = e.target.closest("[data-ideabrand]"); if (fb){ ideaUI.brand = fb.dataset.ideabrand; try { localStorage.setItem("rmh-ideabrand", ideaUI.brand); } catch {} render(); return; }
   if (e.target.closest("[data-ideasnew]")){ ideaSeed = (ideaSeed * 7 + Date.now() % 1000 + 13) % 233280 || 1; try { localStorage.setItem("rmh-ideaseed", ideaSeed); } catch {} render(); return; }
   const sv = e.target.closest("[data-ideasave]"); if (sv){ let d; try { d = JSON.parse(sv.dataset.ideasave); } catch { return; }
     if (TEAM_IDEAS.some(x => x.text === d.t)) return toast("Esa idea ya está guardada.");
