@@ -327,6 +327,16 @@ html.nomotion .picon{animation:none}
 .jlrow2 .jlgo{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:13.5px;color:var(--lc,var(--cyan));flex:none}.jlrow2 .jlgo svg{width:15px;height:15px}
 .jlrow2.drive{--lc:#22c55e}.jlrow2.canva{--lc:#a78bfa}.jlrow2.final{--lc:#10b981}.jlrow2.design{--lc:#f59e0b}
 .jlbig{font-weight:700}
+.lked{display:flex;flex-direction:column;gap:10px}
+.lkrow{display:grid;grid-template-columns:minmax(150px,220px) 1fr auto auto auto;gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--line-2);border-radius:16px;background:rgba(148,163,184,.04);--lc:var(--cyan)}
+.lkrow.drive{--lc:#22c55e}.lkrow.canva{--lc:#a78bfa}.lkrow.designLink{--lc:#f59e0b}
+.lkname{display:flex;align-items:center;gap:10px;min-width:0;padding-top:6px;border-top:4px solid var(--lc);border-radius:2px}.lkname b{font-size:15px}.lkname .lkn{min-width:0}
+.lkic{width:34px;height:34px;flex:none;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--lc) 18%,transparent);color:var(--lc)}.lkic svg{width:18px;height:18px}
+.lkin{min-width:0;border-radius:14px;padding:12px 14px;font-size:15px}
+.lkurl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+.lkbtn{white-space:nowrap;border-radius:14px;padding:10px 16px;font-weight:600;text-decoration:none}.lkname .lkn{padding:9px 12px;border-radius:12px;font-weight:700}.lkbtn.off{opacity:.45;pointer-events:none}.lkbtn svg{width:15px;height:15px}
+.lkstate{grid-column:1/-1;padding:9px 14px;border-radius:12px;background:rgba(148,163,184,.08);color:var(--muted);font-size:13.5px}.lkstate svg{width:14px;height:14px;vertical-align:-2px;color:#22c55e}
+@media (max-width:760px){.lkrow{grid-template-columns:1fr 1fr}.lkname,.lkin,.lkurl{grid-column:1/-1}}
 .igrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(280px,100%),1fr));gap:14px}
 .icard{display:flex;flex-direction:column;gap:8px;padding:16px;border-radius:18px;border:1px solid var(--line-2);border-top:4px solid var(--c);background:linear-gradient(170deg,color-mix(in srgb,var(--c) 10%,transparent),transparent 55%)}
 .icard h3{margin:0;font-size:16.5px;line-height:1.3}.icard p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.45}.icard .ihook{color:var(--ink);font-style:italic}.icard .ihook svg{width:14px;height:14px;vertical-align:-2px;color:var(--c)}
@@ -4283,6 +4293,53 @@ document.addEventListener("click", async e => {
   if (window.RMH?.fileDel) await RMH.fileDel(f.p);
   j.files.splice(+i, 1); render(); toast(`Quitaste “${f.n}”.`);
 });
+// Links de acceso del pedido (Diseño y CM): una fila para Google Drive, otra para Canva, el diseño para revisar (Diseño)
+// y los que se sumen con nombre (Logo, Diseño, Fotos…). En cada fila se pega el link, se copia o se abre. No se adjuntan archivos.
+const otherLinks = j => Array.isArray(j.xlinks) ? j.xlinks : jobLinks(j).filter(Boolean).map(u => ({ n:"", u }));
+const canEditJobLinks = j => !isClosed() && !isViewOnly() && !j.ex && (viewer.role === "Admin total" || j.owner === viewer.name || canChangeStatus(j));
+function linkEditor(j, mode){ // mode: "form" (formulario), "ficha" (se guarda al pegar) o "" (solo ver)
+  const ed = !!mode, LK = { drive:["folder-open","Google Drive","Pegar link de Google Drive"], canva:["palette","Canva","Pegar link de Canva"], designLink:["eye","Diseño para revisar","Pegar link del diseño para revisar"] };
+  const fixed = ["drive","canva", ...(j.area === "CM" ? [] : ["designLink"])];
+  const row = (key, name, url, i) => { const fx = i == null, [ic, t, ph] = fx ? LK[key] : ["link", name || "Otro link", "Pegar link (Drive, Canva, WeTransfer, Figma…)"], u = safeUrl(url);
+    if (!ed && !u) return "";
+    return `<div class="lkrow ${fx ? key : "ext"}"${fx ? "" : ` data-lki="${i}"`}><div class="lkname"><span class="lkic">${icon(ic)}</span>${fx || !ed ? `<b>${esc(t)}</b>` : `<input class="base lkn" data-lkn="${i}" value="${esc(name || "")}" placeholder="Nombre (ej.: Logo)" aria-label="Nombre del link">`}</div>
+      ${ed ? `<input class="base lkin" ${fx ? `data-lkin="${key}"${key === "designLink" ? ` id="jDesignLink"` : ""}` : `data-lku="${i}"`} type="url" inputmode="url" value="${esc(url || "")}" placeholder="${ph}" aria-label="${esc(t)}">` : `<span class="lkurl">${esc(url)}</span>`}
+      <button type="button" class="btn lkbtn" data-lkcopy="${esc(u)}" ${u ? "" : "disabled"}>${icon("copy")} Copiar link</button>
+      <a class="btn lkbtn${u ? "" : " off"}" ${u ? `href="${esc(u)}" target="_blank" rel="noopener"` : `aria-disabled="true"`}>${icon("arrow-up-right")} Abrir</a>
+      ${ed && !fx ? `<button type="button" class="btn ib sm" data-lkdel="${i}" aria-label="Quitar este link">${icon("x")}</button>` : ""}
+      <div class="lkstate">${u ? `${icon("check")} Link guardado` : "Sin link guardado."}</div></div>`; };
+  const rows = fixed.map(k => row(k, "", j[k] || "")).join("") + otherLinks(j).map((l, i) => row("", l.n, l.u, i)).join("");
+  return `<div class="lked" data-lkmode="${mode}" data-lkjob="${esc(j.id)}">${rows || `<p class="note" style="margin:0">Todavía no hay links.</p>`}
+    ${ed ? `<button type="button" class="btn sm" data-lkadd>${icon("plus")} Agregar otro link (ej.: Logo, Diseño)</button>` : ""}</div>`;
+}
+function readLinkEditor(box, j){
+  box.querySelectorAll("[data-lkin]").forEach(x => { const v = x.value.trim(); j[x.dataset.lkin] = safeUrl(v) ? v : ""; });
+  const xs = []; box.querySelectorAll("[data-lki]").forEach(r => { const u = r.querySelector("[data-lku]")?.value.trim() || "", n = r.querySelector("[data-lkn]")?.value.trim() || ""; xs.push({ n, u:safeUrl(u) ? u : "" }); });
+  j.xlinks = xs; j.links = xs.map(x => x.u).filter(Boolean); j.link = j.links[0] || "";
+}
+document.addEventListener("click", e => {
+  const cp = e.target.closest("[data-lkcopy]"); if (cp){ const u = cp.dataset.lkcopy; if (!u) return;
+    (navigator.clipboard?.writeText(u) || Promise.reject()).then(() => toast("Link copiado."), () => { const t = document.createElement("textarea"); t.value = u; document.body.appendChild(t); t.select(); try { document.execCommand("copy"); toast("Link copiado."); } catch { toast(u); } t.remove(); }); return; }
+  const ad = e.target.closest("[data-lkadd]"), dl = e.target.closest("[data-lkdel]"); if (!ad && !dl) return;
+  const box = (ad || dl).closest(".lked"), form = box.dataset.lkmode === "form", j = form ? jobUI.form?.job : jobById(box.dataset.lkjob); if (!j) return;
+  if (form) readJobForm(j); else readLinkEditor(box, j);
+  j.xlinks = otherLinks(j).slice(); if (ad) j.xlinks.push({ n:"", u:"" }); else j.xlinks.splice(+dl.dataset.lkdel, 1);
+  j.links = j.xlinks.map(x => x.u).filter(Boolean); j.link = j.links[0] || ""; render();
+  if (ad) [...document.querySelectorAll(".lked [data-lkn]")].pop()?.focus();
+});
+// En el pedido abierto: al pegar (o escribir) un link y salir del campo, se guarda solo.
+document.addEventListener("change", e => {
+  const x = e.target.closest(".lked[data-lkmode=ficha] input"); if (!x) return;
+  const box = x.closest(".lked"), j = jobById(box.dataset.lkjob); if (!j || !canEditJobLinks(j)) return;
+  const v = x.value.trim(); if (v && !safeUrl(v) && !x.dataset.lkn) return toast("Pegá un link que empiece con https://");
+  readLinkEditor(box, j); // se guarda sin volver a dibujar la página (así no se pierde lo que se está escribiendo en otro campo)
+  const row = x.closest(".lkrow"), u = safeUrl(row.querySelector("[data-lkin],[data-lku]")?.value.trim() || ""), cp = row.querySelector("[data-lkcopy]"), op = row.querySelector("a.lkbtn"), st = row.querySelector(".lkstate");
+  if (cp){ cp.dataset.lkcopy = u; cp.disabled = !u; }
+  if (op){ if (u){ op.href = u; op.target = "_blank"; op.rel = "noopener"; op.classList.remove("off"); op.removeAttribute("aria-disabled"); } else { op.removeAttribute("href"); op.classList.add("off"); } }
+  if (st) st.innerHTML = u ? `${icon("check")} Link guardado` : "Sin link guardado.";
+  if (window.lucide) lucide.createIcons();
+  if (!x.dataset.lkn) toast(v ? "Link guardado." : "Link borrado.");
+});
 // Links del pedido como filas largas y bien visibles: Google Drive, Canva o link externo.
 const LINK_KIND = { drive:["folder-open","Google Drive","Carpeta o archivo con el material"], canva:["palette","Canva","El diseño o la plantilla"], final:["badge-check","Resultado final","El diseño aprobado"], design:["eye","Diseño para revisar","Lo que subió quien lo hace"] };
 function linkRow(u, kind){
@@ -4312,14 +4369,10 @@ function jobFicha(){
       <div class="jfgrid">${row("Marca", brandTag(j.brand))}${row("Tipo de trabajo", esc(j.piece))}${row("Solicitante", esc(j.requester))}${row("Responsable", esc(j.owner))}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", prioTag(j.priority))}${row("Complejidad", esc(j.complexity))}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}</div>
       ${j.notes ? `<div class="jfnotes"><span>Observaciones</span><p>${esc(j.notes)}</p></div>` : ""}</section>
     ${jobBriefSection(j)}
-    <section class="panel jp-sec jp-mat"><h2 class="pmh">${pmIco("link")}Links de acceso</h2><div class="jlrows">
+    <section class="panel jp-sec jp-mat"><h2 class="pmh">${pmIco("link")}Links de acceso</h2>
       ${j.finalLink ? linkRow(j.finalLink, "final") : ""}
-      ${safeUrl(j.drive) ? linkRow(j.drive, "drive") : ""}${safeUrl(j.canva) ? linkRow(j.canva, "canva") : ""}
-      ${jobLinks(j).filter(l => safeUrl(l)).map(l => linkRow(l)).join("")}
-      ${!mine && j.designLink ? linkRow(j.designLink, "design") : ""}
-      ${!j.finalLink && !safeUrl(j.drive) && !safeUrl(j.canva) && !jobLinks(j).some(l => safeUrl(l)) && !j.designLink ? `<p class="note" style="margin:0">Todavía no hay links. ${at ? "Agregalos con “Editar pedido”." : ""}</p>` : ""}</div>
-      ${mine ? `<div class="jlink"><label>Link del diseño para revisar<input class="base" id="jDesignLink" value="${esc(j.designLink || "")}" placeholder="Drive, Canva, Figma…"></label><button class="btn" type="button" data-jdlink="${j.id}">${icon("link")} Guardar link</button></div>` : ""}
-      ${filesBlock(j, canAttach(j))}</section>
+      ${linkEditor(j, canEditJobLinks(j) ? "ficha" : "")}
+      ${(j.files || []).length ? filesBlock(j, false) : ""}</section>
     <section class="panel jp-sec jfact"><h2 class="pmh">${pmIco("route")}Recorrido del pedido</h2>${jobProcess(j)}
       ${acts ? `<div class="jpnow"><b>Lo que podés hacer ahora</b>${acts}</div>` : ""}</section>
     <section class="panel jp-sec jp-changes${jobRounds(j) ? " has" : ""}">${jobChain(j) || `<div class="jchain"><h3>Cambios pedidos</h3><p class="note" style="margin:0">Todavía no hay cambios ni comentarios.</p></div>`}</section>
@@ -4351,12 +4404,7 @@ function jobForm(){
       <label>Tipo de trabajo *<select class="base" id="jPiece">${opt(types, j.piece)}</select></label>
       <label>Marca *<select class="base" id="jBrand">${opt(myBrands(), j.brand)}</select></label>
       <label class="wide" style="grid-column:1/-1">Trabajo solicitado *<input class="base" id="jTitle" value="${esc(j.title)}" placeholder="${area === "CM" ? "Ej.: Reel receta navideña: clericó en 1 minuto" : "Ej.: Post de Navidad: canasta navideña 20% OFF"}" required></label>
-      <label>Link de Google Drive <span class="note">(carpeta o archivo para ver el material)</span><input class="base" id="jDrive" type="url" value="${esc(j.drive || "")}" placeholder="Ej.: https://drive.google.com/drive/folders/… (fotos, logos y textos)"></label>
-      <label>Link de Canva <span class="note">(el diseño o la plantilla)</span><input class="base" id="jCanva" type="url" value="${esc(j.canva || "")}" placeholder="Ej.: https://www.canva.com/design/…"></label>
-      <div class="jlinks" style="grid-column:1/-1"><span class="jll">Otros links <span class="note">(WeTransfer, Figma, un archivo… opcional, podés poner varios)</span></span>
-        ${jobLinks(j).map((l, i) => `<div class="jlrow"><input class="base" data-jl="${i}" value="${esc(l)}" placeholder="Ej.: https://drive.google.com/… (carpeta con fotos, logos y textos)"><button type="button" class="btn ib sm" data-jldel="${i}" aria-label="Quitar link">${icon("x")}</button></div>`).join("")}
-        <button type="button" class="btn sm" data-jladd>${icon("plus")} ${jobLinks(j).length ? "Agregar otro link" : "Agregar link"}</button></div>
-      <div style="grid-column:1/-1">${filesBlock(j, true)}</div>
+      <div style="grid-column:1/-1"><span class="jll">Links de acceso <span class="note">(pegá el link de Drive, de Canva o de otro sitio; se pueden sumar otros, por ejemplo Logo o Diseño)</span></span>${linkEditor(j, "form")}</div>
       <div style="grid-column:1/-1"><span class="jll">Texto del pedido <span class="note">(de qué se trata, el texto que va en el diseño o lo que dice el video)</span></span>${rtEditor("jBriefF", j.brief ? cleanRich(j.brief) : "", BRIEF_PH[area])}</div>
       <label style="grid-column:1/-1">Observaciones <span class="note">(opcional, algo corto)</span><textarea class="base" id="jNotes" rows="2" placeholder="Ej.: Usar el logo nuevo y los colores de la campaña. Imprimir 40 unidades.">${esc(j.notes)}</textarea></label>
       </div></section>
@@ -4401,7 +4449,7 @@ function spawnRepeats(){
       if (d <= t.due || !t.rep.days.includes(wd) || (t.rep.until && d > t.rep.until) || !MONTHS_APP.some(m => m.v === d.slice(0,7))) continue;
       const id = `${t.id}-R${d.slice(2).replace(/-/g, "")}`; if (jobs.some(x => x.id === id)) continue;
       jobs.push({ id, area:t.area, title:t.title, brand:t.brand, piece:t.piece, owner:t.owner, requester:t.requester, requestDate:TODAY, due:d, status:"Pendiente", priority:t.priority, complexity:t.complexity,
-        brief:t.brief, drive:t.drive || "", canva:t.canva || "", links:jobLinks(t).slice(), link:t.link || "", notes:t.notes || "", post:null, repOf:t.id });
+        brief:t.brief, drive:t.drive || "", canva:t.canva || "", links:jobLinks(t).slice(), xlinks:(t.xlinks || []).map(x => ({ ...x })), designLink:"", link:t.link || "", notes:t.notes || "", post:null, repOf:t.id });
       if (t.owner && t.owner !== "Sin asignar" && t.owner !== viewer.name) notify({ to:t.owner, type:"nuevo", job:id });
       n++;
     }
@@ -4412,8 +4460,8 @@ function spawnRepeats(){
 const jobLinks = j => Array.isArray(j.links) ? j.links : j.link ? [j.link] : [];
 function readJobForm(j){ const v = id => document.getElementById(id)?.value;
   const bf = document.getElementById("jBriefF"); if (bf && bf.dataset.dirty){ j.brief = cleanRich(bf.innerHTML); j.briefBy = viewer.name; j.briefAt = new Date().toISOString(); }
-  for (const [id, k] of [["jDrive", "drive"], ["jCanva", "canva"]]){ const x = document.getElementById(id); if (x) j[k] = safeUrl(x.value.trim()) ? x.value.trim() : ""; }
-  const ls = [...document.querySelectorAll("#jobForm [data-jl]")]; if (ls.length || Array.isArray(j.links)){ j.links = ls.map(x => x.value.trim()); j.link = j.links.find(Boolean) || ""; }
+  if (document.querySelector("#jobForm .lked")) readLinkEditor(document.querySelector("#jobForm .lked"), j);
+  // (los links se leen del editor de links de acceso, arriba)
   Object.assign(j, { requestDate:v("jReq") ?? j.requestDate, requester:v("jRequester") ?? j.requester, brand:v("jBrand") ?? j.brand, piece:v("jPiece") ?? j.piece, title:(v("jTitle") ?? j.title).trim(), owner:v("jOwner") ?? j.owner, status:v("jStatus") ?? j.status, priority:v("jPrio") ?? j.priority, complexity:v("jComp") ?? j.complexity, due:v("jDue") ?? j.due, link:(v("jLink") ?? j.link).trim(), notes:(v("jNotes") ?? j.notes).trim() }); }
 // Cuadraditos del proceso: uno por etapa; se toca el cuadradito de la etapa en la que está el trabajo.
 function stagePicker(j, editable){
