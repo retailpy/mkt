@@ -32,9 +32,10 @@ module.exports = async (req, res) => {
     const me = ORDEN.map(b => byBrand[b]?.igId).find(Boolean); // cualquier Instagram de empresa nuestro sirve para consultar
     if (!me) throw new Error("No hay ninguna cuenta de Instagram de empresa vinculada a las páginas");
     const desde = Date.now() - DIAS * 86400000, accounts = {}, summary = {};
-    for (const [u, [name, cc]] of Object.entries(CUENTAS)){
+    // De a 5 cuentas a la vez (Vercel corta las funciones lentas), cada consulta con su propio límite de tiempo.
+    const una = async ([u, [name, cc]]) => {
       try {
-        const j = await graph(`/${me}`, { fields: FIELDS(u) });
+        const j = await Promise.race([graph(`/${me}`, { fields: FIELDS(u) }), new Promise((_, no) => setTimeout(() => no(new Error("Instagram tardó demasiado")), 9000))]);
         const media = j.business_discovery?.media?.data || [];
         const posts = media
           .filter(m => m.media_product_type !== "REELS" && m.media_product_type !== "STORY" && (m.media_type === "IMAGE" || m.media_type === "CAROUSEL_ALBUM"))
@@ -47,13 +48,16 @@ module.exports = async (req, res) => {
         accounts[u] = { name, cc, err: e.message, posts: [] };
         summary[u] = "error";
       }
-    }
-    const payload = { updated: new Date().toISOString(), accounts };
+    };
+    const lista = Object.entries(CUENTAS);
+    for (let i = 0; i < lista.length; i += 5) await Promise.all(lista.slice(i, i + 5).map(una));
+    const payload = { updated: new Date().toISOString(), accounts, error: null };
     if (!dry) await save("s:META_REFS", payload);
     console.log(`[referentes] ${JSON.stringify(summary)}${dry ? " (prueba, sin guardar)" : " guardadas"}`);
     return res.status(200).json({ ok: true, dry, saved: !dry, summary });
   } catch (e){
     console.error(`[${req.url}] ERROR: ${e.message}${e.code ? ` (código ${e.code})` : ""}`);
+    if (!dry) await save("s:META_REFS", { error: `${e.message}${tokenHint(e) ? " — " + tokenHint(e) : ""}`, errorAt: new Date().toISOString() }).catch(() => {}); // la app muestra el motivo
     return res.status(500).json({ ok: false, error: e.message, hint: tokenHint(e) });
   }
 };
