@@ -65,6 +65,7 @@ const RMH = (() => {
     CHAT_MUTES:[() => CHAT_MUTES, v => { CHAT_MUTES = v || {}; }],
     STICKER_FAVS:[() => STICKER_FAVS, v => { STICKER_FAVS = v || {}; }],
     APP_FLAGS:[() => APP_FLAGS, v => { APP_FLAGS = v || {}; }],
+    TEAM_IDEAS:[() => TEAM_IDEAS, v => { TEAM_IDEAS = Array.isArray(v) ? v : []; }],
   };
   // Claves que solo existen para Admin total (la base no se las deja leer ni guardar al resto).
   const ADMIN_ONLY = new Set(["s:SUGGESTIONS", "s:SURVEYS"]);

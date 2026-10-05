@@ -3,7 +3,7 @@
 // Acciones (POST { action, ... }, con la sesión de la persona):
 //   status · set_giphy {key} · script · set_sticker_url {url}       → solo Admin total
 //   gifs {q} · stickers · sticker_upload {name,type,data}           → cualquier persona del equipo
-//   tendencias {area:"dg"|"cm", force?}                              → novedades en español, en 2 grupos de 8 (force: solo Admin total)
+//   tendencias {area:"dg"|"cm"|"ideas", force?}                      → novedades recientes con foto, en español (force: solo Admin total)
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const cors = {
@@ -78,7 +78,7 @@ async function scriptList(url: string, secret: string){
 
 // ---------- Tendencias: novedades de medios especializados (RSS), en español, en 2 grupos de 8 por área ----------
 // (el grupo del medio, “Campañas de temporada”, lo arma la app con el calendario de fechas de Latinoamérica).
-type Feed = { u: string; src: string; lang: string; need?: RegExp; gn?: boolean };
+type Feed = { u: string; src: string; lang: string; need?: RegExp; bing?: boolean };
 const F = {
   brandemia: { u: "https://www.brandemia.org/feed", src: "Brandemia", lang: "es" },
   graffica: { u: "https://graffica.info/feed/", src: "Gràffica", lang: "es" },
@@ -92,13 +92,17 @@ const F = {
   smt: { u: "https://www.socialmediatoday.com/feeds/news/", src: "Social Media Today", lang: "en" },
   grocery: { u: "https://www.grocerydive.com/feeds/news/", src: "Grocery Dive", lang: "en" },
 };
-// Noticias de las cadenas que el equipo toma como referencia (Google Noticias), separadas para Diseño y para CM.
-const gn = (q: string, es: boolean) => `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&${es ? "hl=es-419&gl=US&ceid=US:es-419" : "hl=en-US&gl=US&ceid=US:en"}`;
-const GN = {
-  dgEs: { u: gn('("Ametller Origen" OR "Pão de Açúcar" OR "St Marche" OR "City Market" OR OXXO OR Monoprix OR Waitrose OR "M&S Food" OR "Whole Foods" OR "Trader Joe\'s" OR "Albert Heijn" OR Freshippo OR Jumbo OR Mercadona) (campaña OR packaging OR branding OR diseño OR "nueva imagen" OR cartelería OR tienda) when:45d', true), src: "Google Noticias", lang: "es", gn: true },
-  dgEn: { u: gn('("Ametller Origen" OR "Pao de Acucar" OR Monoprix OR Waitrose OR "M&S Food" OR "Whole Foods" OR "Trader Joe\'s" OR "Albert Heijn" OR Freshippo OR Hema OR Wegmans) (campaign OR packaging OR rebrand OR "store design" OR advertising OR "visual merchandising") when:45d', false), src: "Google News", lang: "en", gn: true },
-  cmEs: { u: gn('(OXXO OR Walmart OR Mercadona OR Lidl OR Aldi OR Carrefour OR Jumbo OR Chedraui OR Tottus OR Soriana OR "Pão de Açúcar" OR Coto) (TikTok OR Instagram OR "redes sociales" OR viral OR influencer OR campaña) when:30d', true), src: "Google Noticias", lang: "es", gn: true },
-  cmEn: { u: gn('("Trader Joe\'s" OR "Whole Foods" OR Walmart OR Aldi OR Lidl OR Tesco OR Waitrose OR "M&S Food" OR Carrefour) (TikTok OR Instagram OR "social media" OR viral OR influencer OR "ad campaign") when:30d', false), src: "Google News", lang: "en", gn: true },
+// Noticias recientes de Bing Noticias (ordenadas por fecha, con foto y resumen), separadas para Diseño, CM e Ideas.
+const bn = (q: string, es: boolean) => `https://www.bing.com/news/search?q=${encodeURIComponent(q)}&format=rss&qft=${encodeURIComponent('sortbydate="1"')}&${es ? "setlang=es&cc=MX" : "setlang=en&cc=US"}`;
+const B = (q: string, es = true): Feed => ({ u: bn(q, es), src: "Bing", lang: es ? "es" : "en", bing: true });
+const BN = {
+  dg: [B("supermercado packaging diseño"), B("supermercado nueva imagen tienda"), B("OXXO campaña"), B("Mercadona diseño envase"), B("Pão de Açúcar campaña"), B("marca propia supermercado diseño"),
+    B("Waitrose packaging", false), B("Trader Joe's packaging", false), B("Whole Foods store design", false), B("M&S Food campaign", false), B("supermarket rebrand", false), B("Albert Heijn campaign", false)],
+  insp: [B("diseño gráfico tendencia"), B("branding nueva identidad"), B("packaging design trend", false), B("rebrand new logo", false)],
+  cm: [B("supermercado TikTok"), B("supermercado campaña redes sociales"), B("OXXO TikTok"), B("Walmart campaña viral"), B("Mercadona redes sociales"),
+    B("grocery TikTok", false), B("Trader Joe's TikTok", false), B("Aldi social media campaign", false), B("Lidl TikTok", false), B("Tesco advert", false)],
+  redes: [B("Instagram nueva función"), B("TikTok nueva función"), B("WhatsApp canales novedad"), B("Instagram new feature", false), B("TikTok new feature", false)],
+  ideas: [B("tendencia TikTok"), B("viral TikTok comida"), B("trend Instagram reels"), B("challenge viral redes"), B("receta viral TikTok"), B("TikTok food trend", false), B("viral Instagram reel trend", false)],
 };
 // Cadenas de referencia → país (para la banderita) y nombre.
 const CHAINS: [RegExp, string, string][] = [
@@ -120,16 +124,20 @@ const SOCIAL = /tiktok|instagram|facebook|whatsapp|threads|youtube|social|redes|
 const CAMPAIGN = /campa|campaign|anuncio|spot|publicidad|advertis|\bad\b|ads\b|activaci|promo/i;
 const GROUPS: Record<string, { k: string; feeds: Feed[]; score: (txt: string) => number; need?: (txt: string) => boolean }[]> = {
   dg: [
-    { k: "super", feeds: [F.brandemia, F.dieline, F.potw, F.rdb, F.grocery, F.mdirecto, F.graffica, GN.dgEs, GN.dgEn],
+    { k: "super", feeds: [F.brandemia, F.dieline, F.potw, F.rdb, F.grocery, F.mdirecto, F.graffica, ...BN.dg],
       need: (t) => (RETAIL.test(t) || !!chainOf(t)) && DESIGN.test(t), score: (t) => (chainOf(t) ? 3 : 0) + (RETAIL.test(t) ? 2 : 0) + (DESIGN.test(t) ? 2 : 0) },
-    { k: "insp", feeds: [F.brandemia, F.graffica, F.creativos, F.dieline, F.potw],
+    { k: "insp", feeds: [F.brandemia, F.graffica, F.creativos, F.dieline, F.potw, ...BN.insp],
       score: (t) => (DESIGN.test(t) ? 2 : 0) + (RETAIL.test(t) ? 1 : 0) },
   ],
   cm: [
-    { k: "super", feeds: [F.mdirecto, F.roast, F.latam, F.grocery, F.smt, GN.cmEs, GN.cmEn],
+    { k: "super", feeds: [F.mdirecto, F.roast, F.latam, F.grocery, F.smt, ...BN.cm],
       need: (t) => (RETAIL.test(t) || !!chainOf(t)) && (SOCIAL.test(t) || CAMPAIGN.test(t)), score: (t) => (chainOf(t) ? 3 : 0) + (RETAIL.test(t) ? 2 : 0) + (SOCIAL.test(t) ? 2 : 0) + (CAMPAIGN.test(t) ? 1 : 0) },
-    { k: "redes", feeds: [F.smt, F.mdirecto, F.latam, F.roast],
+    { k: "redes", feeds: [F.smt, F.mdirecto, F.latam, F.roast, ...BN.redes],
       need: (t) => SOCIAL.test(t), score: (t) => (SOCIAL.test(t) ? 3 : 0) + (RETAIL.test(t) ? 1 : 0) },
+  ],
+  // Ideas Random (CM): lo que está pegando en TikTok, Instagram y Facebook, para inspirar a los creadores de contenido.
+  ideas: [
+    { k: "ideas", feeds: [...BN.ideas, F.smt], need: (t) => SOCIAL.test(t), score: (t) => (SOCIAL.test(t) ? 2 : 0) + (/receta|comida|food|recipe|super|grocery/i.test(t) ? 2 : 0) },
   ],
 };
 const decode = (t: string) => t.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/&#8230;/g, "…").replace(/&#8217;|&rsquo;/g, "’").replace(/&#8216;|&lsquo;/g, "‘").replace(/&#822[01];|&[lr]dquo;/g, "\"")
@@ -148,10 +156,16 @@ async function readFeed(f: Feed){
       const desc = tag(it, "description"), body = tag(it, "content:encoded");
       const img = (it.match(/<media:(?:content|thumbnail)[^>]+url="([^"]+)"/) || it.match(/<enclosure[^>]+url="([^"]+)"[^>]+image/) || decode(desc + body).match(/<img[^>]+src="([^"]+)"/) || [])[1] || "";
       let t = strip(tag(it, "title")); const u = decode(tag(it, "link")).trim(); let x = strip(desc).slice(0, 220), src = f.src;
-      if (f.gn){ const so = strip(tag(it, "source")); if (so){ src = so; t = t.replace(new RegExp("\\s+-\\s+" + so.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$"), ""); } x = ""; } // Google Noticias: el medio va aparte y no trae resumen
+      let link = u, bimg = "";
+      if (f.bing){ // Bing Noticias: el link real va en el parámetro url, el medio en News:Source y la foto en News:Image
+        try { link = new URL(u).searchParams.get("url") || u; } catch { /* queda el de Bing */ }
+        src = strip(tag(it, "News:Source")) || "Bing Noticias";
+        const bi = decode(tag(it, "News:Image")).trim(); if (bi) bimg = bi.replace(/^http:/, "https:") + "&w=640&h=360&c=14";
+      }
       const pd = Date.parse(decode(tag(it, "pubDate") || tag(it, "dc:date")).trim());
       const ch = chainOf(t + " " + x);
-      return { t, u, x, img: /^https:\/\//.test(img) ? decode(img) : "", d: isNaN(pd) ? "" : new Date(pd).toISOString(), src, lang: f.lang, gn: !!f.gn,
+      const im = bimg || (/^https:\/\//.test(img) ? decode(img) : "");
+      return { t, u: link, x, img: im, d: isNaN(pd) ? "" : new Date(pd).toISOString(), src, lang: f.lang,
         chain: ch?.n || "", cc: ch?.cc || SRC_CC[src] || (f.lang === "es" ? "LA" : "US") };
     }).filter((i) => i.t && i.d && /^https?:\/\//.test(i.u));
     feedMemo.set(f.u, { at: Date.now(), items });
@@ -179,12 +193,12 @@ async function tendencias(area: string, force: boolean){
   for (const g of GROUPS[area]){
     const all = (await Promise.all(g.feeds.map(readFeed))).flat();
     const seen = new Set<string>();
-    const scored = all.filter((i) => { const k = i.t.toLowerCase().slice(0, 60); if ((i.gn && !i.chain) || seen.has(k) || used.has(i.u)) return false; seen.add(k); return now - Date.parse(i.d) < 60 * 864e5; })
+    const scored = all.filter((i) => { const k = i.t.toLowerCase().slice(0, 60); if (!i.img || seen.has(k) || used.has(i.u)) return false; seen.add(k); return now - Date.parse(i.d) < 30 * 864e5; }) // solo con foto y de los últimos 30 días
       .map((i) => { const txt = i.t + " " + i.x, age = (now - Date.parse(i.d)) / 864e5;
-        return { ...i, ok: !g.need || g.need(txt), s: g.score(txt) + (i.img ? 1 : 0) + (i.lang === "es" ? 2 : 0) - age / 6 }; })
+        return { ...i, ok: !g.need || g.need(txt), s: g.score(txt) + (i.img ? 1 : 0) + (i.lang === "es" ? 2 : 0) - age / 2 }; }) // lo más nuevo primero
       .sort((a, b) => (Number(b.ok) - Number(a.ok)) || b.s - a.s);
     const per: Record<string, number> = {}, out: any[] = [];
-    for (const i of scored){ if ((per[i.src] = (per[i.src] || 0) + 1) > 3) continue; out.push(i); used.add(i.u); if (out.length === 8) break; }
+    for (const i of scored){ if ((per[i.src] = (per[i.src] || 0) + 1) > 3) continue; out.push(i); used.add(i.u); if (out.length === (area === "ideas" ? 12 : 8)) break; }
     const items = await Promise.all(out.map(async (i) => {
       const base = { t: i.t, u: i.u, x: i.x, img: i.img, d: i.d, src: i.src, lang: i.lang, chain: i.chain, cc: i.cc };
       if (i.lang === "es") return base;
@@ -244,7 +258,7 @@ Deno.serve(async (req) => {
         if (!c.giphy_key) return json({ ok: false, nokey: true, error: "La búsqueda de GIFs no está conectada" });
         return json({ ok: true, gifs: await giphy(c.giphy_key, String(b.q || "").trim().slice(0, 60)) });
       case "tendencias": {
-        const area = b.area === "cm" ? "cm" : "dg";
+        const area = b.area === "cm" ? "cm" : b.area === "ideas" ? "ideas" : "dg";
         const groups = await tendencias(area, !!b.force && admin);
         return groups.some((g: any) => g.items.length) ? json({ ok: true, groups }) : json({ ok: false, error: "No se pudieron traer las novedades" });
       }
