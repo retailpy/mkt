@@ -3251,8 +3251,14 @@ function pTVRedes(){
   <div class="tvstage" id="tvStage"></div></div>`;
 }
 let dashBrand = "Superseis";
+// Las publicaciones de Instagram se piden solas si tienen más de 20 horas (una vez por sesión; Admin total, Admin o CM).
+function postsAuto(){
+  if (postsAuto.done || !canMetaRefresh() || metaBusy.publicaciones || /^(localhost|127\.)/.test(location.hostname)) return;
+  const u = postsUpdated(); if (u && Date.now() - new Date(u) < 20 * 3600e3) return;
+  postsAuto.done = true; setTimeout(() => metaRefresh("publicaciones", "Publicaciones"), 600);
+}
 function pDashboard(){
-  const bs = socialBrands();
+  const bs = socialBrands(); postsAuto();
   return `<div><h1>${helloHTML()}</h1><p class="sub">Dashboard · seguidores y público de todas las cuentas, actualizados todos los días desde Meta.</p></div>
   ${folNote()}
   ${followersPanel()}
