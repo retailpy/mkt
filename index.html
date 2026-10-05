@@ -327,6 +327,7 @@ html.nomotion .picon{animation:none}
 .jlrow2 .jlgo{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:13.5px;color:var(--lc,var(--cyan));flex:none}.jlrow2 .jlgo svg{width:15px;height:15px}
 .jlrow2.drive{--lc:#22c55e}.jlrow2.canva{--lc:#a78bfa}.jlrow2.final{--lc:#10b981}.jlrow2.design{--lc:#f59e0b}
 .jlbig{font-weight:700}
+.jpn{font-style:normal;display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--line);font-size:12px;margin-right:6px}.jreq{display:block;font-size:12px;opacity:.85;margin:2px 0 4px}
 .vgal{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(180px,46%),1fr));gap:10px}
 .vimg{position:relative;display:block;aspect-ratio:4/5;border-radius:14px;overflow:hidden;background:var(--line);text-decoration:none}
 .vimg img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s}
@@ -2598,8 +2599,8 @@ function approveJob(j, cm = ""){
   render(); toast(`Aprobado. Le avisamos a ${firstName(j.owner)}${cm ? ` y a ${firstName(cm)} (CM)` : ""}.`);
 }
 const jobRounds = j => (j.changes || []).filter(c => !c.ok && !c.kind).length; // cuántas veces se pidieron cambios
-function sendJobChanges(j, text){
-  j.status = "En corrección"; (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), text, by:viewer.name });
+function sendJobChanges(j, text, req = ""){
+  j.status = "En corrección"; (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), text, by:viewer.name, ...(req ? { req } : {}) }); // req: quién pidió los cambios
   NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
   notify({ to:j.owner, type:"fix", job:j.id, text }); jobUI.form = null;
   render(); toast(`Le mandamos los cambios a ${firstName(j.owner)}.`);
@@ -2608,6 +2609,7 @@ function openFixModal(j){
   document.getElementById("fixpop")?.remove();
   const w = document.createElement("div"); w.id = "fixpop"; w.className = "fixpop";
   w.innerHTML = `<div class="fixbox" role="dialog" aria-modal="true" aria-labelledby="fixh"><h2 id="fixh">Pedir cambios</h2><p class="note">${esc(j.title)} · ${esc(j.owner)}</p>
+    <label>¿Quién pide los cambios? *<select class="base" id="fixReq">${[...new Set([j.requester, ...SOLICITANTES].filter(Boolean))].map(x => `<option>${esc(x)}</option>`).join("")}</select></label>
     <label>¿Qué hay que cambiar? *<textarea class="base" id="fixText" rows="5" placeholder="Ej.: agrandar el logo, cambiar el precio a 15.900, usar la foto 2"></textarea></label>
     <p class="perr" id="fixErr" hidden>Escribí los cambios para que ${esc(firstName(j.owner))} sepa qué corregir.</p>
     <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-fixsend="${j.id}">Enviar cambios</button></div></div>`;
@@ -2618,7 +2620,7 @@ document.addEventListener("click", e => {
   const b = e.target.closest("[data-fixsend]"); if (!b) return;
   const text = document.getElementById("fixText").value.trim(), j = jobById(b.dataset.fixsend);
   if (!text){ document.getElementById("fixErr").hidden = false; return; }
-  document.getElementById("fixpop").remove(); if (j) sendJobChanges(j, text);
+  const req = document.getElementById("fixReq")?.value || ""; document.getElementById("fixpop").remove(); if (j) sendJobChanges(j, text, req);
 });
 // Cambia la etapa respetando el flujo: cuando la persona termina (boceto o trabajo de CM) le avisa a Admin total para revisar.
 function moveJob(j, to){
@@ -4214,13 +4216,13 @@ function jobChain(j, input = true){
     if (c.kind === "boceto"){ ver++; return `<li class="ev bo"><span>${icon("send")} <b>Versión ${ver}</b> ${c.fix ? "con los cambios" : "lista para revisar"} · ${who(c.by)} · ${dm(c.date)} ${c.time}${c.link ? ` · <a href="${esc(c.link)}" target="_blank" rel="noopener">ver la versión ${ver}</a>` : ""}</span></li>`; }
     const me = c.by === viewer.name || (!c.by && viewer.role === "Admin total");
     if (c.kind === "nota") return `<li class="msg ${me ? "me" : ""}"><div class="bub"><b>${esc(who(c.by))}</b><p>${esc(c.text)}</p><span>${dm(c.date)} ${c.time}</span></div></li>`;
-    round++; return `<li class="msg fx ${me ? "me" : ""}"><div class="bub"><b>${esc(who(c.by))} · cambios${ver ? ` sobre la versión ${ver}` : ""} (ronda ${round})${c.ext ? " · anotados" : ""}</b><p>${esc(c.text)}</p><span>${dm(c.date)} ${c.time}</span></div></li>`;
+    round++; return `<li class="msg fx ${me ? "me" : ""}"><div class="bub"><b>${esc(who(c.by))} · cambios${ver ? ` sobre la versión ${ver}` : ""} (ronda ${round})${c.ext ? " · anotados" : ""}</b>${c.req ? `<small class="jreq">Los pidió: ${esc(c.req)}</small>` : ""}<p>${esc(c.text)}</p><span>${dm(c.date)} ${c.time}</span></div></li>`;
   };
   if (!list.length && !canWrite) return "";
-  return `<div class="jchain"><h3>${icon("pencil")} Cambios pedidos <span class="jcount${jobRounds(j) ? " on" : ""}">${jobRounds(j)} ${jobRounds(j) === 1 ? "ronda" : "rondas"}</span></h3>
+  return `<div class="jchain"><h3>${icon("pencil")} 5 · Cambios pedidos <span class="jcount${jobRounds(j) ? " on" : ""}">${jobRounds(j)} ${jobRounds(j) === 1 ? "ronda" : "rondas"}</span></h3>
     ${list.length ? `<ol>${list.map(item).join("")}</ol>` : `<p class="note" style="margin:0">Todavía no hay movimientos.</p>`}
     ${canWrite ? `<div class="jcin"><textarea class="base" id="jcText" rows="2" placeholder="${viewer.role === "Admin total" ? "Escribí un comentario para " + esc(firstName(j.owner)) + "…" : "Escribí un comentario, o anotá los cambios que te pidieron (ej.: Comercial)…"}"></textarea><button class="btn" type="button" data-jcsend="${j.id}">${icon("send")} Enviar</button></div>
-      ${viewer.role === "Admin total" ? "" : `<label class="jcext"><input type="checkbox" id="jcExt"> Es un pedido de cambios (se cuenta como ronda)</label>`}` : ""}</div>`;
+      ${viewer.role === "Admin total" ? "" : `<label class="jcext"><input type="checkbox" id="jcExt"> Es un pedido de cambios (se cuenta como ronda)</label><label class="jcext">¿Quién los pidió? <select class="base" id="jcReq">${[...new Set([j.requester, ...SOLICITANTES].filter(Boolean))].map(x => `<option>${esc(x)}</option>`).join("")}</select></label>`}` : ""}</div>`;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-jdlink]"); if (!b) return;
   const j = jobById(b.dataset.jdlink), v = document.getElementById("jDesignLink")?.value.trim(); if (!j) return; j.designLink = v; render(); toast(v ? "Link guardado: Admin total lo ve en la ficha." : "Quitaste el link."); });
@@ -4228,7 +4230,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-jcse
   const j = jobById(b.dataset.jcsend), t = document.getElementById("jcText")?.value.trim(); if (!j || !t) return;
   if (jobUI.form) readJobForm(jobUI.form.job); // no se pierde lo que estabas editando
   const ext = !!document.getElementById("jcExt")?.checked;
-  (j.changes = j.changes || []).push(ext ? { date:TODAY, time:nowTime(), text:t, by:viewer.name, ext:true } : { date:TODAY, time:nowTime(), kind:"nota", text:t, by:viewer.name });
+  (j.changes = j.changes || []).push(ext ? { date:TODAY, time:nowTime(), text:t, by:viewer.name, ext:true, req:document.getElementById("jcReq")?.value || "" } : { date:TODAY, time:nowTime(), kind:"nota", text:t, by:viewer.name });
   notify(viewer.role === "Admin total" ? { to:j.owner, type:"nota", job:j.id, text:t } : { to:"admin", type:"nota", job:j.id, who:viewer.name, text:t });
   render(); toast("Comentario enviado."); });
 // ----- Texto del pedido: un mini editor (tamaño, negrita, cursiva, subrayado, listas) para el brief, -----
@@ -4409,17 +4411,19 @@ function jobFicha(){
     <div class="jp-top"><button class="btn" data-jfclose>${icon("arrow-left")} Volver</button>${at ? `<button class="btn" data-jedit="${j.id}">${icon("pencil")} Editar pedido</button>` : ""}</div>
     <header class="jp-h"><span class="note">${j.area === "CM" ? "Pedido para Community Manager" : "Pedido de diseño gráfico"}${j.ex ? ` <span class="exbadge sm">Ejemplo para mostrar cómo se carga</span>` : ""}</span><h1>${esc(j.title)}</h1><div class="chips">${pill(j.status, JOB_COLOR[j.status])}${urgBadge(j)}${j.rep?.days?.length ? `<span class="repbadge">${icon("repeat")} Se repite: ${esc(repText(j.rep).toLowerCase())}</span>${at ? `<button class="btn sm" type="button" data-jrepstop="${j.id}">Dejar de repetir</button>` : ""}` : j.repOf ? `<span class="repbadge">${icon("repeat")} Pedido que se repite</span>` : ""}</div></header>
     ${last ? `<div class="jfmsg"><b>${icon("pencil")} Cambios que pidió Admin total</b><p>${esc(last.text)}</p><span>${dm(last.date)} · ${last.time}</span></div>` : ""}
-    <section class="panel jp-sec"><h2 class="pmh">${pmIco("clipboard-list")}Datos del pedido</h2>
-      <div class="jfgrid">${row("Marca", brandTag(j.brand))}${row("Tipo de trabajo", esc(j.piece))}${row("Solicitante", esc(j.requester))}${row("Responsable", esc(j.owner))}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", prioTag(j.priority))}${row("Complejidad", esc(j.complexity))}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}</div>
+    <section class="panel jp-sec"><h2 class="pmh">${pmIco("clipboard-list")}<i class="jpn">1</i>Qué hay que hacer</h2>
+      <div class="jfgrid">${row("Marca", brandTag(j.brand))}${row("Tipo de trabajo", esc(j.piece))}${row("Trabajo solicitado", esc(j.title))}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}</div>
       ${j.notes ? `<div class="jfnotes"><span>Observaciones</span><p>${esc(j.notes)}</p></div>` : ""}</section>
+    <section class="panel jp-sec"><h2 class="pmh">${pmIco("users")}<i class="jpn">2</i>Quién y para cuándo</h2>
+      <div class="jfgrid"><div><span>Quién lo pidió</span><b>${esc(j.requester || "Sin indicar")}</b></div>${row("Responsable", esc(j.owner))}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", prioTag(j.priority))}${row("Complejidad", esc(j.complexity))}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}</div></section>
     ${jobBriefSection(j)}
     <section class="panel jp-sec jp-mat"><h2 class="pmh">${pmIco("link")}Links de acceso</h2>
       ${j.finalLink ? linkRow(j.finalLink, "final") : ""}
       ${linkEditor(j, canEditJobLinks(j) ? "ficha" : "")}
       ${(j.files || []).length ? filesBlock(j, false) : ""}</section>
-    <section class="panel jp-sec jfact"><h2 class="pmh">${pmIco("route")}Recorrido del pedido</h2>${jobProcess(j)}
+    <section class="panel jp-sec jfact"><h2 class="pmh">${pmIco("route")}<i class="jpn">4</i>Estado del pedido</h2>${jobProcess(j)}
       ${acts ? `<div class="jpnow"><b>Lo que podés hacer ahora</b>${acts}</div>` : ""}</section>
-    <section class="panel jp-sec jp-changes${jobRounds(j) ? " has" : ""}">${jobChain(j) || `<div class="jchain"><h3>Cambios pedidos</h3><p class="note" style="margin:0">Todavía no hay cambios ni comentarios.</p></div>`}</section>
+    <section class="panel jp-sec jp-changes${jobRounds(j) ? " has" : ""}">${jobChain(j) || `<div class="jchain"><h3>5 · Cambios pedidos</h3><p class="note" style="margin:0">Todavía no hay cambios ni comentarios.</p></div>`}</section>
   </div>`;
 }
 document.addEventListener("click", e => {
@@ -4448,8 +4452,6 @@ function jobForm(){
       <label>Tipo de trabajo *<select class="base" id="jPiece">${opt(types, j.piece)}</select></label>
       <label>Marca *<select class="base" id="jBrand">${opt(myBrands(), j.brand)}</select></label>
       <label class="wide" style="grid-column:1/-1">Trabajo solicitado *<input class="base" id="jTitle" value="${esc(j.title)}" placeholder="${area === "CM" ? "Ej.: Reel receta navideña: clericó en 1 minuto" : "Ej.: Post de Navidad: canasta navideña 20% OFF"}" required></label>
-      <div style="grid-column:1/-1"><span class="jll">Links de acceso <span class="note">(pegá el link de Drive, de Canva o de otro sitio; se pueden sumar otros, por ejemplo Logo o Diseño)</span></span>${linkEditor(j, "form")}</div>
-      <div style="grid-column:1/-1"><span class="jll">Texto del pedido <span class="note">(de qué se trata, el texto que va en el diseño o lo que dice el video)</span></span>${rtEditor("jBriefF", j.brief ? cleanRich(j.brief) : "", BRIEF_PH[area])}</div>
       <label style="grid-column:1/-1">Observaciones <span class="note">(opcional, algo corto)</span><textarea class="base" id="jNotes" rows="2" placeholder="Ej.: Usar el logo nuevo y los colores de la campaña. Imprimir 40 unidades.">${esc(j.notes)}</textarea></label>
       </div></section>
       <section class="jfs"><h3><i>2</i>Quién y para cuándo</h3><div class="jfg">
@@ -4462,7 +4464,11 @@ function jobForm(){
         <label class="jrepu">Hasta <span class="note">(vacío = siempre)</span><input class="base" type="date" id="jRepUntil" value="${esc(j.rep?.until || "")}"></label>
         <p class="note" style="margin:0">Ej.: “Diseño de ofertas de los lunes” → marcá Lunes: cada lunes aparece un pedido nuevo para ese día, ya asignado.</p></div>`}
       </div></section>
-      <section class="jfs"><h3><i>3</i>Estado</h3><div class="jfg">
+      <section class="jfs"><h3><i>3</i>Texto del pedido y links</h3><div class="jfg">
+      <div style="grid-column:1/-1"><span class="jll">Links de acceso <span class="note">(pegá el link de Drive, de Canva o de otro sitio; se pueden sumar otros, por ejemplo Logo o Diseño)</span></span>${linkEditor(j, "form")}</div>
+      <div style="grid-column:1/-1"><span class="jll">Texto del pedido <span class="note">(de qué se trata, el texto que va en el diseño o lo que dice el video)</span></span>${rtEditor("jBriefF", j.brief ? cleanRich(j.brief) : "", BRIEF_PH[area])}</div>
+      </div></section>
+      <section class="jfs"><h3><i>4</i>Estado</h3><div class="jfg">
       <label>Estado *<select class="base" id="jStatus">${opt(statesOf(area), j.status)}</select></label>
       <label>Prioridad *<select class="base" id="jPrio">${opt(PRIORIDADES, j.priority)}</select></label>
       <label>Complejidad *<select class="base" id="jComp">${opt(COMPLEJIDAD, j.complexity)}</select></label>
