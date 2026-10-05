@@ -81,19 +81,22 @@ async function scriptList(url: string, secret: string){
 // Se guarda en app_state (cache:trends:<área>) y se renueva cada 3 horas. Las traducciones y fotos ya buscadas se reutilizan.
 async function tendencias(area: string, force: boolean){
   const key = `cache:trends:${area}`;
-  const { data: rows } = await db.from("app_state").select("key, data").in("key", ["cache:trends:dg", "cache:trends:cm", "cache:trends:ideas"]);
+  const { data: rows } = await db.from("app_state").select("key, data").in("key", ["cache:trends:dg", "cache:trends:cm", "cache:trends:ideas", "s:APP_FLAGS"]);
   const row = (rows || []).find((r: any) => r.key === key), prev = row?.data;
-  if (prev?.groups && prev.v === 2 && !force && Date.now() - (prev.at || 0) < 3 * 3600e3) return prev.groups;
+  // Tableros de Pinterest de la galería: los que eligió Admin total (APP_FLAGS.pinboards) o los de referencia.
+  const flags = (rows || []).find((r: any) => r.key === "s:APP_FLAGS")?.data || {};
+  const boards = (Array.isArray(flags.pinboards) ? flags.pinboards : []).filter((b: any) => typeof b === "string" && /^[^/\s]{1,60}\/[^/\s]{1,100}$/.test(b)).slice(0, 8);
+  if (prev?.groups && prev.v === 3 && !force && Date.now() - (prev.at || 0) < 3 * 3600e3) return prev.groups;
   const known = new Map<string, any>();
-  (rows || []).forEach((r: any) => (r.data?.groups || []).forEach((g: any) => (g.items || []).forEach((i: any) => known.set(i.u, i))));
-  const { groups } = await armar(area, known);
+  (rows || []).filter((r: any) => r.key.startsWith("cache:")).forEach((r: any) => (r.data?.groups || []).forEach((g: any) => (g.items || []).forEach((i: any) => known.set(i.u, i))));
+  const { groups } = await armar(area, known, boards.length ? { boards } : {});
   if (groups.some((g) => g.items.length)){
-    const data = { v: 2, at: Date.now(), groups };
+    const data = { v: 3, at: Date.now(), groups };
     if (row) await db.from("app_state").update({ data, updated_at: new Date().toISOString() }).eq("key", key);
     else await db.from("app_state").insert({ key, data });
     return groups;
   }
-  return prev?.v === 2 ? prev.groups : [];
+  return prev?.v >= 2 ? prev.groups : [];
 }
 
 Deno.serve(async (req) => {
