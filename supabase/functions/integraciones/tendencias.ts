@@ -29,7 +29,8 @@ const M = {
 const slug = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const RT = (t: string): Feed => ({ u: `https://roastbrief.com.mx/tag/${slug(t)}/feed/`, src: "Roastbrief", lang: "es", cc: "MX", days: 400 });
 // Tableros de Pinterest (afiches, encartes, posteos y carruseles de diseño): su feed oficial (RSS). Los elige Admin total.
-export const PIN_BOARDS = ["stephanygonzalezblanco95/inspiración-redes-sociales", "94maripf/social-media-post-design", "chellypoplima/modelos-encarte"];
+// Diseño: afiches, encartes y promociones de supermercado. CM: posteos, carruseles y líneas gráficas de redes.
+export const PIN_BOARDS: Record<string, string[]> = { dg: ["chellypoplima/modelos-encarte", "multimediahstudio/promociones-supermercado"], cm: ["stephanygonzalezblanco95/inspiración-redes-sociales", "94maripf/social-media-post-design"] };
 const PIN = (b: string): Feed => ({ u: `https://www.pinterest.com/${b.split("/").map(encodeURIComponent).join("/")}.rss`, src: "Pinterest", lang: "es", cc: "WW", days: 3650, pin: b });
 const P: Record<string, Feed> = { // medios sin búsqueda por feed: solo lo último
   mm: { u: "https://www.meioemensagem.com.br/feed", src: "Meio & Mensagem", lang: "pt", cc: "BR", days: 45 },
@@ -45,10 +46,11 @@ const B = (q: string, lang = "es"): Feed => ({ u: `https://www.bing.com/news/sea
 
 // Fechas comerciales que vienen (Paraguay/Latinoamérica): cómo las comunican los supermercados y las marcas.
 const FECHAS: Record<number, string[]> = { 0:["vuelta a clases","verano"], 1:["vuelta a clases","San Valentín"], 2:["Pascua","Semana Santa"], 3:["Pascua","Día de la Madre"], 4:["Día de la Madre","Día del Padre"],
-  5:["Día del Padre","San Juan"], 6:["vacaciones de invierno","Día de la Amistad"], 7:["Día del Niño","primavera"], 8:["primavera","Día del Niño"], 9:["Halloween","Black Friday"], 10:["Black Friday","Navidad"], 11:["Navidad","Año Nuevo"] };
+  5:["Día del Padre","San Juan"], 6:["vacaciones de invierno","Día de la Amistad"], 7:["Día del Niño","primavera"], 8:["primavera","Día del Niño"], 9:["Halloween","Octubre Rosa","Black Friday","Navidad"], 10:["Black Friday","Navidad"], 11:["Navidad","Año Nuevo"] };
 // [búsqueda en español, en inglés, en portugués, cómo reconocerla en el texto]
 const FECHA: Record<string, [string, string, string, RegExp]> = {
   "Navidad": ["navidad", "christmas", "natal", /navidad|navide[ñn]|christmas|xmas|\bnatal(ino|ina|inas|inos)?\b|pap[aá] noel|santa claus|holiday (ad|campaign|season)/i],
+  "Octubre Rosa": ["octubre rosa", "breast cancer awareness", "outubro rosa", /octubre rosa|outubro rosa|pink october|breast cancer|c[aá]ncer de mama|c[aâ]ncer de mama|lazo rosa/i],
   "Black Friday": ["black friday", "black friday", "black friday", /black friday|cyber monday|cyber week/i],
   "Halloween": ["halloween", "halloween", "halloween", /halloween|d[ií]a de (los )?muertos|dia das bruxas/i],
   "Año Nuevo": ["año nuevo", "new year", "réveillon", /a[ñn]o nuevo|new year|ano novo|r[ée]veillon|fin de a[ñn]o/i],
@@ -65,7 +67,20 @@ const FECHA: Record<string, [string, string, string, RegExp]> = {
   "Día del Niño": ["día del niño", "children's day", "dia das crianças", /d[ií]a del ni[ñn]o|d[ií]a de la ni[ñn]ez|children'?s day|dia das crian[cç]as/i],
   "primavera": ["primavera", "spring", "primavera", /primavera|\bspring\b/i],
 };
-export const fechasQueVienen = () => { const m = new Date().getMonth(); return [...new Set([...FECHAS[m], ...FECHAS[(m + 1) % 12]])].slice(0, 3); };
+export const fechasQueVienen = () => { const m = new Date().getMonth(); return [...new Set([...FECHAS[m], ...FECHAS[(m + 1) % 12]])].slice(0, 4); };
+// Fechas del calendario de Paraguay (mes, 0 = enero). Una nota o pieza de una fecha que no viene en los próximos 3 meses
+// no se muestra (en octubre no sale el Día del Trabajador ni el Día de la Madre de mayo).
+const EVENTOS: [RegExp, number[]][] = [
+  [/d[ií]a del trabajador|d[ií]a do trabalhador|1 de mayo|1º de maio|labou?r day|may day/i, [4]], [/d[ií]a de la madre|d[ií]a de las madres|dia das m[aã]es|mother'?s day/i, [4]],
+  [/independencia|independ[eê]ncia/i, [4]], [/d[ií]a del padre|dia dos pais|father'?s day/i, [5]], [/san juan|festas? juninas?|s[aã]o jo[aã]o/i, [5]],
+  [/d[ií]a del amigo|d[ií]a de la amistad|dia do amigo|friendship day/i, [6]], [/d[ií]a del ni[ñn]o|dia das crian[cç]as|children'?s day/i, [7]],
+  [/primavera|d[ií]a de la juventud|d[ií]a del estudiante/i, [8]], [/halloween|dia das bruxas|d[ií]a de (los )?muertos/i, [9]], [/octubre rosa|outubro rosa|pink october|c[aá]ncer de mama/i, [9]],
+  [/black friday|cyber monday|cyber week/i, [10]], [/navidad|navide[ñn]|christmas|xmas|\bnatal(ino|ina)?\b|pap[aá] noel|santa claus/i, [11]], [/a[ñn]o nuevo|ano novo|new year|r[ée]veillon/i, [11, 0]],
+  [/san valent[ií]n|valentine|enamorados|dia dos namorados/i, [1]], [/carnaval|carnival/i, [1]], [/vuelta a clases|regreso a clases|back to school|volta [àa]s aulas/i, [1]],
+  [/pascua|easter|p[aá]scoa|semana santa/i, [2, 3]], [/copa am[eé]rica|mundial|world cup|copa do mundo/i, [5, 6]],
+];
+const mesesQueVienen = () => { const m = new Date().getMonth(); return [m, (m + 1) % 12, (m + 2) % 12]; };
+export const fueraDeTemporada = (txt: string) => { const ok = mesesQueVienen(); return EVENTOS.some(([re, ms]) => re.test(txt) && !ms.some((x) => ok.includes(x))); };
 
 // Cadenas de referencia → país (para la banderita) y nombre.
 const CHAINS: [RegExp, string, string][] = [
@@ -251,8 +266,8 @@ const firstSentence = (x: string) => { const s = x.replace(/…$/, "").split(/(?
 
 // ---------- Armado de los grupos de un área ----------
 // known: notas ya armadas antes (con su traducción y su foto), para no traducir ni buscar fotos dos veces.
-export async function armar(area: string, known: Map<string, any>, { debug = false, translate = true, boards = PIN_BOARDS } = {}){
-  const now = Date.now(), used = new Set<string>(), groups: { k: string; items: Item[] }[] = [], stats: Stat[] = [], dbg: any[] = [];
+export async function armar(area: string, known: Map<string, any>, { debug = false, translate = true, boards = PIN_BOARDS[area] || [], exclude = [] as string[] } = {}){ // exclude: lo que ya muestra la otra área
+  const now = Date.now(), used = new Set<string>(exclude), groups: { k: string; items: Item[] }[] = [], stats: Stat[] = [], dbg: any[] = [];
   const fechas = fechasQueVienen(), fechaRe = new RegExp(fechas.map((f) => FECHA[f]?.[3].source || f).join("|"), "i");
   for (const g of GROUPS[area] || []){
     const all = (await Promise.all(g.feeds().map((f) => readFeed(f, debug ? stats : undefined)))).flat();
@@ -261,7 +276,7 @@ export async function armar(area: string, known: Map<string, any>, { debug = fal
       const k = i.t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim().slice(0, 60);
       if (seenU.has(i.u) || seenT.has(k)) return false; seenU.add(i.u); seenT.add(k);
       if (now - Date.parse(i.d) > i.days * 864e5 || Date.parse(i.d) > now + 2 * 864e5) return false;
-      if (negTitle(i.t) || NEG_X.test(i.t + " " + i.x)){ if (debug) negs.push(`${i.src}: ${i.t}`); return false; }
+      if (negTitle(i.t) || NEG_X.test(i.t + " " + i.x) || fueraDeTemporada(i.t + " " + i.x)){ if (debug) negs.push(`${i.src}: ${i.t}`); return false; }
       return true;
     }).map((i) => {
       const f = feat(i.t, i.x, g.fecha ? fechaRe : undefined), ch = chainOf(i.t + " " + i.x), age = (now - Date.parse(i.d)) / 864e5;
@@ -271,7 +286,7 @@ export async function armar(area: string, known: Map<string, any>, { debug = fal
     const ok = cands.filter((i) => i.ok).sort((a, b) => b.s - a.s);
     const pick: any[] = [];
     // Pão de Açúcar siempre: su nota creativa más nueva va primero (aunque ya esté en otro grupo).
-    if (g.pda){ const p = ok.filter((i) => i.f.pda).sort((a, b) => b.d.localeCompare(a.d))[0]; if (p) pick.push(p); }
+    if (g.pda){ const p = ok.filter((i) => i.f.pda && !used.has(i.u)).sort((a, b) => b.d.localeCompare(a.d))[0]; if (p) pick.push(p); }
     const per: Record<string, number> = {};
     pick.forEach((i) => { per[i.src] = (per[i.src] || 0) + 1; });
     for (const cap of [g.cap, g.cap + 2]) for (const i of ok){
@@ -296,7 +311,7 @@ export async function armar(area: string, known: Map<string, any>, { debug = fal
   }
   // Galería de piezas gráficas: los pines más nuevos de los tableros de Pinterest (todas sus imágenes, sin traducir).
   if (area === "dg" || area === "cm"){
-    const pins = (await Promise.all(boards.slice(0, 8).map((b) => readFeed(PIN(b), debug ? stats : undefined)))).flat().filter((i) => i.img)
+    const pins = (await Promise.all(boards.slice(0, 8).map((b) => readFeed(PIN(b), debug ? stats : undefined)))).flat().filter((i) => i.img && !used.has(i.u) && !fueraDeTemporada(i.t + " " + i.x))
       .sort((a, b) => b.d.localeCompare(a.d));
     const per: Record<string, number> = {}, seen = new Set<string>(), out: Item[] = [];
     for (const cap of [6, 99]) for (const i of pins){ if (out.length >= 18) break; if (seen.has(i.u) || (per[i.pin] || 0) >= cap) continue; seen.add(i.u); per[i.pin] = (per[i.pin] || 0) + 1;
@@ -306,4 +321,4 @@ export async function armar(area: string, known: Map<string, any>, { debug = fal
   return debug ? { groups, stats, dbg } : { groups };
 }
 // Para las pruebas.
-export const __t = { feat, negTitle, NEG_X, chainOf, GROUPS };
+export const __t = { feat, negTitle, NEG_X, chainOf, GROUPS, fueraDeTemporada };

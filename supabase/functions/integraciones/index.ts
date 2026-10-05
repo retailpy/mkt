@@ -86,12 +86,15 @@ async function tendencias(area: string, force: boolean){
   // Tableros de Pinterest de la galería: los que eligió Admin total (APP_FLAGS.pinboards) o los de referencia.
   const flags = (rows || []).find((r: any) => r.key === "s:APP_FLAGS")?.data || {};
   const boards = (Array.isArray(flags.pinboards) ? flags.pinboards : []).filter((b: any) => typeof b === "string" && /^[^/\s]{1,60}\/[^/\s]{1,100}$/.test(b)).slice(0, 8);
-  if (prev?.groups && prev.v === 3 && !force && Date.now() - (prev.at || 0) < 3 * 3600e3) return prev.groups;
+  if (prev?.groups && prev.v === 4 && !force && Date.now() - (prev.at || 0) < 3 * 3600e3) return prev.groups;
   const known = new Map<string, any>();
   (rows || []).filter((r: any) => r.key.startsWith("cache:")).forEach((r: any) => (r.data?.groups || []).forEach((g: any) => (g.items || []).forEach((i: any) => known.set(i.u, i))));
-  const { groups } = await armar(area, known, boards.length ? { boards } : {});
+  // CM y Diseño ven cosas distintas: no se repite lo que ya muestra la otra área.
+  const other = area === "dg" ? "cache:trends:cm" : area === "cm" ? "cache:trends:dg" : "";
+  const exclude = ((rows || []).find((r: any) => r.key === other)?.data?.groups || []).flatMap((g: any) => (g.items || []).map((i: any) => i.u));
+  const { groups } = await armar(area, known, { exclude, ...(boards.length ? { boards } : {}) });
   if (groups.some((g) => g.items.length)){
-    const data = { v: 3, at: Date.now(), groups };
+    const data = { v: 4, at: Date.now(), groups };
     if (row) await db.from("app_state").update({ data, updated_at: new Date().toISOString() }).eq("key", key);
     else await db.from("app_state").insert({ key, data });
     return groups;

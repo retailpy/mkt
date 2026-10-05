@@ -11,15 +11,16 @@ const { ORDEN, cronOrUser, graph, brandPages, save, tokenHint } = require("./_li
 
 // Cuenta de Instagram → nombre de la cadena y país (para la banderita). Si un usuario no existe, queda el error y sigue.
 const CUENTAS = {
+  salemma_super: ["Salemma", "PY"], realsupermercados: ["Real", "PY"],
   paodeacucar: ["Pão de Açúcar", "BR"], carrefourbrasil: ["Carrefour Brasil", "BR"], stmarche: ["St. Marche", "BR"],
-  oxxo_mx: ["OXXO", "MX"], citymarketmx: ["City Market", "MX"],
+  citymarketmx: ["City Market", "MX"],
   ametllerorigen: ["Ametller Origen", "ES"], mercadona: ["Mercadona", "ES"], elcorteingles: ["El Corte Inglés", "ES"],
   wholefoods: ["Whole Foods", "US"], traderjoes: ["Trader Joe's", "US"], target: ["Target", "US"], wegmans: ["Wegmans", "US"],
   waitrose: ["Waitrose", "GB"], marksandspencer: ["M&S Food", "GB"], tesco: ["Tesco", "GB"], sainsburys: ["Sainsbury's", "GB"],
   monoprix: ["Monoprix", "FR"], albertheijn: ["Albert Heijn", "NL"], lidlespana: ["Lidl", "DE"], jumbochile: ["Jumbo", "CL"],
 };
 const POR_CUENTA = 8;   // publicaciones guardadas por cuenta
-const DIAS = 75;        // solo lo reciente
+const DIAS = 45;        // solo lo reciente (lo de la temporada)
 const FIELDS = (u) => `business_discovery.username(${u}){username,name,media.limit(18){media_type,media_product_type,media_url,permalink,caption,timestamp}}`;
 
 module.exports = async (req, res) => {

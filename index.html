@@ -287,6 +287,8 @@ html.navmini .nav-group.closed > a{display:flex}
 .picon:hover,.picon:focus-visible{--pc:var(--cyan)}.picon:hover .pring svg{filter:drop-shadow(0 0 10px color-mix(in srgb,var(--cyan) 70%,transparent))}
 .picon:hover .pring,.picon:focus-visible .pring{transform:translateY(-5px);box-shadow:0 18px 40px -14px color-mix(in srgb,var(--pc) 70%,transparent)}
 .picon:hover .pring::before{transform:rotate(180deg)}
+.pring .ibc{position:absolute;top:6%;right:6%;background:#ef4444;color:#fff;font-size:14px;font-weight:800;min-width:30px;height:30px;padding:0 8px;border-radius:15px;display:grid;place-items:center;box-shadow:0 0 0 3px var(--bg,#020617)}
+#nav .ibc{background:#ef4444;color:#fff}
 @keyframes picIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 html.nomotion .picon{animation:none}
 .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr));gap:16px}
@@ -332,6 +334,7 @@ html.nomotion .picon{animation:none}
 .vimg{position:relative;display:block;aspect-ratio:4/5;border-radius:14px;overflow:hidden;background:var(--line);text-decoration:none}
 .vimg img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s}
 .vimg span{position:absolute;inset:auto 0 0 0;padding:28px 10px 9px;background:linear-gradient(transparent,rgba(2,6,23,.88));color:#fff;display:flex;flex-direction:column;gap:2px;opacity:0;transition:opacity .2s}
+.vimg .vcap{opacity:.85;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .vimg span b{font-size:12.5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.vimg span small{font-size:11px;opacity:.8}
 .vimg:hover img,.vimg:focus-visible img{transform:scale(1.04)}.vimg:hover span,.vimg:focus-visible span{opacity:1}
 @media (hover:none){.vimg span{opacity:1}}
@@ -964,6 +967,7 @@ select.base.sm{padding:4px 8px;border-radius:10px;font-size:12.5px;border-color:
 @keyframes slidein{from{transform:translateX(30px);opacity:.4}}
 .drawer-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:18px 20px;border-bottom:1px solid var(--line-2)}
 .drawer-b{padding:18px 20px;overflow-y:auto}
+.drawer.pfull{position:static;transform:none;width:100%;max-height:none;animation:none;z-index:auto;box-shadow:none}.drawer.pfull .drawer-b{overflow:visible}
 .pform select.base{width:100%}
 .ev .st{padding-top:0!important;font-size:10px;font-weight:700;color:var(--s)!important}
 /* cumpleaños */
@@ -3158,9 +3162,9 @@ function tvBrandHero(b){
 // Ciclo: general → tabla de seguidores → demográfico de una marca → general → tabla → siguiente marca…
 // ---------- TV Impacto Redes: 1) lo mejor de cada marca  2…) top 10 de cada marca. 10 segundos cada pantalla ----------
 // Últimas 6 publicaciones de Instagram de cada marca (imagen reducida), debajo de Seguidores por marca.
-const IG_MAIN = ["Superseis","Stock","Delimarket"]; // las marcas principales: sus últimas fotos de Instagram en el Informe mensual (en el Dashboard todavía no)
+const IG_MAIN = ["Superseis","Stock","Delimarket"]; // las marcas principales: sus últimas publicaciones de Instagram en el Dashboard y en el Informe mensual
 function lastPostsPanel(bs){
-  const rows = bs.map(b => ({ b, list:(META_POSTS[b]?.posts || []).slice().sort((x, y) => y.ts.localeCompare(x.ts)).slice(0, 6), h:META_POSTS[b]?.handle })).filter(r => r.list.length);
+  const rows = bs.map(b => ({ b, list:(META_POSTS[b]?.posts || []).filter(x => !/reel|video/i.test(x.type || "")).sort((x, y) => y.ts.localeCompare(x.ts)).slice(0, 6), h:META_POSTS[b]?.handle })).filter(r => r.list.length);
   return `<div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram</h2><div class="tag-row"><span class="tag">Fuente: Meta</span>${updTag(postsUpdated())}</div></div>
     <div class="panel-b">${rows.length ? rows.map(r => `<div class="lpost"><div class="lph">${brandTag(r.b)}${r.h ? `<span class="note">${esc(r.h)}</span>` : ""}</div><div class="lpgrid">${r.list.map(x => { const pp = { img:x.img, format:x.type };
       return `<a class="lpitem" href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="${esc((x.cap || "").slice(0, 140))}">${pubThumb(pp, "lg")}<span class="lpmeta">${dm(new Intl.DateTimeFormat("en-CA", { timeZone:"America/Asuncion" }).format(new Date(x.ts)))} · ♥ ${dots(x.likes || 0)}</span></a>`; }).join("")}</div></div>`).join("")
@@ -3252,9 +3256,10 @@ function pDashboard(){
   return `<div><h1>${helloHTML()}</h1><p class="sub">Dashboard · seguidores y público de todas las cuentas, actualizados todos los días desde Meta.</p></div>
   ${folNote()}
   ${followersPanel()}
+  ${lastPostsPanel(IG_MAIN)}
   ${followersTable(false)}
   <div class="head"><h2 style="margin:0">Demográfico por marca</h2><div class="chips">${bs.map(b => `<button class="chip ${dashBrand === b ? "on" : ""}" data-dbrand="${b}">${b}</button>`).join("")}</div></div>
-  <div class="dash-demo" id="dashDemo">${demoBlock(bs.includes(dashBrand) ? dashBrand : bs[0], 0)}</div>`;
+  <div class="dash-demo" id="dashDemo">${demoBlock(bs.includes(dashBrand) ? dashBrand : bs[0], 0)}${lastPostsPanel([bs.includes(dashBrand) ? dashBrand : bs[0]])}</div>`;
 }
 function profileCard(v){
   return `<div class="panel"><div class="me">${avatarHTML(v, "", "width:84px;height:84px;border-radius:26px;font-size:24px")}
@@ -3316,7 +3321,7 @@ function staffDrawer(){
       <label style="grid-column:1/-1">Frase<input class="base" id="sfQuote" maxlength="120" value="${esc(pp.quote || "")}"></label>
       <label style="grid-column:1/-1">Habilidades (separadas por coma)<input class="base" id="sfSkills" value="${esc((pp.skills || []).join(", "))}"></label>
       <div class="chips" style="grid-column:1/-1;justify-content:flex-end"><button class="btn" type="button" data-staffclose>Cancelar</button><button class="btn primary" type="submit">Guardar datos</button></div>
-    </form></aside>`;
+    </form></aside></div>`;
 }
 document.addEventListener("click", e => {
   const ed = e.target.closest("[data-staffedit]"); if (ed){ e.stopPropagation(); staffEdit = ed.dataset.staffedit; render(); return; }
@@ -3813,7 +3818,7 @@ function panelStats(){
 function pPanel(ar){
   const dg = ar === "dg", st = panelStats();
   const icons = [...(dg ? PANEL_DESIGN : PANEL_CM), ...PANEL_TOOLS.filter(x => x.a === (dg ? "Diseño" : "CM"))].filter(x => can(x.k))
-    .map((x, i) => `<button type="button" class="picon" data-page="${x.k}" style="--i:${i}" aria-label="Abrir ${esc(x.t)}"><span class="pring" aria-hidden="true">${icon(x.i)}</span><b>${x.t}</b><small>${x.d}</small><span class="pmeta">${st[x.k] || ""}</span></button>`).join("");
+    .map((x, i) => `<button type="button" class="picon" data-page="${x.k}" style="--i:${i}" aria-label="Abrir ${esc(x.t)}"><span class="pring" aria-hidden="true">${icon(x.i)}${x.k === "inbox" ? pendBadge() : ""}</span><b>${x.t}</b><small>${x.d}</small><span class="pmeta">${st[x.k] || ""}</span></button>`).join("");
   const al = panelMine(ar), shown = panelAll ? al : al.slice(0, 5);
   const area = dg ? "Diseño" : "CM", mineOnly = ownsJobs();
   const scope = jobs.filter(j => j.area === area && seesBrand(j.brand) && (!mineOnly || j.owner === viewer.name));
@@ -4153,7 +4158,7 @@ document.addEventListener("click", e => { const v = e.target.closest("[data-plvi
 const CM_CAL_KIND = { calendario:"Feed", calhistoria:"Historia", calcanales:"Canal" };
 const newCmJobOn = (due, area) => { const brand = MAIN_BRANDS.includes(brandFilter) && myBrands().includes(brandFilter) ? brandFilter : myBrands()[0];
   jobUI.form = { mode:"new", job:{ id:nextJobId(area), area, requestDate:TODAY, requester:"Marketing", brand, piece:(area === "CM" ? CM_TYPES : SOCIAL_TYPES)[0], title:"", owner:"Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due, link:"", notes:"", post:null } }; render(); };
-const jobDayOpts = () => [...(canCreateJobs() && can("gestioncm") ? [["Video","clapperboard","Pedido de video (CM)"]] : []), ...(canCreateJobs() && can("pedidos") ? [["Diseno","palette","Pedido a Diseño gráfico"]] : [])];
+const jobDayOpts = () => [...(canCreateJobs() && can("gestioncm") ? [["Video","clapperboard","Pedido de video (CM)"]] : []), ...(canCreateJobs() && can("pedidos") && viewer.role !== "CM" ? [["Diseno","palette","Pedido a Diseño gráfico"]] : [])]; // los de CM no cargan pedidos de diseño gráfico
 document.addEventListener("click", e => {
   if (!isPlanPage() && !CM_CAL_KIND[page]) return;
   const o = e.target.closest("[data-plnew]");
@@ -4395,6 +4400,14 @@ function linkRow(u, kind){
   let short = url; try { const x = new URL(url); short = x.hostname.replace(/^www\./, "") + (x.pathname.length > 1 ? x.pathname.slice(0, 38) + (x.pathname.length > 38 ? "…" : "") : ""); } catch {}
   return `<a class="jlrow2 ${k}" href="${esc(url)}" target="_blank" rel="noopener"><span class="jlic">${icon(ic)}</span><span class="jlt"><b>${esc(t)}</b><small>${esc(d)} · ${esc(short)}</small></span><span class="jlgo">Abrir ${icon("arrow-up-right")}</span></a>`;
 }
+// Chat del pedido: quien lo cargó habla con el responsable, y el responsable con quien lo cargó (o con Admin total).
+function jobChatBtns(j){
+  if (!viewer || isViewOnly() || window.RMH?.previewing) return "";
+  const act = pp => pp && pp.active !== false && pp.id !== viewer.id;
+  const owner = PEOPLE.find(pp => pp.name === j.owner), by = PEOPLE.find(pp => pp.id === j.byId);
+  const to = j.owner === viewer.name ? [by && act(by) ? by : null, ...PEOPLE.filter(pp => pp.role === "Admin total")].filter(act) : [owner].filter(act);
+  return [...new Map(to.map(pp => [pp.id, pp])).values()].slice(0, 2).map(pp => `<button type="button" class="btn primary jchatbtn" data-chatwith="${esc(pp.id)}" data-chatabout="${esc(j.title)}">${icon("message-circle")} Chatear con ${esc(nickOf(pp))}</button>`).join("");
+}
 function jobFicha(){
   const j = jobUI.ficha && jobById(jobUI.ficha); if (!j) return "";
   const at = viewer.role === "Admin total", p = j.post && postById(j.post), hist = (j.changes || []).slice().reverse();
@@ -4408,7 +4421,7 @@ function jobFicha(){
   const mine = j.owner === viewer.name && !isFin(j) && !isViewOnly() && j.area !== "CM";
   // Página completa del pedido: datos del pedido, el texto (hoja tipo Word), los links de acceso, el proceso (tocable) y al final los cambios.
   return `<div class="jpage jficha" aria-label="Pedido completo">
-    <div class="jp-top"><button class="btn" data-jfclose>${icon("arrow-left")} Volver</button>${at ? `<button class="btn" data-jedit="${j.id}">${icon("pencil")} Editar pedido</button>` : ""}</div>
+    <div class="jp-top"><button class="btn" data-jfclose>${icon("arrow-left")} Volver</button>${jobChatBtns(j)}${at ? `<button class="btn" data-jedit="${j.id}">${icon("pencil")} Editar pedido</button>` : ""}</div>
     <header class="jp-h"><span class="note">${j.area === "CM" ? "Pedido para Community Manager" : "Pedido de diseño gráfico"}${j.ex ? ` <span class="exbadge sm">Ejemplo para mostrar cómo se carga</span>` : ""}</span><h1>${esc(j.title)}</h1><div class="chips">${pill(j.status, JOB_COLOR[j.status])}${urgBadge(j)}${j.rep?.days?.length ? `<span class="repbadge">${icon("repeat")} Se repite: ${esc(repText(j.rep).toLowerCase())}</span>${at ? `<button class="btn sm" type="button" data-jrepstop="${j.id}">Dejar de repetir</button>` : ""}` : j.repOf ? `<span class="repbadge">${icon("repeat")} Pedido que se repite</span>` : ""}</div></header>
     ${last ? `<div class="jfmsg"><b>${icon("pencil")} Cambios que pidió Admin total</b><p>${esc(last.text)}</p><span>${dm(last.date)} · ${last.time}</span></div>` : ""}
     <section class="panel jp-sec"><h2 class="pmh">${pmIco("clipboard-list")}<i class="jpn">1</i>Qué hay que hacer</h2>
@@ -4691,7 +4704,8 @@ function postForm(){
     ? `<label style="grid-column:1/-1">Dónde se publica<input class="base" id="poChannel" value="Canal de WhatsApp" readonly></label>`
     : `<label>Red *<select class="base" id="poNet">${opt(POST_NETS, p.net)}</select></label>
       ${f.kind === "Historia" ? `<label>Formato<input class="base" value="Historia" readonly></label>` : `<label>Formato *<select class="base" id="poFormat">${opt(FEED_FORMATS, p.format === "Historia" ? "Post" : p.format)}</select></label>`}`;
-  return `<div class="drawer-bg" data-pclose></div><aside class="drawer" aria-label="Ficha del posteo">
+  // Página completa, como los pedidos (no una ventana): publicaciones, historias y canales.
+  return `<div class="jpage jformpage"><div class="jp-top"><button class="btn" type="button" data-pclose>${icon("arrow-left")} Volver</button></div><aside class="drawer pfull" aria-label="Ficha del posteo">
     <div class="drawer-h"><div><h2 style="margin:0">${f.mode === "edit" ? (f.kind === "Canal" ? "Editar contenido del Canal de WhatsApp" : f.kind === "Historia" ? "Editar historia" : "Editar publicación") : f.kind === "Canal" ? "Nuevo contenido para el Canal de WhatsApp" : f.kind === "Historia" ? "Nueva historia" : "Nueva publicación"}</h2><div class="note">${esc(p.id)}${j ? ` · 🎨 diseño: ${esc(j.id)} (${esc(j.status)})` : ""}</div></div><button class="btn" data-pclose aria-label="Cerrar">✕</button></div>
     <form id="postForm" class="pform drawer-b" style="grid-template-columns:1fr 1fr">
       <label>Fecha de publicación *<input class="base" type="date" id="poDate" value="${p.date}" required></label>
@@ -5920,7 +5934,8 @@ document.addEventListener("submit", async e => {
   chatUI.grpForm = null; chatUI.open = "g:" + g.id; render(); toast(`Grupo “${g.name}” guardado.`);
 });
 // Desde Staff: abre el chat privado con esa persona.
-document.addEventListener("click", e => { const b = e.target.closest("[data-chatwith]"); if (!b) return; e.stopPropagation();
+document.addEventListener("click", e => { const b = e.target.closest("[data-chatwith]"); if (!b) return; e.stopPropagation(); jobUI.ficha = null;
+  if (b.dataset.chatabout) setTimeout(() => { const ci = document.getElementById("chatInput"); if (ci && !ci.value) { ci.value = `Sobre el pedido “${b.dataset.chatabout}”: `; ci.focus(); } }, 60); // el mensaje arranca diciendo de qué pedido se habla
   chatUI.open = "p:" + b.dataset.chatwith; chatUI.mob = true; chatUI.keepBottom = true; page = "mensajes"; location.hash = page; render(); window.scrollTo(0, 0); if (!touchUI()) document.getElementById("chatInput")?.focus(); });
 // ---------- Planificación del mes: objetivos (medibles), campañas en destaque y lo que se viene ----------
 // Lo carga Admin total; el resto del equipo lo ve. Cada objetivo tiene línea base, meta y valor actual para medir el avance.
@@ -7061,7 +7076,7 @@ function renderNav(){
     const items = SECTIONS.filter(s => s.g === g && can(s.k) && !s.hide);
     if (!items.length) return "";
     const shut = navClosed.has(g);
-    return `<div class="nav-group${shut ? " closed" : ""}"><button type="button" class="nav-label navtog" data-navtog="${esc(g)}" aria-expanded="${!shut}">${g}${icon("chevron-down")}</button>${items.map(s => `<a href="#${s.k}" data-page="${s.k}" title="${esc(s.n || s.l)}" class="${page===s.k || (s.k === "paneldg" && PANEL_DG_KEYS.includes(page)) || (s.k === "panelcm" && PANEL_CM_KEYS.includes(page)) ?"on":""}">${icon(s.i)}<span>${s.n || s.l}</span>${s.k==="mensajes" && chatUnreadTotal() ? `<span class="count msgc">${chatUnreadTotal()}</span>` : ""}${s.k==="alertas" && alerts().length ? `<span class="count">${alerts().length}</span>` : ""}</a>`).join("")}</div>`;
+    return `<div class="nav-group${shut ? " closed" : ""}"><button type="button" class="nav-label navtog" data-navtog="${esc(g)}" aria-expanded="${!shut}">${g}${icon("chevron-down")}</button>${items.map(s => `<a href="#${s.k}" data-page="${s.k}" title="${esc(s.n || s.l)}" class="${page===s.k || (s.k === "paneldg" && PANEL_DG_KEYS.includes(page)) || (s.k === "panelcm" && PANEL_CM_KEYS.includes(page)) ?"on":""}">${icon(s.i)}<span>${s.n || s.l}</span>${s.k==="mensajes" && chatUnreadTotal() ? `<span class="count msgc">${chatUnreadTotal()}</span>` : ""}${s.k==="alertas" && alerts().length ? `<span class="count">${alerts().length}</span>` : ""}${s.k === "panelcm" ? pendBadge() : ""}</a>`).join("")}</div>`;
   }).join("");
 }
 // Aparición animada de todo lo que se ve: paneles, tablas (fila por fila), calendarios (día por día), tableros, listas y tarjetas.
@@ -7091,6 +7106,11 @@ function reveal(){
 // quién escribió y si ya se contestó. Para contestar se abre la bandeja de Meta Business Suite.
 let inboxUI = { brand:"Todas", st:"sin", net:"Todas", open:null, busy:false };
 const inboxAge = ts => { if (!ts) return ""; const m = Math.round((Date.now() - new Date(ts)) / 60000); return m < 1 ? "recién" : m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} d`; };
+// Mensajes de las cuentas: solo los últimos 30 días; los sin contestar se cuentan en un globito rojo.
+const INBOX_DAYS = 30;
+const inboxRecent = c => c.ts && Date.now() - new Date(c.ts) <= INBOX_DAYS * 864e5;
+const inboxPend = () => can("inbox") ? Object.values(META_INBOX || {}).filter(x => x && Array.isArray(x.convs)).reduce((n, x) => n + x.convs.filter(c => inboxRecent(c) && !c.answered).length, 0) : 0;
+const pendBadge = () => { const n = inboxPend(); return n ? `<span class="count ibc" title="${n} mensajes sin contestar">+${n > 99 ? 99 : n}</span>` : ""; };
 // “Actualizar”: le pide a las funciones de Meta (en Vercel) que traigan lo último ahora, con la sesión de la persona.
 const canMetaRefresh = () => ["Admin total","Admin","CM"].includes(viewer.role) && !window.RMH?.previewing;
 const metaBusy = {};
@@ -7229,7 +7249,7 @@ document.addEventListener("click", e => {
 });
 function pInbox(){
   const bs = ORDER_INBOX().filter(b => META_INBOX[b]), all = [];
-  bs.forEach(b => (META_INBOX[b].convs || []).forEach(c => all.push({ ...c, b })));
+  bs.forEach(b => (META_INBOX[b].convs || []).filter(inboxRecent).forEach(c => all.push({ ...c, b }))); // solo los últimos 30 días
   const list = all.filter(c => (inboxUI.brand === "Todas" || c.b === inboxUI.brand) && (inboxUI.net === "Todas" || c.net === inboxUI.net) && (inboxUI.st === "todos" || (inboxUI.st === "sin" ? !c.answered : c.answered)))
     .sort((a, c) => inboxUI.st === "sin" ? String(a.waitSince || a.ts).localeCompare(String(c.waitSince || c.ts)) : String(c.ts).localeCompare(String(a.ts)));
   const sin = all.filter(c => !c.answered).length, errs = bs.filter(b => META_INBOX[b].err);
@@ -7250,7 +7270,7 @@ function pInbox(){
   ${bs.length ? `<div class="panel" style="padding:12px;display:flex;flex-direction:column;gap:8px"><div class="chips">${chip("st", "sin", `Sin contestar${sin ? ` (${sin})` : ""}`)}${chip("st", "ok", "Contestados")}${chip("st", "todos", "Todos")}</div>
     <div class="chips">${chip("brand", "Todas", "Todas las marcas")}${bs.map(b => chip("brand", b, b)).join("")}</div><div class="chips">${chip("net", "Todas", "Instagram y Facebook")}${chip("net", "IG", "Instagram")}${chip("net", "FB", "Facebook")}</div></div>
   <div class="iblist">${list.map(row).join("") || `<div class="empty">${inboxUI.st === "sin" ? `${icon("check")} No hay mensajes sin contestar.` : "No hay conversaciones con estos filtros."}</div>`}</div>`
-  : `<div class="panel empty">${icon("inbox")} Todavía no hay mensajes cargados. Tocá “Actualizar” para traerlos de Meta. Para que funcione, al token de Meta le tienen que dar los permisos de mensajes (pages_messaging, instagram_manage_messages y pages_manage_metadata).</div>`}`;
+  : `<div class="panel empty">${icon("inbox")} ${META_INBOX.updated ? "No hay mensajes de los últimos 30 días con estos filtros." : "Todavía no hay mensajes cargados. Tocá “Actualizar” para traerlos de Meta."}</div>`}`;
 }
 const ORDER_INBOX = () => ["Superseis","Stock","Delimarket","Bianca","Clasipar","Dayo","PediWOW"].filter(b => seesBrand(b));
 // Tendencias: las 10 novedades más llamativas para Diseño (packaging, marcas y tiendas) o para CM (campañas y redes),
@@ -7297,7 +7317,7 @@ function seasonCard(s, ar, i){
 }
 function trendGet(ar){
   let c = trendSt[ar];
-  if (!c){ try { c = JSON.parse(localStorage.getItem("rmh-trend7-" + ar) || "null"); } catch {} if (c) trendSt[ar] = c; }
+  if (!c){ try { c = JSON.parse(localStorage.getItem("rmh-trend8-" + ar) || "null"); } catch {} if (c) trendSt[ar] = c; }
   if ((!c || Date.now() - (c.at || 0) > TREND_TTL) && !trendSt["busy" + ar] && !(c?.errAt && Date.now() - c.errAt < 60000)) trendLoad(ar);
   return trendSt[ar];
 }
@@ -7305,7 +7325,7 @@ async function trendLoad(ar, force = false){
   trendSt["busy" + ar] = true;
   let j; try { j = await integ({ action:"tendencias", area:ar, force }); } catch (e) { j = { ok:false, error:e?.message }; }
   trendSt["busy" + ar] = false;
-  if (j?.ok && Array.isArray(j.groups)){ trendSt[ar] = { at:Date.now(), groups:j.groups }; try { localStorage.setItem("rmh-trend7-" + ar, JSON.stringify(trendSt[ar])); } catch {} }
+  if (j?.ok && Array.isArray(j.groups)){ trendSt[ar] = { at:Date.now(), groups:j.groups }; try { localStorage.setItem("rmh-trend8-" + ar, JSON.stringify(trendSt[ar])); } catch {} }
   else trendSt[ar] = { ...(trendSt[ar] || { groups:[] }), errAt:Date.now(), err:j?.error || "No se pudieron traer las novedades" };
   if (page === (ar === "dg" ? "tendg" : ar === "cm" ? "tencm" : "ideas")) render();
 }
@@ -7346,6 +7366,12 @@ function refStrip(ar){
     <div class="rchips">${R.top.map(refChip(ar)).join("")}</div>
     ${R.more.length ? `<details class="rmore"><summary>Ver ${R.more.length} cadenas más</summary><div class="rchips">${R.more.map(refChip(ar)).join("")}</div></details>` : ""}</section>`;
 }
+// Fechas del calendario de Paraguay (mes, 0 = enero): lo de una fecha que no viene en los próximos 3 meses no se muestra.
+const EVENTOS_PY = [[/d[ií]a del trabajador|1 de mayo|labou?r day/i, [4]], [/d[ií]a de la madre|d[ií]a de las madres|dia das m[aã]es|mother'?s day/i, [4]], [/d[ií]a del padre|dia dos pais|father'?s day/i, [5]],
+  [/san juan|festas? juninas?/i, [5]], [/d[ií]a del amigo|d[ií]a de la amistad|dia do amigo/i, [6]], [/d[ií]a del ni[ñn]o|dia das crian[cç]as/i, [7]], [/primavera|d[ií]a de la juventud|d[ií]a del estudiante/i, [8]],
+  [/halloween|dia das bruxas/i, [9]], [/octubre rosa|outubro rosa|pink october|c[aá]ncer de mama/i, [9]], [/black friday|cyber monday/i, [10]], [/navidad|navide[ñn]|christmas|xmas|\bnatal\b|pap[aá] noel/i, [11]],
+  [/a[ñn]o nuevo|ano novo|new year/i, [11, 0]], [/san valent[ií]n|valentine|enamorados|dia dos namorados/i, [1]], [/carnaval|carnival/i, [1]], [/vuelta a clases|back to school|volta [àa]s aulas/i, [1]], [/pascua|easter|p[aá]scoa|semana santa/i, [2, 3]]];
+function fueraDeTemporada(txt){ const m = new Date().getMonth(), ok = [m, (m + 1) % 12, (m + 2) % 12]; return EVENTOS_PY.some(([re, ms]) => re.test(txt) && !ms.some(x => ok.includes(x))); }
 // Instagram de los supermercados de referencia: si no hay posteos o tienen más de 20 horas, se piden solos (una vez por sesión).
 function refsAuto(){
   if (refsAuto.done || !canMetaRefresh() || metaBusy.referentes || /^(localhost|127\.)/.test(location.hostname)) return; // en una copia local no hay funciones /api
@@ -7406,14 +7432,18 @@ function pTend(ar){
     return `<a class="tcard" href="${esc(u)}" target="_blank" rel="noopener noreferrer" style="--i:${i}"><span class="tthumb${img ? "" : " noimg"}">${img ? `<img src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.tcard').remove()">` : ""}<span class="tbigflag" aria-hidden="true">${fl}</span><span class="tnum">${i + 1}</span><span class="tflag" title="${esc(CC_NAME[cc] || "")}">${fl} ${esc(CC_NAME[cc] || "")}</span></span>
       <span class="tbody"><span class="tsrc">${x.chain ? `<em class="tchain">${esc(x.chain)}</em> · ` : ""}${esc(x.src || "")}${x.d ? ` · ${when(x.d)}` : ""}${x.tr ? ` · <i>traducido</i>` : ""}</span><b>${esc(x.t)}</b>${idea ? `<small class="tidea"><strong>La idea:</strong> ${esc(idea)}</small>` : ""}<span class="tgo">Ver la nota ${icon("arrow-up-right")}</span></span></a>`; };
   const skel = n => Array.from({ length:n }, () => `<div class="tcard tskel"><span class="tthumb"></span><span class="tbody"><b>&nbsp;</b><small>&nbsp;</small></span></div>`).join("");
-  const sec = k => { const [ic, t, d] = TREND_GROUPS[ar][k], g = groups.find(x => x.k === k), items = (g?.items || []).filter(x => safeUrl(x.img)).slice(0, 8); // solo noticias con foto
+  const sec = k => { const [ic, t, d] = TREND_GROUPS[ar][k], g = groups.find(x => x.k === k), items = (g?.items || []).filter(x => safeUrl(x.img) && !fueraDeTemporada(x.t + " " + (x.x || ""))).slice(0, 8); // solo con foto y de la temporada
     return `<section class="tsec"><div class="tsec-h"><span class="tsec-ic">${icon(ic)}</span><div><h2>${t}</h2><p>${d}</p></div></div>
       <div class="tgrid">${items.length ? items.map(card).join("") : busy || !c ? skel(4) : `<div class="empty">${icon("wifi-off")} ${esc(c?.err || "Sin novedades por ahora")}.</div>`}</div></section>`; };
   const [k1, k3] = Object.keys(TREND_GROUPS[ar]);
   // Visuales de campañas: posteos y carruseles reales de Instagram de los supermercados de referencia (sin reels),
   // con Pão de Açúcar siempre primero. Los trae /api/referentes todos los días (s:META_REFS). Cada imagen abre el posteo.
   const accs = Object.entries(META_REFS.accounts || {}).filter(([, a]) => (a.posts || []).length), selC = visUI.chain;
-  const byAcc = accs.map(([u, a]) => ({ u, a, posts:(a.posts || []).filter(x => safeUrl(x.img)).slice().sort((x, y) => String(y.ts).localeCompare(String(x.ts))) }));
+  // Diseño ve primero las piezas sueltas (afiches, flyers); CM, los carruseles con su texto. Nada de fechas que ya pasaron.
+  const want = dg ? "Post" : "Carrusel";
+  const byAcc = accs.map(([u, a]) => ({ u, a, posts:(a.posts || []).filter(x => safeUrl(x.img) && !fueraDeTemporada(x.cap || "")).slice()
+    .sort((x, y) => (Number(y.type === want) - Number(x.type === want)) || String(y.ts).localeCompare(String(x.ts))) })).filter(x => x.posts.length)
+    .sort((x, y) => Number(y.a.cc === "PY") - Number(x.a.cc === "PY")); // primero los supermercados de Paraguay
   const pda = byAcc.find(x => x.u === "paodeacucar"), rest = byAcc.filter(x => x.u !== "paodeacucar");
   let tiles = [];
   if (selC !== "Todas"){ const one = byAcc.find(x => x.u === selC); tiles = one ? one.posts.map(p => ({ ...p, acc:one })) : []; }
@@ -7421,7 +7451,7 @@ function pTend(ar){
   tiles = tiles.slice(0, 16);
   // Mientras Instagram no trae posteos: piezas de campañas y packaging publicadas en medios creativos (con su imagen).
   // Mientras Instagram no trae posteos: piezas gráficas de los tableros de Pinterest (afiches, encartes, posteos); si no hay, piezas de campañas de los medios.
-  const pinsG = (groups.find(x => x.k === "pins")?.items || []).filter(x => safeUrl(x.img));
+  const pinsG = (groups.find(x => x.k === "pins")?.items || []).filter(x => safeUrl(x.img) && !fueraDeTemporada(x.t || ""));
   const press = tiles.length ? [] : (pinsG.length ? pinsG.slice(0, 18) : (groups.find(x => x.k === "vis")?.items || []).filter(x => safeUrl(x.img)).slice(0, 12));
   const isPins = !!pinsG.length;
   refsAuto();
@@ -7429,7 +7459,7 @@ function pTend(ar){
     ${byAcc.length ? `<div class="vchips">${[["Todas", "Todas"], ...byAcc.map(x => [x.u, `${flagOf(x.a.cc)} ${x.a.name}`])].map(([k, l]) => `<button type="button" class="ichip${selC === k ? " on" : ""}" data-vischain="${esc(k)}">${esc(l)}</button>`).join("")}</div>` : ""}
     ${!tiles.length && press.length ? `<div class="vgal">${press.map((x, i) => `<a class="vimg" href="${esc(safeUrl(x.u))}" target="_blank" rel="noopener noreferrer" style="--i:${i}" title="${esc(x.t)}"><img src="${esc(safeUrl(x.img))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.vimg').remove()"><span><b>${isPins ? "Pinterest" : `${flagOf(x.cc || "WW")} ${esc(x.chain || x.src)}`}</b><small>${esc(x.t)}</small></span></a>`).join("")}</div><p class="note" style="margin:8px 0 0">${isPins ? "Afiches, encartes y posteos de diseño de los tableros de Pinterest del equipo, los más nuevos primero." : `Piezas de campañas y packaging publicadas en ${esc([...new Set(press.map(x => x.src))].slice(0, 4).join(", "))}.`} Cuando lleguen los posteos de Instagram de los supermercados, se muestran acá.</p>` : ""}
     
-    ${tiles.length ? `<div class="vgal">${tiles.map((x, i) => `<a class="vimg" href="${esc(safeUrl(x.link))}" target="_blank" rel="noopener noreferrer" style="--i:${i}" title="${esc(x.cap || x.acc.a.name)}"><img src="${esc(safeUrl(x.img))}" alt="${esc(x.acc.a.name)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.vimg').remove()"><span><b>${flagOf(x.acc.a.cc)} ${esc(x.acc.a.name)}</b><small>${esc(x.type)} · ${dm(String(x.ts).slice(0, 10))}</small></span></a>`).join("")}</div>`
+    ${tiles.length ? `<div class="vgal">${tiles.map((x, i) => `<a class="vimg" href="${esc(safeUrl(x.link))}" target="_blank" rel="noopener noreferrer" style="--i:${i}" title="${esc(x.cap || x.acc.a.name)}"><img src="${esc(safeUrl(x.img))}" alt="${esc(x.acc.a.name)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.vimg').remove()"><span><b>${flagOf(x.acc.a.cc)} ${esc(x.acc.a.name)}</b><small>${esc(x.type)} · ${dm(String(x.ts).slice(0, 10))}</small>${!dg && x.cap ? `<small class="vcap">${esc(x.cap.slice(0, 110))}</small>` : ""}</span></a>`).join("")}</div>`
       : press.length ? "" : `<p class="note" style="margin:0">${META_REFS.updated ? "Todavía no hay posteos para mostrar." : "Los posteos se traen de Instagram una vez por día (con la conexión de Meta)."}${canMetaRefresh() ? " Tocá “Actualizar” para traerlos ahora." : ""}</p>`}
 
 </section>`;
@@ -7511,6 +7541,7 @@ function render(){
   const calSL = render.calPage === page ? [...document.querySelectorAll("#content .calw")].map(w => w.scrollLeft) : null; // el calendario queda donde estaba al volver a dibujarse
   $("#content").innerHTML = `<div class="${animate && !CAL_PAGES.includes(page) ? (page === "pedidos" || page === "gestioncm" ? "anim" : "fade anim") : "noanim"}${["pedidos","cartel","web","pantallas","gestioncm","calendario","calhistoria","calcanales","inicio","alertas","avisos","mensajes","sugerencias","plan","calcm","caldg","reportes","usuarios","staff","perfil","pauta"].includes(page) ? " clean" : ""}" style="display:flex;flex-direction:column;gap:24px">${bar}${["tv","tvredes","tvimpacto"].includes(page) ? "" : `<p class="eyebrow">${EYEBROW[page]}</p>`}${ro}${avb}${inst}${bdays}${PAGES[page]()}${demo}</div>${installDrawer()}`;
   if (jobUI.form){ const ff = jobForm(); if (ff) $("#content").innerHTML = ff; } // crear o editar un pedido: página completa
+  else if (postUI.form){ const pf = postForm(); if (pf){ $("#content").innerHTML = pf; if (render.pfOpen !== postUI.form){ render.pfOpen = postUI.form; window.scrollTo(0, 0); } } } // publicación, historia o canal: página completa
   else if (!jobUI.ficha && backTo() && !$("#content .pback")){ const b = backTo(), x = [...PANEL_DESIGN, ...PANEL_CM, ...PANEL_TOOLS].find(y => y.k === page);
     $("#content").insertAdjacentHTML("afterbegin", `<nav class="pcrumb" aria-label="Ubicación"><button type="button" class="btn gback" data-page="${b.k}"${b.back ? " data-back" : ""} title="Volver a ${esc(b.t)}">${icon("arrow-left")} Volver</button>${x && b.k.startsWith("panel") ? `<span>›</span><b>${esc(x.t)}</b>` : ""}</nav>`); }
   else if (jobUI.ficha){ const fx = jobFicha(); if (fx) $("#content").innerHTML = fx; else jobUI.ficha = null; } // el pedido se abre como página completa, desde cualquier página
@@ -7651,7 +7682,7 @@ document.addEventListener("click", e => {
   const t = e.target.closest("[data-dbrand]"); if (!t) return;
   dashBrand = t.dataset.dbrand;
   document.querySelectorAll("[data-dbrand]").forEach(c => c.classList.toggle("on", c.dataset.dbrand === dashBrand));
-  const box = document.getElementById("dashDemo"); if (box){ box.innerHTML = demoBlock(dashBrand, Date.now() % 1000); box.classList.remove("swap"); void box.offsetWidth; box.classList.add("swap"); }
+  const box = document.getElementById("dashDemo"); if (box){ box.innerHTML = demoBlock(dashBrand, Date.now() % 1000) + lastPostsPanel([dashBrand]); if (window.lucide) lucide.createIcons(); box.classList.remove("swap"); void box.offsetWidth; box.classList.add("swap"); }
 });
 document.addEventListener("input", e => {
   const t = e.target, n = id => myNotes().find(x => String(x.id) === String(id));
@@ -7706,7 +7737,7 @@ document.addEventListener("submit", e => {
     if (!j.repOf){ const ru = document.getElementById("jRepUntil")?.value || ""; if (f.repDays?.length) j.rep = { days:[...f.repDays], until:ru }; else delete j.rep; }
     if (isFin(j) && !j.delivered) j.delivered = TODAY;
     const prevOwner = f.mode === "edit" ? jobById(j.id)?.owner : null;
-    if (f.mode === "edit"){ Object.assign(jobs.find(x => x.id === j.id), j); } else jobs.push(j);
+    if (f.mode === "edit"){ Object.assign(jobs.find(x => x.id === j.id), j); } else { if (!j.byId) j.byId = viewer.id; jobs.push(j); } // byId: quién lo cargó (para el chat del pedido)
     if (j.owner && j.owner !== "Sin asignar" && j.owner !== prevOwner && j.owner !== viewer.name) notify({ to:j.owner, type:"nuevo", job:j.id }); // le llega el aviso a quien lo tiene que hacer
     // Lo que se carga se ve enseguida: va a su sección, su mes y su marca (y sin filtros que lo escondan).
     const to = jobSection(j), moved = to !== page; MONTH = m;
