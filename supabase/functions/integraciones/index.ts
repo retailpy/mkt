@@ -91,19 +91,34 @@ const F = {
   latam: { u: "https://www.latamclick.com/feed/", src: "LatamClick", lang: "es" },
   smt: { u: "https://www.socialmediatoday.com/feeds/news/", src: "Social Media Today", lang: "en" },
   grocery: { u: "https://www.grocerydive.com/feeds/news/", src: "Grocery Dive", lang: "en" },
+  behance: { u: "https://www.behance.net/feeds/projects", src: "Behance", lang: "en" },
 };
 // Noticias recientes de Bing Noticias (ordenadas por fecha, con foto y resumen), separadas para Diseño, CM e Ideas.
-const bn = (q: string, es: boolean) => `https://www.bing.com/news/search?q=${encodeURIComponent(q)}&format=rss&qft=${encodeURIComponent('sortbydate="1"')}&${es ? "setlang=es&cc=MX" : "setlang=en&cc=US"}`;
-const B = (q: string, es = true): Feed => ({ u: bn(q, es), src: "Bing", lang: es ? "es" : "en", bing: true });
+const MKT: Record<string, string> = { es: "setlang=es&cc=MX", en: "setlang=en&cc=US", pt: "setlang=pt-br&cc=BR" };
+const bn = (q: string, lang: string) => `https://www.bing.com/news/search?q=${encodeURIComponent(q)}&format=rss&qft=${encodeURIComponent('sortbydate="1"')}&${MKT[lang]}`;
+const B = (q: string, es: boolean | string = true): Feed => { const lang = es === true ? "es" : es === false ? "en" : es; return { u: bn(q, lang), src: "Bing", lang, bing: true }; };
+// Pão de Açúcar (Brasil) siempre tiene que aparecer: noticias y piezas de sus campañas, en portugués (se traducen).
+const PDA = [B('"Pão de Açúcar" campanha', "pt"), B('"Pão de Açúcar" propaganda', "pt"), B('"Pão de Açúcar" loja', "pt"), B('"Pão de Açúcar" marca própria', "pt"), B('"Pão de Açúcar" Natal', "pt")];
 const BN = {
   dg: [B("supermercado packaging diseño"), B("supermercado nueva imagen tienda"), B("OXXO campaña"), B("Mercadona diseño envase"), B("Pão de Açúcar campaña"), B("marca propia supermercado diseño"),
     B("Waitrose packaging", false), B("Trader Joe's packaging", false), B("Whole Foods store design", false), B("M&S Food campaign", false), B("supermarket rebrand", false), B("Albert Heijn campaign", false)],
-  insp: [B("diseño gráfico tendencia"), B("branding nueva identidad"), B("packaging design trend", false), B("rebrand new logo", false)],
+  // Punto de venta y packaging de supermercados (exhibición, cartelería, góndola, marca propia).
+  pos: [B("supermercado punto de venta exhibición"), B("cartelería supermercado"), B("góndola supermercado diseño"), B("marca propia supermercado envase"), B("supermercado nueva tienda diseño"),
+    B("supermarket in-store display", false), B("grocery store design", false), B("supermarket private label packaging", false), B("retail POP display grocery", false)],
   cm: [B("supermercado TikTok"), B("supermercado campaña redes sociales"), B("OXXO TikTok"), B("Walmart campaña viral"), B("Mercadona redes sociales"),
     B("grocery TikTok", false), B("Trader Joe's TikTok", false), B("Aldi social media campaign", false), B("Lidl TikTok", false), B("Tesco advert", false)],
-  redes: [B("Instagram nueva función"), B("TikTok nueva función"), B("WhatsApp canales novedad"), B("Instagram new feature", false), B("TikTok new feature", false)],
+  // Campañas y contenidos de supermercados por fecha (las fechas que vienen: se arman según el mes).
+  fechas: [] as Feed[],
+  visdg: [B("campaña gráfica supermercado"), B("afiche ofertas supermercado"), B("packaging supermercado nuevo"), B("supermarket campaign poster", false), B("supermarket packaging design", false)],
+  viscm: [B("campaña publicitaria supermercado"), B("supermercado campaña redes sociales"), B("supermercado contenido TikTok"), B("supermarket ad campaign", false), B("grocery social media campaign", false)],
   ideas: [B("tendencia TikTok"), B("viral TikTok comida"), B("trend Instagram reels"), B("challenge viral redes"), B("receta viral TikTok"), B("TikTok food trend", false), B("viral Instagram reel trend", false)],
 };
+// Fechas comerciales de los próximos meses (Paraguay/Latinoamérica) para buscar campañas de supermercados.
+const FECHAS: Record<number, string[]> = { 0:["vuelta a clases","verano"], 1:["vuelta a clases","San Valentín"], 2:["Pascua","Semana Santa"], 3:["Pascua","Día de la Madre"], 4:["Día de la Madre","Día del Padre"],
+  5:["Día del Padre","San Juan"], 6:["vacaciones de invierno","Día de la Amistad"], 7:["Día del Niño","primavera"], 8:["primavera","Día de la Juventud"], 9:["Halloween","Black Friday"], 10:["Black Friday","Navidad"], 11:["Navidad","Año Nuevo"] };
+const FECHAS_EN: Record<string, string> = { "Navidad":"Christmas", "Black Friday":"Black Friday", "Halloween":"Halloween", "Año Nuevo":"New Year", "Pascua":"Easter", "San Valentín":"Valentine's", "Día de la Madre":"Mother's Day", "Día del Padre":"Father's Day", "vuelta a clases":"back to school", "verano":"summer" };
+function fechasFeeds(){ const m = new Date().getMonth(), fs = [...new Set([...FECHAS[m], ...FECHAS[(m + 1) % 12]])].slice(0, 3);
+  return fs.flatMap((f) => [B(`supermercado campaña ${f}`), B(`supermercado redes sociales ${f}`), ...(FECHAS_EN[f] ? [B(`supermarket ${FECHAS_EN[f]} ad campaign`, false)] : [])]); }
 // Cadenas de referencia → país (para la banderita) y nombre.
 const CHAINS: [RegExp, string, string][] = [
   [/p[aã]o de a[cç][uú]car/i, "BR", "Pão de Açúcar"], [/\bst\.? ?marche\b/i, "BR", "St. Marche"], [/zona sul/i, "BR", "Zona Sul"],
@@ -122,18 +137,23 @@ const RETAIL = /supermarket|supermercado|s[uú]per\b|hipermercado|grocery|grocer
 const DESIGN = /packag|envase|etiqueta|label|design|diseño|brand|marca|identity|identidad|logo|tipograf|typograph|ilustra|illustrat|cartel|afiche|póster|poster|store|tienda|rebrand|visual/i;
 const SOCIAL = /tiktok|instagram|facebook|whatsapp|threads|youtube|social|redes|viral|influencer|creator|creador|reel|video|meme|contenido|community|algoritmo|algorithm|hashtag/i;
 const CAMPAIGN = /campa|campaign|anuncio|spot|publicidad|advertis|\bad\b|ads\b|activaci|promo/i;
+const POS = /punto de venta|exhibici|g[oó]ndola|cartel|se[ñn]al|display|in-store|instore|tienda|store|packag|envase|etiqueta|marca propia|private label|pop\b|vidriera|layout/i;
+const SUPER = (t: string) => RETAIL.test(t) || !!chainOf(t); // todo tiene que ser de supermercados o cadenas
 const GROUPS: Record<string, { k: string; feeds: Feed[]; score: (txt: string) => number; need?: (txt: string) => boolean }[]> = {
   dg: [
-    { k: "super", feeds: [F.brandemia, F.dieline, F.potw, F.rdb, F.grocery, F.mdirecto, F.graffica, ...BN.dg],
+    { k: "super", feeds: [F.brandemia, F.dieline, F.potw, F.rdb, F.grocery, F.mdirecto, F.graffica, ...BN.dg, ...PDA],
       need: (t) => (RETAIL.test(t) || !!chainOf(t)) && DESIGN.test(t), score: (t) => (chainOf(t) ? 3 : 0) + (RETAIL.test(t) ? 2 : 0) + (DESIGN.test(t) ? 2 : 0) },
-    { k: "insp", feeds: [F.brandemia, F.graffica, F.creativos, F.dieline, F.potw, ...BN.insp],
-      score: (t) => (DESIGN.test(t) ? 2 : 0) + (RETAIL.test(t) ? 1 : 0) },
+    { k: "insp", feeds: [F.rdb, F.potw, F.dieline, F.grocery, ...BN.pos],
+      need: (t) => SUPER(t) && POS.test(t), score: (t) => (POS.test(t) ? 3 : 0) + (RETAIL.test(t) ? 2 : 0) + (chainOf(t) ? 2 : 0) },
+    // Visuales: afiches, packaging y piezas de campaña recientes, para mirar como galería (cada una abre su origen).
+    { k: "vis", feeds: [F.potw, F.dieline, F.rdb, ...BN.visdg, ...BN.pos, ...PDA], need: (t) => SUPER(t), score: (t) => (DESIGN.test(t) ? 2 : 0) + (RETAIL.test(t) ? 2 : 0) + (CAMPAIGN.test(t) ? 1 : 0) },
   ],
   cm: [
-    { k: "super", feeds: [F.mdirecto, F.roast, F.latam, F.grocery, F.smt, ...BN.cm],
+    { k: "super", feeds: [F.mdirecto, F.roast, F.latam, F.grocery, F.smt, ...BN.cm, ...PDA],
       need: (t) => (RETAIL.test(t) || !!chainOf(t)) && (SOCIAL.test(t) || CAMPAIGN.test(t)), score: (t) => (chainOf(t) ? 3 : 0) + (RETAIL.test(t) ? 2 : 0) + (SOCIAL.test(t) ? 2 : 0) + (CAMPAIGN.test(t) ? 1 : 0) },
-    { k: "redes", feeds: [F.smt, F.mdirecto, F.latam, F.roast, ...BN.redes],
-      need: (t) => SOCIAL.test(t), score: (t) => (SOCIAL.test(t) ? 3 : 0) + (RETAIL.test(t) ? 1 : 0) },
+    { k: "redes", feeds: [F.mdirecto, F.roast, F.latam, F.grocery] as Feed[],
+      need: (t) => SUPER(t) && (SOCIAL.test(t) || CAMPAIGN.test(t)), score: (t) => (CAMPAIGN.test(t) ? 3 : 0) + (SOCIAL.test(t) ? 2 : 0) + (RETAIL.test(t) ? 2 : 0) },
+    { k: "vis", feeds: [...BN.viscm, F.mdirecto, F.roast, ...PDA], need: (t) => SUPER(t), score: (t) => (CAMPAIGN.test(t) ? 2 : 0) + (SOCIAL.test(t) ? 2 : 0) + (RETAIL.test(t) ? 1 : 0) },
   ],
   // Ideas Random (CM): lo que está pegando en TikTok, Instagram y Facebook, para inspirar a los creadores de contenido.
   ideas: [
@@ -154,7 +174,7 @@ async function readFeed(f: Feed){
     const xml = (await r.text()).slice(0, 1_500_000);
     const items = [...xml.matchAll(/<item[\s>][\s\S]*?<\/item>/g)].slice(0, 40).map(([it]) => {
       const desc = tag(it, "description"), body = tag(it, "content:encoded");
-      const img = (it.match(/<media:(?:content|thumbnail)[^>]+url="([^"]+)"/) || it.match(/<enclosure[^>]+url="([^"]+)"[^>]+image/) || decode(desc + body).match(/<img[^>]+src="([^"]+)"/) || [])[1] || "";
+      const img = (it.match(/<media:(?:content|thumbnail)[^>]+url="([^"]+)"/) || it.match(/<enclosure[^>]+url="([^"]+)"[^>]+image/) || decode(desc + body).match(/<img[^>]+src=["']([^"']+)["']/) || [])[1] || "";
       let t = strip(tag(it, "title")); const u = decode(tag(it, "link")).trim(); let x = strip(desc).slice(0, 220), src = f.src;
       let link = u, bimg = "";
       if (f.bing){ // Bing Noticias: el link real va en el parámetro url, el medio en News:Source y la foto en News:Image
@@ -173,11 +193,11 @@ async function readFeed(f: Feed){
   } catch { return []; } finally { clearTimeout(tm); }
 }
 // Traducción al español de lo que viene en inglés (MyMemory, gratis). Lo ya traducido se reutiliza del caché.
-async function toEs(text: string){
+async function toEs(text: string, from = "en"){
   if (!text) return "";
   const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 6000);
   try {
-    const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 480))}&langpair=en|es`, { signal: ctl.signal });
+    const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 480))}&langpair=${from}|es`, { signal: ctl.signal });
     const j = await r.json();
     const out = String(j?.responseData?.translatedText || "");
     return j?.responseStatus === 200 && out && !/MYMEMORY WARNING|QUERY LENGTH LIMIT/i.test(out) ? decode(out) : "";
@@ -191,19 +211,22 @@ async function tendencias(area: string, force: boolean){
   const known = new Map<string, any>(); (prev?.groups || []).forEach((g: any) => (g.items || []).forEach((i: any) => known.set(i.u, i)));
   const now = Date.now(), used = new Set<string>(), groups: any[] = [];
   for (const g of GROUPS[area]){
-    const all = (await Promise.all(g.feeds.map(readFeed))).flat();
+    const feeds = area === "cm" && g.k === "redes" ? [...g.feeds, ...fechasFeeds()] : area === "dg" && g.k === "vis" ? [...g.feeds, ...fechasFeeds().slice(0, 3)] : g.feeds;
+    const all = (await Promise.all(feeds.map(readFeed))).flat();
     const seen = new Set<string>();
-    const scored = all.filter((i) => { const k = i.t.toLowerCase().slice(0, 60); if (!i.img || seen.has(k) || used.has(i.u)) return false; seen.add(k); return now - Date.parse(i.d) < 30 * 864e5; }) // solo con foto y de los últimos 30 días
+    const scored = all.filter((i) => { const k = i.t.toLowerCase().slice(0, 60); if (!i.img || seen.has(k) || used.has(i.u)) return false; seen.add(k); return now - Date.parse(i.d) < (i.chain === "Pão de Açúcar" ? 60 : 30) * 864e5; }) // solo con foto y de los últimos 30 días (Pão de Açúcar: 60)
       .map((i) => { const txt = i.t + " " + i.x, age = (now - Date.parse(i.d)) / 864e5;
         return { ...i, ok: !g.need || g.need(txt), s: g.score(txt) + (i.img ? 1 : 0) + (i.lang === "es" ? 2 : 0) - age / 2 }; }) // lo más nuevo primero
       .sort((a, b) => (Number(b.ok) - Number(a.ok)) || b.s - a.s);
     const per: Record<string, number> = {}, out: any[] = [];
-    for (const i of scored){ if ((per[i.src] = (per[i.src] || 0) + 1) > 3) continue; out.push(i); used.add(i.u); if (out.length === (area === "ideas" ? 12 : 8)) break; }
+    // Lugares fijos para Pão de Açúcar: 2 noticias y 3 visuales (las más nuevas), siempre.
+    if (g.k === "super" || g.k === "vis") scored.filter((i) => i.chain === "Pão de Açúcar").sort((a, b) => b.d.localeCompare(a.d)).slice(0, g.k === "vis" ? 3 : 2).forEach((i) => { out.push(i); used.add(i.u); });
+    for (const i of scored){ if (used.has(i.u)) continue; if ((per[i.src] = (per[i.src] || 0) + 1) > (g.k === "vis" ? 4 : 3)) continue; out.push(i); used.add(i.u); if (out.length === (area === "ideas" || g.k === "vis" ? 12 : 8)) break; }
     const items = await Promise.all(out.map(async (i) => {
       const base = { t: i.t, u: i.u, x: i.x, img: i.img, d: i.d, src: i.src, lang: i.lang, chain: i.chain, cc: i.cc };
       if (i.lang === "es") return base;
       const k = known.get(i.u); if (k?.tr) return { ...base, t: k.t, x: k.x, tr: true };
-      const [t, x] = await Promise.all([toEs(i.t), toEs(i.x.slice(0, 200))]);
+      const [t, x] = await Promise.all([toEs(i.t, i.lang), toEs(i.x.slice(0, 200), i.lang)]);
       return t ? { ...base, t, x: x || "", tr: true } : base;
     }));
     groups.push({ k: g.k, items });

@@ -327,6 +327,14 @@ html.nomotion .picon{animation:none}
 .jlrow2 .jlgo{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:13.5px;color:var(--lc,var(--cyan));flex:none}.jlrow2 .jlgo svg{width:15px;height:15px}
 .jlrow2.drive{--lc:#22c55e}.jlrow2.canva{--lc:#a78bfa}.jlrow2.final{--lc:#10b981}.jlrow2.design{--lc:#f59e0b}
 .jlbig{font-weight:700}
+.vgal{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(180px,46%),1fr));gap:10px}
+.vimg{position:relative;display:block;aspect-ratio:4/5;border-radius:14px;overflow:hidden;background:var(--line);text-decoration:none}
+.vimg img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s}
+.vimg span{position:absolute;inset:auto 0 0 0;padding:28px 10px 9px;background:linear-gradient(transparent,rgba(2,6,23,.88));color:#fff;display:flex;flex-direction:column;gap:2px;opacity:0;transition:opacity .2s}
+.vimg span b{font-size:12.5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.vimg span small{font-size:11px;opacity:.8}
+.vimg:hover img,.vimg:focus-visible img{transform:scale(1.04)}.vimg:hover span,.vimg:focus-visible span{opacity:1}
+@media (hover:none){.vimg span{opacity:1}}
+.vgq{margin:12px 0 0;color:var(--muted);font-size:13.5px;line-height:1.7}.vgq svg{width:15px;height:15px;vertical-align:-2px;color:var(--cyan)}.vgq a{color:var(--cyan);text-decoration:none}.vgq a:hover{text-decoration:underline}
 /* Ideas Random: limpio, íconos de un solo color, sin recuadros */
 .ideas{display:flex;flex-direction:column;gap:18px;max-width:980px}
 .ideas .imuted{margin:0;color:var(--muted);font-size:13.5px;line-height:1.5}
@@ -7267,7 +7275,7 @@ function seasonCard(s, ar, i){
 }
 function trendGet(ar){
   let c = trendSt[ar];
-  if (!c){ try { c = JSON.parse(localStorage.getItem("rmh-trend4-" + ar) || "null"); } catch {} if (c) trendSt[ar] = c; }
+  if (!c){ try { c = JSON.parse(localStorage.getItem("rmh-trend5-" + ar) || "null"); } catch {} if (c) trendSt[ar] = c; }
   if ((!c || Date.now() - (c.at || 0) > TREND_TTL) && !trendSt["busy" + ar] && !(c?.errAt && Date.now() - c.errAt < 60000)) trendLoad(ar);
   return trendSt[ar];
 }
@@ -7275,7 +7283,7 @@ async function trendLoad(ar, force = false){
   trendSt["busy" + ar] = true;
   let j; try { j = await integ({ action:"tendencias", area:ar, force }); } catch (e) { j = { ok:false, error:e?.message }; }
   trendSt["busy" + ar] = false;
-  if (j?.ok && Array.isArray(j.groups)){ trendSt[ar] = { at:Date.now(), groups:j.groups }; try { localStorage.setItem("rmh-trend4-" + ar, JSON.stringify(trendSt[ar])); } catch {} }
+  if (j?.ok && Array.isArray(j.groups)){ trendSt[ar] = { at:Date.now(), groups:j.groups }; try { localStorage.setItem("rmh-trend5-" + ar, JSON.stringify(trendSt[ar])); } catch {} }
   else trendSt[ar] = { ...(trendSt[ar] || { groups:[] }), errAt:Date.now(), err:j?.error || "No se pudieron traer las novedades" };
   if (page === (ar === "dg" ? "tendg" : ar === "cm" ? "tencm" : "ideas")) render();
 }
@@ -7315,8 +7323,8 @@ function refStrip(ar){
     ${R.more.length ? `<details class="rmore"><summary>Ver ${R.more.length} cadenas más</summary><div class="rchips">${R.more.map(refChip(ar)).join("")}</div></details>` : ""}</section>`;
 }
 const TREND_GROUPS = {
-  dg:{ super:["store","Diseño de supermercados","Packaging, marcas propias, identidad y tiendas de supermercados y marcas de consumo."], insp:["palette","Inspiración gráfica","Lo más nuevo en diseño gráfico, branding, tipografía e ilustración."] },
-  cm:{ super:["shopping-cart","Supermercados en redes","Campañas y contenidos de supermercados y marcas que están funcionando."], redes:["smartphone","Novedades de las redes","Lo nuevo en Instagram, TikTok, Facebook y WhatsApp, y cómo aprovecharlo."] },
+  dg:{ super:["shopping-bag","Diseño de supermercados","Packaging, marcas propias, identidad y tiendas de supermercados y marcas de consumo."], insp:["store","Punto de venta y packaging","Exhibición, cartelería, góndolas, tiendas y marca propia de supermercados."] },
+  cm:{ super:["shopping-cart","Supermercados en redes","Campañas y contenidos de supermercados y marcas que están funcionando."], redes:["calendar-heart","Campañas y contenidos por fecha","Cómo comunican los supermercados las fechas que vienen (Navidad, Black Friday, Día de la Madre…) en redes y en tienda."] },
 };
 function pTend(ar){
   const dg = ar === "dg", c = trendGet(ar), busy = trendSt["busy" + ar], groups = c?.groups || [];
@@ -7330,9 +7338,17 @@ function pTend(ar){
     return `<section class="tsec"><div class="tsec-h"><span class="tsec-ic">${icon(ic)}</span><div><h2>${t}</h2><p>${d}</p></div></div>
       <div class="tgrid">${items.length ? items.map(card).join("") : busy || !c ? skel(4) : `<div class="empty">${icon("wifi-off")} ${esc(c?.err || "Sin novedades por ahora")}.</div>`}</div></section>`; };
   const [k1, k3] = Object.keys(TREND_GROUPS[ar]);
-  return `<div class="head"><div><h1 class="pmh">${pmIco("sparkles")}Tendencias</h1><p class="sub">${dg ? "Diseño de supermercados, campañas de temporada e inspiración gráfica." : "Supermercados en redes, campañas de temporada y novedades de las redes."} En español; se actualiza sola. Tocá una nota para verla completa.</p></div>
+  // Visuales de campañas: galería de imágenes recientes (afiches, packaging, piezas y posts); cada una abre su origen.
+  const vis = (groups.find(x => x.k === "vis")?.items || []).filter(x => safeUrl(x.img)).slice(0, 12);
+  const GQ = dg ? ["afiche supermercado ofertas","campaña gráfica supermercado","packaging supermercado nuevo","cartelería supermercado","folleto ofertas supermercado"] : ["publicación instagram supermercado","campaña redes sociales supermercado","post facebook ofertas supermercado","reel supermercado","historia instagram promoción"];
+  const visSec = `<section class="tsec"><div class="tsec-h"><span class="tsec-ic">${icon("images")}</span><div><h2>Visuales de campañas</h2><p>${dg ? "Afiches, packaging y piezas de campaña recientes" : "Piezas de campañas y publicaciones recientes de marcas"}. Tocá una imagen para ir a su origen.</p></div></div>
+    ${vis.length ? `<div class="vgal">${vis.map((x, i) => `<a class="vimg" href="${esc(safeUrl(x.u))}" target="_blank" rel="noopener noreferrer" style="--i:${i}" title="${esc(x.t)}"><img src="${esc(safeUrl(x.img))}" alt="${esc(x.t)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.vimg').remove()"><span><b>${esc(x.t)}</b><small>${x.chain ? `${flagOf(x.cc)} ${esc(x.chain)} · ` : ""}${esc(x.src || "")}${x.tr ? " · traducido" : ""}</small></span></a>`).join("")}</div>`
+      : `<div class="vgal">${busy || !c ? Array.from({ length:6 }, () => `<span class="vimg tskel"></span>`).join("") : ""}</div>`}
+    <p class="vgq">${icon("search")} En Google Imágenes, de las últimas 24 horas: ${GQ.map(q => `<a href="https://www.google.com/search?tbm=isch&tbs=qdr:d&q=${encodeURIComponent(q)}" target="_blank" rel="noopener noreferrer">${esc(q)}</a>`).join(" · ")}</p></section>`;
+  return `<div class="head"><div><h1 class="pmh">${pmIco("sparkles")}Tendencias</h1><p class="sub">${dg ? "Diseño de supermercados: campañas, visuales, punto de venta y packaging." : "Supermercados en redes: campañas, contenidos y fechas comerciales."} En español; se actualiza sola. Tocá una nota para verla completa.</p></div>
     ${viewer.role === "Admin total" ? `<button type="button" class="btn" data-trendre="${ar}" ${busy ? "disabled" : ""}>${icon("refresh-cw")} ${busy ? "Actualizando…" : "Actualizar"}</button>` : ""}</div>
   ${sec(k1)}
+  ${visSec}
   <section class="tsec"><div class="tsec-h"><span class="tsec-ic">${icon("calendar-heart")}</span><div><h2>Campañas de temporada</h2><p>Las próximas fechas de Paraguay y Latinoamérica, cuándo empezar ${dg ? "a diseñar" : "a preparar el contenido"} e ideas. Tocá Pinterest, Behance o Google para ver flyers y campañas de supermercados.</p></div></div>
     <div class="tgrid sgrid">${seasonsAhead(8).map((s, i) => seasonCard(s, ar, i)).join("")}</div></section>
   ${sec(k3)}
