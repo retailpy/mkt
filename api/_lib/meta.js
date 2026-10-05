@@ -110,6 +110,7 @@ function today(){
 }
 
 function tokenHint(e){
+  if (/API access deactivated|developer registration/i.test(e.message || "")) return "Meta desactivó la cuenta de desarrollador dueña de la app: entrá a developers.facebook.com con esa cuenta y completá el registro (verificar el teléfono). El token no hace falta cambiarlo.";
   if (e.code === 190) return "El META_TOKEN venció o es inválido: generá uno nuevo (pasos 2 y 3 de la guía) y redesplegá.";
   if (e.code === 10 || e.code === 200) return "Al token le falta un permiso o la página no fue seleccionada al generarlo.";
   return null;
