@@ -7,7 +7,7 @@
 const { ORDEN, cronOrUser, graph, brandPages, save, today, tokenHint } = require("./_lib/meta");
 
 const FIELDS = "id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count";
-const MAX = 40;          // publicaciones guardadas por marca
+const MAX = 30;          // publicaciones guardadas por marca
 const INSIGHT_DAYS = 45; // alcance solo de las publicaciones recientes (el resto ya no cambia)
 
 async function insights(id){
@@ -29,27 +29,30 @@ module.exports = async (req, res) => {
     const { at } = today();
     const payload = { updated: at }, summary = {};
     const since = Date.now() - INSIGHT_DAYS * 86400000;
-    for (const b of ORDEN){
+    // Todas las marcas a la vez, y las métricas de cada publicación en paralelo (antes, de a una, Vercel la cortaba sin guardar).
+    // Si una marca falla, se guardan las demás.
+    await Promise.all(ORDEN.map(async (b) => {
       const p = byBrand[b];
-      if (!p || !p.igId) continue;
-      const j = await graph(`/${p.igId}/media`, { fields: FIELDS, limit: String(MAX) });
-      const media = (j.data || []).filter(m => m.media_product_type !== "STORY");
-      const posts = [];
-      for (const m of media){
-        const ins = new Date(m.timestamp).getTime() >= since ? await insights(m.id) : {};
-        posts.push({
-          id: m.id,
-          type: m.media_product_type === "REELS" ? "Reel" : m.media_type === "CAROUSEL_ALBUM" ? "Carrusel" : m.media_type === "VIDEO" ? "Video" : "Post",
-          cap: String(m.caption || "").slice(0, 300),
-          img: m.thumbnail_url || (m.media_type === "VIDEO" ? null : m.media_url) || null,
-          link: m.permalink, ts: m.timestamp,
-          likes: m.like_count ?? null, comments: m.comments_count ?? null,
-          reach: ins.reach ?? null, saved: ins.saved ?? null, shares: ins.shares ?? null,
-        });
-      }
-      payload[b] = { handle: p.handle, posts };
-      summary[b] = posts.length;
-    }
+      if (!p || !p.igId) return;
+      try {
+        const j = await graph(`/${p.igId}/media`, { fields: FIELDS, limit: String(MAX) });
+        const media = (j.data || []).filter(m => m.media_product_type !== "STORY");
+        const posts = await Promise.all(media.map(async (m) => {
+          const ins = new Date(m.timestamp).getTime() >= since ? await insights(m.id) : {};
+          return {
+            id: m.id,
+            type: m.media_product_type === "REELS" ? "Reel" : m.media_type === "CAROUSEL_ALBUM" ? "Carrusel" : m.media_type === "VIDEO" ? "Video" : "Post",
+            cap: String(m.caption || "").slice(0, 300),
+            img: m.thumbnail_url || (m.media_type === "VIDEO" ? null : m.media_url) || null,
+            link: m.permalink, ts: m.timestamp,
+            likes: m.like_count ?? null, comments: m.comments_count ?? null,
+            reach: ins.reach ?? null, saved: ins.saved ?? null, shares: ins.shares ?? null,
+          };
+        }));
+        payload[b] = { handle: p.handle, posts };
+        summary[b] = posts.length;
+      } catch (e){ summary[b] = "error: " + e.message; payload[b] = { handle: p.handle, posts: [], err: e.message }; }
+    }));
     if (!dry) await save("s:META_POSTS", payload);
     console.log(`[publicaciones] ${JSON.stringify(summary)}${dry ? " (prueba, sin guardar)" : " guardadas"}`);
     return res.status(200).json({ ok: true, dry, saved: !dry, posts: summary });
