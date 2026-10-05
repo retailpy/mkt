@@ -336,6 +336,10 @@ html.nomotion .picon{animation:none}
 @media (hover:none){.vimg span{opacity:1}}
 .vfail{margin-top:10px;font-size:13px;color:var(--muted)}.vfail summary{cursor:pointer;color:#fbbf24}.vfail svg{width:14px;height:14px;vertical-align:-2px}.vfail ul{margin:6px 0 0;padding-left:18px}
 .vchips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px}
+.vchips a.ichip{text-decoration:none;display:inline-flex;align-items:center;gap:4px}.vchips a.ichip svg{width:13px;height:13px}
+.gqf{display:flex;gap:8px;max-width:620px}.gqf input{flex:1;min-width:0}
+.gcse-slot{margin-top:12px;min-height:120px;background:#fff;border-radius:14px;padding:6px;color:#111}
+.gcfg ol{margin:8px 0;padding-left:20px;line-height:1.7}.gcfg code{font-size:12px;background:var(--line);padding:1px 5px;border-radius:5px}.gcfg .gqf{margin-top:6px}
 .vgq{margin:12px 0 0;color:var(--muted);font-size:13.5px;line-height:1.7}.vgq svg{width:15px;height:15px;vertical-align:-2px;color:var(--cyan)}.vgq a{color:var(--cyan);text-decoration:none}.vgq a:hover{text-decoration:underline}
 /* Ideas Random: limpio, íconos de un solo color, sin recuadros */
 .ideas{display:flex;flex-direction:column;gap:18px;max-width:980px}
@@ -361,6 +365,7 @@ html.nomotion .picon{animation:none}
 .lkrow{display:grid;grid-template-columns:minmax(150px,220px) 1fr auto auto auto;gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--line-2);border-radius:16px;background:rgba(148,163,184,.04);--lc:var(--cyan)}
 .lkrow.drive{--lc:#22c55e}.lkrow.canva{--lc:#a78bfa}.lkrow.designLink{--lc:#f59e0b}
 .lkname{display:flex;align-items:center;gap:10px;min-width:0;padding-top:6px;border-top:4px solid var(--lc);border-radius:2px}.lkname b{font-size:15px}.lkname .lkn{min-width:0}
+.lkic.logo{background:#fff;padding:5px}.lkic.logo svg{width:24px;height:24px}.lkn-w{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}.lkn-w small{font-size:11.5px;color:var(--muted)}.lkadd{white-space:normal;flex-wrap:wrap;text-align:left;height:auto;max-width:100%}.lkadd .note{font-weight:400;white-space:normal}
 .lkic{width:34px;height:34px;flex:none;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--lc) 18%,transparent);color:var(--lc)}.lkic svg{width:18px;height:18px}
 .lkin{min-width:0;border-radius:14px;padding:12px 14px;font-size:15px}
 .lkurl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
@@ -2719,8 +2724,8 @@ document.addEventListener("drop", e => {
 function calMoveTo(kind, id, to){
   if (kind === "post" || kind === "canal"){ const p = kind === "post" ? postById(id) : canalById(id); if (p.date === to) return render(); const from = p.date; p.date = to; MONTH = to.slice(0,7); render();
     toast(`Posteo movido del ${dm(from)} al ${dm(to)}${from.slice(0,7) !== to.slice(0,7) ? ` (pasó a ${monthName(to.slice(0,7))})` : ""}.`); }
-  else { const j = jobs.find(x => x.id === id); if (j.due === to) return render(); const from = j.due; j.due = to; MONTH = to.slice(0,7); render();
-    toast(`“${j.title}”: fecha de entrega del ${dm(from)} al ${dm(to)}${from.slice(0,7) !== to.slice(0,7) ? ` (pasó a ${monthName(to.slice(0,7))})` : ""}.`); }
+  else { const j = jobs.find(x => x.id === id); if (j.due === to) return render(); const from = j.due; j.due = to; if (isFin(j)) j.delivered = to; MONTH = to.slice(0,7); render(); // terminado: también su fecha de finalización
+    toast(`“${j.title}”: ${isFin(j) ? "fecha de finalización" : "fecha de entrega"} del ${dm(from)} al ${dm(to)}${from.slice(0,7) !== to.slice(0,7) ? ` (pasó a ${monthName(to.slice(0,7))})` : ""}.`); }
 }
 
 if ("serviceWorker" in navigator && location.protocol === "https:" && window.top === window.self) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
@@ -4005,7 +4010,7 @@ function calDrag(kind, id){
   if (!canCalMove()) return "";
   const it = kind === "post" ? postById(id) : kind === "canal" ? canalById(id) : jobs.find(x => x.id === id);
   const d = kind === "job" ? it.due : it.date;
-  return calDateOk(d) && !(kind === "job" && isFin(it)) ? ` draggable="true" data-drag="${kind}:${id}"` : "";
+  return calDateOk(d) ? ` draggable="true" data-drag="${kind}:${id}"` : ""; // también los aprobados/finalizados
 }
 const calHint = () => canCalMove() && !isClosed() ? `<p class="draghint">Tocá un contenido para abrirlo y editarlo, o tocá un día para cargar uno nuevo en esa fecha. Arrastrá un posteo o una entrega a otro día para cambiar la fecha; para pasarlo a otro mes, soltalo en los días grises o dejalo un momento sobre “‹ Anterior” / “Siguiente ›”.</p>` : "";
 function calGrid(render, addable = false){
@@ -4326,21 +4331,29 @@ document.addEventListener("click", async e => {
 // Links de acceso del pedido (Diseño y CM): una fila para Google Drive, otra para Canva, el diseño para revisar (Diseño)
 // y los que se sumen con nombre (Logo, Diseño, Fotos…). En cada fila se pega el link, se copia o se abre. No se adjuntan archivos.
 const otherLinks = j => Array.isArray(j.xlinks) ? j.xlinks : jobLinks(j).filter(Boolean).map(u => ({ n:"", u }));
-const canEditJobLinks = j => !isClosed() && !isViewOnly() && !j.ex && (viewer.role === "Admin total" || j.owner === viewer.name || canChangeStatus(j));
+const canEditJobLinks = j => !isClosed(); // cualquiera del equipo puede cargar los links del pedido (Diseño y CM)
+// Logos de cada tipo de link: Canva, Google Drive y “disco digital” para cualquier otro sitio.
+const LK_LOGO = {
+  canva:`<svg viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="lkcv" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#7d2ae8"/><stop offset=".5" stop-color="#6420ff"/><stop offset="1" stop-color="#00c4cc"/></linearGradient></defs><circle cx="24" cy="24" r="22" fill="url(#lkcv)"/><path d="M29.6 29.4c-1.5 1.6-3.4 2.6-5.4 2.6-3.6 0-5.6-3-5.6-6.6 0-4.9 3.6-9.4 7.6-9.4 1.8 0 3 1 3 2.5 0 1.9-1.6 2.8-1.6 2.8.9.3 2.3-.7 2.3-2.8 0-2.2-1.9-4-4.6-4-5.4 0-10 5.6-10 11.3 0 4.6 2.8 8.3 7.6 8.3 3.2 0 5.6-1.6 7.1-3.6z" fill="#fff"/></svg>`,
+  drive:`<svg viewBox="0 0 87.3 78" aria-hidden="true"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3L1.2 48.5A9 9 0 0 0 0 53h27.5z" fill="#00ac47"/><path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z" fill="#ea4335"/><path d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>`,
+};
+const LK_EJ = ["Logo", "Fotos del producto", "Diseño final", "Textos", "Video", "Tipografía"];
 function linkEditor(j, mode){ // mode: "form" (formulario), "ficha" (se guarda al pegar) o "" (solo ver)
-  const ed = !!mode, LK = { drive:["folder-open","Google Drive","Pegar link de Google Drive"], canva:["palette","Canva","Pegar link de Canva"], designLink:["eye","Diseño para revisar","Pegar link del diseño para revisar"] };
-  const fixed = ["drive","canva", ...(j.area === "CM" ? [] : ["designLink"])];
-  const row = (key, name, url, i) => { const fx = i == null, [ic, t, ph] = fx ? LK[key] : ["link", name || "Otro link", "Pegar link (Drive, Canva, WeTransfer, Figma…)"], u = safeUrl(url);
+  const ed = !!mode, LK = { canva:[LK_LOGO.canva,"Canva","Pegar link de Canva (diseño o plantilla)"], drive:[LK_LOGO.drive,"Google Drive","Pegar link de Google Drive (carpeta o archivo)"], designLink:["eye","Diseño para revisar","Pegar link del diseño para revisar"] };
+  const ico = ic => ic.startsWith("<svg") ? ic : icon(ic);
+  const row = (key, name, url, i) => { const fx = i == null, [ic, t, ph] = fx ? LK[key] : ["hard-drive", name || "Otro link", "Pegar link de otro sitio (WeTransfer, Dropbox, OneDrive, Figma…)"], u = safeUrl(url);
     if (!ed && !u) return "";
-    return `<div class="lkrow ${fx ? key : "ext"}"${fx ? "" : ` data-lki="${i}"`}><div class="lkname"><span class="lkic">${icon(ic)}</span>${fx || !ed ? `<b>${esc(t)}</b>` : `<input class="base lkn" data-lkn="${i}" value="${esc(name || "")}" placeholder="Nombre (ej.: Logo)" aria-label="Nombre del link">`}</div>
+    return `<div class="lkrow ${fx ? key : "ext"}"${fx ? "" : ` data-lki="${i}"`}><div class="lkname"><span class="lkic${fx && key !== "designLink" ? " logo" : ""}">${ico(ic)}</span>${fx || !ed ? `<b>${esc(t)}</b>` : `<span class="lkn-w"><small>Otro link · ¿qué es?</small><input class="base lkn" data-lkn="${i}" value="${esc(name || "")}" placeholder="Ej.: ${esc(LK_EJ[i % LK_EJ.length])}" aria-label="Nombre del link (qué archivo es)"></span>`}</div>
       ${ed ? `<input class="base lkin" ${fx ? `data-lkin="${key}"${key === "designLink" ? ` id="jDesignLink"` : ""}` : `data-lku="${i}"`} type="url" inputmode="url" value="${esc(url || "")}" placeholder="${ph}" aria-label="${esc(t)}">` : `<span class="lkurl">${esc(url)}</span>`}
       <button type="button" class="btn lkbtn" data-lkcopy="${esc(u)}" ${u ? "" : "disabled"}>${icon("copy")} Copiar link</button>
       <a class="btn lkbtn${u ? "" : " off"}" ${u ? `href="${esc(u)}" target="_blank" rel="noopener"` : `aria-disabled="true"`}>${icon("arrow-up-right")} Abrir</a>
       ${ed && !fx ? `<button type="button" class="btn ib sm" data-lkdel="${i}" aria-label="Quitar este link">${icon("x")}</button>` : ""}
       <div class="lkstate">${u ? `${icon("check")} Link guardado` : "Sin link guardado."}</div></div>`; };
-  const rows = fixed.map(k => row(k, "", j[k] || "")).join("") + otherLinks(j).map((l, i) => row("", l.n, l.u, i)).join("");
+  // Orden: 1) Canva, 2) Google Drive, 3) otros links con su nombre (siempre hay uno para completar), y el diseño para revisar (Diseño).
+  const others = otherLinks(j).length ? otherLinks(j) : ed ? [{ n:"", u:"" }] : [];
+  const rows = ["canva","drive"].map(k => row(k, "", j[k] || "")).join("") + others.map((l, i) => row("", l.n, l.u, i)).join("") + (j.area === "CM" ? "" : row("designLink", "", j.designLink || ""));
   return `<div class="lked" data-lkmode="${mode}" data-lkjob="${esc(j.id)}">${rows || `<p class="note" style="margin:0">Todavía no hay links.</p>`}
-    ${ed ? `<button type="button" class="btn sm" data-lkadd>${icon("plus")} Agregar otro link (ej.: Logo, Diseño)</button>` : ""}</div>`;
+    ${ed ? `<button type="button" class="btn sm lkadd" data-lkadd>${icon("plus")} Agregar otro link <span class="note">(ej.: Logo, Fotos del producto, Diseño final)</span></button>` : ""}</div>`;
 }
 function readLinkEditor(box, j){
   box.querySelectorAll("[data-lkin]").forEach(x => { const v = x.value.trim(); j[x.dataset.lkin] = safeUrl(v) ? v : ""; });
@@ -7277,7 +7290,7 @@ function seasonCard(s, ar, i){
 }
 function trendGet(ar){
   let c = trendSt[ar];
-  if (!c){ try { c = JSON.parse(localStorage.getItem("rmh-trend5-" + ar) || "null"); } catch {} if (c) trendSt[ar] = c; }
+  if (!c){ try { c = JSON.parse(localStorage.getItem("rmh-trend6-" + ar) || "null"); } catch {} if (c) trendSt[ar] = c; }
   if ((!c || Date.now() - (c.at || 0) > TREND_TTL) && !trendSt["busy" + ar] && !(c?.errAt && Date.now() - c.errAt < 60000)) trendLoad(ar);
   return trendSt[ar];
 }
@@ -7285,7 +7298,7 @@ async function trendLoad(ar, force = false){
   trendSt["busy" + ar] = true;
   let j; try { j = await integ({ action:"tendencias", area:ar, force }); } catch (e) { j = { ok:false, error:e?.message }; }
   trendSt["busy" + ar] = false;
-  if (j?.ok && Array.isArray(j.groups)){ trendSt[ar] = { at:Date.now(), groups:j.groups }; try { localStorage.setItem("rmh-trend5-" + ar, JSON.stringify(trendSt[ar])); } catch {} }
+  if (j?.ok && Array.isArray(j.groups)){ trendSt[ar] = { at:Date.now(), groups:j.groups }; try { localStorage.setItem("rmh-trend6-" + ar, JSON.stringify(trendSt[ar])); } catch {} }
   else trendSt[ar] = { ...(trendSt[ar] || { groups:[] }), errAt:Date.now(), err:j?.error || "No se pudieron traer las novedades" };
   if (page === (ar === "dg" ? "tendg" : ar === "cm" ? "tencm" : "ideas")) render();
 }
@@ -7326,6 +7339,54 @@ function refStrip(ar){
     <div class="rchips">${R.top.map(refChip(ar)).join("")}</div>
     ${R.more.length ? `<details class="rmore"><summary>Ver ${R.more.length} cadenas más</summary><div class="rchips">${R.more.map(refChip(ar)).join("")}</div></details>` : ""}</section>`;
 }
+// Instagram de los supermercados de referencia: si no hay posteos o tienen más de 20 horas, se piden solos (una vez por sesión).
+function refsAuto(){
+  if (refsAuto.done || !canMetaRefresh() || metaBusy.referentes || /^(localhost|127\.)/.test(location.hostname)) return; // en una copia local no hay funciones /api
+  const age = META_REFS.updated ? Date.now() - new Date(META_REFS.updated) : Infinity, err = META_REFS.errorAt ? Date.now() - new Date(META_REFS.errorAt) : Infinity;
+  if (age < 20 * 3600e3 || err < 6 * 3600e3) return;
+  refsAuto.done = true; setTimeout(() => metaRefresh("referentes", "Visuales"), 400);
+}
+// Google Imágenes dentro de la app: el buscador oficial de Google (Programmable Search), con el ID que crea Admin total.
+// Sin ID, cada búsqueda abre Google Imágenes en otra pestaña (lo último del mes).
+const GQ = { dg:["Pão de Açúcar campanha","supermercado afiche ofertas","supermarket poster design","folleto supermercado diseño","packaging marca propia supermercado","cartelería punto de venta supermercado","Navidad supermercado campaña gráfica"],
+  cm:["Pão de Açúcar instagram","supermercado post instagram","carrusel instagram supermercado","supermarket social media post","supermercado Halloween redes","Black Friday supermercado post","ideas de contenido supermercado"] };
+let gUI = { q:"" };
+const gcseId = () => /^[a-z0-9:_-]{8,64}$/i.test(APP_FLAGS.gcse || "") ? APP_FLAGS.gcse : "";
+const gOpen = q => `https://www.google.com/search?tbm=isch&tbs=qdr:m&q=${encodeURIComponent(q)}`;
+function gImgSec(dg){
+  const cx = gcseId(), qs = GQ[dg ? "dg" : "cm"];
+  return `<section class="tsec"><div class="tsec-h"><span class="tsec-ic">${icon("search")}</span><div><h2>Google Imágenes</h2><p>Afiches, flyers, posteos y carruseles de supermercados. Elegí una búsqueda o escribí la tuya${cx ? "" : ": se abre Google Imágenes con lo del último mes"}.</p></div></div>
+    <div class="vchips">${qs.map(q => cx ? `<button type="button" class="ichip${gUI.q === q ? " on" : ""}" data-gq="${esc(q)}">${esc(q)}</button>` : `<a class="ichip" href="${gOpen(q)}" target="_blank" rel="noopener noreferrer">${esc(q)} ${icon("arrow-up-right")}</a>`).join("")}</div>
+    <form class="gqf" data-gqform><input name="q" type="search" placeholder="Ej.: afiche ofertas supermercado" value="${esc(gUI.q)}" aria-label="Buscar en Google Imágenes"><button class="btn" type="submit">${icon("search")} Buscar</button></form>
+    ${cx ? `<div id="gcseSlot" class="gcse-slot"></div>` : ""}
+    ${viewer.role === "Admin total" && !window.RMH?.previewing ? `<details class="vfail gcfg"${cx ? "" : " open"}><summary>${icon("settings")} ${cx ? "Buscador de Google conectado" : "Ver los resultados de Google acá adentro (Admin total, una sola vez)"}</summary>
+      <ol><li>Entrá a <a href="https://programmablesearchengine.google.com/controlpanel/create" target="_blank" rel="noopener noreferrer">programmablesearchengine.google.com</a> con la cuenta de Google del equipo y tocá <b>Agregar</b>.</li>
+      <li>Nombre: <i>Tendencias</i>. En “Qué buscar” elegí <b>Buscar en sitios específicos</b> y pegá: <code>instagram.com</code>, <code>facebook.com</code>, <code>pinterest.com</code>, <code>behance.net</code>, <code>paodeacucar.com</code>, <code>campaignsoftheworld.com</code>, <code>thedieline.com</code>, <code>packagingoftheworld.com</code>.</li>
+      <li>Activá <b>Búsqueda de imágenes</b> y tocá <b>Crear</b>. Copiá el <b>ID del motor de búsqueda</b> y pegalo acá:</li></ol>
+      <div class="gqf"><input id="gcseIn" value="${esc(APP_FLAGS.gcse || "")}" placeholder="ID del motor de búsqueda (ej.: a1b2c3d4e5f6g7h8i)"><button type="button" class="btn" data-gcsesave>${icon("check")} Guardar</button></div></details>` : ""}</section>`;
+}
+let gHost = null, gLoading = false;
+function gcseMount(){
+  const slot = document.getElementById("gcseSlot"), cx = gcseId(); if (!slot || !cx) return;
+  if (!gHost){ gHost = document.createElement("div"); gHost.innerHTML = `<div id="gcseRes"></div>`; }
+  slot.appendChild(gHost);
+  const run = () => { const el = window.google?.search?.cse?.element; if (!el) return;
+    if (!el.getElement("tend")) el.render({ div:"gcseRes", tag:"searchresults-only", gname:"tend", attributes:{ defaultToImageSearch:true, disableWebSearch:true, enableImageSearch:true, imageSearchLayout:"popup", linkTarget:"_blank" } });
+    const q = gUI.q || GQ[page === "tencm" ? "cm" : "dg"][0]; if (gHost.dataset.q !== q){ gHost.dataset.q = q; el.getElement("tend").execute(q); } };
+  if (window.google?.search?.cse?.element) return run();
+  if (gLoading) return; gLoading = true;
+  window.__gcse = { parsetags:"explicit", initializationCallback:run };
+  const sc = document.createElement("script"); sc.async = true; sc.src = "https://cse.google.com/cse.js?cx=" + encodeURIComponent(cx); document.head.appendChild(sc);
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-gq]"); if (b){ gUI.q = b.dataset.gq; render(); return; }
+  if (e.target.closest("[data-gcsesave]")){ const v = ($("#gcseIn")?.value || "").trim().replace(/^.*[?&]cx=/, "").replace(/[&#].*$/, "");
+    if (v && !/^[a-z0-9:_-]{8,64}$/i.test(v)){ toast("Ese no parece un ID del motor de búsqueda: copialo de “ID del motor de búsqueda”."); return; }
+    APP_FLAGS = { ...APP_FLAGS, gcse:v || undefined }; gHost = null; gLoading = false; render(); toast(v ? "Google Imágenes conectado: los resultados se ven en Tendencias." : "Se quitó el buscador de Google."); }
+});
+document.addEventListener("submit", e => { const f = e.target.closest("[data-gqform]"); if (!f) return; e.preventDefault();
+  const q = (f.q.value || "").trim(); if (!q) return;
+  if (gcseId()){ gUI.q = q; render(); } else window.open(gOpen(q), "_blank", "noopener"); });
 const TREND_GROUPS = {
   dg:{ super:["shopping-bag","Campañas visuales","Campañas gráficas, piezas, packaging y rediseños de supermercados: ideas para tus próximas gráficas."], insp:["store","Punto de venta y packaging","Exhibición, cartelería, góndolas, tiendas y marca propia de supermercados."] },
   cm:{ super:["shopping-cart","Contenidos que funcionan","Lo que hacen en redes los supermercados y marcas de consumo: TikToks, reels, carruseles y campañas virales, para nuevas ideas de contenido."], redes:["calendar-heart","Campañas y contenidos por fecha","Cómo comunican los supermercados las fechas que vienen (Navidad, Black Friday, Día de la Madre…) en redes y en tienda."] },
@@ -7351,22 +7412,26 @@ function pTend(ar){
   if (selC !== "Todas"){ const one = byAcc.find(x => x.u === selC); tiles = one ? one.posts.map(p => ({ ...p, acc:one })) : []; }
   else { tiles = (pda ? pda.posts.slice(0, 3).map(p => ({ ...p, acc:pda })) : []); const rr = rest.map(x => x.posts.slice(0, 2).map(p => ({ ...p, acc:x }))); for (let k = 0; k < 2; k++) rr.forEach(l => l[k] && tiles.push(l[k])); }
   tiles = tiles.slice(0, 16);
-  const QS = dg ? ["supermarket advertising poster design","supermercado afiche publicidad creativa","Pão de Açúcar campanha anúncio","Whole Foods ad campaign poster","Waitrose advertising poster"] : ["supermarket instagram post design","supermercado posteo instagram diseño","Pão de Açúcar post instagram","grocery social media carousel design","supermarket social media campaign"];
+  // Mientras Instagram no trae posteos: piezas de campañas y packaging publicadas en medios creativos (con su imagen).
+  const press = tiles.length ? [] : (groups.find(x => x.k === "vis")?.items || []).filter(x => safeUrl(x.img)).slice(0, 12);
+  refsAuto();
   const visSec = `<section class="tsec"><div class="tsec-h"><span class="tsec-ic">${icon("images")}</span><div><h2>Visuales de campañas</h2><p>Posteos y carruseles de Instagram de los supermercados de referencia, con Pão de Açúcar primero. Tocá una imagen para ver el posteo.</p></div>${metaBtn("referentes", "Visuales")}</div>
     ${byAcc.length ? `<div class="vchips">${[["Todas", "Todas"], ...byAcc.map(x => [x.u, `${flagOf(x.a.cc)} ${x.a.name}`])].map(([k, l]) => `<button type="button" class="ichip${selC === k ? " on" : ""}" data-vischain="${esc(k)}">${esc(l)}</button>`).join("")}</div>` : ""}
+    ${!tiles.length && press.length ? `<div class="vgal">${press.map((x, i) => `<a class="vimg" href="${esc(safeUrl(x.u))}" target="_blank" rel="noopener noreferrer" style="--i:${i}" title="${esc(x.t)}"><img src="${esc(safeUrl(x.img))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.vimg').remove()"><span><b>${flagOf(x.cc || "WW")} ${esc(x.chain || x.src)}</b><small>${esc(x.t)}</small></span></a>`).join("")}</div><p class="note" style="margin:8px 0 0">Piezas de campañas y packaging publicadas en ${esc([...new Set(press.map(x => x.src))].slice(0, 4).join(", "))}. Cuando lleguen los posteos de Instagram, se muestran acá.</p>` : ""}
     ${tiles.length ? `<div class="vgal">${tiles.map((x, i) => `<a class="vimg" href="${esc(safeUrl(x.link))}" target="_blank" rel="noopener noreferrer" style="--i:${i}" title="${esc(x.cap || x.acc.a.name)}"><img src="${esc(safeUrl(x.img))}" alt="${esc(x.acc.a.name)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.vimg').remove()"><span><b>${flagOf(x.acc.a.cc)} ${esc(x.acc.a.name)}</b><small>${esc(x.type)} · ${dm(String(x.ts).slice(0, 10))}</small></span></a>`).join("")}</div>`
-      : `<p class="note" style="margin:0">${META_REFS.updated ? "Todavía no hay posteos para mostrar." : "Los posteos se traen de Instagram una vez por día (con la conexión de Meta)."}${canMetaRefresh() ? " Tocá “Actualizar” para traerlos ahora." : ""}</p>`}
+      : press.length ? "" : `<p class="note" style="margin:0">${META_REFS.updated ? "Todavía no hay posteos para mostrar." : "Los posteos se traen de Instagram una vez por día (con la conexión de Meta)."}${canMetaRefresh() ? " Tocá “Actualizar” para traerlos ahora." : ""}</p>`}
     ${canMetaRefresh() && (META_REFS.error || Object.values(META_REFS.accounts || {}).some(a => a.err)) ? `<details class="vfail"><summary>${icon("alert-triangle")} ${META_REFS.error ? "No se pudieron traer los posteos" : `${Object.values(META_REFS.accounts).filter(a => a.err).length} cuentas no se pudieron leer`}</summary>${META_REFS.error ? `<p>${esc(META_REFS.error)}</p>` : ""}<ul>${Object.entries(META_REFS.accounts || {}).filter(([, a]) => a.err).map(([u, a]) => `<li><b>@${esc(u)}</b> (${esc(a.name)}): ${esc(a.err)}</li>`).join("")}</ul></details>` : ""}
-    <p class="vgq">${icon("search")} Más referencias de calidad: ${QS.map(q => `<a href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(q)}" target="_blank" rel="noopener noreferrer">${esc(q)}</a>`).join(" · ")} · <a href="https://www.behance.net/search/projects?search=${encodeURIComponent(dg ? "supermarket campaign" : "supermarket social media")}" target="_blank" rel="noopener noreferrer">Behance</a> · <a href="https://www.pinterest.com/search/pins/?q=${encodeURIComponent(dg ? "supermarket poster design" : "supermarket instagram post")}" target="_blank" rel="noopener noreferrer">Pinterest</a></p></section>`;
+</section>`;
   return `<div class="head"><div><h1 class="pmh">${pmIco("sparkles")}Tendencias</h1><p class="sub">${dg ? "Diseño de supermercados: campañas, visuales, punto de venta y packaging." : "Supermercados en redes: campañas, contenidos y fechas comerciales."} En español; se actualiza sola. Tocá una nota para verla completa.</p></div>
     ${viewer.role === "Admin total" ? `<button type="button" class="btn" data-trendre="${ar}" ${busy ? "disabled" : ""}>${icon("refresh-cw")} ${busy ? "Actualizando…" : "Actualizar"}</button>` : ""}</div>
   ${sec(k1)}
   ${visSec}
+  ${gImgSec(dg)}
   <section class="tsec"><div class="tsec-h"><span class="tsec-ic">${icon("calendar-heart")}</span><div><h2>Campañas de temporada</h2><p>Las próximas fechas de Paraguay y Latinoamérica, cuándo empezar ${dg ? "a diseñar" : "a preparar el contenido"} e ideas. Tocá Pinterest, Behance o Google para ver flyers y campañas de supermercados.</p></div></div>
     <div class="tgrid sgrid">${seasonsAhead(8).map((s, i) => seasonCard(s, ar, i)).join("")}</div></section>
   ${sec(k3)}
   ${refStrip(ar)}
-  ${c?.at ? `<p class="note">Actualizado ${new Date(c.at).toLocaleString("es-PY", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })}. Solo noticias con foto y de los últimos 30 días, las más nuevas primero. Fuentes: Bing Noticias y ${dg ? "Brandemia, Gràffica, The Dieline, Packaging of the World y otros" : "Marketing Directo, Roastbrief, LatamClick, Social Media Today y otros"}. Lo que viene en inglés se muestra traducido.</p>` : ""}
+  ${c?.at ? `<p class="note">Actualizado ${new Date(c.at).toLocaleString("es-PY", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })}. Solo prensa creativa y de diseño (nada de noticias de negocios), con foto y las más nuevas primero. Fuentes: ${dg ? "Campaigns of the World, The Dieline, BP&O, Packaging of the World, Roastbrief, Propmark y otros" : "Roastbrief, Campaigns of the World, Creativos Online, Propmark, Meio & Mensagem y otros"}. Lo que viene en inglés o portugués se muestra traducido.</p>` : ""}
   <section class="parea"><h2 class="pmh" style="margin:0">${pmIco("compass")}Para inspirarte</h2>
     <div class="tlinks">${TREND_LINKS[ar].map(([n, u, d]) => `<a class="tlink" href="${u}" target="_blank" rel="noopener noreferrer"><b>${n} ${icon("arrow-up-right")}</b><small>${d}</small></a>`).join("")}</div></section>`;
 }
@@ -7446,6 +7511,7 @@ function render(){
   document.documentElement.classList.toggle("chatfull", page === "mensajes" && !!chatUI.mob && !!chatUI.open);
   chatNotify();
   if (window.lucide) lucide.createIcons();
+  if (page === "tendg" || page === "tencm") gcseMount();
   if (page === "tvredes"){ tvShow(animate ? 0 : tv.i); tvStart(); } else tvStop();
   if (page === "tvimpacto"){ impShow(animate ? 0 : imp.i); impLoop(); } else impStop();
   if (page === "tv"){ tvTeamShow(animate ? 0 : tvTeam.i); tvTeamLoop(); }
