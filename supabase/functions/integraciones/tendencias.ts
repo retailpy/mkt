@@ -4,7 +4,7 @@
 // por fecha) y sus feeds. Lo que viene en portugués o inglés se traduce al español. Pão de Açúcar va siempre primero.
 // Lo usa index.ts (acción "tendencias"); acá no se toca la base.
 
-type Feed = { u: string; src: string; lang: string; cc: string; days: number; bing?: boolean };
+type Feed = { u: string; src: string; lang: string; cc: string; days: number; bing?: boolean; pin?: string };
 export type Item = { t: string; u: string; x: string; img: string; d: string; src: string; lang: string; chain: string; cc: string; tr?: boolean };
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 RetailMKTHub/1.0";
@@ -28,6 +28,9 @@ const M = {
 // Roastbrief: su búsqueda tarda demasiado; sus etiquetas (supermercados, tiktok, halloween…) responden al instante.
 const slug = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const RT = (t: string): Feed => ({ u: `https://roastbrief.com.mx/tag/${slug(t)}/feed/`, src: "Roastbrief", lang: "es", cc: "MX", days: 400 });
+// Tableros de Pinterest (afiches, encartes, posteos y carruseles de diseño): su feed oficial (RSS). Los elige Admin total.
+export const PIN_BOARDS = ["stephanygonzalezblanco95/inspiración-redes-sociales", "94maripf/social-media-post-design", "chellypoplima/modelos-encarte"];
+const PIN = (b: string): Feed => ({ u: `https://www.pinterest.com/${b.split("/").map(encodeURIComponent).join("/")}.rss`, src: "Pinterest", lang: "es", cc: "WW", days: 3650, pin: b });
 const P: Record<string, Feed> = { // medios sin búsqueda por feed: solo lo último
   mm: { u: "https://www.meioemensagem.com.br/feed", src: "Meio & Mensagem", lang: "pt", cc: "BR", days: 45 },
   gkpb: { u: "https://gkpb.com.br/feed/", src: "GKPB", lang: "pt", cc: "BR", days: 45 },
@@ -140,7 +143,7 @@ const GROUPS: Record<string, G[]> = {
       score: (f) => 3 * f.sup + 3 * f.pack + 2 * f.pos + f.des + f.food + f.chain - 2 * f.soft },
     // Visuales (si todavía no hay posteos de Instagram): piezas de campañas y packaging, como galería.
     { k: "vis", n: 12, cap: 4, pda: true,
-      feeds: () => [M.cotw("supermarket"), M.cotw("grocery"), M.cotw("food"), RT("supermercados"), RT("supermercado"), RT("walmart"), RT("oxxo"), M.propmark("pão de açúcar"), M.dieline("grocery"), M.bpando("grocery"), M.bpando("supermarket"), P.potw, M.dieline(), M.roast()],
+      feeds: () => [M.cotw("supermarket"), M.cotw("grocery"), M.cotw("food"), M.propmark("pão de açúcar"), M.dieline("grocery"), M.bpando("grocery"), M.bpando("supermarket"), P.potw, M.dieline()], // sin fotos de personas ni de eventos
       need: (f) => (f.sup || f.food) && (f.des || f.camp || f.pack) ? true : false,
       score: (f) => 3 * f.sup + f.chain + f.food + 2 * f.des + f.camp + f.pack - 2 * f.soft },
   ],
@@ -156,7 +159,7 @@ const GROUPS: Record<string, G[]> = {
       need: (f) => f.fecha && (f.camp || f.soc || f.des || f.launch) ? true : false, // campañas de la fecha de cualquier marca de consumo (primero supermercados y alimentos)
       score: (f) => 3 * f.sup + f.chain + 2 * f.soc + f.camp + f.des + 2 * f.food - 2 * f.soft },
     { k: "vis", n: 12, cap: 4, pda: true,
-      feeds: () => [RT("supermercados"), RT("supermercado"), RT("walmart"), RT("oxxo"), RT("tiktok"), M.cotw("supermarket"), M.cotw("social media"), M.propmark("pão de açúcar"), M.cotw("grocery"), M.roast()],
+      feeds: () => [M.cotw("supermarket"), M.cotw("social media"), M.propmark("pão de açúcar"), M.cotw("grocery"), M.cotw("food"), M.dieline("grocery")],
       need: (f) => (f.sup || f.food) && (f.camp || f.soc || f.des) ? true : false,
       score: (f) => 3 * f.sup + f.chain + 2 * f.soc + f.camp + f.des + f.food - 2 * f.soft },
   ],
@@ -200,16 +203,17 @@ async function readFeed(f: Feed, stats?: Stat[]){
       const xml = (await r.text()).slice(0, 1_500_000);
       items = [...xml.matchAll(/<item[\s>][\s\S]*?<\/item>/g)].slice(0, 30).map(([it]) => {
         const desc = tag(it, "description"), body = tag(it, "content:encoded");
-        const t = strip(tag(it, "title")), u = decode(tag(it, "link")).trim();
-        let x = strip(desc).slice(0, 260), src = f.src, link = u, img = "";
+        let t = strip(tag(it, "title")); const u = decode(tag(it, "link")).trim();
+        let x = strip(desc).slice(0, 260), src: string = f.src, link = u, img = "";
         if (f.bing){ // Bing Noticias: el link real va en el parámetro url, el medio en News:Source y la foto en News:Image
           try { link = new URL(u).searchParams.get("url") || u; } catch { /* queda el de Bing */ }
           src = strip(tag(it, "News:Source")) || "Bing Noticias";
           const bi = decode(tag(it, "News:Image")).trim(); if (bi) img = bi.replace(/^http:/, "https:") + "&w=640&h=360&c=14";
         } else img = pickImg(it, decode(desc + body));
+        if (f.pin){ img = img.replace(/\/(236x|170x|474x)\//, "/564x/"); if (!t.trim()) t = "Pieza en Pinterest"; src = "Pinterest"; } // la imagen más grande del pin
         if (!x && body) x = strip(body).slice(0, 260);
         const pd = Date.parse(decode(tag(it, "pubDate") || tag(it, "dc:date")).trim());
-        return { t, u: link, x, img, d: isNaN(pd) ? "" : new Date(pd).toISOString(), src, lang: f.lang, cc: f.cc, days: f.days };
+        return { t, u: link, x, img, d: isNaN(pd) ? "" : new Date(pd).toISOString(), src, lang: f.lang, cc: f.cc, days: f.days, pin: f.pin || "" };
       }).filter((i) => i.t && i.d && /^https?:\/\//.test(i.u));
     }
   } catch (e: any){ st = e?.name === "AbortError" ? "timeout" : "error"; }
@@ -247,7 +251,7 @@ const firstSentence = (x: string) => { const s = x.replace(/…$/, "").split(/(?
 
 // ---------- Armado de los grupos de un área ----------
 // known: notas ya armadas antes (con su traducción y su foto), para no traducir ni buscar fotos dos veces.
-export async function armar(area: string, known: Map<string, any>, { debug = false, translate = true } = {}){
+export async function armar(area: string, known: Map<string, any>, { debug = false, translate = true, boards = PIN_BOARDS } = {}){
   const now = Date.now(), used = new Set<string>(), groups: { k: string; items: Item[] }[] = [], stats: Stat[] = [], dbg: any[] = [];
   const fechas = fechasQueVienen(), fechaRe = new RegExp(fechas.map((f) => FECHA[f]?.[3].source || f).join("|"), "i");
   for (const g of GROUPS[area] || []){
@@ -289,6 +293,15 @@ export async function armar(area: string, known: Map<string, any>, { debug = fal
     groups.push({ k: g.k, items });
     if (debug) dbg.push({ k: g.k, cands: cands.length, ok: ok.length, out: out.map((i) => `${i.s.toFixed(1)} ${i.d.slice(0, 10)} ${i.src}${i.chain ? " [" + i.chain + "]" : ""}: ${i.t}${i.img ? "" : " (sin foto)"}`),
       neg: negs.slice(0, 25), nope: nope.slice(0, 25) });
+  }
+  // Galería de piezas gráficas: los pines más nuevos de los tableros de Pinterest (todas sus imágenes, sin traducir).
+  if (area === "dg" || area === "cm"){
+    const pins = (await Promise.all(boards.slice(0, 8).map((b) => readFeed(PIN(b), debug ? stats : undefined)))).flat().filter((i) => i.img)
+      .sort((a, b) => b.d.localeCompare(a.d));
+    const per: Record<string, number> = {}, seen = new Set<string>(), out: Item[] = [];
+    for (const cap of [6, 99]) for (const i of pins){ if (out.length >= 18) break; if (seen.has(i.u) || (per[i.pin] || 0) >= cap) continue; seen.add(i.u); per[i.pin] = (per[i.pin] || 0) + 1;
+      out.push({ t: i.t.slice(0, 140), u: i.u, x: "", img: i.img, d: i.d, src: "Pinterest", lang: "es", chain: "", cc: "WW" }); }
+    groups.push({ k: "pins", items: out });
   }
   return debug ? { groups, stats, dbg } : { groups };
 }

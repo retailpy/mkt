@@ -4337,13 +4337,13 @@ const LK_LOGO = {
   canva:`<svg viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="lkcv" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#7d2ae8"/><stop offset=".5" stop-color="#6420ff"/><stop offset="1" stop-color="#00c4cc"/></linearGradient></defs><circle cx="24" cy="24" r="22" fill="url(#lkcv)"/><path d="M29.6 29.4c-1.5 1.6-3.4 2.6-5.4 2.6-3.6 0-5.6-3-5.6-6.6 0-4.9 3.6-9.4 7.6-9.4 1.8 0 3 1 3 2.5 0 1.9-1.6 2.8-1.6 2.8.9.3 2.3-.7 2.3-2.8 0-2.2-1.9-4-4.6-4-5.4 0-10 5.6-10 11.3 0 4.6 2.8 8.3 7.6 8.3 3.2 0 5.6-1.6 7.1-3.6z" fill="#fff"/></svg>`,
   drive:`<svg viewBox="0 0 87.3 78" aria-hidden="true"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="M43.65 25 29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3L1.2 48.5A9 9 0 0 0 0 53h27.5z" fill="#00ac47"/><path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z" fill="#ea4335"/><path d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>`,
 };
-const LK_EJ = ["Logo", "Fotos del producto", "Diseño final", "Textos", "Video", "Tipografía"];
+const LK_EJ = ["Logo de Superseis", "Fotos del producto", "Post de Navidad", "Textos", "Video", "Tipografía"];
 function linkEditor(j, mode){ // mode: "form" (formulario), "ficha" (se guarda al pegar) o "" (solo ver)
   const ed = !!mode, LK = { canva:[LK_LOGO.canva,"Canva","Pegar link de Canva (diseño o plantilla)"], drive:[LK_LOGO.drive,"Google Drive","Pegar link de Google Drive (carpeta o archivo)"], designLink:["eye","Diseño para revisar","Pegar link del diseño para revisar"] };
   const ico = ic => ic.startsWith("<svg") ? ic : icon(ic);
   const row = (key, name, url, i) => { const fx = i == null, [ic, t, ph] = fx ? LK[key] : ["hard-drive", name || "Otro link", "Pegar link de otro sitio (WeTransfer, Dropbox, OneDrive, Figma…)"], u = safeUrl(url);
     if (!ed && !u) return "";
-    return `<div class="lkrow ${fx ? key : "ext"}"${fx ? "" : ` data-lki="${i}"`}><div class="lkname"><span class="lkic${fx && key !== "designLink" ? " logo" : ""}">${ico(ic)}</span>${fx || !ed ? `<b>${esc(t)}</b>` : `<span class="lkn-w"><small>Otro link · ¿qué es?</small><input class="base lkn" data-lkn="${i}" value="${esc(name || "")}" placeholder="Ej.: ${esc(LK_EJ[i % LK_EJ.length])}" aria-label="Nombre del link (qué archivo es)"></span>`}</div>
+    return `<div class="lkrow ${fx ? key : "ext"}"${fx ? "" : ` data-lki="${i}"`}><div class="lkname"><span class="lkic${fx && key !== "designLink" ? " logo" : ""}">${ico(ic)}</span>${fx && key !== "designLink" ? (ed ? `<span class="lkn-w"><small>${esc(t)} · ¿qué es?</small><input class="base lkn" data-lkfn="${key}" value="${esc(j[key + "N"] || "")}" placeholder="Ej.: ${key === "canva" ? "Post de Navidad" : "Logo de Superseis"}" aria-label="${esc(t)}: qué es"></span>` : `<span class="lkn-w"><b>${esc(t)}</b>${j[key + "N"] ? `<small>${esc(j[key + "N"])}</small>` : ""}</span>`) : fx || !ed ? `<b>${esc(t)}</b>` : `<span class="lkn-w"><small>Otro link · ¿qué es?</small><input class="base lkn" data-lkn="${i}" value="${esc(name || "")}" placeholder="Ej.: ${esc(LK_EJ[i % LK_EJ.length])}" aria-label="Nombre del link (qué archivo es)"></span>`}</div>
       ${ed ? `<input class="base lkin" ${fx ? `data-lkin="${key}"${key === "designLink" ? ` id="jDesignLink"` : ""}` : `data-lku="${i}"`} type="url" inputmode="url" value="${esc(url || "")}" placeholder="${ph}" aria-label="${esc(t)}">` : `<span class="lkurl">${esc(url)}</span>`}
       <button type="button" class="btn lkbtn" data-lkcopy="${esc(u)}" ${u ? "" : "disabled"}>${icon("copy")} Copiar link</button>
       <a class="btn lkbtn${u ? "" : " off"}" ${u ? `href="${esc(u)}" target="_blank" rel="noopener"` : `aria-disabled="true"`}>${icon("arrow-up-right")} Abrir</a>
@@ -4353,10 +4353,11 @@ function linkEditor(j, mode){ // mode: "form" (formulario), "ficha" (se guarda a
   const others = otherLinks(j).length ? otherLinks(j) : ed ? [{ n:"", u:"" }] : [];
   const rows = ["canva","drive"].map(k => row(k, "", j[k] || "")).join("") + others.map((l, i) => row("", l.n, l.u, i)).join("") + (j.area === "CM" ? "" : row("designLink", "", j.designLink || ""));
   return `<div class="lked" data-lkmode="${mode}" data-lkjob="${esc(j.id)}">${rows || `<p class="note" style="margin:0">Todavía no hay links.</p>`}
-    ${ed ? `<button type="button" class="btn sm lkadd" data-lkadd>${icon("plus")} Agregar otro link <span class="note">(ej.: Logo, Fotos del producto, Diseño final)</span></button>` : ""}</div>`;
+    ${ed ? `<button type="button" class="btn sm lkadd" data-lkadd>${icon("plus")} Agregar otro link <span class="note">(ej.: Logo de Superseis, Fotos del producto, Post de Navidad)</span></button>` : ""}</div>`;
 }
 function readLinkEditor(box, j){
   box.querySelectorAll("[data-lkin]").forEach(x => { const v = x.value.trim(); j[x.dataset.lkin] = safeUrl(v) ? v : ""; });
+  box.querySelectorAll("[data-lkfn]").forEach(x => { j[x.dataset.lkfn + "N"] = x.value.trim().slice(0, 80); }); // qué es el link de Canva / de Drive
   const xs = []; box.querySelectorAll("[data-lki]").forEach(r => { const u = r.querySelector("[data-lku]")?.value.trim() || "", n = r.querySelector("[data-lkn]")?.value.trim() || ""; xs.push({ n, u:safeUrl(u) ? u : "" }); });
   j.xlinks = xs; j.links = xs.map(x => x.u).filter(Boolean); j.link = j.links[0] || "";
 }
@@ -4374,7 +4375,7 @@ document.addEventListener("click", e => {
 document.addEventListener("change", e => {
   const x = e.target.closest(".lked[data-lkmode=ficha] input"); if (!x) return;
   const box = x.closest(".lked"), j = jobById(box.dataset.lkjob); if (!j || !canEditJobLinks(j)) return;
-  const v = x.value.trim(); if (v && !safeUrl(v) && !x.dataset.lkn) return toast("Pegá un link que empiece con https://");
+  const v = x.value.trim(); if (v && !safeUrl(v) && !x.dataset.lkn && !x.dataset.lkfn) return toast("Pegá un link que empiece con https://");
   readLinkEditor(box, j); // se guarda sin volver a dibujar la página (así no se pierde lo que se está escribiendo en otro campo)
   const row = x.closest(".lkrow"), u = safeUrl(row.querySelector("[data-lkin],[data-lku]")?.value.trim() || ""), cp = row.querySelector("[data-lkcopy]"), op = row.querySelector("a.lkbtn"), st = row.querySelector(".lkstate");
   if (cp){ cp.dataset.lkcopy = u; cp.disabled = !u; }
@@ -7290,7 +7291,7 @@ function seasonCard(s, ar, i){
 }
 function trendGet(ar){
   let c = trendSt[ar];
-  if (!c){ try { c = JSON.parse(localStorage.getItem("rmh-trend6-" + ar) || "null"); } catch {} if (c) trendSt[ar] = c; }
+  if (!c){ try { c = JSON.parse(localStorage.getItem("rmh-trend7-" + ar) || "null"); } catch {} if (c) trendSt[ar] = c; }
   if ((!c || Date.now() - (c.at || 0) > TREND_TTL) && !trendSt["busy" + ar] && !(c?.errAt && Date.now() - c.errAt < 60000)) trendLoad(ar);
   return trendSt[ar];
 }
@@ -7298,7 +7299,7 @@ async function trendLoad(ar, force = false){
   trendSt["busy" + ar] = true;
   let j; try { j = await integ({ action:"tendencias", area:ar, force }); } catch (e) { j = { ok:false, error:e?.message }; }
   trendSt["busy" + ar] = false;
-  if (j?.ok && Array.isArray(j.groups)){ trendSt[ar] = { at:Date.now(), groups:j.groups }; try { localStorage.setItem("rmh-trend6-" + ar, JSON.stringify(trendSt[ar])); } catch {} }
+  if (j?.ok && Array.isArray(j.groups)){ trendSt[ar] = { at:Date.now(), groups:j.groups }; try { localStorage.setItem("rmh-trend7-" + ar, JSON.stringify(trendSt[ar])); } catch {} }
   else trendSt[ar] = { ...(trendSt[ar] || { groups:[] }), errAt:Date.now(), err:j?.error || "No se pudieron traer las novedades" };
   if (page === (ar === "dg" ? "tendg" : ar === "cm" ? "tencm" : "ideas")) render();
 }
@@ -7384,6 +7385,10 @@ document.addEventListener("click", e => {
     if (v && !/^[a-z0-9:_-]{8,64}$/i.test(v)){ toast("Ese no parece un ID del motor de búsqueda: copialo de “ID del motor de búsqueda”."); return; }
     APP_FLAGS = { ...APP_FLAGS, gcse:v || undefined }; gHost = null; gLoading = false; render(); toast(v ? "Google Imágenes conectado: los resultados se ven en Tendencias." : "Se quitó el buscador de Google."); }
 });
+document.addEventListener("click", e => { const b = e.target.closest("[data-pinsave]"); if (!b) return;
+  const bs = ($("#pinIn")?.value || "").split(/\s+/).map(x => { const m = x.trim().match(/pinterest\.[a-z.]+\/([^/?#\s]+)\/([^/?#\s]+)/i); return m ? decodeURIComponent(m[1]) + "/" + decodeURIComponent(m[2]) : ""; }).filter(x => x && !/^(pin|ideas|search)\//.test(x));
+  APP_FLAGS = { ...APP_FLAGS, pinboards:[...new Set(bs)].slice(0, 8) }; if (!bs.length) delete APP_FLAGS.pinboards;
+  toast(bs.length ? `Guardado: ${bs.length} tablero${bs.length === 1 ? "" : "s"}. Trayendo sus pines…` : "Sin tableros propios: se usan los de referencia."); render(); setTimeout(() => trendLoad(b.dataset.pinsave, true), 1500); }); // primero se guardan los tableros
 document.addEventListener("submit", e => { const f = e.target.closest("[data-gqform]"); if (!f) return; e.preventDefault();
   const q = (f.q.value || "").trim(); if (!q) return;
   if (gcseId()){ gUI.q = q; render(); } else window.open(gOpen(q), "_blank", "noopener"); });
@@ -7413,11 +7418,16 @@ function pTend(ar){
   else { tiles = (pda ? pda.posts.slice(0, 3).map(p => ({ ...p, acc:pda })) : []); const rr = rest.map(x => x.posts.slice(0, 2).map(p => ({ ...p, acc:x }))); for (let k = 0; k < 2; k++) rr.forEach(l => l[k] && tiles.push(l[k])); }
   tiles = tiles.slice(0, 16);
   // Mientras Instagram no trae posteos: piezas de campañas y packaging publicadas en medios creativos (con su imagen).
-  const press = tiles.length ? [] : (groups.find(x => x.k === "vis")?.items || []).filter(x => safeUrl(x.img)).slice(0, 12);
+  // Mientras Instagram no trae posteos: piezas gráficas de los tableros de Pinterest (afiches, encartes, posteos); si no hay, piezas de campañas de los medios.
+  const pinsG = (groups.find(x => x.k === "pins")?.items || []).filter(x => safeUrl(x.img));
+  const press = tiles.length ? [] : (pinsG.length ? pinsG.slice(0, 18) : (groups.find(x => x.k === "vis")?.items || []).filter(x => safeUrl(x.img)).slice(0, 12));
+  const isPins = !!pinsG.length;
   refsAuto();
   const visSec = `<section class="tsec"><div class="tsec-h"><span class="tsec-ic">${icon("images")}</span><div><h2>Visuales de campañas</h2><p>Posteos y carruseles de Instagram de los supermercados de referencia, con Pão de Açúcar primero. Tocá una imagen para ver el posteo.</p></div>${metaBtn("referentes", "Visuales")}</div>
     ${byAcc.length ? `<div class="vchips">${[["Todas", "Todas"], ...byAcc.map(x => [x.u, `${flagOf(x.a.cc)} ${x.a.name}`])].map(([k, l]) => `<button type="button" class="ichip${selC === k ? " on" : ""}" data-vischain="${esc(k)}">${esc(l)}</button>`).join("")}</div>` : ""}
-    ${!tiles.length && press.length ? `<div class="vgal">${press.map((x, i) => `<a class="vimg" href="${esc(safeUrl(x.u))}" target="_blank" rel="noopener noreferrer" style="--i:${i}" title="${esc(x.t)}"><img src="${esc(safeUrl(x.img))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.vimg').remove()"><span><b>${flagOf(x.cc || "WW")} ${esc(x.chain || x.src)}</b><small>${esc(x.t)}</small></span></a>`).join("")}</div><p class="note" style="margin:8px 0 0">Piezas de campañas y packaging publicadas en ${esc([...new Set(press.map(x => x.src))].slice(0, 4).join(", "))}. Cuando lleguen los posteos de Instagram, se muestran acá.</p>` : ""}
+    ${!tiles.length && press.length ? `<div class="vgal">${press.map((x, i) => `<a class="vimg" href="${esc(safeUrl(x.u))}" target="_blank" rel="noopener noreferrer" style="--i:${i}" title="${esc(x.t)}"><img src="${esc(safeUrl(x.img))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.vimg').remove()"><span><b>${isPins ? "Pinterest" : `${flagOf(x.cc || "WW")} ${esc(x.chain || x.src)}`}</b><small>${esc(x.t)}</small></span></a>`).join("")}</div><p class="note" style="margin:8px 0 0">${isPins ? "Afiches, encartes y posteos de diseño de los tableros de Pinterest del equipo, los más nuevos primero." : `Piezas de campañas y packaging publicadas en ${esc([...new Set(press.map(x => x.src))].slice(0, 4).join(", "))}.`} Cuando lleguen los posteos de Instagram de los supermercados, se muestran acá.</p>` : ""}
+    ${viewer.role === "Admin total" && !window.RMH?.previewing ? `<details class="vfail gcfg"><summary>${icon("settings")} Tableros de Pinterest de la galería</summary><p style="margin:6px 0">Pegá un link de tablero por línea (por ejemplo, un tablero del equipo con afiches y posteos de supermercados). Se muestran sus pines más nuevos.</p>
+      <textarea id="pinIn" class="base" rows="4" style="width:100%">${esc((APP_FLAGS.pinboards || []).map(b => "https://www.pinterest.com/" + b + "/").join("\n"))}</textarea><div class="gqf" style="margin-top:6px"><button type="button" class="btn" data-pinsave="${ar}">${icon("check")} Guardar tableros</button></div></details>` : ""}
     ${tiles.length ? `<div class="vgal">${tiles.map((x, i) => `<a class="vimg" href="${esc(safeUrl(x.link))}" target="_blank" rel="noopener noreferrer" style="--i:${i}" title="${esc(x.cap || x.acc.a.name)}"><img src="${esc(safeUrl(x.img))}" alt="${esc(x.acc.a.name)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.vimg').remove()"><span><b>${flagOf(x.acc.a.cc)} ${esc(x.acc.a.name)}</b><small>${esc(x.type)} · ${dm(String(x.ts).slice(0, 10))}</small></span></a>`).join("")}</div>`
       : press.length ? "" : `<p class="note" style="margin:0">${META_REFS.updated ? "Todavía no hay posteos para mostrar." : "Los posteos se traen de Instagram una vez por día (con la conexión de Meta)."}${canMetaRefresh() ? " Tocá “Actualizar” para traerlos ahora." : ""}</p>`}
     ${canMetaRefresh() && (META_REFS.error || Object.values(META_REFS.accounts || {}).some(a => a.err)) ? `<details class="vfail"><summary>${icon("alert-triangle")} ${META_REFS.error ? "No se pudieron traer los posteos" : `${Object.values(META_REFS.accounts).filter(a => a.err).length} cuentas no se pudieron leer`}</summary>${META_REFS.error ? `<p>${esc(META_REFS.error)}</p>` : ""}<ul>${Object.entries(META_REFS.accounts || {}).filter(([, a]) => a.err).map(([u, a]) => `<li><b>@${esc(u)}</b> (${esc(a.name)}): ${esc(a.err)}</li>`).join("")}</ul></details>` : ""}
