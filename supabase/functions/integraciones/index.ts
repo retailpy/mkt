@@ -100,13 +100,15 @@ const B = (q: string, es: boolean | string = true): Feed => { const lang = es ==
 // Pão de Açúcar (Brasil) siempre tiene que aparecer: noticias y piezas de sus campañas, en portugués (se traducen).
 const PDA = [B('"Pão de Açúcar" campanha', "pt"), B('"Pão de Açúcar" propaganda', "pt"), B('"Pão de Açúcar" loja', "pt"), B('"Pão de Açúcar" marca própria', "pt"), B('"Pão de Açúcar" Natal', "pt")];
 const BN = {
-  dg: [B("supermercado packaging diseño"), B("supermercado nueva imagen tienda"), B("OXXO campaña"), B("Mercadona diseño envase"), B("Pão de Açúcar campaña"), B("marca propia supermercado diseño"),
-    B("Waitrose packaging", false), B("Trader Joe's packaging", false), B("Whole Foods store design", false), B("M&S Food campaign", false), B("supermarket rebrand", false), B("Albert Heijn campaign", false)],
+  // Diseño: campañas visuales, piezas gráficas, packaging y rediseños (lo que inspira a hacer gráficas nuevas).
+  dg: [B("campaña gráfica creativa supermercado"), B("nueva campaña publicitaria supermercado"), B("supermercado nueva imagen de marca"), B("packaging marca propia supermercado diseño"), B("OXXO campaña creativa"), B("Mercadona campaña"),
+    B("supermarket creative campaign", false), B("grocery brand redesign", false), B("Waitrose new campaign", false), B("M&S Food advert", false), B("Trader Joe's packaging design", false), B("supermarket packaging redesign", false)],
   // Punto de venta y packaging de supermercados (exhibición, cartelería, góndola, marca propia).
   pos: [B("supermercado punto de venta exhibición"), B("cartelería supermercado"), B("góndola supermercado diseño"), B("marca propia supermercado envase"), B("supermercado nueva tienda diseño"),
     B("supermarket in-store display", false), B("grocery store design", false), B("supermarket private label packaging", false), B("retail POP display grocery", false)],
-  cm: [B("supermercado TikTok"), B("supermercado campaña redes sociales"), B("OXXO TikTok"), B("Walmart campaña viral"), B("Mercadona redes sociales"),
-    B("grocery TikTok", false), B("Trader Joe's TikTok", false), B("Aldi social media campaign", false), B("Lidl TikTok", false), B("Tesco advert", false)],
+  // CM: contenidos que funcionan en redes (TikTok, reels, carruseles), campañas virales e ideas de contenido de marcas de consumo.
+  cm: [B("supermercado TikTok viral"), B("supermercado contenido redes sociales"), B("marca campaña TikTok creativa"), B("OXXO TikTok"), B("campaña viral marca alimentos"), B("ideas de contenido redes sociales marca"),
+    B("grocery TikTok viral", false), B("supermarket social media campaign", false), B("Lidl TikTok", false), B("Aldi social media", false), B("brand Instagram campaign creative", false), B("Trader Joe's TikTok", false)],
   // Campañas y contenidos de supermercados por fecha (las fechas que vienen: se arman según el mes).
   fechas: [] as Feed[],
   visdg: [B("campaña gráfica supermercado"), B("afiche ofertas supermercado"), B("packaging supermercado nuevo"), B("supermarket campaign poster", false), B("supermarket packaging design", false)],
@@ -139,21 +141,23 @@ const SOCIAL = /tiktok|instagram|facebook|whatsapp|threads|youtube|social|redes|
 const CAMPAIGN = /campa|campaign|anuncio|spot|publicidad|advertis|\bad\b|ads\b|activaci|promo/i;
 const POS = /punto de venta|exhibici|g[oó]ndola|cartel|se[ñn]al|display|in-store|instore|tienda|store|packag|envase|etiqueta|marca propia|private label|pop\b|vidriera|layout/i;
 const SUPER = (t: string) => RETAIL.test(t) || !!chainOf(t); // todo tiene que ser de supermercados o cadenas
+// Fuera: noticias de negocio (ventas, resultados, acciones, juicios, despidos, aperturas, inversiones). El equipo busca ideas creativas.
+const NEG = /ventas|factur|ganancia|ingresos|acciones de|bolsa|inversi[oó]n|invertir|resultado(s)? (financ|trimes)|trimestre|despid|sindicat|huelga|demanda|juicio|multa|lawsuit|sues|earnings|revenue|profit|shares|stock price|layoff|merger|acquisi|fusi[oó]n|adquisici|quarter|CEO|expansi[oó]n|nuevas? tiendas? en|abrir[aá]|inaugura|precio(s)? (sube|baja)|inflaci[oó]n|arancel|tariff|recall|retira del mercado/i;
 const GROUPS: Record<string, { k: string; feeds: Feed[]; score: (txt: string) => number; need?: (txt: string) => boolean }[]> = {
   dg: [
-    { k: "super", feeds: [F.brandemia, F.dieline, F.potw, F.rdb, F.grocery, F.mdirecto, F.graffica, ...BN.dg, ...PDA],
+    { k: "super", feeds: [F.brandemia, F.dieline, F.potw, F.graffica, F.roast, F.creativos, ...BN.dg, ...PDA],
       need: (t) => (RETAIL.test(t) || !!chainOf(t)) && DESIGN.test(t), score: (t) => (chainOf(t) ? 3 : 0) + (RETAIL.test(t) ? 2 : 0) + (DESIGN.test(t) ? 2 : 0) },
-    { k: "insp", feeds: [F.rdb, F.potw, F.dieline, F.grocery, ...BN.pos],
+    { k: "insp", feeds: [F.rdb, F.potw, F.dieline, ...BN.pos],
       need: (t) => SUPER(t) && POS.test(t), score: (t) => (POS.test(t) ? 3 : 0) + (RETAIL.test(t) ? 2 : 0) + (chainOf(t) ? 2 : 0) },
     // Visuales: afiches, packaging y piezas de campaña recientes, para mirar como galería (cada una abre su origen).
     { k: "vis", feeds: [F.potw, F.dieline, F.rdb, ...BN.visdg, ...BN.pos, ...PDA], need: (t) => SUPER(t), score: (t) => (DESIGN.test(t) ? 2 : 0) + (RETAIL.test(t) ? 2 : 0) + (CAMPAIGN.test(t) ? 1 : 0) },
   ],
   cm: [
-    { k: "super", feeds: [F.mdirecto, F.roast, F.latam, F.grocery, F.smt, ...BN.cm, ...PDA],
+    { k: "super", feeds: [F.roast, F.creativos, ...BN.cm, ...PDA],
       need: (t) => (RETAIL.test(t) || !!chainOf(t)) && (SOCIAL.test(t) || CAMPAIGN.test(t)), score: (t) => (chainOf(t) ? 3 : 0) + (RETAIL.test(t) ? 2 : 0) + (SOCIAL.test(t) ? 2 : 0) + (CAMPAIGN.test(t) ? 1 : 0) },
-    { k: "redes", feeds: [F.mdirecto, F.roast, F.latam, F.grocery] as Feed[],
+    { k: "redes", feeds: [F.roast] as Feed[],
       need: (t) => SUPER(t) && (SOCIAL.test(t) || CAMPAIGN.test(t)), score: (t) => (CAMPAIGN.test(t) ? 3 : 0) + (SOCIAL.test(t) ? 2 : 0) + (RETAIL.test(t) ? 2 : 0) },
-    { k: "vis", feeds: [...BN.viscm, F.mdirecto, F.roast, ...PDA], need: (t) => SUPER(t), score: (t) => (CAMPAIGN.test(t) ? 2 : 0) + (SOCIAL.test(t) ? 2 : 0) + (RETAIL.test(t) ? 1 : 0) },
+    { k: "vis", feeds: [...BN.viscm, F.roast, ...PDA], need: (t) => SUPER(t), score: (t) => (CAMPAIGN.test(t) ? 2 : 0) + (SOCIAL.test(t) ? 2 : 0) + (RETAIL.test(t) ? 1 : 0) },
   ],
   // Ideas Random (CM): lo que está pegando en TikTok, Instagram y Facebook, para inspirar a los creadores de contenido.
   ideas: [
@@ -214,7 +218,7 @@ async function tendencias(area: string, force: boolean){
     const feeds = area === "cm" && g.k === "redes" ? [...g.feeds, ...fechasFeeds()] : area === "dg" && g.k === "vis" ? [...g.feeds, ...fechasFeeds().slice(0, 3)] : g.feeds;
     const all = (await Promise.all(feeds.map(readFeed))).flat();
     const seen = new Set<string>();
-    const scored = all.filter((i) => { const k = i.t.toLowerCase().slice(0, 60); if (!i.img || seen.has(k) || used.has(i.u)) return false; seen.add(k); return now - Date.parse(i.d) < (i.chain === "Pão de Açúcar" ? 60 : 30) * 864e5; }) // solo con foto y de los últimos 30 días (Pão de Açúcar: 60)
+    const scored = all.filter((i) => { const k = i.t.toLowerCase().slice(0, 60); if (!i.img || seen.has(k) || used.has(i.u) || NEG.test(i.t + " " + i.x)) return false; seen.add(k); return now - Date.parse(i.d) < (i.chain === "Pão de Açúcar" ? 60 : 30) * 864e5; }) // solo con foto y de los últimos 30 días (Pão de Açúcar: 60)
       .map((i) => { const txt = i.t + " " + i.x, age = (now - Date.parse(i.d)) / 864e5;
         return { ...i, ok: !g.need || g.need(txt), s: g.score(txt) + (i.img ? 1 : 0) + (i.lang === "es" ? 2 : 0) - age / 2 }; }) // lo más nuevo primero
       .sort((a, b) => (Number(b.ok) - Number(a.ok)) || b.s - a.s);
