@@ -58,7 +58,13 @@ module.exports = async (req, res) => {
       for (const [net, platform, me] of [["FB", "messenger", [p.pageId]], ["IG", "instagram", [p.pageId, p.igId].filter(Boolean)]]){
         if (net === "IG" && !p.igId) continue;
         try {
-          const r = await g(`/${p.pageId}/conversations`, { platform, fields, limit: String(CONVS) }, pt);
+          // Instagram a veces pide traer menos datos por consulta: se reintenta con menos conversaciones y mensajes.
+          let r, last;
+          for (const [nc, nm] of [[CONVS, MSGS], [15, 3], [8, 2]]){
+            try { r = await g(`/${p.pageId}/conversations`, { platform, fields: fields.replace(`messages.limit(${MSGS})`, `messages.limit(${nm})`), limit: String(nc) }, pt); break; }
+            catch (e){ last = e; if (!/reduce the amount of data/i.test(e.message || "")) throw e; }
+          }
+          if (!r) throw last;
           out.convs.push(...(r.data || []).map(c => shape(c, net, me.map(String))));
         } catch (e){ errs.push(`${net === "IG" ? "Instagram" : "Facebook"}: ${e.message}${e.code === 10 || e.code === 200 || e.code === 230 ? " (falta un permiso de mensajes en el token)" : ""}`); }
       }
