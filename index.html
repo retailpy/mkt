@@ -523,10 +523,11 @@ html.nomotion .jproc li.can .pdot{animation:none}
 .pthumb{width:44px;height:44px;border-radius:10px;object-fit:cover;flex:none;display:grid;place-items:center;background:var(--line-2,#1e293b);color:var(--faint);font-size:11px;font-weight:600}
 .pthumb.lg{width:100%;height:auto;aspect-ratio:1;border-radius:12px}
 .lpost+.lpost{margin-top:16px}.lph{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.lpgrid{display:grid;grid-template-columns:repeat(auto-fill,108px);gap:8px} /* miniaturas chicas, verticales 4:5 como el feed de Instagram */
+.lpgrid{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:8px} /* miniaturas chicas, verticales 4:5 como el feed de Instagram */
 .lpgrid .pthumb.lg{aspect-ratio:4/5;border-radius:10px}
 .lpgrid .lpmeta{font-size:11px}
-@media (max-width:720px){.lpgrid{grid-template-columns:repeat(auto-fill,minmax(92px,1fr))}}
+@media (max-width:900px){.lpgrid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media (max-width:560px){.lpgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .lpitem{display:flex;flex-direction:column;gap:4px;text-decoration:none;color:inherit}.lpitem:hover .pthumb{outline:2px solid var(--cyan)}
 .lpmeta{font-size:11px;color:var(--faint)}
 .adsb+.adsb{margin-top:16px}
@@ -3166,8 +3167,8 @@ function tvBrandHero(b){
 // Últimas 6 publicaciones de Instagram de cada marca (imagen reducida), debajo de Seguidores por marca.
 const IG_MAIN = ["Superseis","Stock","Delimarket"]; // las marcas principales: sus últimas publicaciones de Instagram en el Dashboard y en el Informe mensual
 function lastPostsPanel(bs){
-  const rows = bs.map(b => ({ b, list:(META_POSTS[b]?.posts || []).filter(x => !/reel|video/i.test(x.type || "")).sort((x, y) => y.ts.localeCompare(x.ts)).slice(0, 6), h:META_POSTS[b]?.handle })).filter(r => r.list.length);
-  return `<div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram</h2><div class="tag-row"><span class="tag">Fuente: Meta</span>${updTag(postsUpdated())}</div></div>
+  const rows = bs.map(b => ({ b, list:(META_POSTS[b]?.posts || []).filter(x => !/reel|video/i.test(x.type || "")).sort((x, y) => y.ts.localeCompare(x.ts)).slice(0, 9), h:META_POSTS[b]?.handle })).filter(r => r.list.length);
+  return `<div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram</h2><div class="tag-row"><span class="tag">Fuente: Meta</span>${updTag(postsUpdated())}${metaBtn("publicaciones", "Publicaciones")}</div></div>
     <div class="panel-b">${rows.length ? rows.map(r => `<div class="lpost"><div class="lph">${brandTag(r.b)}${r.h ? `<span class="note">${esc(r.h)}</span>` : ""}</div><div class="lpgrid">${r.list.map(x => { const pp = { img:x.img, format:x.type };
       return `<a class="lpitem" href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="${esc((x.cap || "").slice(0, 140))}">${pubThumb(pp, "lg")}<span class="lpmeta">${dm(new Intl.DateTimeFormat("en-CA", { timeZone:"America/Asuncion" }).format(new Date(x.ts)))} · ♥ ${dots(x.likes || 0)}</span></a>`; }).join("")}</div></div>`).join("")
       : `<div class="empty">${NO_DATA}: las publicaciones llegan con la actualización diaria de Meta.</div>`}</div></div>`;
