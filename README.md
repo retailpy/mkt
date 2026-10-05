@@ -53,6 +53,7 @@ Dos funciones en Vercel consultan la Graph API de Meta todos los días y guardan
 | `api/publicaciones.js` | `s:META_POSTS` (publicaciones de Instagram por marca: imagen, me gusta, alcance) | 07:30 |
 | `api/anuncios.js` | `s:META_CREATIVES` (anuncios del mes con imagen y copy, por marca) | 07:45 |
 | `api/mensajes.js` | `s:META_INBOX` (mensajes directos de Instagram y Facebook por marca: quién escribió y si se contestó; solo lo leen Admin total, Admin y CM) | 08:00 y con “Actualizar” en la app |
+| `api/referentes.js` | `s:META_REFS` (posteos y carruseles de Instagram de los supermercados de referencia, con Pão de Açúcar primero; Business Discovery de Meta, sin reels) | 08:30 y con “Actualizar” en Tendencias |
 
 - Las marcas y su orden están en `api/_lib/meta.js` (`NOMBRES` y `ORDEN`).
 - Variables en Vercel: `META_TOKEN` (conviene un token de **usuario del sistema** del Business Manager, que no vence; necesita
