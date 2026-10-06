@@ -462,6 +462,7 @@ html.nomotion .picon{animation:none}
 .fwbox{max-width:420px}.fwlist{display:flex;flex-direction:column;gap:4px;max-height:55vh;overflow-y:auto;margin:6px 0 10px}.fwit{all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px}.fwit:hover{background:rgba(148,163,184,.12)}.fwit .cav,.fwit .cavw img,.fwit .cavw .av{width:34px;height:34px}
 .iblist{display:flex;flex-direction:column;gap:8px}
 .ibrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;padding:12px 14px;border:1px solid var(--line-2);border-radius:16px;background:var(--inner-2);cursor:pointer}
+.ibside{display:flex;flex-direction:column;align-items:flex-end;gap:6px}.ibside .ibdone{font-size:12px}
 .ibrow.pend{border-left:3px solid #f97316}.ibrow:hover{border-color:var(--line-3)}
 .ibnet{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center}.ibnet svg{width:18px;height:18px}.ibnet.ig{background:rgba(236,72,153,.15);color:#f472b6}.ibnet.fb{background:rgba(59,130,246,.15);color:#60a5fa}
 .ibrow .grow{min-width:0;flex:1 1 200px}.ibh{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ibh small{color:var(--faint);font-size:12px}
@@ -522,7 +523,7 @@ html.nomotion .jproc li.can .pdot{animation:none}
 .cmute.on{color:#f59e0b}.cmuted svg{width:13px;height:13px;vertical-align:-2px;opacity:.7}
 .pthumb{width:44px;height:44px;border-radius:10px;object-fit:cover;flex:none;display:grid;place-items:center;background:var(--line-2,#1e293b);color:var(--faint);font-size:11px;font-weight:600}
 .pthumb.lg{width:100%;height:auto;aspect-ratio:1;border-radius:12px}
-.lpost+.lpost{margin-top:16px}.lph{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.lpost+.lpost{margin-top:16px}.lph{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}.lph .lpbig{margin-left:auto}.lpchips{margin:0 0 16px}
 .lpgrid{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:8px} /* miniaturas chicas, verticales 4:5 como el feed de Instagram */
 .lpgrid .pthumb.lg{aspect-ratio:4/5;border-radius:10px}
 .lpgrid .lpmeta{font-size:11px}
@@ -3051,7 +3052,10 @@ function metaAdsPanel(simple = false){
 
 // Seguidores y público reales de Meta: los escriben las funciones diarias en Supabase (solo lectura en la app).
 // META_FOLLOWERS = { updated, "AAAA-MM": { Marca: { ig, fb, handle, page } } } · META_DEMO = { updated, Marca: { handle, foll, cities, ages, gender } } (cantidades).
-let META_FOLLOWERS = {}, META_DEMO = {}, META_POSTS = {}, META_CREATIVES = {}, META_INBOX = {}, META_REFS = {}; // META_REFS: posteos de Instagram de los supermercados de referencia
+let META_FOLLOWERS = {}, META_DEMO = {}, META_POSTS = {}, META_CREATIVES = {}, META_INBOX = {}, META_REFS = {};
+let INBOX_DONE = {}; // conversaciones marcadas a mano como contestadas: { id: { by, at } }
+// Contestado: la marca ya respondió algo en la conversación, o alguien la marcó como contestada.
+const ibOk = c => !!INBOX_DONE[c.id] || !!c.answered || (c.msgs || []).some(m => m.me); // META_REFS: posteos de Instagram de los supermercados de referencia
 const NO_DATA = "Sin datos todavía";
 const BRAND_RANK = b => MAIN_BRANDS.includes(b) ? MAIN_BRANDS.indexOf(b) : 10;
 // Retail Institucional no va en los informes de redes (no tiene página propia en Meta).
@@ -3180,17 +3184,18 @@ const last9 = b => (META_POSTS[b]?.posts || []).filter(x => !/reel|video/i.test(
 const pyDate = ts => new Intl.DateTimeFormat("en-CA", { timeZone:"America/Asuncion" }).format(new Date(ts));
 function lastPostsPanel(bs){
   const rows = bs.map(b => ({ b, list:last9(b), h:META_POSTS[b]?.handle })).filter(r => r.list.length);
-  return `<div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram</h2><div class="tag-row"><span class="tag">Fuente: Meta</span>${updTag(postsUpdated())}${rows.length ? `<button type="button" class="btn sm" data-lpfull="${esc(rows.map(r => r.b).join(","))}">${icon("maximize-2")} Ver en grande</button>` : ""}${metaBtn("publicaciones", "Publicaciones")}</div></div>
-    <div class="panel-b">${rows.length ? rows.map(r => `<div class="lpost"><div class="lph">${brandTag(r.b)}${r.h ? `<span class="note">${esc(r.h)}</span>` : ""}</div><div class="lpgrid">${r.list.map(x => { const pp = { img:x.img, format:x.type };
+  return `<div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram</h2><div class="tag-row"><span class="tag">Fuente: Meta</span>${updTag(postsUpdated())}${rows.length > 1 ? `<button type="button" class="btn sm" data-lpfull="${esc(rows.map(r => r.b).join(","))}">${icon("maximize-2")} Ver todas en grande</button>` : ""}${metaBtn("publicaciones", "Publicaciones")}</div></div>
+    <div class="panel-b">${rows.length ? rows.map(r => `<div class="lpost"><div class="lph">${brandTag(r.b)}${r.h ? `<span class="note">${esc(r.h)}</span>` : ""}<button type="button" class="btn sm lpbig" data-lpfull="${esc(rows.map(x => x.b).join(","))}" data-lpsel="${esc(r.b)}" title="Ver las 9 de ${esc(r.b)} en grande, con sus números">${icon("maximize-2")} Ver en grande</button></div><div class="lpgrid">${r.list.map(x => { const pp = { img:x.img, format:x.type };
       return `<a class="lpitem" href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="${esc((x.cap || "").slice(0, 140))}">${pubThumb(pp, "lg")}<span class="lpmeta">${dm(pyDate(x.ts))} · ♥ ${dots(x.likes || 0)}</span></a>`; }).join("")}</div></div>`).join("")
       : `<div class="empty">${NO_DATA}: las publicaciones llegan con la actualización diaria de Meta.</div>`}
       ${rows.length && bs.some(b => !rows.some(r => r.b === b)) ? `<p class="note" style="margin:8px 0 0">Todavía sin publicaciones de ${bs.filter(b => !rows.some(r => r.b === b)).join(", ")}${canMetaRefresh() ? ": tocá “Actualizar”." : "."}</p>` : ""}</div></div>`;
 }
 // “Ver en grande”: las últimas 9 publicaciones de cada marca en página completa, con likes, comentarios, alcance y texto.
-let lpFull = null;
+let lpFull = null; // { bs: marcas del panel, sel: la marca elegida o null = todas }
 function lpFullPage(){
-  const bs = (lpFull || []).filter(b => last9(b).length), n = v => isNum(v) ? dots(v) : "—";
-  return `<div class="lpfull"><div class="head"><div><h1 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram</h1><p class="sub">Las últimas 9 de cada marca (sin reels), con sus números. Fuente: Meta · ${metaWhen(postsUpdated())}.</p></div><button type="button" class="btn" data-lpclose>${icon("arrow-left")} Volver</button></div>
+  const all = (lpFull?.bs || []).filter(b => last9(b).length), sel = all.includes(lpFull?.sel) ? lpFull.sel : null, bs = sel ? [sel] : all, n = v => isNum(v) ? dots(v) : "—";
+  return `<div class="lpfull"><div class="head"><div><h1 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram${sel ? " · " + esc(sel) : ""}</h1><p class="sub">Las últimas 9 ${sel ? "" : "de cada marca "}(sin reels), con sus números. Fuente: Meta · ${metaWhen(postsUpdated())}.</p></div><button type="button" class="btn" data-lpclose>${icon("arrow-left")} Volver</button></div>
+    ${all.length > 1 ? `<div class="chips lpchips">${all.map(b => `<button type="button" class="chip ${b === sel ? "on" : ""}" data-lpsel2="${esc(b)}" aria-pressed="${b === sel}">${esc(b)}</button>`).join("")}<button type="button" class="chip ${sel ? "" : "on"}" data-lpsel2="" aria-pressed="${!sel}">Todas</button></div>` : ""}
     ${bs.map(b => `<section class="lpfb"><div class="lph">${brandTag(b)}${META_POSTS[b]?.handle ? `<span class="note">${esc(META_POSTS[b].handle)}</span>` : ""}</div><div class="lpfgrid">${last9(b).map(x => `<article class="lpcard">
       <a href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="Ver en Instagram">${pubThumb({ img:x.img, format:x.type }, "xl")}</a>
       <div class="lpst"><span title="Me gusta">${icon("heart")} ${n(x.likes)}</span><span title="Comentarios">${icon("message-circle")} ${n(x.comments)}</span><span title="Alcance (cuentas únicas)">${icon("eye")} ${n(x.reach)}</span><span title="Guardados">${icon("bookmark")} ${n(x.saved)}</span><span title="Compartidos">${icon("send")} ${n(x.shares)}</span></div>
@@ -3198,7 +3203,8 @@ function lpFullPage(){
       ${x.cap ? `<p class="lpcap">${esc(x.cap)}</p>` : ""}</article>`).join("")}</div></section>`).join("") || `<div class="panel empty">${NO_DATA}</div>`}</div>`;
 }
 document.addEventListener("click", e => {
-  const o = e.target.closest("[data-lpfull]"); if (o){ lpFull = o.dataset.lpfull.split(","); render(); window.scrollTo(0, 0); return; }
+  const o = e.target.closest("[data-lpfull]"); if (o){ lpFull = { bs:o.dataset.lpfull.split(","), sel:o.dataset.lpsel || null }; render(); window.scrollTo(0, 0); return; }
+  const c = e.target.closest("[data-lpsel2]"); if (c && lpFull){ lpFull.sel = c.dataset.lpsel2 || null; render(); window.scrollTo(0, 0); return; }
   if (e.target.closest("[data-lpclose]")){ lpFull = null; render(); }
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && lpFull){ lpFull = null; render(); } });
@@ -3296,6 +3302,7 @@ function pDashboard(){
   ${followersPanel()}
   ${lastPostsPanel(IG_MAIN)}
   ${followersTable(false)}
+  ${topReach(bs)}
   <div class="head"><h2 style="margin:0">Demográfico por marca</h2><div class="chips">${bs.map(b => `<button class="chip ${dashBrand === b ? "on" : ""}" data-dbrand="${b}">${b}</button>`).join("")}</div></div>
   <div class="dash-demo" id="dashDemo">${demoBlock(bs.includes(dashBrand) ? dashBrand : bs[0], 0)}${lastPostsPanel([bs.includes(dashBrand) ? dashBrand : bs[0]])}</div>`;
 }
@@ -3851,7 +3858,7 @@ function panelStats(){
   return { pedidos:jm(sec("pedidos")), cartel:jm(sec("cartel")), web:jm(sec("web")), pantallas:jm(sec("pantallas")), gestioncm:jm(pj.filter(j => j.area === "CM")),
     plan:pm(vp), calendario:pm(vp.filter(p => p.format !== "Historia")), calhistoria:pm(vp.filter(p => p.format === "Historia")), calcanales:canales.length ? `${canales.length} este mes` : "Nada cargado este mes",
     historial:"Meses anteriores", historialcm:"Meses anteriores",
-    inbox:(() => { const n = Object.keys(META_INBOX).filter(b => b !== "updated").reduce((t, b) => t + (META_INBOX[b]?.convs || []).filter(c => !c.answered).length, 0); return Object.keys(META_INBOX).length ? (n ? `<em>${n} sin contestar</em>` : "Todo contestado") : "Sin datos todavía"; })() };
+    inbox:(() => { const n = Object.keys(META_INBOX).filter(b => b !== "updated").reduce((t, b) => t + (META_INBOX[b]?.convs || []).filter(c => !ibOk(c)).length, 0); return Object.keys(META_INBOX).length ? (n ? `<em>${n} sin contestar</em>` : "Todo contestado") : "Sin datos todavía"; })() };
 }
 function pPanel(ar){
   const dg = ar === "dg", st = panelStats();
@@ -4974,24 +4981,31 @@ function tvTeamStart(){
 }
 function tvTeamStop(){ clearInterval(tvTeam.timer); clearInterval(tvTeam.clock); clearInterval(tvTeam.slideT); tvTeam.timer = tvTeam.clock = tvTeam.slideT = null; }
 let histUI = { owner:"Todos", brand:"Todas", piece:"Todos", q:"" };
+// Historial: cada pedido terminado con los mismos puntos de la hoja del pedido:
+// 1) qué hay que hacer (trabajo, marca y tipo), 2) quién lo pidió, quién lo hizo y para cuándo, 3) cuándo se terminó, 4) estado y 5) cuántos cambios pidieron.
+function histTable(list, emptyMsg){
+  const nCh = j => (j.changes || []).filter(c => c.text && !c.kind).length;
+  return `<div class="tw"><table class="htable"><thead><tr><th>Qué hay que hacer</th><th>Marca</th><th>Tipo</th><th>Quién lo pidió</th><th>Responsable</th><th>Fecha límite</th><th>Terminado</th><th>Estado</th><th class="r">Cambios</th></tr></thead><tbody>
+  ${list.map(j => { const end = j.delivered || j.due, late = end > j.due, c = nCh(j);
+    return `<tr><td><button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button></td><td>${brandTag(j.brand)}</td><td>${j.area === "Diseño" ? pieceTag(j.piece) : esc(j.piece)}</td><td>${esc(j.requester || "—")}</td><td>${esc(j.owner)}</td><td class="num">${dm(j.due)}</td><td class="num" style="white-space:nowrap">${dm(end)} ${late ? `<span class="down">(atrasado)</span>` : `<span class="up">a tiempo</span>`}</td><td>${pill(j.status, JOB_COLOR[j.status])}</td><td class="r num">${c ? c : `<span class="note">—</span>`}</td></tr>`; }).join("") || `<tr><td colspan="9" class="empty">${emptyMsg}</td></tr>`}
+  </tbody></table></div>`;
+}
 function pHistorial(){
   const all = jobs.filter(j => !j.ex && j.area === "Diseño" && isFin(j) && jobMonth(j) === MONTH && seesBrand(j.brand) && (!isDesigner() || j.owner === viewer.name));
   const q = histUI.q.trim().toLowerCase();
   const list = all.filter(j => (histUI.owner === "Todos" || j.owner === histUI.owner) && (histUI.brand === "Todas" || j.brand === histUI.brand) && (histUI.piece === "Todos" || j.piece === histUI.piece)
-    && (!q || [j.id, j.title, j.brand, j.owner, j.piece].join(" ").toLowerCase().includes(q))).sort((a, b) => (a.delivered || a.due).localeCompare(b.delivered || b.due));
+    && (!q || [j.title, j.brand, j.owner, j.piece, j.requester].join(" ").toLowerCase().includes(q))).sort((a, b) => (a.delivered || a.due).localeCompare(b.delivered || b.due));
   const uniq = f => [...new Set(all.map(f))].filter(Boolean).sort((a, b) => a.localeCompare(b, "es"));
   const sel = (k, all0, opts) => `<select class="base" data-hf="${k}"><option value="${all0}">${{ owner:"Persona", brand:"Marca", piece:"Tipo" }[k]}: ${all0 === "Todas" ? "todas" : "todos"}</option>${opts.map(o => `<option ${histUI[k] === o ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
   const late = list.filter(j => (j.delivered || j.due) > j.due).length;
   return `<div><h1>Historial Diseño gráfico</h1><p class="sub">Trabajos de diseño entregados en ${monthName(MONTH)}${isDesigner()?" por vos":""}. Filtrá por persona, marca o tipo de pieza.</p></div>
   <div class="panel" style="padding:14px"><div class="jfilters">
-    <input class="base" id="hSearch" placeholder="Buscar por trabajo, ID…" value="${esc(histUI.q)}">
+    <input class="base" id="hSearch" placeholder="Buscar por trabajo, persona o quién lo pidió…" value="${esc(histUI.q)}">
     ${isDesigner() ? "" : sel("owner", "Todos", uniq(j => j.owner))}${sel("brand", "Todas", uniq(j => j.brand))}${sel("piece", "Todos", uniq(j => j.piece))}
     ${histUI.owner !== "Todos" || histUI.brand !== "Todas" || histUI.piece !== "Todos" || q ? `<button class="btn" data-hclear>Limpiar filtros</button>` : ""}
   </div></div>
   <div class="head"><span class="note">${list.length} de ${all.length} ${all.length === 1 ? "entrega" : "entregas"}${late ? ` · ${late} con atraso` : ""}</span></div>
-  <div class="tw"><table><thead><tr><th>ID</th><th>Tipo</th><th>Trabajo</th><th>Marca</th><th>Responsable</th><th>Entrega</th></tr></thead><tbody>
-  ${list.map(j => `<tr><td class="num">${j.id}</td><td>${esc(j.piece)}</td><td>${esc(j.title)}</td><td>${brandTag(j.brand)}</td><td>${esc(j.owner)}</td><td class="num">${dm(j.delivered || j.due)} ${j.delivered > j.due ? `<span class="down">(atrasado)</span>` : ""}</td></tr>`).join("") || `<tr><td colspan="6" class="empty">${all.length ? "Nada con estos filtros." : "Sin entregas todavía."}</td></tr>`}
-  </tbody></table></div>`;
+  ${histTable(list, all.length ? "Nada con estos filtros." : "Sin entregas todavía.")}`;
 }
 document.addEventListener("change", e => { const f = e.target.closest("[data-hf]"); if (f){ histUI[f.dataset.hf] = f.value; render(); } });
 document.addEventListener("input", e => { if (e.target.id !== "hSearch") return; histUI.q = e.target.value; const pos = e.target.selectionStart; render(); const el = $("#hSearch"); el.focus(); el.setSelectionRange(pos, pos); });
@@ -5004,9 +5018,7 @@ function pHistorialCM(){
   <div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("megaphone")}Publicaciones${mine} (${pubs.length})</h2></div><div class="tw" style="border:0;border-radius:0"><table><thead><tr><th>Publicación</th><th>Marca</th><th>CM</th><th>Red · formato</th><th>Tema</th><th>Estado</th></tr></thead><tbody>
   ${pubs.map(p => `<tr><td class="num">${dm(p.date)}</td><td>${brandTag(p.brand)}</td><td>${esc(p.cm)}</td><td style="white-space:nowrap"><span class="net">${p.net}</span> ${p.format}</td><td>${esc(p.title)}</td><td>${pill(p.status, POST_COLOR[p.status])}</td></tr>`).join("") || `<tr><td colspan="6" class="empty">Todavía no hay publicaciones hechas este mes.</td></tr>`}
   </tbody></table></div></div>
-  <div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("clapperboard")}Tareas de CM terminadas (${tasks.length})</h2></div><div class="tw" style="border:0;border-radius:0"><table><thead><tr><th>ID</th><th>Tipo</th><th>Tarea</th><th>Marca</th><th>Responsable</th><th>Terminada</th><th>Estado</th></tr></thead><tbody>
-  ${tasks.map(j => `<tr><td class="num">${j.id}</td><td>${esc(j.piece)}</td><td>${esc(j.title)}</td><td>${brandTag(j.brand)}</td><td>${esc(j.owner)}</td><td class="num">${dm(j.delivered || j.due)} ${j.delivered > j.due ? `<span class="down">(atrasado)</span>` : ""}</td><td>${pill(j.status, JOB_COLOR[j.status])}</td></tr>`).join("") || `<tr><td colspan="7" class="empty">Sin tareas terminadas todavía.</td></tr>`}
-  </tbody></table></div></div>`;
+  <div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("clapperboard")}Pedidos de CM terminados (${tasks.length})</h2></div><div style="border:0">${histTable(tasks.sort((a, b) => (a.delivered || a.due).localeCompare(b.delivered || b.due)), "Sin pedidos de CM terminados todavía.")}</div></div>`;
 }
 // ---------- Turnos Sábados: cada persona elige los dos sábados del mes que viene a trabajar a la oficina ----------
 // SAT_TURN = { "AAAA-MM": { persona: ["AAAA-MM-DD", ...] } }. (SAT_OFF era la versión vieja, de sábados libres: ya no se usa.)
@@ -5194,11 +5206,6 @@ function pRedes(){
   const bs = socialBrands();
   if (!bs.length) return `<div><h1>Redes</h1></div><div class="panel"><div class="empty">No tenés marcas con redes conectadas.</div></div>`;
   if (!bs.includes(redesBrand)) redesBrand = bs[0];
-  // publicaciones
-  const all = publicationsFor(MONTH).filter(p => (pubUI.brand === "Todas" || p.brand === pubUI.brand) && (pubUI.net === "Todas" || p.net === pubUI.net) && (pubUI.fmt === "Todos" || p.format === pubUI.fmt) && (pubUI.paid === "incluir" || !p.paid));
-  const top = [...all].sort((a,b) => pubScore(b) - pubScore(a)).slice(0,10);
-  const sel = (key, opts, lbl) => `<select class="base" data-pub="${key}" aria-label="${lbl}">${opts.map(o => `<option value="${o[0]}" ${pubUI[key] === o[0] ? "selected" : ""}>${o[1]}</option>`).join("")}</select>`;
-  const pubTable = list => `<div class="tw"><table><thead><tr><th>#</th><th>Publicación</th><th class="r">Alcance</th><th class="r">Interacciones</th><th class="r">Tasa</th><th></th></tr></thead><tbody>${list.map(pubRow).join("") || `<tr><td colspan="6" class="empty">Sin publicaciones para estos filtros.</td></tr>`}</tbody></table></div>`;
   return `<div><h1>Informe Redes</h1><p class="sub">Seguidores, publicaciones y público de todas las cuentas, traídos de Meta todos los días.</p></div>
   ${folNote()}
   ${followersTable()}
@@ -5206,11 +5213,19 @@ function pRedes(){
   ${followersPanel()}
   <div class="head"><h2 style="margin:0">Público de Instagram por marca</h2><div class="chips">${bs.map(b => `<button class="chip ${redesBrand===b?"on":""}" data-redes="${b}">${b}</button>`).join("")}</div></div>
   ${demoBlock(redesBrand)}
-  <div class="panel flush"><div class="panel-h fuchsia"><h2 class="icoh">${ICO.top}Publicaciones del mes por alcance</h2><div class="tag-row"><span class="tag">${monthLabel(MONTH)}</span><span class="tag">Fuente: Instagram (Meta) · ${metaWhen(postsUpdated())}</span><span class="tag">Alcance = cuentas únicas que la vieron; si Meta no lo da, se ordena por interacciones</span></div></div>
+  ${topReach(bs)}
+`;
+}
+// Top 10 del mes por alcance, con filtros (Informe Redes y Dashboard).
+function topReach(bs){
+  const all = publicationsFor(MONTH).filter(p => (pubUI.brand === "Todas" || p.brand === pubUI.brand) && (pubUI.net === "Todas" || p.net === pubUI.net) && (pubUI.fmt === "Todos" || p.format === pubUI.fmt) && (pubUI.paid === "incluir" || !p.paid));
+  const top = [...all].sort((a,b) => pubScore(b) - pubScore(a)).slice(0,10);
+  const sel = (key, opts, lbl) => `<select class="base" data-pub="${key}" aria-label="${lbl}">${opts.map(o => `<option value="${o[0]}" ${pubUI[key] === o[0] ? "selected" : ""}>${o[1]}</option>`).join("")}</select>`;
+  const pubTable = list => `<div class="tw"><table><thead><tr><th>#</th><th>Publicación</th><th class="r">Alcance</th><th class="r">Interacciones</th><th class="r">Tasa</th><th></th></tr></thead><tbody>${list.map(pubRow).join("") || `<tr><td colspan="6" class="empty">Sin publicaciones para estos filtros.</td></tr>`}</tbody></table></div>`;
+  return `<div class="panel flush"><div class="panel-h fuchsia"><h2 class="icoh">${ICO.top}Publicaciones del mes por alcance</h2><div class="tag-row"><span class="tag">${monthLabel(MONTH)}</span><span class="tag">Fuente: Instagram (Meta) · ${metaWhen(postsUpdated())}</span><span class="tag">Alcance = cuentas únicas que la vieron; si Meta no lo da, se ordena por interacciones</span></div></div>
     <div class="panel-b"><div class="pubsel">${sel("brand", [["Todas","Marca: todas"], ...bs.map(b => [b, b])], "Marca")}${sel("net", [["Todas","Red: IG y FB"],["IG","Instagram"],["FB","Facebook"]], "Red")}${sel("fmt", [["Todos","Tipo: todos"],["Reel","Reel"],["Carrusel","Carrusel"],["Post","Post"],["Historia","Historia"]], "Tipo")}${sel("paid", [["incluir","Incluir pautadas"],["organico","Solo orgánicas"]], "Pauta")}</div></div></div>
   ${isFuture() ? `<div class="panel"><div class="empty">${monthLabel(MONTH)} todavía no empezó: las publicaciones aparecen a medida que se publican.</div></div>` : `
-  <h2 class="icoh up" style="margin:0 0 -8px">${ICO.up}Top 10 · mayor alcance</h2>${pubTable(top)}`}
-`;
+  <h2 class="icoh up" style="margin:0 0 -8px">${ICO.up}Top 10 · mayor alcance</h2>${pubTable(top)}`}`;
 }
 const MONTH_ABBR_ES = v => MONTHS_ES[+v.slice(5,7)-1].slice(0,3);
 let reportTab = "diseno";
@@ -7156,7 +7171,7 @@ const inboxAge = ts => { if (!ts) return ""; const m = Math.round((Date.now() - 
 // Mensajes de las cuentas: solo los últimos 30 días; los sin contestar se cuentan en un globito rojo.
 const INBOX_DAYS = 30;
 const inboxRecent = c => c.ts && Date.now() - new Date(c.ts) <= INBOX_DAYS * 864e5;
-const inboxPend = () => can("inbox") ? Object.values(META_INBOX || {}).filter(x => x && Array.isArray(x.convs)).reduce((n, x) => n + x.convs.filter(c => inboxRecent(c) && !c.answered).length, 0) : 0;
+const inboxPend = () => can("inbox") ? Object.values(META_INBOX || {}).filter(x => x && Array.isArray(x.convs)).reduce((n, x) => n + x.convs.filter(c => inboxRecent(c) && !ibOk(c)).length, 0) : 0;
 // Trabajos nuevos o con cambios pedidos para la persona (solo los suyos): Pendiente o En corrección.
 const myJobsPend = area => viewer ? jobs.filter(j => !j.ex && j.owner === viewer.name && (j.area === "CM") === (area === "CM") && ["Pendiente", "En corrección"].includes(j.status)).length : 0;
 const navBadge = k => { const jb = k === "paneldg" ? myJobsPend("Diseño") : k === "panelcm" ? myJobsPend("CM") : 0, ib = k === "panelcm" ? inboxPend() : 0, n = jb + ib;
@@ -7182,7 +7197,10 @@ const metaBtn = (what, label) => canMetaRefresh() ? `<button type="button" class
 function inboxRefresh(){ return metaRefresh("mensajes", "Mensajes"); }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-ibf]"); if (b){ const [k, v] = b.dataset.ibf.split("|"); inboxUI[k] = v; inboxUI.open = null; render(); return; }
-  const o = e.target.closest("[data-ibopen]"); if (o && !e.target.closest("a")){ inboxUI.open = inboxUI.open === o.dataset.ibopen ? null : o.dataset.ibopen; render(); return; }
+  const d = e.target.closest("[data-ibdone]"); if (d && canInboxMark()){ const old = Date.now() - 90 * 864e5; for (const k in INBOX_DONE) if (new Date(INBOX_DONE[k].at) < old) delete INBOX_DONE[k];
+    INBOX_DONE = { ...INBOX_DONE, [d.dataset.ibdone]: { by:viewer.name, at:new Date().toISOString() } }; render(); toast("Marcado como contestado."); return; }
+  const u = e.target.closest("[data-ibundo]"); if (u && canInboxMark()){ const { [u.dataset.ibundo]:_, ...rest } = INBOX_DONE; INBOX_DONE = rest; render(); toast("Vuelve a sin contestar."); return; }
+  const o = e.target.closest("[data-ibopen]"); if (o && !e.target.closest("a,button")){ inboxUI.open = inboxUI.open === o.dataset.ibopen ? null : o.dataset.ibopen; render(); return; }
 });
 // ---------- Ideas Random (CM): ideas de contenido para creadores, según la esencia de cada marca ----------
 // Stock (precio, ahorro, cercanía), Superseis (servicio, calidad, comodidad) y Delimarket (premium, gastronomía, descubrimiento).
@@ -7300,20 +7318,21 @@ document.addEventListener("click", e => {
 });
 function pInbox(){
   const bs = ORDER_INBOX().filter(b => META_INBOX[b]), all = [];
-  bs.forEach(b => (META_INBOX[b].convs || []).filter(inboxRecent).forEach(c => all.push({ ...c, b }))); // solo los últimos 30 días
+  bs.forEach(b => (META_INBOX[b].convs || []).filter(inboxRecent).forEach(c => all.push({ ...c, b, answered:ibOk(c), byHand:INBOX_DONE[c.id] }))); // solo los últimos 30 días
   const list = all.filter(c => (inboxUI.brand === "Todas" || c.b === inboxUI.brand) && (inboxUI.net === "Todas" || c.net === inboxUI.net) && (inboxUI.st === "todos" || (inboxUI.st === "sin" ? !c.answered : c.answered)))
     .sort((a, c) => inboxUI.st === "sin" ? String(a.waitSince || a.ts).localeCompare(String(c.waitSince || c.ts)) : String(c.ts).localeCompare(String(a.ts)));
   const sin = all.filter(c => !c.answered).length, errs = bs.filter(b => META_INBOX[b].err);
   const chip = (k, v, l) => `<button type="button" class="chip ${inboxUI[k] === v ? "on" : ""}" data-ibf="${k}|${v}">${l}</button>`;
   const suite = b => META_INBOX[b]?.pageId ? `https://business.facebook.com/latest/inbox/all?asset_id=${encodeURIComponent(META_INBOX[b].pageId)}` : "https://business.facebook.com/latest/inbox";
+  const mark = canInboxMark(), doneBtn = c => mark && !c.answered ? `<button type="button" class="btn sm ibdone" data-ibdone="${esc(c.id)}" title="Ya se contestó (por ejemplo, desde el celular o por otro medio)">${icon("check")} Marcar contestado</button>` : "";
   const row = c => { const last = c.msgs[c.msgs.length - 1] || {}, key = c.b + "|" + c.id, open = inboxUI.open === key;
     return `<div class="ibrow${c.answered ? "" : " pend"}${open ? " open" : ""}" data-ibopen="${esc(key)}" role="button" tabindex="0">
       <span class="ibnet ${c.net === "IG" ? "ig" : "fb"}">${c.net === "IG" ? ICO.IG : ICO.FB}</span>
       <div class="grow"><div class="ibh"><b>${esc(c.who)}</b>${brandTag(c.b)}<small>${inboxAge(c.ts)}</small></div>
         <div class="ibl">${last.me ? `<em>Respuesta:</em> ` : ""}${esc(last.t || (last.att ? "📎 Adjunto" : ""))}</div></div>
-      ${c.answered ? `<span class="ibst ok">${icon("check-check")} Contestado</span>` : `<span class="ibst no">${icon("clock")} Sin contestar${c.waitSince ? ` · ${inboxAge(c.waitSince).replace("hace ", "")}` : ""}</span>`}
+      <div class="ibside">${c.answered ? `<span class="ibst ok" ${c.byHand ? `title="Marcado por ${esc(c.byHand.by || "")}"` : ""}>${icon("check-check")} Contestado</span>` : `<span class="ibst no">${icon("clock")} Sin contestar${c.waitSince ? ` · ${inboxAge(c.waitSince).replace("hace ", "")}` : ""}</span>`}${open ? "" : doneBtn(c)}</div>
       ${open ? `<div class="ibthread">${c.msgs.map(m => `<div class="ibm ${m.me ? "me" : ""}"><span>${esc(m.t || (m.att ? "📎 Adjunto" : ""))}</span><small>${m.me ? esc(c.b) + " · " : ""}${new Date(m.ts).toLocaleString("es-PY", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })}</small></div>`).join("")}
-        <a class="btn sm" href="${suite(c.b)}" target="_blank" rel="noopener">${icon("external-link")} Contestar en Meta Business Suite</a></div>` : ""}</div>`; };
+        <div class="chips"><a class="btn sm" href="${suite(c.b)}" target="_blank" rel="noopener">${icon("external-link")} Contestar en Meta Business Suite</a>${doneBtn(c)}${c.byHand ? `<span class="note">Marcado como contestado por ${esc(firstName(c.byHand.by || ""))}</span>${mark ? `<button type="button" class="btn sm" data-ibundo="${esc(c.id)}">Volver a sin contestar</button>` : ""}` : ""}</div></div>` : ""}</div>`; };
   return `<div class="head"><div><h1 class="pmh">${pmIco("inbox")}Mensajes</h1><p class="sub">Los mensajes directos reales de Instagram y Facebook de cada marca: quién escribió y si ya se contestó. Para contestar, se abre la bandeja de Meta Business Suite.</p></div>
     ${metaBtn("mensajes", "Mensajes")}</div>
   ${bs.length ? `<div class="grid kpis">${[["Sin contestar", sin, sin ? "warn" : "up"], ["Contestados", all.length - sin, "up"], ["Conversaciones", all.length, ""]].map(([l, n, c]) => `<div class="panel kpi"><div class="l">${l}</div><div class="n ${c}">${n}</div></div>`).join("")}<div class="panel kpi"><div class="l">Actualizado</div><div class="n" style="font-size:20px">${inboxAge(META_INBOX.updated) || "—"}</div></div></div>` : ""}
@@ -7323,6 +7342,7 @@ function pInbox(){
   <div class="iblist">${list.map(row).join("") || `<div class="empty">${inboxUI.st === "sin" ? `${icon("check")} No hay mensajes sin contestar.` : "No hay conversaciones con estos filtros."}</div>`}</div>`
   : `<div class="panel empty">${icon("inbox")} ${META_INBOX.updated ? "No hay mensajes de los últimos 30 días con estos filtros." : "Todavía no hay mensajes cargados. Tocá “Actualizar” para traerlos de Meta."}</div>`}`;
 }
+const canInboxMark = () => can("inbox") && !isViewOnly();
 const ORDER_INBOX = () => ["Superseis","Stock","Delimarket","Bianca","Clasipar","Dayo","PediWOW"].filter(b => seesBrand(b));
 // Tendencias: las 10 novedades más llamativas para Diseño (packaging, marcas y tiendas) o para CM (campañas y redes),
 // tomadas de medios especializados por la función "integraciones" (se actualiza sola cada 3 horas). Cada una abre su nota.

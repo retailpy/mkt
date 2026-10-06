@@ -14,8 +14,8 @@ const GRAPH = "https://graph.facebook.com/v21.0";
 const DAYS = 30;  // solo las conversaciones con movimiento en los últimos 30 días
 const MAXC = 80;  // tope de conversaciones por red y por marca
 const MSGS = 6;   // últimos mensajes de cada conversación
-const since = Date.now() - DAYS * 864e5;
-const recent = c => !c.updated_time || new Date(c.updated_time).getTime() >= since;
+const recent = c => !c.updated_time || Date.now() - new Date(c.updated_time).getTime() <= DAYS * 864e5;
+let deadline = 0; // pasado este momento no se piden más conversaciones: se guarda lo que haya (Vercel corta a los 60 s)
 const tooBig = e => /reduce the amount of data/i.test(e.message || "");
 
 async function g(path, params, token){
@@ -61,9 +61,13 @@ async function convsOf(pageId, platform, pt){
   const nested = `id,updated_time,participants,messages.limit(${MSGS}){message,from,created_time${platform === "messenger" ? ",attachments" : ""}}`;
   try { return { list: await recentConvs(`/${pageId}/conversations`, { platform, fields: nested, limit: "25" }, pt), skipped: 0 }; }
   catch (e){ if (!tooBig(e)) throw e; }
-  const light = await recentConvs(`/${pageId}/conversations`, { platform, fields: "id,updated_time", limit: "25" }, pt);
+  let light = null;
+  for (const lim of ["25", "10"]){
+    try { light = await recentConvs(`/${pageId}/conversations`, { platform, fields: "id,updated_time", limit: lim }, pt); break; }
+    catch (e){ if (!tooBig(e) || lim === "10") throw e; }
+  }
   let skipped = 0;
-  const list = (await pool(light, 4, c => detail(c, pt).catch(() => { skipped++; return null; }))).filter(Boolean);
+  const list = (await pool(light, 4, c => Date.now() > deadline ? (skipped++, null) : detail(c, pt).catch(() => { skipped++; return null; }))).filter(Boolean);
   return { list, skipped };
 }
 
@@ -75,10 +79,10 @@ function shape(c, net, meIds){
   }));
   const other = (c.participants?.data || []).find(p => !meIds.includes(String(p.id))) || {};
   const last = msgs[msgs.length - 1];
-  let waitSince = null; // desde cuándo espera respuesta: el primer mensaje del cliente después de la última respuesta
-  for (let i = msgs.length - 1; i >= 0 && !msgs[i].me; i--) waitSince = msgs[i].ts;
+  // Contestado: la marca ya respondió algo en la conversación (un “gracias” del cliente después no la vuelve a abrir).
+  const answered = msgs.some(m => m.me);
   return { id: c.id, net, who: other.username ? "@" + other.username : other.name || "Cliente", ts: c.updated_time || last?.ts || null,
-    answered: !!last?.me, waitSince: last && !last.me ? waitSince : null, msgs };
+    answered, waitSince: answered ? null : msgs[0]?.ts || null, msgs };
 }
 
 module.exports = async (req, res) => {
@@ -86,6 +90,7 @@ module.exports = async (req, res) => {
   if (!who) return res.status(401).json({ ok: false, error: "No autorizado" });
   if (!process.env.META_TOKEN) return res.status(500).json({ ok: false, error: "Falta la variable META_TOKEN en Vercel" });
   const dry = req.query.dry === "1" && cron;
+  deadline = Date.now() + 45000;
   try {
     const { byBrand } = await brandPages();
     // Token de cada página (con el token del usuario del sistema se obtiene el de cada página que administra).
