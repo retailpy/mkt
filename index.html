@@ -4218,12 +4218,13 @@ document.addEventListener("click", e => { const v = e.target.closest("[data-plvi
 const CM_CAL_KIND = { calendario:"Feed", calhistoria:"Historia", calcanales:"Canal" };
 const newCmJobOn = (due, area) => { const brand = MAIN_BRANDS.includes(brandFilter) && myBrands().includes(brandFilter) ? brandFilter : myBrands()[0];
   jobUI.form = { mode:"new", job:{ id:nextJobId(area), area, requestDate:TODAY, requester:"Marketing", brand, piece:(area === "CM" ? CM_TYPES : SOCIAL_TYPES)[0], title:"", owner:"Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due, link:"", notes:"", post:null } }; render(); };
-const jobDayOpts = () => [...(canCreateJobs() && can("gestioncm") ? [["Video","clapperboard","Pedido de video (CM)"]] : []), ...(canCreateJobs() && can("pedidos") && viewer.role !== "CM" ? [["Diseno","palette","Pedido a Diseño gráfico"]] : [])]; // los de CM no cargan pedidos de diseño gráfico
+// En las secciones de CM solo se cargan cosas de CM: los pedidos de diseño gráfico se cargan en Diseño gráfico (Admin total).
+const jobDayOpts = () => canCreateJobs() && can("gestioncm") ? [["Video","clapperboard","Pedido de video (CM)"]] : [];
 document.addEventListener("click", e => {
   if (!isPlanPage() && !CM_CAL_KIND[page]) return;
   const o = e.target.closest("[data-plnew]");
   if (o){ const [kind, date] = o.dataset.plnew.split("|"); closeStageMenu();
-    if (kind === "Video") newCmJobOn(date, "CM"); else if (kind === "Diseno") newCmJobOn(date, "Diseño");
+    if (kind === "Video") newCmJobOn(date, "CM");
     else newPostOn(date, kind);
     return; }
   if (!isPlanPage()) return;
