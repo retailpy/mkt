@@ -3676,7 +3676,7 @@ const ONLY_ADMINS = ["historial","historialcm","pauta","reportes"]; // Historial
 // Todo el equipo ve los Paneles de Trabajo (y sus categorías), la Planificación, la Carga de trabajo de Diseño y de CM
 // y el Informe Redes (Diseño y CM incluidos). Meta Ads (pauta) y el Informe del mes siguen solo para Admin total y Admin.
 // Lo que cada uno puede cambiar lo sigue decidiendo su rol (cargar pedidos, editar posteos, mover fechas…).
-const ALL_SEE = () => ["paneldg","panelcm","caldg","calcm","cargadiseno","cargacm","ideas","redes", ...PANEL_DESIGN.map(x => x.k), ...PANEL_CM.map(x => x.k).filter(k => k !== "inbox")];
+const ALL_SEE = () => ["paneldg","panelcm","caldg","calcm","cargadiseno","cargacm","ideas","redes","plan", ...PANEL_DESIGN.map(x => x.k), ...PANEL_CM.map(x => x.k).filter(k => k !== "inbox")];
 const can = key => ALL_SEE().includes(key) ? true : key === "inbox" ? ["Admin total","Admin","CM"].includes(viewer.role) : key === "encuestas" || key === "sugerencias" ? viewer.id === "fede" && viewer.role === "Admin total" : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : ONLY_AT.includes(key) ? viewer.role === "Admin total" : ONLY_ADMINS.includes(key) ? isAdminAny() && viewer.perms.has(key) : ["sabados","avisos","perfil","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
 const myGroups = () => viewer.brands || GROUPS;
 const seesBrand = b => myGroups().includes(groupOf(b));
@@ -3969,7 +3969,6 @@ const PANEL_DESIGN = [
   { k:"pantallas", t:"Pantallas", d:"Piezas y videos para las pantallas de los locales, LED y menús digitales.", i:"tv" },
 ];
 const PANEL_CM = [
-  { k:"plan", t:"Plan de posteo", d:"Todo lo que sale en el mes, junto: feed, historias, canal, videos y repetitivos.", i:"list-checks" },
   { k:"calendario", t:"Redes Sociales", d:"El feed de cada marca: posts, carruseles y reels con su fecha y estado.", i:"calendar-days" },
   { k:"calhistoria", t:"Historias", d:"Historias de Instagram y Facebook, día por día.", i:"smartphone" },
   { k:"calcanales", t:"Canal de WhatsApp", d:"Ofertas y novedades del canal, y los envíos repetitivos.", i:"message-circle" },
@@ -4212,7 +4211,7 @@ function calDrag(kind, id){
   const d = kind === "job" ? it.due : it.date;
   return calDateOk(d) ? ` draggable="true" data-drag="${kind}:${id}"` : ""; // también los aprobados/finalizados
 }
-const calHint = () => canCalMove() && !isClosed() ? `<p class="draghint">Tocá un contenido para abrirlo y editarlo, o tocá un día para cargar uno nuevo en esa fecha. Arrastrá un posteo o una entrega a otro día para cambiar la fecha; para pasarlo a otro mes, soltalo en los días grises o dejalo un momento sobre “‹ Anterior” / “Siguiente ›”.</p>` : "";
+const calHint = () => canCalMove() && !isClosed() ? `<p class="draghint">Tocá un contenido para abrirlo y editarlo${CM_CAL_KIND[page] ? "" : ", o tocá un día para cargar uno nuevo en esa fecha"}. Arrastrá un posteo o una entrega a otro día para cambiar la fecha; para pasarlo a otro mes, soltalo en los días grises o dejalo un momento sobre “‹ Anterior” / “Siguiente ›”.</p>` : "";
 function calGrid(render, addable = false){
   return `<div class="calw${addable && !isClosed() ? " addable" : ""}"><div class="cal">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => `<div class="dh">${d}</div>`).join("")}
   ${calCells().map(c => { const inner = render(c), wd = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][new Date(c + "T12:00").getDay()];
@@ -4272,19 +4271,21 @@ function pCalCM(kind){
   const hist = kind === "Historia", view = gView(), vp = visiblePosts().filter(p => (hist ? p.format === "Historia" : p.format !== "Historia") && soloPost(p)).sort((a, b) => a.date.localeCompare(b.date));
   const rec = recVisible().filter(r => (r.kind === kind || (!hist && r.kind === "Grabación")) && soloRec(r));
   const calName = brandFilter === "Todas" ? "Todas las marcas" : brandFilter === "Otros" ? "Otras marcas" : brandFilter;
-  const adds = calAdds([...(canEditPost() ? [[`data-pnew="${kind}"`, "plus", hist ? "Cargar historia" : "Cargar publicación", hist ? "Una historia en su fecha, con su CM." : "Un post, carrusel o reel en su fecha, con su CM."]] : []), ...(canCreateJobs() && can("gestioncm") ? [[`data-recgo="${kind}"`, "repeat", "Cargar repetitivo", hist ? "Una historia que sale siempre los mismos días." : "Una publicación que sale siempre los mismos días."]] : [])]);
+  const adds = planLoadNote(hist ? "historias" : "publicaciones");
   const head = gHead(`Gestión ${hist ? "Historia" : "Redes"}${view === "calendario" ? " · " + calName : ""}`, `${monthLabel(MONTH)} · ${hist ? "las historias de cada día: las del plan y las repetitivas" : "las publicaciones del feed (posts, carruseles y reels) en su fecha, y las repetitivas"}.`, hist ? "smartphone" : "calendar-days");
   if (view !== "calendario") return `${head}${adds}${gFilters(view === "tablero" ? "Tocá una tarjeta para cambiar su etapa · el lápiz para editar" : "Tocá el tema para editarlo")}${view === "tablero" ? postBoard(vp, kind) : postTable(vp, kind)}${postForm()}${jobForm()}${recDrawer()}`;
   return `${head}${adds}${gFilters("")}
   <div class="legend">${POST_STAGES.map(st => `<span><span class="sw" style="background:${POST_COLOR[st]}"></span>${st}</span>`).join("")}<span><span class="sw" style="background:${REC_KINDS[kind].c}"></span>${icon("repeat")} ${kind} repetitiva</span>${hist ? "" : `<span><span class="sw" style="background:${REC_KINDS["Grabación"].c}"></span>${icon("repeat")} Grabación repetitiva</span>`}</div>${calHint()}
   ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("")
-    + vp.filter(p => p.date === c).map(p => `<div class="ev${sepCls(p.brand)}"${calDrag("post", p.id)}${canEditPost() ? ` data-open="post:${p.id}"` : ""} style="--c:${BRANDS[p.brand]};--s:${POST_COLOR[p.status]}" title="${esc(p.title)} · ${p.net} ${p.format} · ${p.status} · ${esc(p.cm || "")}"><span>${postUrgency(p)?.late ? icon("alarm-clock") + " " : ""}${p.brand} · ${esc(p.title)}</span>${evStage("post", p, `${p.status} · ${p.net}${hist ? "" : " " + p.format} · ${esc(firstName(p.cm || ""))}`, stColor(p.status))}</div>`).join(""), canEditPost())}
+    + vp.filter(p => p.date === c).map(p => `<div class="ev${sepCls(p.brand)}"${calDrag("post", p.id)}${canEditPost() ? ` data-open="post:${p.id}"` : ""} style="--c:${BRANDS[p.brand]};--s:${POST_COLOR[p.status]}" title="${esc(p.title)} · ${p.net} ${p.format} · ${p.status} · ${esc(p.cm || "")}"><span>${postUrgency(p)?.late ? icon("alarm-clock") + " " : ""}${p.brand} · ${esc(p.title)}</span>${evStage("post", p, `${p.status} · ${p.net}${hist ? "" : " " + p.format} · ${esc(firstName(p.cm || ""))}`, stColor(p.status))}</div>`).join(""), false)}
   <p class="note">${icon("repeat")} = repetitivo: se carga una sola vez y aparece solo en cada fecha. Tocalo para marcarlo como hecho.</p>
   ${postForm()}${jobForm()}${recDrawer()}`;
 }
 // Borrar pide confirmación: el segundo toque (en 8 s) borra, aunque la pantalla se haya redibujado en el medio.
 let sureKey = "", sureAt = 0;
 function confirmTap(el, key, label){ if (sureKey === key && Date.now() - sureAt < 8000){ sureKey = ""; return true; } sureKey = key; sureAt = Date.now(); el.textContent = label; return false; }
+// En las Gestiones de CM no se carga: todo se carga en Planificación (ahí está “¿Se repite?”). Acá se ve, se edita y se mueve.
+const planLoadNote = what => canEditPost() && can("calcm") && !isClosed() ? `<div class="caladds"><button type="button" class="caladd" data-page="calcm"><span class="cmplus">${icon("calendar-days")}</span><span><b>Cargar en Planificación</b><small>Las ${what} se cargan en Planificación (también las que se repiten). Acá se ven y se editan.</small></span></button></div>` : "";
 // Botones para cargar, aparte y con borde (distintos de los filtros de marca).
 const calAdds = items => items.length ? `<div class="caladds">${items.map(([attr, ic, t, d]) => `<button type="button" class="caladd" ${attr}><span class="cmplus">${icon(ic)}</span><span><b>${t}</b><small>${d}</small></span></button>`).join("")}</div>` : "";
 // Lo de otras marcas (fuera de Superseis, Stock y Delimarket) se dibuja solo con el borde de su color.
@@ -4292,12 +4293,12 @@ const sepCls = b => MAIN_BRANDS.includes(b) ? "" : " sep";
 function pCalCanales(){
   const view = gView(), list = visibleCanales().filter(soloPost).sort((a, b) => a.date.localeCompare(b.date)), rec = recVisible().filter(r => r.kind === "Canal" && soloRec(r));
   const calName = brandFilter === "Todas" ? "Todas las marcas" : brandFilter === "Otros" ? "Otras marcas" : brandFilter;
-  const adds = calAdds([...(canEditPost() ? [['data-pnew="Canal"', "plus", "Cargar contenido", "Un contenido para el Canal de WhatsApp, en su fecha."]] : []), ...(canCreateJobs() && can("gestioncm") ? [['data-recgo="Canal"', "repeat", "Cargar repetitivo", "Algo que sale siempre los mismos días en el canal (ej.: ofertas cada lunes)."]] : [])]);
+  const adds = planLoadNote("contenidos del Canal de WhatsApp");
   const head = gHead(`Gestión Canal WhatsApp${view === "calendario" ? " · " + calName : ""}`, `${monthLabel(MONTH)} · lo que se publica en el Canal de WhatsApp de cada marca, cada contenido en su fecha.`, "message-circle");
   if (view !== "calendario") return `${head}${adds}${gFilters(view === "tablero" ? "Tocá una tarjeta para cambiar su etapa · el lápiz para editar" : "Tocá el tema para editarlo")}${view === "tablero" ? postBoard(list, "Canal") : postTable(list, "Canal")}${postForm()}${jobForm()}${recDrawer()}`;
   return `${head}${adds}${gFilters("")}
   <div class="legend">${CANAL_STAGES.map(st => `<span><span class="sw" style="background:${POST_COLOR[st]}"></span>${st}</span>`).join("")}<span><span class="sw" style="background:${REC_KINDS.Canal.c}"></span>${icon("repeat")} Canal de WhatsApp repetitivo</span></div>${calHint()}
-  ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("") + list.filter(k => k.date === c).map(k => `<div class="ev${sepCls(k.brand)}"${calDrag("canal", k.id)}${canEditPost() ? ` data-open="canal:${k.id}"` : ""} style="--c:${BRANDS[k.brand]};--s:${POST_COLOR[k.status]}" title="${esc(k.title)} · ${esc(k.channel)} · ${k.status} · ${esc(k.cm || "")}"><span>${icon(CH_ICO[k.channel] || "message-circle")} ${k.brand} · ${esc(k.title)}</span>${evStage("canal", k, `${k.status} · ${esc(k.channel)} · ${esc(firstName(k.cm || ""))}`, stColor(k.status))}</div>`).join(""), canEditPost())}
+  ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("") + list.filter(k => k.date === c).map(k => `<div class="ev${sepCls(k.brand)}"${calDrag("canal", k.id)}${canEditPost() ? ` data-open="canal:${k.id}"` : ""} style="--c:${BRANDS[k.brand]};--s:${POST_COLOR[k.status]}" title="${esc(k.title)} · ${esc(k.channel)} · ${k.status} · ${esc(k.cm || "")}"><span>${icon(CH_ICO[k.channel] || "message-circle")} ${k.brand} · ${esc(k.title)}</span>${evStage("canal", k, `${k.status} · ${esc(k.channel)} · ${esc(firstName(k.cm || ""))}`, stColor(k.status))}</div>`).join(""), false)}
   <p class="note">${icon("repeat")} = repetitivo: un contenido que sale siempre los mismos días en el Canal de WhatsApp (ej.: ofertas cada lunes). Se carga una vez y aparece solo en cada fecha; tocalo para marcarlo como hecho.${list.some(k => k.date.slice(0,7) === MONTH) ? "" : ` Todavía no hay contenidos cargados en ${monthName(MONTH)}.`}</p>
   ${postForm()}${jobForm()}${recDrawer()}`;
 }
@@ -4928,12 +4929,12 @@ let CHANNEL_POSTS = [];
 const canalById = id => CHANNEL_POSTS.find(k => k.id === id);
 const visibleCanales = () => CHANNEL_POSTS.filter(k => seesBrand(k.brand) && inFilter(k.brand));
 let postUI = { form:null };
-const nextPostId = () => "P" + (Math.max(0, ...posts.map(p => +String(p.id).replace(/\D/g, "") || 0)) + 1);
+const nextPostId = () => "P" + (Math.max(0, ...posts.map(p => +(String(p.id).match(/^P?(\d+)$/) || [])[1] || 0)) + 1);
 function newPostOn(date, kind){
   const brand = MAIN_BRANDS.includes(brandFilter) && myBrands().includes(brandFilter) ? brandFilter : myBrands()[0];
   const cm = CM_BY_BRAND[brand] || CM_NAMES()[0] || "";
   postUI.form = kind === "Canal"
-    ? { mode:"new", kind, post:{ id:"K" + (Math.max(0, ...CHANNEL_POSTS.map(k => +String(k.id).replace(/\D/g, "") || 0)) + 1), date, brand, channel:CANALES[0], title:"", status:"Borrador", cm, notes:"" } }
+    ? { mode:"new", kind, post:{ id:"K" + (Math.max(0, ...CHANNEL_POSTS.map(k => +(String(k.id).match(/^K?(\d+)$/) || [])[1] || 0)) + 1), date, brand, channel:CANALES[0], title:"", status:"Borrador", cm, notes:"" } }
     : { mode:"new", kind, post:{ id:nextPostId(), date, brand, net:"IG", format:kind === "Historia" ? "Historia" : "Post", title:"", status:"Borrador", cm, notes:"", carried:null } };
   render();
 }
@@ -4942,6 +4943,7 @@ function newPostOn(date, kind){
 const POST_BRIEF_PH = "Ej.: el copy de la publicación, los hashtags, lo que dice la imagen o el video y lo que hay que tener en cuenta.";
 function postForm(){
   const f = postUI.form; if (!f) return "";
+  if (!f.repDays) f.repDays = [...(f.post.rep?.days || [])];
   const p = f.post, canal = f.kind === "Canal", real = f.mode === "edit" ? (canal ? canalById(p.id) : postById(p.id)) : null;
   const opt = (list, v) => [...new Set([...list, v].filter(Boolean))].map(x => `<option ${x === v ? "selected" : ""}>${esc(x)}</option>`).join("");
   const j = canal ? null : jobs.find(x => x.post === p.id), stages = canal ? CANAL_STAGES : POST_STAGES, cur = stages.indexOf(p.status);
@@ -4965,6 +4967,10 @@ function postForm(){
         <label>Solicitante *<select class="base" id="poReq">${opt(SOLICITANTES, p.requester || "Marketing")}</select></label>
         <label>CM responsable (de cualquier marca) *<select class="base" id="poCm">${opt(CM_NAMES(), p.cm)}</select></label>
         <label>Fecha de publicación *<input class="base" type="date" id="poDate" value="${p.date}" required></label>
+        ${p.repOf ? `<p class="note" style="grid-column:1/-1;margin:0">${icon("repeat")} Se cargó sola porque se repite (la repite “${esc((canal ? canalById(p.repOf) : postById(p.repOf))?.title || p.title)}”).</p>` : `<div class="jrep" style="grid-column:1/-1"><span class="jll">${icon("repeat")} ¿Se repite? <span class="note">(opcional: elegí los días y se carga sola cada semana, con la misma marca, CM, texto y links)</span></span>
+          <div class="chips">${WEEKDAYS.map((w, i) => `<button type="button" class="chip ${f.repDays.includes(i) ? "on" : ""}" data-prepday="${i}" aria-pressed="${f.repDays.includes(i)}">${w}</button>`).join("")}</div>
+          <label class="jrepu">Hasta <span class="note">(vacío = siempre)</span><input class="base" type="date" id="poRepUntil" value="${esc(p.rep?.until || "")}"></label>
+          <p class="note" style="margin:0">Ej.: “Beneficio del día con tarjetas” → marcá Lunes: cada lunes aparece ${canal ? "un contenido nuevo" : f.kind === "Historia" ? "una historia nueva" : "una publicación nueva"} en Borrador, ya asignada a su CM.</p></div>`}
       </div></section>
       <section class="jfs"><h3><i>3</i>Texto de la publicación y links</h3><div class="jfg">
         <div style="grid-column:1/-1"><span class="jll">Links de acceso <span class="note">(Drive, Canva u otro sitio: fotos, videos, el diseño…)</span></span>${linkEditor(p, "form")}</div>
@@ -5020,22 +5026,47 @@ document.addEventListener("submit", e => {
   if (f.mode !== "edit" && !d.byId) common.byId = viewer.id; // quién la cargó (para el chat)
   if (!MONTHS_APP.some(x => x.v === date.slice(0,7))){ toast(`La fecha (${dm(date)}) está fuera de los meses de la app. Revisá la fecha.`); return; }
   if (isCalPage() || (brandFilter !== "Todas" && groupOf(common.brand) !== brandFilter)) brandFilter = groupOf(common.brand); // lo cargado se ve enseguida, en su marca
+  const setRep = x => { if (x.repOf) return; const ru = document.getElementById("poRepUntil")?.value || ""; if (f.repDays?.length) x.rep = { days:[...f.repDays], until:ru }; else delete x.rep; };
+  const repMsg = x => x.rep ? ` Se repite: ${repText(x.rep).toLowerCase()}.${(x.nRep = spawnPostRepeats()) ? ` Ya ${x.nRep === 1 ? "se cargó 1" : `se cargaron ${x.nRep}`} de las próximas 2 semanas.` : ""}` : "";
   if (f.kind === "Canal"){
     const data = { ...common, channel:$("#poChannel").value };
     let k = f.mode === "edit" ? canalById(f.post.id) : null;
     if (k) Object.assign(k, data); else { k = { ...f.post, ...data }; CHANNEL_POSTS.push(k); }
+    setRep(k); const extra = repMsg(k); delete k.nRep;
     postUI.form = null; const m = date.slice(0,7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m;
-    render(); toast(`${f.mode === "edit" ? "Guardado" : "Cargado"}: “${k.title}” en ${k.channel} el ${dm(k.date)}.`); return;
+    render(); window.RMH?.flushNow?.(); toast(`${f.mode === "edit" ? "Guardado" : "Cargado"}: “${k.title}” en ${k.channel} el ${dm(k.date)}.${extra}`); return;
   }
   // Historia: siempre historia. Feed: nunca historia.
   const data = { ...common, net:$("#poNet").value, format:f.kind === "Historia" ? "Historia" : $("#poFormat").value };
   let p = f.mode === "edit" ? postById(f.post.id) : null;
   if (p) Object.assign(p, data); else { p = { ...f.post, ...data }; posts.push(p); }
+  setRep(p); const extra = repMsg(p); delete p.nRep;
   postUI.form = null;
   const m = date.slice(0,7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m;
   if (p.status === "En diseño" && !jobs.some(x => x.post === p.id)){ pedirDiseno(p.id); return; }
-  render(); toast(`${f.mode === "edit" ? "Guardado" : "Cargado"}: “${p.title}” el ${dm(p.date)} · CM: ${firstName(p.cm)}.`);
+  render(); window.RMH?.flushNow?.(); toast(`${f.mode === "edit" ? "Guardado" : "Cargado"}: “${p.title}” el ${dm(p.date)} · CM: ${firstName(p.cm)}.${extra}`);
 });
+document.addEventListener("click", e => { const b = e.target.closest("[data-prepday]"); if (!b || !postUI.form) return; const i = +b.dataset.prepday, f = postUI.form;
+  f.repDays = (f.repDays || []).includes(i) ? f.repDays.filter(x => x !== i) : [...(f.repDays || []), i].sort(); b.classList.toggle("on"); b.setAttribute("aria-pressed", b.classList.contains("on")); });
+// Contenidos de CM que se repiten (historia, feed y Canal de WhatsApp): el original guarda los días (rep.days, 0 = lunes)
+// y se cargan solos los de las próximas 2 semanas, en Borrador. El id de cada copia es fijo (original + fecha), así no se duplica
+// aunque dos personas tengan la app abierta.
+function spawnPostRepeats(){
+  if (!viewer || isClosed() || isViewOnly() || isDesigner()) return 0;
+  let n = 0;
+  [[posts, false], [CHANNEL_POSTS, true]].forEach(([list, canal]) => list.filter(t => t.rep?.days?.length && !t.repOf && (viewer.role === "Admin total" || t.cm === viewer.name)).forEach(t => {
+    for (let k = 0; k <= REP_AHEAD; k++){
+      const d = addDays(TODAY, k), wd = (new Date(d + "T12:00").getDay() + 6) % 7;
+      if (d <= t.date || !t.rep.days.includes(wd) || (t.rep.until && d > t.rep.until) || !MONTHS_APP.some(m => m.v === d.slice(0,7))) continue;
+      const id = `${t.id}-R${d.slice(2).replace(/-/g, "")}`; if (list.some(x => x.id === id || (x.repOf === t.id && x.date === d))) continue;
+      const c = { id, date:d, status:"Borrador", repOf:t.id, brand:t.brand, title:t.title, cm:t.cm, requester:t.requester || "Marketing", notes:t.notes || "", brief:t.brief || "",
+        canva:t.canva || "", drive:t.drive || "", canvaN:t.canvaN || "", driveN:t.driveN || "", xlinks:(t.xlinks || []).map(x => ({ ...x })), links:(t.links || []).slice(), byId:t.byId };
+      list.push(canal ? { ...c, channel:t.channel } : { ...c, net:t.net, format:t.format, carried:null });
+      n++;
+    }
+  }));
+  return n;
+}
 document.addEventListener("click", e => {
   if (e.target.closest("[data-pclose]")){ postUI.form = null; render(); return; }
   const d = e.target.closest("[data-postdel]");
@@ -8358,7 +8389,7 @@ document.addEventListener("click", e => {
   if (e.target.closest("#menuBtn")){ const o = side.classList.toggle("open"); e.target.closest("#menuBtn").setAttribute("aria-expanded", o); document.body.classList.toggle("menuopen", o); return; }
   if (side.classList.contains("open") && e.target.closest(".side [data-page], .tabbar [data-page], #logout")){ side.classList.remove("open"); document.body.classList.remove("menuopen"); document.getElementById("menuBtn")?.setAttribute("aria-expanded", "false"); scrollTo(0, 0); }
 });
-function enterApp(){ setTimeout(seedExamples, 0); setTimeout(() => { if (spawnRepeats()) render(); }, 1500); loadPrefs(viewer); applyPrefs(); loadWeather(); presenceOnEnter(); viewer.last = "hoy " + new Date().toTimeString().slice(0,5);
+function enterApp(){ setTimeout(seedExamples, 0); setTimeout(() => { const a = spawnRepeats(), b = spawnPostRepeats(); if (a || b) render(); }, 1500); loadPrefs(viewer); applyPrefs(); loadWeather(); presenceOnEnter(); viewer.last = "hoy " + new Date().toTimeString().slice(0,5);
   const want = enterApp.done ? "" : START_PAGE; enterApp.done = true; page = PAGES[want] && can(want) ? want : "dashboard"; render.lastKey = null; brandFilter = "Todas"; $("#login").hidden = true; $("#changeForm").hidden = true; $("#loginForm").hidden = false; $("#loginMsg").hidden = true; render(); toast(`${hello()}. Entraste como ${viewer.role}.`);
   if (notifOn() && notifSupported() && Notification.permission === "granted") pushSubscribe().then(ok => { if (ok && page === "config") render(); });
   const oc = new URLSearchParams(location.search).get("chat"); if (oc){ history.replaceState(null, "", location.pathname + "#mensajes"); openChatFrom(oc); } }
