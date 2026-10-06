@@ -6198,7 +6198,7 @@ function chatConv(){
 }
 function markRead(c){
   if (!c || document.visibilityState === "hidden") return;
-  if (c.kind === "g"){ const ch = CHATS[c.id] || (CHATS[c.id] = { id:c.id, msgs:[], seen:{} }); const last = c.msgs.reduce((mx, m) => msgTs(m) > mx ? msgTs(m) : mx, "");
+  if (c.kind === "g"){ const ch = CHATS[c.id] || (CHATS[c.id] = { id:c.id, msgs:[], seen:{} }); const mx = c.msgs.reduce((x, m) => msgTs(m) > x ? msgTs(m) : x, ""), cap = new Date(chatNow().getTime() + 60e3).toISOString(), last = mx > cap ? cap : mx; // un mensaje con la hora adelantada no tapa los que vienen después
     if (last && (ch.seen?.[viewer.id] || "") < last){ ch.seen = { ...(ch.seen || {}), [viewer.id]:last }; setTimeout(renderNav, 0); } }
   else if (dmUnread(c.id)){ dmThreads(c.id).forEach(t => t.msgs.forEach(m => { if (m.from !== viewer.id) m.read = true; })); setTimeout(renderNav, 0); }
 }
@@ -6214,8 +6214,8 @@ function msgActions(m, mid, mine){
   const it = (a, ic, t, cls = "") => `<button type="button" class="${cls}" data-cact="${a}|${esc(mid)}">${icon(ic)}<span>${t}</span></button>`;
   return `<div class="cacts" role="menu">${it("reply", "reply", "Responder")}${it("fwd", "forward", "Reenviar")}${m.text || m.gif ? it("copy", "copy", "Copiar") : ""}${mine && m.text ? it("edit", "pencil", "Editar") : ""}${mine ? it("del", "trash-2", "Eliminar", "danger") : ""}</div>`;
 }
-// Hora de un mensaje nuevo: la del servidor (si la compu está adelantada o atrasada se corrige) y siempre
-// un poco después del último mensaje de esa charla, así lo que se manda último queda abajo para todos.
+// Hora de un mensaje nuevo: la del servidor en el momento en que se manda (si el celular o la compu tiene otra
+// hora, se corrige). El orden es el de llegada, así que no hace falta correr la hora: siempre es la real.
 const chatNow = () => new Date(Date.now() + (window.RMH?.clockOffset || 0));
 // Hora oficial de Paraguay (UTC−3 todo el año desde octubre de 2024). El chat la usa siempre para el día y la hora
 // de cada mensaje, sin importar la hora ni la zona horaria que tenga el celular, la tablet o la compu de cada uno.
@@ -6226,11 +6226,7 @@ const msgDay = m => m.ts ? pyParts(m.ts).date : m.date || msgTs(m).slice(0, 10);
 const chatDayLbl = d => { const t = pyToday(), y = new Date(Date.parse(t + "T12:00:00Z") - 864e5).toISOString().slice(0, 10);
   return d === t ? "Hoy" : d === y ? "Ayer" : `${["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][new Date(d + "T12:00:00Z").getUTCDay()]} ${dm(d)}`; };
 const convRaw = open => { const [k, id] = open.split(/:(.*)/s); return k === "g" ? CHATS[id]?.msgs || [] : dmThreads(id).flatMap(t => t.msgs); };
-function msgStamp(open){
-  let d = chatNow(); const last = convRaw(open).reduce((mx, m) => { const t = Date.parse(msgTs(m)); return t > mx ? t : mx; }, 0);
-  if (last && d.getTime() <= last) d = new Date(last + 1);
-  const ts = d.toISOString(); return { ts, ...pyParts(ts) };
-}
+function msgStamp(){ const ts = chatNow().toISOString(); return { ts, ...pyParts(ts) }; }
 const msgByIdIn = (open, id) => convRaw(open).find(m => m.id === id);
 function convPush(open, m){ // agrega un mensaje a una conversación (grupo o privada)
   const [k, id] = open.split(/:(.*)/s);
