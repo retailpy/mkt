@@ -58,6 +58,7 @@ const RMH = (() => {
     META_POSTS:[() => META_POSTS, v => { META_POSTS = v || {}; }],
     META_CREATIVES:[() => META_CREATIVES, v => { META_CREATIVES = v || {}; }],
     META_INBOX:[() => META_INBOX, v => { META_INBOX = v || {}; }],
+    INBOX_DONE:[() => INBOX_DONE, v => { INBOX_DONE = v || {}; }],
     META_REFS:[() => META_REFS, v => { META_REFS = v || {}; }],
     CHANNEL_POSTS:[() => CHANNEL_POSTS, v => { CHANNEL_POSTS = v; }],
     MAIN_PRIORITIES:[() => MAIN_PRIORITIES, v => { MAIN_PRIORITIES = v; }],
