@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
           .filter(m => m.media_product_type !== "REELS" && m.media_product_type !== "STORY" && (m.media_type === "IMAGE" || m.media_type === "CAROUSEL_ALBUM"))
           .filter(m => m.media_url && /^https:\/\//.test(m.media_url) && new Date(m.timestamp).getTime() >= desde)
           .slice(0, POR_CUENTA)
-          .map(m => ({ img: m.media_url, link: m.permalink, ts: m.timestamp, type: m.media_type === "CAROUSEL_ALBUM" ? "Carrusel" : "Post", cap: String(m.caption || "").slice(0, 160) }));
+          .map(m => ({ img: m.media_url, link: m.permalink, ts: m.timestamp, type: m.media_type === "CAROUSEL_ALBUM" ? "Carrusel" : "Post", cap: Array.from(String(m.caption || "")).slice(0, 160).join("") }));
         accounts[u] = { name, cc, err: null, posts };
         summary[u] = posts.length;
       } catch (e){

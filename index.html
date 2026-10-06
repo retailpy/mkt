@@ -3171,7 +3171,8 @@ function lastPostsPanel(bs){
   return `<div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram</h2><div class="tag-row"><span class="tag">Fuente: Meta</span>${updTag(postsUpdated())}${metaBtn("publicaciones", "Publicaciones")}</div></div>
     <div class="panel-b">${rows.length ? rows.map(r => `<div class="lpost"><div class="lph">${brandTag(r.b)}${r.h ? `<span class="note">${esc(r.h)}</span>` : ""}</div><div class="lpgrid">${r.list.map(x => { const pp = { img:x.img, format:x.type };
       return `<a class="lpitem" href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="${esc((x.cap || "").slice(0, 140))}">${pubThumb(pp, "lg")}<span class="lpmeta">${dm(new Intl.DateTimeFormat("en-CA", { timeZone:"America/Asuncion" }).format(new Date(x.ts)))} · ♥ ${dots(x.likes || 0)}</span></a>`; }).join("")}</div></div>`).join("")
-      : `<div class="empty">${NO_DATA}: las publicaciones llegan con la actualización diaria de Meta.</div>`}</div></div>`;
+      : `<div class="empty">${NO_DATA}: las publicaciones llegan con la actualización diaria de Meta.</div>`}
+      ${rows.length && bs.some(b => !rows.some(r => r.b === b)) ? `<p class="note" style="margin:8px 0 0">Todavía sin publicaciones de ${bs.filter(b => !rows.some(r => r.b === b)).join(", ")}${canMetaRefresh() ? ": tocá “Actualizar”." : "."}</p>` : ""}</div></div>`;
 }
 const IMP_SECS = 10;
 let imp = { i:0, t:null, paused:false };
@@ -7085,7 +7086,7 @@ function renderNav(){
     const items = SECTIONS.filter(s => s.g === g && can(s.k) && !s.hide);
     if (!items.length) return "";
     const shut = navClosed.has(g);
-    return `<div class="nav-group${shut ? " closed" : ""}"><button type="button" class="nav-label navtog" data-navtog="${esc(g)}" aria-expanded="${!shut}">${g}${icon("chevron-down")}</button>${items.map(s => `<a href="#${s.k}" data-page="${s.k}" title="${esc(s.n || s.l)}" class="${page===s.k || (s.k === "paneldg" && PANEL_DG_KEYS.includes(page)) || (s.k === "panelcm" && PANEL_CM_KEYS.includes(page)) ?"on":""}">${icon(s.i)}<span>${s.n || s.l}</span>${s.k==="mensajes" && chatUnreadTotal() ? `<span class="count msgc">${chatUnreadTotal()}</span>` : ""}${s.k==="alertas" && alerts().length ? `<span class="count">${alerts().length}</span>` : ""}${s.k === "panelcm" ? pendBadge() : ""}</a>`).join("")}</div>`;
+    return `<div class="nav-group${shut ? " closed" : ""}"><button type="button" class="nav-label navtog" data-navtog="${esc(g)}" aria-expanded="${!shut}">${g}${shut ? items.map(x => navBadge(x.k)).join("") : ""}${icon("chevron-down")}</button>${items.map(s => `<a href="#${s.k}" data-page="${s.k}" title="${esc(s.n || s.l)}" class="${page===s.k || (s.k === "paneldg" && PANEL_DG_KEYS.includes(page)) || (s.k === "panelcm" && PANEL_CM_KEYS.includes(page)) ?"on":""}">${icon(s.i)}<span>${s.n || s.l}</span>${s.k==="mensajes" && chatUnreadTotal() ? `<span class="count msgc">${chatUnreadTotal()}</span>` : ""}${s.k==="alertas" && alerts().length ? `<span class="count">${alerts().length}</span>` : ""}${navBadge(s.k)}</a>`).join("")}</div>`;
   }).join("");
 }
 // Aparición animada de todo lo que se ve: paneles, tablas (fila por fila), calendarios (día por día), tableros, listas y tarjetas.
@@ -7119,6 +7120,10 @@ const inboxAge = ts => { if (!ts) return ""; const m = Math.round((Date.now() - 
 const INBOX_DAYS = 30;
 const inboxRecent = c => c.ts && Date.now() - new Date(c.ts) <= INBOX_DAYS * 864e5;
 const inboxPend = () => can("inbox") ? Object.values(META_INBOX || {}).filter(x => x && Array.isArray(x.convs)).reduce((n, x) => n + x.convs.filter(c => inboxRecent(c) && !c.answered).length, 0) : 0;
+// Trabajos nuevos o con cambios pedidos para la persona (solo los suyos): Pendiente o En corrección.
+const myJobsPend = area => viewer ? jobs.filter(j => !j.ex && j.owner === viewer.name && (j.area === "CM") === (area === "CM") && ["Pendiente", "En corrección"].includes(j.status)).length : 0;
+const navBadge = k => { const jb = k === "paneldg" ? myJobsPend("Diseño") : k === "panelcm" ? myJobsPend("CM") : 0, ib = k === "panelcm" ? inboxPend() : 0, n = jb + ib;
+  return n ? `<span class="count ibc" title="${[jb ? `${jb} trabajo${jb === 1 ? "" : "s"} nuevo${jb === 1 ? "" : "s"} o con cambios para vos` : "", ib ? `${ib} mensaje${ib === 1 ? "" : "s"} sin contestar` : ""].filter(Boolean).join(" · ")}">+${n > 99 ? 99 : n}</span>` : ""; };
 const pendBadge = () => { const n = inboxPend(); return n ? `<span class="count ibc" title="${n} mensajes sin contestar">+${n > 99 ? 99 : n}</span>` : ""; };
 // “Actualizar”: le pide a las funciones de Meta (en Vercel) que traigan lo último ahora, con la sesión de la persona.
 const canMetaRefresh = () => ["Admin total","Admin","CM"].includes(viewer.role) && !window.RMH?.previewing;

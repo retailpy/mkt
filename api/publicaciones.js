@@ -33,7 +33,7 @@ module.exports = async (req, res) => {
     // Si una marca falla, se guardan las demás.
     await Promise.all(ORDEN.map(async (b) => {
       const p = byBrand[b];
-      if (!p || !p.igId) return;
+      if (!p || !p.igId){ if (p) summary[b] = "sin Instagram vinculado a la página"; return; }
       try {
         const j = await graph(`/${p.igId}/media`, { fields: FIELDS, limit: String(MAX) });
         const media = (j.data || []).filter(m => m.media_product_type !== "STORY");
@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
           return {
             id: m.id,
             type: m.media_product_type === "REELS" ? "Reel" : m.media_type === "CAROUSEL_ALBUM" ? "Carrusel" : m.media_type === "VIDEO" ? "Video" : "Post",
-            cap: String(m.caption || "").slice(0, 300),
+            cap: Array.from(String(m.caption || "")).slice(0, 300).join(""), // por letras: no corta emojis
             img: m.thumbnail_url || (m.media_type === "VIDEO" ? null : m.media_url) || null,
             link: m.permalink, ts: m.timestamp,
             likes: m.like_count ?? null, comments: m.comments_count ?? null,

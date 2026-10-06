@@ -90,13 +90,15 @@ async function brandPages(){
   return { byBrand, unmatched, missing, total: out.length };
 }
 
+const LONE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g; // mitades de emoji sueltas
 async function save(key, data){
   const url = process.env.SUPABASE_URL, apikey = process.env.SUPABASE_KEY, secret = process.env.INGEST_KEY;
   if (!url || !apikey || !secret) throw new Error("Faltan variables SUPABASE_URL, SUPABASE_KEY o INGEST_KEY en Vercel");
   const r = await fetch(`${url}/rest/v1/rpc/ingest_meta`, {
     method: "POST",
     headers: { apikey, Authorization: `Bearer ${apikey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ p_key: key, p_secret: secret, p_data: data }),
+    // Sin emojis cortados por la mitad (un texto cortado en 300 letras puede partir un emoji y Supabase rechaza todo).
+    body: JSON.stringify({ p_key: key, p_secret: secret, p_data: data }, (k, v) => typeof v === "string" ? v.replace(LONE, "") : v),
   });
   const t = await r.text();
   if (!r.ok) throw new Error(`Supabase: ${t}`);
