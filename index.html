@@ -243,6 +243,34 @@ html.navmini .nav-group.closed > a{display:flex}
 .cvcomp{position:relative;display:flex;gap:8px;align-items:flex-end;padding:10px 12px;border-top:1px solid var(--line-2)}
 .cvcomp textarea{flex:1;resize:none;max-height:140px;border:1px solid var(--line-3);background:var(--inner);border-radius:18px;padding:9px 14px;color:var(--ink);font:inherit;outline:none}
 .cvcomp textarea:focus{border-color:var(--cyan)}
+
+/* v104 · chat: fotos (Drive), chat con uno mismo, vaciar chat */
+.cvin{position:relative;flex:1;min-width:0;display:flex}
+.cvin textarea{flex:1;min-width:0;padding-right:44px}
+.cphoto{position:absolute;right:5px;bottom:4px;width:32px;height:32px;display:grid;place-items:center;border:0;border-radius:50%;background:none;color:var(--muted);cursor:pointer;padding:0}
+.cphoto:hover,.cphoto:focus-visible{color:var(--cyan);background:rgba(34,211,238,.12)}
+.cphoto svg{width:20px;height:20px}
+.cphoto[disabled]{opacity:.45;cursor:progress}
+.cimg{display:block;position:relative;padding:0;border:0;margin:2px 0 4px;width:min(260px,62vw);max-height:340px;border-radius:12px;overflow:hidden;background:rgba(148,163,184,.14);cursor:zoom-in}
+.cimg img{display:block;width:100%;height:100%;object-fit:cover}
+.cbub.cbare .cimg{margin:0}
+.cimg.broken img{opacity:0}
+.cimg.broken::after{content:"Foto no disponible";position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:12.5px}
+.cimg.up{cursor:progress}.cimg.up img{opacity:.6}
+.cupl{position:absolute;right:8px;bottom:8px;display:flex;align-items:center;gap:6px;background:rgba(15,23,42,.78);color:#e2e8f0;font-size:12px;padding:3px 9px;border-radius:10px}
+.cupl svg{width:14px;height:14px;animation:cspin 1s linear infinite}
+@keyframes cspin{to{transform:rotate(360deg)}}
+.imgbox{position:fixed;inset:0;z-index:400;background:rgba(2,6,23,.95);display:flex;flex-direction:column}
+.imgbar{display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 10px 10px}
+.imgsc{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:auto;padding:0 8px max(8px,env(safe-area-inset-bottom))}
+.imgsc img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;cursor:zoom-in}
+.imgbox.zoom .imgsc{display:block}
+.imgbox.zoom .imgsc img{max-width:none;max-height:none;cursor:zoom-out;border-radius:0}
+.cvhead .cclear{flex:none}
+.iwarn{display:flex;gap:10px;align-items:flex-start;border:1px solid rgba(251,191,36,.5);background:rgba(251,191,36,.08);border-radius:14px;padding:12px 14px;color:var(--ink);font-size:14px;line-height:1.5}
+.iwarn > svg{flex:none;width:20px;height:20px;color:var(--warn);margin-top:1px}
+.iwarn .isteps{margin:8px 0 0}
+@media (hover:none){.cmsg .cbub{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}}
 .cvarch{padding:12px 16px;border-top:1px solid var(--line-2);color:var(--muted);font-size:13px}
 .empanel{position:absolute;bottom:calc(100% + 6px);left:8px;z-index:6;width:min(340px,calc(100vw - 40px));max-height:300px;overflow-y:auto;background:var(--panel);border:1px solid var(--line-3);border-radius:16px;padding:8px;box-shadow:0 20px 40px rgba(0,0,0,.4)}
 .rqpick+.empanel{left:auto;right:0;bottom:calc(100% + 50px)}
@@ -5833,6 +5861,8 @@ let CHAT_GROUPS = [
 ];
 let CHATS = {};     // id de grupo → { id, msgs:[], seen:{ persona: fecha ISO del último mensaje leído } }
 let CHAT_MUTES = {}; // persona → conversaciones silenciadas ("g:<grupo>" o "p:<persona>"): sin avisos en el celu/compu, pero el contador sigue
+let CHAT_CLEARED = {}; // persona → { "g:<grupo>" | "p:<persona>": fecha }: “Vaciar chat”. Esa persona ya no ve lo de antes (los demás sí)
+const clearedAt = key => (CHAT_CLEARED[viewer?.id] || {})[key] || "";
 const isMuted = key => (CHAT_MUTES[viewer?.id] || []).includes(key);
 function toggleMute(key){ const l = CHAT_MUTES[viewer.id] || []; CHAT_MUTES[viewer.id] = l.includes(key) ? l.filter(x => x !== key) : [...l, key];
   render(); toast(isMuted(key) ? "Silenciado: no te llegan avisos, pero vas a ver cuántos mensajes nuevos hay." : "Avisos activados de nuevo."); }
@@ -5843,12 +5873,13 @@ const chatGroupsMine = () => CHAT_GROUPS.filter(g => chatMember(g, viewer) && (!
 const msgTs = m => m.ts || `${m.date}T${m.time || "00:00"}:00`;
 const newMsgId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const dmId = (a, b) => "dm-" + [a, b].sort().join("-");
-// Mensajes privados con una persona: todas las conversaciones con ella, en orden.
-const dmThreads = id => myThreads().filter(t => t.a === id || t.b === id);
-const dmMsgs = id => dmThreads(id).flatMap(t => t.msgs).sort((x, y) => msgTs(x).localeCompare(msgTs(y)));
-const dmUnread = id => dmThreads(id).reduce((n, t) => n + t.msgs.filter(m => m.from !== viewer.id && !m.read).length, 0);
-const grpMsgs = gid => (CHATS[gid]?.msgs || []).slice().sort((x, y) => msgTs(x).localeCompare(msgTs(y)));
-const grpUnread = gid => { const c = CHATS[gid]; if (!c) return 0; const s = c.seen?.[viewer.id] || ""; return c.msgs.filter(m => m.from !== viewer.id && msgTs(m) > s).length; };
+// Mensajes privados con una persona: todas las conversaciones con ella, en orden. Con uno mismo (como en WhatsApp):
+// la conversación tiene a = b = esa persona. Lo de antes de “Vaciar chat” no se ve.
+const dmThreads = id => myThreads().filter(t => id === viewer?.id ? t.a === id && t.b === id : (t.a === id || t.b === id) && t.a !== t.b);
+const dmMsgs = id => { const cl = clearedAt("p:" + id); return dmThreads(id).flatMap(t => t.msgs).filter(m => !cl || msgTs(m) > cl).sort((x, y) => msgTs(x).localeCompare(msgTs(y))); };
+const dmUnread = id => { const cl = clearedAt("p:" + id); return dmThreads(id).reduce((n, t) => n + t.msgs.filter(m => m.from !== viewer.id && !m.read && (!cl || msgTs(m) > cl)).length, 0); };
+const grpMsgs = gid => { const cl = clearedAt("g:" + gid); return (CHATS[gid]?.msgs || []).filter(m => !cl || msgTs(m) > cl).sort((x, y) => msgTs(x).localeCompare(msgTs(y))); };
+const grpUnread = gid => { const c = CHATS[gid]; if (!c) return 0; const s = c.seen?.[viewer.id] || "", cl = clearedAt("g:" + gid); return c.msgs.filter(m => m.from !== viewer.id && msgTs(m) > s && (!cl || msgTs(m) > cl)).length; };
 const chatUnreadLoud = () => (viewer ? chatGroupsMine().filter(g => !g.archived && !isMuted("g:" + g.id)).reduce((n, g) => n + grpUnread(g.id), 0) + PEOPLE.filter(pp => pp.id !== viewer.id && !isMuted("p:" + pp.id)).reduce((n, pp) => n + dmUnread(pp.id), 0) : 0);
 const chatUnreadTotal = () => (viewer ? chatGroupsMine().filter(g => !g.archived).reduce((n, g) => n + grpUnread(g.id), 0) + PEOPLE.filter(pp => pp.id !== viewer.id).reduce((n, pp) => n + dmUnread(pp.id), 0) : 0);
 const unreadMsgs = () => []; // (compatibilidad) los mensajes ya no van en Alertas: tienen su contador en Chat
@@ -5925,7 +5956,8 @@ function chatConv(){
   if (k === "g"){ const g = CHAT_GROUPS.find(x => x.id === id); if (!g || !chatMember(g, viewer)) return null;
     const n = PEOPLE.filter(pp => pp.active && chatMember(g, pp)).length;
     return { kind:"g", id, title:g.name, g, sub:`${n} ${n === 1 ? "integrante" : "integrantes"}${g.archived ? " · archivado" : ""}`, msgs:grpMsgs(id) }; }
-  const pp = personById(id); if (!pp || pp.id === viewer.id) return null;
+  const pp = personById(id); if (!pp) return null;
+  if (pp.id === viewer.id) return { kind:"p", id, self:true, title:`${chatName(pp)} (vos)`, pp, msgs:dmMsgs(id) };
   return { kind:"p", id, title:chatName(pp), pp, msgs:dmMsgs(id) };
 }
 function markRead(c){
@@ -5941,7 +5973,7 @@ const grpIco = g => GRP_ICOS.includes(g.ico) ? g.ico : GRP_DEF_ICO[g.id] || "mes
 const grpAvatar = g => g.img ? `<img class="cav" src="${g.img}" alt="">` : g.emo ? `<span class="cav" style="--c:${g.color || "#64748b"}">${esc(g.emo)}</span>` : `<span class="cav cavi" style="--c:${g.color || "#64748b"}">${icon(grpIco(g))}</span>`;
 const dayLbl = d => d === TODAY ? "Hoy" : daysTo(d) === -1 ? "Ayer" : `${["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][new Date(d + "T12:00").getDay()]} ${dm(d)}`;
 // Menú de un mensaje (como WhatsApp): Responder, Reenviar, Copiar y, si es tuyo, Editar y Eliminar.
-const msgSnippet = m => (m.text || (m.gif ? "GIF" : m.stk ? "Sticker" : "")).slice(0, 90);
+const msgSnippet = m => (m.text || (m.img ? "📷 Foto" : m.gif ? "GIF" : m.stk ? "Sticker" : "")).slice(0, 90);
 function msgActions(m, mid, mine){
   const it = (a, ic, t, cls = "") => `<button type="button" class="${cls}" data-cact="${a}|${esc(mid)}">${icon(ic)}<span>${t}</span></button>`;
   return `<div class="cacts" role="menu">${it("reply", "reply", "Responder")}${it("fwd", "forward", "Reenviar")}${m.text || m.gif ? it("copy", "copy", "Copiar") : ""}${mine && m.text ? it("edit", "pencil", "Editar") : ""}${mine ? it("del", "trash-2", "Eliminar", "danger") : ""}</div>`;
@@ -5957,7 +5989,7 @@ document.addEventListener("click", async e => {
   const x = e.target.closest("[data-cbarx]"); if (x){ chatUI.reply = null; chatUI.edit = null; const inp = document.getElementById("chatInput"); if (inp && x.dataset.cbarx === "edit") inp.value = ""; render(); return; }
   const fw = e.target.closest("[data-fwto]"); if (fw){ const src = chatUI.fwd; document.getElementById("fwpop")?.remove(); chatUI.fwd = null; if (!src) return;
     if (window.RMH?.previewing) return toast("Estás en vista previa: no se reenvía.");
-    const now = new Date(); convPush(fw.dataset.fwto, { id:newMsgId(), from:viewer.id, text:src.text || "", ...(src.gif ? { gif:src.gif } : {}), ...(src.stk ? { stk:src.stk } : {}), fw:true, ts:now.toISOString(), date:TODAY, time:nowTime(), read:false, re:{} });
+    const now = new Date(); convPush(fw.dataset.fwto, { id:newMsgId(), from:viewer.id, text:src.text || "", ...(src.gif ? { gif:src.gif } : {}), ...(src.stk ? { stk:src.stk } : {}), ...(src.img?.id ? { img:{ id:src.img.id, w:src.img.w, h:src.img.h } } : {}), fw:true, ts:now.toISOString(), date:TODAY, time:nowTime(), read:false, re:{} });
     render(); window.RMH?.flushNow?.(); toast(`Reenviado a ${fw.dataset.fwname}.`); return; }
   if (e.target.closest("[data-fwclose]")){ document.getElementById("fwpop")?.remove(); chatUI.fwd = null; return; }
   const b = e.target.closest("[data-cact]"); if (!b) return; e.stopPropagation();
@@ -5968,14 +6000,109 @@ document.addEventListener("click", async e => {
   if (a === "edit"){ if (m.from !== viewer.id) return; chatUI.reply = null; chatUI.edit = mid; render(); const inp = document.getElementById("chatInput"); if (inp){ inp.value = m.text; inp.focus(); } return; }
   if (a === "del"){ if (m.from !== viewer.id) return; if (!confirmTap(b.querySelector("span"), "cdel:" + mid, "¿Seguro? Tocá de nuevo")){ chatUI.react = mid; return; }
     if (window.RMH?.previewing) return toast("Estás en vista previa: no se elimina.");
-    Object.assign(m, { del:true, text:"", gif:null, stk:null, re:{}, rp:null }); render(); window.RMH?.flushNow?.(); return; }
-  if (a === "fwd"){ chatUI.fwd = { text:m.text, gif:m.gif, stk:m.stk }; render();
-    const groups = CHAT_GROUPS.filter(g => !g.archived && chatMember(g, viewer)), people = PEOPLE.filter(pp => pp.active && pp.id !== viewer.id);
+    // La foto, si es tuya y nadie la reenvió, va a la papelera de Drive.
+    const pic = m.img?.id && !m.img.fw && !m.fw ? m.img.id : null;
+    Object.assign(m, { del:true, text:"", gif:null, stk:null, img:null, re:{}, rp:null }); render(); window.RMH?.flushNow?.();
+    if (pic){ delete IMG_LOCAL[pic]; integ({ action:"chat_image_delete", id:pic }).catch(() => {}); }
+    return; }
+  if (a === "fwd"){ chatUI.fwd = { text:m.text, gif:m.gif, stk:m.stk, img:m.img }; if (m.img) m.img.fw = true; render(); // una foto reenviada ya no se borra de Drive
+    const groups = CHAT_GROUPS.filter(g => !g.archived && chatMember(g, viewer)), people = PEOPLE.filter(pp => pp.active && pp.id !== viewer.id), meP = personById(viewer.id);
     const w = document.createElement("div"); w.id = "fwpop"; w.className = "fixpop";
-    w.innerHTML = `<div class="fixbox fwbox" role="dialog" aria-modal="true" aria-labelledby="fwh"><h2 id="fwh">Reenviar a…</h2><div class="fwlist">${[...groups.map(g => ["g:" + g.id, g.name, grpAvatar(g)]), ...people.map(pp => ["p:" + pp.id, chatName(pp), `<span class="cavw">${avatarHTML(pp)}</span>`])].map(([k, n, av]) => `<button type="button" class="fwit" data-fwto="${esc(k)}" data-fwname="${esc(n)}">${av}<b>${esc(n)}</b></button>`).join("")}</div>
+    w.innerHTML = `<div class="fixbox fwbox" role="dialog" aria-modal="true" aria-labelledby="fwh"><h2 id="fwh">Reenviar a…</h2><div class="fwlist">${[...groups.map(g => ["g:" + g.id, g.name, grpAvatar(g)]), ...(meP ? [["p:" + meP.id, "Vos (mensajes para vos)", `<span class="cavw">${avatarHTML(meP)}</span>`]] : []), ...people.map(pp => ["p:" + pp.id, chatName(pp), `<span class="cavw">${avatarHTML(pp)}</span>`])].map(([k, n, av]) => `<button type="button" class="fwit" data-fwto="${esc(k)}" data-fwname="${esc(n)}">${av}<b>${esc(n)}</b></button>`).join("")}</div>
       <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fwclose>Cancelar</button></div></div>`;
     document.body.appendChild(w); if (window.lucide) lucide.createIcons(); return; }
 }, true);
+// ----- Fotos del chat: se achican en el celular/compu y se guardan en Google Drive (carpeta "Fotos Retail MKT", una
+// carpeta por mes), no en la base. En el chat se ven chicas; al tocarlas se abren grandes (y con otro toque, a tamaño real).
+const IMG_LOCAL = {}; // id de Drive → la foto en este dispositivo: quien la subió la ve al instante (Drive tarda unos segundos en la miniatura)
+const driveImg = (id, w = 640) => IMG_LOCAL[id] || `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${w}`;
+const photoTag = im => `<button type="button" class="cimg" data-cimg="${esc(im.id)}" style="aspect-ratio:${+im.w || 4}/${+im.h || 3}" aria-label="Ver la foto en grande"><img src="${esc(driveImg(im.id))}" alt="Foto" loading="lazy" referrerpolicy="no-referrer" onerror="imgRetry(this)"></button>`;
+// Recién subida, Drive puede no tener la miniatura todavía: se reintenta unas veces.
+function imgRetry(el){ const n = +(el.dataset.r || 0) + 1; if (n > 4 || !/^https:/.test(el.src)){ el.closest(".cimg")?.classList.add("broken"); return; } el.dataset.r = n; setTimeout(() => { el.src = el.src.replace(/&r=\d+$/, "") + "&r=" + n; }, 1500 * n); }
+async function shrinkPhoto(file, max = 1600, q = .82){
+  let src, url = "";
+  try { src = await createImageBitmap(file, { imageOrientation:"from-image" }); }
+  catch { url = URL.createObjectURL(file); src = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; }); }
+  const k = Math.min(1, max / Math.max(src.width, src.height)), w = Math.max(1, Math.round(src.width * k)), h = Math.max(1, Math.round(src.height * k));
+  const cv = document.createElement("canvas"); cv.width = w; cv.height = h; const cx = cv.getContext("2d");
+  cx.fillStyle = "#fff"; cx.fillRect(0, 0, w, h); cx.drawImage(src, 0, 0, w, h); // fondo blanco: los PNG transparentes no quedan negros
+  if (url) URL.revokeObjectURL(url); src.close?.();
+  const blob = await new Promise(ok => cv.toBlob(ok, "image/jpeg", q));
+  if (!blob) throw new Error("sin imagen");
+  return { blob, w, h };
+}
+const toB64 = blob => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1] || ""); r.onerror = no; r.readAsDataURL(blob); });
+async function sendPhoto(file){
+  const c = chatConv(); if (!c || !file) return;
+  if (window.RMH?.previewing) return toast("Estás en vista previa (“ver como”): las fotos no se envían.");
+  if (!/^image\//.test(file.type)) return toast("Elegí una imagen (JPG, PNG o WEBP).");
+  if (chatUI.up) return toast("Esperá que termine de subir la foto anterior.");
+  const open = chatUI.open; let local = "";
+  try {
+    const { blob, w, h } = await shrinkPhoto(file);
+    local = URL.createObjectURL(blob);
+    chatUI.up = { open, url:local, w, h }; chatUI.keepBottom = true; render();
+    const j = await integ({ action:"chat_image", type:"image/jpeg", data:await toB64(blob) });
+    if (!j.ok || !j.id){ toast(j.error || "No se pudo subir la foto. Probá de nuevo."); return; }
+    IMG_LOCAL[j.id] = local; local = "";
+    const now = new Date();
+    convPush(open, { id:newMsgId(), from:viewer.id, text:"", img:{ id:j.id, w, h }, ts:now.toISOString(), date:TODAY, time:nowTime(), read:false, re:{}, ...(chatUI.reply && chatUI.open === open ? { rp:chatUI.reply } : {}) });
+    if (chatUI.open === open) chatUI.reply = null;
+    window.RMH?.flushNow?.();
+  } catch { toast("No se pudo preparar la foto. Probá con otra."); }
+  finally { chatUI.up = null; if (local) URL.revokeObjectURL(local); chatUI.keepBottom = true; render(); }
+}
+function openPhoto(id){
+  document.getElementById("imgbox")?.remove();
+  const w = document.createElement("div"); w.id = "imgbox"; w.className = "imgbox"; w.setAttribute("role", "dialog"); w.setAttribute("aria-modal", "true"); w.setAttribute("aria-label", "Foto");
+  w.innerHTML = `<div class="imgbar"><a class="btn sm" href="https://drive.google.com/file/d/${encodeURIComponent(id)}/view" target="_blank" rel="noopener">${icon("external-link")} Abrir en Drive</a><button type="button" class="btn ib" data-imgx aria-label="Cerrar">${icon("x")}</button></div>
+    <div class="imgsc"><img src="${esc(IMG_LOCAL[id] || driveImg(id, 2000))}" alt="Foto" referrerpolicy="no-referrer" title="Tocá para ver a tamaño real"></div>`;
+  document.body.appendChild(w); if (window.lucide) lucide.createIcons();
+  w.addEventListener("click", ev => { if (ev.target.closest("[data-imgx]") || ev.target === w || ev.target.classList.contains("imgsc")) w.remove(); else if (ev.target.tagName === "IMG") w.classList.toggle("zoom"); });
+  w.querySelector("[data-imgx]")?.focus();
+}
+document.addEventListener("keydown", e => { if (e.key === "Escape" && document.getElementById("imgbox")){ document.getElementById("imgbox").remove(); e.stopPropagation(); } });
+// “Vaciar chat”: la conversación queda vacía para esa persona (los demás la siguen viendo). Lo que ya vaciaron todos
+// los de la conversación se borra de verdad, así no ocupa lugar en ningún celular.
+function clearChat(key){
+  if (window.RMH?.previewing) return toast("Estás en vista previa: no se vacía.");
+  const [k, id] = key.split(/:(.*)/s);
+  // La marca es la hora del último mensaje (no la de este dispositivo): si su reloj anda adelantado, no esconde lo que llegue después.
+  const now = (k === "p" ? dmThreads(id).flatMap(t => t.msgs) : CHATS[id]?.msgs || []).map(msgTs).sort().pop() || new Date().toISOString();
+  CHAT_CLEARED = { ...CHAT_CLEARED, [viewer.id]:{ ...(CHAT_CLEARED[viewer.id] || {}), [key]:now } };
+  if (k === "p"){
+    const t = THREADS.find(x => x.id === dmId(viewer.id, id));
+    const cut = id === viewer.id ? now : [now, (CHAT_CLEARED[id] || {})["p:" + viewer.id] || ""].sort()[0];
+    dmThreads(id).forEach(x => x.msgs.forEach(m => { if (m.from !== viewer.id && !m.read) m.read = true; }));
+    if (t && cut) t.msgs = t.msgs.filter(m => msgTs(m) > cut);
+  } else {
+    const ch = CHATS[id], g = CHAT_GROUPS.find(x => x.id === id);
+    if (ch){ ch.seen = { ...(ch.seen || {}), [viewer.id]:now };
+      const marks = PEOPLE.filter(pp => pp.active && chatMember(g, pp)).map(pp => (CHAT_CLEARED[pp.id] || {})[key] || "");
+      if (marks.length && marks.every(Boolean)){ const cut = marks.sort()[0]; ch.msgs = ch.msgs.filter(m => msgTs(m) > cut); } }
+  }
+  chatUI.reply = null; chatUI.edit = null; chatUI.react = null; render(); setTimeout(renderNav, 0); window.RMH?.flushNow?.();
+  toast("Chat vaciado: los mensajes de antes ya no aparecen en tus dispositivos.");
+}
+// Mantener apretado un mensaje (celular) o clic derecho (compu): se abre su menú (Responder, Reenviar, Copiar, Editar, Eliminar).
+let lpT = 0, lpFired = false;
+const lpOpen = el => { const mid = el.closest(".cmsg")?.dataset.mid; if (!mid || page !== "mensajes") return; chatUI.react = mid; chatUI.reactMore = null; render(); };
+document.addEventListener("touchstart", e => {
+  clearTimeout(lpT); lpFired = false;
+  const b = e.target.closest?.(".cmsg .cbub"); if (!b || page !== "mensajes" || e.target.closest(".creact,.rqpick,.cacts,.cres,a,.cstkfav")) return;
+  lpT = setTimeout(() => { lpFired = true; navigator.vibrate?.(12); lpOpen(b); }, 480);
+}, { passive:true });
+["touchend", "touchmove", "touchcancel"].forEach(t => document.addEventListener(t, () => clearTimeout(lpT), { passive:true }));
+document.addEventListener("contextmenu", e => { const b = e.target.closest(".cmsg .cbub"); if (!b || page !== "mensajes" || e.target.closest("a")) return; e.preventDefault(); clearTimeout(lpT); lpOpen(b); });
+// El toque que termina un “mantener apretado” no hace nada más (no abre la foto ni cierra el menú).
+document.addEventListener("click", e => { if (lpFired){ lpFired = false; if (e.target.closest(".cmsg")){ e.stopPropagation(); e.preventDefault(); } } }, true);
+document.addEventListener("click", e => {
+  if (page !== "mensajes") return;
+  const ph = e.target.closest("[data-cphoto]"); if (ph){ if (window.RMH?.previewing) return toast("Estás en vista previa (“ver como”): las fotos no se envían."); document.getElementById("chatPhoto")?.click(); return; }
+  const im = e.target.closest("[data-cimg]"); if (im){ openPhoto(im.dataset.cimg); return; }
+  const cc = e.target.closest("[data-cclear]"); if (cc){ if (!confirmTap(cc, "cclear:" + cc.dataset.cclear, "¿Vaciar? Tocá de nuevo")) return; clearChat(cc.dataset.cclear); }
+});
+document.addEventListener("change", e => { if (e.target.id === "chatPhoto"){ const f = e.target.files?.[0]; e.target.value = ""; if (f) sendPhoto(f); } });
 function bubbles(c){
   let lastDay = "", lastFrom = "";
   return c.msgs.map((m, i) => {
@@ -5988,7 +6115,7 @@ function bubbles(c){
     if (m.del) return `${sep}<div class="cmsg ${mine ? "me" : ""}" data-mid="${esc(mid)}">${!mine && c.kind === "g" ? (head ? `<span class="cmav">${who ? avatarHTML(who) : ""}</span>` : `<span class="cmav"></span>`) : ""}
       <div class="cbub cdelb">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}<div class="ctext cdel">${icon("ban")} <i>${mine ? "Eliminaste este mensaje." : "Se eliminó este mensaje."}</i></div><span class="ctime">${(m.time || msgTs(m).slice(11, 16))}</span></div></div>`;
     return `${sep}<div class="cmsg ${mine ? "me" : ""}" data-mid="${esc(mid)}">${!mine && c.kind === "g" ? (head ? `<span class="cmav">${who ? avatarHTML(who) : ""}</span>` : `<span class="cmav"></span>`) : ""}
-      <div class="cbub${!m.text && !m.rp && !m.fw && ((m.stk && stkSrc(m.stk)) || m.gif) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.fw ? `<span class="cfw">${icon("forward")} Reenviado</span>` : ""}${m.rp ? `<button type="button" class="crq" data-cjump="${esc(m.rp.id)}"><b>${esc(m.rp.from === viewer.id ? "Vos" : nickOf(personById(m.rp.from)) || "")}</b><span>${esc(m.rp.t || "")}</span></button>` : ""}${m.stk && stkSrc(m.stk) ? `<span class="cstkw"><img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer"><button type="button" class="cstkfav${stkFavs().includes(m.stk) ? " on" : ""}" data-stkfav="${esc(m.stk)}" title="${stkFavs().includes(m.stk) ? "Está en tus favoritos (tocá para quitarlo)" : "Guardar en mis favoritos"}" aria-label="${stkFavs().includes(m.stk) ? "Quitar de favoritos" : "Guardar en favoritos"}">${stkFavs().includes(m.stk) ? "★" : "☆"}</button></span>` : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${chatLinks(m.text)}</div>${chatPrev(m.text)}` : ""}${m.via ? `<span class="cvia">Prueba enviada por ${esc(nickOf(personById(m.via)) || m.via)} como ${esc(nickOf(who) || m.from)}</span>` : ""}<span class="ctime">${m.ed ? "editado · " : ""}${(m.time || msgTs(m).slice(11, 16))}${mine ? msgTicks(m, c) : ""}</span>
+      <div class="cbub${!m.text && !m.rp && !m.fw && ((m.stk && stkSrc(m.stk)) || m.gif || m.img?.id) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.fw ? `<span class="cfw">${icon("forward")} Reenviado</span>` : ""}${m.rp ? `<button type="button" class="crq" data-cjump="${esc(m.rp.id)}"><b>${esc(m.rp.from === viewer.id ? "Vos" : nickOf(personById(m.rp.from)) || "")}</b><span>${esc(m.rp.t || "")}</span></button>` : ""}${m.stk && stkSrc(m.stk) ? `<span class="cstkw"><img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer"><button type="button" class="cstkfav${stkFavs().includes(m.stk) ? " on" : ""}" data-stkfav="${esc(m.stk)}" title="${stkFavs().includes(m.stk) ? "Está en tus favoritos (tocá para quitarlo)" : "Guardar en mis favoritos"}" aria-label="${stkFavs().includes(m.stk) ? "Quitar de favoritos" : "Guardar en favoritos"}">${stkFavs().includes(m.stk) ? "★" : "☆"}</button></span>` : ""}${m.img?.id ? photoTag(m.img) : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${chatLinks(m.text)}</div>${chatPrev(m.text)}` : ""}${m.via ? `<span class="cvia">Prueba enviada por ${esc(nickOf(personById(m.via)) || m.via)} como ${esc(nickOf(who) || m.from)}</span>` : ""}<span class="ctime">${m.ed ? "editado · " : ""}${(m.time || msgTs(m).slice(11, 16))}${mine ? msgTicks(m, c) : ""}</span>
         <button type="button" class="creact" data-react="${esc(mid)}" aria-label="Reaccionar">${icon("smile-plus")}</button>
         ${chatUI.react === mid ? `<div class="rqpick">${QUICK_RE.map(x => `<button type="button" data-re="${x}" data-rmid="${esc(mid)}">${x}</button>`).join("")}<button type="button" data-remore="${esc(mid)}" aria-label="Más emojis">＋</button></div>${chatUI.reactMore === mid ? emojiPanel("re:" + mid) : ""}${msgActions(m, mid, mine)}` : ""}
       </div>
@@ -6009,6 +6136,7 @@ function setChatFs(d){ const i = Math.max(0, Math.min(CHAT_FS.length - 1, CHAT_F
 const TICK1 = '<svg viewBox="0 0 16 11" aria-hidden="true"><path d="M1 6l3.5 3.5L11 2"/></svg>';
 const TICK2 = '<svg viewBox="0 0 20 11" aria-hidden="true"><path d="M1 6l3.5 3.5L11 2"/><path d="M8.5 8.5l1 1L16 2"/></svg>';
 function msgTicks(m, c){
+  if (c.self) return ""; // con uno mismo no hay “enviado / leído”
   const ts = msgTs(m); let read, got;
   if (c.kind === "p"){ read = !!m.read; got = read || !!m.dlv; }
   else { const ch = CHATS[c.id] || {}, others = PEOPLE.filter(pp => pp.active && pp.id !== viewer.id && chatMember(c.g, pp)).map(pp => pp.id);
@@ -6033,9 +6161,10 @@ function pMensajes(){
   markRead(c);
   const q = chatUI.q.trim().toLowerCase(), fits = t => !q || t.toLowerCase().includes(q);
   const lastOf = list => list.length ? list[list.length - 1] : null;
-  const prev = m => m ? (m.del ? (m.from === viewer.id ? "Eliminaste este mensaje" : "Se eliminó este mensaje") : `${m.from === viewer.id ? "Vos: " : ""}${m.text || (m.gif ? "GIF" : m.stk ? "Sticker" : "")}`) : "";
+  const prev = m => m ? (m.del ? (m.from === viewer.id ? "Eliminaste este mensaje" : "Se eliminó este mensaje") : `${m.from === viewer.id ? "Vos: " : ""}${m.text || (m.img ? "📷 Foto" : m.gif ? "GIF" : m.stk ? "Sticker" : "")}`) : "";
   const when = m => m ? (msgTs(m).slice(0, 10) === TODAY ? (m.time || msgTs(m).slice(11, 16)) : dm(msgTs(m).slice(0, 10))) : "";
   const groups = chatGroupsMine().filter(g => fits(g.name)).map(g => ({ g, last:lastOf(grpMsgs(g.id)), n:grpUnread(g.id) }));
+  const meP = personById(viewer.id), self = meP && (fits(chatName(meP)) || fits("vos")) ? lastOf(dmMsgs(meP.id)) || 0 : null;
   const people = PEOPLE.filter(pp => pp.active && pp.id !== viewer.id && (fits(pp.name) || fits(pp.nick || ""))).map(pp => ({ pp, last:lastOf(dmMsgs(pp.id)), n:dmUnread(pp.id) }))
     .sort((a, b) => (b.last ? msgTs(b.last) : "").localeCompare(a.last ? msgTs(a.last) : "") || a.pp.name.localeCompare(b.pp.name));
   const item = (key, av, name, last, n, extra = "") => `<button type="button" class="citem ${chatUI.open === key ? "on" : ""} ${n ? "unread" : ""}" data-copen="${esc(key)}">${av}<span class="cimain"><span class="cirow"><b>${esc(name)}${isMuted(key) ? ` <span class="cmuted" title="Silenciado">${icon("bell-off")}</span>` : ""}</b><small>${when(last)}</small></span><span class="cirow"><span class="ciprev">${esc(extra || prev(last) || "Sin mensajes")}</span>${n ? `<span class="cbadge">+${n}</span>` : ""}</span></span></button>`;
@@ -6047,21 +6176,24 @@ function pMensajes(){
       <div class="chsec"><span>Grupos</span>${!isViewOnly() ? `<button type="button" class="btn sm" data-gnew>${icon("plus")} Crear grupo</button>` : ""}</div>
       ${groups.map(({ g, last, n }) => item("g:" + g.id, grpAvatar(g), g.name + (g.archived ? " (archivado)" : ""), last, n)).join("") || `<p class="note">Sin grupos.</p>`}
       <div class="chsec"><span>Mensajes directos</span></div>
+      ${self !== null ? item("p:" + meP.id, `<span class="cavw">${avatarHTML(meP)}</span>`, `${chatName(meP)} (vos)`, self || null, 0, self ? "" : "Mensajes para vos: notas, links y fotos") : ""}
       ${people.map(({ pp, last, n }) => item("p:" + pp.id, `<span class="cavw">${avatarHTML(pp)}${stDot(pp.id)}</span>`, chatName(pp), last, n, last ? "" : presenceOf(pp.id).l)).join("")}
     </aside>
     <section class="chconv" aria-label="Conversación">${c ? `
-      <header class="cvhead"><button type="button" class="btn ib cback" data-cback aria-label="Volver a las conversaciones">${icon("arrow-left")}</button>${c.kind === "g" ? grpAvatar(c.g) : `<span class="cavw">${avatarHTML(c.pp)}${stDot(c.pp.id)}</span>`}<div class="grow"><b>${esc(c.title)}</b>${c.kind === "g" ? `<span class="note">${c.sub}</span>` : stLine(c.pp.id)}</div>
+      <header class="cvhead"><button type="button" class="btn ib cback" data-cback aria-label="Volver a las conversaciones">${icon("arrow-left")}</button>${c.kind === "g" ? grpAvatar(c.g) : `<span class="cavw">${avatarHTML(c.pp)}${c.self ? "" : stDot(c.pp.id)}</span>`}<div class="grow"><b>${esc(c.title)}</b>${c.kind === "g" ? `<span class="note">${c.sub}</span>` : c.self ? `<span class="note">Mensajes para vos</span>` : stLine(c.pp.id)}</div>
         <span class="cfsz" role="group" aria-label="Tamaño de letra"><button type="button" class="btn ib sm" data-cfs="-1" aria-label="Letra más chica" ${chatFs === CHAT_FS[0] ? "disabled" : ""}>A−</button><button type="button" class="btn ib sm" data-cfs="1" aria-label="Letra más grande" ${chatFs === CHAT_FS[CHAT_FS.length - 1] ? "disabled" : ""}>A+</button></span>
-        <button type="button" class="btn ib sm cmute${isMuted(chatUI.open) ? " on" : ""}" data-cmute="${esc(chatUI.open)}" title="${isMuted(chatUI.open) ? "Silenciado: tocá para volver a recibir avisos" : "Silenciar avisos de esta conversación"}" aria-label="${isMuted(chatUI.open) ? "Activar avisos" : "Silenciar"}">${icon(isMuted(chatUI.open) ? "bell-off" : "bell")}</button>
+        ${c.self ? "" : `<button type="button" class="btn ib sm cmute${isMuted(chatUI.open) ? " on" : ""}" data-cmute="${esc(chatUI.open)}" title="${isMuted(chatUI.open) ? "Silenciado: tocá para volver a recibir avisos" : "Silenciar avisos de esta conversación"}" aria-label="${isMuted(chatUI.open) ? "Activar avisos" : "Silenciar"}">${icon(isMuted(chatUI.open) ? "bell-off" : "bell")}</button>`}
+        ${c.msgs.length && !isViewOnly() ? `<button type="button" class="btn ib sm cclear" data-cclear="${esc(chatUI.open)}" title="Vaciar chat: se borra solo para vos" aria-label="Vaciar chat">${icon("eraser")}</button>` : ""}
         ${c.kind === "g" && canEditGroup(c.g) ? `<button type="button" class="btn sm" data-gedit="${c.id}">${icon("settings")} Grupo</button>` : ""}</header>
-      <div class="cvmsgs" id="cvMsgs">${bubbles(c)}</div>
+      <div class="cvmsgs" id="cvMsgs">${c.msgs.length || !clearedAt(chatUI.open) ? bubbles(c) : `<div class="cempty">Vaciaste este chat. Los mensajes nuevos van a aparecer acá.</div>`}${chatUI.up && chatUI.up.open === chatUI.open ? `<div class="cmsg me"><div class="cbub cbare"><span class="cimg up" style="aspect-ratio:${chatUI.up.w}/${chatUI.up.h}"><img src="${chatUI.up.url}" alt=""><span class="cupl">${icon("loader-circle")} Subiendo…</span></span></div></div>` : ""}</div>
       ${c.kind === "g" && c.g.archived ? `<div class="cvarch">Grupo archivado: se puede leer pero no escribir.</div>` : `<div class="cvcomp">
         <button type="button" class="btn ib" data-emopen aria-label="Emojis" aria-expanded="${chatUI.emoji}">${icon("smile")}</button>
         <button type="button" class="btn ib" data-stkopen aria-label="Stickers" title="Stickers" aria-expanded="${!!chatUI.stk}">${icon("sticker")}</button>
         <button type="button" class="btn ib cgifbtn" data-gifopen aria-label="GIFs" aria-expanded="${!!chatUI.gif}">GIF</button>
         ${chatUI.reply || chatUI.edit ? `<div class="cbar">${icon(chatUI.edit ? "pencil" : "reply")}<div class="grow"><b>${chatUI.edit ? "Editando el mensaje" : `Respondiendo a ${esc(chatUI.reply.from === viewer.id ? "vos" : nickOf(personById(chatUI.reply.from)) || "")}`}</b>${chatUI.reply ? `<span>${esc(chatUI.reply.t)}</span>` : ""}</div><button type="button" class="btn ib sm" data-cbarx="${chatUI.edit ? "edit" : "reply"}" aria-label="Cancelar">${icon("x")}</button></div>` : ""}
         ${chatUI.emoji ? emojiPanel("in") : ""}${chatUI.gif ? gifPanel() : ""}${chatUI.stk ? stkPanel() : ""}
-        <textarea class="base" id="chatInput" rows="1" placeholder="${touchUI() ? "Mensaje" : "Escribí un mensaje…"}" aria-label="Mensaje"></textarea>
+        <div class="cvin"><textarea class="base" id="chatInput" rows="1" placeholder="${touchUI() ? "Mensaje" : "Escribí un mensaje…"}" aria-label="Mensaje"></textarea>
+          <button type="button" class="cphoto" data-cphoto aria-label="Enviar una foto" title="Enviar una foto" ${chatUI.up ? "disabled" : ""}>${icon("image")}</button><input type="file" id="chatPhoto" accept="image/*" hidden></div>
         <button type="button" class="btn primary" data-csend aria-label="Enviar">${icon("send")}</button></div>`}` : `<div class="cempty">Elegí una conversación.</div>`}
     </section>
     ${chatUI.grpForm ? grpForm() : ""}
@@ -7111,7 +7243,7 @@ const GUIDE = [
     ["house","Inicio","Tu resumen del día: saludo, hora y clima de Asunción, una frase según tu carga (si estás en rojo te da ánimo; si estás en verde, te invita a proponer ideas), avisos y cumpleaños, tus tareas y la carga del equipo."],
     ["bell","Alertas","Todo lo pendiente en un solo lugar. Desde cada alerta podés responder, aprobar, pedir correcciones o ir a ver."],
     ["megaphone","Avisos","Comunicados de Admin total para todos, para un grupo (Diseño gráfico, CM, admins) con fecha de inicio y fin. Aparecen arriba en Inicio hasta que tocás “Entendido”; Admin total ve cuántos lo leyeron."],
-    ["mail","Mensajes","Mensajes internos entre el equipo, por tema y con prioridad normal, atención o urgente. Muestran fecha y hora de envío y de cada respuesta. Se marcan como “Recibido” y se pasan a Finalizados."],
+    ["messages-square","Chat Retail MKT","Grupos y mensajes privados del equipo, en tiempo real. Podés mandar fotos (tocá el ícono de imagen en el campo de texto: se achican solas y se guardan en Google Drive, en la carpeta del mes), emojis, stickers y GIFs. Arriba de los mensajes directos estás vos: escribite notas, links o fotos, como en WhatsApp. Mantené apretado un mensaje (o clic derecho en la compu) para responder, reenviar, copiar, editar o eliminar. La goma de arriba vacía la conversación solo para vos."],
     ["notebook-pen","Bloc de notas","Tus notas y checklists privadas. “+ Reunión” arma una lista para la minuta. Cambiás el orden arrastrando desde ⋮⋮ o con las flechitas."]]],
   ["Planificación", [
     ["target","Planificación del mes","Arriba, siempre, los Objetivos principales: las tres prioridades del área (Admin total las edita). Debajo, En 4 pestañas: Objetivos (por equipo, Diseño gráfico y CM, en palabras simples), Campañas del mes, Lo que se viene y Propuestas. Cualquiera puede proponer un objetivo; solo Admin total lo lee y decide si lo suma."]]],
@@ -7326,7 +7458,7 @@ function notifCfg(){
     <div class="chips">${on ? `<button class="btn" type="button" data-notifoff>${icon("bell-off")} Apagar en este dispositivo</button>` : perm === "unsupported" || perm === "denied" ? "" : `<button class="btn primary" type="button" data-notifon ${notifBusy ? "disabled" : ""}>${icon("bell-ring")} ${notifBusy ? "Activando…" : "Activar en este dispositivo"}</button>`}</div></section>`;
 }
 document.addEventListener("click", e => { if (e.target.closest("[data-notifon]")) enableNotif(); else if (e.target.closest("[data-notifoff]")) disableNotif(); });
-// ----- Integraciones (solo Admin total): GIPHY para buscar GIFs y la carpeta de Google Drive para los stickers -----
+// ----- Integraciones (solo Admin total): GIPHY para buscar GIFs y Google Drive para los stickers y las fotos del chat -----
 let integSt = null, integScript = "";
 async function integRefresh(){ const j = await integ({ action:"status" }); integSt = j.ok ? j : { err:j.error }; if (page === "config" && cfgTab === "integ") render(); }
 function integCfg(){
@@ -7338,8 +7470,12 @@ function integCfg(){
       <li>Copiá la <b>API Key</b> que aparece y pegala acá abajo.</li></ol>
     <div class="irow"><input class="base" id="iGiphy" placeholder="Pegá la API Key de GIPHY" autocomplete="off"><button class="btn primary" type="button" data-isave="giphy">Guardar</button>${st.giphy ? `<button class="btn" type="button" data-iclear="giphy">Desconectar</button>` : ""}</div>
     <p class="note" style="margin:0">La clave se guarda en el servidor: nadie la ve en la app.</p></section>
-  <section class="panel cfgsec"><h2 class="pmh">${pmIco("sticker")}Stickers en Google Drive ${integSt === "loading" ? "" : on(st.stickers)}</h2>
-    <p class="note">Los stickers que sube el equipo se guardan en tu carpeta <a href="https://drive.google.com/drive/folders/1EwWLkJ3XCl927Yi0ryCvFC807Vdp0iFk" target="_blank" rel="noopener">Stickers Retail MKT</a>. Se conecta una sola vez, con la cuenta dueña de la carpeta (retailmarketingpy).</p>
+  <section class="panel cfgsec"><h2 class="pmh">${pmIco("sticker")}Stickers y fotos del chat en Google Drive ${integSt === "loading" ? "" : on(st.stickers)}</h2>
+    <p class="note">Los stickers que sube el equipo se guardan en tu carpeta <a href="https://drive.google.com/drive/folders/1EwWLkJ3XCl927Yi0ryCvFC807Vdp0iFk" target="_blank" rel="noopener">Stickers Retail MKT</a> y las fotos del chat en <a href="https://drive.google.com/drive/folders/13L9Y3QcGbymgMStbaCHmR7F2MZaoBxVw" target="_blank" rel="noopener">Fotos Retail MKT</a>, con una carpeta por mes (no ocupan lugar en la base). Se conecta una sola vez, con la cuenta dueña de las carpetas (retailmarketingpy).</p>
+    ${st.stickers && st.scriptV && st.scriptNeed && st.scriptV < st.scriptNeed ? `<div class="iwarn">${icon("triangle-alert")}<div><b>Falta actualizar el script para que se puedan mandar fotos en el chat.</b> Es una sola vez y la URL no cambia:
+      <ol class="isteps"><li>Tocá <b>Copiar el script</b> (acá abajo).</li><li>En <a href="https://script.google.com/home" target="_blank" rel="noopener">script.google.com</a> abrí el proyecto “Stickers Retail MKT”, borrá todo el código y pegá el nuevo. Tocá el disquete (Guardar).</li>
+      <li><b>Implementar → Administrar implementaciones</b> → tocá el lápiz → en Versión elegí <b>Nueva versión</b> → <b>Implementar</b>. Si Google pide permisos, aceptalos como la primera vez.</li><li>Listo: volvé a esta pantalla y este aviso desaparece.</li></ol></div></div>`
+      : st.stickers && st.scriptV >= (st.scriptNeed || 2) ? `<p class="pfid" style="margin:0">${icon("check")} Fotos del chat listas: se guardan en Fotos Retail MKT, en la carpeta del mes.</p>` : ""}
     <ol class="isteps"><li>Tocá <b>Copiar el script</b>.</li>
       <li>Abrí <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com → Nuevo proyecto</a>. Borrá lo que aparece escrito y pegá el script. Arriba, cambiá el nombre a “Stickers Retail MKT” y tocá el disquete (Guardar).</li>
       <li>Arriba a la derecha: <b>Implementar → Nueva implementación</b>. En el engranaje de “Seleccionar tipo” elegí <b>Aplicación web</b>.</li>
@@ -7359,7 +7495,7 @@ document.addEventListener("click", async e => {
     (sv || cl).disabled = true; toast(sv ? "Probando la conexión…" : "Desconectando…");
     const j = await integ(k === "giphy" ? { action:"set_giphy", key:val } : { action:"set_sticker_url", url:val });
     if (!j.ok) { toast(j.error || "No se pudo."); (sv || cl).disabled = false; return; }
-    toast(sv ? (k === "giphy" ? "¡Listo! Ya se pueden buscar GIFs en el chat." : `¡Listo! Biblioteca conectada (${j.count} stickers en la carpeta).`) : "Desconectado.");
+    toast(sv ? (k === "giphy" ? "¡Listo! Ya se pueden buscar GIFs en el chat." : `¡Listo! Biblioteca conectada (${j.count} stickers en la carpeta)${j.scriptV >= 2 ? " y fotos del chat listas" : ""}.`) : "Desconectado.");
     Object.keys(gifCache).forEach(x => delete gifCache[x]); stkLib = null; integSt = null; render(); return; }
   if (e.target.closest("[data-iscript]")){ const j = await integ({ action:"script" }); if (!j.ok) return toast(j.error || "No se pudo.");
     integScript = j.script; render();

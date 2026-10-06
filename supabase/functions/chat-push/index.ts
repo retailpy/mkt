@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
 
   const { data: subs } = await db.from("push_subs").select("endpoint, sub, person_id").in("person_id", to);
   webpush.setVapidDetails("https://idcdfmeeggmtkudkkzmu.supabase.co", cfg.vapid_public, cfg.vapid_private);
-  const text = m.text ? String(m.text) : m.gif ? "GIF" : m.stk ? "Sticker" : "";
+  const text = m.text ? String(m.text) : m.img ? "📷 Foto" : m.gif ? "GIF" : m.stk ? "Sticker" : "";
   const payload = JSON.stringify({
     title: fresh.length > 1 ? `${title} · ${fresh.length} mensajes nuevos` : title,
     body: short(key.startsWith("chat:") ? `${nameOf(m.from)}: ${text}` : text),
