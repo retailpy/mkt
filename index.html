@@ -513,6 +513,7 @@ html.nomotion .picon{animation:none}
 .jpage{overflow-wrap:anywhere}.jpage img,.rtview img,.rtedit img{max-width:100%;height:auto}
 .rtimg{display:block;max-width:min(100%,560px);max-height:520px;width:auto;margin:8px 0;border-radius:6px;border:1px solid #e5e7eb;background:#f8fafc}
 .rtimg.up{opacity:.55}.rtview .rtimg{cursor:zoom-in}
+.rtimgbtn{gap:6px}.rthint{display:flex;gap:6px;align-items:flex-start;margin:6px 0 0;font-size:12.5px}.rthint svg{width:14px;height:14px;flex:none;margin-top:2px}
 .jpnow .chips,.jp-top{flex-wrap:wrap}
 .jfgrid > div{min-width:0}
 @media (max-width:600px){ .jfgrid{grid-template-columns:repeat(2,minmax(0,1fr)) !important} }
@@ -4487,8 +4488,9 @@ function rtEditor(id, html, ph){
       <button type="button" class="btn ib sm" data-rt="small" title="Letra más chica" aria-label="Letra más chica">A−</button><button type="button" class="btn ib sm" data-rt="big" title="Letra más grande" aria-label="Letra más grande">A+</button>
       ${tb.map(([c, i, l]) => `<button type="button" class="btn ib sm" data-rt="${c}" title="${l}" aria-label="${l}">${icon(i)}</button>`).join("")}
       <button type="button" class="btn ib sm" data-rt="clear" title="Quitar formato" aria-label="Quitar formato">${icon("remove-formatting")}</button>
-      <button type="button" class="btn ib sm" data-rt="img" title="Agregar una imagen de ejemplo (se guarda en Google Drive)" aria-label="Agregar imagen">${icon("image-plus")}</button><input type="file" class="rtimgin" accept="image/*" hidden></div>
-    <div class="rtedit" id="${id}" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Texto del pedido" data-ph="${esc(ph || BRIEF_PH["Diseño"])}">${html}</div></div>`;
+      <button type="button" class="btn sm rtimgbtn" data-rt="img" title="Agregar una imagen de ejemplo o un boceto (se guarda en Google Drive)">${icon("image-plus")} Imagen</button><input type="file" class="rtimgin" accept="image/*" multiple hidden></div>
+    <div class="rtedit" id="${id}" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Texto del pedido" data-ph="${esc(ph || BRIEF_PH["Diseño"])}">${html}</div>
+    <p class="note rthint">${icon("image")} Para explicar con un ejemplo o un boceto: pegá una imagen o una captura (Ctrl+V), arrastrala a la hoja o tocá <b>Imagen</b>. Se guarda en Google Drive y la ven todos en el pedido.</p></div>`;
 }
 function jobBriefSection(j){
   const ed = canEditBrief(j), html = j.brief ? cleanRich(j.brief) : "";
@@ -4512,7 +4514,7 @@ async function rtAddImage(ed, file){
   img.src = local; img.dataset.up = tmp; img.className = "rtimg up"; img.alt = "Subiendo…";
   const r = ed._sel && ed.contains(ed._sel.commonAncestorContainer) ? ed._sel : null;
   if (r){ r.deleteContents(); r.insertNode(img); r.setStartAfter(img); r.collapse(true); } else ed.appendChild(img);
-  ed.dataset.dirty = "1"; ed._sel = null;
+  ed.dataset.dirty = "1"; ed._sel = r || null; // si se agregan varias, la siguiente va después de esta
   const j = await integ({ action:"chat_image", type:"image/jpeg", data:await toB64(shr.blob) }).catch(() => ({ ok:false }));
   const el = document.querySelector(`img[data-up="${tmp}"]`); // la hoja pudo volver a dibujarse mientras subía
   if (!j.ok || !j.id){ el?.remove(); URL.revokeObjectURL(local); return toast(j.error || "No se pudo subir la imagen. Probá de nuevo."); }
@@ -4521,8 +4523,25 @@ async function rtAddImage(ed, file){
   else { const ed2 = document.getElementById(edId); if (!ed2) return toast("La imagen se subió, pero la hoja se cerró: volvé a agregarla."); ed2.insertAdjacentHTML("beforeend", rtImg(j.id)); ed2.dataset.dirty = "1"; }
   toast("Imagen agregada al texto (guardada en Google Drive).");
 }
-document.addEventListener("change", e => { if (!e.target.classList?.contains("rtimgin")) return; const f = e.target.files?.[0]; e.target.value = ""; if (f) rtAddImage(e.target.closest(".rtwrap")?.querySelector(".rtedit"), f); });
-document.addEventListener("paste", e => { const ed = e.target.closest?.(".rtedit"); if (!ed) return; const f = [...(e.clipboardData?.files || [])].find(x => /^image\//.test(x.type)); if (!f) return; e.preventDefault(); rtSaveSel(ed); rtAddImage(ed, f); });
+document.addEventListener("change", async e => { if (!e.target.classList?.contains("rtimgin")) return; const fs = [...(e.target.files || [])].slice(0, 6); e.target.value = "";
+  const ed = e.target.closest(".rtwrap")?.querySelector(".rtedit"); for (const f of fs) await rtAddImage(ed, f); });
+// Pegar (Ctrl+V): una captura o una imagen copiada llega como archivo. Si se copió texto con imágenes (de una página o un
+// documento), se pega el texto y las imágenes se bajan y se suben a Drive; las que no se pueden bajar se avisan.
+document.addEventListener("paste", async e => {
+  const ed = e.target.closest?.(".rtedit"), cd = e.clipboardData; if (!ed || !cd) return;
+  const html = cd.getData("text/html") || "", hasText = !!html.replace(/<[^>]*>|&nbsp;|\s/g, "");
+  const files = hasText ? [] : [...(cd.files || [])].filter(x => /^image\//.test(x.type)).slice(0, 6);
+  const srcs = files.length ? [] : [...html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)].map(m => m[1].replace(/&amp;/g, "&")).slice(0, 6);
+  if (!files.length && !srcs.length) return; // texto común: lo pega el navegador
+  e.preventDefault(); rtSaveSel(ed);
+  if (hasText){ document.execCommand("insertHTML", false, cleanRich(html)); ed.dataset.dirty = "1"; rtSaveSel(ed); }
+  let miss = 0;
+  for (const src of srcs){ let f = null;
+    try { const b = await (await fetch(src)).blob(); if (/^image\//.test(b.type)) f = new File([b], "pegada", { type:b.type }); } catch {}
+    if (f) files.push(f); else miss++; }
+  for (const f of files) await rtAddImage(ed, f);
+  if (miss) toast(`${miss === 1 ? "Una imagen no se pudo" : miss + " imágenes no se pudieron"} copiar de ahí: guardala en la compu y subila con “Imagen”, o pegá una captura.`);
+});
 document.addEventListener("dragover", e => { if (e.target.closest?.(".rtedit") && [...(e.dataTransfer?.items || [])].some(i => i.kind === "file")) e.preventDefault(); });
 document.addEventListener("drop", e => { const ed = e.target.closest?.(".rtedit"); if (!ed) return; const f = [...(e.dataTransfer?.files || [])].find(x => /^image\//.test(x.type)); if (!f) return; e.preventDefault();
   const r = document.caretRangeFromPoint?.(e.clientX, e.clientY); ed._sel = r && ed.contains(r.startContainer) ? r : null; rtAddImage(ed, f); });
