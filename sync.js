@@ -209,11 +209,15 @@ const RMH = (() => {
   }
   // La hora de la computadora desfasada hace que la sesión se renueve sin parar y termine cortándose.
   // Se compara con la hora del servidor de la app (encabezado Date de una respuesta de este mismo sitio).
+  // Diferencia entre la hora de esta compu y la del servidor (ms). El chat la usa para que la hora de cada mensaje
+  // sea la real aunque la compu esté adelantada o atrasada (si no, sus mensajes quedaban fuera de orden).
+  let clockOffset = 0;
   async function checkClock(){
     try {
       const clock = () => performance.timeOrigin + performance.now(); // la hora de la compu
       const t0 = clock(), r = await fetch("sw.js?t=" + Math.round(t0), { method:"HEAD", cache:"no-store" }), d = Date.parse(r.headers.get("date") || "");
       if (isNaN(d)) return;
+      const off = d + 500 - (t0 + clock()) / 2; clockOffset = Math.abs(off) > 2000 ? Math.round(off) : 0; // la hora del servidor viene en segundos enteros
       const skew = Math.round(((t0 + clock()) / 2 - d) / 60000), old = $id("clockBar");
       if (Math.abs(skew) < 3){ old?.remove(); return; }
       const b = old || Object.assign(document.createElement("div"), { id:"clockBar", className:"lostbar warn" }); b.setAttribute("role", "alert");
@@ -455,6 +459,7 @@ const RMH = (() => {
 
   return {
     get me(){ return me; },
+    get clockOffset(){ return clockOffset; },
     get previewing(){ return previewing; },
     // Llama a la función del servidor que crea cuentas y cambia contraseñas (solo Admin total).
     async admin(body){
