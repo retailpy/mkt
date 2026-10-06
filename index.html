@@ -2644,6 +2644,7 @@ const SECTIONS = [
   { g:"Community Manager", k:"calcm", l:"Planificación Community Manager", n:"Planificación", i:"calendar-days", virtual:true }, // el calendario del Plan de posteo (mío o de todo el equipo)
   { g:"Community Manager", k:"cargacm", l:"Carga de trabajo CM", n:"Carga de trabajo", i:"gauge" },
   { g:"Community Manager", k:"tencm", l:"Tendencias Community Manager", n:"Tendencias", i:"sparkles", virtual:true }, // 10 novedades de redes y campañas de supermercados, con su link
+  { g:"Community Manager", k:"noticias", l:"Noticias", n:"Noticias", i:"newspaper", virtual:true }, // lo que sale en los medios de Paraguay sobre Retail S.A. y sus marcas (en la botonera, debajo de Tendencias)
   { g:"Community Manager", k:"plan", l:"Plan de posteo", i:"list-checks", hide:true },
   { g:"Community Manager", k:"calendario", l:"Gestión Redes", n:"Gestión: Redes", i:"calendar-days", hide:true },
   { g:"Community Manager", k:"calhistoria", l:"Gestión Historia", n:"Gestión: Historia", i:"smartphone", hide:true },
@@ -2652,7 +2653,6 @@ const SECTIONS = [
   { g:"Community Manager", k:"historialcm", l:"Historial CM", n:"Historial", i:"archive", hide:true },
   { g:"Community Manager", k:"ideas", l:"Ideas Random", n:"Ideas Random", i:"lightbulb", hide:true, virtual:true }, // ideas de contenido para creadores (tendencias + fechas de Paraguay + ideas del equipo)
   { g:"Community Manager", k:"inbox", l:"Mensajes de las cuentas", n:"Mensajes", i:"inbox", hide:true, virtual:true }, // DM reales de Instagram y Facebook de cada marca (solo lectura)
-  { g:"Community Manager", k:"noticias", l:"Noticias", n:"Noticias", i:"newspaper", hide:true, virtual:true }, // lo que sale en los medios de Paraguay sobre Retail S.A. y sus marcas
   { g:"Recursos", k:"prompts", l:"Prompts de imágenes", i:"wand-sparkles" },
   { g:"Recursos", k:"archivos", l:"Archivos y enlaces", i:"link" },
   { g:"Informes", k:"pauta", l:"Meta Ads", i:"megaphone" },
@@ -3677,7 +3677,7 @@ const ONLY_ADMINS = ["historial","historialcm","pauta","reportes"]; // Historial
 // y el Informe Redes (Diseño y CM incluidos). Meta Ads (pauta) y el Informe del mes siguen solo para Admin total y Admin.
 // Lo que cada uno puede cambiar lo sigue decidiendo su rol (cargar pedidos, editar posteos, mover fechas…).
 const ALL_SEE = () => ["paneldg","panelcm","caldg","calcm","cargadiseno","cargacm","ideas","redes", ...PANEL_DESIGN.map(x => x.k), ...PANEL_CM.map(x => x.k).filter(k => k !== "inbox")];
-const can = key => ALL_SEE().includes(key) ? true : key === "inbox" ? ["Admin total","Admin","CM"].includes(viewer.role) : key === "encuestas" || key === "sugerencias" ? viewer.id === "fede" && viewer.role === "Admin total" : key === "tendg" ? can("paneldg") : key === "tencm" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : ONLY_AT.includes(key) ? viewer.role === "Admin total" : ONLY_ADMINS.includes(key) ? isAdminAny() && viewer.perms.has(key) : ["sabados","avisos","perfil","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
+const can = key => ALL_SEE().includes(key) ? true : key === "inbox" ? ["Admin total","Admin","CM"].includes(viewer.role) : key === "encuestas" || key === "sugerencias" ? viewer.id === "fede" && viewer.role === "Admin total" : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : ONLY_AT.includes(key) ? viewer.role === "Admin total" : ONLY_ADMINS.includes(key) ? isAdminAny() && viewer.perms.has(key) : ["sabados","avisos","perfil","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
 const myGroups = () => viewer.brands || GROUPS;
 const seesBrand = b => myGroups().includes(groupOf(b));
 const myBrands = () => Object.keys(BRANDS).filter(seesBrand);
@@ -3976,7 +3976,6 @@ const PANEL_CM = [
   { k:"gestioncm", t:"Gestión de Videos", d:"Grabaciones, ediciones, coberturas, copys y armado de pauta.", i:"clapperboard" },
   { k:"inbox", t:"Mensajes", d:"Los mensajes directos de Instagram y Facebook de cada marca: quién escribió y si ya se contestó.", i:"inbox" },
   { k:"ideas", t:"Ideas Random", d:"Ideas para creadores de contenido: lo que es tendencia en TikTok, Instagram y Facebook, para Superseis, Stock y Delimarket.", i:"lightbulb" },
-  { k:"noticias", t:"Noticias", d:"Lo que sale en los medios de Paraguay sobre Retail S.A., Superseis, Stock, Delimarket y las demás marcas, de los últimos 3 meses.", i:"newspaper" },
 ];
 const PANEL_TOOLS = [
   { k:"historial", t:"Historial", a:"Diseño", i:"archive", d:"Todo lo que ya se entregó, por mes, marca y diseñador." }, { k:"historialcm", t:"Historial", a:"CM", i:"archive", d:"Lo publicado y los pedidos terminados de cada mes." },
@@ -4006,7 +4005,7 @@ function panelStats(){
   const sec = k => pj.filter(j => j.area === "Diseño" && jobSection(j) === k);
   return { pedidos:jm(sec("pedidos")), cartel:jm(sec("cartel")), web:jm(sec("web")), pantallas:jm(sec("pantallas")), gestioncm:jm(pj.filter(j => j.area === "CM")),
     plan:pm(vp), calendario:pm(vp.filter(p => p.format !== "Historia")), calhistoria:pm(vp.filter(p => p.format === "Historia")), calcanales:canales.length ? `${canales.length} este mes` : "Nada cargado este mes",
-    historial:"Meses anteriores", historialcm:"Meses anteriores", noticias:newsSt?.items?.length ? `${newsSt.items.length} en 3 meses` : "Medios de Paraguay",
+    historial:"Meses anteriores", historialcm:"Meses anteriores",
     inbox:(() => { const n = Object.keys(META_INBOX).filter(b => b !== "updated").reduce((t, b) => t + (META_INBOX[b]?.convs || []).filter(c => !ibOk(c)).length, 0); return Object.keys(META_INBOX).length ? (n ? `<em>${n} sin contestar</em>` : "Todo contestado") : "Sin datos todavía"; })() };
 }
 function pPanel(ar){
