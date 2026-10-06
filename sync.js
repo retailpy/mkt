@@ -65,6 +65,7 @@ const RMH = (() => {
     CHAT_GROUPS:[() => CHAT_GROUPS, v => { CHAT_GROUPS = v; }],
     PRESENCE:[() => PRESENCE, v => { PRESENCE = v || {}; }],
     CHAT_MUTES:[() => CHAT_MUTES, v => { CHAT_MUTES = v || {}; }],
+    CHAT_CLEARED:[() => CHAT_CLEARED, v => { CHAT_CLEARED = v || {}; }],
     STICKER_FAVS:[() => STICKER_FAVS, v => { STICKER_FAVS = v || {}; }],
     APP_FLAGS:[() => APP_FLAGS, v => { APP_FLAGS = v || {}; }],
     TEAM_IDEAS:[() => TEAM_IDEAS, v => { TEAM_IDEAS = Array.isArray(v) ? v : []; }],
