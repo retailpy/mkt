@@ -193,6 +193,12 @@ const RMH = (() => {
     else if (retryAt && now >= retryAt){ retryAt = 0; flush(); } // reintento después de un error de conexión
   }, 1000);
   addEventListener("pagehide", () => flush());
+  // Si se cierra la app con algo sin guardar (por ejemplo, un pedido recién creado), el navegador pregunta antes de cerrar.
+  addEventListener("beforeunload", e => {
+    if (!ready || previewing) return;
+    let pending = !!flushing; try { pending = pending || dirtyKeys().length > 0; } catch (err) {}
+    if (pending){ flush(); e.preventDefault(); e.returnValue = ""; }
+  });
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flush(); });
 
   // ---------- carga y tiempo real ----------
