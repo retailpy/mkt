@@ -1,5 +1,5 @@
 // Retail MKT Hub · service worker: la app abre aunque no haya internet (muestra lo último que se cargó).
-const CACHE = "mkthub-v98";
+const CACHE = "mkthub-v99";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./logo.png", "./logo-wide.png", "./marcas.png", "./config.js", "./sync.js", "./vendor/supabase.js"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

@@ -2924,9 +2924,9 @@ const CM_BY_BRAND = { Superseis:"Aníbal Iván Martinez", Stock:"Aníbal Iván M
 posts.forEach(p => { p.cm = CM_BY_BRAND[p.brand]; });
 const CMS = [...new Set(Object.values(CM_BY_BRAND))];
 const CURRENT_MONTH = TODAY.slice(0,7);
-// Meses navegables: desde agosto 2026 hasta el mes que viene.
+// Meses navegables: desde septiembre 2026 (antes no existe) hasta el mes que viene.
 const MONTHS_APP = (() => { const out = [], end = +CURRENT_MONTH.slice(0,4) * 12 + +CURRENT_MONTH.slice(5) + 1;
-  for (let n = Math.min(2026 * 12 + 8, end - 1); n <= end; n++){ const y = Math.floor((n - 1) / 12), m = (n - 1) % 12 + 1, name = MONTHS_ES[m-1];
+  for (let n = Math.min(2026 * 12 + 9, end - 1); n <= end; n++){ const y = Math.floor((n - 1) / 12), m = (n - 1) % 12 + 1, name = MONTHS_ES[m-1];
     out.push({ v:`${y}-${String(m).padStart(2,"0")}`, l:`${name[0].toUpperCase()}${name.slice(1)} ${y}` }); }
   return out; })();
 let MONTH = CURRENT_MONTH;
@@ -3097,11 +3097,20 @@ function seeded(str){ let h = 2166136261; for (const ch of str){ h ^= ch.charCod
 const GENERIC_TOPICS = ["Ofertas de la semana","Novedades en góndola","Tips del día","Promo del finde","Receta fácil","Sorteo del mes","Detrás de escena","Lanzamiento","Clientes felices","Horarios especiales"];
 // Publicaciones reales de Instagram (s:META_POSTS, la función diaria /api/publicaciones con el mismo token de Meta que los seguidores).
 // Sin datos de ejemplo: si una marca no tiene publicaciones cargadas, no aparece.
+// Publicaciones de Instagram de una marca en un mes (de la más nueva a la más vieja): lo último que trajo Meta
+// más el archivo de ese mes (s:META_POSTS → "m:AAAA-MM"), así cada mes muestra las suyas aunque pasen los meses.
+function igPosts(b, month){
+  const seen = new Set(), out = [];
+  for (const x of [...(META_POSTS[b]?.posts || []), ...(META_POSTS["m:" + month]?.[b] || [])]){
+    if (!x?.ts || seen.has(x.id) || pyDate(x.ts).slice(0, 7) !== month) continue;
+    seen.add(x.id); out.push(x);
+  }
+  return out.sort((x, y) => y.ts.localeCompare(x.ts));
+}
 function publicationsFor(month){
   const out = [], now = Date.now();
-  socialBrands().forEach(b => (META_POSTS[b]?.posts || []).forEach(x => {
-    const date = new Intl.DateTimeFormat("en-CA", { timeZone:"America/Asuncion" }).format(new Date(x.ts));
-    if (date.slice(0, 7) !== month) return;
+  socialBrands().forEach(b => igPosts(b, month).forEach(x => {
+    const date = pyDate(x.ts);
     const inter = (x.likes || 0) + (x.comments || 0) + (x.saved || 0) + (x.shares || 0);
     out.push({ brand:b, date, net:"IG", format:x.type || "Post", title:(x.cap || "").split("\n")[0].slice(0, 90) || "Publicación sin texto", cap:x.cap || "", cm:CM_BY_BRAND[b], paid:false,
       reach:isNum(x.reach) ? x.reach : null, likes:x.likes, comments:x.comments, inter, img:x.img, link:x.link, age:Math.floor((now - new Date(x.ts).getTime()) / 864e5) });
@@ -3112,6 +3121,7 @@ function publicationsFor(month){
 const pubScore = p => isNum(p.reach) ? p.reach : p.inter;
 const pubThumb = (p, cls = "") => p.img ? `<img class="pthumb ${cls}" src="${esc(p.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'pthumb ph ${cls}',textContent:'${p.format === "Reel" ? "Reel" : "IG"}'}))">` : `<span class="pthumb ph ${cls}">${p.format === "Reel" || p.format === "Video" ? "Reel" : "IG"}</span>`;
 const postsUpdated = () => META_POSTS.updated || null;
+const pyDate = ts => new Intl.DateTimeFormat("en-CA", { timeZone:"America/Asuncion" }).format(new Date(ts));
 const pct2 = n => n.toFixed(2).replace(".", ",") + "%";
 const AGE7 = ["13-17","18-24","25-34","35-44","45-54","55-64","65+"];
 // Público de Instagram de una marca en porcentajes, a partir de las cantidades de Meta. null si no hay datos.
@@ -3165,9 +3175,9 @@ function followersPanel(){
     <div class="grid two">${card("ig","Instagram","#f9a8d4")}${card("fb","Facebook","#7dd3fc")}</div></div>`;
 }
 // Filas de seguidores: mes elegido contra el mes anterior. Sin dato → "Sin datos todavía" o "—".
+// El mes elegido contra el último dato del mes anterior (su último día). Si el mes todavía no tiene dato, queda “—”.
 function followerRows(bs){
-  const fm = folMonth();
-  return bs.map(b => { const c = folOf(b, fm), p = folOf(b, prevMonth(MONTH)); return { b, has:!!c, igp:p?.ig, igc:c?.ig, fbp:p?.fb, fbc:c?.fb }; });
+  return bs.map(b => { const c = folOf(b, MONTH), p = folOf(b, prevMonth(MONTH)); return { b, has:!!(c || p), igp:p?.ig, igc:c?.ig, fbp:p?.fb, fbc:c?.fb }; });
 }
 function followersTable(showTotal = true){
   const bs = socialBrands(), fm = folMonth(), prevLbl = MONTH_ABBR_ES(prevMonth(MONTH)), curLbl = MONTH_ABBR_ES(MONTH);
@@ -3195,21 +3205,21 @@ function tvBrandHero(b){
 // ---------- TV Impacto Redes: 1) lo mejor de cada marca  2…) top 10 de cada marca. 10 segundos cada pantalla ----------
 // Últimas 6 publicaciones de Instagram de cada marca (imagen reducida), debajo de Seguidores por marca.
 const IG_MAIN = ["Superseis","Stock","Delimarket"]; // las marcas principales: sus últimas publicaciones de Instagram en el Dashboard y en el Informe mensual
-const last9 = b => (META_POSTS[b]?.posts || []).filter(x => !/reel|video/i.test(x.type || "")).sort((x, y) => y.ts.localeCompare(x.ts)).slice(0, 9);
-const pyDate = ts => new Intl.DateTimeFormat("en-CA", { timeZone:"America/Asuncion" }).format(new Date(ts));
+// Las últimas 9 publicaciones con imagen (sin reels) del mes elegido.
+const last9 = (b, m = MONTH) => igPosts(b, m).filter(x => !/reel|video/i.test(x.type || "")).slice(0, 9);
 function lastPostsPanel(bs){
   const rows = bs.map(b => ({ b, list:last9(b), h:META_POSTS[b]?.handle })).filter(r => r.list.length);
-  return `<div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram</h2><div class="tag-row"><span class="tag">Fuente: Meta</span>${updTag(postsUpdated())}${rows.length > 1 ? `<button type="button" class="btn sm" data-lpfull="${esc(rows.map(r => r.b).join(","))}">${icon("maximize-2")} Ver todas en grande</button>` : ""}${metaBtn("publicaciones", "Publicaciones")}</div></div>
+  return `<div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram</h2><div class="tag-row"><span class="tag">${monthLabel(MONTH)}</span><span class="tag">Fuente: Meta</span>${updTag(postsUpdated())}${rows.length > 1 ? `<button type="button" class="btn sm" data-lpfull="${esc(rows.map(r => r.b).join(","))}">${icon("maximize-2")} Ver todas en grande</button>` : ""}${metaBtn("publicaciones", "Publicaciones")}</div></div>
     <div class="panel-b">${rows.length ? rows.map(r => `<div class="lpost"><div class="lph">${brandTag(r.b)}${r.h ? `<span class="note">${esc(r.h)}</span>` : ""}<button type="button" class="btn sm lpbig" data-lpfull="${esc(rows.map(x => x.b).join(","))}" data-lpsel="${esc(r.b)}" title="Ver las 9 de ${esc(r.b)} en grande, con sus números">${icon("maximize-2")} Ver en grande</button></div><div class="lpgrid">${r.list.map(x => { const pp = { img:x.img, format:x.type };
       return `<a class="lpitem" href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="${esc((x.cap || "").slice(0, 140))}">${pubThumb(pp, "lg")}<span class="lpmeta">${dm(pyDate(x.ts))} · ♥ ${dots(x.likes || 0)}</span></a>`; }).join("")}</div></div>`).join("")
-      : `<div class="empty">${NO_DATA}: las publicaciones llegan con la actualización diaria de Meta.</div>`}
-      ${rows.length && bs.some(b => !rows.some(r => r.b === b)) ? `<p class="note" style="margin:8px 0 0">Todavía sin publicaciones de ${bs.filter(b => !rows.some(r => r.b === b)).join(", ")}${canMetaRefresh() ? ": tocá “Actualizar”." : "."}</p>` : ""}</div></div>`;
+      : `<div class="empty">${isFuture() ? `${monthLabel(MONTH)} todavía no empezó: acá van a salir sus publicaciones.` : `Todavía no hay publicaciones de ${monthName(MONTH)}: llegan con la actualización diaria de Meta.`}</div>`}
+      ${rows.length && bs.some(b => !rows.some(r => r.b === b)) ? `<p class="note" style="margin:8px 0 0">Todavía sin publicaciones en ${monthName(MONTH)}: ${bs.filter(b => !rows.some(r => r.b === b)).join(", ")}${canMetaRefresh() ? " (tocá “Actualizar”)" : ""}.</p>` : ""}</div></div>`;
 }
 // “Ver en grande”: las últimas 9 publicaciones de cada marca en página completa, con likes, comentarios, alcance y texto.
 let lpFull = null; // { bs: marcas del panel, sel: la marca elegida o null = todas }
 function lpFullPage(){
   const all = (lpFull?.bs || []).filter(b => last9(b).length), sel = all.includes(lpFull?.sel) ? lpFull.sel : null, bs = sel ? [sel] : all, n = v => isNum(v) ? dots(v) : "—";
-  return `<div class="lpfull"><div class="head"><div><h1 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram${sel ? " · " + esc(sel) : ""}</h1><p class="sub">Las últimas 9 ${sel ? "" : "de cada marca "}(sin reels), con sus números. Fuente: Meta · ${metaWhen(postsUpdated())}.</p></div><button type="button" class="btn" data-lpclose>${icon("arrow-left")} Volver</button></div>
+  return `<div class="lpfull"><div class="head"><div><h1 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram${sel ? " · " + esc(sel) : ""}</h1><p class="sub">${monthLabel(MONTH)} · las últimas 9 ${sel ? "" : "de cada marca "}(sin reels), con sus números. Fuente: Meta · ${metaWhen(postsUpdated())}.</p></div><button type="button" class="btn" data-lpclose>${icon("arrow-left")} Volver</button></div>
     ${all.length > 1 ? `<div class="chips lpchips">${all.map(b => `<button type="button" class="chip ${b === sel ? "on" : ""}" data-lpsel2="${esc(b)}" aria-pressed="${b === sel}">${esc(b)}</button>`).join("")}<button type="button" class="chip ${sel ? "" : "on"}" data-lpsel2="" aria-pressed="${!sel}">Todas</button></div>` : ""}
     ${bs.map(b => `<section class="lpfb"><div class="lph">${brandTag(b)}${META_POSTS[b]?.handle ? `<span class="note">${esc(META_POSTS[b].handle)}</span>` : ""}</div><div class="lpfgrid">${last9(b).map(x => `<article class="lpcard">
       <a href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="Ver en Instagram">${pubThumb({ img:x.img, format:x.type }, "xl")}</a>
