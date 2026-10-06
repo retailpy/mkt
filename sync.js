@@ -211,8 +211,11 @@ const RMH = (() => {
   // Se compara con la hora del servidor de la app (encabezado Date de una respuesta de este mismo sitio).
   // Diferencia entre la hora de esta compu y la del servidor (ms). El chat la usa para que la hora de cada mensaje
   // sea la real aunque la compu esté adelantada o atrasada (si no, sus mensajes quedaban fuera de orden).
-  let clockOffset = 0;
+  // Se mide al abrir la app (antes de entrar), cada 30 min y cada vez que se vuelve a la app (el celular pudo
+  // cambiar la hora mientras estaba bloqueado).
+  let clockOffset = 0, clockTimer = 0, clockAt = 0;
   async function checkClock(){
+    clockAt = Date.now();
     try {
       const clock = () => performance.timeOrigin + performance.now(); // la hora de la compu
       const t0 = clock(), r = await fetch("sw.js?t=" + Math.round(t0), { method:"HEAD", cache:"no-store" }), d = Date.parse(r.headers.get("date") || "");
@@ -386,19 +389,19 @@ const RMH = (() => {
     }
     msg("Cargando datos…");
     const { data: m, error } = await sb.from("members").select("*").eq("user_id", user.id).maybeSingle();
-    if (error || !m || !m.active){ await sb.auth.signOut(); showLogin(); msg(error ? "No se pudo conectar. Probá de nuevo." : "Tu usuario no tiene acceso a la app. Pedíselo a un Admin total.", true); return; }
+    if (error || !m || !m.active){ await sb.auth.signOut({ scope:"local" }); showLogin(); msg(error ? "No se pudo conectar. Probá de nuevo." : "Tu usuario no tiene acceso a la app. Pedíselo a un Admin total.", true); return; }
     member = m; me = m.person_id;
     if (m.role !== "Admin total"){ SUGGESTIONS = []; SURVEYS = []; } // no se muestran ni se guardan: son solo de Admin total
     try { await loadAll(); }
     catch (e){ console.error(e); showLogin(); msg("No se pudieron cargar los datos. Revisá la conexión y probá de nuevo.", true); return; }
     const pp = PEOPLE.find(x => x.id === me);
-    if (!pp){ await sb.auth.signOut(); showLogin(); msg("Tu usuario no está en la lista del equipo. Pedile a un Admin total que lo revise.", true); return; }
+    if (!pp){ await sb.auth.signOut({ scope:"local" }); showLogin(); msg("Tu usuario no está en la lista del equipo. Pedile a un Admin total que lo revise.", true); return; }
     viewer = pp; viewer.role = m.role; viewer.mustChange = false; viewer.active = true;
     const restored = restorePending(); // lo que no se llegó a guardar la vez anterior (sesión cortada o página cerrada)
     document.querySelectorAll('label[for="viewas"], #viewas').forEach(el => el.hidden = m.role !== "Admin total");
     ready = true; subscribe(); presence(); enterApp();
     if (restored) setTimeout(() => { try { toast(`Se recuperó lo que habías cargado sin guardar (${restored === 1 ? "1 sección" : restored + " secciones"}). Ya se está guardando.`); } catch (e) {} }, 1200);
-    checkClock(); setInterval(checkClock, 30 * 60e3);
+    checkClock(); if (!clockTimer) clockTimer = setInterval(checkClock, 30 * 60e3);
   }
 
   // Se entra con el usuario de ingreso (ej. "Alesme"); el email sigue funcionando. Con el usuario, la función del
@@ -447,14 +450,16 @@ const RMH = (() => {
     loggingOut = true; await flush(); ready = false;
     // Al salir, este dispositivo deja de recibir los mensajes de esta persona.
     try { const reg = await navigator.serviceWorker?.getRegistration(), sub = await reg?.pushManager?.getSubscription(); if (sub) await sb.from("push_subs").delete().eq("endpoint", sub.endpoint); } catch (e) {}
-    await sb.auth.signOut(); location.reload();
+    await sb.auth.signOut({ scope:"local" }); location.reload();
   });
 
+  checkClock();
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && Date.now() - clockAt > 5 * 60e3) checkClock(); });
   (async () => {
     const { data } = await sb.auth.getSession();
     // Con la contraseña provisoria sin cambiar, se vuelve a pedir el login.
     if (data.session && !data.session.user.user_metadata?.must_change) afterLogin(data.session.user);
-    else { if (data.session) await sb.auth.signOut(); showLogin(); }
+    else { if (data.session) await sb.auth.signOut({ scope:"local" }); showLogin(); }
   })();
 
   return {
