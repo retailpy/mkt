@@ -103,9 +103,19 @@ const RMH = (() => {
   // Combina dos versiones (ya codificadas) que partieron de la misma base: gana lo que cambió cada lado; en listas, por id.
   const isObj = x => x && typeof x === "object" && !Array.isArray(x);
   const hasIds = a => Array.isArray(a) && a.every(x => isObj(x) && "id" in x);
-  function merge(b, l, r){
+  // union (solo en las charlas): si los dos lados crearon lo mismo a la vez —por ejemplo, la misma conversación
+  // nueva desde dos dispositivos— se juntan los dos como si hubieran partido de algo vacío (antes ganaba lo de este
+  // lado y se perdían los mensajes del otro).
+  const CONVO = k => /^(thread|chat):/.test(k);
+  function merge(b, l, r, union){
     if (C(l) === C(r)) return l;
-    if (b === undefined) return l === undefined ? r : l;
+    if (b === undefined){
+      if (l === undefined) return r;
+      if (r === undefined || !union) return l;
+      if (Array.isArray(l) && Array.isArray(r)) b = [];
+      else if (isObj(l) && isObj(r)) b = {};
+      else return l;
+    }
     if (C(l) === C(b)) return r;
     if (C(r) === C(b)) return l;
     if (typeof l === "number" && typeof r === "number") return Math.max(l, r);
@@ -114,7 +124,7 @@ const RMH = (() => {
       r.forEach(x => {
         const bx = bm.get(x.id), lx = lm.get(x.id);
         if (!bx || !lx){ if (bx && C(x) === C(bx)) return; out.push(x); return; } // nuevo en el servidor, o borrado acá pero cambiado allá
-        out.push(merge(bx, lx, x));
+        out.push(merge(bx, lx, x, union));
       });
       const ids = new Set(out.map(x => x.id));
       l.forEach(x => {
@@ -122,6 +132,7 @@ const RMH = (() => {
         if (bm.has(x.id)){ if (C(x) !== C(bm.get(x.id))) out.push(x); return; } // borrado allá pero cambiado acá
         if (!rm.has(x.id)){ out.push(x); ids.add(x.id); return; } // nuevo acá
         if (C(x) === C(rm.get(x.id))) return;
+        if (union){ const i = out.findIndex(y => y.id === x.id); if (i >= 0){ out[i] = merge(undefined, x, out[i], true); return; } } // el mismo mensaje en los dos lados
         // Las dos personas crearon algo con el mismo número: el de acá recibe otro.
         const nums = [...ids].filter(i => typeof i === "number");
         const id = typeof x.id === "number" ? Math.max(0, ...nums) + 1 : x.id + "-" + Math.random().toString(36).slice(2, 5);
@@ -135,7 +146,7 @@ const RMH = (() => {
     }
     if (isObj(b) && isObj(l) && isObj(r)){
       const out = {};
-      new Set([...Object.keys(l), ...Object.keys(r)]).forEach(k => { const v = merge(b[k], l[k], r[k]); if (v !== undefined) out[k] = v; });
+      new Set([...Object.keys(l), ...Object.keys(r)]).forEach(k => { const v = merge(b[k], l[k], r[k], union); if (v !== undefined) out[k] = v; });
       return out;
     }
     return l;
@@ -160,7 +171,7 @@ const RMH = (() => {
       const { data: row, error: e2 } = await sb.from("app_state").select("key, data, version").eq("key", key).maybeSingle();
       if (e2) throw e2;
       if (!row){ base.delete(key); continue; }
-      const merged = merge(b?.json ? JSON.parse(b.json) : undefined, enc(getLocal(key)), row.data);
+      const merged = merge(b?.json ? JSON.parse(b.json) : undefined, enc(getLocal(key)), row.data, CONVO(key));
       base.set(key, { v:row.version, json:C(row.data) });
       setLocal(key, dec(merged)); scheduleRender();
     }
@@ -187,7 +198,7 @@ const RMH = (() => {
       let n = 0;
       (p.items || []).forEach(([k, b, local]) => {
         if (noSave(k) || !(localKeys().includes(k) || k.startsWith("thread:"))) return;
-        const cur = getLocal(k) === undefined ? undefined : enc(getLocal(k)), merged = merge(b ? JSON.parse(b) : undefined, local, cur);
+        const cur = getLocal(k) === undefined ? undefined : enc(getLocal(k)), merged = merge(b ? JSON.parse(b) : undefined, local, cur, CONVO(k));
         if (C(merged) !== C(cur)){ setLocal(k, dec(merged)); n++; }
       });
       return n;
@@ -269,8 +280,9 @@ const RMH = (() => {
     const key = row.key, b = base.get(key);
     if (b && b.v >= row.version) return false;
     const local = getLocal(key) === undefined ? undefined : enc(getLocal(key));
-    const dirty = local !== undefined && b && C(local) !== b.json;
-    setLocal(key, dec(dirty ? merge(JSON.parse(b.json), local, row.data) : row.data));
+    // Una charla nueva que acá todavía no se guardó (sin base) también se combina: no se pierde lo que se escribió.
+    const dirty = local !== undefined && (b ? C(local) !== b.json : CONVO(key));
+    setLocal(key, dec(dirty ? merge(b ? JSON.parse(b.json) : undefined, local, row.data, CONVO(key)) : row.data));
     base.set(key, { v:row.version, json:C(row.data) });
     return true;
   }
