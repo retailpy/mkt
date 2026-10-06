@@ -45,6 +45,16 @@ async function allowedUser(req){
   const rows = await fetch(`${url}/rest/v1/members?select=role,active&user_id=eq.${encodeURIComponent(u.id)}`, { headers: { apikey, Authorization: `Bearer ${tok}` } }).then(r => r.ok ? r.json() : []).catch(() => []);
   return Array.isArray(rows) && rows.some(m => m.active && ["Admin total", "Admin", "CM"].includes(m.role));
 }
+// Cualquier persona activa del equipo (para cosas livianas como la vista previa de links del chat).
+async function memberUser(req){
+  const h = req.headers.authorization || "", tok = h.replace(/^Bearer\s+/i, "");
+  const url = process.env.SUPABASE_URL, apikey = process.env.SUPABASE_KEY;
+  if (!tok || !url || !apikey) return false;
+  const u = await fetch(`${url}/auth/v1/user`, { headers: { apikey, Authorization: `Bearer ${tok}` } }).then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!u?.id) return false;
+  const rows = await fetch(`${url}/rest/v1/members?select=active&user_id=eq.${encodeURIComponent(u.id)}`, { headers: { apikey, Authorization: `Bearer ${tok}` } }).then(r => r.ok ? r.json() : []).catch(() => []);
+  return Array.isArray(rows) && rows.some(m => m.active);
+}
 // El cron (CRON_SECRET) o una persona con permiso desde la app.
 async function cronOrUser(req){ return authorized(req) ? "cron" : (await allowedUser(req)) ? "user" : null; }
 
@@ -131,4 +141,4 @@ function tokenHint(e){
   return null;
 }
 
-module.exports = { NOMBRES, ORDEN, authorized, allowedUser, cronOrUser, graph, brandPages, save, readMeta, today, tokenHint };
+module.exports = { NOMBRES, ORDEN, authorized, allowedUser, memberUser, cronOrUser, graph, brandPages, save, readMeta, today, tokenHint };

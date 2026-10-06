@@ -182,6 +182,14 @@ html.navmini .nav-group.closed > a{display:flex}
 .cmav .avatar{width:30px;height:30px}
 .cbub{position:relative;max-width:min(560px,75%);background:rgba(148,163,184,.1);border:1px solid var(--line-2);border-radius:16px 16px 16px 4px;padding:7px 12px 6px;display:flex;flex-direction:column;gap:2px}
 .cmsg.me .cbub{background:rgba(34,211,238,.12);border-color:rgba(34,211,238,.35);border-radius:16px 16px 4px 16px}
+.clink{display:inline-flex;align-items:center;gap:4px;max-width:100%;vertical-align:bottom;color:var(--cyan);font-weight:600;text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere}.clink svg{width:14px;height:14px;flex:none}
+.clink.ig{color:#f472b6}.clink.fb{color:#60a5fa}.clink.tt{color:#e2e8f0}.clink.yt{color:#f87171}
+.cprev{display:flex;gap:10px;align-items:center;margin-top:6px;max-width:320px;padding:6px;border:1px solid var(--line-2);border-radius:12px;background:rgba(2,6,23,.35);color:inherit;text-decoration:none}
+.cprev:hover{border-color:var(--line-3)}.cprev img,.cprev .cpic{flex:none;width:56px;height:70px;border-radius:8px;object-fit:cover;background:rgba(148,163,184,.12)}
+.cprev .cpic{display:grid;place-items:center}.cprev .cpic svg{width:22px;height:22px}
+.cptx{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:12.5px}.cptx small{display:inline-flex;align-items:center;gap:4px;color:var(--faint);font-size:11px}.cptx small svg{width:12px;height:12px}
+.cptx b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cptx em{font-style:normal;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.cprev.ig .cpic{color:#f472b6}.cprev.fb .cpic{color:#60a5fa}.cprev.yt .cpic{color:#f87171}
 .cwho{font-size:12px;color:var(--cyan);font-weight:700}
 .ctext{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink);font-size:var(--cfs,14.5px);line-height:1.4}
 .ctext.cbig1{font-size:calc(var(--cfs,14.5px) * 3.2);line-height:1.15}
@@ -5745,7 +5753,7 @@ function bubbles(c){
     if (m.del) return `${sep}<div class="cmsg ${mine ? "me" : ""}" data-mid="${esc(mid)}">${!mine && c.kind === "g" ? (head ? `<span class="cmav">${who ? avatarHTML(who) : ""}</span>` : `<span class="cmav"></span>`) : ""}
       <div class="cbub cdelb">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}<div class="ctext cdel">${icon("ban")} <i>${mine ? "Eliminaste este mensaje." : "Se eliminó este mensaje."}</i></div><span class="ctime">${(m.time || msgTs(m).slice(11, 16))}</span></div></div>`;
     return `${sep}<div class="cmsg ${mine ? "me" : ""}" data-mid="${esc(mid)}">${!mine && c.kind === "g" ? (head ? `<span class="cmav">${who ? avatarHTML(who) : ""}</span>` : `<span class="cmav"></span>`) : ""}
-      <div class="cbub${!m.text && !m.rp && !m.fw && ((m.stk && stkSrc(m.stk)) || m.gif) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.fw ? `<span class="cfw">${icon("forward")} Reenviado</span>` : ""}${m.rp ? `<button type="button" class="crq" data-cjump="${esc(m.rp.id)}"><b>${esc(m.rp.from === viewer.id ? "Vos" : nickOf(personById(m.rp.from)) || "")}</b><span>${esc(m.rp.t || "")}</span></button>` : ""}${m.stk && stkSrc(m.stk) ? `<span class="cstkw"><img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer"><button type="button" class="cstkfav${stkFavs().includes(m.stk) ? " on" : ""}" data-stkfav="${esc(m.stk)}" title="${stkFavs().includes(m.stk) ? "Está en tus favoritos (tocá para quitarlo)" : "Guardar en mis favoritos"}" aria-label="${stkFavs().includes(m.stk) ? "Quitar de favoritos" : "Guardar en favoritos"}">${stkFavs().includes(m.stk) ? "★" : "☆"}</button></span>` : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${esc(m.text)}</div>` : ""}${m.via ? `<span class="cvia">Prueba enviada por ${esc(nickOf(personById(m.via)) || m.via)} como ${esc(nickOf(who) || m.from)}</span>` : ""}<span class="ctime">${m.ed ? "editado · " : ""}${(m.time || msgTs(m).slice(11, 16))}${mine ? msgTicks(m, c) : ""}</span>
+      <div class="cbub${!m.text && !m.rp && !m.fw && ((m.stk && stkSrc(m.stk)) || m.gif) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.fw ? `<span class="cfw">${icon("forward")} Reenviado</span>` : ""}${m.rp ? `<button type="button" class="crq" data-cjump="${esc(m.rp.id)}"><b>${esc(m.rp.from === viewer.id ? "Vos" : nickOf(personById(m.rp.from)) || "")}</b><span>${esc(m.rp.t || "")}</span></button>` : ""}${m.stk && stkSrc(m.stk) ? `<span class="cstkw"><img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer"><button type="button" class="cstkfav${stkFavs().includes(m.stk) ? " on" : ""}" data-stkfav="${esc(m.stk)}" title="${stkFavs().includes(m.stk) ? "Está en tus favoritos (tocá para quitarlo)" : "Guardar en mis favoritos"}" aria-label="${stkFavs().includes(m.stk) ? "Quitar de favoritos" : "Guardar en favoritos"}">${stkFavs().includes(m.stk) ? "★" : "☆"}</button></span>` : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${chatLinks(m.text)}</div>${chatPrev(m.text)}` : ""}${m.via ? `<span class="cvia">Prueba enviada por ${esc(nickOf(personById(m.via)) || m.via)} como ${esc(nickOf(who) || m.from)}</span>` : ""}<span class="ctime">${m.ed ? "editado · " : ""}${(m.time || msgTs(m).slice(11, 16))}${mine ? msgTicks(m, c) : ""}</span>
         <button type="button" class="creact" data-react="${esc(mid)}" aria-label="Reaccionar">${icon("smile-plus")}</button>
         ${chatUI.react === mid ? `<div class="rqpick">${QUICK_RE.map(x => `<button type="button" data-re="${x}" data-rmid="${esc(mid)}">${x}</button>`).join("")}<button type="button" data-remore="${esc(mid)}" aria-label="Más emojis">＋</button></div>${chatUI.reactMore === mid ? emojiPanel("re:" + mid) : ""}${msgActions(m, mid, mine)}` : ""}
       </div>
@@ -7436,6 +7444,48 @@ const TREND_LINKS = {
   cm:[["TikTok Creative Center","https://ads.tiktok.com/business/creativecenter/inspiration/popular/hashtag/pc/es","Hashtags, canciones y videos en tendencia"],["Biblioteca de anuncios de Meta","https://www.facebook.com/ads/library/","Los anuncios activos de cualquier supermercado"],["Marketing Directo","https://www.marketingdirecto.com/","Campañas y marketing en español"],["Roastbrief","https://roastbrief.com.mx/","Creatividad y publicidad en Latinoamérica"],["LatamClick","https://www.latamclick.com/","Marketing digital en Latinoamérica"]],
 };
 const TREND_TTL = 3 * 3600e3, trendSt = {};
+// Chat: los links se ven como link (se abren en otra pestaña o en la app de la red) y los de redes muestran una vista previa chica.
+const URL_RE = /\bhttps?:\/\/[^\s<>"']+/gi;
+const TT_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 5.8A4.3 4.3 0 0 1 15.5 3h-3.1v12.4a2.6 2.6 0 1 1-2.6-2.6c.3 0 .5 0 .8.1V9.7a5.8 5.8 0 1 0 5 5.7V9.2a7.4 7.4 0 0 0 4.4 1.4V7.5a4.3 4.3 0 0 1-3.4-1.7z"/></svg>';
+function linkNet(u){
+  let h = ""; try { h = new URL(u).hostname.replace(/^www\.|^m\./, "").toLowerCase(); } catch { return { n:"Link", ic:icon("link"), h:"" }; }
+  const p = (() => { try { return new URL(u).pathname; } catch { return ""; } })();
+  if (/(^|\.)instagram\.com$/.test(h)) return { n:/\/reels?\//.test(p) ? "Reel de Instagram" : /\/stories\//.test(p) ? "Historia de Instagram" : /\/p\//.test(p) ? "Publicación de Instagram" : "Instagram", ic:ICO.IG, k:"ig", h };
+  if (/(^|\.)(facebook\.com|fb\.watch|fb\.com)$/.test(h)) return { n:/\/(reel|videos?|watch)/.test(p) || h === "fb.watch" ? "Video de Facebook" : "Publicación de Facebook", ic:ICO.FB, k:"fb", h };
+  if (/(^|\.)tiktok\.com$/.test(h)) return { n:"Video de TikTok", ic:TT_SVG, k:"tt", h };
+  if (/(^|\.)(youtube\.com|youtu\.be)$/.test(h)) return { n:"Video de YouTube", ic:icon("youtube"), k:"yt", h };
+  if (/(^|\.)canva\.com$/.test(h)) return { n:"Diseño de Canva", ic:icon("palette"), h };
+  if (/(^|\.)drive\.google\.com$|(^|\.)docs\.google\.com$/.test(h)) return { n:"Archivo de Google Drive", ic:icon("folder"), h };
+  return { n:h, ic:icon("link"), h };
+}
+const trimUrl = u => u.replace(/[.,;:!?)\]]+$/, "");
+function chatLinks(text){
+  const t = String(text || ""); let out = "", i = 0;
+  for (const m of t.matchAll(URL_RE)){ const u = trimUrl(m[0]), ln = linkNet(u);
+    out += esc(t.slice(i, m.index)) + `<a class="clink${ln.k ? " " + ln.k : ""}" href="${esc(u)}" target="_blank" rel="noopener noreferrer" title="${esc(u)}">${ln.ic}<span>${esc(ln.n)}</span></a>`;
+    i = m.index + u.length; }
+  return out + esc(t.slice(i));
+}
+const PREVIEWS = {}; // url → { title, text, img } (también queda guardado en el dispositivo)
+const prevCache = u => { if (PREVIEWS[u]) return PREVIEWS[u]; try { const v = JSON.parse(localStorage.getItem("rmh-prev:" + u) || "null"); if (v) PREVIEWS[u] = v; return v; } catch { return null; } };
+const prevCard = (u, ln, v) => `<a class="cprev${v ? " ok" : ""}${ln.k ? " " + ln.k : ""}" data-prev="${esc(u)}" href="${esc(u)}" target="_blank" rel="noopener noreferrer">${v?.img ? `<img src="${esc(v.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : `<span class="cpic">${ln.ic}</span>`}<span class="cptx"><small>${ln.ic}${esc(ln.n)}</small>${v?.title ? `<b>${esc(v.title)}</b>` : ""}${v?.text ? `<em>${esc(v.text)}</em>` : !v ? `<em>${esc(ln.h)}</em>` : ""}</span></a>`;
+function chatPrev(text){ // la primera publicación de redes del mensaje
+  for (const m of String(text || "").matchAll(URL_RE)){ const u = trimUrl(m[0]), ln = linkNet(u); if (ln.k) return prevCard(u, ln, prevCache(u)); }
+  return "";
+}
+const prevAsked = new Set();
+async function chatPreviews(){
+  const els = [...document.querySelectorAll(".cprev[data-prev]:not(.ok)")].filter(el => !prevAsked.has(el.dataset.prev)); if (!els.length || !window.RMH?.token) return;
+  let tok = null; try { tok = await RMH.token(); } catch {} if (!tok) return;
+  for (const u of [...new Set(els.map(el => el.dataset.prev))].slice(0, 6)){
+    prevAsked.add(u);
+    fetch("/api/preview?url=" + encodeURIComponent(u), { headers:{ Authorization:"Bearer " + tok } }).then(r => r.ok ? r.json() : null).then(j => {
+      if (!j?.ok || !(j.title || j.text || j.img)) return;
+      const v = { title:j.title || "", text:j.text || "", img:j.img || "" }; PREVIEWS[u] = v; try { localStorage.setItem("rmh-prev:" + u, JSON.stringify(v)); } catch {}
+      document.querySelectorAll(".cprev[data-prev]").forEach(el => { if (el.dataset.prev === u) el.outerHTML = prevCard(u, linkNet(u), v); });
+    }).catch(() => {});
+  }
+}
 const safeUrl = u => /^https?:\/\//i.test(String(u || "")) ? String(u) : "";
 // Fechas comerciales de Paraguay y Latinoamérica: cada una con cuándo empezar a diseñar, ideas y búsquedas de referencias visuales.
 const nthDow = (y, m, dow, n) => { const d = new Date(y, m - 1, 1); d.setDate(1 + ((dow - d.getDay() + 7) % 7) + (n - 1) * 7); return d; };
@@ -7710,7 +7760,7 @@ function render(){
   if (animate || render.calPage !== page){ render.calPage = page; document.querySelectorAll("#content .calw").forEach(w => { const t = w.querySelector(".d.today"); if (t && w.scrollWidth > w.clientWidth + 4) w.scrollLeft = Math.max(0, t.offsetLeft - 8); }); } // si el calendario no entra, arranca mostrando hoy
   else if (calSL) document.querySelectorAll("#content .calw").forEach((w, i) => { if (calSL[i] != null) w.scrollLeft = calSL[i]; });
   document.documentElement.classList.toggle("chatfull", page === "mensajes" && !!chatUI.mob && !!chatUI.open);
-  chatNotify();
+  chatNotify(); chatPreviews();
   if (window.lucide) lucide.createIcons();
   if (page === "tendg" || page === "tencm") gcseMount();
   if (page === "tvredes"){ tvShow(animate ? 0 : tv.i); tvStart(); } else tvStop();
