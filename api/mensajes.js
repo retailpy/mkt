@@ -6,6 +6,8 @@
 // para contestar se usa Meta Business Suite). La leen solo Admin total, Admin y CM (lo controla la base).
 //
 // La llaman: el cron diario de Vercel y el botón “Actualizar” de la app (con la sesión de Admin o CM).
+// Cada marca se lee en su propia llamada (/api/mensajes?brand=Superseis), todas a la vez: así cada una tiene el minuto
+// entero para Instagram, que Meta tarda mucho en dar. Cada una guarda solo su marca (no pisa a las demás).
 // Probar sin guardar:  /api/mensajes?dry=1&secret=EL_CRON_SECRET
 // Permisos que necesita el META_TOKEN además de los de siempre: pages_messaging, instagram_manage_messages y
 // pages_manage_metadata. En cada cuenta de Instagram tiene que estar activado “Permitir acceso a los mensajes”.
@@ -21,9 +23,13 @@ const tooBig = e => /reduce the amount of data/i.test(e.message || "");
 // REQ_MS (la primera página de la lista de Instagram, hasta LIST_IG_MS: Meta suele tardar más de 12 s en darla);
 // pasados STOP no se piden más cosas; y a los SAVE se guarda lo que haya: lo que ya llegó y, lo que no se llegó a
 // leer, como estaba la vez anterior. STOP + REQ_MS < SAVE: lo último que se pidió llega antes de guardar.
-const REQ_MS = 12000, LIST_IG_MS = 30000, STOP = 36000, SAVE = 50000;
-let t0 = 0;
-const late = () => Date.now() - t0 > STOP;
+// Con una marca por llamada: la lista de Instagram tiene hasta LIST_IG_MS por intento.
+const REQ_MS = 12000, LIST_IG_MS = 40000, STOP = 46000, SAVE = 52000;
+// Cada llamada lleva su propio reloj (Vercel puede atender varias marcas en la misma instancia a la vez).
+const { AsyncLocalStorage } = require("async_hooks");
+const clock = new AsyncLocalStorage();
+const since = () => Date.now() - (clock.getStore()?.t0 || Date.now());
+const late = () => since() > STOP;
 const lateErr = msg => Object.assign(new Error(msg), { late: true });
 
 async function g(path, params, token, ms = REQ_MS){
@@ -42,11 +48,13 @@ async function g(path, params, token, ms = REQ_MS){
 
 // Sigue las páginas de conversaciones (vienen de la más nueva a la más vieja) hasta pasar los 30 días.
 // Si se acaba el tiempo a mitad de camino, devuelve lo que ya leyó (partial). first: otro tope y tiempo para la primera página.
+// pagesUntil: no se piden más páginas pasados esos ms (en Instagram, primero los mensajes de lo que ya llegó).
 async function recentConvs(path, params, pt, first = {}){
   const out = []; let j = await g(path, { ...params, limit: first.limit || params.limit }, pt, first.ms), partial = false;
   for (;;){
     const d = j.data || []; out.push(...d.filter(recent));
     if (out.length >= MAXC || d.some(c => !recent(c)) || !j.paging?.next || !j.paging?.cursors?.after) break;
+    if (first.pagesUntil && since() > first.pagesUntil){ partial = true; break; }
     try { j = await g(path, { ...params, after: j.paging.cursors.after }, pt); }
     catch (e){ if (!e.late) throw e; partial = true; break; }
   }
@@ -82,11 +90,24 @@ async function convsOf(pageId, platform, pt, d = {}, got = []){
     try { return await recentConvs(path, { platform, fields: `id,updated_time,participants,messages.limit(${MSGS}){message,from,created_time,attachments}`, limit: "25" }, pt); }
     catch (e){ if (!tooBig(e)) throw e; }
   }
-  const t1 = Date.now(), ms = platform === "instagram" ? Math.max(REQ_MS, Math.min(LIST_IG_MS, STOP - (Date.now() - t0))) : REQ_MS;
-  const lista = async (limit, first) => { try { return await recentConvs(path, { platform, fields: "id,updated_time", limit }, pt, { limit: first, ms }); } finally { d.lista = secs(t1); } };
-  let light;
-  try { light = await lista("10", "5"); }
-  catch (e){ if (!tooBig(e)) throw e; light = await lista("5", "3"); }
+  // d.intentos queda en el diagnóstico: qué se pidió, cuánto tardó y qué contestó Meta.
+  const t1 = Date.now(), left = () => STOP - since(); let light = null, lastErr = null; d.intentos = [];
+  const att = (fields, first, ms) => { const tt = Date.now();
+    return recentConvs(path, { platform, fields, limit: "10" }, pt, { limit: first, ms, pagesUntil: platform === "instagram" ? 25000 : 0 })
+      .then(r => { d.intentos.push(`${fields} x${first}: ${r.list.length} en ${secs(tt)} s`); return r; },
+            e => { d.intentos.push(`${fields} x${first}: ${tooBig(e) ? "Meta pidió menos datos" : e.message} (${secs(tt)} s)`); throw e; }); };
+  if (platform === "instagram"){
+    // Instagram: Meta tarda mucho y a veces pide traer menos. Se piden a la vez la lista normal y una más liviana
+    // (solo el id, de a 3) y se usa la que llegue primero; si las dos piden menos datos, de a 1.
+    try { light = await Promise.any([att("id,updated_time", "5", Math.min(LIST_IG_MS, left())), att("id", "3", Math.min(LIST_IG_MS, left()))]); }
+    catch (agg){ const errs = agg.errors || [agg]; lastErr = errs.find(e => !e.late) || errs[0];
+      if (errs.some(tooBig) && left() > 6000) try { light = await att("id", "1", Math.min(LIST_IG_MS, left())); } catch (e){ lastErr = e; } }
+  } else {
+    try { light = await att("id,updated_time", "5", REQ_MS); }
+    catch (e){ lastErr = e; if (tooBig(e)) try { light = await att("id,updated_time", "3", REQ_MS); } catch (e2){ lastErr = e2; } }
+  }
+  d.lista = secs(t1);
+  if (!light) throw lastErr || lateErr("Meta tardó demasiado en responder");
   let skipped = 0; const t2 = Date.now();
   const list = (await pool(light.list, 6, async c => {
     if (late()){ skipped++; return null; }
@@ -114,13 +135,35 @@ const NET = { FB: "Facebook", IG: "Instagram" };
 const meOf = (p, net) => (net === "IG" ? [p.pageId, p.igId] : [p.pageId]).map(String); // los id de la marca en esa red
 const fresh = c => c?.ts && Date.now() - new Date(c.ts).getTime() <= DAYS * 864e5;
 
-module.exports = async (req, res) => {
-  t0 = Date.now();
+// Sin ?brand: se llama a esta misma función una vez por marca, todas a la vez (cada una con su minuto), con la
+// misma autorización (la del cron o la sesión de quien tocó “Actualizar”), y se junta el resumen.
+async function fanOut(req, res, dry){
+  const { byBrand } = await brandPages();
+  const host = req.headers["x-forwarded-host"] || req.headers.host, auth = req.headers.authorization || "";
+  const extra = new URLSearchParams(); if (req.query.secret) extra.set("secret", String(req.query.secret)); if (dry) extra.set("dry", "1");
+  const out = await Promise.all(ORDEN.filter(b => byBrand[b]).map(async b => {
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 58000);
+    try {
+      const r = await fetch(`https://${host}/api/mensajes?brand=${encodeURIComponent(b)}${extra.toString() ? "&" + extra : ""}`, { headers: auth ? { authorization: auth } : {}, signal: ctl.signal });
+      const j = await r.json().catch(() => ({}));
+      return [b, r.ok && j.ok, r.ok && j.ok ? j.summary?.[b] || {} : { err: j.error || `HTTP ${r.status}` }];
+    } catch (e){ return [b, false, { err: e.name === "AbortError" ? "no contestó a tiempo" : e.message }]; }
+    finally { clearTimeout(timer); }
+  }));
+  const summary = Object.fromEntries(out.map(([b, , s]) => [b, s])), ok = out.some(([, k]) => k);
+  console.log(`[mensajes] ${JSON.stringify(summary)}`);
+  return res.status(ok ? 200 : 500).json(ok ? { ok, dry, summary } : { ok, error: out[0]?.[2]?.err || "No se pudo leer ninguna marca", summary });
+}
+
+module.exports = (req, res) => clock.run({ t0: Date.now() }, () => handle(req, res));
+async function handle(req, res){
   const who = await cronOrUser(req), cron = who === "cron";
   if (!who) return res.status(401).json({ ok: false, error: "No autorizado" });
   if (!process.env.META_TOKEN) return res.status(500).json({ ok: false, error: "Falta la variable META_TOKEN en Vercel" });
-  const dry = req.query.dry === "1" && cron;
+  const dry = req.query.dry === "1" && cron, only = String(req.query.brand || "");
   try {
+    if (!only) return await fanOut(req, res, dry);
+    if (!ORDEN.includes(only)) return res.status(400).json({ ok: false, error: "Marca desconocida" });
     // Lo guardado la vez anterior: si una red no se llega a leer, quedan esas conversaciones (no se pierde nada).
     const [{ byBrand }, before] = await Promise.all([brandPages(), readMeta("s:META_INBOX").catch(() => null)]);
     const prev = before && typeof before === "object" ? before : {};
@@ -131,24 +174,24 @@ module.exports = async (req, res) => {
     for (;;){ (j.data || []).forEach(p => { tokens[p.id] = p.access_token; }); if (!j.paging?.next) break; j = await fetch(j.paging.next).then(r => r.json()); if (j.error) break; }
     // Cada marca y cada red a la vez; el resultado de cada una se anota apenas llega.
     const st = {};
-    const work = Promise.all(ORDEN.map(async (b) => {
+    const work = Promise.all([only].map(async (b) => {
       const p = byBrand[b]; if (!p) return;
       const s = st[b] = { p, nets: p.igId ? ["FB", "IG"] : ["FB"], res: {}, err: null, diag: {}, got: {} };
       const pt = tokens[p.pageId];
       if (!pt){ s.err = "Sin acceso a la página (no se pudo obtener su token)"; return; }
       await Promise.all(s.nets.map(async net => {
         const d = s.diag[net] = {}, t1 = Date.now();
-        try { const r = await convsOf(p.pageId, net === "IG" ? "instagram" : "messenger", pt, d, s.got[net] = []); s.res[net] = { ...r, list: r.list.map(c => shape(c, net, meOf(p, net))) }; d.n = r.list.length; if (r.skipped) d.omitidas = r.skipped; }
+        try { const r = await convsOf(p.pageId, net === "IG" ? "instagram" : "messenger", pt, d, s.got[net] = []); s.res[net] = { ...r, list: r.list.map(c => shape(c, net, meOf(p, net))).filter(c => !c.ts || fresh(c)) }; d.n = s.res[net].list.length; if (r.skipped) d.omitidas = r.skipped; }
         catch (e){ s.res[net] = { err: `${e.message}${e.code === 10 || e.code === 200 || e.code === 230 ? " (falta un permiso de mensajes en el token)" : ""}` }; }
         d.total = secs(t1);
       }));
     }));
     let timer;
-    const intime = await Promise.race([work.then(() => true), new Promise(r => { timer = setTimeout(() => r(false), Math.max(1000, SAVE - (Date.now() - t0))); })]);
+    const intime = await Promise.race([work.then(() => true), new Promise(r => { timer = setTimeout(() => r(false), Math.max(1000, SAVE - since())); })]);
     clearTimeout(timer);
     // Se arma lo que se guarda con lo que haya llegado hasta ahora.
     const payload = { updated: new Date().toISOString() }, summary = {};
-    for (const b of ORDEN){
+    for (const b of [only]){
       const s = st[b]; if (!s) continue;
       const convs = [], errs = s.err ? [s.err] : [], n = {};
       for (const net of s.nets){
@@ -177,4 +220,4 @@ module.exports = async (req, res) => {
     console.error(`[${req.url}] ERROR: ${e.message}${e.code ? ` (código ${e.code})` : ""}`);
     return res.status(500).json({ ok: false, error: e.message, hint: tokenHint(e) });
   }
-};
+}
