@@ -105,6 +105,19 @@ async function save(key, data){
   return t;
 }
 
+// Leer lo que ya se guardó (solo s:META_POSTS), con la misma clave que para guardar.
+async function readMeta(key){
+  const url = process.env.SUPABASE_URL, apikey = process.env.SUPABASE_KEY, secret = process.env.INGEST_KEY;
+  if (!url || !apikey || !secret) throw new Error("Faltan variables SUPABASE_URL, SUPABASE_KEY o INGEST_KEY en Vercel");
+  const r = await fetch(`${url}/rest/v1/rpc/read_meta`, {
+    method: "POST",
+    headers: { apikey, Authorization: `Bearer ${apikey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_key: key, p_secret: secret }),
+  });
+  if (!r.ok) throw new Error(`Supabase: ${await r.text()}`);
+  return r.json();
+}
+
 // Fecha y mes de hoy en Paraguay.
 function today(){
   const d = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date());
@@ -118,4 +131,4 @@ function tokenHint(e){
   return null;
 }
 
-module.exports = { NOMBRES, ORDEN, authorized, allowedUser, cronOrUser, graph, brandPages, save, today, tokenHint };
+module.exports = { NOMBRES, ORDEN, authorized, allowedUser, cronOrUser, graph, brandPages, save, readMeta, today, tokenHint };
