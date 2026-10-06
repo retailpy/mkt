@@ -146,11 +146,14 @@ async function fanOut(req, res, dry){
     try {
       const r = await fetch(`https://${host}/api/mensajes?brand=${encodeURIComponent(b)}${extra.toString() ? "&" + extra : ""}`, { headers: auth ? { authorization: auth } : {}, signal: ctl.signal });
       const j = await r.json().catch(() => ({}));
-      return [b, r.ok && j.ok, r.ok && j.ok ? j.summary?.[b] || {} : { err: j.error || `HTTP ${r.status}` }];
-    } catch (e){ return [b, false, { err: e.name === "AbortError" ? "no contestó a tiempo" : e.message }]; }
+      return [b, r.ok && j.ok, r.ok && j.ok ? j.summary?.[b] || {} : { err: j.error || `HTTP ${r.status}` }, j.ok === undefined || r.status === 401 || r.status === 403];
+    } catch (e){ return [b, false, { err: e.name === "AbortError" ? "no contestó a tiempo" : e.message }, e.name !== "AbortError"]; }
     finally { clearTimeout(timer); }
   }));
   const summary = Object.fromEntries(out.map(([b, , s]) => [b, s])), ok = out.some(([, k]) => k);
+  // Si ninguna llamada por marca pudo ni empezar (por ejemplo, Vercel no deja que la función se llame a sí misma),
+  // se leen todas las marcas acá mismo, como antes.
+  if (!ok && out.length && out.every(([, , , blocked]) => blocked)){ console.log(`[mensajes] sin llamadas por marca (${out[0][2].err}): se leen todas juntas`); return false; }
   console.log(`[mensajes] ${JSON.stringify(summary)}`);
   return res.status(ok ? 200 : 500).json(ok ? { ok, dry, summary } : { ok, error: out[0]?.[2]?.err || "No se pudo leer ninguna marca", summary });
 }
@@ -162,8 +165,9 @@ async function handle(req, res){
   if (!process.env.META_TOKEN) return res.status(500).json({ ok: false, error: "Falta la variable META_TOKEN en Vercel" });
   const dry = req.query.dry === "1" && cron, only = String(req.query.brand || "");
   try {
-    if (!only) return await fanOut(req, res, dry);
-    if (!ORDEN.includes(only)) return res.status(400).json({ ok: false, error: "Marca desconocida" });
+    if (!only && await fanOut(req, res, dry) !== false) return;
+    if (only && !ORDEN.includes(only)) return res.status(400).json({ ok: false, error: "Marca desconocida" });
+    const brands = only ? [only] : ORDEN;
     // Lo guardado la vez anterior: si una red no se llega a leer, quedan esas conversaciones (no se pierde nada).
     const [{ byBrand }, before] = await Promise.all([brandPages(), readMeta("s:META_INBOX").catch(() => null)]);
     const prev = before && typeof before === "object" ? before : {};
@@ -174,7 +178,7 @@ async function handle(req, res){
     for (;;){ (j.data || []).forEach(p => { tokens[p.id] = p.access_token; }); if (!j.paging?.next) break; j = await fetch(j.paging.next).then(r => r.json()); if (j.error) break; }
     // Cada marca y cada red a la vez; el resultado de cada una se anota apenas llega.
     const st = {};
-    const work = Promise.all([only].map(async (b) => {
+    const work = Promise.all(brands.map(async (b) => {
       const p = byBrand[b]; if (!p) return;
       const s = st[b] = { p, nets: p.igId ? ["FB", "IG"] : ["FB"], res: {}, err: null, diag: {}, got: {} };
       const pt = tokens[p.pageId];
@@ -191,7 +195,7 @@ async function handle(req, res){
     clearTimeout(timer);
     // Se arma lo que se guarda con lo que haya llegado hasta ahora.
     const payload = { updated: new Date().toISOString() }, summary = {};
-    for (const b of [only]){
+    for (const b of brands){
       const s = st[b]; if (!s) continue;
       const convs = [], errs = s.err ? [s.err] : [], n = {};
       for (const net of s.nets){
