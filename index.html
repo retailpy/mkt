@@ -511,6 +511,8 @@ html.nomotion .picon{animation:none}
 /* Nada se sale de la pantalla: textos y links largos (por ejemplo en el texto del pedido) bajan de línea */
 .main,#content,.jpage,.jp-sec,.panel{min-width:0}
 .jpage{overflow-wrap:anywhere}.jpage img,.rtview img,.rtedit img{max-width:100%;height:auto}
+.rtimg{display:block;max-width:min(100%,560px);max-height:520px;width:auto;margin:8px 0;border-radius:6px;border:1px solid #e5e7eb;background:#f8fafc}
+.rtimg.up{opacity:.55}.rtview .rtimg{cursor:zoom-in}
 .jpnow .chips,.jp-top{flex-wrap:wrap}
 .jfgrid > div{min-width:0}
 @media (max-width:600px){ .jfgrid{grid-template-columns:repeat(2,minmax(0,1fr)) !important} }
@@ -4457,6 +4459,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-jcse
 // ----- Texto del pedido: un mini editor (tamaño, negrita, cursiva, subrayado, listas) para el brief, -----
 // el texto que va en el diseño o el guion del video. Lo editan Admin total y el responsable.
 const RT_TAGS = { B:"b", STRONG:"b", I:"i", EM:"i", U:"u", UL:"ul", OL:"ol", LI:"li", P:"p", DIV:"p", BR:"br", H2:"h2", H3:"h3", SPAN:null, FONT:null };
+const rtImg = id => `<img class="rtimg" data-drive="${id}" src="https://drive.google.com/thumbnail?id=${id}&amp;sz=w1600" alt="Imagen" loading="lazy" referrerpolicy="no-referrer" onerror="imgRetry(this)">`;
 function cleanRich(html){
   const t = document.createElement("template"); t.innerHTML = String(html || "");
   const walk = node => [...node.childNodes].map(n => {
@@ -4465,6 +4468,9 @@ function cleanRich(html){
     const tag = n.tagName, inner = walk(n);
     if (tag === "FONT"){ const sz = +n.getAttribute("size"); return sz >= 5 ? `<span class="rt-l">${inner}</span>` : sz && sz <= 2 ? `<span class="rt-s">${inner}</span>` : inner; }
     if (tag === "SPAN"){ const c = n.className; return c === "rt-l" || c === "rt-s" ? `<span class="${c}">${inner}</span>` : inner; }
+    // Imágenes: solo las subidas a Google Drive (se guarda el id; la imagen no ocupa lugar en la base).
+    // Una que todavía se está subiendo (sin id) no se guarda.
+    if (tag === "IMG"){ const id = n.getAttribute("data-drive") || ""; return /^[\w-]{10,80}$/.test(id) ? rtImg(id) : ""; }
     const k = RT_TAGS[tag]; if (k === undefined) return inner;
     return k === "br" ? "<br>" : `<${k}>${inner}</${k}>`;
   }).join("");
@@ -4480,7 +4486,8 @@ function rtEditor(id, html, ph){
   return `<div class="rtwrap"><div class="rtbar" role="toolbar" aria-label="Formato del texto">
       <button type="button" class="btn ib sm" data-rt="small" title="Letra más chica" aria-label="Letra más chica">A−</button><button type="button" class="btn ib sm" data-rt="big" title="Letra más grande" aria-label="Letra más grande">A+</button>
       ${tb.map(([c, i, l]) => `<button type="button" class="btn ib sm" data-rt="${c}" title="${l}" aria-label="${l}">${icon(i)}</button>`).join("")}
-      <button type="button" class="btn ib sm" data-rt="clear" title="Quitar formato" aria-label="Quitar formato">${icon("remove-formatting")}</button></div>
+      <button type="button" class="btn ib sm" data-rt="clear" title="Quitar formato" aria-label="Quitar formato">${icon("remove-formatting")}</button>
+      <button type="button" class="btn ib sm" data-rt="img" title="Agregar una imagen de ejemplo (se guarda en Google Drive)" aria-label="Agregar imagen">${icon("image-plus")}</button><input type="file" class="rtimgin" accept="image/*" hidden></div>
     <div class="rtedit" id="${id}" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Texto del pedido" data-ph="${esc(ph || BRIEF_PH["Diseño"])}">${html}</div></div>`;
 }
 function jobBriefSection(j){
@@ -4493,13 +4500,43 @@ function jobBriefSection(j){
     : `<div class="rtview">${html}</div>`}</section>`;
 }
 document.addEventListener("mousedown", e => { if (e.target.closest("[data-rt]")) e.preventDefault(); }); // no perder la selección
+// ----- Imágenes en el texto del pedido: se achican, se suben a Google Drive (carpeta de fotos, por mes) y en el texto
+// queda solo el id. Se pueden elegir con el botón, pegar (Ctrl+V) o arrastrar a la hoja. -----
+const rtUploading = ed => !!ed?.querySelector("img[data-up]");
+function rtSaveSel(ed){ const s = getSelection(); ed._sel = s.rangeCount && ed.contains(s.getRangeAt(0).commonAncestorContainer) ? s.getRangeAt(0).cloneRange() : null; }
+async function rtAddImage(ed, file){
+  if (!ed || !file || !/^image\//.test(file.type)) return;
+  if (window.RMH?.previewing) return toast("Estás en vista previa: no se suben imágenes.");
+  let shr; try { shr = await shrinkPhoto(file, 1600, .85); } catch { return toast("No se pudo leer la imagen. Probá con otra."); }
+  const edId = ed.id, tmp = "up" + Date.now().toString(36), local = URL.createObjectURL(shr.blob), img = document.createElement("img");
+  img.src = local; img.dataset.up = tmp; img.className = "rtimg up"; img.alt = "Subiendo…";
+  const r = ed._sel && ed.contains(ed._sel.commonAncestorContainer) ? ed._sel : null;
+  if (r){ r.deleteContents(); r.insertNode(img); r.setStartAfter(img); r.collapse(true); } else ed.appendChild(img);
+  ed.dataset.dirty = "1"; ed._sel = null;
+  const j = await integ({ action:"chat_image", type:"image/jpeg", data:await toB64(shr.blob) }).catch(() => ({ ok:false }));
+  const el = document.querySelector(`img[data-up="${tmp}"]`); // la hoja pudo volver a dibujarse mientras subía
+  if (!j.ok || !j.id){ el?.remove(); URL.revokeObjectURL(local); return toast(j.error || "No se pudo subir la imagen. Probá de nuevo."); }
+  IMG_LOCAL[j.id] = local;
+  if (el){ el.dataset.drive = j.id; delete el.dataset.up; el.classList.remove("up"); el.alt = "Imagen"; el.closest(".rtedit")?.setAttribute("data-dirty", "1"); }
+  else { const ed2 = document.getElementById(edId); if (!ed2) return toast("La imagen se subió, pero la hoja se cerró: volvé a agregarla."); ed2.insertAdjacentHTML("beforeend", rtImg(j.id)); ed2.dataset.dirty = "1"; }
+  toast("Imagen agregada al texto (guardada en Google Drive).");
+}
+document.addEventListener("change", e => { if (!e.target.classList?.contains("rtimgin")) return; const f = e.target.files?.[0]; e.target.value = ""; if (f) rtAddImage(e.target.closest(".rtwrap")?.querySelector(".rtedit"), f); });
+document.addEventListener("paste", e => { const ed = e.target.closest?.(".rtedit"); if (!ed) return; const f = [...(e.clipboardData?.files || [])].find(x => /^image\//.test(x.type)); if (!f) return; e.preventDefault(); rtSaveSel(ed); rtAddImage(ed, f); });
+document.addEventListener("dragover", e => { if (e.target.closest?.(".rtedit") && [...(e.dataTransfer?.items || [])].some(i => i.kind === "file")) e.preventDefault(); });
+document.addEventListener("drop", e => { const ed = e.target.closest?.(".rtedit"); if (!ed) return; const f = [...(e.dataTransfer?.files || [])].find(x => /^image\//.test(x.type)); if (!f) return; e.preventDefault();
+  const r = document.caretRangeFromPoint?.(e.clientX, e.clientY); ed._sel = r && ed.contains(r.startContainer) ? r : null; rtAddImage(ed, f); });
+// En la vista del pedido, tocar una imagen la abre en grande.
+document.addEventListener("click", e => { const im = e.target.closest?.(".rtview img[data-drive]"); if (im) openPhoto(im.dataset.drive); });
 document.addEventListener("input", e => { if (e.target.classList?.contains("rtedit")) e.target.dataset.dirty = "1"; });
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-rt]"); if (b){ const ed = b.closest(".rtwrap")?.querySelector(".rtedit"); if (!ed) return; ed.dataset.dirty = "1"; ed.focus(); const c = b.dataset.rt;
+    if (c === "img"){ rtSaveSel(ed); b.parentElement.querySelector(".rtimgin")?.click(); return; }
     if (c === "big" || c === "small") document.execCommand("fontSize", false, c === "big" ? "5" : "2");
     else if (c === "clear") document.execCommand("removeFormat");
     else document.execCommand(c); return; }
   const sv = e.target.closest("[data-briefsave]"); if (sv){ const j = jobById(sv.dataset.briefsave), ed = document.getElementById("jBrief"); if (!j || !ed || !canEditBrief(j)) return;
+    if (rtUploading(ed)){ toast("Esperá que termine de subir la imagen."); return; }
     j.brief = cleanRich(ed.innerHTML); j.briefBy = viewer.name; j.briefAt = new Date().toISOString(); render(); toast("Texto del pedido guardado."); }
 });
 // ----- Recorrido del pedido: cada paso con su nombre, lo hecho, dónde está ahora y qué sigue. Cada entrega es una versión. -----
@@ -5040,6 +5077,7 @@ document.addEventListener("click", e => {
 document.addEventListener("change", e => { if (e.target.id === "poBrand"){ const cm = CM_BY_BRAND[e.target.value], s2 = $("#poCm"); if (cm && s2 && [...s2.options].some(o => o.value === cm)) s2.value = cm; } });
 document.addEventListener("submit", e => {
   if (e.target.id !== "postForm") return; e.preventDefault();
+  if (rtUploading(document.getElementById("poBrief"))){ toast("Esperá que termine de subir la imagen."); return; }
   const f = postUI.form; readPostForm(f.post); const title = $("#poTitle").value.trim(), date = $("#poDate").value;
   if (!title || !date){ toast("Completá el tema y la fecha."); return; }
   const d = f.post, common = { date, brand:$("#poBrand").value, title, cm:$("#poCm").value, status:$("#poStatus").value, notes:$("#poNotes").value.trim(), requester:d.requester || "Marketing",
@@ -6071,9 +6109,12 @@ const dmId = (a, b) => "dm-" + [a, b].sort().join("-");
 // Mensajes privados con una persona: todas las conversaciones con ella, en orden. Con uno mismo (como en WhatsApp):
 // la conversación tiene a = b = esa persona. Lo de antes de “Vaciar chat” no se ve.
 const dmThreads = id => myThreads().filter(t => id === viewer?.id ? t.a === id && t.b === id : (t.a === id || t.b === id) && t.a !== t.b);
-const dmMsgs = id => { const cl = clearedAt("p:" + id); return dmThreads(id).flatMap(t => t.msgs).filter(m => !cl || msgTs(m) > cl).sort((x, y) => msgTs(x).localeCompare(msgTs(y))); };
+// Orden de los mensajes: el de llegada (como WhatsApp), igual para todos. No se ordena por la hora de cada
+// dispositivo: con una compu adelantada, sus mensajes quedaban abajo de los que se mandaron después.
+// (Solo si una charla quedó repartida en varias conversaciones viejas se ordena por hora.)
+const dmMsgs = id => { const cl = clearedAt("p:" + id), ts = dmThreads(id), all = ts.flatMap(t => t.msgs).filter(m => !cl || msgTs(m) > cl); return ts.length > 1 ? all.sort((x, y) => msgTs(x).localeCompare(msgTs(y))) : all; };
 const dmUnread = id => { const cl = clearedAt("p:" + id); return dmThreads(id).reduce((n, t) => n + t.msgs.filter(m => m.from !== viewer.id && !m.read && (!cl || msgTs(m) > cl)).length, 0); };
-const grpMsgs = gid => { const cl = clearedAt("g:" + gid); return (CHATS[gid]?.msgs || []).filter(m => !cl || msgTs(m) > cl).sort((x, y) => msgTs(x).localeCompare(msgTs(y))); };
+const grpMsgs = gid => { const cl = clearedAt("g:" + gid); return (CHATS[gid]?.msgs || []).filter(m => !cl || msgTs(m) > cl); };
 const grpUnread = gid => { const c = CHATS[gid]; if (!c) return 0; const s = c.seen?.[viewer.id] || "", cl = clearedAt("g:" + gid); return c.msgs.filter(m => m.from !== viewer.id && msgTs(m) > s && (!cl || msgTs(m) > cl)).length; };
 const chatUnreadLoud = () => (viewer ? chatGroupsMine().filter(g => !g.archived && !isMuted("g:" + g.id)).reduce((n, g) => n + grpUnread(g.id), 0) + PEOPLE.filter(pp => pp.id !== viewer.id && !isMuted("p:" + pp.id)).reduce((n, pp) => n + dmUnread(pp.id), 0) : 0);
 const chatUnreadTotal = () => (viewer ? chatGroupsMine().filter(g => !g.archived).reduce((n, g) => n + grpUnread(g.id), 0) + PEOPLE.filter(pp => pp.id !== viewer.id).reduce((n, pp) => n + dmUnread(pp.id), 0) : 0);
@@ -6157,7 +6198,7 @@ function chatConv(){
 }
 function markRead(c){
   if (!c || document.visibilityState === "hidden") return;
-  if (c.kind === "g"){ const ch = CHATS[c.id] || (CHATS[c.id] = { id:c.id, msgs:[], seen:{} }); const last = c.msgs.length ? msgTs(c.msgs[c.msgs.length - 1]) : "";
+  if (c.kind === "g"){ const ch = CHATS[c.id] || (CHATS[c.id] = { id:c.id, msgs:[], seen:{} }); const last = c.msgs.reduce((mx, m) => msgTs(m) > mx ? msgTs(m) : mx, "");
     if (last && (ch.seen?.[viewer.id] || "") < last){ ch.seen = { ...(ch.seen || {}), [viewer.id]:last }; setTimeout(renderNav, 0); } }
   else if (dmUnread(c.id)){ dmThreads(c.id).forEach(t => t.msgs.forEach(m => { if (m.from !== viewer.id) m.read = true; })); setTimeout(renderNav, 0); }
 }
@@ -6173,6 +6214,17 @@ function msgActions(m, mid, mine){
   const it = (a, ic, t, cls = "") => `<button type="button" class="${cls}" data-cact="${a}|${esc(mid)}">${icon(ic)}<span>${t}</span></button>`;
   return `<div class="cacts" role="menu">${it("reply", "reply", "Responder")}${it("fwd", "forward", "Reenviar")}${m.text || m.gif ? it("copy", "copy", "Copiar") : ""}${mine && m.text ? it("edit", "pencil", "Editar") : ""}${mine ? it("del", "trash-2", "Eliminar", "danger") : ""}</div>`;
 }
+// Hora de un mensaje nuevo: la del servidor (si la compu está adelantada o atrasada se corrige) y siempre
+// un poco después del último mensaje de esa charla, así lo que se manda último queda abajo para todos.
+const chatNow = () => new Date(Date.now() + (window.RMH?.clockOffset || 0));
+const convRaw = open => { const [k, id] = open.split(/:(.*)/s); return k === "g" ? CHATS[id]?.msgs || [] : dmThreads(id).flatMap(t => t.msgs); };
+const pad2 = n => String(n).padStart(2, "0");
+function msgStamp(open){
+  let d = chatNow(); const last = convRaw(open).reduce((mx, m) => { const t = Date.parse(msgTs(m)); return t > mx ? t : mx; }, 0);
+  if (last && d.getTime() <= last) d = new Date(last + 1);
+  return { ts:d.toISOString(), date:`${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`, time:`${pad2(d.getHours())}:${pad2(d.getMinutes())}` };
+}
+const msgByIdIn = (open, id) => convRaw(open).find(m => m.id === id);
 function convPush(open, m){ // agrega un mensaje a una conversación (grupo o privada)
   const [k, id] = open.split(/:(.*)/s);
   if (k === "g"){ const ch = CHATS[id] || (CHATS[id] = { id, msgs:[], seen:{} }); ch.msgs.push(m); ch.seen = { ...(ch.seen || {}), [viewer.id]:m.ts }; }
@@ -6184,7 +6236,7 @@ document.addEventListener("click", async e => {
   const x = e.target.closest("[data-cbarx]"); if (x){ chatUI.reply = null; chatUI.edit = null; const inp = document.getElementById("chatInput"); if (inp && x.dataset.cbarx === "edit") inp.value = ""; render(); return; }
   const fw = e.target.closest("[data-fwto]"); if (fw){ const src = chatUI.fwd; document.getElementById("fwpop")?.remove(); chatUI.fwd = null; if (!src) return;
     if (window.RMH?.previewing) return toast("Estás en vista previa: no se reenvía.");
-    const now = new Date(); convPush(fw.dataset.fwto, { id:newMsgId(), from:viewer.id, text:src.text || "", ...(src.gif ? { gif:src.gif } : {}), ...(src.stk ? { stk:src.stk } : {}), ...(src.img?.id ? { img:{ id:src.img.id, w:src.img.w, h:src.img.h } } : {}), fw:true, ts:now.toISOString(), date:TODAY, time:nowTime(), read:false, re:{} });
+    convPush(fw.dataset.fwto, { id:newMsgId(), from:viewer.id, text:src.text || "", ...(src.gif ? { gif:src.gif } : {}), ...(src.stk ? { stk:src.stk } : {}), ...(src.img?.id ? { img:{ id:src.img.id, w:src.img.w, h:src.img.h } } : {}), fw:true, ...msgStamp(fw.dataset.fwto), read:false, re:{} });
     render(); window.RMH?.flushNow?.(); toast(`Reenviado a ${fw.dataset.fwname}.`); return; }
   if (e.target.closest("[data-fwclose]")){ document.getElementById("fwpop")?.remove(); chatUI.fwd = null; return; }
   const b = e.target.closest("[data-cact]"); if (!b) return; e.stopPropagation();
@@ -6211,6 +6263,10 @@ document.addEventListener("click", async e => {
 // carpeta por mes), no en la base. En el chat se ven chicas; al tocarlas se abren grandes (y con otro toque, a tamaño real).
 const IMG_LOCAL = {}; // id de Drive → la foto en este dispositivo: quien la subió la ve al instante (Drive tarda unos segundos en la miniatura)
 const driveImg = (id, w = 640) => IMG_LOCAL[id] || `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${w}`;
+// Foto que todavía se está subiendo: quien la manda la ve con “Subiendo…”; los demás, el lugar reservado.
+// Si quedó a medio subir (se cerró la app), a los 3 minutos dice que no se envió.
+const photoUp = (im, m) => { const loc = IMG_LOCAL["up:" + m.id], late = Date.now() - Date.parse(msgTs(m)) > 3 * 60e3 && !loc;
+  return `<span class="cimg up${late ? " broken" : ""}" style="aspect-ratio:${+im.w || 4}/${+im.h || 3}">${loc ? `<img src="${esc(loc)}" alt="">` : ""}${late ? "" : `<span class="cupl">${icon("loader-circle")} ${loc ? "Subiendo…" : "Enviando foto…"}</span>`}</span>`; };
 const photoTag = im => `<button type="button" class="cimg" data-cimg="${esc(im.id)}" style="aspect-ratio:${+im.w || 4}/${+im.h || 3}" aria-label="Ver la foto en grande"><img src="${esc(driveImg(im.id))}" alt="Foto" loading="lazy" referrerpolicy="no-referrer" onerror="imgRetry(this)"></button>`;
 // Recién subida, Drive puede no tener la miniatura todavía: se reintenta unas veces.
 function imgRetry(el){ const n = +(el.dataset.r || 0) + 1; if (n > 4 || !/^https:/.test(el.src)){ el.closest(".cimg,.bkimg")?.classList.add("broken"); return; } el.dataset.r = n; setTimeout(() => { el.src = el.src.replace(/&r=\d+$/, "") + "&r=" + n; }, 1500 * n); }
@@ -6232,20 +6288,23 @@ async function sendPhoto(file){
   if (window.RMH?.previewing) return toast("Estás en vista previa (“ver como”): las fotos no se envían.");
   if (!/^image\//.test(file.type)) return toast("Elegí una imagen (JPG, PNG o WEBP).");
   if (chatUI.up) return toast("Esperá que termine de subir la foto anterior.");
-  const open = chatUI.open; let local = "";
+  const open = chatUI.open; let local = "", mid = null;
+  const drop = () => { if (!mid) return; for (const arr of [CHATS[open.slice(2)]?.msgs, ...THREADS.map(t => t.msgs)]){ const i = (arr || []).findIndex(m => m.id === mid); if (i >= 0){ arr.splice(i, 1); break; } } };
   try {
     const { blob, w, h } = await shrinkPhoto(file);
     local = URL.createObjectURL(blob);
-    chatUI.up = { open, url:local, w, h }; chatUI.keepBottom = true; render();
-    const j = await integ({ action:"chat_image", type:"image/jpeg", data:await toB64(blob) });
-    if (!j.ok || !j.id){ toast(j.error || "No se pudo subir la foto. Probá de nuevo."); return; }
-    IMG_LOCAL[j.id] = local; local = "";
-    const now = new Date();
-    convPush(open, { id:newMsgId(), from:viewer.id, text:"", img:{ id:j.id, w, h }, ts:now.toISOString(), date:TODAY, time:nowTime(), read:false, re:{}, ...(chatUI.reply && chatUI.open === open ? { rp:chatUI.reply } : {}) });
+    // La foto queda en su lugar desde que se manda: lo que se escribe mientras sube va debajo (para todos).
+    mid = newMsgId(); IMG_LOCAL["up:" + mid] = local;
+    convPush(open, { id:mid, from:viewer.id, text:"", img:{ up:1, w, h }, ...msgStamp(open), read:false, re:{}, ...(chatUI.reply && chatUI.open === open ? { rp:chatUI.reply } : {}) });
     if (chatUI.open === open) chatUI.reply = null;
-    window.RMH?.flushNow?.();
-  } catch { toast("No se pudo preparar la foto. Probá con otra."); }
-  finally { chatUI.up = null; if (local) URL.revokeObjectURL(local); chatUI.keepBottom = true; render(); }
+    chatUI.up = { open }; chatUI.keepBottom = true; render(); window.RMH?.flushNow?.();
+    const j = await integ({ action:"chat_image", type:"image/jpeg", data:await toB64(blob) });
+    if (!j.ok || !j.id){ drop(); toast(j.error || "No se pudo subir la foto. Probá de nuevo."); return; }
+    IMG_LOCAL[j.id] = local; local = "";
+    const m = msgByIdIn(open, mid); if (m) m.img = { id:j.id, w, h }; else drop();
+    mid = null; window.RMH?.flushNow?.();
+  } catch { drop(); toast("No se pudo preparar la foto. Probá con otra."); }
+  finally { chatUI.up = null; if (local && !mid) URL.revokeObjectURL(local); chatUI.keepBottom = true; render(); }
 }
 function openPhoto(id){
   document.getElementById("imgbox")?.remove();
@@ -6301,7 +6360,7 @@ document.addEventListener("change", e => { if (e.target.id === "chatPhoto"){ con
 function bubbles(c){
   let lastDay = "", lastFrom = "";
   return c.msgs.map((m, i) => {
-    const day = msgTs(m).slice(0, 10), mine = m.from === viewer.id, who = personById(m.from);
+    const day = m.date || msgTs(m).slice(0, 10), mine = m.from === viewer.id, who = personById(m.from);
     const sep = day !== lastDay ? `<div class="cday"><span>${dayLbl(day)}</span></div>` : "";
     const head = !mine && (sep || lastFrom !== m.from) && c.kind === "g";
     lastDay = day; lastFrom = m.from;
@@ -6310,7 +6369,7 @@ function bubbles(c){
     if (m.del) return `${sep}<div class="cmsg ${mine ? "me" : ""}" data-mid="${esc(mid)}">${!mine && c.kind === "g" ? (head ? `<span class="cmav">${who ? avatarHTML(who) : ""}</span>` : `<span class="cmav"></span>`) : ""}
       <div class="cbub cdelb">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}<div class="ctext cdel">${icon("ban")} <i>${mine ? "Eliminaste este mensaje." : "Se eliminó este mensaje."}</i></div><span class="ctime">${(m.time || msgTs(m).slice(11, 16))}</span></div></div>`;
     return `${sep}<div class="cmsg ${mine ? "me" : ""}" data-mid="${esc(mid)}">${!mine && c.kind === "g" ? (head ? `<span class="cmav">${who ? avatarHTML(who) : ""}</span>` : `<span class="cmav"></span>`) : ""}
-      <div class="cbub${!m.text && !m.rp && !m.fw && ((m.stk && stkSrc(m.stk)) || m.gif || m.img?.id) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.fw ? `<span class="cfw">${icon("forward")} Reenviado</span>` : ""}${m.rp ? `<button type="button" class="crq" data-cjump="${esc(m.rp.id)}"><b>${esc(m.rp.from === viewer.id ? "Vos" : nickOf(personById(m.rp.from)) || "")}</b><span>${esc(m.rp.t || "")}</span></button>` : ""}${m.stk && stkSrc(m.stk) ? `<span class="cstkw"><img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer"><button type="button" class="cstkfav${stkFavs().includes(m.stk) ? " on" : ""}" data-stkfav="${esc(m.stk)}" title="${stkFavs().includes(m.stk) ? "Está en tus favoritos (tocá para quitarlo)" : "Guardar en mis favoritos"}" aria-label="${stkFavs().includes(m.stk) ? "Quitar de favoritos" : "Guardar en favoritos"}">${stkFavs().includes(m.stk) ? "★" : "☆"}</button></span>` : ""}${m.img?.id ? photoTag(m.img) : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${chatLinks(m.text)}</div>${chatPrev(m.text)}` : ""}${m.via ? `<span class="cvia">Prueba enviada por ${esc(nickOf(personById(m.via)) || m.via)} como ${esc(nickOf(who) || m.from)}</span>` : ""}<span class="ctime">${m.ed ? "editado · " : ""}${(m.time || msgTs(m).slice(11, 16))}${mine ? msgTicks(m, c) : ""}</span>
+      <div class="cbub${!m.text && !m.rp && !m.fw && ((m.stk && stkSrc(m.stk)) || m.gif || m.img?.id || m.img?.up) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.fw ? `<span class="cfw">${icon("forward")} Reenviado</span>` : ""}${m.rp ? `<button type="button" class="crq" data-cjump="${esc(m.rp.id)}"><b>${esc(m.rp.from === viewer.id ? "Vos" : nickOf(personById(m.rp.from)) || "")}</b><span>${esc(m.rp.t || "")}</span></button>` : ""}${m.stk && stkSrc(m.stk) ? `<span class="cstkw"><img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer"><button type="button" class="cstkfav${stkFavs().includes(m.stk) ? " on" : ""}" data-stkfav="${esc(m.stk)}" title="${stkFavs().includes(m.stk) ? "Está en tus favoritos (tocá para quitarlo)" : "Guardar en mis favoritos"}" aria-label="${stkFavs().includes(m.stk) ? "Quitar de favoritos" : "Guardar en favoritos"}">${stkFavs().includes(m.stk) ? "★" : "☆"}</button></span>` : ""}${m.img?.id ? photoTag(m.img) : m.img?.up ? photoUp(m.img, m) : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${chatLinks(m.text)}</div>${chatPrev(m.text)}` : ""}${m.via ? `<span class="cvia">Prueba enviada por ${esc(nickOf(personById(m.via)) || m.via)} como ${esc(nickOf(who) || m.from)}</span>` : ""}<span class="ctime">${m.ed ? "editado · " : ""}${(m.time || msgTs(m).slice(11, 16))}${mine ? msgTicks(m, c) : ""}</span>
         <button type="button" class="creact" data-react="${esc(mid)}" aria-label="Reaccionar">${icon("smile-plus")}</button>
         ${chatUI.react === mid ? `<div class="rqpick">${QUICK_RE.map(x => `<button type="button" data-re="${x}" data-rmid="${esc(mid)}">${x}</button>`).join("")}<button type="button" data-remore="${esc(mid)}" aria-label="Más emojis">＋</button></div>${chatUI.reactMore === mid ? emojiPanel("re:" + mid) : ""}${msgActions(m, mid, mine)}` : ""}
       </div>
@@ -6380,7 +6439,7 @@ function pMensajes(){
         ${c.self ? "" : `<button type="button" class="btn ib sm cmute${isMuted(chatUI.open) ? " on" : ""}" data-cmute="${esc(chatUI.open)}" title="${isMuted(chatUI.open) ? "Silenciado: tocá para volver a recibir avisos" : "Silenciar avisos de esta conversación"}" aria-label="${isMuted(chatUI.open) ? "Activar avisos" : "Silenciar"}">${icon(isMuted(chatUI.open) ? "bell-off" : "bell")}</button>`}
         ${c.msgs.length ? `<button type="button" class="btn ib sm cclear" data-cclear="${esc(chatUI.open)}" title="Vaciar chat: se borra solo para vos" aria-label="Vaciar chat">${icon("eraser")}</button>` : ""}
         ${c.kind === "g" && canEditGroup(c.g) ? `<button type="button" class="btn sm" data-gedit="${c.id}">${icon("settings")} Grupo</button>` : ""}</header>
-      <div class="cvmsgs" id="cvMsgs">${c.msgs.length || !clearedAt(chatUI.open) ? bubbles(c) : `<div class="cempty">Vaciaste este chat. Los mensajes nuevos van a aparecer acá.</div>`}${chatUI.up && chatUI.up.open === chatUI.open ? `<div class="cmsg me"><div class="cbub cbare"><span class="cimg up" style="aspect-ratio:${chatUI.up.w}/${chatUI.up.h}"><img src="${chatUI.up.url}" alt=""><span class="cupl">${icon("loader-circle")} Subiendo…</span></span></div></div>` : ""}</div>
+      <div class="cvmsgs" id="cvMsgs">${c.msgs.length || !clearedAt(chatUI.open) ? bubbles(c) : `<div class="cempty">Vaciaste este chat. Los mensajes nuevos van a aparecer acá.</div>`}</div>
       ${c.kind === "g" && c.g.archived ? `<div class="cvarch">Grupo archivado: se puede leer pero no escribir.</div>` : `<div class="cvcomp">
         <button type="button" class="btn ib" data-emopen aria-label="Emojis" aria-expanded="${chatUI.emoji}">${icon("smile")}</button>
         <button type="button" class="btn ib" data-stkopen aria-label="Stickers" title="Stickers" aria-expanded="${!!chatUI.stk}">${icon("sticker")}</button>
@@ -6417,7 +6476,7 @@ function sendChat(){
   if (window.RMH?.previewing){ const t = document.getElementById("chatInput")?.value.trim(); if (t) previewBlock({ text:t }); return; }
   const inp = document.getElementById("chatInput"), text = inp?.value.trim(); const c = chatConv(); if (!text || !c) return;
   if (chatUI.edit){ const em = findMsg(c, chatUI.edit); chatUI.edit = null; if (em && em.from === viewer.id && !em.del && em.text !== text){ em.text = text; em.ed = new Date().toISOString(); } inp.value = ""; render(); window.RMH?.flushNow?.(); return; }
-  const now = new Date(), m = { id:newMsgId(), from:viewer.id, text, ts:now.toISOString(), date:TODAY, time:nowTime(), read:false, re:{}, ...(chatUI.reply ? { rp:chatUI.reply } : {}) };
+  const m = { id:newMsgId(), from:viewer.id, text, ...msgStamp(chatUI.open), read:false, re:{}, ...(chatUI.reply ? { rp:chatUI.reply } : {}) };
   chatUI.reply = null;
   if (c.kind === "g"){ const ch = CHATS[c.id] || (CHATS[c.id] = { id:c.id, msgs:[], seen:{} }); ch.msgs.push(m); ch.seen = { ...(ch.seen || {}), [viewer.id]:m.ts }; }
   else { const id = dmId(viewer.id, c.id); let t = THREADS.find(x => x.id === id); if (!t){ t = { id, dm:true, topic:"Chat", prio:"Normal", a:viewer.id, b:c.id, msgs:[] }; THREADS.push(t); } t.msgs.push(m); }
@@ -6523,7 +6582,7 @@ function stkPanel(){
 function sendSticker(k){
   if (previewBlock({ stk:k })) return;
   const c = chatConv(); if (!c || !stkSrc(k)) return;
-  const now = new Date(), m = { id:newMsgId(), from:viewer.id, text:"", stk:k, ts:now.toISOString(), date:TODAY, time:nowTime(), read:false, re:{} };
+  const m = { id:newMsgId(), from:viewer.id, text:"", stk:k, ...msgStamp(chatUI.open), read:false, re:{} };
   if (c.kind === "g"){ const ch = CHATS[c.id] || (CHATS[c.id] = { id:c.id, msgs:[], seen:{} }); ch.msgs.push(m); ch.seen = { ...(ch.seen || {}), [viewer.id]:m.ts }; }
   else { const id = dmId(viewer.id, c.id); let t = THREADS.find(x => x.id === id); if (!t){ t = { id, dm:true, topic:"Chat", prio:"Normal", a:viewer.id, b:c.id, msgs:[] }; THREADS.push(t); } t.msgs.push(m); }
   try { localStorage.setItem("rmh-stkrec-" + viewer.id, JSON.stringify([k, ...stkRecents().filter(x => x !== k)].slice(0, 16))); } catch {}
@@ -6576,7 +6635,7 @@ document.addEventListener("input", e => { if (e.target.id !== "gifQ") return; ch
 function sendGif(url){
   if (previewBlock({ gif:url })) return;
   const c = chatConv(); if (!c || !/^https:\/\//.test(url)) return;
-  const now = new Date(), m = { id:newMsgId(), from:viewer.id, text:"", gif:url, ts:now.toISOString(), date:TODAY, time:nowTime(), read:false, re:{} };
+  const m = { id:newMsgId(), from:viewer.id, text:"", gif:url, ...msgStamp(chatUI.open), read:false, re:{} };
   if (c.kind === "g"){ const ch = CHATS[c.id] || (CHATS[c.id] = { id:c.id, msgs:[], seen:{} }); ch.msgs.push(m); ch.seen = { ...(ch.seen || {}), [viewer.id]:m.ts }; }
   else { const id = dmId(viewer.id, c.id); let t = THREADS.find(x => x.id === id); if (!t){ t = { id, dm:true, topic:"Chat", prio:"Normal", a:viewer.id, b:c.id, msgs:[] }; THREADS.push(t); } t.msgs.push(m); }
   chatUI.gif = false; chatUI.keepBottom = true; render(); window.RMH?.flushNow?.();
@@ -8325,7 +8384,9 @@ function animate0(pg){ const ch = (pg === "pedidos" || pg === "gestioncm") && re
 function stickBottom(cm){
   const go = () => { cm.scrollTop = cm.scrollHeight; }; go(); requestAnimationFrame(go); setTimeout(go, 120);
   cm.dataset.pin = "1";
-  if (!cm.dataset.pinWired){ cm.dataset.pinWired = "1"; cm.addEventListener("scroll", () => { cm.dataset.pin = cm.scrollHeight - cm.scrollTop - cm.clientHeight < 80 ? "1" : ""; }, { passive:true }); }
+  if (!cm.dataset.pinWired){ cm.dataset.pinWired = "1"; cm.addEventListener("scroll", () => { cm.dataset.pin = cm.scrollHeight - cm.scrollTop - cm.clientHeight < 80 ? "1" : ""; }, { passive:true });
+    // Cualquier foto, GIF o sticker que termine de cargar (aunque haya llegado después): si estaba abajo, sigue abajo.
+    cm.addEventListener("load", () => { if (cm.dataset.pin) cm.scrollTop = cm.scrollHeight; }, true); }
   cm.querySelectorAll("img").forEach(im => { if (!im.complete) im.addEventListener("load", () => { if (cm.dataset.pin) go(); }, { once:true }); });
   // GIFs y stickers que terminan de cargar después, o el teclado del celular que abre/cierra: si estaba abajo, sigue abajo.
   if (window.ResizeObserver && !cm._ro){ cm._ro = new ResizeObserver(() => { if (cm.dataset.pin) cm.scrollTop = cm.scrollHeight; }); cm._ro.observe(cm); cm.querySelectorAll("img, .cmsg:last-child").forEach(x => cm._ro.observe(x)); }
@@ -8554,6 +8615,7 @@ document.addEventListener("submit", e => {
     viewer.phone = $("#mePhone").value.trim(); viewer.phone2 = $("#mePhone2").value.trim() || null; viewer.workPhone = $("#meWork").value.trim(); viewer.mainBrand = $("#meBrand").value || null; if (viewer.mainBrand !== VARIAS) viewer.brandsHandled = []; viewer.skills = $("#meSkills").value.split(",").map(x => x.trim()).filter(Boolean);
     render(); toast("Guardado. Tus datos ya se ven en Staff."); return; }
   if (e.target.id === "jobForm"){ e.preventDefault();
+    if (rtUploading(document.getElementById("jBriefF"))){ toast("Esperá que termine de subir la imagen."); return; }
     const f = jobUI.form, j = f.job, title = $("#jTitle").value.trim(), due = $("#jDue").value;
     if (!title || !due){ toast("Completá el trabajo solicitado y la fecha límite."); return; }
     const m = due.slice(0,7);
