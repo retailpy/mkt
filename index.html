@@ -267,6 +267,15 @@ html.navmini .nav-group.closed > a{display:flex}
 .imgbox.zoom .imgsc{display:block}
 .imgbox.zoom .imgsc img{max-width:none;max-height:none;cursor:zoom-out;border-radius:0}
 .cvhead .cclear{flex:none}
+
+/* v107 · Usuarios: dar acceso al equipo */
+.accpanel{display:flex;flex-direction:column;gap:6px;border-color:rgba(34,211,238,.4)}
+.acclist{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.accrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:var(--inner-2)}
+.accrow .person{flex:1 1 220px}
+.accrow.err{border-color:rgba(248,113,113,.5)}
+.accpass{font-family:var(--mono);font-size:16px;color:#a5f3fc;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.3);border-radius:10px;padding:4px 10px;letter-spacing:.5px}
+.accmiss{display:flex;gap:6px;align-items:flex-start;margin:10px 0 0}.accmiss svg{width:16px;height:16px;flex:none;margin-top:2px;color:var(--warn)}
 .iwarn{display:flex;gap:10px;align-items:flex-start;border:1px solid rgba(251,191,36,.5);background:rgba(251,191,36,.08);border-radius:14px;padding:12px 14px;color:var(--ink);font-size:14px;line-height:1.5}
 .iwarn > svg{flex:none;width:20px;height:20px;color:var(--warn);margin-top:1px}
 .iwarn .isteps{margin:8px 0 0}
@@ -2739,7 +2748,7 @@ function moveJob(j, to){
     j.status = to; NOTIFS.forEach(n => { if (n.to === viewer.name && n.job === j.id) n.read = true; });
     (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), kind:"boceto", by:viewer.name, fix, link:j.designLink || "" });
     notify({ to:"admin", type:"review", job:j.id, who:viewer.name, fix });
-    render(); toast(`¡Bien! “${j.title}” quedó como ${to}. Le avisamos a Admin total para que lo revise.`); return; }
+    render(); toast(`¡Bien! “${j.title}” quedó como ${to} y está esperando la revisión.`); return; }
   setJobStatus(j, to);
 }
 document.addEventListener("dragstart", e => {
@@ -4433,7 +4442,7 @@ document.addEventListener("click", e => {
     j.brief = cleanRich(ed.innerHTML); j.briefBy = viewer.name; j.briefAt = new Date().toISOString(); render(); toast("Texto del pedido guardado."); }
 });
 // ----- Recorrido del pedido: cada paso con su nombre, lo hecho, dónde está ahora y qué sigue. Cada entrega es una versión. -----
-const PROC_DESC = { "Pendiente":"Pedido cargado", "En proceso":"Trabajando", "Boceto finalizado":"Versión lista para revisar", "En revisión":"Admin total revisa", "En corrección":"Haciendo los cambios",
+const PROC_DESC = { "Pendiente":"Pedido cargado", "En proceso":"Trabajando", "Boceto finalizado":"Versión lista para revisar", "En revisión":"Esperando la revisión", "En corrección":"Haciendo los cambios",
   "Aprobado":"Final del pedido", "Programado":"Listo para salir", "Publicado":"Publicado" };
 const jobVersions = j => (j.changes || []).filter(c => c.kind === "boceto").length;
 function jobProcess(j){
@@ -4560,10 +4569,10 @@ function jobFicha(){
   const at = viewer.role === "Admin total", p = j.post && postById(j.post), hist = (j.changes || []).slice().reverse();
   const row = (k, v) => v ? `<div><span>${k}</span><b>${v}</b></div>` : "";
   const last = j.status === "En corrección" && hist.find(c => !c.ok && !c.kind);
-  const label = st => st === reviewStage(j) && !at ? `✓ ${st} · avisar a Admin total` : st === "Publicado" ? "✓ Publicado" : st;
+  const label = st => st === reviewStage(j) && !at ? `✓ ${st} · enviar a revisión` : st === "Publicado" ? "✓ Publicado" : st;
   const opts = stageOptions("job", j).filter(st => st !== j.status);
   const acts = at && REVIEW_WAIT.includes(j.status) ? `<div class="chips"><button class="btn primary" data-jrev="approve:${j.id}">${j.area === "CM" ? "Aprobar" : "✓ Aprobar"}</button><button class="btn" data-jrev="fix:${j.id}">Pedir cambios</button></div>`
-    : REVIEW_WAIT.includes(j.status) ? `<span class="waitchip">${icon("hourglass")} Esperando la revisión de Admin total</span>`
+    : REVIEW_WAIT.includes(j.status) ? `<span class="waitchip">${icon("hourglass")} Esperando la revisión</span>`
     : opts.length ? `<div class="chips">${opts.map(st => `<button class="btn${st === reviewStage(j) || st === "Publicado" ? " primary" : ""}" data-jmove="${j.id}|${st}">${label(st)}</button>`).join("")}</div>` : "";
   const mine = j.owner === viewer.name && !isFin(j) && !isViewOnly() && j.area !== "CM";
   // Página completa del pedido: datos del pedido, el texto (hoja tipo Word), los links de acceso, el proceso (tocable) y al final los cambios.
@@ -5706,6 +5715,48 @@ function pReportes(){
   <div class="repbody" id="repBody">${tabs.length ? body() : `<div class="panel"><div class="empty">No tenés informes habilitados.</div></div>`}</div>
   <p class="note repfoot">Cada informe se descarga por separado, con el análisis del mes incluido: en Excel (una hoja por cada tabla) o en PDF listo para mandar (se abre la ventana de imprimir: elegí “Guardar como PDF”). Cada persona descarga solo lo que tiene permitido ver.</p></div>`;
 }
+// ----- Dar acceso al equipo (solo Admin total): una contraseña provisoria para cada persona que todavía no entró -----
+// Se crean las cuentas que faltan (o se renueva la provisoria de quien nunca entró) y se muestran solo acá, con el mensaje
+// listo para mandar por WhatsApp. Al entrar, cada uno elige su propia contraseña. Quien ya entró (vos incluida) no se toca.
+async function accessRefresh(){ const j = await window.RMH?.admin?.({ action:"accounts" }); userUI.accts = (j?.ok && j.accounts) || {}; if (page === "usuarios") render(); }
+const waPhone = pp => { let d = String(pp.phone || pp.workPhone || "").replace(/\D/g, ""); if (d.startsWith("0")) d = "595" + d.slice(1); else if (/^9\d{8}$/.test(d)) d = "595" + d; return /^5959\d{8}$/.test(d) ? d : ""; };
+const accessMsg = x => `Hola ${x.nick} 👋 Ya tenés acceso a Retail MKT Hub.\nEntrá desde: ${location.origin}\nEmail: ${x.email}\nContraseña provisoria: ${x.pass}\nAl entrar te va a pedir que elijas tu propia contraseña. Después instalá la app (Configuración → Instalar la app) y activá las notificaciones.`;
+function accessTargets(){
+  const a = userUI.accts || {};
+  return PEOPLE.filter(pp => pp.active && pp.id !== viewer.id && !(a[pp.id]?.account && a[pp.id]?.signedIn));
+}
+function accessPanel(){
+  const list = userUI.access, loading = userUI.accts === null;
+  const tg = loading ? [] : accessTargets(), withMail = tg.filter(pp => mainEmail(pp)), noMail = tg.filter(pp => !mainEmail(pp));
+  const row = x => `<div class="accrow${x.ok ? "" : " err"}"><div class="person" style="min-width:0">${avatarHTML(personById(x.id) || {})}<div><b>${esc(x.name)}</b><span>${esc(x.email || "")}</span></div></div>
+    ${x.ok ? `<code class="accpass">${esc(x.pass)}</code><div class="chips"><button type="button" class="btn sm" data-accmsg="${esc(x.id)}">${icon("copy")} Copiar mensaje</button>${x.wa ? `<a class="btn sm primary" href="https://wa.me/${x.wa}?text=${encodeURIComponent(accessMsg(x))}" target="_blank" rel="noopener">${icon("message-circle")} WhatsApp</a>` : ""}</div>` : `<span class="note">${esc(x.err || "No se pudo")}</span>`}</div>`;
+  return `<div class="panel accpanel"><div class="head" style="margin:0"><div><h2 class="pmh" style="margin:0">${pmIco("key-round")}Dar acceso al equipo</h2>
+      <p class="note" style="margin:6px 0 0">Genera una contraseña provisoria para cada persona que todavía no entró a la app. Solo las ves vos, acá. Al entrar, cada uno elige la suya.</p></div>
+      ${list ? "" : `<button type="button" class="btn primary" data-uaccess ${loading || userUI.accBusy || !withMail.length ? "disabled" : ""}>${icon("key-round")} ${userUI.accBusy ? "Generando…" : loading ? "Revisando cuentas…" : withMail.length ? `Generar ${withMail.length === 1 ? "1 contraseña" : withMail.length + " contraseñas"}` : "Todos ya entraron"}</button>`}</div>
+    ${!list && withMail.length ? `<p class="note" style="margin:10px 0 0">Para: ${withMail.map(pp => esc(nickOf(pp))).join(", ")}.</p>` : ""}
+    ${list ? `<div class="acclist">${list.map(row).join("")}</div><p class="note" style="margin:10px 0 0">Mandáselas por WhatsApp privado o en persona (no por mail ni en grupos). Quedan también en Configuración → Apariencia → Contraseñas provisorias hasta que cada uno elija la suya.</p>
+      <div class="chips"><button type="button" class="btn sm" data-accdone>Listo, ya las pasé</button></div>` : ""}
+    ${noMail.length ? `<p class="note accmiss">${icon("mail-warning")} Sin email cargado (no se les puede dar acceso todavía): ${noMail.map(pp => esc(pp.name)).join(", ")}. Cargalo en Staff → Editar datos.</p>` : ""}</div>`;
+}
+document.addEventListener("click", async e => {
+  if (viewer?.role !== "Admin total") return;
+  if (e.target.closest("[data-uaccess]")){
+    if (userUI.accBusy || window.RMH?.previewing) return;
+    const tg = accessTargets().filter(pp => mainEmail(pp)); if (!tg.length) return;
+    userUI.accBusy = true; render(); const out = [];
+    for (const pp of tg){
+      const pass = genPass(), email = mainEmail(pp).toLowerCase();
+      const r = await RMH.admin({ action:"set_password", person_id:pp.id, email, role:pp.role, password:pass });
+      if (r && r.ok){ pp.mustChange = true; pp.tempPass = pass; out.push({ id:pp.id, name:pp.name, nick:nickOf(pp), email, pass, wa:waPhone(pp), ok:true }); }
+      else out.push({ id:pp.id, name:pp.name, email, ok:false, err:"No se pudo crear: revisá el email en Staff" });
+    }
+    userUI.accBusy = false; userUI.access = out; resetRequests = resetRequests.filter(id => !out.some(x => x.ok && x.id === id));
+    refreshPeople(); render(); accessRefresh();
+    toast(`Listo: ${out.filter(x => x.ok).length} contraseñas provisorias generadas.`); return; }
+  const m = e.target.closest("[data-accmsg]"); if (m){ const x = (userUI.access || []).find(y => y.id === m.dataset.accmsg); if (!x) return;
+    try { await navigator.clipboard.writeText(accessMsg(x)); toast(`Mensaje para ${x.nick} copiado: pegalo en WhatsApp.`); } catch { toast("No se pudo copiar."); } return; }
+  if (e.target.closest("[data-accdone]")){ userUI.access = null; render(); }
+});
 function pUsuarios(){
   const ok = n => n === 1 ? "trabajo abierto" : "trabajos abiertos";
   const form = userUI.newOpen ? `<div class="panel"><h2 class="pmh">${pmIco("user-plus")}Nueva persona</h2>
@@ -5724,10 +5775,14 @@ function pUsuarios(){
     <p class="note" style="margin:12px 0 0">Al entrar por primera vez, la app le pide que elija su propia contraseña. Los permisos arrancan con los del rol y después se ajustan abajo.</p></div>` : "";
   const pass = userUI.lastPass ? `<div class="panel passbox"><div style="flex:1;min-width:220px"><b style="color:#cffafe">Contraseña provisoria de ${esc(userUI.lastPass.name)}</b><div class="note">Pasásela por WhatsApp o en persona. No la mandes por mail. Al entrar le vamos a pedir que la cambie.</div></div><code>${userUI.lastPass.pass}</code><button class="btn" data-ucopy="${userUI.lastPass.pass}">Copiar</button><button class="btn" data-uclose>Listo</button></div>` : "";
   const reqs = resetRequests.length ? `<div class="panel"><h2>🔑 Pedidos para restablecer contraseña</h2><div class="list">${resetRequests.map(id => { const pp = PEOPLE.find(x => x.id === id); return `<div class="row">${avatarHTML(pp)}<div class="grow"><div class="t">${esc(pp.name)}</div><div class="m">${esc(mainEmail(pp))} · lo pidió desde el login</div></div><button class="btn primary" data-ureset="${pp.id}">Restablecer contraseña</button></div>`; }).join("")}</div></div>` : "";
+  const at = viewer.role === "Admin total";
+  if (at && userUI.accts === undefined){ userUI.accts = null; accessRefresh(); }
+  const acc = id => userUI.accts?.[id];
   const rows = PEOPLE.map(pp => {
     const me = pp.id === viewer.id;
     const openJobs = jobs.filter(j => j.owner === pp.name && !isFin(j)).length;
-    const estado = !pp.active ? pill("Desactivado","#334155") : pp.mustChange ? pill("Debe cambiar contraseña","#eab308") : pill("Activo","#10b981");
+    const a = acc(pp.id), noAcc = at && userUI.accts && !me && (!a || !a.account);
+    const estado = !pp.active ? pill("Desactivado","#334155") : noAcc ? pill("Sin acceso todavía","#64748b") : pp.mustChange || (a && a.account && !a.signedIn) ? pill("Debe cambiar contraseña","#eab308") : pill("Activo","#10b981");
     const acts = userUI.confirm === pp.id
       ? `<span class="note">¿Quitar a ${esc(nickOf(pp))}?${openJobs ? ` Sus ${openJobs} ${ok(openJobs)} quedan “Sin asignar”.` : ""} El historial se conserva.</span><button class="btn danger solid" data-uremove="${pp.id}">Sí, quitar</button><button class="btn" data-ucancel>Cancelar</button>`
       : me ? `<span class="note">Sos vos · cambiá tu contraseña en “Mi perfil”</span>`
@@ -5739,7 +5794,7 @@ function pUsuarios(){
   const roleCards = `<div class="grid kpis">${ROLES.map(r => `<div class="panel kpi"><div class="l">${r}</div><div class="n">${PEOPLE.filter(pp => pp.active && pp.role === r).length}</div><div class="d">${ROLE_INFO[r]}</div></div>`).join("")}</div>`;
   const counts = ROLES.map(r => `<span class="tag">${r}: ${PEOPLE.filter(pp => pp.active && pp.role === r).length}</span>`).join("");
   return `<div class="head"><div><h1>Usuarios y permisos</h1><p class="sub">Quién entra a la app, con qué rol, y qué ve cada uno.</p></div><button class="btn primary" data-unew>${icon("user-plus")} Nueva persona</button></div>
-  ${roleCards}${pass}${reqs}${form}
+  ${roleCards}${at ? accessPanel() : ""}${pass}${reqs}${form}
   <div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("users")}Personas del equipo</h2><div class="tag-row">${counts}<span class="tag">Admin total activos: ${activeAdmins().length} (se recomienda 2 o más)</span></div></div>
     <div class="tw" style="border:0;border-radius:0;box-shadow:none"><table><thead><tr><th>Persona</th><th>Rol</th><th>Estado</th><th>Último ingreso</th><th class="r">Acciones</th></tr></thead><tbody>${rows}</tbody></table></div></div>
   <h2 style="margin:6px 0 -8px" class="pmh">${pmIco("shield-check")}Qué ve cada persona</h2>

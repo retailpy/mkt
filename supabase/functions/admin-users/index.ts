@@ -1,5 +1,5 @@
 // Retail MKT Hub · gestión de cuentas (solo Admin total), con la clave de servicio del lado del servidor.
-// Acciones: create, set_password, set_active, set_role, remove  (requieren sesión de Admin total)
+// Acciones: create, set_password, set_active, set_role, remove, accounts  (requieren sesión de Admin total)
 //           request_reset                                     (pública: "¿Olvidaste tu contraseña?")
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -58,6 +58,21 @@ Deno.serve(async (req) => {
   if (!auth?.user) return json({ error: "Tenés que iniciar sesión." }, 401);
   const { data: me } = await db.from("members").select("*").eq("user_id", auth.user.id).maybeSingle();
   if (!me || !me.active || me.role !== "Admin total") return json({ error: "Solo un Admin total puede hacer esto." }, 403);
+
+  // Quién tiene cuenta y quién ya entró alguna vez (para "Dar acceso al equipo"). Sin emails ni contraseñas.
+  if (action === "accounts") {
+    const { data: ms } = await db.from("members").select("person_id, user_id, active");
+    const accounts: Record<string, unknown> = {};
+    await Promise.all((ms || []).map(async (m) => {
+      let signedIn = false, mustChange = false;
+      if (m.user_id) {
+        const { data } = await db.auth.admin.getUserById(m.user_id);
+        signedIn = !!data?.user?.last_sign_in_at; mustChange = !!data?.user?.user_metadata?.must_change;
+      }
+      accounts[m.person_id] = { account: !!m.user_id, active: m.active, signedIn, mustChange };
+    }));
+    return json({ ok: true, accounts });
+  }
 
   const personId = String(body.person_id || "");
   if (!personId) return json({ error: "Falta la persona." }, 400);
