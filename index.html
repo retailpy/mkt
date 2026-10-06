@@ -343,6 +343,11 @@ html.nomotion .picon{animation:none}
 .vgal{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(180px,46%),1fr));gap:10px}
 .vimg{position:relative;display:block;aspect-ratio:4/5;border-radius:14px;overflow:hidden;background:var(--line);text-decoration:none}
 .vimg img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s}
+.wklist .wkb{display:flex;align-items:center;gap:8px;flex:none}
+/* Celular: si la fila empieza por el texto, el texto ocupa todo el ancho y los avisos, el estado y el botón van debajo */
+@media (max-width:640px){.list .row{flex-wrap:wrap!important;row-gap:8px}.list .row > .grow:first-child{flex:1 1 100%!important;min-width:0}.list .row .t{overflow-wrap:break-word}}
+@media (max-width:640px){.wklist .row{flex-wrap:wrap;align-items:flex-start;row-gap:8px}.wklist .row .grow{flex:1 1 0;min-width:0}.wklist .row .t{overflow-wrap:break-word}.wklist .row .date{width:44px;flex:none;padding-top:2px}.wklist .wkb{flex-basis:100%;flex-wrap:wrap;padding-left:56px}}
+.pingal{grid-template-columns:repeat(auto-fill,minmax(min(160px,46%),1fr))}.pingal .vimg{aspect-ratio:2/3}.pingal .vimg img{object-position:top}
 .vimg span{position:absolute;inset:auto 0 0 0;padding:28px 10px 9px;background:linear-gradient(transparent,rgba(2,6,23,.88));color:#fff;display:flex;flex-direction:column;gap:2px;opacity:0;transition:opacity .2s}
 .vimg .vcap{opacity:.85;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .vimg span b{font-size:12.5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.vimg span small{font-size:11px;opacity:.8}
@@ -3951,7 +3956,7 @@ function pInicio(){
   ${progressPanel("team")}
   <div class="grid">
     ${viewer.role === "CM" ? (() => { const mine = jobs.filter(j => j.owner === viewer.name && !isClosedJob(j)).sort((a,b) => a.due.localeCompare(b.due)); return `<div class="panel" style="grid-column:1/-1"><div class="head" style="margin-bottom:14px"><h2 style="margin:0" class="pmh">${pmIco("clapperboard")}Mis trabajos de CM</h2>${URG_LEGEND}</div>${mine.length ? `<div class="list">${mine.map(j => jobRow(j)).join("")}</div>` : `<div class="empty">No tenés trabajos abiertos.</div>`}</div>`; })() : ""}
-    <div class="panel"><h2 class="pmh">${pmIco("calendar-days")}${weekTitle}</h2>${week.length ? `<div class="list">${week.map(p => `<div class="row${postUrgStyle(p)}"><span class="date">${dm(p.date)}</span><div class="grow"><div class="t">${esc(p.title)}</div><div class="m">${brandTag(p.brand)} · <span class="net">${p.net}</span> ${p.format}</div></div>${postUrgBadge(p)}${postPill(p)}</div>`).join("")}</div>` : `<div class="empty">${isClosed() ? "Se cumplió todo el plan." : "Nada programado."}</div>`}</div>
+    <div class="panel"><h2 class="pmh">${pmIco("calendar-days")}${weekTitle}</h2>${week.length ? `<div class="list wklist">${week.map(p => `<div class="row${postUrgStyle(p)}"><span class="date">${dm(p.date)}</span><div class="grow"><div class="t">${esc(p.title)}</div><div class="m">${brandTag(p.brand)} · <span class="net">${p.net}</span> ${p.format}</div></div><div class="wkb">${postUrgBadge(p)}${postPill(p)}</div></div>`).join("")}</div>` : `<div class="empty">${isClosed() ? "Se cumplió todo el plan." : "Nada programado."}</div>`}</div>
   </div>
   ${progressPanel("people")}`;
 }
@@ -7524,7 +7529,7 @@ function seasonCard(s, ar, i){
 }
 function trendGet(ar){
   let c = trendSt[ar];
-  if (!c){ try { c = JSON.parse(localStorage.getItem("rmh-trend8-" + ar) || "null"); } catch {} if (c) trendSt[ar] = c; }
+  if (!c){ try { c = JSON.parse(localStorage.getItem("rmh-trend9-" + ar) || "null"); } catch {} if (c) trendSt[ar] = c; }
   if ((!c || Date.now() - (c.at || 0) > TREND_TTL) && !trendSt["busy" + ar] && !(c?.errAt && Date.now() - c.errAt < 60000)) trendLoad(ar);
   return trendSt[ar];
 }
@@ -7532,7 +7537,7 @@ async function trendLoad(ar, force = false){
   trendSt["busy" + ar] = true;
   let j; try { j = await integ({ action:"tendencias", area:ar, force }); } catch (e) { j = { ok:false, error:e?.message }; }
   trendSt["busy" + ar] = false;
-  if (j?.ok && Array.isArray(j.groups)){ trendSt[ar] = { at:Date.now(), groups:j.groups }; try { localStorage.setItem("rmh-trend8-" + ar, JSON.stringify(trendSt[ar])); } catch {} }
+  if (j?.ok && Array.isArray(j.groups)){ trendSt[ar] = { at:Date.now(), groups:j.groups }; try { localStorage.setItem("rmh-trend9-" + ar, JSON.stringify(trendSt[ar])); } catch {} }
   else trendSt[ar] = { ...(trendSt[ar] || { groups:[] }), errAt:Date.now(), err:j?.error || "No se pudieron traer las novedades" };
   if (page === (ar === "dg" ? "tendg" : ar === "cm" ? "tencm" : "ideas")) render();
 }
@@ -7541,6 +7546,8 @@ document.addEventListener("click", e => { const v = e.target.closest("[data-visc
 document.addEventListener("click", e => { const b = e.target.closest("[data-trendre]"); if (b && !trendSt["busy" + b.dataset.trendre]){ trendLoad(b.dataset.trendre, true); render(); } });
 // Banderita del país de cada noticia (LA = Latinoamérica, WW = mundo) y la idea principal en una frase.
 const CC_NAME = { BR:"Brasil", MX:"México", ES:"España", US:"Estados Unidos", GB:"Reino Unido", FR:"Francia", NL:"Países Bajos", DE:"Alemania", CL:"Chile", AR:"Argentina", CN:"China", JP:"Japón", KR:"Corea del Sur", LA:"Latinoamérica", WW:"Mundo" };
+// Tendencias: la inspiración es internacional; lo que habla de Paraguay no se muestra en las galerías.
+const PY_RE = /paragu|asunci[oó]n|ciudad del este|encarnaci[oó]n|san lorenzo|fernando de la mora|lambar[eé]|\.com\.py|\bpy\b|superseis|delimarket|biggie|salemma|casa rica|guaran[ií]|\bgs\.?\s?\d/i;
 const flagOf = cc => cc === "LA" ? "🌎" : cc === "WW" || !/^[A-Z]{2}$/.test(cc || "") ? "🌍" : String.fromCodePoint(...[...cc].map(ch => 0x1f1a5 + ch.charCodeAt(0)));
 const IDEAS = [
   [/navidad|christmas|holiday|festiv/i, "campaña de Navidad"], [/black friday|cyber/i, "ofertas de Black Friday"], [/halloween/i, "campaña de Halloween"],
@@ -7645,12 +7652,13 @@ function pTend(ar){
   const [k1, k3] = Object.keys(TREND_GROUPS[ar]);
   // Visuales de campañas: posteos y carruseles reales de Instagram de los supermercados de referencia (sin reels),
   // con Pão de Açúcar siempre primero. Los trae /api/referentes todos los días (s:META_REFS). Cada imagen abre el posteo.
-  const accs = Object.entries(META_REFS.accounts || {}).filter(([, a]) => (a.posts || []).length), selC = visUI.chain;
+  const accs = Object.entries(META_REFS.accounts || {}).filter(([, a]) => (a.posts || []).length && a.cc !== "PY");
+  if (visUI.chain !== "Todas" && !accs.some(([u]) => u === visUI.chain)) visUI.chain = "Todas"; // la cuenta elegida ya no está
+  const selC = visUI.chain;
   // Diseño ve primero las piezas sueltas (afiches, flyers); CM, los carruseles con su texto. Nada de fechas que ya pasaron.
   const want = dg ? "Post" : "Carrusel";
   const byAcc = accs.map(([u, a]) => ({ u, a, posts:(a.posts || []).filter(x => safeUrl(x.img) && !fueraDeTemporada(x.cap || "")).slice()
-    .sort((x, y) => (Number(y.type === want) - Number(x.type === want)) || String(y.ts).localeCompare(String(x.ts))) })).filter(x => x.posts.length)
-    .sort((x, y) => Number(y.a.cc === "PY") - Number(x.a.cc === "PY")); // primero los supermercados de Paraguay
+    .sort((x, y) => (Number(y.type === want) - Number(x.type === want)) || String(y.ts).localeCompare(String(x.ts))) })).filter(x => x.posts.length && x.a.cc !== "PY"); // solo supermercados de afuera (inspiración internacional)
   const pda = byAcc.find(x => x.u === "paodeacucar"), rest = byAcc.filter(x => x.u !== "paodeacucar");
   let tiles = [];
   if (selC !== "Todas"){ const one = byAcc.find(x => x.u === selC); tiles = one ? one.posts.map(p => ({ ...p, acc:one })) : []; }
@@ -7658,9 +7666,12 @@ function pTend(ar){
   tiles = tiles.slice(0, 16);
   // Mientras Instagram no trae posteos: piezas de campañas y packaging publicadas en medios creativos (con su imagen).
   // Mientras Instagram no trae posteos: piezas gráficas de los tableros de Pinterest (afiches, encartes, posteos); si no hay, piezas de campañas de los medios.
-  const pinsG = (groups.find(x => x.k === "pins")?.items || []).filter(x => safeUrl(x.img) && !fueraDeTemporada(x.t || ""));
-  const press = tiles.length ? [] : (pinsG.length ? pinsG.slice(0, 18) : (groups.find(x => x.k === "vis")?.items || []).filter(x => safeUrl(x.img)).slice(0, 12));
-  const isPins = !!pinsG.length;
+  const pinsG = (groups.find(x => x.k === "pins")?.items || []).filter(x => safeUrl(x.img) && !fueraDeTemporada(x.t || "") && !PY_RE.test(x.t || ""));
+  // Diseño: los pines tienen su propia sección arriba (afiches, precios y campañas); acá, si no hay Instagram, piezas de los medios.
+  const press = tiles.length ? [] : (pinsG.length && !dg ? pinsG.slice(0, 18) : (groups.find(x => x.k === "vis")?.items || []).filter(x => safeUrl(x.img)).slice(0, 12));
+  const pinSec = dg && pinsG.length ? `<section class="tsec"><div class="tsec-h"><span class="tsec-ic">${icon("pin")}</span><div><h2>Afiches y ofertas · lo nuevo en Pinterest</h2><p>Piezas de supermercados y retail: afiches de precios, encartes, key visuals de campañas y fechas comerciales, de los tableros más nuevos. Tocá una para verla en Pinterest.</p></div></div>
+    <div class="vgal pingal">${pinsG.slice(0, 24).map((x, i) => `<a class="vimg" href="${esc(safeUrl(x.u))}" target="_blank" rel="noopener noreferrer" style="--i:${i}" title="${esc(x.t || "Ver en Pinterest")}"><img src="${esc(safeUrl(x.img))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.vimg').remove()"></a>`).join("")}</div></section>` : "";
+  const isPins = !!pinsG.length && !dg;
   refsAuto();
   const visSec = `<section class="tsec"><div class="tsec-h"><span class="tsec-ic">${icon("images")}</span><div><h2>Visuales de campañas</h2><p>Posteos y carruseles de Instagram de los supermercados de referencia, con Pão de Açúcar primero. Tocá una imagen para ver el posteo.</p></div>${metaBtn("referentes", "Visuales")}</div>
     ${byAcc.length ? `<div class="vchips">${[["Todas", "Todas"], ...byAcc.map(x => [x.u, `${flagOf(x.a.cc)} ${x.a.name}`])].map(([k, l]) => `<button type="button" class="ichip${selC === k ? " on" : ""}" data-vischain="${esc(k)}">${esc(l)}</button>`).join("")}</div>` : ""}
@@ -7673,6 +7684,7 @@ function pTend(ar){
   return `<div class="head"><div><h1 class="pmh">${pmIco("sparkles")}Tendencias</h1><p class="sub">${dg ? "Diseño de supermercados: campañas, visuales, punto de venta y packaging." : "Supermercados en redes: campañas, contenidos y fechas comerciales."} En español; se actualiza sola. Tocá una nota para verla completa.</p></div>
     ${viewer.role === "Admin total" ? `<button type="button" class="btn" data-trendre="${ar}" ${busy ? "disabled" : ""}>${icon("refresh-cw")} ${busy ? "Actualizando…" : "Actualizar"}</button>` : ""}</div>
   ${sec(k1)}
+  ${pinSec}
   ${visSec}
   ${gImgSec(dg)}
   <section class="tsec"><div class="tsec-h"><span class="tsec-ic">${icon("calendar-heart")}</span><div><h2>Campañas de temporada</h2><p>Las próximas fechas de Paraguay y Latinoamérica, cuándo empezar ${dg ? "a diseñar" : "a preparar el contenido"} e ideas. Tocá Pinterest, Behance o Google para ver flyers y campañas de supermercados.</p></div></div>
