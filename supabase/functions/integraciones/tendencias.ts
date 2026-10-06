@@ -29,8 +29,11 @@ const M = {
 const slug = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const RT = (t: string): Feed => ({ u: `https://roastbrief.com.mx/tag/${slug(t)}/feed/`, src: "Roastbrief", lang: "es", cc: "MX", days: 400 });
 // Tableros de Pinterest (afiches, encartes, posteos y carruseles de diseño): su feed oficial (RSS). Los elige Admin total.
-// Diseño: afiches, encartes y promociones de supermercado. CM: posteos, carruseles y líneas gráficas de redes.
-export const PIN_BOARDS: Record<string, string[]> = { dg: ["chellypoplima/modelos-encarte", "multimediahstudio/promociones-supermercado"], cm: ["stephanygonzalezblanco95/inspiración-redes-sociales", "94maripf/social-media-post-design"] };
+// CM: posteos, carruseles y líneas gráficas de redes. Diseño: tableros con pines recientes de afiches de ofertas, precios, encartes, campañas de retail y supermercados
+// (revisados: existen y tienen pines de 2024-2026). El más nuevo primero. Solo inspiración internacional: nada de Paraguay.
+export const PIN_BOARDS: Record<string, string[]> = { dg: ["minthurakyaw2697/food-product-design", "toukirartistry/best-social-media-design-inspirations", "cgracan/design-retail-sale-promotional-design", "royalgraphics01/social-media-post-design", "multimediahstudio/promociones-supermercado", "chellypoplima/modelos-encarte", "haru_mx/black-friday-plantillas-canva"], cm: ["stephanygonzalezblanco95/inspiración-redes-sociales", "94maripf/social-media-post-design"] };
+// Pines que hablan de Paraguay (lugares, cadenas, guaraníes): afuera, la galería es de gráficas internacionales.
+const PY = /paragu|asunci[oó]n|ciudad del este|encarnaci[oó]n|san lorenzo|fernando de la mora|lambar[eé]|\.com\.py|\bpy\b|superseis|delimarket|biggie|salemma|casa rica|guaran[ií]|\bgs\.?\s?\d/i;
 const PIN = (b: string): Feed => ({ u: `https://www.pinterest.com/${b.split("/").map(encodeURIComponent).join("/")}.rss`, src: "Pinterest", lang: "es", cc: "WW", days: 3650, pin: b });
 const P: Record<string, Feed> = { // medios sin búsqueda por feed: solo lo último
   mm: { u: "https://www.meioemensagem.com.br/feed", src: "Meio & Mensagem", lang: "pt", cc: "BR", days: 45 },
@@ -311,14 +314,15 @@ export async function armar(area: string, known: Map<string, any>, { debug = fal
   }
   // Galería de piezas gráficas: los pines más nuevos de los tableros de Pinterest (todas sus imágenes, sin traducir).
   if (area === "dg" || area === "cm"){
-    const pins = (await Promise.all(boards.slice(0, 8).map((b) => readFeed(PIN(b), debug ? stats : undefined)))).flat().filter((i) => i.img && !used.has(i.u) && !fueraDeTemporada(i.t + " " + i.x))
+    const pins = (await Promise.all(boards.slice(0, 8).map((b) => readFeed(PIN(b), debug ? stats : undefined)))).flat().filter((i) => i.img && !used.has(i.u) && !fueraDeTemporada(i.t + " " + i.x) && !PY.test(i.t + " " + i.x))
       .sort((a, b) => b.d.localeCompare(a.d));
     const per: Record<string, number> = {}, seen = new Set<string>(), out: Item[] = [];
-    for (const cap of [6, 99]) for (const i of pins){ if (out.length >= 18) break; if (seen.has(i.u) || (per[i.pin] || 0) >= cap) continue; seen.add(i.u); per[i.pin] = (per[i.pin] || 0) + 1;
+    const max = area === "dg" ? 24 : 18; // Diseño: galería más grande, variada entre tableros (primero de a 4 por tablero)
+    for (const cap of [4, 8, 99]) for (const i of pins){ if (out.length >= max) break; if (seen.has(i.u) || (per[i.pin] || 0) >= cap) continue; seen.add(i.u); per[i.pin] = (per[i.pin] || 0) + 1;
       out.push({ t: i.t.slice(0, 140), u: i.u, x: "", img: i.img, d: i.d, src: "Pinterest", lang: "es", chain: "", cc: "WW" }); }
     groups.push({ k: "pins", items: out });
   }
   return debug ? { groups, stats, dbg } : { groups };
 }
 // Para las pruebas.
-export const __t = { feat, negTitle, NEG_X, chainOf, GROUPS, fueraDeTemporada };
+export const __t = { feat, negTitle, NEG_X, chainOf, GROUPS, fueraDeTemporada, PY };

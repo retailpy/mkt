@@ -1,8 +1,9 @@
-// Retail MKT Hub · integraciones del chat: búsqueda de GIFs (GIPHY) y biblioteca de stickers en Google Drive.
+// Retail MKT Hub · integraciones del chat: búsqueda de GIFs (GIPHY), biblioteca de stickers y fotos del chat en Google Drive.
 // Las claves quedan en la base (tabla integration_config, sin acceso desde la app); el navegador nunca las ve.
 // Acciones (POST { action, ... }, con la sesión de la persona):
 //   status · set_giphy {key} · script · set_sticker_url {url}       → solo Admin total
 //   gifs {q} · stickers · sticker_upload {name,type,data}           → cualquier persona del equipo
+//   chat_image {type,data} · chat_image_delete {id}                  → fotos del chat (carpeta "Fotos Retail MKT", una carpeta por mes)
 //   tendencias {area:"dg"|"cm"|"ideas", force?}                      → campañas, piezas y contenidos con foto, en español (force: solo Admin total)
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { armar } from "./tendencias.ts";
@@ -18,25 +19,36 @@ const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
   auth: { persistSession: false, autoRefreshToken: false },
 });
 const FOLDER_ID = "1EwWLkJ3XCl927Yi0ryCvFC807Vdp0iFk"; // carpeta "Stickers Retail MKT"
+const CHAT_FOLDER_ID = "13L9Y3QcGbymgMStbaCHmR7F2MZaoBxVw"; // carpeta "Fotos Retail MKT" (adentro, una carpeta por mes)
 const MAX_BYTES = 400 * 1024;
+const CHAT_MAX = 4 * 1024 * 1024; // la app achica las fotos antes de subirlas (suelen quedar en 200-600 KB)
 const TYPES = ["image/png", "image/webp", "image/gif", "image/jpeg"];
+const SCRIPT_V = 2; // versión del script de Drive que necesita la app (2: fotos del chat por mes)
 const SCRIPT_RE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]{20,}\/exec$/;
 const thumb = (id: string) => `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w320`;
 
 const cfg = async () => (await db.from("integration_config").select("*").eq("id", 1).single()).data;
 
 // El script que se pega en script.google.com (lleva la clave secreta adentro: no compartirlo).
-const scriptText = (secret: string) => `// Retail MKT Hub · stickers del chat en la carpeta "Stickers Retail MKT" de Google Drive.
+const scriptText = (secret: string) => `// Retail MKT Hub · stickers y fotos del chat en Google Drive.
+//   Stickers → carpeta "Stickers Retail MKT".
+//   Fotos del chat → carpeta "Fotos Retail MKT", con una carpeta por mes adentro (ej.: "2026-10 Octubre").
 // Pegalo en script.google.com y publicalo como Aplicación web (Ejecutar como: Yo · Acceso: Cualquier usuario).
-// Tiene una clave secreta adentro: no lo compartas.
+// Si ya estaba publicado: Implementar → Administrar implementaciones → lápiz → Versión: Nueva versión → Implementar
+// (así queda la misma URL). Tiene una clave secreta adentro: no lo compartas.
+const VERSION = ${SCRIPT_V};
 const SECRET = "${secret}";
 const FOLDER_ID = "${FOLDER_ID}";
+const CHAT_FOLDER_ID = "${CHAT_FOLDER_ID}";
 const MAX_BYTES = ${MAX_BYTES};
+const CHAT_MAX = ${CHAT_MAX};
 const TYPES = ${JSON.stringify(TYPES)};
+const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const out = o => ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
 
 function doGet(e){
   if (e.parameter.k !== SECRET) return out({ ok: false, error: "no autorizado" });
+  if (e.parameter.v) return out({ ok: true, version: VERSION });
   const files = DriveApp.getFolderById(FOLDER_ID).getFiles(), list = [];
   while (files.hasNext()){
     const f = files.next();
@@ -47,16 +59,43 @@ function doGet(e){
   return out({ ok: true, stickers: list });
 }
 
+// La carpeta del mes dentro de "Fotos Retail MKT" (si todavía no existe, se crea).
+function monthFolder(){
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const root = DriveApp.getFolderById(CHAT_FOLDER_ID), ym = Utilities.formatDate(new Date(), "America/Asuncion", "yyyy-MM");
+    const name = ym + " " + MESES[Number(ym.slice(5)) - 1], it = root.getFoldersByName(name);
+    return it.hasNext() ? it.next() : root.createFolder(name);
+  } finally { lock.releaseLock(); }
+}
+
 function doPost(e){
   let b; try { b = JSON.parse(e.postData.contents); } catch (err){ return out({ ok: false, error: "pedido inválido" }); }
   if (b.k !== SECRET) return out({ ok: false, error: "no autorizado" });
+  if (b.kind === "trash") return trash(b);
   if (TYPES.indexOf(b.type) < 0) return out({ ok: false, error: "tipo de imagen no permitido" });
-  const bytes = Utilities.base64Decode(b.data || "");
-  if (!bytes.length || bytes.length > MAX_BYTES) return out({ ok: false, error: "la imagen supera 400 KB" });
-  const f = DriveApp.getFolderById(FOLDER_ID).createFile(Utilities.newBlob(bytes, b.type, String(b.name || "sticker").slice(0, 40)));
+  const chat = b.kind === "chat", bytes = Utilities.base64Decode(b.data || "");
+  if (!bytes.length || bytes.length > (chat ? CHAT_MAX : MAX_BYTES)) return out({ ok: false, error: chat ? "la foto supera 4 MB" : "la imagen supera 400 KB" });
+  const folder = chat ? monthFolder() : DriveApp.getFolderById(FOLDER_ID);
+  const f = folder.createFile(Utilities.newBlob(bytes, b.type, String(b.name || (chat ? "foto" : "sticker")).slice(0, 60)));
   f.setDescription(String(b.by || "").slice(0, 40));
-  f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (err){}
+  if (chat) return out({ ok: true, file: { id: f.getId(), name: f.getName() } });
   return out({ ok: true, sticker: { id: f.getId(), name: f.getName(), by: f.getDescription(), ts: f.getDateCreated().toISOString() } });
+}
+
+// Borrar una foto del chat (va a la papelera de Drive): solo si está en "Fotos Retail MKT" y la subió esa persona.
+function trash(b){
+  let f; try { f = DriveApp.getFileById(String(b.id || "")); } catch (err){ return out({ ok: false, error: "no existe" }); }
+  if (!b.by || f.getDescription() !== String(b.by)) return out({ ok: false, error: "no es tuya" });
+  let inChat = false;
+  for (const ps = f.getParents(); ps.hasNext();){
+    const p = ps.next(); if (p.getId() === CHAT_FOLDER_ID) inChat = true;
+    for (const pp = p.getParents(); pp.hasNext();) if (pp.next().getId() === CHAT_FOLDER_ID) inChat = true;
+  }
+  if (!inChat) return out({ ok: false, error: "no es una foto del chat" });
+  f.setTrashed(true);
+  return out({ ok: true });
 }
 `;
 
@@ -69,6 +108,19 @@ async function giphy(key: string, q: string){
   const j = await r.json();
   return (j.data || []).map((g: any) => ({ id: g.id, title: g.title || "", url: g.images?.downsized_medium?.url || g.images?.original?.url, preview: g.images?.fixed_width_small?.url || g.images?.fixed_width?.url }))
     .filter((g: any) => g.url && g.preview);
+}
+// Qué versión del script de Drive está publicada (la 1 no tiene fotos del chat). Se recuerda un rato.
+let scriptV: { url: string; v: number; at: number } | null = null;
+async function scriptVersion(url: string, secret: string){
+  if (scriptV && scriptV.url === url && Date.now() - scriptV.at < (scriptV.v >= SCRIPT_V ? 30 * 60e3 : 30e3)) return scriptV.v;
+  let v = 1;
+  try { const j = JSON.parse(await (await fetch(`${url}?k=${encodeURIComponent(secret)}&v=1`, { redirect: "follow" })).text()); v = Number(j.version) || 1; } catch { /* sin respuesta: se toma como la 1 */ }
+  scriptV = { url, v, at: Date.now() };
+  return v;
+}
+async function scriptPost(c: any, body: Record<string, unknown>){
+  const r = await fetch(c.sticker_url, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ k: c.sticker_secret, ...body }) });
+  const t = await r.text(); try { return JSON.parse(t); } catch { throw new Error("El script de Drive no respondió bien"); }
 }
 async function scriptList(url: string, secret: string){
   const r = await fetch(`${url}?k=${encodeURIComponent(secret)}`, { redirect: "follow" });
@@ -86,7 +138,7 @@ async function tendencias(area: string, force: boolean){
   // Tableros de Pinterest de la galería: los que eligió Admin total (APP_FLAGS.pinboards) o los de referencia.
   const flags = (rows || []).find((r: any) => r.key === "s:APP_FLAGS")?.data || {};
   const boards = (Array.isArray(flags.pinboards) ? flags.pinboards : []).filter((b: any) => typeof b === "string" && /^[^/\s]{1,60}\/[^/\s]{1,100}$/.test(b)).slice(0, 8);
-  if (prev?.groups && prev.v === 4 && !force && Date.now() - (prev.at || 0) < 3 * 3600e3) return prev.groups;
+  if (prev?.groups && prev.v === 6 && !force && Date.now() - (prev.at || 0) < 3 * 3600e3) return prev.groups;
   const known = new Map<string, any>();
   (rows || []).filter((r: any) => r.key.startsWith("cache:")).forEach((r: any) => (r.data?.groups || []).forEach((g: any) => (g.items || []).forEach((i: any) => known.set(i.u, i))));
   // CM y Diseño ven cosas distintas: no se repite lo que ya muestra la otra área.
@@ -94,7 +146,7 @@ async function tendencias(area: string, force: boolean){
   const exclude = ((rows || []).find((r: any) => r.key === other)?.data?.groups || []).flatMap((g: any) => (g.items || []).map((i: any) => i.u));
   const { groups } = await armar(area, known, { exclude, ...(boards.length ? { boards } : {}) });
   if (groups.some((g) => g.items.length)){
-    const data = { v: 4, at: Date.now(), groups };
+    const data = { v: 6, at: Date.now(), groups };
     if (row) await db.from("app_state").update({ data, updated_at: new Date().toISOString() }).eq("key", key);
     else await db.from("app_state").insert({ key, data });
     return groups;
@@ -117,7 +169,7 @@ Deno.serve(async (req) => {
     switch (b.action){
       case "status":
         if (!admin) return json({ ok: false, error: "Solo Admin total" }, 403);
-        return json({ ok: true, giphy: !!c.giphy_key, stickers: !!c.sticker_url });
+        return json({ ok: true, giphy: !!c.giphy_key, stickers: !!c.sticker_url, scriptV: c.sticker_url ? await scriptVersion(c.sticker_url, c.sticker_secret) : 0, scriptNeed: SCRIPT_V });
       case "set_giphy": {
         if (!admin) return json({ ok: false, error: "Solo Admin total" }, 403);
         const key = String(b.key || "").trim();
@@ -129,7 +181,7 @@ Deno.serve(async (req) => {
       }
       case "script":
         if (!admin) return json({ ok: false, error: "Solo Admin total" }, 403);
-        return json({ ok: true, script: scriptText(c.sticker_secret) });
+        return json({ ok: true, script: scriptText(c.sticker_secret), v: SCRIPT_V });
       case "set_sticker_url": {
         if (!admin) return json({ ok: false, error: "Solo Admin total" }, 403);
         const url = String(b.url || "").trim();
@@ -137,7 +189,8 @@ Deno.serve(async (req) => {
         if (!SCRIPT_RE.test(url)) return json({ ok: false, error: "La URL tiene que ser la de la Aplicación web: https://script.google.com/macros/s/…/exec" });
         const list = await scriptList(url, c.sticker_secret);
         await db.from("integration_config").update({ sticker_url: url, updated_at: new Date().toISOString() }).eq("id", 1);
-        return json({ ok: true, count: list.length });
+        scriptV = null;
+        return json({ ok: true, count: list.length, scriptV: await scriptVersion(url, c.sticker_secret) });
       }
       case "gifs":
         if (!c.giphy_key) return json({ ok: false, nokey: true, error: "La búsqueda de GIFs no está conectada" });
@@ -155,11 +208,29 @@ Deno.serve(async (req) => {
         if (!TYPES.includes(b.type)) return json({ ok: false, error: "La imagen tiene que ser PNG, WEBP, GIF o JPG" });
         const size = Math.floor(String(b.data || "").length * 3 / 4);
         if (!size || size > MAX_BYTES) return json({ ok: false, error: "El sticker supera 400 KB" });
-        const r = await fetch(c.sticker_url, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ k: c.sticker_secret, name: b.name, type: b.type, data: b.data, by: m.person_id }) });
-        const t = await r.text(); let j: any; try { j = JSON.parse(t); } catch { throw new Error("El script de Drive no respondió bien"); }
+        const j = await scriptPost(c, { name: b.name, type: b.type, data: b.data, by: m.person_id });
         if (!j.ok) return json({ ok: false, error: j.error || "No se pudo guardar" });
         return json({ ok: true, sticker: { ...j.sticker, url: thumb(j.sticker.id) } });
+      }
+      // Fotos del chat: se guardan en Google Drive ("Fotos Retail MKT" → carpeta del mes), no en la base.
+      case "chat_image": {
+        if (!c.sticker_url) return json({ ok: false, nokey: true, error: "Las fotos del chat todavía no están conectadas: Admin total conecta el script de Google Drive en Configuración → Integraciones." });
+        if (!TYPES.includes(b.type)) return json({ ok: false, error: "La foto tiene que ser JPG, PNG, WEBP o GIF" });
+        const size = Math.floor(String(b.data || "").length * 3 / 4);
+        if (!size || size > CHAT_MAX) return json({ ok: false, error: "La foto supera 4 MB" });
+        if (await scriptVersion(c.sticker_url, c.sticker_secret) < SCRIPT_V) return json({ ok: false, old: true, error: "Falta actualizar el script de Google Drive para las fotos: Admin total lo hace en Configuración → Integraciones." });
+        const ext = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" } as Record<string, string>)[b.type];
+        const name = `${m.person_id}-${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, "")}.${ext}`;
+        const j = await scriptPost(c, { kind: "chat", name, type: b.type, data: b.data, by: m.person_id });
+        if (!j.ok || !j.file?.id) return json({ ok: false, error: j.error || "No se pudo guardar la foto" });
+        return json({ ok: true, id: j.file.id });
+      }
+      // Al eliminar un mensaje con foto, la foto va a la papelera de Drive (solo la puede borrar quien la subió).
+      case "chat_image_delete": {
+        const id = String(b.id || "");
+        if (!c.sticker_url || !/^[\w-]{10,100}$/.test(id)) return json({ ok: false, error: "Foto inválida" });
+        const j = await scriptPost(c, { kind: "trash", id, by: m.person_id });
+        return json({ ok: !!j.ok, ...(j.ok ? {} : { error: j.error || "No se pudo borrar" }) });
       }
       // TEMPORAL (para probar el chat): Admin total, en "ver como", envía un mensaje en nombre de otra persona.
       // Queda marcado con via = quién lo envió de verdad, y la app lo muestra como prueba.

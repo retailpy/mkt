@@ -10,8 +10,8 @@
 const { ORDEN, cronOrUser, graph, brandPages, save, tokenHint } = require("./_lib/meta");
 
 // Cuenta de Instagram → nombre de la cadena y país (para la banderita). Si un usuario no existe, queda el error y sigue.
+// Solo supermercados de afuera: la idea es inspirarse con gráficas internacionales (nada de Paraguay).
 const CUENTAS = {
-  salemma_super: ["Salemma", "PY"], realsupermercados: ["Real", "PY"],
   paodeacucar: ["Pão de Açúcar", "BR"], carrefourbrasil: ["Carrefour Brasil", "BR"], stmarche: ["St. Marche", "BR"],
   citymarketmx: ["City Market", "MX"],
   ametllerorigen: ["Ametller Origen", "ES"], mercadona: ["Mercadona", "ES"], elcorteingles: ["El Corte Inglés", "ES"],

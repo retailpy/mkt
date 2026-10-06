@@ -115,7 +115,7 @@ async function save(key, data){
   return t;
 }
 
-// Leer lo que ya se guardó (solo s:META_POSTS), con la misma clave que para guardar.
+// Leer lo que ya se guardó (solo s:META_POSTS y s:META_INBOX), con la misma clave que para guardar.
 async function readMeta(key){
   const url = process.env.SUPABASE_URL, apikey = process.env.SUPABASE_KEY, secret = process.env.INGEST_KEY;
   if (!url || !apikey || !secret) throw new Error("Faltan variables SUPABASE_URL, SUPABASE_KEY o INGEST_KEY en Vercel");
