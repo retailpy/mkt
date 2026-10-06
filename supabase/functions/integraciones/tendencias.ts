@@ -26,7 +26,7 @@ const M = {
   dezeen: wp("https://www.dezeen.com", "Dezeen", "en", "GB"),
 };
 // Roastbrief: su búsqueda tarda demasiado; sus etiquetas (supermercados, tiktok, halloween…) responden al instante.
-const slug = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const slug = (t: string) => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const RT = (t: string): Feed => ({ u: `https://roastbrief.com.mx/tag/${slug(t)}/feed/`, src: "Roastbrief", lang: "es", cc: "MX", days: 400 });
 // Tableros de Pinterest (afiches, encartes, posteos y carruseles de diseño): su feed oficial (RSS). Los elige Admin total.
 // CM: posteos, carruseles y líneas gráficas de redes. Diseño: tableros con pines recientes de afiches de ofertas, precios, encartes, campañas de retail y supermercados
@@ -326,3 +326,5 @@ export async function armar(area: string, known: Map<string, any>, { debug = fal
 }
 // Para las pruebas.
 export const __t = { feat, negTitle, NEG_X, chainOf, GROUPS, fueraDeTemporada, PY };
+// Lectura de RSS compartida con noticias.ts.
+export const __rss = { UA, decode, strip, tag, pickImg };

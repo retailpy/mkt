@@ -4,9 +4,12 @@
 //   status · set_giphy {key} · script · set_sticker_url {url}       → solo Admin total
 //   gifs {q} · stickers · sticker_upload {name,type,data}           → cualquier persona del equipo
 //   chat_image {type,data} · chat_image_delete {id}                  → fotos del chat (carpeta "Fotos Retail MKT", una carpeta por mes)
+//   boceto_upload {job,name,type,data} · boceto_delete {id}          → bocetos de los pedidos (carpeta de Bocetos, una carpeta por mes)
 //   tendencias {area:"dg"|"cm"|"ideas", force?}                      → campañas, piezas y contenidos con foto, en español (force: solo Admin total)
+//   noticias {force?}                                                → lo que sale en los medios de Paraguay sobre Retail S.A. y sus marcas (3 meses)
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { armar } from "./tendencias.ts";
+import { buscarNoticias, juntarNoticias } from "./noticias.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -20,19 +23,22 @@ const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
 });
 const FOLDER_ID = "1EwWLkJ3XCl927Yi0ryCvFC807Vdp0iFk"; // carpeta "Stickers Retail MKT"
 const CHAT_FOLDER_ID = "13L9Y3QcGbymgMStbaCHmR7F2MZaoBxVw"; // carpeta "Fotos Retail MKT" (adentro, una carpeta por mes)
+const BOCETO_FOLDER_ID = "11CTrI4SXqPnHj6an0xwcFnDy7lbU1XJK"; // carpeta de los bocetos de los pedidos (adentro, una carpeta por mes)
 const MAX_BYTES = 400 * 1024;
 const CHAT_MAX = 4 * 1024 * 1024; // la app achica las fotos antes de subirlas (suelen quedar en 200-600 KB)
+const BOCETO_MAX = 10 * 1024 * 1024; // boceto liviano para ver cómo va (el original va en los links del pedido)
 const TYPES = ["image/png", "image/webp", "image/gif", "image/jpeg"];
-const SCRIPT_V = 2; // versión del script de Drive que necesita la app (2: fotos del chat por mes)
+const SCRIPT_V = 3; // versión del script de Drive que necesita la app (2: fotos del chat por mes · 3: bocetos de los pedidos)
 const SCRIPT_RE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]{20,}\/exec$/;
 const thumb = (id: string) => `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w320`;
 
 const cfg = async () => (await db.from("integration_config").select("*").eq("id", 1).single()).data;
 
 // El script que se pega en script.google.com (lleva la clave secreta adentro: no compartirlo).
-const scriptText = (secret: string) => `// Retail MKT Hub · stickers y fotos del chat en Google Drive.
+const scriptText = (secret: string) => `// Retail MKT Hub · stickers, fotos del chat y bocetos de los pedidos en Google Drive.
 //   Stickers → carpeta "Stickers Retail MKT".
 //   Fotos del chat → carpeta "Fotos Retail MKT", con una carpeta por mes adentro (ej.: "2026-10 Octubre").
+//   Bocetos de los pedidos → su carpeta, también con una carpeta por mes.
 // Pegalo en script.google.com y publicalo como Aplicación web (Ejecutar como: Yo · Acceso: Cualquier usuario).
 // Si ya estaba publicado: Implementar → Administrar implementaciones → lápiz → Versión: Nueva versión → Implementar
 // (así queda la misma URL). Tiene una clave secreta adentro: no lo compartas.
@@ -40,8 +46,10 @@ const VERSION = ${SCRIPT_V};
 const SECRET = "${secret}";
 const FOLDER_ID = "${FOLDER_ID}";
 const CHAT_FOLDER_ID = "${CHAT_FOLDER_ID}";
+const BOCETO_FOLDER_ID = "${BOCETO_FOLDER_ID}";
 const MAX_BYTES = ${MAX_BYTES};
 const CHAT_MAX = ${CHAT_MAX};
+const BOCETO_MAX = ${BOCETO_MAX};
 const TYPES = ${JSON.stringify(TYPES)};
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const out = o => ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
@@ -59,11 +67,11 @@ function doGet(e){
   return out({ ok: true, stickers: list });
 }
 
-// La carpeta del mes dentro de "Fotos Retail MKT" (si todavía no existe, se crea).
-function monthFolder(){
+// La carpeta del mes dentro de una carpeta (Fotos o Bocetos); si todavía no existe, se crea.
+function monthFolder(rootId){
   const lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
-    const root = DriveApp.getFolderById(CHAT_FOLDER_ID), ym = Utilities.formatDate(new Date(), "America/Asuncion", "yyyy-MM");
+    const root = DriveApp.getFolderById(rootId), ym = Utilities.formatDate(new Date(), "America/Asuncion", "yyyy-MM");
     const name = ym + " " + MESES[Number(ym.slice(5)) - 1], it = root.getFoldersByName(name);
     return it.hasNext() ? it.next() : root.createFolder(name);
   } finally { lock.releaseLock(); }
@@ -73,10 +81,11 @@ function doPost(e){
   let b; try { b = JSON.parse(e.postData.contents); } catch (err){ return out({ ok: false, error: "pedido inválido" }); }
   if (b.k !== SECRET) return out({ ok: false, error: "no autorizado" });
   if (b.kind === "trash") return trash(b);
+  if (b.kind === "boceto") return boceto(b);
   if (TYPES.indexOf(b.type) < 0) return out({ ok: false, error: "tipo de imagen no permitido" });
   const chat = b.kind === "chat", bytes = Utilities.base64Decode(b.data || "");
   if (!bytes.length || bytes.length > (chat ? CHAT_MAX : MAX_BYTES)) return out({ ok: false, error: chat ? "la foto supera 4 MB" : "la imagen supera 400 KB" });
-  const folder = chat ? monthFolder() : DriveApp.getFolderById(FOLDER_ID);
+  const folder = chat ? monthFolder(CHAT_FOLDER_ID) : DriveApp.getFolderById(FOLDER_ID);
   const f = folder.createFile(Utilities.newBlob(bytes, b.type, String(b.name || (chat ? "foto" : "sticker")).slice(0, 60)));
   f.setDescription(String(b.by || "").slice(0, 40));
   try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (err){}
@@ -84,16 +93,27 @@ function doPost(e){
   return out({ ok: true, sticker: { id: f.getId(), name: f.getName(), by: f.getDescription(), ts: f.getDateCreated().toISOString() } });
 }
 
-// Borrar una foto del chat (va a la papelera de Drive): solo si está en "Fotos Retail MKT" y la subió esa persona.
+// Boceto de un pedido (imagen, PDF, logo… liviano): a la carpeta del mes dentro de la carpeta de Bocetos.
+function boceto(b){
+  const bytes = Utilities.base64Decode(b.data || "");
+  if (!bytes.length || bytes.length > BOCETO_MAX) return out({ ok: false, error: "el boceto supera 10 MB" });
+  const f = monthFolder(BOCETO_FOLDER_ID).createFile(Utilities.newBlob(bytes, String(b.type || "application/octet-stream"), String(b.name || "boceto").slice(0, 120)));
+  f.setDescription(String(b.by || "").slice(0, 40));
+  try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (err){}
+  return out({ ok: true, file: { id: f.getId(), name: f.getName(), mime: f.getMimeType(), size: f.getSize() } });
+}
+
+// Borrar una foto del chat o un boceto (va a la papelera de Drive): solo si está en esas carpetas y lo subió esa persona
+// (Admin total puede borrar cualquier boceto).
 function trash(b){
   let f; try { f = DriveApp.getFileById(String(b.id || "")); } catch (err){ return out({ ok: false, error: "no existe" }); }
-  if (!b.by || f.getDescription() !== String(b.by)) return out({ ok: false, error: "no es tuya" });
-  let inChat = false;
+  if (!b.admin && (!b.by || f.getDescription() !== String(b.by))) return out({ ok: false, error: "no es tuya" });
+  const roots = [CHAT_FOLDER_ID, BOCETO_FOLDER_ID]; let inChat = false;
   for (const ps = f.getParents(); ps.hasNext();){
-    const p = ps.next(); if (p.getId() === CHAT_FOLDER_ID) inChat = true;
-    for (const pp = p.getParents(); pp.hasNext();) if (pp.next().getId() === CHAT_FOLDER_ID) inChat = true;
+    const p = ps.next(); if (roots.indexOf(p.getId()) >= 0) inChat = true;
+    for (const pp = p.getParents(); pp.hasNext();) if (roots.indexOf(pp.next().getId()) >= 0) inChat = true;
   }
-  if (!inChat) return out({ ok: false, error: "no es una foto del chat" });
+  if (!inChat) return out({ ok: false, error: "no es una foto del chat ni un boceto" });
   f.setTrashed(true);
   return out({ ok: true });
 }
@@ -154,6 +174,18 @@ async function tendencias(area: string, force: boolean){
   return prev?.v >= 2 ? prev.groups : [];
 }
 
+// ---------- Noticias: se guardan en app_state (cache:news) y se renuevan cada 3 horas; lo encontrado se va juntando ----------
+async function noticias(force: boolean){
+  const { data: row } = await db.from("app_state").select("data").eq("key", "cache:news").maybeSingle();
+  const prev = row?.data?.v === 1 ? row.data : null;
+  if (prev?.items && !force && Date.now() - (prev.at || 0) < 3 * 3600e3) return prev;
+  const nuevas = await buscarNoticias();
+  const data = { v: 1, at: Date.now(), items: juntarNoticias(prev?.items || [], nuevas) };
+  if (row) await db.from("app_state").update({ data, updated_at: new Date().toISOString() }).eq("key", "cache:news");
+  else await db.from("app_state").insert({ key: "cache:news", data });
+  return data;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ ok: false, error: "Método no permitido" }, 405);
@@ -200,6 +232,10 @@ Deno.serve(async (req) => {
         const groups = await tendencias(area, !!b.force && admin);
         return groups.some((g: any) => g.items.length) ? json({ ok: true, groups }) : json({ ok: false, error: "No se pudieron traer las novedades" });
       }
+      case "noticias": {
+        const n = await noticias(!!b.force && admin);
+        return json({ ok: true, at: n.at, items: n.items });
+      }
       case "stickers":
         if (!c.sticker_url) return json({ ok: false, nokey: true, error: "La biblioteca de stickers no está conectada" });
         return json({ ok: true, stickers: (await scriptList(c.sticker_url, c.sticker_secret)).map((s: any) => ({ ...s, url: thumb(s.id) })) });
@@ -218,7 +254,7 @@ Deno.serve(async (req) => {
         if (!TYPES.includes(b.type)) return json({ ok: false, error: "La foto tiene que ser JPG, PNG, WEBP o GIF" });
         const size = Math.floor(String(b.data || "").length * 3 / 4);
         if (!size || size > CHAT_MAX) return json({ ok: false, error: "La foto supera 4 MB" });
-        if (await scriptVersion(c.sticker_url, c.sticker_secret) < SCRIPT_V) return json({ ok: false, old: true, error: "Falta actualizar el script de Google Drive para las fotos: Admin total lo hace en Configuración → Integraciones." });
+        if (await scriptVersion(c.sticker_url, c.sticker_secret) < 2) return json({ ok: false, old: true, error: "Falta actualizar el script de Google Drive para las fotos: Admin total lo hace en Configuración → Integraciones." });
         const ext = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" } as Record<string, string>)[b.type];
         const name = `${m.person_id}-${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, "")}.${ext}`;
         const j = await scriptPost(c, { kind: "chat", name, type: b.type, data: b.data, by: m.person_id });
@@ -230,6 +266,27 @@ Deno.serve(async (req) => {
         const id = String(b.id || "");
         if (!c.sticker_url || !/^[\w-]{10,100}$/.test(id)) return json({ ok: false, error: "Foto inválida" });
         const j = await scriptPost(c, { kind: "trash", id, by: m.person_id });
+        return json({ ok: !!j.ok, ...(j.ok ? {} : { error: j.error || "No se pudo borrar" }) });
+      }
+      // Bocetos de los pedidos: se guardan en Google Drive (carpeta de Bocetos → carpeta del mes), no en la base.
+      case "boceto_upload": {
+        if (!c.sticker_url) return json({ ok: false, nokey: true, error: "Google Drive todavía no está conectado: Admin total lo conecta en Configuración → Integraciones." });
+        const size = Math.floor(String(b.data || "").length * 3 / 4);
+        if (!size || size > BOCETO_MAX) return json({ ok: false, error: "El boceto supera 10 MB: subí una versión más liviana" });
+        if (await scriptVersion(c.sticker_url, c.sticker_secret) < 3) return json({ ok: false, old: true, error: "Falta actualizar el script de Google Drive para los bocetos: Admin total lo hace en Configuración → Integraciones." });
+        const type = /^[\w.+-]+\/[\w.+-]+$/.test(String(b.type || "")) ? String(b.type) : "application/octet-stream";
+        const base = String(b.name || "boceto").replace(/[\\/:*?"<>|#%]+/g, "_").replace(/\s+/g, " ").trim().slice(-80) || "boceto";
+        const job = String(b.job || "").replace(/[^\w-]+/g, "").slice(0, 20);
+        const stamp = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date()).replace(", ", " ").replace(":", "");
+        const name = `${job ? job + " · " : ""}${stamp} · ${base}`; // ej.: D-117 · 2026-10-06 1530 · lookbook.jpg (hora de Paraguay)
+        const j = await scriptPost(c, { kind: "boceto", name, type, data: b.data, by: m.person_id });
+        if (!j.ok || !j.file?.id) return json({ ok: false, error: j.error || "No se pudo guardar el boceto" });
+        return json({ ok: true, id: j.file.id, name: j.file.name, mime: j.file.mime, size: j.file.size });
+      }
+      case "boceto_delete": {
+        const id = String(b.id || "");
+        if (!c.sticker_url || !/^[\w-]{10,100}$/.test(id)) return json({ ok: false, error: "Boceto inválido" });
+        const j = await scriptPost(c, { kind: "trash", id, by: m.person_id, admin });
         return json({ ok: !!j.ok, ...(j.ok ? {} : { error: j.error || "No se pudo borrar" }) });
       }
       // TEMPORAL (para probar el chat): Admin total, en "ver como", envía un mensaje en nombre de otra persona.
