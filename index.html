@@ -530,6 +530,15 @@ html.nomotion .jproc li.can .pdot{animation:none}
 @media (max-width:560px){.lpgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .lpitem{display:flex;flex-direction:column;gap:4px;text-decoration:none;color:inherit}.lpitem:hover .pthumb{outline:2px solid var(--cyan)}
 .lpmeta{font-size:11px;color:var(--faint)}
+.lpfull{max-width:1180px;margin:0 auto}.lpfull>.head{margin-bottom:16px}.lpfb+.lpfb{margin-top:28px}.lpfb .lph{font-size:15px}
+.lpfgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+@media (max-width:900px){.lpfgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}}
+@media (max-width:560px){.lpfgrid{grid-template-columns:minmax(0,1fr)}}
+.lpcard{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--line-2,#1e293b);border-radius:14px;background:var(--panel,transparent);min-width:0}
+.lpcard .pthumb.xl{width:100%;height:auto;aspect-ratio:4/5;border-radius:10px;font-size:16px}
+.lpst{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;font-variant-numeric:tabular-nums}.lpst span{display:inline-flex;align-items:center;gap:4px}.lpst svg{width:14px;height:14px}
+.lpd{font-size:12px;color:var(--faint)}.lpd a{color:var(--cyan)}
+.lpcap{margin:0;font-size:13px;line-height:1.45;white-space:pre-line;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
 .adsb+.adsb{margin-top:16px}
 .adgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(280px,100%),1fr));gap:10px}
 .adcard{display:flex;gap:10px;border:1px solid var(--line-2);border-radius:12px;padding:10px;align-items:flex-start}
@@ -3167,14 +3176,32 @@ function tvBrandHero(b){
 // ---------- TV Impacto Redes: 1) lo mejor de cada marca  2…) top 10 de cada marca. 10 segundos cada pantalla ----------
 // Últimas 6 publicaciones de Instagram de cada marca (imagen reducida), debajo de Seguidores por marca.
 const IG_MAIN = ["Superseis","Stock","Delimarket"]; // las marcas principales: sus últimas publicaciones de Instagram en el Dashboard y en el Informe mensual
+const last9 = b => (META_POSTS[b]?.posts || []).filter(x => !/reel|video/i.test(x.type || "")).sort((x, y) => y.ts.localeCompare(x.ts)).slice(0, 9);
+const pyDate = ts => new Intl.DateTimeFormat("en-CA", { timeZone:"America/Asuncion" }).format(new Date(ts));
 function lastPostsPanel(bs){
-  const rows = bs.map(b => ({ b, list:(META_POSTS[b]?.posts || []).filter(x => !/reel|video/i.test(x.type || "")).sort((x, y) => y.ts.localeCompare(x.ts)).slice(0, 9), h:META_POSTS[b]?.handle })).filter(r => r.list.length);
-  return `<div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram</h2><div class="tag-row"><span class="tag">Fuente: Meta</span>${updTag(postsUpdated())}${metaBtn("publicaciones", "Publicaciones")}</div></div>
+  const rows = bs.map(b => ({ b, list:last9(b), h:META_POSTS[b]?.handle })).filter(r => r.list.length);
+  return `<div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram</h2><div class="tag-row"><span class="tag">Fuente: Meta</span>${updTag(postsUpdated())}${rows.length ? `<button type="button" class="btn sm" data-lpfull="${esc(rows.map(r => r.b).join(","))}">${icon("maximize-2")} Ver en grande</button>` : ""}${metaBtn("publicaciones", "Publicaciones")}</div></div>
     <div class="panel-b">${rows.length ? rows.map(r => `<div class="lpost"><div class="lph">${brandTag(r.b)}${r.h ? `<span class="note">${esc(r.h)}</span>` : ""}</div><div class="lpgrid">${r.list.map(x => { const pp = { img:x.img, format:x.type };
-      return `<a class="lpitem" href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="${esc((x.cap || "").slice(0, 140))}">${pubThumb(pp, "lg")}<span class="lpmeta">${dm(new Intl.DateTimeFormat("en-CA", { timeZone:"America/Asuncion" }).format(new Date(x.ts)))} · ♥ ${dots(x.likes || 0)}</span></a>`; }).join("")}</div></div>`).join("")
+      return `<a class="lpitem" href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="${esc((x.cap || "").slice(0, 140))}">${pubThumb(pp, "lg")}<span class="lpmeta">${dm(pyDate(x.ts))} · ♥ ${dots(x.likes || 0)}</span></a>`; }).join("")}</div></div>`).join("")
       : `<div class="empty">${NO_DATA}: las publicaciones llegan con la actualización diaria de Meta.</div>`}
       ${rows.length && bs.some(b => !rows.some(r => r.b === b)) ? `<p class="note" style="margin:8px 0 0">Todavía sin publicaciones de ${bs.filter(b => !rows.some(r => r.b === b)).join(", ")}${canMetaRefresh() ? ": tocá “Actualizar”." : "."}</p>` : ""}</div></div>`;
 }
+// “Ver en grande”: las últimas 9 publicaciones de cada marca en página completa, con likes, comentarios, alcance y texto.
+let lpFull = null;
+function lpFullPage(){
+  const bs = (lpFull || []).filter(b => last9(b).length), n = v => isNum(v) ? dots(v) : "—";
+  return `<div class="lpfull"><div class="head"><div><h1 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram</h1><p class="sub">Las últimas 9 de cada marca (sin reels), con sus números. Fuente: Meta · ${metaWhen(postsUpdated())}.</p></div><button type="button" class="btn" data-lpclose>${icon("arrow-left")} Volver</button></div>
+    ${bs.map(b => `<section class="lpfb"><div class="lph">${brandTag(b)}${META_POSTS[b]?.handle ? `<span class="note">${esc(META_POSTS[b].handle)}</span>` : ""}</div><div class="lpfgrid">${last9(b).map(x => `<article class="lpcard">
+      <a href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="Ver en Instagram">${pubThumb({ img:x.img, format:x.type }, "xl")}</a>
+      <div class="lpst"><span title="Me gusta">${icon("heart")} ${n(x.likes)}</span><span title="Comentarios">${icon("message-circle")} ${n(x.comments)}</span><span title="Alcance (cuentas únicas)">${icon("eye")} ${n(x.reach)}</span><span title="Guardados">${icon("bookmark")} ${n(x.saved)}</span><span title="Compartidos">${icon("send")} ${n(x.shares)}</span></div>
+      <div class="lpd"><b>${dm(pyDate(x.ts))}</b> · ${esc(x.type || "Post")}${x.link ? ` · <a href="${esc(x.link)}" target="_blank" rel="noopener">Ver en Instagram</a>` : ""}</div>
+      ${x.cap ? `<p class="lpcap">${esc(x.cap)}</p>` : ""}</article>`).join("")}</div></section>`).join("") || `<div class="panel empty">${NO_DATA}</div>`}</div>`;
+}
+document.addEventListener("click", e => {
+  const o = e.target.closest("[data-lpfull]"); if (o){ lpFull = o.dataset.lpfull.split(","); render(); window.scrollTo(0, 0); return; }
+  if (e.target.closest("[data-lpclose]")){ lpFull = null; render(); }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && lpFull){ lpFull = null; render(); } });
 const IMP_SECS = 10;
 let imp = { i:0, t:null, paused:false };
 const impMonth = () => MONTH > CURRENT_MONTH ? CURRENT_MONTH : MONTH;
@@ -5161,7 +5188,7 @@ const ICO = {
 const netLabel = n => `<span class="netx" title="${n === "IG" ? "Instagram" : "Facebook"}">${ICO[n] || ""}<span class="lbl">${n === "IG" ? "Instagram" : "Facebook"}</span></span>`;
 function pubRow(p, i){
   return `<tr><td class="rank">${i+1}</td><td><div class="person">${pubThumb(p)}<div><b>${esc(p.title)}</b><span>${brandTag(p.brand)} · ${netLabel(p.net)} · ${p.format} · ${dm(p.date)}</span></div></div></td>
-    <td class="r num"><b style="color:#fff">${isNum(p.reach) ? dots(p.reach) : "—"}</b></td><td class="r num">${dots(p.inter)} <span class="note">${dots(p.likes || 0)} ♥ · ${dots(p.comments || 0)} 💬</span></td><td class="r num">${isNum(p.reach) && p.reach ? (p.inter / p.reach * 100).toFixed(1).replace(".",",") + "%" : "—"}</td><td>${p.paid ? `<span class="paidtag">${ICO.pauta}Pautado</span>` : `<span class="note">Orgánico</span>`}</td><td class="note">${esc(p.cm || "")}</td><td>${p.link ? `<a class="link-post" href="${esc(p.link)}" target="_blank" rel="noopener">Ver post ${ICO.link}</a>` : ""}</td></tr>`;
+    <td class="r num"><b style="color:#fff">${isNum(p.reach) ? dots(p.reach) : "—"}</b></td><td class="r num">${dots(p.inter)} <span class="note">${dots(p.likes || 0)} ♥ · ${dots(p.comments || 0)} 💬</span></td><td class="r num">${isNum(p.reach) && p.reach ? (p.inter / p.reach * 100).toFixed(1).replace(".",",") + "%" : "—"}</td><td>${p.link ? `<a class="link-post" href="${esc(p.link)}" target="_blank" rel="noopener">Ver post ${ICO.link}</a>` : ""}</td></tr>`;
 }
 function pRedes(){
   const bs = socialBrands();
@@ -5170,9 +5197,8 @@ function pRedes(){
   // publicaciones
   const all = publicationsFor(MONTH).filter(p => (pubUI.brand === "Todas" || p.brand === pubUI.brand) && (pubUI.net === "Todas" || p.net === pubUI.net) && (pubUI.fmt === "Todos" || p.format === pubUI.fmt) && (pubUI.paid === "incluir" || !p.paid));
   const top = [...all].sort((a,b) => pubScore(b) - pubScore(a)).slice(0,10);
-  const low = all.filter(p => p.age >= 7).sort((a,b) => pubScore(a) - pubScore(b)).slice(0,10);
   const sel = (key, opts, lbl) => `<select class="base" data-pub="${key}" aria-label="${lbl}">${opts.map(o => `<option value="${o[0]}" ${pubUI[key] === o[0] ? "selected" : ""}>${o[1]}</option>`).join("")}</select>`;
-  const pubTable = list => `<div class="tw"><table><thead><tr><th>#</th><th>Publicación</th><th class="r">Alcance</th><th class="r">Interacciones</th><th class="r">Tasa</th><th>Tipo</th><th>CM</th><th></th></tr></thead><tbody>${list.map(pubRow).join("") || `<tr><td colspan="8" class="empty">Sin publicaciones para estos filtros.</td></tr>`}</tbody></table></div>`;
+  const pubTable = list => `<div class="tw"><table><thead><tr><th>#</th><th>Publicación</th><th class="r">Alcance</th><th class="r">Interacciones</th><th class="r">Tasa</th><th></th></tr></thead><tbody>${list.map(pubRow).join("") || `<tr><td colspan="6" class="empty">Sin publicaciones para estos filtros.</td></tr>`}</tbody></table></div>`;
   return `<div><h1>Informe Redes</h1><p class="sub">Seguidores, publicaciones y público de todas las cuentas, traídos de Meta todos los días.</p></div>
   ${folNote()}
   ${followersTable()}
@@ -5180,11 +5206,10 @@ function pRedes(){
   ${followersPanel()}
   <div class="head"><h2 style="margin:0">Público de Instagram por marca</h2><div class="chips">${bs.map(b => `<button class="chip ${redesBrand===b?"on":""}" data-redes="${b}">${b}</button>`).join("")}</div></div>
   ${demoBlock(redesBrand)}
-  <div class="panel flush"><div class="panel-h fuchsia"><h2 class="icoh">${ICO.top}Publicaciones del mes por alcance</h2><div class="tag-row"><span class="tag">${monthLabel(MONTH)}</span><span class="tag">Fuente: Instagram (Meta) · ${metaWhen(postsUpdated())}</span><span class="tag">Alcance = cuentas únicas que la vieron; si Meta no lo da, se ordena por interacciones</span><span class="tag">Menor alcance: solo publicaciones con 7 días o más</span></div></div>
+  <div class="panel flush"><div class="panel-h fuchsia"><h2 class="icoh">${ICO.top}Publicaciones del mes por alcance</h2><div class="tag-row"><span class="tag">${monthLabel(MONTH)}</span><span class="tag">Fuente: Instagram (Meta) · ${metaWhen(postsUpdated())}</span><span class="tag">Alcance = cuentas únicas que la vieron; si Meta no lo da, se ordena por interacciones</span></div></div>
     <div class="panel-b"><div class="pubsel">${sel("brand", [["Todas","Marca: todas"], ...bs.map(b => [b, b])], "Marca")}${sel("net", [["Todas","Red: IG y FB"],["IG","Instagram"],["FB","Facebook"]], "Red")}${sel("fmt", [["Todos","Tipo: todos"],["Reel","Reel"],["Carrusel","Carrusel"],["Post","Post"],["Historia","Historia"]], "Tipo")}${sel("paid", [["incluir","Incluir pautadas"],["organico","Solo orgánicas"]], "Pauta")}</div></div></div>
   ${isFuture() ? `<div class="panel"><div class="empty">${monthLabel(MONTH)} todavía no empezó: las publicaciones aparecen a medida que se publican.</div></div>` : `
-  <h2 class="icoh up" style="margin:0 0 -8px">${ICO.up}Top 10 · mayor alcance</h2>${pubTable(top)}
-  <h2 class="icoh down" style="margin:0 0 -8px">${ICO.down}Las 10 de menor alcance</h2>${pubTable(low)}`}
+  <h2 class="icoh up" style="margin:0 0 -8px">${ICO.up}Top 10 · mayor alcance</h2>${pubTable(top)}`}
 `;
 }
 const MONTH_ABBR_ES = v => MONTHS_ES[+v.slice(5,7)-1].slice(0,3);
@@ -5193,7 +5218,7 @@ let reportBrand = "Superseis";
 const REPORT_TABS = [
   { k:"diseno", ic:"palette", l:"Diseño gráfico", file:"Diseno_grafico", perm:"pedidos", d:"Pedidos del mes, entregados, % a tiempo, detalle por diseñador y por tipo de pieza." },
   { k:"cm", ic:"clapperboard", l:"Community Manager", file:"CM", perm:"plan", d:"Cumplimiento del plan de posteo por marca y por CM, pedidos a CM (videos, copys, pauta) y lo que quedó pendiente." },
-  { k:"redes", ic:"smartphone", l:"Redes sociales", file:"Redes_sociales", perm:"redes", d:"Seguidores y crecimiento por marca, top y menor alcance, audiencia (ciudades, edades, género) y la pauta de Meta Ads." },
+  { k:"redes", ic:"smartphone", l:"Redes sociales", file:"Redes_sociales", perm:"redes", d:"Seguidores y crecimiento por marca, top por alcance, audiencia (ciudades, edades, género) y la pauta de Meta Ads." },
 ];
 function cmpTxt(now, before, fmt = dots){
   if (!before) return `<div class="cmp note">sin dato del mes anterior</div>`;
@@ -5283,9 +5308,9 @@ function repAlcance(){
     ${followerRows(bs).map(r => !r.has ? `<tr><td>${brandTag(r.b)}</td><td colspan="4" class="note">${NO_DATA}</td></tr>`
       : `<tr><td>${brandTag(r.b)}</td><td class="r num">${isNum(r.igc) ? dots(r.igc) : "—"}</td><td class="r num">${growth(folDiff(r.igc, r.igp))}</td><td class="r num">${isNum(r.fbc) ? dots(r.fbc) : "—"}</td><td class="r num">${growth(folDiff(r.fbc, r.fbp))}</td></tr>`).join("")}
   </tbody></table></div>
-  ${isFuture() ? "" : (() => { const pubs = publicationsFor(MONTH); const t = [...pubs].sort((a,b) => pubScore(b) - pubScore(a)).slice(0,5), l = pubs.filter(p => p.age >= 7).sort((a,b) => pubScore(a) - pubScore(b)).slice(0,5);
-    const tb = list => `<div class="tw"><table><thead><tr><th>#</th><th>Publicación</th><th class="r">Alcance</th><th class="r">Interacciones</th><th class="r">Tasa</th><th>Tipo</th><th>CM</th><th></th></tr></thead><tbody>${list.map(pubRow).join("")}</tbody></table></div>`;
-    return `<h2 style="margin:0 0 -8px" class="pmh">${pmIco("trophy")}Top 5 publicaciones por alcance</h2>${tb(t)}<h2 style="margin:0 0 -8px" class="pmh">${pmIco("trending-down")}Las 5 de menor alcance</h2>${tb(l)}<p class="note" style="margin:-8px 0 0">En Redes está el top 10 completo, con filtros por marca, red y tipo.</p>`; })()}
+  ${isFuture() ? "" : (() => { const pubs = publicationsFor(MONTH); const t = [...pubs].sort((a,b) => pubScore(b) - pubScore(a)).slice(0,5);
+    const tb = list => `<div class="tw"><table><thead><tr><th>#</th><th>Publicación</th><th class="r">Alcance</th><th class="r">Interacciones</th><th class="r">Tasa</th><th></th></tr></thead><tbody>${list.map(pubRow).join("")}</tbody></table></div>`;
+    return `<h2 style="margin:0 0 -8px" class="pmh">${pmIco("trophy")}Top 5 publicaciones por alcance</h2>${tb(t)}<p class="note" style="margin:-8px 0 0">En Redes está el top 10 completo, con filtros por marca, red y tipo.</p>`; })()}
   <div class="head"><h2 style="margin:0">Audiencia de Instagram por marca</h2><div class="chips">${bs.map(b => `<button class="chip ${reportBrand===b?"on":""}" data-rbrand="${b}">${b}</button>`).join("")}</div></div>
   ${!d ? `<div class="panel"><div class="empty">${NO_DATA}</div></div>` : `<div class="grid two">
     <div class="panel"><h2 class="pmh">${pmIco("map-pin")}Ciudades</h2>${d.cities.length ? `<div class="bars">${d.cities.map(([c,v],i) => `<div class="bar" style="--dl:${i*80}ms"><span>${esc(c)}</span><div class="tr"><div class="fl" style="width:${v/maxCity*100}%"></div></div><span class="v">${pct2(v)}</span></div>`).join("")}</div>` : `<div class="empty">${NO_DATA}</div>`}
@@ -7537,6 +7562,7 @@ function render(){
   if (page === "caldiseno") page = "caldg";
   if (page === "guia"){ page = "config"; cfgTab = "guia"; } // la Guía de uso está dentro de Configuración
   // Si se cambió de sección y el pedido abierto es el mismo de antes, se cierra (el pedido o el formulario no “persiguen” a la persona).
+  if (render.prevPage && page !== render.prevPage) lpFull = null;
   if (render.prevPage && page !== render.prevPage){ if (!render.goingBack){ navHist.push(render.prevPage); if (navHist.length > 30) navHist.shift(); } if (jobUI.ficha && jobUI.ficha === render.prevFicha) jobUI.ficha = null; if (jobUI.form && jobUI.form === render.prevForm) jobUI.form = null; }
   render.goingBack = false; render.prevPage = page; render.prevFicha = jobUI.ficha; render.prevForm = jobUI.form;
   if (page === "perfil"){ page = "config"; cfgTab = "perfil"; } // Mi Perfil se edita solo en Configuración // y el de redes, dentro de Diseño para Redes
@@ -7568,6 +7594,7 @@ function render(){
   $("#content").innerHTML = `<div class="${animate && !CAL_PAGES.includes(page) ? (page === "pedidos" || page === "gestioncm" ? "anim" : "fade anim") : "noanim"}${["pedidos","cartel","web","pantallas","gestioncm","calendario","calhistoria","calcanales","inicio","alertas","avisos","mensajes","sugerencias","plan","calcm","caldg","reportes","usuarios","staff","perfil","pauta"].includes(page) ? " clean" : ""}" style="display:flex;flex-direction:column;gap:24px">${bar}${["tv","tvredes","tvimpacto"].includes(page) ? "" : `<p class="eyebrow">${EYEBROW[page]}</p>`}${ro}${avb}${inst}${bdays}${PAGES[page]()}${demo}</div>${installDrawer()}`;
   if (jobUI.form){ const ff = jobForm(); if (ff) $("#content").innerHTML = ff; } // crear o editar un pedido: página completa
   else if (postUI.form){ const pf = postForm(); if (pf){ $("#content").innerHTML = pf; if (render.pfOpen !== postUI.form){ render.pfOpen = postUI.form; window.scrollTo(0, 0); } } } // publicación, historia o canal: página completa
+  else if (lpFull){ $("#content").innerHTML = lpFullPage(); } // últimas publicaciones en grande: página completa
   else if (!jobUI.ficha && backTo() && !$("#content .pback")){ const b = backTo(), x = [...PANEL_DESIGN, ...PANEL_CM, ...PANEL_TOOLS].find(y => y.k === page);
     $("#content").insertAdjacentHTML("afterbegin", `<nav class="pcrumb" aria-label="Ubicación"><button type="button" class="btn gback" data-page="${b.k}"${b.back ? " data-back" : ""} title="Volver a ${esc(b.t)}">${icon("arrow-left")} Volver</button>${x && b.k.startsWith("panel") ? `<span>›</span><b>${esc(x.t)}</b>` : ""}</nav>`); }
   else if (jobUI.ficha){ const fx = jobFicha(); if (fx) $("#content").innerHTML = fx; else jobUI.ficha = null; } // el pedido se abre como página completa, desde cualquier página
