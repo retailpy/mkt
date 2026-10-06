@@ -2287,6 +2287,7 @@ td .pgauge .pglab{display:none}
 .rn .rnd small{font-weight:500;color:var(--muted)}
 .ev.rec{border-style:solid;border-left:3px solid var(--s);cursor:pointer}
 .ev.rec.done{opacity:.55}
+.recat{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line-3);border-radius:12px}
 .ev.rec.done span:first-child{text-decoration:line-through}
 .caltabs{margin-top:-8px}
 /* v66 · turnos sábados */
@@ -2688,7 +2689,7 @@ const endTouchDrag = e => {
   const el = e.type === "pointerup" && document.elementFromPoint(e.clientX, e.clientY), t = el && dropTarget({ target:el }), id = drag?.id, kind = drag?.kind; drag = null;
   const eat = ev => { ev.stopPropagation(); ev.preventDefault(); }; document.addEventListener("click", eat, true); setTimeout(() => document.removeEventListener("click", eat, true), 450); // que soltar no abra el menú de etapas
   if (t && id && t.dataset.jdrop) moveJob(jobs.find(x => x.id === id), t.dataset.jdrop);
-  else if (t && id && t.dataset.cdrop) calMoveTo(kind, id, t.dataset.cdrop); // calendario: la entrega o el posteo pasa a ese día
+  else if (t && id && t.dataset.cdrop) kind === "rec" ? recMoveTo(id, t.dataset.cdrop) : calMoveTo(kind, id, t.dataset.cdrop); // calendario: la entrega o el posteo pasa a ese día
 };
 document.addEventListener("contextmenu", e => { if (touchDrag || e.target.closest?.(".kanban .card[data-drag], .cal .ev[data-drag], .plcal .pev[data-drag]") && e.pointerType !== "mouse" && matchMedia("(pointer:coarse)").matches) e.preventDefault(); });
 document.addEventListener("pointerup", endTouchDrag); document.addEventListener("pointercancel", endTouchDrag);
@@ -2727,7 +2728,7 @@ document.addEventListener("drop", e => {
   const { kind, id } = drag; drag = null; dragNav(null); document.getElementById("dragMonths")?.remove();
   if (t.dataset.nit || t.dataset.nsheet){ moveNote(kind, id, t); return; }
   if (t.dataset.jdrop){ moveJob(jobs.find(x => x.id === id), t.dataset.jdrop); return; }
-  calMoveTo(kind, id, t.dataset.cdrop);
+  kind === "rec" ? recMoveTo(id, t.dataset.cdrop) : calMoveTo(kind, id, t.dataset.cdrop);
 });
 // Mover un posteo, un mensaje del canal o una entrega a otro día del calendario (con el mouse o con el dedo).
 function calMoveTo(kind, id, to){
@@ -4156,7 +4157,7 @@ function pPlan(){
   <div class="tw"><table><thead><tr><th>Fecha</th><th>Marca</th><th>CM</th><th>Qué es</th><th>Tema</th><th>Diseño gráfico</th><th>Estado</th><th>Siguiente paso</th></tr></thead><tbody>
     ${items.map(row).join("") || `<tr><td colspan="8" class="empty">No hay contenidos con estos filtros.</td></tr>`}
   </tbody></table></div>`}
-  ${postForm()}${jobForm()}`;
+  ${postForm()}${jobForm()}${recDrawer()}`;
 }
 // Plan de posteo en calendario: una vista general del mes, con todas las marcas juntas.
 let planUI = { view:"tabla" }; // el calendario tiene su propio lugar en el menú (Calendario)
@@ -4193,7 +4194,7 @@ function dayMenu(cell, d, opts){
 const PLAN_ICO = x => x.rec ? "repeat" : x.vid ? "clapperboard" : x.canal ? "message-circle" : x.format === "Historia" ? "smartphone" : "image";
 function planCal(items){
   return `<div class="plcal">${calGrid(c => items.filter(x => x.date === c).map(x => { const st = x.rec ? (x.done ? "Hecho" : "Repetitivo") : x.status, col = x.rec ? (x.done ? "#10b981" : REC_KINDS[x.r.kind].c) : x.vid ? JOB_COLOR[x.status] || "#94a3b8" : POST_COLOR[x.status] === "#334155" ? "#94a3b8" : POST_COLOR[x.status];
-    const act = x.rec ? (canCreateJobs() ? ` data-recdone="${x.id}" role="button" tabindex="0"` : "") : x.vid ? (canCreateJobs() ? ` data-jedit="${x.id}" role="button" tabindex="0"` : "") : canEditPost() ? ` data-pedit="${x.canal ? "canal" : "post"}:${x.id}" role="button" tabindex="0"` : "";
+    const act = x.rec ? (canCreateJobs() ? ` data-recedit="${x.r.id}" data-recat="${x.date}" role="button" tabindex="0"${recDrag(x.r, x.date)}` : "") : x.vid ? (canCreateJobs() ? ` data-jedit="${x.id}" role="button" tabindex="0"` : "") : canEditPost() ? ` data-pedit="${x.canal ? "canal" : "post"}:${x.id}" role="button" tabindex="0"` : "";
     const sk = x.rec ? null : x.vid ? "job" : x.canal ? "canal" : "post", it = x.vid ? x.job : x.canal ? canalById(x.id) : x.rec ? null : postById(x.id), can2 = sk && stageOptions(sk, it).length;
     return `<div class="pev"${sk ? calDrag(sk, x.id) : ""}${act} title="${esc(x.title)} · ${x.brand} · ${x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${st} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} ${esc(x.title)}</span>${can2 ? `<button type="button" class="pst" data-stagemenu="${sk}:${x.id}" style="--c:${col}" title="Cambiar el estado">${st} ▾</button>` : `<em style="--c:${col}">${st}</em>`}</div>`; }).join(""), canEditPost())}</div>
   <p class="note">Todo lo de CM junto, cada uno con el punto de color de su marca, su ícono (${icon("image")} feed, ${icon("smartphone")} historia, ${icon("message-circle")} Canal de WhatsApp, ${icon("clapperboard")} video, ${icon("repeat")} repetitivo) y su estado. Tocá uno para editarlo, su estado para cambiarlo (${icon("chevron-down")}), o un día vacío para cargar algo en esa fecha. En un repetitivo, lo marcás como hecho.</p>`;
@@ -4802,7 +4803,17 @@ const recVisible = () => RECURRING.filter(r => seesBrand(r.brand) && inFilter(r.
 const recDays = r => r.days.length === 7 ? "Todos los días" : r.days.length === 5 && r.days.every(d => d < 5) ? "De lunes a viernes" : "Todos los " + r.days.map(d => WEEKDAYS[d].toLowerCase()).join(" y ").replace(/ y (?=.* y )/g, ", ");
 function recEv(r, d){
   const done = RECUR_DONE.has(r.id + "|" + d), k = REC_KINDS[r.kind];
-  return `<div class="ev rec ${done ? "done" : ""}${sepCls(r.brand)}" style="--c:${BRANDS[r.brand]};--s:${k.c}" title="Repetitivo: ${esc(r.title)} · ${r.kind} · ${recDays(r)} ${r.time} · ${esc(r.owner)}${done ? " · hecho" : ""}"${canCreateJobs() ? ` data-recdone="${r.id}|${d}"` : ""}><span>${icon(done ? "check" : "repeat")} ${r.time} · ${esc(r.title)}${canCreateJobs() ? `<button type="button" class="recedit" data-recedit="${r.id}" title="Editar o borrar" aria-label="Editar o borrar">${icon("pencil")}</button>` : ""}</span><span class="st">● ${r.kind} · ${esc(firstName(r.owner))}</span></div>`;
+  return `<div class="ev rec ${done ? "done" : ""}${sepCls(r.brand)}" style="--c:${BRANDS[r.brand]};--s:${k.c}" title="Repetitivo: ${esc(r.title)} · ${r.kind} · ${recDays(r)} ${r.time} · ${esc(r.owner)}${done ? " · hecho" : ""}"${canCreateJobs() ? ` data-recedit="${r.id}" data-recat="${d}" role="button" tabindex="0"${recDrag(r, d)}` : ""}><span>${icon(done ? "check" : "repeat")} ${r.time} · ${esc(r.title)}</span><span class="st">● ${r.kind} · ${esc(firstName(r.owner))}</span></div>`;
+}
+// Arrastrar un repetitivo a otro día cambia el día de la semana en que se repite (ej.: de lunes a miércoles).
+const recDrag = (r, d) => canCalMove() && calDateOk(d) ? ` draggable="true" data-drag="rec:${r.id}|${d}"` : "";
+function recMoveTo(key, to){
+  const [id, from] = key.split("|"), r = RECURRING.find(x => x.id === +id); if (!r) return render();
+  const wd = d => (new Date(d + "T12:00").getDay() + 6) % 7, a = wd(from), b = wd(to);
+  if (a === b){ toast(`“${r.title}” ya se repite los ${WEEKDAYS[b].toLowerCase()}.`); return render(); }
+  r.days = [...new Set(r.days.filter(x => x !== a).concat(b))].sort();
+  if (r.from && to < r.from) r.from = to;
+  render(); toast(`“${r.title}”: ahora se repite ${recDays(r).toLowerCase()} (antes el ${WEEKDAYS[a].toLowerCase()}).`);
 }
 function recurringList(){
   const list = recVisible(), edit = canCreateJobs();
@@ -4821,10 +4832,11 @@ function recDrawer(){
   return `<div class="drawer-bg" data-recform></div><aside class="drawer" aria-label="Pedido repetitivo">
     <div class="drawer-h"><div><h2 style="margin:0">${r ? "Editar pedido repetitivo" : "Cargar pedido repetitivo para CM"}</h2><div class="note">Se carga solo en el calendario, en cada día elegido</div></div><button class="btn" data-recform aria-label="Cerrar">✕</button></div>
     <form class="pform drawer-b recform" id="recForm" style="grid-template-columns:1fr 1fr">
+      ${r && recUI.at ? (() => { const done = RECUR_DONE.has(r.id + "|" + recUI.at); return `<div class="recat" style="grid-column:1/-1"><span>${icon("calendar-days")} <b>${WEEKDAYS[(new Date(recUI.at + "T12:00").getDay() + 6) % 7]} ${dm(recUI.at)}</b> · ${done ? "hecho" : "pendiente"}</span><button type="button" class="btn sm ${done ? "" : "primary"}" data-recdone="${r.id}|${recUI.at}">${done ? `${icon("check")} Hecho` : "Marcar hecho este día"}</button></div>`; })() : ""}
       <label style="grid-column:1/-1">Qué se publica o se hace *<input class="base" id="rcTitle" required value="${esc(v.title)}" placeholder="Ej.: Ofertas de la semana"></label>
       <label>Marca *<select class="base" id="rcBrand">${opt(myBrands(), v.brand)}</select></label>
       <label>Tipo *<select class="base" id="rcKind">${Object.keys(REC_KINDS).map(k => `<option value="${k}" ${k === (recUI.kind || v.kind) ? "selected" : ""}>${k === "Canal" ? "Canal de WhatsApp" : k}</option>`).join("")}</select></label>
-      <div class="recdays" style="grid-column:1/-1"><span class="note">Se repite todos los *</span><div class="chips">${WEEKDAYS.map((w, i) => `<button type="button" class="chip ${recUI.days.includes(i) ? "on" : ""}" data-recday="${i}">${w}</button>`).join("")}</div></div>
+      <div class="recdays" style="grid-column:1/-1"><span class="note">Se repite todos los *${r ? " · tocá los días para cambiarlos (o arrastralo en el calendario a otro día)" : ""}</span><div class="chips">${WEEKDAYS.map((w, i) => `<button type="button" class="chip ${recUI.days.includes(i) ? "on" : ""}" data-recday="${i}">${w}</button>`).join("")}</div></div>
       <label>Hora *<input class="base" type="time" id="rcTime" value="${v.time}" required></label>
       <label>Responsable (de cualquier marca) *<select class="base" id="rcOwner">${opt(CM_NAMES(), v.owner)}</select></label>
       <label>Fecha de inicio *<input class="base" type="date" id="rcFrom" value="${v.from || TODAY}" required></label>
@@ -4838,11 +4850,11 @@ document.addEventListener("click", e => {
   const f = e.target.closest("[data-recform]"); if (f){ recUI = { form:!recUI.form, days:[], kind:null, edit:null, noEnd:null }; render(); return; }
   // Desde un calendario: “🔁 Repetitivo” abre la ventana ahí mismo, con el tipo elegido.
   const g = e.target.closest("[data-recgo]"); if (g){ recUI = { form:true, days:[], kind:g.dataset.recgo, edit:null, noEnd:null }; render(); return; }
-  const ed = e.target.closest("[data-recedit]"); if (ed){ const r = RECURRING.find(x => x.id === +ed.dataset.recedit); recUI = { form:true, days:[...r.days], kind:r.kind, edit:r.id, noEnd:null }; render(); return; }
+  const ed = !e.target.closest("[data-recdone],#recForm") && e.target.closest("[data-recedit]"); if (ed){ const r = RECURRING.find(x => x.id === +ed.dataset.recedit); if (!r) return; recUI = { form:true, days:[...r.days], kind:r.kind, edit:r.id, noEnd:null, at:ed.dataset.recat || null }; render(); return; }
   const ne = e.target.closest("#rcNoEnd"); if (ne){ recUI.noEnd = ne.checked; const u = document.getElementById("rcUntil"); if (u){ u.disabled = ne.checked; if (ne.checked) u.value = ""; } return; }
   const dy = e.target.closest("[data-recday]"); if (dy){ const i = +dy.dataset.recday; recUI.days = recUI.days.includes(i) ? recUI.days.filter(x => x !== i) : [...recUI.days, i].sort(); dy.classList.toggle("on"); return; }
   const dl = e.target.closest("[data-recdel]"); if (dl){ if (!confirmTap(dl, "rec:" + dl.dataset.recdel, "¿Seguro?")) return; RECURRING = RECURRING.filter(r => r.id !== +dl.dataset.recdel); recUI = { form:false, days:[] }; render(); toast("Pedido repetitivo borrado."); return; }
-  const dn = !e.target.closest("[data-recedit]") && e.target.closest("[data-recdone]"); if (dn){ const k = dn.dataset.recdone; RECUR_DONE.has(k) ? RECUR_DONE.delete(k) : RECUR_DONE.add(k); render(); toast(RECUR_DONE.has(k) ? "Marcado como hecho." : "Vuelve a pendiente."); }
+  const dn = e.target.closest("[data-recdone]"); if (dn){ const k = dn.dataset.recdone; RECUR_DONE.has(k) ? RECUR_DONE.delete(k) : RECUR_DONE.add(k); render(); toast(RECUR_DONE.has(k) ? "Marcado como hecho." : "Vuelve a pendiente."); }
 });
 document.addEventListener("submit", e => { if (e.target.id !== "recForm") return; e.preventDefault();
   if (!recUI.days.length){ toast("Elegí al menos un día de la semana."); return; }
