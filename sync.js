@@ -362,7 +362,7 @@ const RMH = (() => {
   function setStatus(t){ const w = $id("whoami"); if (w) w.dataset.sync = t; }
   function showLogin(){ $id("login").hidden = false; $id("loginForm").hidden = false; $id("changeForm").hidden = true;
     try { const e = localStorage.getItem(EMAIL_KEY); if (e && !$id("loginEmail").value){ $id("loginEmail").value = e; $id("loginPass").focus(); } } catch (err) {} }
-  // Recordar: el email queda guardado en este dispositivo y se le ofrece al navegador guardar la contraseña
+  // Recordar: el usuario (o email) queda guardado en este dispositivo y se le ofrece al navegador guardar la contraseña
   // (así no hay que escribirla cada vez). La sesión además queda abierta hasta tocar “Cerrar sesión”.
   const EMAIL_KEY = "rmh-last-email";
   function rememberLogin(email, password){
@@ -397,13 +397,22 @@ const RMH = (() => {
     checkClock(); setInterval(checkClock, 30 * 60e3);
   }
 
+  // Se entra con el usuario de ingreso (ej. "Alesme"); el email sigue funcionando. Con el usuario, la función del
+  // servidor busca la cuenta y devuelve solo la sesión: los emails no salen del servidor.
+  async function signIn(who, password){
+    if (who.includes("@")) return sb.auth.signInWithPassword({ email:who, password });
+    const r = await sb.functions.invoke("admin-users", { body:{ action:"login", username:who, password } });
+    if (r.error){ let t = "No se pudo conectar. Probá de nuevo."; try { t = (await r.error.context.json()).error || t; } catch (e) {} return { data:{}, error:{ message:t, mine:true } }; }
+    if (!r.data?.session) return { data:{}, error:{ message:"No se pudo conectar. Probá de nuevo.", mine:true } };
+    return sb.auth.setSession(r.data.session);
+  }
   $id("loginForm").addEventListener("submit", async e => {
     e.preventDefault();
     const email = $id("loginEmail").value.trim(), password = $id("loginPass").value;
-    if (!email || !password){ msg("Escribí tu email y tu contraseña.", true); return; }
+    if (!email || !password){ msg("Escribí tu usuario y tu contraseña.", true); return; }
     msg("Entrando…");
-    const { data, error } = await sb.auth.signInWithPassword({ email, password });
-    if (error){ msg(/invalid/i.test(error.message) ? "Email o contraseña incorrectos." : /banned/i.test(error.message) ? "Tu usuario está desactivado. Hablá con un Admin total." : "No se pudo entrar: " + error.message, true); return; }
+    const { data, error } = await signIn(email, password);
+    if (error){ msg(error.mine ? error.message : /invalid/i.test(error.message) ? "Usuario o contraseña incorrectos." : /banned/i.test(error.message) ? "Tu usuario está desactivado. Hablá con un Admin total." : "No se pudo entrar: " + error.message, true); return; }
     rememberLogin(email, password);
     $id("loginPass").value = "";
     if (data.user.user_metadata?.must_change){
@@ -425,10 +434,10 @@ const RMH = (() => {
     if (ready){ viewer.mustChange = false; resetRequests = resetRequests.filter(id => id !== me); render(); toast("Listo: guardaste tu contraseña. Nadie más la conoce, ni los admins."); }
   });
   $id("forgot").addEventListener("click", async () => {
-    const email = $id("loginEmail").value.trim();
-    if (!email.includes("@")){ msg("Escribí tu email arriba y volvé a tocar “¿Olvidaste tu contraseña?”.", true); return; }
-    await sb.functions.invoke("admin-users", { body:{ action:"request_reset", email } }).catch(() => {});
-    msg("Listo: si ese email tiene cuenta, avisamos a los admins. Te van a pasar una contraseña provisoria.");
+    const who = $id("loginEmail").value.trim();
+    if (!who){ msg("Escribí tu usuario arriba y volvé a tocar “¿Olvidaste tu contraseña?”.", true); return; }
+    await sb.functions.invoke("admin-users", { body:who.includes("@") ? { action:"request_reset", email:who } : { action:"request_reset", username:who } }).catch(() => {});
+    msg("Listo: si ese usuario existe, avisamos a los admins. Te van a pasar una contraseña provisoria.");
   });
   $id("logout").addEventListener("click", async () => {
     loggingOut = true; await flush(); ready = false;
