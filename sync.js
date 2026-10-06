@@ -167,8 +167,63 @@ const RMH = (() => {
   }
   // Una conexión colgada no puede trabar el guardado: a los 20 s se corta y se reintenta.
   const withTimeout = p => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("tiempo de espera agotado")), 20000))]);
+  // ---------- respaldo en el dispositivo ----------
+  // Lo que todavía no llegó a la base se copia en este dispositivo (por persona). Si la sesión se corta o la página se
+  // recarga antes de guardar, al volver a entrar se recupera y se combina con lo último de la base (no se pierde).
+  const PEND = () => "rmh-pend-" + me;
+  function stashPending(){
+    try {
+      if (!me || previewing || !ready) return;
+      const keys = dirtyKeys();
+      if (!keys.length){ localStorage.removeItem(PEND()); return; }
+      localStorage.setItem(PEND(), J({ at:Date.now(), items:keys.map(k => [k, base.get(k)?.json || null, enc(getLocal(k))]) }));
+    } catch (e) {}
+  }
+  function restorePending(){
+    try {
+      const raw = localStorage.getItem(PEND()); if (!raw) return 0;
+      const p = JSON.parse(raw); localStorage.removeItem(PEND());
+      if (!p || Date.now() - (p.at || 0) > 7 * 864e5) return 0;
+      let n = 0;
+      (p.items || []).forEach(([k, b, local]) => {
+        if (noSave(k) || !(localKeys().includes(k) || k.startsWith("thread:"))) return;
+        const cur = getLocal(k) === undefined ? undefined : enc(getLocal(k)), merged = merge(b ? JSON.parse(b) : undefined, local, cur);
+        if (C(merged) !== C(cur)){ setLocal(k, dec(merged)); n++; }
+      });
+      return n;
+    } catch (e){ console.warn("restorePending", e); return 0; }
+  }
+  // ---------- sesión cortada ----------
+  // Si la sesión se corta (por ejemplo, la hora de la compu está mal y no se puede renovar), la app no lo puede guardar:
+  // se avisa bien visible, lo cargado queda en el dispositivo y se vuelve a entrar sin recargar la página.
+  let authLost = false, loggingOut = false;
+  const isAuthErr = e => !!e && (e.status === 401 || e.code === "PGRST301" || e.code === "PGRST303" || /jwt|not authenticated|invalid refresh token|refresh token not found|session/i.test(e.message || ""));
+  function lostSession(){
+    if (authLost || !ready || previewing || loggingOut) return;
+    authLost = true; stashPending(); setStatus("sin guardar");
+    let b = $id("lostBar");
+    if (!b){ b = document.createElement("div"); b.id = "lostBar"; b.className = "lostbar"; b.setAttribute("role", "alert"); document.body.appendChild(b); }
+    b.innerHTML = `<div><b>Se cortó tu sesión: lo que cargues ahora no se guarda en la base.</b><span>No cierres ni recargues la página. Volvé a entrar y se guarda solo lo que cargaste.</span></div><button type="button" class="btn sm primary" id="lostRe">Volver a entrar</button>`;
+    b.hidden = false; $id("lostRe").onclick = () => showLogin();
+    try { toast("Se cortó tu sesión. Volvé a entrar para guardar lo que cargaste."); } catch (e) {}
+  }
+  // La hora de la computadora desfasada hace que la sesión se renueve sin parar y termine cortándose.
+  // Se compara con la hora del servidor de la app (encabezado Date de una respuesta de este mismo sitio).
+  async function checkClock(){
+    try {
+      const clock = () => performance.timeOrigin + performance.now(); // la hora de la compu
+      const t0 = clock(), r = await fetch("sw.js?t=" + Math.round(t0), { method:"HEAD", cache:"no-store" }), d = Date.parse(r.headers.get("date") || "");
+      if (isNaN(d)) return;
+      const skew = Math.round(((t0 + clock()) / 2 - d) / 60000), old = $id("clockBar");
+      if (Math.abs(skew) < 3){ old?.remove(); return; }
+      const b = old || Object.assign(document.createElement("div"), { id:"clockBar", className:"lostbar warn" }); b.setAttribute("role", "alert");
+      b.innerHTML = `<div><b>La hora de esta computadora está ${skew > 0 ? "adelantada" : "atrasada"} ${Math.abs(skew) >= 90 ? Math.round(Math.abs(skew) / 60) + " h" : Math.abs(skew) + " min"}.</b><span>Corregila (en Windows: Configuración → Hora e idioma → “Establecer la hora automáticamente”). Con la hora mal, la sesión se corta y no se guarda lo que cargás.</span></div><button type="button" class="btn sm" data-clockok>Entendido</button>`;
+      if (!old) document.body.appendChild(b);
+      b.querySelector("[data-clockok]").onclick = () => b.remove();
+    } catch (e) {}
+  }
   function flush(){
-    if (!ready || previewing) return Promise.resolve();
+    if (!ready || previewing || authLost) return Promise.resolve();
     if (flushing) return flushing;
     // Sin nada propio para guardar (por ejemplo, solo llegó un cambio de otra persona) no se arranca un guardado.
     // Antes, ese guardado vacío terminaba al instante y quedaba marcado como “en curso” para siempre,
@@ -176,8 +231,9 @@ const RMH = (() => {
     const keys = dirtyKeys();
     if (!keys.length){ setStatus(""); return Promise.resolve(); }
     const run = (async () => {
-      try { for (const k of keys) await withTimeout(saveKey(k)); setStatus(""); saveErrShown = false; }
-      catch (err){ console.error(err); setStatus("sin guardar"); retryAt = Date.now() + 5000; if (!saveErrShown){ saveErrShown = true; toast("No se pudo guardar: revisá la conexión. Se vuelve a intentar solo."); } }
+      try { for (const k of keys) await withTimeout(saveKey(k)); setStatus(""); saveErrShown = false; stashPending(); }
+      catch (err){ console.error(err); stashPending(); setStatus("sin guardar"); retryAt = Date.now() + 5000;
+        if (isAuthErr(err)) lostSession(); else if (!saveErrShown){ saveErrShown = true; toast("No se pudo guardar: revisá la conexión. Se vuelve a intentar solo."); } }
       finally { if (flushing === run) flushing = null; }
     })();
     flushing = run;
@@ -188,7 +244,7 @@ const RMH = (() => {
     if (!ready || previewing) return;
     const snap = J(localKeys().map(k => [k, enc(getLocal(k))]));
     const now = Date.now();
-    if (snap !== lastSeen){ lastSeen = snap; changedAt = now; if (!dirtySince) dirtySince = now; setStatus("guardando…"); }
+    if (snap !== lastSeen){ lastSeen = snap; changedAt = now; if (!dirtySince) dirtySince = now; setStatus(authLost ? "sin guardar" : "guardando…"); stashPending(); }
     if (dirtySince && (now - changedAt > 800 || now - dirtySince > 4000)){ dirtySince = 0; flush(); }
     else if (retryAt && now >= retryAt){ retryAt = 0; flush(); } // reintento después de un error de conexión
   }, 1000);
@@ -197,7 +253,7 @@ const RMH = (() => {
   addEventListener("beforeunload", e => {
     if (!ready || previewing) return;
     let pending = !!flushing; try { pending = pending || dirtyKeys().length > 0; } catch (err) {}
-    if (pending){ flush(); e.preventDefault(); e.returnValue = ""; }
+    if (pending){ stashPending(); flush(); e.preventDefault(); e.returnValue = ""; }
   });
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flush(); });
 
@@ -277,6 +333,7 @@ const RMH = (() => {
     if (!ready || previewing || catching) return; catching = true;
     try {
       const { data, error } = await sb.from("app_state").select("key, version");
+      if (error && isAuthErr(error)) lostSession();
       if (error || !Array.isArray(data)) return;
       const stale = data.filter(r => (base.get(r.key)?.v || 0) < r.version).map(r => r.key);
       if (!stale.length) return;
@@ -294,7 +351,10 @@ const RMH = (() => {
   addEventListener("online", () => catchUp());
   addEventListener("focus", () => catchUp());
   // La sesión se renueva cada hora: la conexión en vivo tiene que usar el token nuevo.
-  try { sb.auth.onAuthStateChange((ev, s) => { if (s?.access_token && sb.realtime?.setAuth) sb.realtime.setAuth(s.access_token); }); } catch (e) {}
+  try { sb.auth.onAuthStateChange((ev, s) => {
+    if (s?.access_token && sb.realtime?.setAuth) sb.realtime.setAuth(s.access_token);
+    if (ev === "SIGNED_OUT") lostSession();
+  }); } catch (e) {}
 
   // ---------- login ----------
   const $id = id => document.getElementById(id);
@@ -313,6 +373,13 @@ const RMH = (() => {
   }
 
   async function afterLogin(user){
+    // Volver a entrar después de que se cortó la sesión: no se recarga nada, se guarda lo que estaba pendiente.
+    if (ready && member && authLost){
+      if (user.id !== member.user_id){ stashPending(); location.reload(); return; }
+      authLost = false; $id("lostBar")?.remove(); $id("login").hidden = true; msg("");
+      retryAt = 0; flush(); catchUp(); try { toast("Listo: volviste a entrar. Se está guardando lo que cargaste."); } catch (e) {}
+      return;
+    }
     msg("Cargando datos…");
     const { data: m, error } = await sb.from("members").select("*").eq("user_id", user.id).maybeSingle();
     if (error || !m || !m.active){ await sb.auth.signOut(); showLogin(); msg(error ? "No se pudo conectar. Probá de nuevo." : "Tu usuario no tiene acceso a la app. Pedíselo a un Admin total.", true); return; }
@@ -323,8 +390,11 @@ const RMH = (() => {
     const pp = PEOPLE.find(x => x.id === me);
     if (!pp){ await sb.auth.signOut(); showLogin(); msg("Tu usuario no está en la lista del equipo. Pedile a un Admin total que lo revise.", true); return; }
     viewer = pp; viewer.role = m.role; viewer.mustChange = false; viewer.active = true;
+    const restored = restorePending(); // lo que no se llegó a guardar la vez anterior (sesión cortada o página cerrada)
     document.querySelectorAll('label[for="viewas"], #viewas').forEach(el => el.hidden = m.role !== "Admin total");
     ready = true; subscribe(); presence(); enterApp();
+    if (restored) setTimeout(() => { try { toast(`Se recuperó lo que habías cargado sin guardar (${restored === 1 ? "1 sección" : restored + " secciones"}). Ya se está guardando.`); } catch (e) {} }, 1200);
+    checkClock(); setInterval(checkClock, 30 * 60e3);
   }
 
   $id("loginForm").addEventListener("submit", async e => {
@@ -361,7 +431,7 @@ const RMH = (() => {
     msg("Listo: si ese email tiene cuenta, avisamos a los admins. Te van a pasar una contraseña provisoria.");
   });
   $id("logout").addEventListener("click", async () => {
-    await flush(); ready = false;
+    loggingOut = true; await flush(); ready = false;
     // Al salir, este dispositivo deja de recibir los mensajes de esta persona.
     try { const reg = await navigator.serviceWorker?.getRegistration(), sub = await reg?.pushManager?.getSubscription(); if (sub) await sb.from("push_subs").delete().eq("endpoint", sub.endpoint); } catch (e) {}
     await sb.auth.signOut(); location.reload();
