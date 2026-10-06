@@ -2298,6 +2298,37 @@ td .pgauge .pglab{display:none}
 .repcard p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.5;flex:1}
 .repcard.on{border-color:#22d3ee;box-shadow:0 0 0 1px rgba(34,211,238,.5)}
 
+/* v104 · Informe mensual: análisis del mes en palabras + descargas reales (PDF con la impresión, Excel .xlsx) */
+.repwrap,.repbody{display:flex;flex-direction:column;gap:24px;min-width:0}
+.anal{display:flex;flex-direction:column;gap:14px}
+.analh{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.analh h2{margin:0}
+.analg{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:14px}
+.anal section,.analsum,.analtips{background:var(--inner-2);border:1px solid var(--line);border-radius:18px;padding:14px 16px;min-width:0}
+.anal h3{margin:0 0 8px;display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)}
+.anal h3 svg{width:17px;height:17px;color:var(--cyan);flex:none}
+.anal p{margin:0;font-size:14.5px;line-height:1.65;color:var(--ink);overflow-wrap:anywhere}
+.anal section p + p{margin-top:8px}
+.anal p b,.analtips b{color:var(--white)}
+.analsum{border-color:rgba(34,211,238,.45)}
+.analtips ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.55;color:var(--ink)}
+.anal > .note{margin:0}
+@media print{
+  html.printrep .side,html.printrep .tabbar,html.printrep .brandbar,html.printrep .repdlh,html.printrep .replist,html.printrep .repfoot,html.printrep .repwrap .btn,html.printrep .repwrap .chips,html.printrep #toast,html.printrep .toast{display:none!important}
+  html.printrep #content > :not(:has(.repwrap)),html.printrep #content > div > :not(.repwrap){display:none!important}
+  html.printrep,html.printrep body{background:#fff!important}
+  html.printrep body *{color:#111827!important;box-shadow:none!important;text-shadow:none!important;animation:none!important;transition:none!important}
+  html.printrep .app{display:block}
+  html.printrep .content{max-width:none;padding:0}
+  html.printrep .rv{opacity:1!important;transform:none!important}
+  html.printrep .panel,html.printrep .tw,html.printrep .anal section,html.printrep .analsum,html.printrep .analtips{background:#fff!important;border:1px solid #d1d5db!important}
+  html.printrep .panel-h,html.printrep th,html.printrep td,html.printrep .tag{background:#fff!important;border-color:#e5e7eb!important}
+  html.printrep tr,html.printrep .kpi,html.printrep .anal section,html.printrep .analsum,html.printrep .analtips{break-inside:avoid}
+  html.printrep .fl{background:#64748b!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  html.printrep .tr{background:#e5e7eb!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  @page{margin:12mm}
+}
+
 /* v66 · carga por grupo en Inicio */
 .pgroups{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:18px}
 .pgroup{border:1px solid var(--line-2);border-radius:18px;padding:14px 16px;background:rgba(2,6,23,.35)}
@@ -5430,24 +5461,222 @@ function repAlcance(){
       ${d.sex ? `<div class="tag-row" style="margin-top:14px"><span class="tag">Mujeres ${pct2(d.sex.fem)}</span><span class="tag">Hombres ${pct2(d.sex.male)}</span><span class="tag">Desconocido ${pct2(d.sex.unk)}</span></div>` : ""}</div>
   </div>`}`;
 }
+// ---------- Análisis del mes (Informe mensual): cómo están las redes y cómo viene trabajando el equipo, en palabras ----------
+// Lo arma la app con los mismos datos del informe (seguidores, publicaciones, mensajes, pauta, pedidos de Diseño y plan
+// de posteo de CM). En el mes en curso cuenta “hasta hoy”; en un mes cerrado, cómo cerró. También va en el PDF y el Excel.
+function monthData(){
+  const P = prevMonth(MONTH), mesP = monthName(P), live = MONTH === CURRENT_MONTH;
+  const n = (v, s, p = s + "s") => `<b>${dots(v)}</b> ${v === 1 ? s : p}`;
+  const y = a => a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " y " + a[a.length - 1];
+  const sg = v => (v > 0 ? "+" : v < 0 ? "−" : "") + dots(Math.abs(v));
+  const pc = (a, b) => b ? Math.round(a / b * 100) : 0;
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  const secs = [], tips = [], good = [], bad = [];
+  // ---- Redes sociales ----
+  if (can("redes")){
+    const s = [], f = [], pb = [], ms = [], pa = [];
+    const g = followerRows(socialBrands()).map(r => ({ b:r.b, ig:folDiff(r.igc, r.igp), fb:folDiff(r.fbc, r.fbp) })).filter(x => x.ig != null || x.fb != null).map(x => ({ ...x, t:(x.ig || 0) + (x.fb || 0) }));
+    if (g.length){
+      const ig = g.reduce((a, x) => a + (x.ig || 0), 0), fb = g.reduce((a, x) => a + (x.fb || 0), 0);
+      const up = g.filter(x => x.t > 0).sort((a, b) => b.t - a.t), down = g.filter(x => x.t < 0).sort((a, b) => a.t - b.t);
+      f.push(`Frente a ${mesP}, las cuentas ${ig + fb >= 0 ? "sumaron" : "perdieron"} <b>${sg(ig)}</b> seguidores en Instagram y <b>${sg(fb)}</b> en Facebook${live ? " hasta hoy" : ""}.`);
+      if (up.length) f.push(`La que más creció fue <b>${up[0].b}</b> (${sg(up[0].t)})${up.length > 1 ? `, seguida de ${y(up.slice(1, 3).map(x => `${x.b} (${sg(x.t)})`))}` : ""}.`);
+      if (down.length){
+        f.push(`${down.length === 1 ? "Bajó" : "Bajaron"} ${y(down.map(x => `<b>${x.b}</b> (${sg(x.t)})`))}.`);
+        tips.push(`4|Mirar qué pasó con ${y(down.slice(0, 3).map(x => x.b))}: ${down.length === 1 ? "perdió" : "perdieron"} seguidores este mes.`);
+      }
+      (ig + fb > 0 ? good : bad).push(ig + fb > 0 ? "las cuentas siguen sumando seguidores" : "en total se perdieron seguidores");
+    } else f.push(`Todavía no hay seguidores de ${mesP} y de ${monthName(MONTH)} para comparar el crecimiento.`);
+    const pubs = publicationsFor(MONTH);
+    if (pubs.length){
+      const cnt = k => pubs.filter(p => p.format === k).length;
+      const fm = [["Reel", "reel", "reels"], ["Carrusel", "carrusel", "carruseles"], ["Post", "post", "posts"]].map(([k, a, b]) => cnt(k) ? `${dots(cnt(k))} ${cnt(k) === 1 ? a : b}` : "").filter(Boolean);
+      const best = [...pubs].sort((a, b) => pubScore(b) - pubScore(a))[0], t = best.title.length > 70 ? best.title.slice(0, 70).trim() + "…" : best.title;
+      pb.push(`En Instagram se publicaron ${n(pubs.length, "posteo")}${fm.length ? ` (${y(fm)})` : ""}. El de más ${isNum(best.reach) ? "alcance" : "interacción"} fue de <b>${best.brand}</b>, “${esc(t)}”, con ${isNum(best.reach) ? n(best.reach, "cuenta alcanzada", "cuentas alcanzadas") : n(best.inter, "interacción", "interacciones")}.`);
+      const avg = l => { const v = l.filter(p => isNum(p.reach)); return v.length >= 2 ? v.reduce((a, p) => a + p.reach, 0) / v.length : null; };
+      const ar = avg(pubs.filter(p => /Reel|Video/.test(p.format))), ap = avg(pubs.filter(p => !/Reel|Video/.test(p.format)));
+      if (ar && ap && Math.abs(ar / ap - 1) >= .2){
+        const more = ar > ap, d = Math.round((Math.max(ar, ap) / Math.min(ar, ap) - 1) * 100);
+        pb.push(`En promedio, los ${more ? "reels" : "posts y carruseles"} llegaron a un ${d}% más de cuentas que los ${more ? "posts y carruseles" : "reels"}.`);
+        if (more) tips.push("5|Los reels están rindiendo más que el resto: conviene sumar más reels al plan.");
+      }
+    } else pb.push(live ? "Todavía no hay publicaciones de Instagram cargadas este mes." : "No hay publicaciones de Instagram guardadas de ese mes.");
+    if (live && can("inbox")){
+      const cv = [];
+      Object.keys(META_INBOX || {}).filter(b => b !== "updated" && seesBrand(b)).forEach(b => (META_INBOX[b]?.convs || []).filter(inboxRecent).forEach(c => cv.push(c)));
+      if (cv.length){
+        const w = cv.filter(c => !ibOk(c)), old = w.map(c => c.waitSince || c.ts).filter(Boolean).sort()[0];
+        ms.push(`En mensajes directos hubo ${n(cv.length, "conversación", "conversaciones")} en los últimos 30 días; ${w.length ? `${n(w.length, "espera", "esperan")} respuesta${old ? ` (la más antigua, ${inboxAge(old)})` : ""}` : "todas tienen respuesta"}.`);
+        if (w.length){ tips.push(`2|Contestar ${w.length === 1 ? "el mensaje que espera" : `los ${w.length} mensajes que esperan`} respuesta (Panel de CM → Mensajes).`); bad.push(`${w.length} ${w.length === 1 ? "mensaje espera" : "mensajes esperan"} respuesta`); }
+        else good.push("los mensajes están todos contestados");
+      }
+    }
+    if (can("pauta")){
+      const mc = m => CAMPAIGNS.filter(c => seesBrand(c.brand) && c.month === m), cur = mc(MONTH), prev = mc(P), sum = (l, f) => l.reduce((a, c) => a + (Number(c[f]) || 0), 0);
+      if (cur.length) pa.push(`En pauta de Meta Ads se ${cur.length === 1 ? "invirtió" : "invirtieron"} <b>${usd(sum(cur, "spend"))}</b> en ${n(cur.length, "campaña")}${prev.length ? ` (en ${mesP}, ${usd(sum(prev, "spend"))})` : ""}, con ${n(sum(cur, "reach"), "cuenta alcanzada", "cuentas alcanzadas")}.`);
+    }
+    s.push(...[f, pb, ms, pa].filter(x => x.length));
+    secs.push({ ic:"smartphone", h:"Redes sociales", s });
+  }
+  // ---- El equipo ----
+  const t = [], dg = [], cmP = [];
+  if (can("pedidos")){
+    const mj = m => jobs.filter(j => !j.ex && j.area === "Diseño" && j.status !== "Cancelado" && seesBrand(j.brand) && jobMonth(j) === m);
+    const cur = mj(MONTH), prev = mj(P), fin = cur.filter(isFin), ok = fin.filter(j => j.delivered <= j.due), late = cur.filter(j => urgency(j)?.late), open = cur.length - fin.length;
+    if (cur.length){
+      const pct = pc(ok.length, fin.length);
+      dg.push(`Diseño gráfico ${live ? "lleva" : "tuvo"} ${n(cur.length, "pedido")}${prev.length ? ` (${cur.length >= prev.length ? "+" : "−"}${dots(Math.abs(cur.length - prev.length))} frente a ${mesP})` : ""} y ${live ? "ya terminó" : "terminó"} ${dots(fin.length)}${fin.length ? `, el <b>${pct}%</b> a tiempo` : ""}.`);
+      if (fin.length >= 3) (pct >= 80 ? good : bad).push(pct >= 80 ? "los pedidos de diseño salen a tiempo" : `solo el ${pct}% de los pedidos de diseño salió a tiempo`);
+      const load = DESIGNERS.map(d => ({ d, a:cur.filter(j => j.owner === d).length, o:cur.filter(j => j.owner === d && !isFin(j)).length })).filter(x => x.a);
+      if (load.length > 1){
+        const top = [...load].sort((a, b) => b.a - a.a)[0], avgO = load.reduce((a, x) => a + x.o, 0) / load.length;
+        dg.push(`Quien más pedidos tuvo a cargo fue <b>${esc(firstName(top.d))}</b> (${top.a}).`);
+        load.filter(x => x.o >= 3 && x.o > avgO * 1.5).forEach(x => tips.push(`3|${esc(firstName(x.d))} tiene ${x.o} pedidos abiertos, bastante más que el resto del equipo: conviene repartir la carga.`));
+      }
+      if (late.length){
+        const who = Object.entries(late.reduce((a, j) => (a[firstName(j.owner)] = (a[firstName(j.owner)] || 0) + 1, a), {})).map(([k, v]) => `${esc(k)} ${v}`);
+        dg.push(`${late.length === 1 ? "Hay un pedido atrasado" : `Hay <b>${late.length}</b> pedidos atrasados`} (${y(who)}).`);
+        late.sort((a, b) => a.due.localeCompare(b.due)).slice(0, 2).forEach(j => tips.push(`1|Destrabar “${esc(j.title)}” de ${esc(j.brand)} (${esc(firstName(j.owner))}, ${urgency(j).t.toLowerCase()}).`));
+        bad.push(late.length === 1 ? "hay un pedido de diseño atrasado" : `hay ${late.length} pedidos de diseño atrasados`);
+      } else if (open && live) dg.push(`${open === 1 ? "El pedido abierto está" : `Los ${dots(open)} pedidos abiertos están`} dentro de fecha.`);
+      const ch = fin.filter(j => (j.changes || []).length);
+      if (fin.length >= 3 && ch.length) dg.push(`El ${pc(ch.length, fin.length)}% de los terminados necesitó cambios (${(ch.reduce((a, j) => a + j.changes.length, 0) / ch.length).toFixed(1).replace(".", ",").replace(",0", "")} ${ch.reduce((a, j) => a + j.changes.length, 0) === ch.length ? "ronda" : "rondas"} en promedio).`);
+    } else dg.push(`Diseño gráfico no tiene pedidos ${live ? "todavía " : ""}en ${monthName(MONTH)}.`);
+  }
+  if (can("plan")){
+    const cur = posts.filter(p => !p.ex && seesBrand(p.brand) && p.date.slice(0, 7) === MONTH);
+    const due = live ? cur.filter(p => p.date <= TODAY) : cur, done = due.filter(isDone), pend = due.filter(p => !isDone(p));
+    if (cur.length){
+      const pct = pc(done.length, due.length);
+      if (!due.length) cmP.push(`Community Manager tiene ${n(cur.length, "posteo planificado", "posteos planificados")}; todavía ninguno llegó a su fecha.`);
+      else cmP.push(`Community Manager ${live ? "lleva" : "cumplió"} el <b>${pct}%</b> del plan de posteo: ${dots(done.length)} de ${n(due.length, "posteo", "posteos")}${live ? " con fecha hasta hoy" : ""} ${done.length === 1 ? "quedó" : "quedaron"} publicados o pautados${live && cur.length > due.length ? ` (y faltan ${dots(cur.length - due.length)} más en el resto del mes)` : ""}.`);
+      const per = CMS.map(c => { const l = due.filter(p => p.cm === c); return { c, n:l.length, p:pc(l.filter(isDone).length, l.length) }; }).filter(x => x.n >= 3).sort((a, b) => a.p - b.p);
+      if (per.length > 1 && per[0].p < per[per.length - 1].p) cmP.push(`Por persona va de ${per[per.length - 1].p}% (${esc(firstName(per[per.length - 1].c))}) a ${per[0].p}% (${esc(firstName(per[0].c))}).`);
+      if (pend.length){
+        cmP.push(live ? `${pend.length === 1 ? "Hay un posteo vencido" : `Hay ${n(pend.length, "posteo vencido", "posteos vencidos")}`} sin publicar.` : `${pend.length === 1 ? "Un posteo no se cumplió y pasó" : `${dots(pend.length)} posteos no se cumplieron y pasaron`} al mes siguiente.`);
+        if (live) tips.push(`2|Ponerse al día con ${pend.length === 1 ? "el posteo vencido" : `los ${pend.length} posteos vencidos`} del plan.`);
+      }
+      if (due.length >= 3) (pct >= 90 ? good : bad).push(pct >= 90 ? "el plan de posteo está al día" : `el plan de posteo va al ${pct}%`);
+    }
+    const cj = jobs.filter(j => !j.ex && j.area === "CM" && j.status !== "Cancelado" && seesBrand(j.brand) && jobMonth(j) === MONTH);
+    if (cj.length){ const lj = cj.filter(j => urgency(j)?.late).length;
+      cmP.push(`Además ${live ? "tiene" : "tuvo"} ${n(cj.length, "trabajo")} de videos, copys o pauta: ${dots(cj.filter(isFin).length)} ${cj.filter(isFin).length === 1 ? "terminado" : "terminados"}${lj ? ` y ${lj} ${lj === 1 ? "atrasado" : "atrasados"}` : ""}.`); }
+  }
+  t.push(...[dg, cmP].filter(x => x.length));
+  if (t.length) secs.push({ ic:"users", h:"El equipo", s:t });
+  // ---- En resumen ----
+  const sum = !good.length && !bad.length ? "" : !bad.length ? `${live ? "Buen mes hasta ahora" : "Buen mes"}: ${y(good)}.`
+    : good.length ? `${cap(y(good))}, pero ${y(bad)}.` : `${live ? "El mes viene exigido" : "Fue un mes exigido"}: ${y(bad)}.`;
+  return { secs, sum, tips:tips.map((x, i) => [+x[0], i, x.slice(2)]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).slice(0, 5).map(x => x[2]) };
+}
+const plain = h => { const d = document.createElement("div"); d.innerHTML = h; return d.textContent; };
+function monthAnalysis(){
+  if (isFuture()) return "";
+  const a = monthData();
+  if (!a.secs.length) return "";
+  return `<div class="panel anal"><div class="analh"><h2 class="pmh">${pmIco("sparkles")}Análisis del mes</h2><span class="tag">${MONTH === CURRENT_MONTH ? `Hasta hoy, ${dm(TODAY)}` : `Cierre de ${monthName(MONTH)}`}</span></div>
+    <div class="analg">${a.secs.map(x => `<section><h3>${icon(x.ic)}${x.h}</h3>${x.s.map(p => `<p>${p.join(" ")}</p>`).join("")}</section>`).join("")}</div>
+    ${a.sum ? `<div class="analsum"><h3>${icon("scale")}En resumen</h3><p>${a.sum}</p></div>` : ""}
+    ${a.tips.length ? `<div class="analtips"><h3>${icon("list-checks")}Para tener en cuenta</h3><ul>${a.tips.map(x => `<li>${x}</li>`).join("")}</ul></div>` : ""}
+    <p class="note">Se arma solo con los datos de la app: seguidores y publicaciones de Meta, mensajes, pauta, pedidos de Diseño y el plan de posteo de CM.</p></div>`;
+}
+
+// ---------- Descargas del Informe mensual ----------
+// PDF: la impresión del navegador (“Guardar como PDF”) con una hoja limpia: el análisis del mes y el informe elegido.
+// Excel (.xlsx): se arma acá mismo, sin librerías: una hoja con el análisis y una hoja por cada tabla del informe.
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++){ let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+// Un .zip sin compresión (así es por dentro un .xlsx).
+function zipStore(files, type){
+  const enc = new TextEncoder(), parts = [], dir = []; let off = 0;
+  for (const f of files){
+    const nm = enc.encode(f.name), crc = crc32(f.data), h = new DataView(new ArrayBuffer(30)), c = new DataView(new ArrayBuffer(46));
+    [[0, 0x04034b50, 4], [4, 20, 2], [6, 0x0800, 2], [12, 0x21, 2], [14, crc, 4], [18, f.data.length, 4], [22, f.data.length, 4], [26, nm.length, 2]].forEach(([o, v, s]) => s === 4 ? h.setUint32(o, v, true) : h.setUint16(o, v, true));
+    [[0, 0x02014b50, 4], [4, 20, 2], [6, 20, 2], [8, 0x0800, 2], [14, 0x21, 2], [16, crc, 4], [20, f.data.length, 4], [24, f.data.length, 4], [28, nm.length, 2], [42, off, 4]].forEach(([o, v, s]) => s === 4 ? c.setUint32(o, v, true) : c.setUint16(o, v, true));
+    parts.push(h, nm, f.data); dir.push(c, nm); off += 30 + nm.length + f.data.length;
+  }
+  const size = dir.reduce((a, x) => a + x.byteLength, 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, size, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...dir, e], { type });
+}
+// sheets: [{ name, rows:[[valor | { v, s }]] }] · s: 1 negrita, 2 texto largo (ajustado). Los números van como números.
+function xlsxBlob(sheets){
+  const x = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" })[c]).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "");
+  const col = i => { let s = ""; for (i++; i; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + (i - 1) % 26) + s; return s; };
+  const cell = (v, r, j) => { const o = v && typeof v === "object" ? v : { v }, ref = col(j) + r, st = o.s ? ` s="${o.s}"` : "";
+    return o.v == null || o.v === "" ? "" : typeof o.v === "number" && isFinite(o.v) ? `<c r="${ref}"${st}><v>${o.v}</v></c>` : `<c r="${ref}"${st} t="inlineStr"><is><t xml:space="preserve">${x(o.v)}</t></is></c>`; };
+  const sheetXml = s => { const w = []; s.rows.forEach(r => r.forEach((v, j) => { const o = v && typeof v === "object" ? v : { v }; w[j] = Math.max(w[j] || 8, Math.min(o.s === 2 ? 100 : 60, String(o.v ?? "").length + 2)); }));
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${w.length ? `<cols>${w.map((v, j) => `<col min="${j + 1}" max="${j + 1}" width="${v}" customWidth="1"/>`).join("")}</cols>` : ""}<sheetData>${s.rows.map((r, i) => `<row r="${i + 1}">${r.map((v, j) => cell(v, i + 1, j)).join("")}</row>`).join("")}</sheetData></worksheet>`; };
+  const names = [];
+  sheets.forEach((s, i) => { let n = String(s.name || `Hoja ${i + 1}`).replace(/[\\/?*[\]:]/g, " ").replace(/\s+/g, " ").trim().slice(0, 31) || `Hoja ${i + 1}`; while (names.includes(n)) n = n.slice(0, 27) + " (" + (i + 1) + ")"; names.push(n); });
+  const X = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>', NS = "http://schemas.openxmlformats.org", enc = new TextEncoder();
+  const files = [
+    ["[Content_Types].xml", `${X}<Types xmlns="${NS}/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${names.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}</Types>`],
+    ["_rels/.rels", `${X}<Relationships xmlns="${NS}/package/2006/relationships"><Relationship Id="rId1" Type="${NS}/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ["xl/workbook.xml", `${X}<workbook xmlns="${NS}/spreadsheetml/2006/main" xmlns:r="${NS}/officeDocument/2006/relationships"><sheets>${names.map((n, i) => `<sheet name="${x(n)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("")}</sheets></workbook>`],
+    ["xl/_rels/workbook.xml.rels", `${X}<Relationships xmlns="${NS}/package/2006/relationships">${names.map((_, i) => `<Relationship Id="rId${i + 1}" Type="${NS}/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("")}<Relationship Id="rId${names.length + 1}" Type="${NS}/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ["xl/styles.xml", `${X}<styleSheet xmlns="${NS}/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf></cellXfs></styleSheet>`],
+    ...sheets.map((s, i) => [`xl/worksheets/sheet${i + 1}.xml`, sheetXml(s)]),
+  ];
+  return zipStore(files.map(([name, s]) => ({ name, data:enc.encode(s) })), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+}
+// Lo que se ve en pantalla, pasado a hojas: el análisis, los números grandes y cada tabla, gráfico de barras o lista del informe.
+const cellVal = t => { t = t.replace(/\s+/g, " ").trim(); const m = t.match(/^([+−-]?)(\d{1,3}(?:\.\d{3})*)$/); return m ? (m[1] === "−" || m[1] === "-" ? -1 : 1) * Number(m[2].replace(/\./g, "")) : t; };
+function reportSheets(cur){
+  const a = monthData(), sh = [];
+  if (a.secs.length) sh.push({ name:"Análisis", rows:[[{ v:`Análisis del mes · ${monthLabel(MONTH)}`, s:1 }], [],
+    ...a.secs.flatMap(x => [[{ v:x.h, s:1 }], ...x.s.map(p => [{ v:plain(p.join(" ")), s:2 }]), []]),
+    ...(a.sum ? [[{ v:"En resumen", s:1 }], [{ v:plain(a.sum), s:2 }], []] : []),
+    ...(a.tips.length ? [[{ v:"Para tener en cuenta", s:1 }], ...a.tips.map(t => [{ v:"• " + plain(t), s:2 }])] : [])] });
+  const body = document.getElementById("repBody"); if (!body) return sh;
+  const kp = [...body.querySelectorAll(".kpi")].map(k => [k.querySelector(".l")?.textContent.trim() || "", cellVal(k.querySelector(".n")?.textContent || ""), (k.querySelector(".cmp,.d")?.textContent || "").trim()]);
+  if (kp.length) sh.push({ name:"Resumen", rows:[[{ v:`Informe de ${cur.l} · ${monthLabel(MONTH)}`, s:1 }], [], [{ v:"Indicador", s:1 }, { v:"Valor", s:1 }, { v:"Detalle", s:1 }], ...kp] });
+  const title = el => { const h = el.closest(".panel")?.querySelector("h2")?.textContent.trim(); if (h) return h; const s = el.closest(".tw")?.previousElementSibling; return s && /^H[23]$/.test(s.tagName) ? s.textContent.trim() : ""; };
+  const sheetName = (tb, rows) => { const t = title(tb); if (t) return t; const [h0 = "", h1 = ""] = rows[0].map(c => String(c?.v ?? c ?? ""));
+    return /^Campaña/.test(h1) ? "Campañas" : /^Inversión/.test(h1) ? "Inversión por marca" : /al cierre/.test(h1) ? "Seguidores" : /^Trabajos de CM/.test(h0) ? "Trabajos de CM"
+      : h0 && h0.length <= 14 ? "Por " + (h0 === h0.toUpperCase() ? h0 : h0.toLowerCase()) : h0 || "Tabla"; };
+  body.querySelectorAll("table").forEach(tb => { const rows = [...tb.rows].map(r => [...r.cells].map(c => c.tagName === "TH" ? { v:c.textContent.replace(/\s+/g, " ").trim(), s:1 } : cellVal(c.textContent)));
+    if (rows.length > 1) sh.push({ name:sheetName(tb, rows), rows }); });
+  body.querySelectorAll(".bars").forEach(b => { const rows = [...b.querySelectorAll(".bar")].map(r => { const sp = r.querySelectorAll(":scope > span"); return [sp[0]?.textContent.trim() || "", cellVal(sp[sp.length - 1]?.textContent || "")]; });
+    if (rows.length) sh.push({ name:title(b) || "Gráfico", rows }); });
+  body.querySelectorAll(".list").forEach(l => { const rows = [...l.querySelectorAll(".row")].map(r => [r.querySelector(".date")?.textContent.trim() || "", r.querySelector(".t")?.textContent.trim() || "", r.querySelector(".m")?.textContent.replace(/\s+/g, " ").trim() || ""]);
+    if (rows.length) sh.push({ name:title(l) || "Lista", rows:[[{ v:"Fecha", s:1 }, { v:"Qué", s:1 }, { v:"Detalle", s:1 }], ...rows] }); });
+  return sh;
+}
+function downloadReport(k, kind){
+  const cur = REPORT_TABS.find(t => t.k === k && can(t.perm)); if (!cur) return;
+  if (reportTab !== k){ reportTab = k; render(); }
+  const name = `Informe_${cur.file}_${monthLabel(MONTH).replace(" ", "_")}`;
+  if (kind === "pdf"){
+    const t = document.title, html = document.documentElement;
+    const done = () => { document.title = t; html.classList.remove("printrep"); window.removeEventListener("afterprint", done); };
+    document.title = name; html.classList.add("printrep"); window.addEventListener("afterprint", done);
+    setTimeout(() => { if (window.lucide) lucide.createIcons(); window.print(); }, 250);
+    return;
+  }
+  const a = document.createElement("a"), url = URL.createObjectURL(xlsxBlob(reportSheets(cur)));
+  a.href = url; a.download = name + ".xlsx"; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  toast(`Listo: se descargó “${name}.xlsx”.`);
+}
 function pReportes(){
   const tabs = REPORT_TABS.filter(t => can(t.perm));
   if (!tabs.find(t => t.k === reportTab)) reportTab = tabs[0] ? tabs[0].k : "diseno";
   const estado = isClosed() ? "🔒 Mes cerrado · datos fijos" : isFuture() ? "En planificación" : `En curso · cierra el ${lastDay(MONTH)}/${MONTH.slice(5)}`;
   const body = { diseno:repDiseno, cm:repCM, redes:() => repAlcance() + lastPostsPanel(IG_MAIN) + (can("pauta") ? `<h2 style="margin:8px 0 -8px" class="pmh">${pmIco("megaphone")}Pauta en Meta Ads</h2>` + repPauta() : "") }[reportTab];
-  const fn = t => `Informe_${t.file}_${monthLabel(MONTH).replace(" ","_")}`;
   const cur = tabs.find(t => t.k === reportTab);
-  return `<div class="panel flush"><div class="panel-h cyan">
+  return `<div class="repwrap"><div class="panel flush"><div class="panel-h cyan">
       <div class="head"><div><h2 class="pmh">${pmIco("file-bar-chart")}Informe mensual · ${monthLabel(MONTH)}</h2>
         <div class="tag-row"><span class="tag">${estado}</span><span class="tag">Período 01/${MONTH.slice(5)} – ${lastDay(MONTH)}/${MONTH.slice(5)}</span><span class="tag">${viewer.brands ? "Marcas: " + viewer.brands.join(", ") : "Todas las marcas"}</span></div></div>
         <div class="chips">${viewer.role === "Admin total" && MONTH === CURRENT_MONTH ? `<button class="btn" data-close>${icon("lock")} Cerrar ${monthName(MONTH)}</button>` : ""}</div>
       </div></div></div>
-  <h2 style="margin:0 0 -10px" class="pmh">${pmIco("download")}Informes para descargar</h2>
+  ${monthAnalysis()}
+  <h2 style="margin:0 0 -10px" class="pmh repdlh">${pmIco("download")}Informes para descargar</h2>
   <div class="replist">${tabs.map(t => `<article class="panel repcard ${reportTab === t.k ? "on" : ""}"><header><span class="ric">${icon(t.ic)}</span><div><h3>Informe de ${t.l}</h3><span class="note">${monthLabel(MONTH)}</span></div></header><p>${t.d}</p>
-    <div class="chips"><button class="btn ${reportTab === t.k ? "primary" : ""}" data-rtab="${t.k}">${icon("eye")} ${reportTab === t.k ? "Viendo" : "Ver"}</button><button class="btn" data-dl="${fn(t)}.xlsx">${icon("download")} Excel</button><button class="btn" data-dl="${fn(t)}.pdf">${icon("download")} PDF</button></div></article>`).join("")}</div>
-  ${cur ? `<div class="head"><h2 style="margin:0" class="pmh">${pmIco(cur.ic)}Informe de ${cur.l} · ${monthLabel(MONTH)}</h2><div class="chips"><button class="btn primary" data-dl="${fn(cur)}.xlsx">${icon("download")} Descargar Excel</button><button class="btn" data-dl="${fn(cur)}.pdf">${icon("download")} Descargar PDF</button></div></div>` : ""}
-  ${tabs.length ? body() : `<div class="panel"><div class="empty">No tenés informes habilitados.</div></div>`}
-  <p class="note">Cada informe se descarga por separado, en Excel (una hoja por cada tabla) o en PDF listo para mandar. Cada persona descarga solo lo que tiene permitido ver.</p>`;
+    <div class="chips"><button class="btn ${reportTab === t.k ? "primary" : ""}" data-rtab="${t.k}">${icon("eye")} ${reportTab === t.k ? "Viendo" : "Ver"}</button><button class="btn" data-dl="${t.k}|xlsx">${icon("download")} Excel</button><button class="btn" data-dl="${t.k}|pdf">${icon("download")} PDF</button></div></article>`).join("")}</div>
+  ${cur ? `<div class="head"><h2 style="margin:0" class="pmh">${pmIco(cur.ic)}Informe de ${cur.l} · ${monthLabel(MONTH)}</h2><div class="chips"><button class="btn primary" data-dl="${cur.k}|xlsx">${icon("download")} Descargar Excel</button><button class="btn" data-dl="${cur.k}|pdf">${icon("download")} Descargar PDF</button></div></div>` : ""}
+  <div class="repbody" id="repBody">${tabs.length ? body() : `<div class="panel"><div class="empty">No tenés informes habilitados.</div></div>`}</div>
+  <p class="note repfoot">Cada informe se descarga por separado, con el análisis del mes incluido: en Excel (una hoja por cada tabla) o en PDF listo para mandar (se abre la ventana de imprimir: elegí “Guardar como PDF”). Cada persona descarga solo lo que tiene permitido ver.</p></div>`;
 }
 function pUsuarios(){
   const ok = n => n === 1 ? "trabajo abierto" : "trabajos abiertos";
@@ -8006,7 +8235,7 @@ document.addEventListener("click", e => {
   if (t.dataset.month){ const i = MONTHS_APP.findIndex(m => m.v === MONTH) + Number(t.dataset.month); if (MONTHS_APP[i]){ MONTH = MONTHS_APP[i].v; render(); } }
   else if (t.dataset.rtab){ reportTab = t.dataset.rtab; render(); }
   else if (t.dataset.rbrand){ reportBrand = t.dataset.rbrand; render(); }
-  else if (t.dataset.dl){ toast(`En la app real se descarga “${t.dataset.dl}”. Acá la maqueta no puede descargar archivos.`); }
+  else if (t.dataset.dl){ const [k, kind] = t.dataset.dl.split("|"); downloadReport(k, kind); }
   else if (t.dataset.close !== undefined){ toast(`En la app real, esto deja ${monthName(MONTH)} fijo: se puede consultar pero ya no modificar.`); }
   else if (t.dataset.page){ e.preventDefault(); if (t.dataset.back !== undefined){ navHist.pop(); render.goingBack = true; } if (t.dataset.page !== page) MONTH = CURRENT_MONTH; /* cada sección arranca en el mes actual */ jobUI.ficha = null; jobUI.form = null; if (typeof postUI !== "undefined") postUI.form = null; page = t.dataset.page; render(); window.scrollTo(0,0); } // ir a otra sección cierra el pedido abierto
   else if (t.dataset.brand){ brandFilter = t.dataset.brand; render(); }
