@@ -1,6 +1,7 @@
 // Retail MKT Hub · gestión de cuentas (solo Admin total), con la clave de servicio del lado del servidor.
-// Acciones: create, set_password, set_active, set_role, remove, accounts  (requieren sesión de Admin total)
-//           request_reset                                     (pública: "¿Olvidaste tu contraseña?")
+// Acciones: create, set_password, set_active, set_role, set_username, remove, accounts  (requieren sesión de Admin total)
+//           login          (pública: entrar con el usuario de ingreso, ej. "Alesme"; el email no sale del servidor)
+//           request_reset  (pública: "¿Olvidaste tu contraseña?")
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const cors = {
@@ -12,6 +13,11 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 const ROLES = ["Admin total", "Admin", "Diseñador", "CM"];
 const BAN_FOREVER = "876000h";
+// Usuario de ingreso: letras, números, punto o guion (sin espacios ni "_" / "%", que en ilike son comodines).
+const USER_RE = /^[A-Za-z][A-Za-z0-9.-]{2,29}$/;
+// Quien no tiene email entra igual con su usuario: la cuenta usa una dirección interna que nunca recibe correos.
+const noMailEmail = (u: string) => `${u.toLowerCase()}@usuarios.retailmkthub.invalid`;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -34,11 +40,33 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { return json({ error: "Pedido inválido" }, 400); }
   const action = String(body.action || "");
 
-  // Pública: deja el pedido para que un Admin total restablezca la contraseña. No revela si el email existe.
+  // Pública: entrar con el usuario de ingreso. Se busca el email de esa cuenta acá y se devuelve solo la sesión.
+  // Ante cualquier error se responde lo mismo (y con una pausa), así no se puede averiguar qué usuarios existen.
+  if (action === "login") {
+    const username = String(body.username || "").trim(), password = String(body.password || "");
+    const fail = async (error = "Usuario o contraseña incorrectos.", status = 400) => { await sleep(700); return json({ error }, status); };
+    if (!USER_RE.test(username) || !password) return fail();
+    const { data: m } = await db.from("members").select("user_id").ilike("username", username).maybeSingle();
+    if (!m?.user_id) return fail();
+    const { data: u } = await db.auth.admin.getUserById(m.user_id);
+    if (!u?.user?.email) return fail();
+    const anon = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: s, error } = await anon.auth.signInWithPassword({ email: u.user.email, password });
+    if (error || !s?.session) {
+      const t = String(error?.message || "");
+      return fail(/banned/i.test(t) ? "Tu usuario está desactivado. Hablá con un Admin total." : /rate|too many/i.test(t) ? "Demasiados intentos. Esperá unos minutos y probá de nuevo." : undefined, /rate|too many/i.test(t) ? 429 : 400);
+    }
+    return json({ ok: true, session: { access_token: s.session.access_token, refresh_token: s.session.refresh_token } });
+  }
+
+  // Pública: deja el pedido para que un Admin total restablezca la contraseña. No revela si el usuario o el email existen.
   if (action === "request_reset") {
-    const email = String(body.email || "").trim().toLowerCase();
-    if (email) {
-      const { data: m } = await db.from("members").select("person_id").ilike("email", email).eq("active", true).maybeSingle();
+    const email = String(body.email || "").trim().toLowerCase(), username = String(body.username || "").trim();
+    if (email || USER_RE.test(username)) {
+      const q = db.from("members").select("person_id").eq("active", true);
+      const { data: m } = await (email ? q.ilike("email", email) : q.ilike("username", username)).maybeSingle();
       if (m) {
         const { data: row } = await db.from("app_state").select("data, version").eq("key", "s:resetRequests").maybeSingle();
         const list: string[] = Array.isArray(row?.data) ? row!.data : [];
@@ -61,7 +89,7 @@ Deno.serve(async (req) => {
 
   // Quién tiene cuenta y quién ya entró alguna vez (para "Dar acceso al equipo"). Sin emails ni contraseñas.
   if (action === "accounts") {
-    const { data: ms } = await db.from("members").select("person_id, user_id, active");
+    const { data: ms } = await db.from("members").select("person_id, user_id, active, username");
     const accounts: Record<string, unknown> = {};
     await Promise.all((ms || []).map(async (m) => {
       let signedIn = false, mustChange = false;
@@ -69,7 +97,7 @@ Deno.serve(async (req) => {
         const { data } = await db.auth.admin.getUserById(m.user_id);
         signedIn = !!data?.user?.last_sign_in_at; mustChange = !!data?.user?.user_metadata?.must_change;
       }
-      accounts[m.person_id] = { account: !!m.user_id, active: m.active, signedIn, mustChange };
+      accounts[m.person_id] = { account: !!m.user_id, active: m.active, signedIn, mustChange, username: m.username || "" };
     }));
     return json({ ok: true, accounts });
   }
@@ -82,9 +110,18 @@ Deno.serve(async (req) => {
   if (action === "create" || action === "set_password") {
     const password = String(body.password || "");
     if (password.length < 10) return json({ error: "La contraseña tiene que tener al menos 10 caracteres." }, 400);
-    const email = String(body.email || target?.email || "").trim().toLowerCase();
+    const username = String(body.username ?? target?.username ?? "").trim();
+    if (username && !USER_RE.test(username)) return json({ error: "El usuario de ingreso tiene que tener de 3 a 30 letras o números, sin espacios." }, 400);
+    if (username) {
+      const { data: other } = await db.from("members").select("person_id").ilike("username", username).neq("person_id", personId).maybeSingle();
+      if (other) return json({ error: "Ese usuario de ingreso ya lo tiene otra persona." }, 400);
+    }
+    let email = String(body.email || target?.email || "").trim().toLowerCase();
+    if (!email.includes("@")) {
+      if (!username) return json({ error: "Esta persona no tiene email ni usuario de ingreso." }, 400);
+      email = noMailEmail(username);
+    }
     const role = String(body.role || target?.role || "");
-    if (!email.includes("@")) return json({ error: "Esta persona no tiene un email válido." }, 400);
     if (!ROLES.includes(role)) return json({ error: "Rol inválido." }, 400);
     const meta = { person_id: personId, must_change: true };
     let userId = target?.user_id as string | null;
@@ -96,7 +133,7 @@ Deno.serve(async (req) => {
       if (error) return json({ error: error.message.includes("already") ? "Ya existe una cuenta con ese email." : error.message }, 400);
       userId = data.user.id;
     }
-    const { error } = await db.from("members").upsert({ person_id: personId, email, role, active: true, user_id: userId });
+    const { error } = await db.from("members").upsert({ person_id: personId, email, role, active: true, user_id: userId, username: username || null });
     if (error) return json({ error: error.message }, 400);
     return json({ ok: true });
   }
@@ -108,6 +145,17 @@ Deno.serve(async (req) => {
     if (!active && isLastAdmin) return json({ error: "Tiene que quedar al menos un Admin total activo." }, 400);
     if (target.user_id) await db.auth.admin.updateUserById(target.user_id, { ban_duration: active ? "none" : BAN_FOREVER });
     await db.from("members").update({ active }).eq("person_id", personId);
+    return json({ ok: true });
+  }
+  if (action === "set_username") {
+    const username = String(body.username || "").trim();
+    if (username && !USER_RE.test(username)) return json({ error: "El usuario de ingreso tiene que tener de 3 a 30 letras o números, sin espacios." }, 400);
+    if (username) {
+      const { data: other } = await db.from("members").select("person_id").ilike("username", username).neq("person_id", personId).maybeSingle();
+      if (other) return json({ error: "Ese usuario de ingreso ya lo tiene otra persona." }, 400);
+    }
+    const { error } = await db.from("members").update({ username: username || null }).eq("person_id", personId);
+    if (error) return json({ error: "No se pudo guardar el usuario de ingreso." }, 400);
     return json({ ok: true });
   }
   if (action === "set_role") {
