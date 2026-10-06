@@ -6217,12 +6217,19 @@ function msgActions(m, mid, mine){
 // Hora de un mensaje nuevo: la del servidor (si la compu está adelantada o atrasada se corrige) y siempre
 // un poco después del último mensaje de esa charla, así lo que se manda último queda abajo para todos.
 const chatNow = () => new Date(Date.now() + (window.RMH?.clockOffset || 0));
+// Hora oficial de Paraguay (UTC−3 todo el año desde octubre de 2024). El chat la usa siempre para el día y la hora
+// de cada mensaje, sin importar la hora ni la zona horaria que tenga el celular, la tablet o la compu de cada uno.
+const pyParts = ts => { const x = new Date(Date.parse(ts) - 3 * 3600e3).toISOString(); return { date:x.slice(0, 10), time:x.slice(11, 16) }; };
+const pyToday = () => pyParts(chatNow().toISOString()).date;
+const msgTime = m => m.ts ? pyParts(m.ts).time : m.time || "";
+const msgDay = m => m.ts ? pyParts(m.ts).date : m.date || msgTs(m).slice(0, 10);
+const chatDayLbl = d => { const t = pyToday(), y = new Date(Date.parse(t + "T12:00:00Z") - 864e5).toISOString().slice(0, 10);
+  return d === t ? "Hoy" : d === y ? "Ayer" : `${["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][new Date(d + "T12:00:00Z").getUTCDay()]} ${dm(d)}`; };
 const convRaw = open => { const [k, id] = open.split(/:(.*)/s); return k === "g" ? CHATS[id]?.msgs || [] : dmThreads(id).flatMap(t => t.msgs); };
-const pad2 = n => String(n).padStart(2, "0");
 function msgStamp(open){
   let d = chatNow(); const last = convRaw(open).reduce((mx, m) => { const t = Date.parse(msgTs(m)); return t > mx ? t : mx; }, 0);
   if (last && d.getTime() <= last) d = new Date(last + 1);
-  return { ts:d.toISOString(), date:`${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`, time:`${pad2(d.getHours())}:${pad2(d.getMinutes())}` };
+  const ts = d.toISOString(); return { ts, ...pyParts(ts) };
 }
 const msgByIdIn = (open, id) => convRaw(open).find(m => m.id === id);
 function convPush(open, m){ // agrega un mensaje a una conversación (grupo o privada)
@@ -6360,16 +6367,16 @@ document.addEventListener("change", e => { if (e.target.id === "chatPhoto"){ con
 function bubbles(c){
   let lastDay = "", lastFrom = "";
   return c.msgs.map((m, i) => {
-    const day = m.date || msgTs(m).slice(0, 10), mine = m.from === viewer.id, who = personById(m.from);
-    const sep = day !== lastDay ? `<div class="cday"><span>${dayLbl(day)}</span></div>` : "";
+    const day = msgDay(m), mine = m.from === viewer.id, who = personById(m.from);
+    const sep = day !== lastDay ? `<div class="cday"><span>${chatDayLbl(day)}</span></div>` : "";
     const head = !mine && (sep || lastFrom !== m.from) && c.kind === "g";
     lastDay = day; lastFrom = m.from;
     const re = Object.entries(m.re || {}).filter(([, ids]) => ids.length);
     const mid = m.id || `${c.kind}${i}`;
     if (m.del) return `${sep}<div class="cmsg ${mine ? "me" : ""}" data-mid="${esc(mid)}">${!mine && c.kind === "g" ? (head ? `<span class="cmav">${who ? avatarHTML(who) : ""}</span>` : `<span class="cmav"></span>`) : ""}
-      <div class="cbub cdelb">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}<div class="ctext cdel">${icon("ban")} <i>${mine ? "Eliminaste este mensaje." : "Se eliminó este mensaje."}</i></div><span class="ctime">${(m.time || msgTs(m).slice(11, 16))}</span></div></div>`;
+      <div class="cbub cdelb">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}<div class="ctext cdel">${icon("ban")} <i>${mine ? "Eliminaste este mensaje." : "Se eliminó este mensaje."}</i></div><span class="ctime">${msgTime(m)}</span></div></div>`;
     return `${sep}<div class="cmsg ${mine ? "me" : ""}" data-mid="${esc(mid)}">${!mine && c.kind === "g" ? (head ? `<span class="cmav">${who ? avatarHTML(who) : ""}</span>` : `<span class="cmav"></span>`) : ""}
-      <div class="cbub${!m.text && !m.rp && !m.fw && ((m.stk && stkSrc(m.stk)) || m.gif || m.img?.id || m.img?.up) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.fw ? `<span class="cfw">${icon("forward")} Reenviado</span>` : ""}${m.rp ? `<button type="button" class="crq" data-cjump="${esc(m.rp.id)}"><b>${esc(m.rp.from === viewer.id ? "Vos" : nickOf(personById(m.rp.from)) || "")}</b><span>${esc(m.rp.t || "")}</span></button>` : ""}${m.stk && stkSrc(m.stk) ? `<span class="cstkw"><img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer"><button type="button" class="cstkfav${stkFavs().includes(m.stk) ? " on" : ""}" data-stkfav="${esc(m.stk)}" title="${stkFavs().includes(m.stk) ? "Está en tus favoritos (tocá para quitarlo)" : "Guardar en mis favoritos"}" aria-label="${stkFavs().includes(m.stk) ? "Quitar de favoritos" : "Guardar en favoritos"}">${stkFavs().includes(m.stk) ? "★" : "☆"}</button></span>` : ""}${m.img?.id ? photoTag(m.img) : m.img?.up ? photoUp(m.img, m) : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${chatLinks(m.text)}</div>${chatPrev(m.text)}` : ""}${m.via ? `<span class="cvia">Prueba enviada por ${esc(nickOf(personById(m.via)) || m.via)} como ${esc(nickOf(who) || m.from)}</span>` : ""}<span class="ctime">${m.ed ? "editado · " : ""}${(m.time || msgTs(m).slice(11, 16))}${mine ? msgTicks(m, c) : ""}</span>
+      <div class="cbub${!m.text && !m.rp && !m.fw && ((m.stk && stkSrc(m.stk)) || m.gif || m.img?.id || m.img?.up) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.fw ? `<span class="cfw">${icon("forward")} Reenviado</span>` : ""}${m.rp ? `<button type="button" class="crq" data-cjump="${esc(m.rp.id)}"><b>${esc(m.rp.from === viewer.id ? "Vos" : nickOf(personById(m.rp.from)) || "")}</b><span>${esc(m.rp.t || "")}</span></button>` : ""}${m.stk && stkSrc(m.stk) ? `<span class="cstkw"><img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer"><button type="button" class="cstkfav${stkFavs().includes(m.stk) ? " on" : ""}" data-stkfav="${esc(m.stk)}" title="${stkFavs().includes(m.stk) ? "Está en tus favoritos (tocá para quitarlo)" : "Guardar en mis favoritos"}" aria-label="${stkFavs().includes(m.stk) ? "Quitar de favoritos" : "Guardar en favoritos"}">${stkFavs().includes(m.stk) ? "★" : "☆"}</button></span>` : ""}${m.img?.id ? photoTag(m.img) : m.img?.up ? photoUp(m.img, m) : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${chatLinks(m.text)}</div>${chatPrev(m.text)}` : ""}${m.via ? `<span class="cvia">Prueba enviada por ${esc(nickOf(personById(m.via)) || m.via)} como ${esc(nickOf(who) || m.from)}</span>` : ""}<span class="ctime">${m.ed ? "editado · " : ""}${msgTime(m)}${mine ? msgTicks(m, c) : ""}</span>
         <button type="button" class="creact" data-react="${esc(mid)}" aria-label="Reaccionar">${icon("smile-plus")}</button>
         ${chatUI.react === mid ? `<div class="rqpick">${QUICK_RE.map(x => `<button type="button" data-re="${x}" data-rmid="${esc(mid)}">${x}</button>`).join("")}<button type="button" data-remore="${esc(mid)}" aria-label="Más emojis">＋</button></div>${chatUI.reactMore === mid ? emojiPanel("re:" + mid) : ""}${msgActions(m, mid, mine)}` : ""}
       </div>
@@ -6416,7 +6423,7 @@ function pMensajes(){
   const q = chatUI.q.trim().toLowerCase(), fits = t => !q || t.toLowerCase().includes(q);
   const lastOf = list => list.length ? list[list.length - 1] : null;
   const prev = m => m ? (m.del ? (m.from === viewer.id ? "Eliminaste este mensaje" : "Se eliminó este mensaje") : `${m.from === viewer.id ? "Vos: " : ""}${m.text || (m.img ? "📷 Foto" : m.gif ? "GIF" : m.stk ? "Sticker" : "")}`) : "";
-  const when = m => m ? (msgTs(m).slice(0, 10) === TODAY ? (m.time || msgTs(m).slice(11, 16)) : dm(msgTs(m).slice(0, 10))) : "";
+  const when = m => m ? (msgDay(m) === pyToday() ? msgTime(m) : dm(msgDay(m))) : "";
   const groups = chatGroupsMine().filter(g => fits(g.name)).map(g => ({ g, last:lastOf(grpMsgs(g.id)), n:grpUnread(g.id) }));
   const meP = personById(viewer.id), self = meP && (fits(chatName(meP)) || fits("vos")) ? lastOf(dmMsgs(meP.id)) || 0 : null;
   const people = PEOPLE.filter(pp => pp.active && pp.id !== viewer.id && (fits(pp.name) || fits(pp.nick || ""))).map(pp => ({ pp, last:lastOf(dmMsgs(pp.id)), n:dmUnread(pp.id) }))
