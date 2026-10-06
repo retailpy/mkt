@@ -3561,9 +3561,10 @@ const icon = n => `<i data-lucide="${n}"></i>`;
 // Vistas TV, Usuarios y Carga de trabajo: solo Admin total (aunque el permiso esté marcado).
 const ONLY_AT = ["tv","tvredes","tvimpacto","usuarios","sugerencias","encuestas"]; // Encuestas y sugerencias: solo Admin total (también en la base)
 const ONLY_ADMINS = ["historial","historialcm","pauta","reportes"]; // Historial de Diseño y de CM, Meta Ads e Informe mensual: solo Admin total y Admin
-// Todo el equipo ve los Paneles de Trabajo (y sus categorías), la Planificación y la Carga de trabajo de Diseño y de CM.
+// Todo el equipo ve los Paneles de Trabajo (y sus categorías), la Planificación, la Carga de trabajo de Diseño y de CM
+// y el Informe Redes (Diseño y CM incluidos). Meta Ads (pauta) y el Informe del mes siguen solo para Admin total y Admin.
 // Lo que cada uno puede cambiar lo sigue decidiendo su rol (cargar pedidos, editar posteos, mover fechas…).
-const ALL_SEE = () => ["paneldg","panelcm","caldg","calcm","cargadiseno","cargacm","ideas", ...PANEL_DESIGN.map(x => x.k), ...PANEL_CM.map(x => x.k).filter(k => k !== "inbox")];
+const ALL_SEE = () => ["paneldg","panelcm","caldg","calcm","cargadiseno","cargacm","ideas","redes", ...PANEL_DESIGN.map(x => x.k), ...PANEL_CM.map(x => x.k).filter(k => k !== "inbox")];
 const can = key => ALL_SEE().includes(key) ? true : key === "inbox" ? ["Admin total","Admin","CM"].includes(viewer.role) : key === "encuestas" || key === "sugerencias" ? viewer.id === "fede" && viewer.role === "Admin total" : key === "tendg" ? can("paneldg") : key === "tencm" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : ONLY_AT.includes(key) ? viewer.role === "Admin total" : ONLY_ADMINS.includes(key) ? isAdminAny() && viewer.perms.has(key) : ["sabados","avisos","perfil","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
 const myGroups = () => viewer.brands || GROUPS;
 const seesBrand = b => myGroups().includes(groupOf(b));
