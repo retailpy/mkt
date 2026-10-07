@@ -8,7 +8,7 @@
 //   tendencias {area:"dg"|"cm"|"ideas", force?}                      → campañas, piezas y contenidos con foto, en español (force: solo Admin total)
 //   noticias {force?}                                                → lo que sale en los medios de Paraguay sobre Retail S.A. y sus marcas (3 meses)
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { parseOfertas, periodo, marcaDe, PARSE_V } from "./comercial.ts";
+import { parseOfertas, periodo, marcaDe, PARSE_V, nombreOfertas, excelOfertas } from "./comercial.ts";
 import { armar } from "./tendencias.ts";
 import { buscarNoticias, juntarNoticias } from "./noticias.ts";
 
@@ -27,11 +27,12 @@ const CHAT_FOLDER_ID = "13L9Y3QcGbymgMStbaCHmR7F2MZaoBxVw"; // carpeta "Fotos Re
 const BOCETO_FOLDER_ID = "11CTrI4SXqPnHj6an0xwcFnDy7lbU1XJK"; // carpeta de los bocetos de los pedidos (adentro, una carpeta por mes)
 const COMERCIAL_FOLDER_ID = "1ciqZuhAtcIa-_OYYutd-8Zq8CTPZS-5N"; // ofertas de Comercial: los Excel "PUBLICADAS" de cada quincena (solo lectura)
 const VIDEO_FOLDER_ID = "1OZxiVg0RQlJL2PUDLUXkct5NAFIGw09o"; // videos editados de CM (adentro, una carpeta por mes con el año)
+const BACKUP_FOLDER_ID = "1A_WCm2AkSN9H6GdNazCk-9L4ngoaNWfZ"; // respaldo de las ofertas: el Excel de cada quincena, en la carpeta del mes y año de la oferta
 const MAX_BYTES = 400 * 1024;
 const CHAT_MAX = 4 * 1024 * 1024; // la app achica las fotos antes de subirlas (suelen quedar en 200-600 KB)
 const BOCETO_MAX = 10 * 1024 * 1024; // boceto liviano para ver cómo va (el original va en los links del pedido)
 const TYPES = ["image/png", "image/webp", "image/gif", "image/jpeg"];
-const SCRIPT_V = 4; // versión del script de Drive que necesita la app (2: fotos del chat por mes · 3: bocetos · 4: Comercial y videos de CM)
+const SCRIPT_V = 5; // versión del script de Drive que necesita la app (2: fotos del chat por mes · 3: bocetos · 4: Comercial y videos de CM · 5: respaldo de las ofertas)
 const SCRIPT_RE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]{20,}\/exec$/;
 const thumb = (id: string) => `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w320`;
 
@@ -44,6 +45,7 @@ const scriptText = (secret: string) => `// Retail MKT Hub · stickers, fotos del
 //   Bocetos de los pedidos → su carpeta, también con una carpeta por mes.
 //   Comercial → lee (sin cambiar nada) los Excel "PUBLICADAS" de la carpeta de ofertas.
 //   Videos editados de CM → su carpeta, con una carpeta por mes y año; el video se sube directo a Drive.
+//   Respaldo de las ofertas → el Excel de cada quincena, el día que empieza, en la carpeta del mes y año de la oferta.
 // Pegalo en script.google.com y publicalo como Aplicación web (Ejecutar como: Yo · Acceso: Cualquier usuario).
 // Si ya estaba publicado: Implementar → Administrar implementaciones → lápiz → Versión: Nueva versión → Implementar
 // (así queda la misma URL). Tiene una clave secreta adentro: no lo compartas.
@@ -54,6 +56,7 @@ const CHAT_FOLDER_ID = "${CHAT_FOLDER_ID}";
 const BOCETO_FOLDER_ID = "${BOCETO_FOLDER_ID}";
 const COMERCIAL_FOLDER_ID = "${COMERCIAL_FOLDER_ID}";
 const VIDEO_FOLDER_ID = "${VIDEO_FOLDER_ID}";
+const BACKUP_FOLDER_ID = "${BACKUP_FOLDER_ID}";
 const MAX_BYTES = ${MAX_BYTES};
 const CHAT_MAX = ${CHAT_MAX};
 const BOCETO_MAX = ${BOCETO_MAX};
@@ -75,11 +78,11 @@ function doGet(e){
 }
 
 // La carpeta del mes dentro de una carpeta (Fotos o Bocetos); si todavía no existe, se crea.
-function monthFolder(rootId){
+function monthFolder(rootId, ymWanted){
   const lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
-    const root = DriveApp.getFolderById(rootId), ym = Utilities.formatDate(new Date(), "America/Asuncion", "yyyy-MM");
-    const name = ym + " " + MESES[Number(ym.slice(5)) - 1], it = root.getFoldersByName(name);
+    const ym = /^\\d{4}-\\d{2}$/.test(ymWanted || "") ? ymWanted : Utilities.formatDate(new Date(), "America/Asuncion", "yyyy-MM");
+    const root = DriveApp.getFolderById(rootId), name = ym + " " + MESES[Number(ym.slice(5)) - 1], it = root.getFoldersByName(name);
     return it.hasNext() ? it.next() : root.createFolder(name);
   } finally { lock.releaseLock(); }
 }
@@ -94,6 +97,8 @@ function doPost(e){
   if (b.kind === "video_folder") return out({ ok: true, folder: monthFolder(VIDEO_FOLDER_ID).getUrl() });
   if (b.kind === "video_session") return videoSession(b);
   if (b.kind === "video_done") return videoDone(b);
+  if (b.kind === "backup_copy") return backupCopy(b);
+  if (b.kind === "backup_file") return backupFile(b);
   if (TYPES.indexOf(b.type) < 0) return out({ ok: false, error: "tipo de imagen no permitido" });
   const chat = b.kind === "chat", bytes = Utilities.base64Decode(b.data || "");
   if (!bytes.length || bytes.length > (chat ? CHAT_MAX : MAX_BYTES)) return out({ ok: false, error: chat ? "la foto supera 4 MB" : "la imagen supera 400 KB" });
@@ -148,6 +153,24 @@ function videoDone(b){
   if (!ok) return out({ ok: false, error: "no es de la carpeta de videos" });
   try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (err){}
   return out({ ok: true, link: f.getUrl(), name: f.getName() });
+}
+
+// Respaldo de las ofertas: copia el Excel original (o guarda el que arma la app si el original ya no está) en la carpeta
+// del mes y año de la oferta. Si ya hay uno con ese nombre, no lo repite.
+function backupCopy(b){
+  let f; try { f = DriveApp.getFileById(String(b.id || "")); } catch (err){ return out({ ok: false, error: "no existe" }); }
+  let inFolder = false; for (const ps = f.getParents(); ps.hasNext();) if (ps.next().getId() === COMERCIAL_FOLDER_ID) inFolder = true;
+  if (!inFolder) return out({ ok: false, error: "no es de la carpeta de ofertas" });
+  const folder = monthFolder(BACKUP_FOLDER_ID, b.ym), name = String(b.name || f.getName()).slice(0, 160), it = folder.getFilesByName(name);
+  const c = it.hasNext() ? it.next() : f.makeCopy(name, folder);
+  return out({ ok: true, id: c.getId(), url: c.getUrl() });
+}
+function backupFile(b){
+  const bytes = Utilities.base64Decode(b.data || "");
+  if (!bytes.length || bytes.length > 15 * 1024 * 1024) return out({ ok: false, error: "archivo inválido" });
+  const folder = monthFolder(BACKUP_FOLDER_ID, b.ym), name = String(b.name || "ofertas.xlsx").slice(0, 160), it = folder.getFilesByName(name);
+  const c = it.hasNext() ? it.next() : folder.createFile(Utilities.newBlob(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", name));
+  return out({ ok: true, id: c.getId(), url: c.getUrl() });
 }
 
 // Borrar una foto del chat o un boceto (va a la papelera de Drive): solo si está en esas carpetas y lo subió esa persona
@@ -260,12 +283,24 @@ async function comercialSync(c: any, minAge: number){
     }
     const ids = new Set(list.map((f: any) => f.id));
     for (const id of Object.keys(files)) if (!ids.has(id)) files[id].inDrive = false;
-    const lim = new Date(Date.now() - 120 * 864e5).toISOString().slice(0, 10);
-    for (const x of Object.values(files) as any[]) if (x.to && x.to < lim && !x.light){ x.sheets = (x.sheets || []).map((s: any) => ({ ...s, items: s.items.filter((i: any) => i.flag) })); x.light = true; }
-    const now = new Date().toISOString(), data = { v: 1, updated: nuevos || !prev.updated ? now : prev.updated, syncedAt: now, files };
-    if (!row){ const { error } = await db.from("app_state").insert({ key: "s:COMERCIAL", data }); if (!error) return { ok: true, nuevos, errores, n: list.length }; continue; }
+    // Las quincenas quedan completas siempre (aunque el Excel se borre de Drive).
+    for (const x of Object.values(files) as any[]) if (x.light) delete x.light;
+    // Respaldo en Drive: el día que empieza la oferta (o después, si ese día no se revisó), una sola vez por archivo.
+    let respaldos = 0;
+    const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date());
+    const canBackup = await scriptVersion(c.sticker_url, c.sticker_secret) >= 5;
+    if (canBackup) for (const x of Object.values(files) as any[]){
+      if (!x.from || x.from > hoy || x.backup?.url) continue;
+      const name = nombreOfertas(x) + ".xlsx", ym = x.from.slice(0, 7);
+      try {
+        const j = x.inDrive ? await scriptPost(c, { kind: "backup_copy", id: x.id, name, ym }) : await scriptPost(c, { kind: "backup_file", name, ym, data: excelOfertas(x) });
+        if (j.ok && j.url){ x.backup = { at: new Date().toISOString(), id: j.id, url: j.url }; respaldos++; }
+      } catch { /* se reintenta en la próxima revisión */ }
+    }
+    const now = new Date().toISOString(), data = { v: 1, updated: nuevos || respaldos || !prev.updated ? now : prev.updated, syncedAt: now, backupScript: canBackup, files };
+    if (!row){ const { error } = await db.from("app_state").insert({ key: "s:COMERCIAL", data }); if (!error) return { ok: true, nuevos, errores, respaldos, n: list.length }; continue; }
     const { data: up } = await db.from("app_state").update({ data, version: row.version + 1, updated_at: now }).eq("key", "s:COMERCIAL").eq("version", row.version).select("version");
-    if (up && up.length) return { ok: true, nuevos, errores, n: list.length };
+    if (up && up.length) return { ok: true, nuevos, errores, respaldos, n: list.length };
   }
   return { ok: false, error: "Se estaba actualizando al mismo tiempo: probá de nuevo." };
 }

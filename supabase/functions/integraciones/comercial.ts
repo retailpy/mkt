@@ -85,3 +85,23 @@ export function periodo(name: string, ref: Date){
   return { from: `${y1}-${p(m1)}-${p(d1)}`, to: `${y2}-${p(m2)}-${p(d2)}` };
 }
 export const marcaDe = (name: string) => /\bS6\b|SUPERSEIS/i.test(name) ? "Superseis" : /STOCK/i.test(name) ? "Stock" : /DELI/i.test(name) ? "Delimarket" : "";
+
+// Nombre del respaldo: "Ofertas Superseis del 12 al 25 de octubre (Folleto 19)"
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+export function nombreOfertas(f: any){
+  const [a, b] = [f.from, f.to].map((d: string) => ({ d: +d.slice(8, 10), m: +d.slice(5, 7) - 1 }));
+  const rango = a.m === b.m ? `${a.d} al ${b.d} de ${MESES[b.m]}` : `${a.d} de ${MESES[a.m]} al ${b.d} de ${MESES[b.m]}`;
+  return `Ofertas ${f.brand || "Superseis"} del ${rango}${f.folleto ? ` (Folleto ${f.folleto})` : ""}`;
+}
+// Excel armado con lo guardado (cuando el original ya no está en Drive), en base64. Una hoja por hoja del original.
+const COLS: [string, (i: any) => unknown][] = [["Página / sección", (i) => i.sec || i.sector], ["Descripción", (i) => i.desc], ["PVP", (i) => i.pvp ?? ""], ["Oferta", (i) => i.of ?? ""],
+  ["% desc", (i) => i.pct], ["Marca", (i) => i.fx || i.flag || ""], ["Sector", (i) => i.sector], ["Código", (i) => i.cod], ["Material", (i) => i.mat], ["Temática", (i) => i.tem],
+  ["Reconocimiento", (i) => i.rec ?? ""], ["Ofertas negociadas", (i) => i.neg], ["Proveedor", (i) => i.prov], ["N° prov", (i) => i.nprov], ["Subcategoría", (i) => i.sub]];
+export function excelOfertas(f: any){
+  const wb = XLSX.utils.book_new();
+  (f.sheets || []).forEach((s: any, k: number) => {
+    const ws = XLSX.utils.aoa_to_sheet([COLS.map((c) => c[0]), ...(s.items || []).map((i: any) => COLS.map((c) => c[1](i)))]);
+    XLSX.utils.book_append_sheet(wb, ws, String(s.name || `Hoja ${k + 1}`).slice(0, 31));
+  });
+  return XLSX.write(wb, { type: "base64", bookType: "xlsx" }) as string;
+}
