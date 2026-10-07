@@ -59,7 +59,9 @@ const RMH = (() => {
     META_CREATIVES:[() => META_CREATIVES, v => { META_CREATIVES = v || {}; }],
     META_INBOX:[() => META_INBOX, v => { META_INBOX = v || {}; }],
     INBOX_DONE:[() => INBOX_DONE, v => { INBOX_DONE = v || {}; }],
+    RECLAMOS:[() => RECLAMOS, v => { RECLAMOS = Array.isArray(v) ? v : []; }], // solo Admin total, Admin y CM
     META_REFS:[() => META_REFS, v => { META_REFS = v || {}; }],
+    COMERCIAL:[() => COMERCIAL, v => { COMERCIAL = v || {}; }], // lo escribe el servidor (ofertas de Comercial)
     CHANNEL_POSTS:[() => CHANNEL_POSTS, v => { CHANNEL_POSTS = v; }],
     MAIN_PRIORITIES:[() => MAIN_PRIORITIES, v => { MAIN_PRIORITIES = v; }],
     CHAT_GROUPS:[() => CHAT_GROUPS, v => { CHAT_GROUPS = v; }],
@@ -72,6 +74,9 @@ const RMH = (() => {
   };
   // Claves que solo existen para Admin total (la base no se las deja leer ni guardar al resto).
   const ADMIN_ONLY = new Set(["s:SUGGESTIONS", "s:SURVEYS"]);
+  // Claves que solo existen para Admin total, Admin y CM (reclamos de clientes: tienen nombres y datos personales).
+  const CM_ONLY = new Set(["s:RECLAMOS"]);
+  const isCMish = () => ["Admin total", "Admin", "CM"].includes(member?.role);
   // Claves que todos leen pero solo Admin total guarda. (Los grupos de chat los crea cualquiera: la base controla
   // que cada uno cambie solo los suyos.)
   const ADMIN_WRITE = new Set([]);
@@ -81,7 +86,7 @@ const RMH = (() => {
   const base = new Map(); // clave → { v: versión en el servidor, json: lo último que coincidió con el servidor }
 
   function localKeys(){
-    return [...Object.keys(SHARED).map(k => "s:" + k).filter(k => isAT() || !ADMIN_ONLY.has(k)), "notes:" + me, "prompts:" + me,
+    return [...Object.keys(SHARED).map(k => "s:" + k).filter(k => (isAT() || !ADMIN_ONLY.has(k)) && (isCMish() || !CM_ONLY.has(k))), "notes:" + me, "prompts:" + me,
       ...THREADS.filter(t => t.a === me || t.b === me).map(t => "thread:" + t.id),
       ...CHAT_GROUPS.filter(g => chatMember(g, { id:me, role:member?.role })).map(g => "chat:" + g.id)]; // siempre con quien inició sesión
   }
@@ -156,7 +161,7 @@ const RMH = (() => {
   let flushing = null, lastSeen = "", changedAt = 0, dirtySince = 0, rerenderPending = false, saveErrShown = false, retryAt = 0;
   // Pendiente de guardar: cambió desde lo último del servidor, o todavía no existe en la base (v 0: se crea).
   // De solo lectura: las escriben las funciones de Meta; la app las lee pero nunca las guarda.
-  const READONLY = new Set(["s:META_FOLLOWERS", "s:META_DEMO", "s:META_POSTS", "s:META_CREATIVES", "s:META_INBOX", "s:META_REFS"]);
+  const READONLY = new Set(["s:META_FOLLOWERS", "s:META_DEMO", "s:META_POSTS", "s:META_CREATIVES", "s:META_INBOX", "s:META_REFS", "s:COMERCIAL"]);
   const noSave = k => READONLY.has(k) || (ADMIN_WRITE.has(k) && !isAT());
   function dirtyKeys(){ return localKeys().filter(k => { if (noSave(k) || getLocal(k) === undefined) return false; const b = base.get(k); return !b || b.v === 0 || C(enc(getLocal(k))) !== b.json; }); }
   async function saveKey(key){

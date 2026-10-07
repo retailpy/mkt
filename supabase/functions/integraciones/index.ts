@@ -8,6 +8,7 @@
 //   tendencias {area:"dg"|"cm"|"ideas", force?}                      → campañas, piezas y contenidos con foto, en español (force: solo Admin total)
 //   noticias {force?}                                                → lo que sale en los medios de Paraguay sobre Retail S.A. y sus marcas (3 meses)
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { parseOfertas, periodo, marcaDe, PARSE_V } from "./comercial.ts";
 import { armar } from "./tendencias.ts";
 import { buscarNoticias, juntarNoticias } from "./noticias.ts";
 
@@ -24,21 +25,25 @@ const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
 const FOLDER_ID = "1EwWLkJ3XCl927Yi0ryCvFC807Vdp0iFk"; // carpeta "Stickers Retail MKT"
 const CHAT_FOLDER_ID = "13L9Y3QcGbymgMStbaCHmR7F2MZaoBxVw"; // carpeta "Fotos Retail MKT" (adentro, una carpeta por mes)
 const BOCETO_FOLDER_ID = "11CTrI4SXqPnHj6an0xwcFnDy7lbU1XJK"; // carpeta de los bocetos de los pedidos (adentro, una carpeta por mes)
+const COMERCIAL_FOLDER_ID = "1ciqZuhAtcIa-_OYYutd-8Zq8CTPZS-5N"; // ofertas de Comercial: los Excel "PUBLICADAS" de cada quincena (solo lectura)
+const VIDEO_FOLDER_ID = "1OZxiVg0RQlJL2PUDLUXkct5NAFIGw09o"; // videos editados de CM (adentro, una carpeta por mes con el año)
 const MAX_BYTES = 400 * 1024;
 const CHAT_MAX = 4 * 1024 * 1024; // la app achica las fotos antes de subirlas (suelen quedar en 200-600 KB)
 const BOCETO_MAX = 10 * 1024 * 1024; // boceto liviano para ver cómo va (el original va en los links del pedido)
 const TYPES = ["image/png", "image/webp", "image/gif", "image/jpeg"];
-const SCRIPT_V = 3; // versión del script de Drive que necesita la app (2: fotos del chat por mes · 3: bocetos de los pedidos)
+const SCRIPT_V = 4; // versión del script de Drive que necesita la app (2: fotos del chat por mes · 3: bocetos · 4: Comercial y videos de CM)
 const SCRIPT_RE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]{20,}\/exec$/;
 const thumb = (id: string) => `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w320`;
 
 const cfg = async () => (await db.from("integration_config").select("*").eq("id", 1).single()).data;
 
 // El script que se pega en script.google.com (lleva la clave secreta adentro: no compartirlo).
-const scriptText = (secret: string) => `// Retail MKT Hub · stickers, fotos del chat y bocetos de los pedidos en Google Drive.
+const scriptText = (secret: string) => `// Retail MKT Hub · stickers, fotos del chat, bocetos, ofertas de Comercial y videos de CM en Google Drive.
 //   Stickers → carpeta "Stickers Retail MKT".
 //   Fotos del chat → carpeta "Fotos Retail MKT", con una carpeta por mes adentro (ej.: "2026-10 Octubre").
 //   Bocetos de los pedidos → su carpeta, también con una carpeta por mes.
+//   Comercial → lee (sin cambiar nada) los Excel "PUBLICADAS" de la carpeta de ofertas.
+//   Videos editados de CM → su carpeta, con una carpeta por mes y año; el video se sube directo a Drive.
 // Pegalo en script.google.com y publicalo como Aplicación web (Ejecutar como: Yo · Acceso: Cualquier usuario).
 // Si ya estaba publicado: Implementar → Administrar implementaciones → lápiz → Versión: Nueva versión → Implementar
 // (así queda la misma URL). Tiene una clave secreta adentro: no lo compartas.
@@ -47,6 +52,8 @@ const SECRET = "${secret}";
 const FOLDER_ID = "${FOLDER_ID}";
 const CHAT_FOLDER_ID = "${CHAT_FOLDER_ID}";
 const BOCETO_FOLDER_ID = "${BOCETO_FOLDER_ID}";
+const COMERCIAL_FOLDER_ID = "${COMERCIAL_FOLDER_ID}";
+const VIDEO_FOLDER_ID = "${VIDEO_FOLDER_ID}";
 const MAX_BYTES = ${MAX_BYTES};
 const CHAT_MAX = ${CHAT_MAX};
 const BOCETO_MAX = ${BOCETO_MAX};
@@ -82,6 +89,11 @@ function doPost(e){
   if (b.k !== SECRET) return out({ ok: false, error: "no autorizado" });
   if (b.kind === "trash") return trash(b);
   if (b.kind === "boceto") return boceto(b);
+  if (b.kind === "comercial_list") return comercialList();
+  if (b.kind === "comercial_file") return comercialFile(b);
+  if (b.kind === "video_folder") return out({ ok: true, folder: monthFolder(VIDEO_FOLDER_ID).getUrl() });
+  if (b.kind === "video_session") return videoSession(b);
+  if (b.kind === "video_done") return videoDone(b);
   if (TYPES.indexOf(b.type) < 0) return out({ ok: false, error: "tipo de imagen no permitido" });
   const chat = b.kind === "chat", bytes = Utilities.base64Decode(b.data || "");
   if (!bytes.length || bytes.length > (chat ? CHAT_MAX : MAX_BYTES)) return out({ ok: false, error: chat ? "la foto supera 4 MB" : "la imagen supera 400 KB" });
@@ -101,6 +113,41 @@ function boceto(b){
   f.setDescription(String(b.by || "").slice(0, 40));
   try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (err){}
   return out({ ok: true, file: { id: f.getId(), name: f.getName(), mime: f.getMimeType(), size: f.getSize() } });
+}
+
+// Comercial: los archivos de la carpeta de ofertas (solo se leen; no se cambia nada).
+function comercialList(){
+  const files = DriveApp.getFolderById(COMERCIAL_FOLDER_ID).getFiles(), list = [];
+  while (files.hasNext()){ const f = files.next(); list.push({ id: f.getId(), name: f.getName(), modified: f.getLastUpdated().toISOString(), created: f.getDateCreated().toISOString(), size: f.getSize() }); }
+  return out({ ok: true, files: list });
+}
+function comercialFile(b){
+  let f; try { f = DriveApp.getFileById(String(b.id || "")); } catch (err){ return out({ ok: false, error: "no existe" }); }
+  let inFolder = false; for (const ps = f.getParents(); ps.hasNext();) if (ps.next().getId() === COMERCIAL_FOLDER_ID) inFolder = true;
+  if (!inFolder) return out({ ok: false, error: "no es de la carpeta de ofertas" });
+  if (f.getSize() > 15 * 1024 * 1024) return out({ ok: false, error: "archivo muy grande" });
+  return out({ ok: true, name: f.getName(), modified: f.getLastUpdated().toISOString(), b64: Utilities.base64Encode(f.getBlob().getBytes()) });
+}
+
+// Video editado de CM: se abre una subida directa a Drive (carpeta del mes) y el navegador manda el video ahí.
+function videoSession(b){
+  const folder = monthFolder(VIDEO_FOLDER_ID), size = Number(b.size) || 0;
+  if (!size || size > 5 * 1024 * 1024 * 1024) return out({ ok: false, error: "tamaño inválido" });
+  const res = UrlFetchApp.fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id,name,webViewLink", {
+    method: "post", contentType: "application/json; charset=UTF-8", muteHttpExceptions: true,
+    headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken(), "X-Upload-Content-Type": String(b.type || "video/mp4"), "X-Upload-Content-Length": String(size), Origin: String(b.origin || "") },
+    payload: JSON.stringify({ name: String(b.name || "video").slice(0, 140), parents: [folder.getId()], description: String(b.by || "").slice(0, 40) }),
+  });
+  const url = res.getHeaders()["Location"] || res.getHeaders()["location"];
+  if (res.getResponseCode() >= 300 || !url) return out({ ok: false, error: "Drive no abrió la subida (" + res.getResponseCode() + ")" });
+  return out({ ok: true, url: url, folder: folder.getUrl() });
+}
+function videoDone(b){
+  let f; try { f = DriveApp.getFileById(String(b.id || "")); } catch (err){ return out({ ok: false, error: "no existe" }); }
+  let ok = false; for (const ps = f.getParents(); ps.hasNext();){ const p = ps.next(); for (const pp = p.getParents(); pp.hasNext();) if (pp.next().getId() === VIDEO_FOLDER_ID) ok = true; }
+  if (!ok) return out({ ok: false, error: "no es de la carpeta de videos" });
+  try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (err){}
+  return out({ ok: true, link: f.getUrl(), name: f.getName() });
 }
 
 // Borrar una foto del chat o un boceto (va a la papelera de Drive): solo si está en esas carpetas y lo subió esa persona
@@ -186,16 +233,57 @@ async function noticias(force: boolean){
   return data;
 }
 
+// ---------- Comercial: las ofertas publicadas de cada quincena (Excel "PUBLICADAS" de la carpeta de ofertas) ----------
+// Se guarda en app_state (s:COMERCIAL), una entrada por archivo. Los que después se borran de Drive quedan en la app
+// (memoria del mes); de las quincenas de hace más de 4 meses quedan solo los productos destacados.
+async function comercialSync(c: any, minAge: number){
+  if (!c?.sticker_url) return { ok: false, nokey: true, error: "Falta conectar Google Drive (Configuración → Integraciones)." };
+  if (await scriptVersion(c.sticker_url, c.sticker_secret) < 4) return { ok: false, old: true, error: "Falta actualizar el script de Google Drive para leer las ofertas: Admin total lo hace en Configuración → Integraciones." };
+  for (let intento = 0; intento < 2; intento++){
+    const { data: row } = await db.from("app_state").select("data, version").eq("key", "s:COMERCIAL").maybeSingle();
+    const prev = row?.data || {};
+    if (prev.syncedAt && Date.now() - Date.parse(prev.syncedAt) < minAge) return { ok: true, skipped: true };
+    const l = await scriptPost(c, { kind: "comercial_list" });
+    if (!l.ok) throw new Error(l.error || "No se pudo leer la carpeta de ofertas");
+    const list = (l.files || []).filter((f: any) => /PUBLICAD/i.test(f.name) && /\.xlsx?$/i.test(f.name));
+    const files: Record<string, any> = { ...(prev.files || {}) }; let nuevos = 0, errores = 0;
+    for (const f of list){
+      const o = files[f.id];
+      if (o && o.modified === f.modified && o.v === PARSE_V){ o.inDrive = true; continue; }
+      const j = await scriptPost(c, { kind: "comercial_file", id: f.id });
+      if (!j.ok || !j.b64){ errores++; continue; }
+      const bin = atob(j.b64), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      let p; try { p = parseOfertas(bytes); } catch { errores++; continue; }
+      files[f.id] = { id: f.id, name: f.name, brand: marcaDe(f.name), ...periodo(f.name, new Date(f.created || f.modified)), folleto: p.folleto, title: p.title,
+        modified: f.modified, v: PARSE_V, inDrive: true, n: p.count, at: new Date().toISOString(), sheets: p.sheets };
+      nuevos++;
+    }
+    const ids = new Set(list.map((f: any) => f.id));
+    for (const id of Object.keys(files)) if (!ids.has(id)) files[id].inDrive = false;
+    const lim = new Date(Date.now() - 120 * 864e5).toISOString().slice(0, 10);
+    for (const x of Object.values(files) as any[]) if (x.to && x.to < lim && !x.light){ x.sheets = (x.sheets || []).map((s: any) => ({ ...s, items: s.items.filter((i: any) => i.flag) })); x.light = true; }
+    const now = new Date().toISOString(), data = { v: 1, updated: nuevos || !prev.updated ? now : prev.updated, syncedAt: now, files };
+    if (!row){ const { error } = await db.from("app_state").insert({ key: "s:COMERCIAL", data }); if (!error) return { ok: true, nuevos, errores, n: list.length }; continue; }
+    const { data: up } = await db.from("app_state").update({ data, version: row.version + 1, updated_at: now }).eq("key", "s:COMERCIAL").eq("version", row.version).select("version");
+    if (up && up.length) return { ok: true, nuevos, errores, n: list.length };
+  }
+  return { ok: false, error: "Se estaba actualizando al mismo tiempo: probá de nuevo." };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ ok: false, error: "Método no permitido" }, 405);
+  let b: any; try { b = await req.json(); } catch { return json({ ok: false, error: "Pedido inválido" }, 400); }
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   const { data: u } = await db.auth.getUser(token);
+  const { data: m } = u?.user ? await db.from("members").select("person_id, role, active").eq("user_id", u.user.id).maybeSingle() : { data: null };
+  // Comercial sin sesión: lo usa la rutina diaria. Solo actualiza (no devuelve ofertas) y como mucho cada 20 minutos.
+  if (b?.action === "comercial_sync" && !m?.active){
+    try { return json(await comercialSync(await cfg(), 20 * 60e3)); } catch (e: any){ return json({ ok: false, error: e.message || "No se pudo leer" }); }
+  }
   if (!u?.user) return json({ ok: false, error: "Iniciá sesión en la app" }, 401);
-  const { data: m } = await db.from("members").select("person_id, role, active").eq("user_id", u.user.id).maybeSingle();
   if (!m || !m.active) return json({ ok: false, error: "Sin acceso" }, 403);
   const admin = m.role === "Admin total";
-  let b: any; try { b = await req.json(); } catch { return json({ ok: false, error: "Pedido inválido" }, 400); }
   const c = await cfg();
   try {
     switch (b.action){
@@ -282,6 +370,25 @@ Deno.serve(async (req) => {
         const j = await scriptPost(c, { kind: "boceto", name, type, data: b.data, by: m.person_id });
         if (!j.ok || !j.file?.id) return json({ ok: false, error: j.error || "No se pudo guardar el boceto" });
         return json({ ok: true, id: j.file.id, name: j.file.name, mime: j.file.mime, size: j.file.size });
+      }
+      // Comercial: "Actualizar" (cualquiera del equipo) o al abrir la página si hace rato que no se revisa.
+      case "comercial_sync":
+        return json(await comercialSync(c, b.force ? 15e3 : 30 * 60e3));
+      // Videos editados de CM: carpeta del mes en Drive, subida directa y link para compartir.
+      case "video_folder": case "video_session": case "video_done": {
+        if (!admin && m.role !== "CM") return json({ ok: false, error: "Solo CM o Admin total" }, 403);
+        if (!c.sticker_url) return json({ ok: false, nokey: true, error: "Falta conectar Google Drive (Configuración → Integraciones)." });
+        if (await scriptVersion(c.sticker_url, c.sticker_secret) < 4) return json({ ok: false, old: true, error: "Falta actualizar el script de Google Drive para subir videos: Admin total lo hace en Configuración → Integraciones." });
+        if (b.action === "video_folder") return json(await scriptPost(c, { kind: "video_folder" }));
+        if (b.action === "video_done"){
+          if (!/^[\w-]{10,100}$/.test(String(b.id || ""))) return json({ ok: false, error: "Video inválido" });
+          return json(await scriptPost(c, { kind: "video_done", id: String(b.id) }));
+        }
+        const size = Number(b.size) || 0, type = String(b.type || "");
+        if (!/^video\//.test(type)) return json({ ok: false, error: "Elegí un archivo de video" });
+        if (!size || size > 5 * 1024 ** 3) return json({ ok: false, error: "El video supera 5 GB" });
+        const name = String(b.name || "video").replace(/[\\/:*?"<>|#%]+/g, "_").slice(-140);
+        return json(await scriptPost(c, { kind: "video_session", name, type, size, origin: req.headers.get("origin") || "", by: m.person_id }));
       }
       case "boceto_delete": {
         const id = String(b.id || "");
