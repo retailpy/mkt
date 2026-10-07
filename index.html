@@ -2027,6 +2027,10 @@ html.light img,html.light .thprev,html.light video{filter:invert(1) hue-rotate(1
 
 /* v51 · planificación del mes */
 .pmsec{display:flex;flex-direction:column;gap:14px}
+.pmsec,#pm-prop{scroll-margin-top:16px}#pm-prop>.pmsec{margin-top:0}
+.pmhint{display:flex;gap:8px;align-items:flex-start;margin:0;font-size:13.5px;line-height:1.5;color:var(--muted)}.pmhint svg{width:15px;height:15px;flex:none;margin-top:3px;color:var(--cyan)}.pmhint b{color:var(--ink)}
+.overb{color:var(--cyan)}.oitem p{margin:4px 0 0}.olab{color:var(--ink);font-weight:600}.odue{display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--muted)}.odue svg{width:13px;height:13px}
+.poprev{margin:0;font-size:13.5px;color:var(--muted);display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}.poprev svg{width:14px;height:14px;align-self:center}.poprev b{color:var(--ink)}
 .ogroup{display:flex;flex-direction:column;gap:10px}
 .oglabel{margin:4px 0 0;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--ac)}
 .ogrid,.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:14px}
@@ -6972,6 +6976,14 @@ let UPCOMING = [
   { id:6, month:"2026-12", title:"Navidad y ofertas de fin de año", brands:["Superseis","Stock","Delimarket"], kind:"Campaña", desc:"Ofertas navideñas, horarios especiales, saludos de fin de año y ambientación de locales." },
 ];
 let pmUI = { form:null, tab:"obj" };
+// Verbos para escribir los objetivos (en infinitivo: qué vamos a hacer).
+const OBJ_VERBS = ["Implementar","Incorporar","Aumentar","Reducir","Mejorar","Optimizar","Lanzar","Lograr","Publicar","Responder","Capacitar","Digitalizar","Estandarizar","Fortalecer","Organizar","Crear","Medir"];
+const objVerb = o => o.verb || OBJ_VERBS.find(v => o.title.toLowerCase().startsWith(v.toLowerCase() + " ")) || "";
+document.addEventListener("input", e => { if (!e.target.closest("#pmObjForm")) return; const pv = document.getElementById("poPrev"); if (!pv) return;
+  const v = $("#poVerb").value, what = $("#poWhat").value.trim(), why = $("#poWhy").value.trim();
+  const t = v === "_" ? what : `${v} ${what ? what.charAt(0).toLowerCase() + what.slice(1) : "…"}`;
+  pv.innerHTML = `${icon("eye")} Así se va a leer: <b>${esc(t || "…")}</b>${why ? ` <span class="note">· para ${esc(why.replace(/^para\s+/i, ""))}</span>` : ""}`; });
+document.addEventListener("change", e => { if (e.target.id === "poVerb") e.target.dispatchEvent(new Event("input", { bubbles:true })); });
 // Propuestas de objetivos: cualquier persona propone; solo Admin total las ve todas y decide si las agrega.
 let OBJ_PROPOSALS = [
   { id:1, by:"medardo", date:"2026-09-20", area:"Diseño", title:"Armar un banco de plantillas por marca", why:"Así los carruseles salen más rápido y con el mismo estilo.", status:"Pendiente" },
@@ -6992,7 +7004,7 @@ function proposalsBlock(){
   const mine = OBJ_PROPOSALS.filter(x => x.by === viewer.id).sort((a, b) => b.date.localeCompare(a.date));
   return `<section class="pmsec"><div class="head"><div><h2 style="margin:0" class="pmh">${pmIco("lightbulb")}Proponé un objetivo</h2><p class="sub" style="margin:4px 0 0">¿Se te ocurre algo que deberíamos lograr este mes? Mandalo: lo lee solo Admin total y decide si lo suma.</p></div></div>
     <form class="panel pform pmform" id="propForm"><label>Área<select class="base" id="prArea">${Object.keys(OBJ_AREAS).map(a => `<option value="${a}" ${a === (viewer.role === "CM" ? "CM" : viewer.role === "Diseñador" ? "Diseño" : "Equipo") ? "selected" : ""}>${areaName(a)}</option>`).join("")}</select></label>
-      <label class="w2">Objetivo<input class="base" id="prTitle" required maxlength="120" placeholder="Ej.: Responder los comentarios en menos de 2 horas"></label>
+      <label class="w2">Objetivo<input class="base" id="prTitle" required maxlength="120" placeholder="Empezá con un verbo. Ej.: Incorporar herramientas digitales que mejoren la productividad"></label>
       <label class="w3">Por qué (opcional)<input class="base" id="prWhy" maxlength="200" placeholder="Qué mejoraría"></label>
       <div class="chips" style="grid-column:1/-1;justify-content:flex-end"><button class="btn primary" type="submit">Enviar propuesta</button></div></form>
     ${mine.length ? `<div class="panel"><h3 style="margin-top:0">Tus propuestas</h3><div class="list">${mine.map(x => `<div class="row"><div class="grow"><div class="t">${esc(x.title)}</div><div class="m">${areaName(x.area)} · ${dm(x.date)}</div></div>${pill(x.status === "Agregado" ? "✓ Agregado a los objetivos" : x.status, PROP_COLOR[x.status])}</div>`).join("")}</div></div>` : ""}</section>`;
@@ -7036,12 +7048,17 @@ function pPlanMes(){
   const next = [...new Set(UPCOMING.filter(u => u.month > MONTH).map(u => u.month))].sort().slice(0, 3);
   const avg = objs.length ? Math.round(objs.reduce((a, o) => a + objProgress(o), 0) / objs.length) : 0;
   const del = (kind, id) => isAT() ? `<button class="btn danger sm" data-pmdel="${kind}|${id}" aria-label="Borrar">✕</button>` : "";
-  const objCard = (o, n) => `<li class="oitem"><span class="onum">${n}</span><div><b>${esc(o.title)}</b>${o.why ? `<p>${esc(o.why)}</p>` : ""}</div>${del("obj", o.id)}</li>`;
+  const objCard = (o, n) => { const v = objVerb(o), rest = v ? o.title.slice(v.length) : o.title;
+    return `<li class="oitem"><span class="onum">${n}</span><div><b>${v ? `<span class="overb">${esc(v)}</span>` : ""}${esc(rest)}</b>${o.why ? `<p><span class="olab">Para qué:</span> ${esc(o.why)}</p>` : ""}${o.metric ? `<p><span class="olab">Cómo lo medimos:</span> ${esc(o.metric)}</p>` : ""}${o.due ? `<p class="odue">${icon("calendar")} Para el ${dm(o.due)}</p>` : ""}</div>${del("obj", o.id)}</li>`; };
   const group = (area, list) => list.length ? `<div class="ogroup" style="--ac:${OBJ_AREAS[area].c}"><h3 class="oglabel">${pmIco(OBJ_AREAS[area].i)} ${area === "Equipo" ? "Todo el equipo" : area === "CM" ? "Community Manager" : "Diseño gráfico"}</h3><ol class="olist">${list.map((o, i) => objCard(o, i + 1)).join("")}</ol></div>` : "";
   const form = pmUI.form === "obj" ? `<form class="panel pform pmform" id="pmObjForm"><h3 style="margin:0;grid-column:1/-1">Nuevo objetivo de ${monthName(MONTH)}</h3>
       <label>Área<select class="base" id="poArea">${Object.keys(OBJ_AREAS).map(a => `<option value="${a}">${areaName(a)}</option>`).join("")}</select></label>
-      <label class="w2">Objetivo<input class="base" id="poTitle" required placeholder="Ej.: Reducir 30% el tiempo entre pieza y pieza"></label>
-      <label class="w3">En pocas palabras (opcional)<input class="base" id="poWhy" placeholder="Ej.: Que los posteos salgan a tiempo"></label>
+      <label>1 · Verbo (qué vamos a hacer)<select class="base" id="poVerb">${OBJ_VERBS.map(v => `<option>${v}</option>`).join("")}<option value="_">Otro (escribilo en la frase)</option></select></label>
+      <label>Para cuándo (opcional)<input class="base" type="date" id="poDue" value="${MONTH}-${String(lastDay(MONTH)).padStart(2, "0")}"></label>
+      <label class="w3">2 · Qué<input class="base" id="poWhat" required maxlength="140" placeholder="Ej.: sistemas virtuales de trabajo"></label>
+      <label class="w3">3 · Para qué<input class="base" id="poWhy" maxlength="200" placeholder="Ej.: agilizar los procesos y responder más rápido"></label>
+      <label class="w3">4 · Cómo lo medimos (opcional)<input class="base" id="poMetric" maxlength="160" placeholder="Ej.: el 100% de los pedidos se carga y se sigue en la app"></label>
+      <p class="poprev" id="poPrev" style="grid-column:1/-1">${icon("eye")} Así se va a leer: <b>${OBJ_VERBS[0]} …</b></p>
       <div class="chips" style="grid-column:1/-1;justify-content:flex-end"><button class="btn" type="button" data-pmform="">Cancelar</button><button class="btn primary" type="submit">Guardar objetivo</button></div></form>`
     : pmUI.form === "camp" ? `<form class="panel pform pmform" id="pmCampForm"><h3 style="margin:0;grid-column:1/-1">Nueva campaña de ${monthName(MONTH)}</h3>
       <label>Marca<select class="base" id="pcBrand">${Object.keys(BRANDS).map(b => `<option>${b}</option>`).join("")}</select></label><label class="w2">Campaña<input class="base" id="pcTitle" required placeholder="Ej.: Ofertas de primavera"></label>
@@ -7057,21 +7074,22 @@ function pPlanMes(){
   const KIND_C = { "Campaña":"#f472b6", "Materiales":"#f59e0b", "Evento":"#a78bfa", "Comunicación":"#22d3ee" };
   const pendProps = OBJ_PROPOSALS.filter(x => x.status === "Pendiente").length;
   const tabs = [["obj","target","Objetivos", objs.length + " este mes"],["camp","megaphone","Campañas", camps.length + " en destaque"],["up","telescope","Lo que se viene", UPCOMING.filter(u => next.includes(u.month)).length + " en " + next.length + " meses"],["prop","lightbulb", isAT() ? "Propuestas" : "Proponé", isAT() ? (pendProps ? pendProps + (pendProps === 1 ? " nueva" : " nuevas") : "nada pendiente") : "tu idea de objetivo"]];
-  const T = pmUI.tab;
-  return `<div class="head"><div><h1>Planificación del mes</h1><p class="sub">Qué buscamos lograr en ${monthLabel(MONTH)}, qué campañas están en destaque y qué se viene. Elegí qué querés ver.${isAT() ? "" : " La define Admin total."}</p></div></div>
+  // Todo en una sola página, en orden: objetivos, campañas, lo que se viene y propuestas. Las tarjetas de arriba llevan a cada parte.
+  return `<div class="head"><div><h1>Planificación del mes</h1><p class="sub">Qué buscamos lograr en ${monthLabel(MONTH)}, qué campañas están en destaque, qué se viene y las propuestas del equipo, todo junto.${isAT() ? "" : " La define Admin total."}</p></div></div>
   ${prioritiesPanel()}
-  <div class="pmtabs" role="tablist">${tabs.map(([k, ic, l, d]) => `<button class="pmtab ${T === k ? "on" : ""}" role="tab" aria-selected="${T === k}" data-pmtab="${k}"><span class="pmi">${pmIco(ic)}</span><span><b>${l}</b><small>${d}</small></span></button>`).join("")}</div>
-  ${T !== "obj" ? "" : `<section class="pmsec"><div class="head"><div><h2 style="margin:0" class="pmh">${pmIco("target")}Objetivos del mes</h2><p class="sub" style="margin:4px 0 0">${objs.length ? "Lo que queremos lograr este mes, en pocas palabras." : "Todavía no hay objetivos para este mes."}</p></div>${add("obj", "Objetivo")}</div>
-    ${pmUI.form === "obj" ? form : ""}${objs.length ? `<div class="ogrid">${group("Equipo", objs.filter(o => o.area === "Equipo"))}${group("Diseño", objs.filter(o => o.area === "Diseño"))}${group("CM", objs.filter(o => o.area === "CM"))}</div>` : ""}</section>`}
-  ${T === "prop" ? proposalsBlock() : ""}
-  ${T !== "camp" ? "" : `<section class="pmsec"><div class="head"><div><h2 style="margin:0" class="pmh">${pmIco("megaphone")}Campañas del mes</h2><p class="sub" style="margin:4px 0 0">Las campañas en destaque de ${monthName(MONTH)}.</p></div>${add("camp", "Campaña")}</div>
-    ${pmUI.form === "camp" ? form : ""}<div class="cgrid">${camps.map(c => `<article class="panel ccard" style="--c:${BRANDS[c.brand] || "#94a3b8"}"><header>${brandTag(c.brand)}<span class="grow"></span>${del("camp", c.id)}</header><h3>${esc(c.title)}</h3><p>${esc(c.desc)}</p><footer><span class="pmfoot">${icon("calendar")} ${esc(c.dates || "")}</span><span>${esc(c.channels || "")}</span></footer></article>`).join("") || `<div class="panel"><div class="empty">Sin campañas cargadas para ${monthName(MONTH)}.</div></div>`}</div></section>`}
-  ${T !== "up" ? "" : `<section class="pmsec"><div class="head"><div><h2 style="margin:0" class="pmh">${pmIco("telescope")}Lo que se viene</h2><p class="sub" style="margin:4px 0 0">Para planificar con tiempo campañas, materiales y comunicación.</p></div>${add("up", "Agregar")}</div>
-    ${pmUI.form === "up" ? form : ""}<div class="upline">${next.map(m => `<div class="upmonth"><div class="upm"><b>${MONTHS_ES[+m.slice(5) - 1]}</b><span>${m.slice(0, 4)}</span></div><div class="upitems">${UPCOMING.filter(u => u.month === m).map(u => `<article class="upitem" style="--k:${KIND_C[u.kind] || "#94a3b8"}"><header><span class="ukind">${esc(u.kind)}</span>${del("up", u.id)}</header><b>${esc(u.title)}</b>${u.desc ? `<p>${esc(u.desc)}</p>` : ""}${(u.brands || []).length ? `<div class="hbrands">${u.brands.map(brandTag).join("")}</div>` : ""}</article>`).join("")}</div></div>`).join("") || `<div class="panel"><div class="empty">Todavía no hay nada cargado para los próximos meses.</div></div>`}</div></section>`}`;
+  <nav class="pmtabs" aria-label="Partes de la planificación">${tabs.map(([k, ic, l, d]) => `<button type="button" class="pmtab" data-pmgo="${k}"><span class="pmi">${pmIco(ic)}</span><span><b>${l}</b><small>${d}</small></span></button>`).join("")}</nav>
+  <section class="pmsec" id="pm-obj"><div class="head"><div><h2 style="margin:0" class="pmh">${pmIco("target")}Objetivos del mes</h2><p class="sub" style="margin:4px 0 0">${objs.length ? "Lo que queremos lograr este mes." : "Todavía no hay objetivos para este mes."}</p></div>${add("obj", "Objetivo")}</div>
+    <p class="pmhint">${icon("info")}<span>Cada objetivo arranca con un <b>verbo</b> que dice qué vamos a hacer (Implementar, Incorporar, Reducir, Aumentar…), sigue con <b>qué</b> y <b>para qué</b>, y si se puede, <b>cómo lo medimos</b>. Ej.: <i>Implementar sistemas virtuales de trabajo para agilizar los procesos</i>.</span></p>
+    ${pmUI.form === "obj" ? form : ""}${objs.length ? `<div class="ogrid">${group("Equipo", objs.filter(o => o.area === "Equipo"))}${group("Diseño", objs.filter(o => o.area === "Diseño"))}${group("CM", objs.filter(o => o.area === "CM"))}</div>` : ""}</section>
+  <section class="pmsec" id="pm-camp"><div class="head"><div><h2 style="margin:0" class="pmh">${pmIco("megaphone")}Campañas del mes</h2><p class="sub" style="margin:4px 0 0">Las campañas en destaque de ${monthName(MONTH)}.</p></div>${add("camp", "Campaña")}</div>
+    ${pmUI.form === "camp" ? form : ""}<div class="cgrid">${camps.map(c => `<article class="panel ccard" style="--c:${BRANDS[c.brand] || "#94a3b8"}"><header>${brandTag(c.brand)}<span class="grow"></span>${del("camp", c.id)}</header><h3>${esc(c.title)}</h3><p>${esc(c.desc)}</p><footer><span class="pmfoot">${icon("calendar")} ${esc(c.dates || "")}</span><span>${esc(c.channels || "")}</span></footer></article>`).join("") || `<div class="panel"><div class="empty">Sin campañas cargadas para ${monthName(MONTH)}.</div></div>`}</div></section>
+  <section class="pmsec" id="pm-up"><div class="head"><div><h2 style="margin:0" class="pmh">${pmIco("telescope")}Lo que se viene</h2><p class="sub" style="margin:4px 0 0">Para planificar con tiempo campañas, materiales y comunicación.</p></div>${add("up", "Agregar")}</div>
+    ${pmUI.form === "up" ? form : ""}<div class="upline">${next.map(m => `<div class="upmonth"><div class="upm"><b>${MONTHS_ES[+m.slice(5) - 1]}</b><span>${m.slice(0, 4)}</span></div><div class="upitems">${UPCOMING.filter(u => u.month === m).map(u => `<article class="upitem" style="--k:${KIND_C[u.kind] || "#94a3b8"}"><header><span class="ukind">${esc(u.kind)}</span>${del("up", u.id)}</header><b>${esc(u.title)}</b>${u.desc ? `<p>${esc(u.desc)}</p>` : ""}${(u.brands || []).length ? `<div class="hbrands">${u.brands.map(brandTag).join("")}</div>` : ""}</article>`).join("")}</div></div>`).join("") || `<div class="panel"><div class="empty">Todavía no hay nada cargado para los próximos meses.</div></div>`}</div></section>
+  <div id="pm-prop">${proposalsBlock()}</div>`;
 }
 const pmNum = v => Number(String(v).replace(/\./g, "").replace(",", "."));
 document.addEventListener("click", e => {
-  const tb = e.target.closest("[data-pmtab]"); if (tb){ pmUI.tab = tb.dataset.pmtab; pmUI.form = null; render(); return; }
+  const go = e.target.closest("[data-pmgo]"); if (go){ document.getElementById("pm-" + go.dataset.pmgo)?.scrollIntoView({ behavior:viewer.motion === "off" ? "auto" : "smooth", block:"start" }); return; }
   const f = e.target.closest("[data-pmform]"); if (f){ pmUI.form = f.dataset.pmform || null; render(); return; }
   const d = e.target.closest("[data-pmdel]"); if (d){ const [k, id] = d.dataset.pmdel.split("|"); const arr = k === "obj" ? OBJECTIVES : k === "camp" ? MONTH_CAMPAIGNS : UPCOMING; arr.splice(arr.findIndex(x => x.id === +id), 1); render(); toast("Borrado."); }
 });
@@ -7080,7 +7098,10 @@ document.addEventListener("change", e => { const c = e.target.closest("[data-obj
 document.addEventListener("submit", e => {
   const id = e.target.id; if (!["pmObjForm","pmCampForm","pmUpForm"].includes(id)) return; e.preventDefault();
   const nid = arr => Math.max(0, ...arr.map(x => x.id)) + 1;
-  if (id === "pmObjForm") OBJECTIVES.push({ id:nid(OBJECTIVES), month:MONTH, area:$("#poArea").value, title:$("#poTitle").value.trim(), why:$("#poWhy").value.trim() });
+  if (id === "pmObjForm"){ const v = $("#poVerb").value, what = $("#poWhat").value.trim().replace(/\s+/g, " ");
+    if (!what){ toast("Escribí qué vamos a hacer."); return; }
+    const title = v === "_" ? what.charAt(0).toUpperCase() + what.slice(1) : `${v} ${what.charAt(0).toLowerCase() + what.slice(1)}`;
+    OBJECTIVES.push({ id:nid(OBJECTIVES), month:MONTH, area:$("#poArea").value, verb:v === "_" ? "" : v, title, why:$("#poWhy").value.trim(), metric:$("#poMetric").value.trim(), due:$("#poDue").value || "" }); }
   if (id === "pmCampForm") MONTH_CAMPAIGNS.push({ id:nid(MONTH_CAMPAIGNS), month:MONTH, brand:$("#pcBrand").value, title:$("#pcTitle").value.trim(), dates:$("#pcDates").value.trim(), channels:$("#pcCh").value.trim(), desc:$("#pcDesc").value.trim(), status:"Próxima" });
   if (id === "pmUpForm") UPCOMING.push({ id:nid(UPCOMING), month:$("#puMonth").value, title:$("#puTitle").value.trim(), kind:$("#puKind").value, desc:$("#puDesc").value.trim(), brands:[] });
   pmUI.form = null; render(); toast("Guardado. Ya lo ve todo el equipo.");
