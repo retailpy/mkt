@@ -606,6 +606,7 @@ tr.tot td{border-top:1px solid var(--line-3)}
 .ibseg button span{font-size:12px;font-weight:700;opacity:.7;font-variant-numeric:tabular-nums}.ibseg button.on{background:var(--cyan);color:#04121a}.ibseg button.on span{opacity:.85}.ibseg button:focus-visible{outline:2px solid var(--cyan)}
 .ibfil{display:flex;gap:8px;flex-wrap:wrap}.ibfil select{min-width:150px}
 .iblist{display:flex;flex-direction:column;border:1px solid var(--line-2);border-radius:18px;background:var(--inner-2);overflow:hidden}
+.ibig{display:flex;gap:10px;align-items:flex-start;margin:0 0 12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(251,191,36,.4);background:rgba(251,191,36,.08);font-size:13.5px}.ibig svg{width:18px;height:18px;flex:none;color:#fbbf24;margin-top:1px}.ibig a{color:#60a5fa}
 .ibrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:13px 16px;cursor:pointer;border-bottom:1px solid var(--line-2);position:relative}.ibrow:last-child{border-bottom:0}
 .ibrow:hover{background:rgba(148,163,184,.05)}.ibrow.open{background:rgba(148,163,184,.06)}
 .ibrow.pend::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:#f97316}
@@ -660,7 +661,7 @@ html.nomotion .jproc li.can .pdot{animation:none}
 .jproc li.on .ptxt b{color:var(--c)}.jproc li:not(.done):not(.on) .ptxt{opacity:.6}
 @media (max-width:640px){.jproc{grid-template-columns:1fr;gap:8px}.jproc li{flex-direction:row;text-align:left}.jproc li::before{display:none}}
 .jpnext{margin:4px 0 0;font-size:14px}.jpnow{margin-top:14px;padding-top:12px;border-top:1px solid var(--line-2);display:flex;flex-direction:column;gap:8px}
-.isteps{margin:6px 0 10px;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.45}
+.isteps{margin:6px 0 10px;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.45;overflow-wrap:anywhere}
 .isteps a{color:var(--cyan)}.irow{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}.irow .base{flex:1 1 260px}
 #iScript{width:100%;font-family:var(--mono,monospace);font-size:12px;margin:6px 0}
 @keyframes cbump{0%{transform:scale(1)}20%{transform:scale(1.45)}40%{transform:scale(.9)}60%{transform:scale(1.2)}100%{transform:scale(1)}}
@@ -3147,6 +3148,7 @@ function metaAdsPanel(simple = false){
 // Seguidores y público reales de Meta: los escriben las funciones diarias en Supabase (solo lectura en la app).
 // META_FOLLOWERS = { updated, "AAAA-MM": { Marca: { ig, fb, handle, page } } } · META_DEMO = { updated, Marca: { handle, foll, cities, ages, gender } } (cantidades).
 let META_FOLLOWERS = {}, META_DEMO = {}, META_POSTS = {}, META_CREATIVES = {}, META_INBOX = {}, META_REFS = {};
+let META_DM = {}; // mensajes de Instagram que llegan en vivo (webhook de Meta → /api/webhook-meta → s:META_DM)
 let COMERCIAL = {}; // ofertas publicadas de cada quincena (las lee el servidor del Excel de Comercial en Drive)
 let INBOX_DONE = {}; // conversaciones marcadas a mano como contestadas: { id: { by, at } }
 // Reclamos de clientes (Panel de CM): [{ id, month, date, brand, who, net, suc, what, st:"Abierto"|"Resuelto", sol, conv, by, at }]
@@ -4185,7 +4187,7 @@ function panelStats(){
     plan:pm(vp), calendario:pm(vp.filter(p => p.format !== "Historia")), calhistoria:pm(vp.filter(p => p.format === "Historia")), calcanales:canales.length ? `${canales.length} este mes` : "Nada cargado este mes",
     historial:"Meses anteriores", historialcm:"Meses anteriores",
     reclamos:(() => { const l = rclMonth(), ab = l.filter(r => r.st !== "Resuelto").length; return l.length ? `${l.length} en ${monthName(MONTH)}${ab ? ` · <em>${ab} sin resolver</em>` : " · todos resueltos"}` : "Sin reclamos este mes"; })(),
-    inbox:(() => { const n = Object.keys(META_INBOX).filter(b => b !== "updated").reduce((t, b) => t + (META_INBOX[b]?.convs || []).filter(c => !ibOk(c)).length, 0); return Object.keys(META_INBOX).length ? (n ? `<em>${n} sin contestar</em>` : "Todo contestado") : "Sin datos todavía"; })() };
+    inbox:(() => { const n = inboxBrands().reduce((t, b) => t + inboxConvs(b).filter(c => !ibOk(c)).length, 0); return Object.keys(META_INBOX).length || Object.keys(META_DM).length ? (n ? `<em>${n} sin contestar</em>` : "Todo contestado") : "Sin datos todavía"; })() };
 }
 function pPanel(ar){
   const dg = ar === "dg", st = panelStats();
@@ -5932,7 +5934,7 @@ function monthData(){
     } else pb.push(live ? "Todavía no hay publicaciones de Instagram cargadas este mes." : "No hay publicaciones de Instagram guardadas de ese mes.");
     if (live && can("inbox")){
       const cv = [];
-      Object.keys(META_INBOX || {}).filter(b => b !== "updated" && seesBrand(b)).forEach(b => (META_INBOX[b]?.convs || []).filter(inboxRecent).forEach(c => cv.push(c)));
+      inboxBrands().forEach(b => inboxConvs(b).filter(inboxRecent).forEach(c => cv.push(c)));
       if (cv.length){
         const w = cv.filter(c => !ibOk(c)), old = w.map(c => c.waitSince || c.ts).filter(Boolean).sort()[0];
         ms.push(`En mensajes directos hubo ${n(cv.length, "conversación", "conversaciones")} en los últimos 30 días; ${w.length ? `${n(w.length, "espera", "esperan")} respuesta${old ? ` (la más antigua, ${inboxAge(old)})` : ""}` : "todas tienen respuesta"}.`);
@@ -7931,10 +7933,40 @@ document.addEventListener("click", e => { if (e.target.closest("[data-notifon]")
 // ----- Integraciones (solo Admin total): GIPHY para buscar GIFs y Google Drive para los stickers y las fotos del chat -----
 let integSt = null, integScript = "";
 async function integRefresh(){ const j = await integ({ action:"status" }); integSt = j.ok ? j : { err:j.error }; if (page === "config" && cfgTab === "integ") render(); }
+let igLive = { st:null, busy:false };
+async function igLiveCall(setup){
+  igLive.busy = true; render();
+  try { const tok = window.RMH?.token ? await RMH.token() : null;
+    const r = await fetch("/api/webhook-meta?" + (setup ? "setup=1" : "status=1"), { headers: tok ? { Authorization:"Bearer " + tok } : {} });
+    const j = await r.json().catch(() => ({})); igLive.st = j.ok ? j : { error:j.error || `No se pudo revisar (HTTP ${r.status})` };
+    if (setup) toast(j.ok ? (Object.values(j.pages || {}).every(x => x.ok) ? "Listo: las páginas quedaron conectadas." : "Se conectó una parte: mirá el detalle.") : j.error || "No se pudo conectar.");
+  } catch { igLive.st = { error:"No se pudo conectar" }; }
+  igLive.busy = false; render();
+}
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-igcfg]")){ e.preventDefault(); cfgTab = "integ"; page = "config"; location.hash = "config"; render(); setTimeout(() => document.getElementById("igLiveSec")?.scrollIntoView({ block:"start" }), 50); return; }
+  if (viewer?.role !== "Admin total") return;
+  if (e.target.closest("[data-igsetup]")) igLiveCall(true); else if (e.target.closest("[data-igstatus]")) igLiveCall(false);
+});
 function integCfg(){
   if (integSt === null){ integSt = "loading"; setTimeout(integRefresh, 0); }
   const st = integSt && integSt !== "loading" ? integSt : {}, on = ok => ok ? `<span class="pfid" style="margin:0">${icon("check")} Conectado</span>` : `<span class="note">Sin conectar</span>`;
-  return `<section class="panel cfgsec"><h2 class="pmh">${pmIco("image-play")}Búsqueda de GIFs (GIPHY) ${integSt === "loading" ? "" : on(st.giphy)}</h2>
+  const ig = igLive.st, igOk = ig && ig.secret && Object.values(ig.pages || {}).length && Object.values(ig.pages).every(x => x.ok);
+  return `<section class="panel cfgsec" id="igLiveSec"><h2 class="pmh">${pmIco("instagram")}Mensajes de Instagram en vivo ${META_DM.updated ? `<span class="pfid" style="margin:0">${icon("check")} Llegando · último hace ${inboxAge(META_DM.updated).replace("hace ", "")}</span>` : igOk ? `<span class="pfid" style="margin:0">${icon("check")} Configurado</span>` : `<span class="note">Sin configurar</span>`}</h2>
+    <p class="note">Meta no entrega la lista de conversaciones de Instagram de estas cuentas (corta por tiempo). Con esto, Meta avisa a la app cada mensaje apenas llega, y aparece en Mensajes y en Reclamos del mes. Se hace una sola vez.</p>
+    <ol class="isteps">
+      <li>En <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener">Meta for Developers</a> abrí la app <b>Retail Demo</b> → <b>Configuración de la app → Básica</b> → <b>Clave secreta de la app</b> → <b>Mostrar</b> y copiala.</li>
+      <li>En <a href="https://vercel.com/" target="_blank" rel="noopener">Vercel</a> → proyecto <b>mkt</b> → <b>Settings → Environment Variables</b>: agregá <code>META_APP_SECRET</code> con esa clave (Production) y después <b>Deployments → Redeploy</b> el último. No la pegues en ningún chat.</li>
+      <li>Volvé a la app en Meta for Developers → <b>Webhooks</b> (o Instagram → Configuración de la API → Configurar webhooks) → elegí <b>Instagram</b>:
+        <br>URL de devolución de llamada: <code>https://retailmkt.vercel.app/api/webhook-meta</code>
+        <br>Token de verificación: <code>retail-mkt-hub</code> → <b>Verificar y guardar</b> → en la lista de campos, <b>Suscribirse</b> a <b>messages</b>.</li>
+      <li>Arriba en el panel de la app, el modo tiene que estar en <b>Publicado</b> (Live). En modo Desarrollo, Meta solo avisa los mensajes de quienes tienen un rol en la app. En <b>Revisión de la app → Permisos y funciones</b>, <b>instagram_manage_messages</b> tiene que tener <b>Acceso avanzado</b> (si Meta lo pide, completá la verificación del negocio).</li>
+      <li>Tocá <b>Conectar las páginas</b> (acá abajo): suscribe la página de cada marca para que lleguen sus mensajes.</li>
+      <li>Probá: desde otra cuenta de Instagram mandale un mensaje a una marca. En unos segundos aparece en <b>Mensajes</b>.</li></ol>
+    <div class="irow"><button class="btn primary" type="button" data-igsetup ${igLive.busy ? "disabled" : ""}>${icon("plug")} Conectar las páginas</button><button class="btn" type="button" data-igstatus ${igLive.busy ? "disabled" : ""}>${icon("refresh-cw")} Revisar</button></div>
+    ${ig ? `<div class="list">${ig.error ? `<div class="row"><span class="note">${esc(ig.error)}</span></div>` : `<div class="row"><div class="grow">Clave secreta de la app en Vercel</div>${ig.secret ? `<span class="pfid" style="margin:0">${icon("check")} Lista</span>` : `<span class="note" style="color:#fca5a5">Falta (paso 2)</span>`}</div>
+      ${Object.entries(ig.pages || {}).map(([b, x]) => `<div class="row"><div class="grow">${brandTag(b)}</div>${x.ok ? `<span class="pfid" style="margin:0">${icon("check")} Página conectada</span>` : `<span class="note" style="color:#fca5a5">${esc(x.error || "Sin conectar (paso 5)")}</span>`}</div>`).join("")}`}</div>` : ""}</section>
+  <section class="panel cfgsec"><h2 class="pmh">${pmIco("image-play")}Búsqueda de GIFs (GIPHY) ${integSt === "loading" ? "" : on(st.giphy)}</h2>
     <ol class="isteps"><li>Entrá a <a href="https://developers.giphy.com/dashboard/" target="_blank" rel="noopener">developers.giphy.com</a> y creá una cuenta gratis (o iniciá sesión).</li>
       <li>Tocá <b>Create an App</b> → elegí <b>API</b> (no SDK) → poné un nombre (ej.: Retail MKT Hub) y una descripción corta → aceptá los términos → <b>Create App</b>.</li>
       <li>Copiá la <b>API Key</b> que aparece y pegala acá abajo.</li></ol>
@@ -8098,7 +8130,20 @@ const inboxAge = ts => { if (!ts) return ""; const m = Math.round((Date.now() - 
 // Mensajes de las cuentas: solo los últimos 30 días; los sin contestar se cuentan en un globito rojo.
 const INBOX_DAYS = 30;
 const inboxRecent = c => c.ts && Date.now() - new Date(c.ts) <= INBOX_DAYS * 864e5;
-const inboxPend = () => can("inbox") ? Object.values(META_INBOX || {}).filter(x => x && Array.isArray(x.convs)).reduce((n, x) => n + x.convs.filter(c => inboxRecent(c) && !ibOk(c)).length, 0) : 0;
+// Conversaciones de una marca: las que trae /api/mensajes (Facebook, e Instagram cuando Meta da la lista) y las de
+// Instagram que llegan en vivo (s:META_DM). Si la misma persona está en las dos, queda una sola.
+function inboxConvs(b){
+  const base = META_INBOX[b]?.convs || [], dm = META_DM[b];
+  if (!dm || typeof dm !== "object") return base;
+  const have = new Set(base.filter(c => c.net === "IG").map(c => String(c.who || "").toLowerCase()));
+  const live = Object.entries(dm).filter(([, c]) => c && Array.isArray(c.msgs) && c.msgs.length).map(([k, c]) => {
+    const msgs = c.msgs.map(m => ({ t:m.t || "", me:!!m.me, ts:m.ts, att:!!m.att })), answered = msgs.some(m => m.me);
+    return { id:"igdm-" + k, net:"IG", who:c.who || "Cliente de Instagram", ts:c.ts || msgs[msgs.length - 1].ts, answered, waitSince:answered ? null : msgs[0].ts, msgs, live:true };
+  }).filter(c => !have.has(String(c.who).toLowerCase()));
+  return live.length ? [...base, ...live].sort((a, c) => String(c.ts || "").localeCompare(String(a.ts || ""))) : base;
+}
+const inboxBrands = () => ORDER_INBOX().filter(b => META_INBOX[b] || META_DM[b]);
+const inboxPend = () => can("inbox") ? inboxBrands().reduce((n, b) => n + inboxConvs(b).filter(c => inboxRecent(c) && !ibOk(c)).length, 0) : 0;
 // Trabajos nuevos o con cambios pedidos para la persona (solo los suyos): Pendiente o En corrección.
 // Botonera del costado: solo la carga de trabajo de la persona (los mensajes se avisan dentro del Panel de Trabajo).
 // Cuenta sus pedidos nuevos o con cambios que todavía no abrió; al abrir la hoja del pedido deja de contar.
@@ -8509,9 +8554,9 @@ function rclAuto(month = MONTH){
     const k = b + "|" + h.conv; let r = byConv.get(k);
     if (!r) byConv.set(k, r = { conv:h.conv, brand:b, who:h.who || "Cliente", net:h.net === "IG" ? "Instagram" : "Facebook", ts:h.ts, msgs:new Map(), ctx:"" });
     r.msgs.set(h.ts, h.t); if (h.ts < r.ts) r.ts = h.ts; if ((h.ctx || "").length > r.ctx.length) r.ctx = h.ctx; };
-  ORDER_INBOX().forEach(b => { const x = META_INBOX[b]; if (!x) return;
+  ORDER_INBOX().forEach(b => { const x = META_INBOX[b] || {};
     (x.hist || []).forEach(h => add(b, h));
-    (x.convs || []).forEach(c => { const own = (c.msgs || []).filter(m => !m.me && m.t), ctx = own.map(m => m.t).join(" · ");
+    inboxConvs(b).forEach(c => { const own = (c.msgs || []).filter(m => !m.me && m.t), ctx = own.map(m => m.t).join(" · ");
       own.forEach(m => { if (RCL_RX.test(rclFold(m.t))) add(b, { conv:c.id, net:c.net, who:c.who, ts:m.ts, t:m.t, ctx }); }); }); });
   return [...byConv.values()].map(r => { const texts = [...r.msgs.entries()].sort((a, c) => a[0].localeCompare(c[0])).map(e => e[1]), all = texts.join(" · ") + " · " + r.ctx, mk = marks.get(r.conv);
     return { ...r, texts, date:pyDate(r.ts), what:rclShort(texts[0]), motivo:rclPick(RCL_MOTIVO, all) || "Otro motivo", pide:rclPick(RCL_PIDE, all), suc:rclSuc(all), st:mk?.st === "Resuelto" ? "Resuelto" : "Abierto", skip:!!mk?.skip }; })
@@ -8562,8 +8607,8 @@ document.addEventListener("click", e => {
   const sk = e.target.closest("[data-rclskip]"); if (sk){ rclMark(sk.dataset.rclskip, { skip:true }); toast("Listo, no se cuenta como reclamo."); }
 });
 function pInbox(){
-  const bs = ORDER_INBOX().filter(b => META_INBOX[b]), all = [];
-  bs.forEach(b => (META_INBOX[b].convs || []).filter(inboxRecent).forEach(c => all.push({ ...c, b, answered:ibOk(c), byHand:INBOX_DONE[c.id] }))); // solo los últimos 30 días
+  const bs = inboxBrands(), all = [];
+  bs.forEach(b => inboxConvs(b).filter(inboxRecent).forEach(c => all.push({ ...c, b, answered:ibOk(c), byHand:INBOX_DONE[c.id] }))); // solo los últimos 30 días
   const list = all.filter(c => (inboxUI.brand === "Todas" || c.b === inboxUI.brand) && (inboxUI.net === "Todas" || c.net === inboxUI.net) && (inboxUI.st === "todos" || (inboxUI.st === "sin" ? !c.answered : c.answered)))
     .sort((a, c) => inboxUI.st === "sin" ? String(a.waitSince || a.ts).localeCompare(String(c.waitSince || c.ts)) : String(c.ts).localeCompare(String(a.ts)));
   const sin = all.filter(c => !c.answered).length;
@@ -8580,7 +8625,8 @@ function pInbox(){
       <div class="ibside"><small>${inboxAge(c.ts)}</small>${c.answered ? `<span class="ibst ok" ${c.byHand ? `title="Marcado por ${esc(c.byHand.by || "")}"` : ""}>${icon("check")} Contestado</span>` : `<span class="ibst no">Esperando${c.waitSince ? ` · ${inboxAge(c.waitSince).replace("hace ", "")}` : ""}</span>`}${open ? "" : doneBtn(c)}</div>
       ${open ? `<div class="ibthread">${c.msgs.map(m => `<div class="ibm ${m.me ? "me" : ""}"><span>${esc(m.t || (m.att ? "Foto o adjunto" : ""))}</span><small>${m.me ? esc(c.b) + " · " : ""}${when(m.ts)}</small></div>`).join("")}
         <div class="ibacts"><a class="btn sm primary" href="${suite(c.b)}" target="_blank" rel="noopener">${icon("external-link")} Contestar en Meta</a>${doneBtn(c)}${c.byHand ? `<span class="note">Marcado por ${esc(firstName(c.byHand.by || ""))}</span>${mark ? `<button type="button" class="ibdone" data-ibundo="${esc(c.id)}">Volver a sin contestar</button>` : ""}` : ""}</div></div>` : ""}</div>`; };
-  return `<div class="ibpage"><div class="head"><div><h1 class="pmh">${pmIco("inbox")}Mensajes</h1><p class="sub">Instagram y Facebook de cada marca · últimos 30 días${META_INBOX.updated ? ` · actualizado ${inboxAge(META_INBOX.updated)}` : ""}</p></div>${metaBtn("mensajes", "Mensajes")}</div>
+  return `<div class="ibpage"><div class="head"><div><h1 class="pmh">${pmIco("inbox")}Mensajes</h1><p class="sub">Instagram y Facebook de cada marca · últimos 30 días${META_INBOX.updated ? ` · actualizado ${inboxAge(META_INBOX.updated)}` : ""}${META_DM.updated ? ` · Instagram en vivo (último hace ${inboxAge(META_DM.updated).replace("hace ", "")})` : ""}</p></div>${metaBtn("mensajes", "Mensajes")}</div>
+  ${!META_DM.updated && ORDER_INBOX().some(b => /Instagram/.test(META_INBOX[b]?.err || "")) ? `<div class="ibig">${icon("info")}<div><b>Los mensajes de Instagram todavía no llegan.</b> Meta no entrega la lista de conversaciones de Instagram de estas cuentas (corta por tiempo). ${viewer.role === "Admin total" ? `Se solucionan recibiéndolos en vivo: <a href="#config" data-igcfg>Configuración → Integraciones → Instagram en vivo</a>.` : "Admin total los está activando para que lleguen en vivo."}</div></div>` : ""}
   ${bs.length ? `<div class="ibbar"><div class="ibseg" role="group" aria-label="Estado">${tab("sin", "Sin contestar", sin)}${tab("ok", "Contestados", all.length - sin)}${tab("todos", "Todos", all.length)}</div>
     <div class="ibfil">${pick("brand", [["Todas", "Todas las marcas"], ...bs.map(b => [b, b])])}${pick("net", [["Todas", "Instagram y Facebook"], ["IG", "Instagram"], ["FB", "Facebook"]])}</div></div>
   <div class="iblist">${list.map(row).join("") || `<div class="ibempty">${inboxUI.st === "sin" ? `${icon("check-check")}<b>Todo contestado</b><span>No hay mensajes esperando respuesta.</span>` : "<span>No hay conversaciones con estos filtros.</span>"}</div>`}</div>`
