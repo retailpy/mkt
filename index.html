@@ -548,6 +548,9 @@ tr.tot td{border-top:1px solid var(--line-3)}
 .comgone{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#fca5a5;border:1px solid rgba(239,68,68,.4);border-radius:10px;padding:5px 10px}.comgone svg{width:15px;height:15px}.comhead p{margin:0;color:var(--muted);font-size:14.5px}.comhead p b{color:var(--ink)}.comhead .note{margin-top:6px;font-size:12px}.comhead .note a{color:#60a5fa}.comwarn{display:flex;gap:6px;align-items:center;color:#fbbf24!important}.comwarn svg{width:14px;height:14px}
 .comk{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:14px;color:var(--muted)}.comk b{color:var(--ink);font-size:16px}
 .comgrp{border-radius:16px;padding:14px;border:1px solid var(--line)}.comgrp.g-tapa{border-color:rgba(239,68,68,.45);background:rgba(239,68,68,.06)}
+.comguide{display:flex;gap:8px;align-items:flex-start;margin:-2px 0 12px;font-size:13.5px;color:var(--ink)}.comguide svg{width:16px;height:16px;flex:none;margin-top:2px;color:#94a3b8}
+.comguide span{display:flex;flex-direction:column;gap:2px}.comguide b{font-weight:600}.comguide small{font-size:12px;color:var(--muted);font-style:italic}
+.comdup{display:flex;gap:8px;align-items:flex-start;margin:0 0 12px;padding:8px 10px;border-radius:10px;background:rgba(239,68,68,.12);color:#fecaca;font-size:13px}.comdup svg{width:16px;height:16px;flex:none;color:#ef4444;margin-top:2px}
 .comgh{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:16px;font-weight:800;color:var(--ink)}.comgh svg{width:18px;height:18px}.comgh small{font-size:13px;font-weight:500;color:var(--muted)}
 .g-tapa .comgh svg{color:#ef4444}.g-redes .comgh svg{color:#60a5fa}.g-dest .comgh svg{color:#fbbf24}.comlist .comgh svg{color:#60a5fa}
 .comtop{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
@@ -8393,6 +8396,13 @@ function comPdf(f){
     <script>setTimeout(function(){ window.print(); }, 300);<\/script></body></html>`);
   w.document.close();
 }
+// Lo que indica el Excel de Comercial para cada marca, explicado (se muestra debajo de cada bloque).
+const COM_GUIDE = {
+  tapa:["Van solo en la tapa del folleto: no se repiten en las páginas de adentro.", "Productos destacados en tapa no deben estar en el interior del folleto."],
+  redes:["Van en el zócalo de las piezas de redes (la franja de ofertas de abajo de cada publicación).", "Señalar productos a destacar · Zócalo redes."],
+  dest:["Productos para resaltar dentro del folleto: más grandes o con un recuadro que llame la atención.", "Señalar productos a destacar."],
+};
+const comGuide = k => COM_GUIDE[k] ? `<p class="comguide">${icon("info")}<span><b>${COM_GUIDE[k][0]}</b><small>Indicación del Excel: “${COM_GUIDE[k][1]}”</small></span></p>` : "";
 // Tarjeta de un destacado: precio de oferta grande en amarillo, el precio de antes y el % bien visibles.
 const comCard = i => { const pc = comPct(i), was = typeof i.pvp === "number" && i.of !== i.pvp;
   return `<div class="ctc"><b>${esc(comNice(i.desc))}</b><div class="ctp"><em>${esc(comOfTxt(i))}</em>${pc && !/x/i.test(pc) ? `<span class="cpct">−${esc(pc)}</span>` : ""}</div>${was ? `<span class="cwas">Antes ${gs(i.pvp)}</span>` : ""}<small>${esc(comSec(i.sec || i.sector))}</small></div>`; };
@@ -8410,6 +8420,9 @@ function pComercial(){
   const secs = [...new Set(sh.items.map(i => comSec(i.sec || i.sector)))];
   const list = sh.items.filter(i => (!comUI.top || i.flag) && (comUI.sec === "Todas" || comSec(i.sec || i.sector) === comUI.sec) && (!q || [comNice(i.desc), i.desc, i.sector, i.prov, i.cod, i.mat, i.sub].join(" ").toLowerCase().includes(q)));
   const best = all.reduce((m, i) => Math.max(m, parseInt(comPct(i)) || 0), 0);
+  // Productos de tapa que también están en una página de adentro (mismo código): el Excel pide que no se repitan.
+  const tapaCods = new Set(all.filter(i => i.flag === "Tapa" && i.cod).map(i => i.cod));
+  const dupTapa = all.filter(i => i.flag !== "Tapa" && i.cod && tapaCods.has(i.cod) && !/tapa/i.test(i.sec || ""));
   const groupsTop = [["Tapa", "star", "tapa", all.filter(i => i.flag === "Tapa")], ["Redes", "smartphone", "redes", all.filter(i => i.flag === "Zócalo redes")], ["Destacados", "sparkles", "dest", all.filter(i => i.flag === "Destacar")]].filter(g => g[3].length);
   const row = (i, k) => { const id = f.id + ":" + sheets.indexOf(sh) + ":" + k, open = comUI.open === id, pc = comPct(i);
     return `<div class="cof${open ? " open" : ""}"><button type="button" class="cofb" data-comopen="${esc(id)}" aria-expanded="${open}">
@@ -8427,7 +8440,7 @@ function pComercial(){
       <div class="comk"><span>${icon("package")}<b>${all.length}</b> productos</span>${groupsTop.map(g => `<span class="k-${g[2]}">${icon(g[1])}<b>${g[3].length}</b> ${g[3].length === 1 && g[0] === "Destacados" ? "destacado" : g[0].toLowerCase()}</span>`).join("")}${best ? `<span class="k-pct">${icon("badge-percent")}hasta <b>${best}%</b> de descuento</span>` : ""}</div>
       <div class="comsrc">${f.inDrive === false ? `<span class="comgone">${icon("file-x")} Ya no se encuentra el archivo original en Drive (los datos quedan guardados acá)</span>` : /^[\w-]{10,}$/.test(f.id) ? `<a class="btn sm" href="https://drive.google.com/file/d/${encodeURIComponent(f.id)}/view" target="_blank" rel="noopener">${icon("file-spreadsheet")} Ver Excel original</a>` : ""}${f.backup?.url ? `<a class="btn sm" href="${esc(f.backup.url)}" target="_blank" rel="noopener">${icon("hard-drive")} Respaldo en Drive</a>` : ""}<span class="note">${icon("refresh-cw")} Revisado ${COMERCIAL.syncedAt ? inboxAge(COMERCIAL.syncedAt) : "—"}</span></div>
       ${COMERCIAL.backupScript === false && viewer.role === "Admin total" ? `<p class="note comwarn">${icon("info")} Para que el respaldo se guarde solo en Drive, actualizá el script de Google Drive en Configuración → Integraciones.</p>` : ""}</section>
-    ${groupsTop.map(([t, ic, cls, items]) => `<section class="comgrp g-${cls}"><h3 class="comgh">${icon(ic)}<span>${t}</span><small>${items.length}</small></h3><div class="comtop">${items.slice(0, 24).map(comCard).join("")}</div></section>`).join("")}
+    ${groupsTop.map(([t, ic, cls, items]) => `<section class="comgrp g-${cls}"><h3 class="comgh">${icon(ic)}<span>${t}</span><small>${items.length}</small></h3>${comGuide(cls)}${cls === "tapa" && dupTapa.length ? `<p class="comdup">${icon("triangle-alert")}<span><b>Revisar:</b> ${dupTapa.length === 1 ? "este producto de tapa también aparece" : "estos productos de tapa también aparecen"} adentro del folleto: ${dupTapa.map(i => `${esc(comNice(i.desc))} (${esc(comSec(i.sec || i.sector))})`).join(" · ")}.</span></p>` : ""}<div class="comtop">${items.slice(0, 24).map(comCard).join("")}</div></section>`).join("")}
     <section class="comlist">
       <h3 class="comgh">${icon("list")}<span>Todas las ofertas</span><small>${all.length}</small></h3>
       ${sheets.length > 1 ? `<div class="comtabs" role="tablist">${sheets.map((x, k) => `<button type="button" role="tab" class="${x === sh ? "on" : ""}" aria-selected="${x === sh}" data-comsheet="${k}">${esc(comSheetName(x, k))} <span>${x.items.length}</span></button>`).join("")}</div>` : ""}
