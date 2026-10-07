@@ -7845,7 +7845,7 @@ document.addEventListener("submit", e => {
 });
 function pPerfil(){
   const v = viewer;
-  return `<div><h1>Mi perfil</h1><p class="sub">Tu foto, tus datos, tu cumpleaños y tu contraseña.</p></div>
+  return `<div><h1>Mi perfil</h1><p class="sub">Tu foto, tus datos (email, teléfonos, cargo, marcas), tu cumpleaños y tu contraseña. Todo lo podés cambiar vos.</p></div>
   <div class="grid two">
     <div class="panel"><div class="person" style="margin-bottom:14px">${avatarHTML(v, "", "width:64px;height:64px;border-radius:20px;font-size:18px")}<div><b style="font-size:18px">${esc(v.name)}</b><span>${esc(v.cargo || "")}</span></div></div>
       <div class="list">
@@ -7860,10 +7860,12 @@ function pPerfil(){
       <h2 style="margin-top:18px" class="pmh">${pmIco("id-card")}Tus datos para el Staff</h2>
       <form id="meForm" class="pform" style="grid-template-columns:1fr">
         <label>¿Cómo querés que te llamen?<input class="base" id="meNick" maxlength="30" value="${esc(v.nick || "")}" placeholder="Ej.: ${esc(v.name.split(" ")[0])}${v.name.split(" ").length > 1 ? ", " + esc(v.name.split(" ")[1]) : ""} o un apodo"><span class="note">Así te saluda la app y así aparecés en tableros, calendarios y la Vista TV. Si lo dejás vacío, usamos tu primer nombre.</span></label>
+        <label>Email de la empresa<input class="base" type="email" id="meMail" value="${esc(v.email || "")}" placeholder="Ej.: nombre@retail.com.py" autocomplete="email"><span class="note">Es el de contacto. Para entrar a la app seguís usando tu usuario de ingreso${v.username ? ` (${esc(v.username)})` : ""}.</span></label>
+        <label>Cargo<input class="base" id="meCargo" maxlength="60" value="${esc(v.cargo || "")}" placeholder="Ej.: Diseñadora gráfica"></label>
         <label>Teléfono corporativo<input class="base" id="meWork" value="${esc(v.workPhone || "")}" placeholder="(021) 000 000 o 0981 000 000"></label>
         <label>Celular personal<input class="base" id="mePhone" value="${esc(v.phone || "")}" placeholder="+595 9xx xxx xxx"></label>
         <label>Celular personal adicional<input class="base" id="mePhone2" value="${esc(v.phone2 || "")}" placeholder="Opcional: otro número"></label>
-        <label>Email personal<input class="base" type="email" id="meMail2" value="${esc(v.personalEmail || "")}" placeholder="Ej.: nombre@gmail.com" autocomplete="email"><span class="note">Opcional. El de la empresa lo carga un admin.</span></label>
+        <label>Email personal<input class="base" type="email" id="meMail2" value="${esc(v.personalEmail || "")}" placeholder="Ej.: nombre@gmail.com" autocomplete="email"><span class="note">Opcional.</span></label>
         <label>Marca principal<select class="base" id="meBrand"><option value="">—</option>${mainBrandOptions(v.mainBrand)}</select><span class="note">Elegí “Varias marcas” si trabajás para varias, según lo que se necesite.</span></label>
         <fieldset class="hbox" id="meBrandsBox" ${v.mainBrand === VARIAS ? "" : "hidden"}><legend>¿Qué marcas manejás?</legend>
           <div class="hchecks">${Object.keys(BRANDS).map(b => `<label class="hck" style="--c:${BRANDS[b]}"><input type="checkbox" name="meHandled" value="${b}" ${(v.brandsHandled || []).includes(b) ? "checked" : ""}><i></i>${b}</label>`).join("")}</div>
@@ -7873,7 +7875,7 @@ function pPerfil(){
         <label>Habilidades (separadas por coma)<input class="base" id="meSkills" value="${esc((v.skills || []).join(", "))}" placeholder="Ej.: Análisis de datos, Informe administrativo"></label>
         <div><button class="btn primary" type="submit">Guardar datos</button></div>
       </form>
-      <p class="note" style="margin:12px 0 0">Para cambiar tu rol, tu usuario de ingreso o tu email de la empresa, pedíselo a un admin.</p>
+      <p class="note" style="margin:12px 0 0">Podés cambiar todos tus datos cuando quieras. Tu usuario de ingreso${v.username ? ` (${esc(v.username)})` : ""} y tu rol quedan fijos: si hace falta cambiarlos, pedíselo a un Admin total.</p>
       <h2 style="margin-top:20px" class="pmh">${pmIco("cake")}Tu cumpleaños</h2>
       <form id="bdForm" class="bsel pform" style="grid-template-columns:none">
         <label>Día<select class="base" id="bdDay"><option value="">—</option>${Array.from({ length:31 }, (_, i) => `<option ${v.birthday && +v.birthday.slice(3) === i+1 ? "selected" : ""}>${i+1}</option>`).join("")}</select></label>
@@ -9124,11 +9126,14 @@ document.addEventListener("change", e => {
 });
 document.addEventListener("submit", e => {
   if (e.target.id === "meForm"){ e.preventDefault();
-    const m2 = $("#meMail2").value.trim(); if (m2 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m2)){ toast("Revisá el email personal: falta algo (ej.: nombre@gmail.com)."); return; }
+    const okMail = x => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x), m1 = ($("#meMail")?.value || "").trim(), m2 = $("#meMail2").value.trim();
+    if (m1 && !okMail(m1)){ toast("Revisá el email de la empresa: falta algo (ej.: nombre@retail.com.py)."); return; }
+    if (m2 && !okMail(m2)){ toast("Revisá el email personal: falta algo (ej.: nombre@gmail.com)."); return; }
+    if ($("#meMail")) viewer.email = m1; if ($("#meCargo")) viewer.cargo = $("#meCargo").value.trim();
     viewer.nick = $("#meNick").value.trim() || null; viewer.secondBrands = [...document.querySelectorAll('input[name="meSecond"]:checked')].map(x => x.value);
     viewer.quote = $("#meQuote").value.trim() || null; viewer.personalEmail = m2 || null; viewer.brandsHandled = [...document.querySelectorAll('input[name="meHandled"]:checked')].map(x => x.value);
     viewer.phone = $("#mePhone").value.trim(); viewer.phone2 = $("#mePhone2").value.trim() || null; viewer.workPhone = $("#meWork").value.trim(); viewer.mainBrand = $("#meBrand").value || null; if (viewer.mainBrand !== VARIAS) viewer.brandsHandled = []; viewer.skills = $("#meSkills").value.split(",").map(x => x.trim()).filter(Boolean);
-    render(); toast("Guardado. Tus datos ya se ven en Staff."); return; }
+    render(); window.RMH?.flushNow?.(); toast("Guardado. Tus datos ya se ven en Staff."); return; }
   if (e.target.id === "jobForm"){ e.preventDefault();
     if (rtUploading(document.getElementById("jBriefF"))){ toast("Esperá que termine de subir la imagen."); return; }
     const f = jobUI.form, j = f.job, title = $("#jTitle").value.trim(), due = $("#jDue").value;
