@@ -2490,6 +2490,7 @@ button,.btn,.chip,.nav a,.tabbar a,.tabbar button{-webkit-user-select:none;user-
 .plcal .pev{display:grid;grid-template-columns:6px 1fr;column-gap:5px;align-items:center;font-size:11px;line-height:1.3;padding:3px 4px;border-radius:6px;color:#e2e8f0}
 .plcal .pev i{width:6px;height:6px;border-radius:50%}
 .plcal .pev span{min-width:0;white-space:normal;overflow-wrap:anywhere;font-weight:600}
+.evk{font-weight:800;color:#fff}
 .plcal .pev{font-size:12px}
 .plcal .pev em{grid-column:2;font-style:normal;font-size:10px;color:var(--c)}
 .plcal .pev:hover{background:rgba(148,163,184,.08)}
@@ -4551,11 +4552,16 @@ function dayMenu(cell, d, opts){
   pop.style.top = (r.bottom + ph + 8 > innerHeight ? Math.max(8, r.top - ph + 30) : r.top + 30) + "px";
 }
 const PLAN_ICO = x => x.rec ? "repeat" : x.vid ? "clapperboard" : x.canal ? "message-circle" : x.format === "Historia" ? "smartphone" : "image";
+// De qué sección es cada cosa del calendario de Planificación (va adelante: "Historia: Primavera").
+const REC_SEC = { Feed:"Redes Sociales", Historia:"Historia", Canal:"Canal WhatsApp", "Grabación":"Videos" };
+const PLAN_SEC = x => x.rec ? REC_SEC[x.r.kind] || x.r.kind : x.vid ? "Videos" : x.canal ? "Canal WhatsApp" : x.format === "Historia" ? "Historia" : "Redes Sociales";
+// Lo mismo en la Planificación de Diseño gráfico: la sección del pedido adelante ("Cartelería: Liquidación").
+const DG_SEC = { pedidos:"Redes Sociales", cartel:"Cartelería", web:"Web", pantallas:"Pantallas", gestioncm:"Videos" };
 function planCal(items){
   return `<div class="plcal">${calGrid(c => items.filter(x => x.date === c).map(x => { const lv = x.rec ? (x.done ? 3 : 0) : semLvl(x.status), st = SEM_L[lv], col = SEM[lv];
     const act = x.rec ? (canCreateJobs() ? ` data-recedit="${x.r.id}" data-recat="${x.date}" role="button" tabindex="0"${recDrag(x.r, x.date)}` : "") : x.vid ? (canCreateJobs() ? ` data-jedit="${x.id}" role="button" tabindex="0"` : "") : canEditPost() ? ` data-pedit="${x.canal ? "canal" : "post"}:${x.id}" role="button" tabindex="0"` : "";
     const sk = x.rec ? null : x.vid ? "job" : x.canal ? "canal" : "post", it = x.vid ? x.job : x.canal ? canalById(x.id) : x.rec ? null : postById(x.id), can2 = sk && stageOptions(sk, it).length;
-    return `<div class="pev" data-sem="${lv}" style="--sem:${col}"${sk ? calDrag(sk, x.id) : ""}${act} title="${esc(x.title)} · ${x.brand} · ${x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${x.rec ? st : semText(x.status)} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} ${esc(x.title)}</span>${can2 ? `<button type="button" class="pst" data-stagemenu="${sk}:${x.id}" style="--c:${col}" title="Cambiar el estado">${st} ▾</button>` : x.rec ? recChip(x.r, x.date) : `<em style="--c:${col}">${st}</em>`}</div>`; }).join(""), canEditPost())}</div>
+    return `<div class="pev" data-sem="${lv}" style="--sem:${col}"${sk ? calDrag(sk, x.id) : ""}${act} title="${PLAN_SEC(x)}: ${esc(x.title)} · ${x.brand} · ${x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${x.rec ? st : semText(x.status)} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} <b class="evk">${PLAN_SEC(x)}:</b> ${esc(x.title)}</span>${can2 ? `<button type="button" class="pst" data-stagemenu="${sk}:${x.id}" style="--c:${col}" title="Cambiar el estado">${st} ▾</button>` : x.rec ? recChip(x.r, x.date) : `<em style="--c:${col}">${st}</em>`}</div>`; }).join(""), canEditPost())}</div>
   <p class="note">Todo lo de CM junto, cada uno con el punto de color de su marca, su ícono (${icon("image")} feed, ${icon("smartphone")} historia, ${icon("message-circle")} Canal de WhatsApp, ${icon("clapperboard")} video, ${icon("repeat")} repetitivo) y su estado en colores: <b style="color:#ef4444">rojo pendiente</b> · <b style="color:#f59e0b">ámbar en proceso</b> · <b style="color:#84cc16">verde claro finalizado</b> · <b style="color:#16a34a">verde publicado</b>. Tocá uno para editarlo, su estado para cambiarlo (${icon("chevron-down")}), o un día vacío para cargar algo en esa fecha. En un repetitivo, tocá “Pendiente” cuando se publicó y queda en verde.</p>`;
 }
 let jobUI = { area:"Todos", view:"calendario", status:"Activos", owner:"Todos", prio:"Todas", q:"", form:null };
@@ -5077,7 +5083,7 @@ function jobDeliveryCal(list, A = "Diseño"){
   const rec = A === "CM" ? recVisible().filter(r => r.kind === "Grabación") : [];
   return `<div class="legend">${stagesOf(A).map(st => `<span><span class="sw" style="background:${st === "Pendiente" ? "#94a3b8" : JOB_COLOR[st]}"></span>${st}</span>`).join("")}${A === "CM" ? `<span><span class="sw" style="background:${REC_KINDS["Grabación"].c}"></span>${icon("repeat")} Grabación repetitiva</span>` : ""}</div>${calHint().replace("un posteo o una entrega", "una entrega")}
   ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("") + list.filter(j => j.due === c).map(j => { const done = isFin(j);
-    return `<div class="ev job${sepCls(j.brand)}"${calDrag("job", j.id)}${canCreateJobs() ? ` data-open="job:${j.id}"` : ` data-jficha="${j.id}" role="button" tabindex="0"`} style="--c:${BRANDS[j.brand]};--s:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}" title="${esc(j.title)} · ${j.status} · ${esc(j.owner)} · entrega ${dm(j.due)}"><span>${done ? icon("check") + " " : urgency(j)?.late ? icon("alarm-clock") + " " : ""}${esc(j.title)}</span>${evStage("job", j, `${j.status} · ${esc(firstName(j.owner))}`, j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status])}</div>`; }).join(""), canCreateJobs())}`;
+    return `<div class="ev job${sepCls(j.brand)}"${calDrag("job", j.id)}${canCreateJobs() ? ` data-open="job:${j.id}"` : ` data-jficha="${j.id}" role="button" tabindex="0"`} style="--c:${BRANDS[j.brand]};--s:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}" title="${DG_SEC[jobSection(j)]}: ${esc(j.title)} · ${j.status} · ${esc(j.owner)} · entrega ${dm(j.due)}"><span>${done ? icon("check") + " " : urgency(j)?.late ? icon("alarm-clock") + " " : ""}<b class="evk">${DG_SEC[jobSection(j)]}:</b> ${esc(j.title)}</span>${evStage("job", j, `${j.status} · ${esc(firstName(j.owner))}`, j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status])}</div>`; }).join(""), canCreateJobs())}`;
 }
 let cartUI = { cartel:"calendario", web:"calendario", pantallas:"calendario", get view(){ return this[SEC_PIECES[page] ? page : "cartel"]; }, set view(v){ this[SEC_PIECES[page] ? page : "cartel"] = v; } };
 // “Solo yo”: en las gestiones de Diseño gráfico y CM muestra solo lo tuyo (se recuerda en este dispositivo).
