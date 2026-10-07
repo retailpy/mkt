@@ -316,6 +316,8 @@ const RMH = (() => {
     if (f && f.closest && f.closest("#content") && (/^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName) || f.isContentEditable)) return true;
     if (document.querySelector(".rtedit[data-dirty]")) return true; // texto del pedido sin guardar
     if (document.querySelector("#content aside.drawer, #content .imodal, #jobForm")) return true; // formulario abierto: no se pisa lo cargado
+    // Texto seleccionado para copiar: no se pierde (salvo en el chat, que se actualiza en vivo).
+    const sel = getSelection(); if (page !== "mensajes" && sel && !sel.isCollapsed && sel.rangeCount && document.getElementById("content")?.contains(sel.getRangeAt(0).commonAncestorContainer)) return true;
     return !!(typingForm && document.body.contains(typingForm));
   }
   function scheduleRender(){
