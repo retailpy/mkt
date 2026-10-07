@@ -2679,13 +2679,14 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-jdon
   moveJob(j, reviewStage(j)); });
 // Diseñador: un diseño aprobado se marca como entregado
 document.addEventListener("click", e => { const b = e.target.closest("[data-jdeliver]"); if (!b) return; e.stopPropagation();
-  const j = jobById(b.dataset.jdeliver); if (!j || j.owner !== viewer.name || (j.area !== "CM" && j.status !== "Aprobado")) return; if (j.area === "CM") moveJob(j, "Publicado"); });
+  const j = jobById(b.dataset.jdeliver); if (!j || j.owner !== viewer.name || (j.area !== "CM" && j.status !== "Aprobado")) return; if (j.area === "CM") moveJob(j, j.status === "Publicado" ? "Pautado" : "Publicado"); });
 // Admin total: aprobar o pedir correcciones desde el aviso
 document.addEventListener("click", e => { const b = e.target.closest("[data-nact]"); if (!b) return;
   const n = NOTIFS.find(x => x.id === +b.dataset.nid), j = n && jobById(n.job); if (!j) return;
   if (b.dataset.nact === "approve"){ n.read = true; openApproveModal(j); } else openFixModal(j, n); });
 // Revisión de Admin total: aprobar, o pedir cambios con un mensaje que le llega a la persona.
-const reviewStage = j => j.area === "CM" ? "" : "Boceto finalizado";
+const reviewStage = j => j.area === "CM" ? "Revisión" : "Boceto finalizado";
+const fixStage = j => j.area === "CM" ? "Corrección" : "En corrección"; // cuando Admin total pide cambios
 const jobDone = j => j.area === "CM" ? "trabajo" : "diseño";
 // Aprobar un diseño: Admin total elige a qué CM avisarle para que lo sume a su grilla de contenido.
 function openApproveModal(j){
@@ -2702,17 +2703,17 @@ function openApproveModal(j){
 document.addEventListener("click", e => { const b = e.target.closest("[data-oksend]"); if (!b) return;
   const j = jobById(b.dataset.oksend), cm = document.getElementById("okCm")?.value || "", fl = document.getElementById("okLink")?.value.trim() || ""; document.getElementById("fixpop")?.remove(); if (j){ if (fl) j.finalLink = fl; approveJob(j, cm); } });
 function approveJob(j, cm = ""){
-  j.status = "Aprobado"; if (!j.approved) j.approved = TODAY; // en Diseño, Aprobado es el final del pedido
-  if (j.area !== "CM"){ if (!j.delivered) j.delivered = TODAY; const p = j.post && postById(j.post); if (p && p.status === "En diseño") p.status = "Listo"; }
+  j.status = j.area === "CM" ? "Programado" : "Aprobado"; if (!j.approved) j.approved = TODAY; // en Diseño, Aprobado es el final del pedido; en CM, aprobado pasa a Programado
+  if (j.area !== "CM"){ if (!j.delivered) j.delivered = TODAY; const p = j.post && postById(j.post); if (p && p.status === "Pendiente") p.status = "En proceso"; }
   (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), ok:true, by:viewer.name });
   NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
   notify({ to:j.owner, type:"approved", job:j.id }); jobUI.form = null;
   if (cm){ notify({ to:cm, type:"listo", job:j.id }); j.cmNotified = cm; }
-  render(); toast(`Aprobado. Le avisamos a ${firstName(j.owner)}${cm ? ` y a ${firstName(cm)} (CM)` : ""}.`);
+  render(); toast(`Aprobado${j.area === "CM" ? ": pasó a Programado" : ""}. Le avisamos a ${firstName(j.owner)}${cm ? ` y a ${firstName(cm)} (CM)` : ""}.`);
 }
 const jobRounds = j => (j.changes || []).filter(c => !c.ok && !c.kind).length; // cuántas veces se pidieron cambios
 function sendJobChanges(j, text, req = ""){
-  j.status = "En corrección"; (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), text, by:viewer.name, ...(req ? { req } : {}) }); // req: quién pidió los cambios
+  j.status = fixStage(j); (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), text, by:viewer.name, ...(req ? { req } : {}) }); // req: quién pidió los cambios
   NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
   notify({ to:j.owner, type:"fix", job:j.id, text }); jobUI.form = null;
   render(); toast(`Le mandamos los cambios a ${firstName(j.owner)}.`);
@@ -2737,10 +2738,10 @@ document.addEventListener("click", e => {
 // Cambia la etapa respetando el flujo: cuando la persona termina (boceto o trabajo de CM) le avisa a Admin total para revisar.
 function moveJob(j, to){
   if (!j || j.status === to || !stageOptions("job", j).includes(to)) return render();
-  if (viewer.role === "Admin total" && to === "En corrección"){ render(); openFixModal(j); return; } // los cambios siempre van con mensaje
-  if (viewer.role === "Admin total" && to === "Aprobado" && REVIEW_WAIT.includes(j.status)){ render(); return openApproveModal(j); }
+  if (viewer.role === "Admin total" && to === fixStage(j)){ render(); openFixModal(j); return; } // los cambios siempre van con mensaje
+  if (viewer.role === "Admin total" && (to === "Aprobado" || (j.area === "CM" && to === "Programado")) && REVIEW_WAIT.includes(j.status)){ render(); return openApproveModal(j); }
   if (viewer.role !== "Admin total" && to === reviewStage(j)){
-    const fix = j.status === "En corrección"; if (fix) j.rounds = (j.rounds || 0) + 1;
+    const fix = j.status === fixStage(j); if (fix) j.rounds = (j.rounds || 0) + 1;
     j.status = to; NOTIFS.forEach(n => { if (n.to === viewer.name && n.job === j.id) n.read = true; });
     (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), kind:"boceto", by:viewer.name, fix, link:j.designLink || "" });
     notify({ to:"admin", type:"review", job:j.id, who:viewer.name, fix });
@@ -2863,20 +2864,25 @@ function bdayAlerts(){
   return PEOPLE.map(pp => ({ pp, d:bdayIn(pp) })).filter(x => x.d !== null && x.d <= 3).sort((a,b) => a.d - b.d);
 }
 
-const POST_STAGES = ["Borrador","En diseño","Listo","Programado","Publicado","Pautado"];
-const POST_COLOR = { "Borrador":"#334155","En diseño":"#eab308","Listo":"#22d3ee","Programado":"#f97316","Publicado":"#10b981","Pautado":"#d946ef" };
+// Publicaciones de CM (feed, historias y Canal de WhatsApp): Pendiente → En proceso → Programado → Publicado → Pautado.
+const POST_STAGES = ["Pendiente","En proceso","Programado","Publicado","Pautado"];
+const POST_COLOR = { "Pendiente":"#334155","En proceso":"#eab308","Programado":"#f97316","Publicado":"#10b981","Pautado":"#d946ef" };
+// Etapas de antes (se pasan solas a las nuevas al abrir la app).
+const OLD_POST_ST = { "Borrador":"Pendiente", "En diseño":"En proceso", "Listo":"En proceso" };
+const OLD_CM_ST = j => ({ "En proceso":/grabaci|cobertura/i.test(j.piece || "") ? "Grabación" : "Edición", "Finalizado":"Revisión", "En revisión":"Revisión", "En corrección":"Corrección", "Aprobado":"Programado" })[j.status];
 // Diseño: el diseñador lo lleva hasta “Boceto finalizado”; la revisión (aprobar o pedir correcciones) la confirma solo Admin total.
 const JOB_STAGES = ["Pendiente","En proceso","Boceto finalizado","En revisión","En corrección","Aprobado"]; // Aprobado es el final (ya no hay “Entregado”)
-const REVIEW_WAIT = ["Boceto finalizado","En revisión"]; // esperando que Admin total revise
-// CM termina distinto que Diseño: su trabajo está hecho cuando queda Programado (listo para salir) y se cierra al Publicarse.
-const CM_STAGES = ["Pendiente","En proceso","Finalizado","En revisión","En corrección","Aprobado","Programado","Publicado"]; // Finalizado: el video ya está terminado
+const REVIEW_WAIT = ["Boceto finalizado","En revisión","Revisión"]; // esperando que Admin total revise
+// Gestión Videos (pedidos a CM): Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado.
+// En Revisión, Admin total aprueba (pasa a Programado) o pide cambios (Corrección, con un mensaje).
+const CM_STAGES = ["Pendiente","Grabación","Edición","Revisión","Corrección","Programado","Publicado","Pautado"];
 // Semáforo de CM (calendarios, Planificación y repetitivos): rojo pendiente → ámbar en proceso → verde claro
 // finalizado (terminado o programado) → verde lleno publicado.
 const SEM = ["#ef4444","#f59e0b","#84cc16","#16a34a"], SEM_L = ["Pendiente","En proceso","Finalizado","Publicado"];
 function semLvl(st){
   if (["Publicado","Pautado","Entregado","Hecho"].includes(st)) return 3;
-  if (["Listo","Programado","Finalizado","En revisión","Aprobado"].includes(st)) return 2;
-  if (["En diseño","En proceso","En corrección","Boceto finalizado"].includes(st)) return 1;
+  if (["Listo","Programado","Finalizado","En revisión","Revisión","Aprobado"].includes(st)) return 2;
+  if (["En diseño","En proceso","Grabación","Edición","En corrección","Corrección","Boceto finalizado"].includes(st)) return 1;
   return 0;
 }
 const semText = st => { const l = SEM_L[semLvl(st)]; return st && st !== l && st !== "Hecho" ? `${l} · ${st}` : l; };
@@ -2884,10 +2890,10 @@ const semText = st => { const l = SEM_L[semLvl(st)]; return st && st !== l && st
 const canMarkRec = () => !isViewOnly() && !isClosed() && (viewer.role === "Admin total" || viewer.role === "CM");
 const recChip = (r, d) => { const done = RECUR_DONE.has(r.id + "|" + d), l = done ? 3 : 0;
   return canMarkRec() ? `<button type="button" class="semchip s${l}" data-recdone="${r.id}|${d}" title="${done ? "Publicado · tocá para volver a pendiente" : "Pendiente · tocá cuando ya se publicó"}">${done ? icon("check") + " Publicado" : "Pendiente"}</button>` : `<span class="semchip s${l}">${done ? icon("check") + " Publicado" : "Pendiente"}</span>`; };
-const JOB_COLOR = { "Pendiente":"#334155","En proceso":"#3b82f6","Boceto finalizado":"#06b6d4","En revisión":"#eab308","En corrección":"#f97316","Aprobado":"#14b8a6","Finalizado":"#84cc16","Entregado":"#10b981","Programado":"#8b5cf6","Publicado":"#10b981","Cancelado":"#64748b" };
+const JOB_COLOR = { "Pendiente":"#334155","En proceso":"#3b82f6","Boceto finalizado":"#06b6d4","En revisión":"#eab308","En corrección":"#f97316","Aprobado":"#14b8a6","Finalizado":"#84cc16","Entregado":"#10b981","Grabación":"#3b82f6","Edición":"#6366f1","Revisión":"#eab308","Corrección":"#f97316","Programado":"#8b5cf6","Publicado":"#10b981","Pautado":"#d946ef","Cancelado":"#64748b" };
 const stagesOf = a => ((a && a.area) || a) === "CM" ? CM_STAGES : JOB_STAGES;
 const statesOf = a => [...stagesOf(a), "Cancelado"];
-const FIN_STATES = ["Programado","Publicado"];
+const FIN_STATES = ["Programado","Publicado","Pautado"];
 const isFin = j => FIN_STATES.includes(j.status) || (j.status === "Aprobado" && j.area !== "CM") || j.status === "Entregado"; // en Diseño, Aprobado cierra el pedido
 const isClosedJob = j => isFin(j) || j.status === "Cancelado";
 // Gestión Diseño y Gestión CM: mismo sistema para Diseño y CM (como Creative Flow), cada área con sus tipos de trabajo.
@@ -2906,7 +2912,7 @@ const COMPLEJIDAD = ["Baja","Media","Alta"];
 // pero cada uno pesa según su complejidad (Baja 1 · Media 2 · Alta 3). Más carga → barra más alta y más roja.
 const CX_W = { Baja:1, Media:2, Alta:3 };
 const LOAD_FULL = 10; // puntos que se consideran “carga completa” (ajustable en Configuración)
-const POST_PENDING = ["Borrador","En diseño","Listo"];
+const POST_PENDING = ["Pendiente","En proceso"];
 function loadOf(name){ const open = jobs.filter(j => j.owner === name && !isClosedJob(j)); const pp = posts.filter(p => p.cm === name && p.date.slice(0,7) === CURRENT_MONTH && POST_PENDING.includes(p.status)); return { n:open.length + pp.length, pts:open.reduce((a, j) => a + (CX_W[j.complexity] || 2), 0) + pp.length }; }
 // Zonas (sobre la capacidad): 0-49 % verde = zona ideal · 50-79 % amarillo · 80-99 % naranja · 100 % o más rojo.
 const loadLevel = pct => pct >= 100 ? { c:"#ef4444", t:"Sobrecargado", k:"red" } : pct >= 80 ? { c:"#f97316", t:"Al límite", k:"orange" } : pct >= 50 ? { c:"#eab308", t:"Carga alta", k:"yellow" } : { c:"#10b981", t:"Zona ideal", k:"green" };
@@ -2949,16 +2955,16 @@ let posts = [
   ["2026-09-15","Stock","IG","Carrusel","Semana del hogar","Pautado"],
   ["2026-09-17","Delimarket","IG","Reel","Tabla de fiambres","Publicado"],
   ["2026-09-21","Superseis","FB","Post","Día de la juventud","Publicado"],
-  ["2026-09-21","Delimarket","IG","Historia","Nuevos quesos importados","Listo"],
+  ["2026-09-21","Delimarket","IG","Historia","Nuevos quesos importados","En proceso"],
   ["2026-09-22","Stock","TikTok","Reel","Reto del changuito","Publicado"],
   ["2026-09-23","Superseis","IG","Historia","Llegó la primavera","Programado"],
-  ["2026-09-24","Delimarket","IG","Carrusel","Picada para el finde","Listo"],
+  ["2026-09-24","Delimarket","IG","Carrusel","Picada para el finde","En proceso"],
   ["2026-09-25","Stock","FB","Post","Viernes de ofertas","Programado"],
-  ["2026-09-26","Superseis","IG","Reel","Detrás de la panadería","En diseño"],
-  ["2026-09-28","Stock","IG","Carrusel","Electro en cuotas sin interés","En diseño"],
-  ["2026-09-29","Delimarket","FB","Post","Promo cafetería","Borrador"],
-  ["2026-09-30","Superseis","IG","Carrusel","Cierre de mes","Borrador"],
-  ["2026-09-30","Stock","TikTok","Reel","Tips de ahorro","Borrador"],
+  ["2026-09-26","Superseis","IG","Reel","Detrás de la panadería","En proceso"],
+  ["2026-09-28","Stock","IG","Carrusel","Electro en cuotas sin interés","En proceso"],
+  ["2026-09-29","Delimarket","FB","Post","Promo cafetería","Pendiente"],
+  ["2026-09-30","Superseis","IG","Carrusel","Cierre de mes","Pendiente"],
+  ["2026-09-30","Stock","TikTok","Reel","Tips de ahorro","Pendiente"],
   ["2026-08-03","Superseis","IG","Carrusel","Liquidación de invierno","Pautado"],
   ["2026-08-05","Stock","FB","Post","Miércoles de verdulería","Publicado"],
   ["2026-08-06","Delimarket","IG","Reel","Tabla de quesos","Publicado"],
@@ -2969,25 +2975,25 @@ let posts = [
   ["2026-08-19","Stock","IG","Historia","Precios del finde","Publicado"],
   ["2026-08-24","Delimarket","IG","Carrusel","Vinos para el invierno","Publicado"],
   ["2026-08-26","Superseis","FB","Post","Últimos días de liquidación","Publicado"],
-  ["2026-08-28","Stock","IG","Reel","Receta con carne a la parrilla","En diseño"],
+  ["2026-08-28","Stock","IG","Reel","Receta con carne a la parrilla","En proceso"],
   ["2026-08-31","Delimarket","TikTok","Reel","Tips de conservación","Publicado"],
   ["2026-09-04","Stock","IG","Reel","Receta con carne a la parrilla","Publicado","agosto"],
-  ["2026-10-02","Superseis","IG","Carrusel","Ofertas de octubre","Borrador"],
-  ["2026-10-05","Stock","FB","Post","Semana del electro","Borrador"],
-  ["2026-10-07","Delimarket","IG","Reel","Picada de primavera","Borrador"],
-  ["2026-10-09","Superseis","TikTok","Reel","Frutas de estación","Borrador"],
-  ["2026-10-12","Stock","IG","Carrusel","Previa Black Friday","En diseño"],
-  ["2026-10-14","Delimarket","FB","Post","Café de especialidad","Borrador"],
-  ["2026-10-16","Superseis","IG","Post","Día mundial de la alimentación","Borrador"],
-  ["2026-10-21","Stock","IG","Historia","Precios bajos del finde","Borrador"],
+  ["2026-10-02","Superseis","IG","Carrusel","Ofertas de octubre","Pendiente"],
+  ["2026-10-05","Stock","FB","Post","Semana del electro","Pendiente"],
+  ["2026-10-07","Delimarket","IG","Reel","Picada de primavera","Pendiente"],
+  ["2026-10-09","Superseis","TikTok","Reel","Frutas de estación","Pendiente"],
+  ["2026-10-12","Stock","IG","Carrusel","Previa Black Friday","En proceso"],
+  ["2026-10-14","Delimarket","FB","Post","Café de especialidad","Pendiente"],
+  ["2026-10-16","Superseis","IG","Post","Día mundial de la alimentación","Pendiente"],
+  ["2026-10-21","Stock","IG","Historia","Precios bajos del finde","Pendiente"],
   ["2026-09-07","Bianca","IG","Carrusel","Colección primavera","Publicado"],
   ["2026-09-12","Clasipar","FB","Post","Clasificados destacados","Publicado"],
   ["2026-09-16","PediWOW","IG","Reel","Semana de descuentos","Pautado"],
-  ["2026-09-24","Dayo","IG","Post","Pedí tu almuerzo","En diseño"],
-  ["2026-09-26","Retail Institucional","FB","Post","Aniversario del grupo","Listo"],
-  ["2026-09-29","Bianca","TikTok","Reel","Tendencias de temporada","Borrador"],
-  ["2026-10-06","PediWOW","IG","Carrusel","Octubre de ofertas","Borrador"],
-  ["2026-10-13","Clasipar","IG","Post","Autos usados destacados","Borrador"],
+  ["2026-09-24","Dayo","IG","Post","Pedí tu almuerzo","En proceso"],
+  ["2026-09-26","Retail Institucional","FB","Post","Aniversario del grupo","En proceso"],
+  ["2026-09-29","Bianca","TikTok","Reel","Tendencias de temporada","Pendiente"],
+  ["2026-10-06","PediWOW","IG","Carrusel","Octubre de ofertas","Pendiente"],
+  ["2026-10-13","Clasipar","IG","Post","Autos usados destacados","Pendiente"],
 ].map((r,i) => ({ id:"P"+(i+1), date:r[0], brand:r[1], net:r[2], format:r[3], title:r[4], status:r[5], carried:r[6] || null }));
 
 // Materiales: piezas que no son un posteo de redes (se ven en su propio calendario, por fecha de entrega).
@@ -3065,7 +3071,7 @@ function exampleJobs(){
     { id:"EJ-PANT", ex:true, area:"Diseño", piece:"Video para pantallas", brand:"Superseis", title:"Ejemplo · Video de Navidad para las pantallas de caja", requester:"Visual Merchandising", owner:EX_OWNER, status:"Pendiente", priority:"Baja", complexity:"Alta",
       requestDate:exDay(3), due:exDay(22), drive:"https://drive.google.com/", canva:"https://www.canva.com/", links:[], notes:"Sin audio: las pantallas no tienen sonido.", post:null,
       brief:EX_BRIEF("Ambientar las cajas con la campaña de Navidad.", "<ul><li><b>Placa 1:</b> Felices fiestas</li><li><b>Placa 2:</b> Canasta navideña 20% OFF</li></ul>", "Video horizontal 1920×1080, 15 segundos.", "Video de pantallas del Día del Padre.", "Textos grandes: se ven de lejos."), changes:[] },
-    { id:"EJ-CM", ex:true, area:"CM", piece:"Edición de video", brand:"Superseis", title:"Ejemplo · Reel receta navideña: clericó en 1 minuto", requester:"RRSS", owner:"CM de ejemplo", status:"En revisión", priority:"Media", complexity:"Media",
+    { id:"EJ-CM", ex:true, area:"CM", piece:"Edición de video", brand:"Superseis", title:"Ejemplo · Reel receta navideña: clericó en 1 minuto", requester:"RRSS", owner:"CM de ejemplo", status:"Revisión", priority:"Media", complexity:"Media",
       requestDate:exDay(2), due:exDay(16), drive:"https://drive.google.com/", canva:"https://www.canva.com/", links:[], notes:"Mostrar los productos con su precio.", post:null,
       brief:EX_BRIEF("Inspirar con una receta fácil y mostrar los productos de la tienda.", "<ul><li><b>Gancho (primeros 3 s):</b> ¿Clericó en 1 minuto? Mirá</li><li><b>Copy:</b> Todo lo que necesitás está en Superseis 🎄</li></ul>", "Reel vertical 1080×1920, 30 a 45 segundos, con subtítulos.", "Reels de recetas de la cuenta.", "Música en tendencia y sin marcas de agua."),
       changes:[ch(6, "17:30", { text:"Cortá la intro a 3 segundos y sumá subtítulos.", by:"Admin total" })] },
@@ -3075,7 +3081,7 @@ function seedExamples(){
   if (viewer?.role !== "Admin total" || window.RMH?.previewing) return;
   let ch = false;
   if (!APP_FLAGS.examples){ exampleJobs().forEach(e => { if (!jobs.some(j => j.id === e.id)){ jobs.push(e); ch = true; } });
-    if (!posts.some(p => p.id === "EJ-POST")) posts.push({ id:"EJ-POST", ex:true, date:exDay(12), brand:"Superseis", net:"IG", format:"Carrusel", title:"Ejemplo · Carrusel de Navidad: 5 ideas para la mesa", status:"Borrador", cm:"CM de ejemplo", carried:null });
+    if (!posts.some(p => p.id === "EJ-POST")) posts.push({ id:"EJ-POST", ex:true, date:exDay(12), brand:"Superseis", net:"IG", format:"Carrusel", title:"Ejemplo · Carrusel de Navidad: 5 ideas para la mesa", status:"Pendiente", cm:"CM de ejemplo", carried:null });
     APP_FLAGS = { ...APP_FLAGS, examples:TODAY }; ch = true; }
   posts.filter(p => p.ex && String(p.date).slice(0, 7) !== CURRENT_MONTH).forEach(p => { p.date = CURRENT_MONTH + "-" + String(Math.min(+String(p.date).slice(8, 10) || 1, lastDay(CURRENT_MONTH))).padStart(2, "0"); ch = true; });
   // Cada mes los ejemplos pasan al mes actual (mismos días), así siempre se ven.
@@ -3114,15 +3120,15 @@ let jobs = [
   { id:"D-113", title:"Catálogo digital primavera", brand:"Bianca", piece:"Catálogo digital", owner:"Maria Helena Giménez González", due:"2026-09-26", status:"En revisión", post:null },
 ];
 jobs.push(
-  { id:"C-201", area:"CM", title:"Edición reel detrás de la panadería", brand:"Superseis", piece:"Edición de video", owner:"Aníbal Iván Martinez", due:"2026-09-25", status:"En proceso", priority:"Alta", complexity:"Media", requester:"Marketing", post:null },
+  { id:"C-201", area:"CM", title:"Edición reel detrás de la panadería", brand:"Superseis", piece:"Edición de video", owner:"Aníbal Iván Martinez", due:"2026-09-25", status:"Edición", priority:"Alta", complexity:"Media", requester:"Marketing", post:null },
   { id:"C-202", area:"CM", title:"Grabación de recetas para reels", brand:"Delimarket", piece:"Grabación de video", owner:"Aníbal Iván Martinez", due:"2026-09-28", status:"Pendiente", priority:"Media", complexity:"Alta", requester:"Trade Marketing", post:null },
-  { id:"C-203", area:"CM", title:"Copys campaña electro en cuotas", brand:"Stock", piece:"Copys y textos", owner:"Aníbal Iván Martinez", due:"2026-09-24", status:"En revisión", priority:"Alta", complexity:"Baja", requester:"E-commerce", post:null },
+  { id:"C-203", area:"CM", title:"Copys campaña electro en cuotas", brand:"Stock", piece:"Copys y textos", owner:"Aníbal Iván Martinez", due:"2026-09-24", status:"Revisión", priority:"Alta", complexity:"Baja", requester:"E-commerce", post:null },
   { id:"C-204", area:"CM", title:"Armado de pauta Semana del hogar", brand:"Stock", piece:"Armado de pauta", owner:"Aníbal Iván Martinez", due:"2026-09-15", delivered:"2026-09-15", status:"Publicado", priority:"Media", complexity:"Media", requester:"Marketing", post:null },
-  { id:"C-205", area:"CM", title:"Edición video Tendencias de temporada", brand:"Bianca", piece:"Edición de video", owner:"Miguel Sebastián Kunzle Insfrán", due:"2026-09-22", status:"En corrección", priority:"Urgente", complexity:"Alta", requester:"Visual Merchandising", post:null },
+  { id:"C-205", area:"CM", title:"Edición video Tendencias de temporada", brand:"Bianca", piece:"Edición de video", owner:"Miguel Sebastián Kunzle Insfrán", due:"2026-09-22", status:"Corrección", priority:"Urgente", complexity:"Alta", requester:"Visual Merchandising", post:null },
   { id:"C-207", area:"CM", title:"Reel maridaje quesos y vinos", brand:"Delimarket", piece:"Edición de video", owner:"Miguel Sebastián Kunzle Insfrán", due:"2026-09-23", delivered:"2026-09-23", status:"Programado", priority:"Alta", complexity:"Media", requester:"Marketing", post:null },
-  { id:"C-208", area:"CM", title:"Stories degustación del sábado", brand:"Delimarket", piece:"Grabación de video", owner:"Miguel Sebastián Kunzle Insfrán", due:"2026-09-26", status:"En proceso", priority:"Media", complexity:"Baja", requester:"Trade Marketing", post:null },
+  { id:"C-208", area:"CM", title:"Stories degustación del sábado", brand:"Delimarket", piece:"Grabación de video", owner:"Miguel Sebastián Kunzle Insfrán", due:"2026-09-26", status:"Grabación", priority:"Media", complexity:"Baja", requester:"Trade Marketing", post:null },
   { id:"C-209", area:"CM", title:"Copys picadas para el finde", brand:"Delimarket", piece:"Copys y textos", owner:"Miguel Sebastián Kunzle Insfrán", due:"2026-09-18", delivered:"2026-09-18", status:"Publicado", priority:"Baja", complexity:"Baja", requester:"E-commerce", post:null },
-  { id:"C-206", area:"CM", title:"Cobertura aniversario del grupo", brand:"Retail Institucional", piece:"Cobertura de evento", owner:"Miguel Sebastián Kunzle Insfrán", due:"2026-09-27", status:"Aprobado", priority:"Alta", complexity:"Media", requester:"Gerencia General", post:null },
+  { id:"C-206", area:"CM", title:"Cobertura aniversario del grupo", brand:"Retail Institucional", piece:"Cobertura de evento", owner:"Miguel Sebastián Kunzle Insfrán", due:"2026-09-27", status:"Programado", priority:"Alta", complexity:"Media", requester:"Gerencia General", post:null },
 );
 jobs.forEach((j, i) => {
   j.area = j.area || "Diseño";
@@ -3911,7 +3917,7 @@ function brandChips(){
 /* ---------- actions ---------- */
 function pedirDiseno(postId){
   const p = postById(postId);
-  p.status = "En diseño";
+  if (p.status === "Pendiente") p.status = "En proceso";
   const due = new Date(p.date+"T12:00"); due.setDate(due.getDate()-2);
   jobs.push({ id:nextJobId("Diseño"), area:"Diseño", title:`${p.format} ${p.title.toLowerCase()}`, brand:p.brand, piece:p.format, owner:"Sin asignar", due:due.toISOString().slice(0,10), status:"Pendiente", post:p.id, priority:"Media", complexity:"Media", requester:"Marketing", requestDate:TODAY, link:"", notes:"" });
   toast(`Pedido de diseño creado para “${p.title}”. Queda en Pedidos, sin asignar.`);
@@ -3919,7 +3925,7 @@ function pedirDiseno(postId){
 }
 function advancePost(postId){
   const p = postById(postId);
-  const next = { "Listo":"Programado", "Programado":"Publicado", "Publicado":"Pautado" }[p.status];
+  const next = { "En proceso":"Programado", "Programado":"Publicado", "Publicado":"Pautado" }[p.status];
   if (!next) return;
   p.status = next; toast(`“${p.title}” pasó a ${next}.`); render();
 }
@@ -3932,7 +3938,7 @@ function advanceJob(jobId){
   if (isFin(j) && !j.delivered) j.delivered = TODAY;
   if (j.status === "Aprobado" && j.area !== "CM" && j.post){
     const p = postById(j.post);
-    if (p && p.status === "En diseño"){ p.status = "Listo"; toast(`Diseño entregado. El post “${p.title}” pasó a Listo para programar.`); render(); return; }
+    if (p && p.status === "Pendiente"){ p.status = "En proceso"; toast(`Diseño entregado. El post “${p.title}” pasó a En proceso, listo para programar.`); render(); return; }
   }
   toast(`${j.title}: ${j.status}.`); render();
 }
@@ -4180,7 +4186,7 @@ let panelAll = false;
 function panelMine(ar){
   const cm = ar === "cm", me = viewer.name, gone = alertsGone(), out = [];
   jobs.filter(j => j.owner === me && j.area === (cm ? "CM" : "Diseño") && seesBrand(j.brand) && !isFin(j) && j.status !== "Cancelado").sort((a, b) => a.due.localeCompare(b.due)).forEach(j => {
-    const u = urgency(j), fix = j.status === "En corrección";
+    const u = urgency(j), fix = j.status === fixStage(j);
     out.push({ d:j.due, go:"job:" + j.id, key:"pm:" + j.id + ":" + j.status, ic:fix ? "pencil" : u?.late ? "alarm-clock" : "clock", sev:u ? u.c : fix ? "#f97316" : "#94a3b8", t:`${fix ? "Cambios pendientes" : u?.late ? "Atrasado" : "Por terminar"}: ${j.title}`, m:`${j.brand} · ${j.piece} · entrega el ${dm(j.due)} · ${j.status}` }); });
   if (cm) visiblePosts().filter(p => p.cm === me && !["Programado","Publicado","Pautado"].includes(p.status)).sort((a, b) => a.date.localeCompare(b.date)).forEach(p => {
     const late = p.date < TODAY;
@@ -4295,10 +4301,10 @@ function stageOptions(kind, it){
     return [];
   }
   if (!canChangeStatus(it)) return [];
-  if (it.area === "CM"){ // el CM avanza hasta “En revisión”; Admin total aprueba o pide cambios; después el CM programa y publica
-    return ["Pendiente","En proceso","Finalizado","Programado","Publicado"];
+  if (it.area === "CM"){ // el CM avanza hasta Revisión; Admin total aprueba o pide cambios (Corrección); después el CM programa, publica y pauta
+    return CM_STAGES.filter(st => st !== "Corrección");
   }
-  return statesOf(it).filter(st => !["En revisión","En corrección","Aprobado"].includes(st));
+  return statesOf(it).filter(st => !["En revisión","En corrección","Corrección","Aprobado"].includes(st));
 }
 // Estado en cada contenido del calendario: si se puede cambiar, es un botón que abre las etapas.
 function evStage(kind, it, text, color){
@@ -4326,7 +4332,6 @@ document.addEventListener("click", e => {
   closeStageMenu();
   const [ref, to] = o.dataset.stageset.split("|"), [kind, id] = ref.split(":");
   if (kind === "post"){ const p = postById(id); if (!p || p.status === to) return;
-    if (to === "En diseño" && !jobs.some(x => x.post === p.id)){ pedirDiseno(p.id); return; }
     p.status = to; render(); toast(`“${p.title}” pasó a ${to}.`); return; }
   if (kind === "canal"){ const k = canalById(id); if (!k || k.status === to) return; k.status = to; render(); toast(`“${k.title}” pasó a ${to}.`); return; }
   const j = jobs.find(x => x.id === id); if (!j || j.status === to || !stageOptions("job", j).includes(to)) return;
@@ -4336,7 +4341,13 @@ document.addEventListener("click", e => {
 const canSetAnyStatus = j => canChangeStatus(j) && !isDesigner();
 function designerAction(j){
   if (j.owner !== viewer.name || isClosed()) return "";
-  if (j.area === "CM") return j.status === "Publicado" ? "" : `<button class="btn primary donebtn" data-jdeliver="${j.id}">✓ Publicado</button>`;
+  if (j.area === "CM"){
+    if (["Pendiente","Grabación","Edición"].includes(j.status)) return `<button class="btn primary donebtn" data-jdone="${j.id}">✓ Mandar a revisión</button>`;
+    if (j.status === "Corrección") return `<button class="btn primary donebtn fix" data-jdone="${j.id}">✓ Terminé las correcciones</button>`;
+    if (j.status === "Revisión") return `<span class="waitchip">${icon("hourglass")} Esperando revisión</span>`;
+    if (j.status === "Programado") return `<button class="btn primary donebtn" data-jdeliver="${j.id}">✓ Publicado</button>`;
+    if (j.status === "Publicado") return `<button class="btn donebtn" data-jdeliver="${j.id}">Pautado</button>`;
+    return ""; }
   if (["Pendiente","En proceso"].includes(j.status)) return `<button class="btn primary donebtn" data-jdone="${j.id}">✓ Boceto finalizado</button>`;
   if (j.status === "En corrección") return `<button class="btn primary donebtn fix" data-jdone="${j.id}">✓ Terminé las correcciones</button>`;
   if (REVIEW_WAIT.includes(j.status)) return `<span class="waitchip">${icon("hourglass")} Esperando revisión</span>`;
@@ -4509,7 +4520,7 @@ function pPlan(){
     if (x.rec) return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)} <span class="note">${x.r.time}</span></td><td>${brandTag(x.brand)}</td><td>${esc(firstName(x.cm || ""))}</td><td style="white-space:nowrap">${icon("repeat")} ${x.r.kind === "Canal" ? "Canal de WhatsApp" : x.r.kind} · repetitivo</td><td style="min-width:190px"><b style="color:#fff">${esc(x.title)}</b></td><td><span class="note">—</span></td><td>${recChip(x.r, x.date)}</td><td><span class="note">—</span></td></tr>`;
     if (x.vid) return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${esc(firstName(x.cm || ""))}</td><td style="white-space:nowrap">${icon("clapperboard")} ${esc(x.piece)}</td><td style="min-width:190px">${canCreateJobs() ? `<button type="button" class="linkish" data-jedit="${x.id}">${esc(x.title)}</button>` : `<b style="color:#fff">${esc(x.title)}</b>`}</td><td><span class="note">—</span></td><td><div class="chips" style="flex-wrap:nowrap">${pill(x.status, JOB_COLOR[x.status])}${urgBadge(x.job)}</div></td><td><span class="note">—</span></td></tr>`;
     if (x.canal) return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${esc(firstName(x.cm || ""))}</td><td style="white-space:nowrap">${icon("message-circle")} Canal de WhatsApp</td><td style="min-width:190px">${tema(x, "canal")}</td><td><span class="note">—</span></td><td>${canalStatusCell(x)}</td><td><span class="note">—</span></td></tr>`;
-    const lbl = canEditPost() && { "Listo":"Programar", "Programado":"Marcar publicado", "Publicado":"Pautar" }[x.status];
+    const lbl = canEditPost() && { "En proceso":"Programar", "Programado":"Marcar publicado", "Publicado":"Pautar" }[x.status];
     return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${canEditPost() ? `<select class="base sm" data-pcm="${x.id}" aria-label="CM de ${esc(x.title)}">${[...new Set([...CM_NAMES(), x.cm].filter(Boolean))].map(n => `<option value="${esc(n)}" ${n === x.cm ? "selected" : ""}>${esc(firstName(n))}</option>`).join("")}</select>` : esc(firstName(x.cm))}</td><td style="white-space:nowrap">${icon(x.format === "Historia" ? "smartphone" : "image")} <span class="net">${x.net}</span> ${x.format}</td><td style="min-width:190px">${tema(x, "post")}${x.carried ? `<span class="carried">↩ Arrastrado de ${x.carried}</span>` : ""}</td><td style="white-space:nowrap">${postDesignCell(x)}</td><td><div class="chips" style="flex-wrap:nowrap">${postStatusCell(x)}${postUrgBadge(x)}</div></td><td>${lbl ? `<button class="btn" data-adv-post="${x.id}">${lbl}</button>` : `<span class="note">—</span>`}</td></tr>`;
   };
   return `<div class="head"><div><h1 class="pmh">${pmIco(calOnly ? "calendar-days" : "list-checks")}${calOnly ? "Planificación" : "Plan de posteo"}</h1><p class="sub">${monthLabel(MONTH)} · todo lo de CM del mes, junto: feed (posts, carruseles y reels), historias, Canal de WhatsApp, videos y repetitivos. ${calOnly ? "Mirá solo lo tuyo o lo de todo el equipo." : "Cargalo desde acá o desde cada Gestión."}</p></div>${calOnly ? "" : viewTabs([["tabla","Tabla","table-2"],["calendario","Calendario","calendar-days"]], planUI.view, "data-plview")}</div>
@@ -4710,13 +4721,15 @@ document.addEventListener("click", e => {
 });
 // ----- Recorrido del pedido: cada paso con su nombre, lo hecho, dónde está ahora y qué sigue. Cada entrega es una versión. -----
 const PROC_DESC = { "Pendiente":"Pedido cargado", "En proceso":"Trabajando", "Boceto finalizado":"Versión lista para revisar", "En revisión":"Esperando la revisión", "En corrección":"Haciendo los cambios",
-  "Aprobado":"Final del pedido", "Programado":"Listo para salir", "Publicado":"Publicado" };
+  "Grabación":"Grabando", "Edición":"Editando", "Revisión":"Esperando la revisión", "Corrección":"Haciendo los cambios",
+  "Aprobado":"Final del pedido", "Programado":"Listo para salir", "Publicado":"Publicado", "Pautado":"Con pauta" };
 const jobVersions = j => (j.changes || []).filter(c => c.kind === "boceto").length;
 function jobProcess(j){
   const st = stagesOf(j), cur = st.indexOf(j.status), v = jobVersions(j), rounds = jobRounds(j), cm = j.area === "CM";
   const next = { "Pendiente":"el responsable empieza a trabajar.", "En proceso":cm ? "terminar y mandarlo a revisión." : `entregar la versión ${v + 1} para revisar.`,
     "Boceto finalizado":"Admin total aprueba o pide cambios.", "En revisión":"Admin total aprueba o pide cambios.", "En corrección":cm ? "corregir y mandarlo de nuevo a revisión." : `entregar la versión ${v + 1} con los cambios.`,
-    "Aprobado":cm ? "programarlo para que salga." : "", "Programado":"que se publique.", "Publicado":"", "Cancelado":"" }[j.status];
+    "Grabación":"editar el video.", "Edición":"terminar y mandarlo a revisión.", "Revisión":"Admin total aprueba o pide cambios.", "Corrección":"corregir y mandarlo de nuevo a revisión.",
+    "Aprobado":cm ? "programarlo para que salga." : "", "Programado":"que se publique.", "Publicado":cm ? "pautarlo, si lleva pauta." : "", "Pautado":"", "Cancelado":"" }[j.status];
   const can2 = new Set(stageOptions("job", j).filter(x => x !== j.status));
   return `${can2.size ? `<p class="jptap">${icon("hand")} Tocá una etapa para pasar el pedido ahí${viewer.role === "Admin total" ? " (al elegir En corrección se escribe qué cambiar y le avisa a quien lo hace)" : ""}.</p>` : ""}<ol class="jproc">${st.map((x, i) => `<li class="${i < cur ? "done" : i === cur ? "on" : ""}${can2.has(x) ? " can" : ""}" style="--c:${JOB_COLOR[x]}"${can2.has(x) ? ` data-jmove="${j.id}|${esc(x)}" role="button" tabindex="0" title="Pasar a ${esc(x)}"` : ""}><span class="pdot">${i < cur ? icon("check") : ""}</span><span class="ptxt"><b>${x}</b><small>${PROC_DESC[x] || ""}${x === "En corrección" && rounds ? ` · ${rounds} ${rounds === 1 ? "vez" : "veces"}` : ""}${x === "Boceto finalizado" && v ? ` · ${v} ${v === 1 ? "versión" : "versiones"}` : ""}</small></span></li>`).join("")}</ol>
     <p class="jpnext">${j.status === "Cancelado" ? `${icon("ban")} Pedido cancelado.` : `<b>Ahora:</b> ${esc(j.status)}${next ? ` · <b>Sigue:</b> ${next}` : " · Proceso terminado."}`}${!cm && v ? ` · Versiones entregadas: ${v}` : ""}${rounds ? ` · Rondas de cambios: ${rounds}` : ""}</p>`;
@@ -4927,8 +4940,8 @@ function jobFicha(){
   markSeen(j); // la persona responsable ya lo abrió: deja de contar en la botonera
   const at = viewer.role === "Admin total", p = j.post && postById(j.post), hist = (j.changes || []).slice().reverse();
   const row = (k, v) => v ? `<div><span>${k}</span><b>${v}</b></div>` : "";
-  const last = j.status === "En corrección" && hist.find(c => !c.ok && !c.kind);
-  const label = st => st === reviewStage(j) && !at ? `✓ ${st} · enviar a revisión` : st === "Publicado" ? "✓ Publicado" : st;
+  const last = j.status === fixStage(j) && hist.find(c => !c.ok && !c.kind);
+  const label = st => st === reviewStage(j) && !at ? (j.area === "CM" ? "✓ Mandar a revisión" : `✓ ${st} · enviar a revisión`) : st === "Publicado" ? "✓ Publicado" : st;
   const opts = stageOptions("job", j).filter(st => st !== j.status);
   const acts = at && REVIEW_WAIT.includes(j.status) ? `<div class="chips"><button class="btn primary" data-jrev="approve:${j.id}">${j.area === "CM" ? "Aprobar" : "✓ Aprobar"}</button><button class="btn" data-jrev="fix:${j.id}">Pedir cambios</button></div>`
     : REVIEW_WAIT.includes(j.status) ? `<span class="waitchip">${icon("hourglass")} Esperando la revisión</span>`
@@ -5118,13 +5131,14 @@ function procExample(A){
   const cm = A === "CM", D = cm ? "CM" : "Diseñador", AT = "Admin total";
   const steps = cm ? [
     ["Pendiente", AT, "Carga el pedido: “Video receta de ñoquis 29”, para el 28/10.", "01/10 09:00"],
-    ["En proceso", D, "Graba y edita el video.", "02/10 10:15"],
-    ["En revisión", D, "Lo manda a revisar: le llega el aviso a Admin total.", "03/10 16:40"],
-    ["En corrección", AT, "Pide cambios: “Cortá la intro a 3 segundos y sumá subtítulos”.", "03/10 17:05", true],
-    ["En revisión", D, "Corrige y lo vuelve a mandar.", "04/10 11:20"],
-    ["Aprobado", AT, "Lo aprueba.", "04/10 12:00"],
-    ["Programado", D, "Lo programa para que salga.", "05/10 09:00"],
-    ["Publicado", D, "Salió publicado: fin del pedido.", "28/10 12:00", false, true],
+    ["Grabación", D, "Graba el video en la tienda.", "02/10 10:15"],
+    ["Edición", D, "Edita el video.", "03/10 09:30"],
+    ["Revisión", D, "Lo manda a revisar: le llega el aviso a Admin total.", "03/10 16:40"],
+    ["Corrección", AT, "Pide cambios: “Cortá la intro a 3 segundos y sumá subtítulos”.", "03/10 17:05", true],
+    ["Revisión", D, "Corrige y lo vuelve a mandar.", "04/10 11:20"],
+    ["Programado", AT, "Lo aprueba y queda listo para salir; el CM lo programa.", "04/10 12:00"],
+    ["Publicado", D, "Salió publicado.", "28/10 12:00"],
+    ["Pautado", D, "Se le puso pauta: fin del pedido.", "28/10 15:00", false, true],
   ] : [
     ["Pendiente", AT, "Carga el pedido: “Post Día del Padre”, Superseis, para el 15/10.", "01/10 09:00"],
     ["En proceso", D, "Empieza a diseñar.", "01/10 10:30"],
@@ -5174,7 +5188,7 @@ function cmPosts(){ return visiblePosts().filter(p => (cmUI.cm === "Todos" || p.
 function postDesignCell(p){
   const j = jobs.find(x => x.post === p.id);
   if (j) return `<span class="note">${icon("palette")} ${esc(firstName(j.owner))} · ${pill(j.status, JOB_COLOR[j.status])}</span>`;
-  if (p.status === "Borrador" && canEditPost()) return `<button class="btn" data-pedir="${p.id}">Pedir diseño</button>`;
+  if (p.status === "Pendiente" && canEditPost()) return `<button class="btn" data-pedir="${p.id}">Pedir diseño</button>`;
   return `<span class="note">—</span>`;
 }
 function postStatusCell(p){
@@ -5187,7 +5201,7 @@ const POST_NETS = ["IG","FB","IG + FB","TikTok"];
 const FEED_FORMATS = ["Post","Carrusel","Reel"];
 // Canal: el Canal de WhatsApp de cada marca, donde también se publican contenidos.
 const CANALES = ["Canal de WhatsApp"];
-const CANAL_STAGES = ["Borrador","En diseño","Listo","Programado","Publicado"];
+const CANAL_STAGES = ["Pendiente","En proceso","Programado","Publicado"]; // el Canal de WhatsApp no se pauta
 let CHANNEL_POSTS = [];
 const canalById = id => CHANNEL_POSTS.find(k => k.id === id);
 const visibleCanales = () => CHANNEL_POSTS.filter(k => seesBrand(k.brand) && inFilter(k.brand));
@@ -5197,8 +5211,8 @@ function newPostOn(date, kind){
   const brand = MAIN_BRANDS.includes(brandFilter) && myBrands().includes(brandFilter) ? brandFilter : myBrands()[0];
   const cm = CM_BY_BRAND[brand] || CM_NAMES()[0] || "";
   postUI.form = kind === "Canal"
-    ? { mode:"new", kind, post:{ id:"K" + (Math.max(0, ...CHANNEL_POSTS.map(k => +(String(k.id).match(/^K?(\d+)$/) || [])[1] || 0)) + 1), date, brand, channel:CANALES[0], title:"", status:"Borrador", cm, notes:"" } }
-    : { mode:"new", kind, post:{ id:nextPostId(), date, brand, net:"IG", format:kind === "Historia" ? "Historia" : "Post", title:"", status:"Borrador", cm, notes:"", carried:null } };
+    ? { mode:"new", kind, post:{ id:"K" + (Math.max(0, ...CHANNEL_POSTS.map(k => +(String(k.id).match(/^K?(\d+)$/) || [])[1] || 0)) + 1), date, brand, channel:CANALES[0], title:"", status:"Pendiente", cm, notes:"" } }
+    : { mode:"new", kind, post:{ id:nextPostId(), date, brand, net:"IG", format:kind === "Historia" ? "Historia" : "Post", title:"", status:"Pendiente", cm, notes:"", carried:null } };
   render();
 }
 // Hoja de la publicación de CM (feed, historia o Canal de WhatsApp): igual que el pedido de Diseño gráfico.
@@ -5233,7 +5247,7 @@ function postForm(){
         ${p.repOf ? `<p class="note" style="grid-column:1/-1;margin:0">${icon("repeat")} Se cargó sola porque se repite (la repite “${esc((canal ? canalById(p.repOf) : postById(p.repOf))?.title || p.title)}”).</p>` : `<div class="jrep" style="grid-column:1/-1"><span class="jll">${icon("repeat")} ¿Se repite? <span class="note">(opcional: elegí los días y se carga sola cada semana, con la misma marca, CM, texto y links)</span></span>
           <div class="chips">${WEEKDAYS.map((w, i) => `<button type="button" class="chip ${f.repDays.includes(i) ? "on" : ""}" data-prepday="${i}" aria-pressed="${f.repDays.includes(i)}">${w}</button>`).join("")}</div>
           <label class="jrepu">Hasta <span class="note">(vacío = siempre)</span><input class="base" type="date" id="poRepUntil" value="${esc(p.rep?.until || "")}"></label>
-          <p class="note" style="margin:0">Ej.: “Beneficio del día con tarjetas” → marcá Lunes: cada lunes aparece ${canal ? "un contenido nuevo" : f.kind === "Historia" ? "una historia nueva" : "una publicación nueva"} en Borrador, ya asignada a su CM.</p></div>`}
+          <p class="note" style="margin:0">Ej.: “Beneficio del día con tarjetas” → marcá Lunes: cada lunes aparece ${canal ? "un contenido nuevo" : f.kind === "Historia" ? "una historia nueva" : "una publicación nueva"} en Pendiente, ya asignada a su CM.</p></div>`}
       </div></section>
       <section class="jfs"><h3><i>3</i>Texto de la publicación y links</h3><div class="jfg">
         <div style="grid-column:1/-1"><span class="jll">Links de acceso <span class="note">(Drive, Canva u otro sitio: fotos, videos, el diseño…)</span></span>${linkEditor(p, "form")}</div>
@@ -5242,7 +5256,7 @@ function postForm(){
       <section class="jfs"><h3><i>4</i>Proceso</h3><div class="jfg">
         <div style="grid-column:1/-1"><div class="pproc" role="group" aria-label="Etapa">${stages.map((x, i) => `<button type="button" class="${i < cur ? "done" : ""}${i === cur ? " on" : ""}" style="--c:${POST_COLOR[x] === "#334155" ? "#94a3b8" : POST_COLOR[x]}" data-postep="${esc(x)}" aria-pressed="${i === cur}"><span>${i + 1}</span>${esc(x)}</button>`).join("")}</div>
           <input type="hidden" id="poStatus" value="${esc(p.status)}">
-          ${!canal && !j ? `<p class="note" style="margin:8px 0 0">Si lo pasás a “En diseño”, se crea solo el pedido en Diseño para Redes.</p>` : ""}</div>
+          ${!canal && !j && canEditPost() ? `<label class="jcext" style="margin-top:8px"><input type="checkbox" id="poAskDesign"> Pedir el diseño a Diseño gráfico <span class="note">(se crea solo el pedido en Diseño para Redes)</span></label>` : ""}</div>
       </div></section>
       ${real ? `<section class="jfs jfchat">${postChain(real, canal)}</section>` : ""}
       <div class="chips" style="justify-content:flex-end">${f.mode === "edit" && canEditPost() ? `<button class="btn danger" type="button" data-postdel="${canal ? "canal:" : ""}${p.id}" style="margin-right:auto">${icon("trash-2")} Borrar</button>` : ""}<button class="btn" type="button" data-pclose>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div>
@@ -5305,15 +5319,16 @@ document.addEventListener("submit", e => {
   let p = f.mode === "edit" ? postById(f.post.id) : null;
   if (p) Object.assign(p, data); else { p = { ...f.post, ...data }; posts.push(p); }
   setRep(p); const extra = repMsg(p); delete p.nRep;
+  const ask = !!document.getElementById("poAskDesign")?.checked;
   postUI.form = null;
   const m = date.slice(0,7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m;
-  if (p.status === "En diseño" && !jobs.some(x => x.post === p.id)){ pedirDiseno(p.id); return; }
+  if (ask && !jobs.some(x => x.post === p.id)){ pedirDiseno(p.id); window.RMH?.flushNow?.(); return; }
   render(); window.RMH?.flushNow?.(); toast(`${f.mode === "edit" ? "Guardado" : "Cargado"}: “${p.title}” el ${dm(p.date)} · CM: ${firstName(p.cm)}.${extra}`);
 });
 document.addEventListener("click", e => { const b = e.target.closest("[data-prepday]"); if (!b || !postUI.form) return; const i = +b.dataset.prepday, f = postUI.form;
   f.repDays = (f.repDays || []).includes(i) ? f.repDays.filter(x => x !== i) : [...(f.repDays || []), i].sort(); b.classList.toggle("on"); b.setAttribute("aria-pressed", b.classList.contains("on")); });
 // Contenidos de CM que se repiten (historia, feed y Canal de WhatsApp): el original guarda los días (rep.days, 0 = lunes)
-// y se cargan solos los de las próximas 2 semanas, en Borrador. El id de cada copia es fijo (original + fecha), así no se duplica
+// y se cargan solos los de las próximas 2 semanas, en Pendiente. El id de cada copia es fijo (original + fecha), así no se duplica
 // aunque dos personas tengan la app abierta.
 function spawnPostRepeats(){
   if (!viewer || isClosed() || isViewOnly() || isDesigner()) return 0;
@@ -5323,7 +5338,7 @@ function spawnPostRepeats(){
       const d = addDays(TODAY, k), wd = (new Date(d + "T12:00").getDay() + 6) % 7;
       if (d <= t.date || !t.rep.days.includes(wd) || (t.rep.until && d > t.rep.until) || !MONTHS_APP.some(m => m.v === d.slice(0,7))) continue;
       const id = `${t.id}-R${d.slice(2).replace(/-/g, "")}`; if (list.some(x => x.id === id || (x.repOf === t.id && x.date === d))) continue;
-      const c = { id, date:d, status:"Borrador", repOf:t.id, brand:t.brand, title:t.title, cm:t.cm, requester:t.requester || "Marketing", notes:t.notes || "", brief:t.brief || "",
+      const c = { id, date:d, status:"Pendiente", repOf:t.id, brand:t.brand, title:t.title, cm:t.cm, requester:t.requester || "Marketing", notes:t.notes || "", brief:t.brief || "",
         canva:t.canva || "", drive:t.drive || "", canvaN:t.canvaN || "", driveN:t.driveN || "", xlinks:(t.xlinks || []).map(x => ({ ...x })), links:(t.links || []).slice(), byId:t.byId };
       list.push(canal ? { ...c, channel:t.channel } : { ...c, net:t.net, format:t.format, carried:null });
       n++;
@@ -7756,12 +7771,12 @@ const GUIDE = [
     ["gauge","Carga de trabajo Diseño gráfico","Cuánto tiene cada diseñador: los trabajos sin finalizar según su complejidad. Sirve para repartir los pedidos nuevos."],
     ["archive","Historial Diseño gráfico","Los trabajos de diseño gráfico entregados en el mes, con su fecha y si salieron a tiempo."]]],
   ["Community Manager", [
-    ["calendar-days","Gestión Redes","Las publicaciones del feed (posts, carruseles y reels) y sus repetitivas. Arranca en Calendario; también tiene Tablero (tocás una tarjeta para cambiar la etapa) y Tabla. Con “Solo yo” ves solo lo tuyo."],
+    ["calendar-days","Gestión Redes","Las publicaciones del feed (posts, carruseles y reels) y sus repetitivas. Etapas: Pendiente → En proceso → Programado → Publicado → Pautado. Arranca en Calendario; también tiene Tablero (tocás una tarjeta para cambiar la etapa) y Tabla. Con “Solo yo” ves solo lo tuyo."],
     ["smartphone","Gestión Historia","Igual que Gestión Redes, pero solo con las historias: las del plan y las repetitivas. Calendario, Tablero y Tabla."],
     ["message-circle","Gestión Canal WhatsApp","Lo que se publica en el Canal de WhatsApp de cada marca. Calendario, Tablero y Tabla."],
-    ["clapperboard","Gestión Videos","Los pedidos a los CM: grabaciones, ediciones de video, coberturas, copys y pauta. Calendario (cada pedido en su fecha límite, con las grabaciones repetitivas), Tablero, Tabla y la lista de Repetitivos."],
+    ["clapperboard","Gestión Videos","Los pedidos a los CM: grabaciones, ediciones de video, coberturas, copys y pauta. Etapas: Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado (en Revisión, Admin total aprueba o pide cambios). Calendario (cada pedido en su fecha límite, con las grabaciones repetitivas), Tablero, Tabla y la lista de Repetitivos."],
     ["gauge","Carga de trabajo CM","Cuánto tiene cada CM: los pedidos sin terminar y las publicaciones del mes que todavía no están programadas."],
-    ["list-checks","Plan de posteo","Lo que se tiene que subir en el mes. Arriba, cuántas hay en cada estado y el % ya publicado (tocá un estado para filtrar). En cada publicación marcás Borrador, En diseño, Listo, Programado, Publicado o Pautado, cambiás el CM que la hace y pedís el diseño si hace falta."],
+    ["list-checks","Plan de posteo","Lo que se tiene que subir en el mes. Arriba, cuántas hay en cada estado y el % ya publicado (tocá un estado para filtrar). En cada publicación marcás Pendiente, En proceso, Programado, Publicado o Pautado, cambiás el CM que la hace y pedís el diseño si hace falta."],
     ["archive","Historial CM","Lo que ya salió en el mes: publicaciones publicadas o pautadas y pedidos de CM terminados."]]],
   ["Recursos", [
     ["wand-sparkles","Prompts de imágenes","Primero elegís la marca (Superseis, Stock o Delimarket): se carga su estilo de fotos (luz, cámara, colores de la escena y emoción) y el prompt lo respeta siempre, aunque cambies el escenario. Después armás el prompt para ChatGPT, Gemini o Nano Banana en seis modalidades: producto en escenario, varios productos, producto con modelos, modelos en locación, fondo pleno o transparente y opción libre. Si adjuntás fotos (producto, fondo o persona), el prompt pide respetarlas al 100%: sin deformar productos, logos, letras ni caras. La cámara, el lente y la exposición se eligen solos; se suman bloques de realismo y la lista de lo que hay que evitar."],
@@ -8202,7 +8217,7 @@ const inboxPend = () => can("inbox") ? inboxBrands().reduce((n, b) => n + inboxC
 // Cuenta sus pedidos nuevos o con cambios que todavía no abrió; al abrir la hoja del pedido deja de contar.
 const seenSig = j => `${j.status}|${(j.changes || []).length}`;
 const markSeen = j => { if (!j || !viewer || j.owner !== viewer.name || window.RMH?.previewing) return; const sig = seenSig(j); if (j.seenBy?.[viewer.id] !== sig) j.seenBy = { ...(j.seenBy || {}), [viewer.id]:sig }; };
-const myJobsPend = area => viewer ? jobs.filter(j => !j.ex && j.owner === viewer.name && (j.area === "CM") === (area === "CM") && ["Pendiente", "En corrección"].includes(j.status) && j.seenBy?.[viewer.id] !== seenSig(j)).length : 0;
+const myJobsPend = area => viewer ? jobs.filter(j => !j.ex && j.owner === viewer.name && (j.area === "CM") === (area === "CM") && ["Pendiente", "En corrección", "Corrección"].includes(j.status) && j.seenBy?.[viewer.id] !== seenSig(j)).length : 0;
 const navBadge = k => { const n = k === "paneldg" ? myJobsPend("Diseño") : k === "panelcm" ? myJobsPend("CM") : 0;
   return n ? `<span class="count ibc" title="${n} trabajo${n === 1 ? "" : "s"} nuevo${n === 1 ? "" : "s"} o con cambios para vos, sin abrir">+${n > 99 ? 99 : n}</span>` : ""; };
 const pendBadge = () => { const n = inboxPend(); return n ? `<span class="count ibc" title="${n} mensajes sin contestar">+${n > 99 ? 99 : n}</span>` : ""; };
@@ -8984,7 +8999,10 @@ function stickBottom(cm){
   if (window.ResizeObserver && !cm._ro){ cm._ro = new ResizeObserver(() => { if (cm.dataset.pin) cm.scrollTop = cm.scrollHeight; }); cm._ro.observe(cm); cm.querySelectorAll("img, .cmsg:last-child").forEach(x => cm._ro.observe(x)); }
 }
 function render(){
-  for (const j of jobs){ if (j.status === "Diseño finalizado") j.status = "Boceto finalizado"; // nombre anterior de la etapa
+  for (const p of posts) if (OLD_POST_ST[p.status]) p.status = OLD_POST_ST[p.status]; // etapas de antes de las publicaciones de CM
+  for (const k of CHANNEL_POSTS) if (OLD_POST_ST[k.status]) k.status = OLD_POST_ST[k.status];
+  for (const j of jobs){ if (j.area === "CM"){ const n = OLD_CM_ST(j); if (n) j.status = n; } // etapas de antes de Gestión Videos
+    if (j.status === "Diseño finalizado") j.status = "Boceto finalizado"; // nombre anterior de la etapa
     if (j.status === "Entregado"){ j.status = "Aprobado"; if (!j.approved) j.approved = j.delivered || TODAY; } } // ya no hay etapa “Entregado”: Aprobado es el final
   if (page === "calcartel"){ page = "cartel"; cartUI.view = "calendario"; } // el calendario de cartelería ahora está dentro de Diseño para Cartelería
   if (page === "caldiseno") page = "caldg";
@@ -9119,7 +9137,7 @@ function setJobStatus(j, st){
   if (j.status === "Aprobado" && !j.approved) j.approved = TODAY;
   const first = isFin(j) && !j.delivered;
   if (first) j.delivered = TODAY;
-  if (j.status === "Aprobado" && j.area !== "CM"){ if (!j.approved) j.approved = TODAY; const p = j.post && postById(j.post); if (p && p.status === "En diseño") p.status = "Listo"; }
+  if (j.status === "Aprobado" && j.area !== "CM"){ if (!j.approved) j.approved = TODAY; const p = j.post && postById(j.post); if (p && p.status === "Pendiente") p.status = "En proceso"; }
   render(); toast(`“${j.title}”: ${prev} → ${j.status}${first ? ` (finalizado el ${dm(TODAY)}${TODAY > j.due ? ", con atraso" : ", a tiempo"})` : ""}.`);
 }
 document.addEventListener("change", e => {
@@ -9131,7 +9149,6 @@ document.addEventListener("change", e => {
   if (pcm){ const p = postById(pcm.dataset.pcm); p.cm = pcm.value; render(); toast(`“${p.title}”: ahora lo hace ${firstName(p.cm)}.`); return; }
   const pst = e.target.closest("[data-pstatus]");
   if (pst){ const p = postById(pst.dataset.pstatus), to = pst.value;
-    if (to === "En diseño" && !jobs.some(x => x.post === p.id)){ pedirDiseno(p.id); render(); toast(`“${p.title}” pasó a En diseño: se creó el pedido en Diseño para Redes.`); return; }
     p.status = to; render(); toast(`“${p.title}” pasó a ${to}.`); return; }
   const jf = e.target.closest("[data-jf]"); if (jf){ jobUI[jf.dataset.jf] = jf.value; render(); return; }
   if (e.target.id === "jSearch"){ jobUI.q = e.target.value; render(); return; }
