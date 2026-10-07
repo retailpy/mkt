@@ -667,7 +667,7 @@ html.nomotion .jproc li.can .pdot{animation:none}
 @media (max-width:640px){.jproc{grid-template-columns:1fr;gap:8px}.jproc li{flex-direction:row;text-align:left}.jproc li::before{display:none}}
 .jpnext{margin:4px 0 0;font-size:14px}.jpnow{margin-top:14px;padding-top:12px;border-top:1px solid var(--line-2);display:flex;flex-direction:column;gap:8px}
 .isteps{margin:6px 0 10px;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.45;overflow-wrap:anywhere}
-.isteps a{color:var(--cyan)}.irow{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}.irow .base{flex:1 1 260px}
+.isteps a{color:var(--cyan)}.iglh{display:flex;align-items:center;gap:6px;font-size:14px;margin:14px 0 6px}.iglh svg{width:16px;height:16px}.iglog .row{align-items:flex-start;gap:10px}.iglog small{display:block;color:var(--muted);font-size:12px}.iglk{flex:none;margin-top:1px}.iglk svg{width:17px;height:17px}.iglk.ok{color:#34d399}.iglk.bad{color:#f87171}.iglk.note{color:var(--muted)}.irow{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}.irow .base{flex:1 1 260px}
 #iScript{width:100%;font-family:var(--mono,monospace);font-size:12px;margin:6px 0}
 @keyframes cbump{0%{transform:scale(1)}20%{transform:scale(1.45)}40%{transform:scale(.9)}60%{transform:scale(1.2)}100%{transform:scale(1)}}
 @keyframes cglow{0%{box-shadow:0 0 0 0 rgba(34,211,238,.7)}100%{box-shadow:0 0 0 14px rgba(34,211,238,0)}}
@@ -3154,6 +3154,7 @@ function metaAdsPanel(simple = false){
 // META_FOLLOWERS = { updated, "AAAA-MM": { Marca: { ig, fb, handle, page } } } · META_DEMO = { updated, Marca: { handle, foll, cities, ages, gender } } (cantidades).
 let META_FOLLOWERS = {}, META_DEMO = {}, META_POSTS = {}, META_CREATIVES = {}, META_INBOX = {}, META_REFS = {};
 let META_DM = {}; // mensajes de Instagram que llegan en vivo (webhook de Meta → /api/webhook-meta → s:META_DM)
+let META_DM_LOG = {}; // los últimos avisos de Meta a ese webhook y qué pasó con cada uno (sin el texto de los mensajes)
 let COMERCIAL = {}; // ofertas publicadas de cada quincena (las lee el servidor del Excel de Comercial en Drive)
 let INBOX_DONE = {}; // conversaciones marcadas a mano como contestadas: { id: { by, at } }
 // Reclamos de clientes (Panel de CM): [{ id, month, date, brand, who, net, suc, what, st:"Abierto"|"Resuelto", sol, conv, by, at }]
@@ -7939,6 +7940,24 @@ document.addEventListener("click", e => { if (e.target.closest("[data-notifon]")
 let integSt = null, integScript = "";
 async function integRefresh(){ const j = await integ({ action:"status" }); integSt = j.ok ? j : { err:j.error }; if (page === "config" && cfgTab === "integ") render(); }
 let igLive = { st:null, busy:false };
+// Qué pasó con cada aviso de Meta, en palabras (lo anota /api/webhook-meta en s:META_DM_LOG).
+function igLogTxt(e){
+  if (e.kind === "verify") return e.ok ? ["ok", "Meta verificó la dirección del webhook"] : ["bad", "Meta intentó verificar con otro token de verificación (tiene que ser retail-mkt-hub)"];
+  if (e.kind === "setup" || e.kind === "status"){ const bad = Object.entries(e.pages || {}).filter(([, v]) => v !== "ok");
+    return [bad.length || !e.secret ? "bad" : "ok", `${e.kind === "setup" ? "Conectar las páginas" : "Revisar"}: ${!e.secret ? "falta la clave secreta en Vercel. " : ""}${bad.length ? bad.map(([b, v]) => `${b}: ${v}`).join(" · ") : "todas las páginas conectadas"}`]; }
+  if (e.sig && e.sig !== "ok") return ["bad", e.sig === "no coincide" ? "Llegó un aviso de Meta pero la firma no coincide: la clave secreta cargada en Vercel no es la de la app que manda el webhook (si se configuró en Instagram → inicio de sesión de Instagram, va la clave secreta de la app de Instagram en META_IG_APP_SECRET)" : e.sig === "sin firma" ? "Llegó un aviso sin firma de Meta (no se usa)" : "Llegó un aviso de Meta pero falta la clave secreta en Vercel (paso 2)"];
+  if (e.skip) return ["note", `Llegó un aviso de ${e.object === "page" ? "la página de Facebook" : e.object || "Meta"} (no es de Instagram: se ignora)`];
+  if (e.err) return ["bad", `Llegó un aviso de Instagram pero falló al guardarlo: ${e.err}`];
+  if ((e.unknown || []).length && !e.n) return ["bad", `Llegó un aviso de Instagram de una cuenta que no es de ninguna marca (${(e.unknown || []).join(", ")}). Si fue la prueba del panel de Meta, es normal; si fue un mensaje real, el webhook está configurado con otra app o con el inicio de sesión de Instagram.`];
+  if (e.n) return ["ok", `${e.n} ${e.n === 1 ? "mensaje guardado" : "mensajes guardados"} (${(e.brands || []).join(", ")})`];
+  return ["note", `Llegó un aviso de Instagram sin mensajes nuevos${(e.skipped || []).length ? ` (${e.skipped.join(", ")})` : ""}`];
+}
+function igLogHtml(){
+  const ev = (META_DM_LOG.events || []).slice(0, 8);
+  const head = `<h3 class="iglh">${icon("bell")} Últimos avisos de Meta</h3>`;
+  if (!ev.length) return head + `<p class="note">Todavía no llegó ningún aviso de Meta a la app. Si ya hiciste los pasos: revisá que en Meta for Developers el webhook de <b>Instagram</b> diga la dirección de arriba y que <b>messages</b> esté suscripto, tocá <b>Conectar las páginas</b>, activá <b>Permitir acceso a los mensajes</b> en la app de Instagram de la marca, y mandá un mensaje desde una cuenta que tenga un rol en la app (mientras no tenga Acceso avanzado, Meta solo avisa esos).</p>`;
+  return head + `<div class="list iglog">${ev.map(e => { const [k, t] = igLogTxt(e); return `<div class="row"><span class="iglk ${k}">${icon(k === "ok" ? "circle-check" : k === "bad" ? "circle-alert" : "info")}</span><div class="grow">${esc(t)}<small>${e.at ? inboxAge(e.at) : ""}</small></div></div>`; }).join("")}</div>`;
+}
 async function igLiveCall(setup){
   igLive.busy = true; render();
   try { const tok = window.RMH?.token ? await RMH.token() : null;
@@ -7964,13 +7983,15 @@ function integCfg(){
       <li>En <a href="https://vercel.com/" target="_blank" rel="noopener">Vercel</a> → proyecto <b>mkt</b> → <b>Settings → Environment Variables</b>: agregá <code>META_APP_SECRET</code> con esa clave (Production) y después <b>Deployments → Redeploy</b> el último. No la pegues en ningún chat.</li>
       <li>Volvé a la app en Meta for Developers → <b>Webhooks</b> (o Instagram → Configuración de la API → Configurar webhooks) → elegí <b>Instagram</b>:
         <br>URL de devolución de llamada: <code>https://retailmkt.vercel.app/api/webhook-meta</code>
-        <br>Token de verificación: <code>retail-mkt-hub</code> → <b>Verificar y guardar</b> → en la lista de campos, <b>Suscribirse</b> a <b>messages</b>.</li>
+        <br>Token de verificación: <code>retail-mkt-hub</code> → <b>Verificar y guardar</b> → en la lista de campos, <b>Suscribirse</b> a <b>messages</b>.<br><small class="note">Si lo configurás en <b>Instagram → Configuración de la API con inicio de sesión de Instagram</b>, Meta firma con la <b>clave secreta de la app de Instagram</b> (otra distinta): cargala también en Vercel como <code>META_IG_APP_SECRET</code> y hacé Redeploy.</small></li>
       <li>Arriba en el panel de la app, el modo tiene que estar en <b>Publicado</b> (Live). En modo Desarrollo, Meta solo avisa los mensajes de quienes tienen un rol en la app. En <b>Revisión de la app → Permisos y funciones</b>, <b>instagram_manage_messages</b> tiene que tener <b>Acceso avanzado</b> (si Meta lo pide, completá la verificación del negocio).</li>
+      <li>En la app de <b>Instagram</b> del celular, en cada cuenta de marca: <b>Configuración y actividad → Mensajes y respuestas a historias → Herramientas conectadas → Permitir acceso a los mensajes</b> (activado). Sin esto, Meta no le pasa los mensajes a ninguna app.</li>
       <li>Tocá <b>Conectar las páginas</b> (acá abajo): suscribe la página de cada marca para que lleguen sus mensajes.</li>
       <li>Probá: desde otra cuenta de Instagram mandale un mensaje a una marca. En unos segundos aparece en <b>Mensajes</b>.</li></ol>
     <div class="irow"><button class="btn primary" type="button" data-igsetup ${igLive.busy ? "disabled" : ""}>${icon("plug")} Conectar las páginas</button><button class="btn" type="button" data-igstatus ${igLive.busy ? "disabled" : ""}>${icon("refresh-cw")} Revisar</button></div>
     ${ig ? `<div class="list">${ig.error ? `<div class="row"><span class="note">${esc(ig.error)}</span></div>` : `<div class="row"><div class="grow">Clave secreta de la app en Vercel</div>${ig.secret ? `<span class="pfid" style="margin:0">${icon("check")} Lista</span>` : `<span class="note" style="color:#fca5a5">Falta (paso 2)</span>`}</div>
-      ${Object.entries(ig.pages || {}).map(([b, x]) => `<div class="row"><div class="grow">${brandTag(b)}</div>${x.ok ? `<span class="pfid" style="margin:0">${icon("check")} Página conectada</span>` : `<span class="note" style="color:#fca5a5">${esc(x.error || "Sin conectar (paso 5)")}</span>`}</div>`).join("")}`}</div>` : ""}</section>
+      ${Object.entries(ig.pages || {}).map(([b, x]) => `<div class="row"><div class="grow">${brandTag(b)}</div>${x.ok ? `<span class="pfid" style="margin:0">${icon("check")} Página conectada</span>` : `<span class="note" style="color:#fca5a5">${esc(x.error || "Sin conectar (paso 6)")}</span>`}</div>`).join("")}`}</div>` : ""}
+    ${igLogHtml()}</section>
   <section class="panel cfgsec"><h2 class="pmh">${pmIco("image-play")}Búsqueda de GIFs (GIPHY) ${integSt === "loading" ? "" : on(st.giphy)}</h2>
     <ol class="isteps"><li>Entrá a <a href="https://developers.giphy.com/dashboard/" target="_blank" rel="noopener">developers.giphy.com</a> y creá una cuenta gratis (o iniciá sesión).</li>
       <li>Tocá <b>Create an App</b> → elegí <b>API</b> (no SDK) → poné un nombre (ej.: Retail MKT Hub) y una descripción corta → aceptá los términos → <b>Create App</b>.</li>
