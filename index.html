@@ -543,15 +543,20 @@ tr.tot td{border-top:1px solid var(--line-3)}
 .cst{display:flex;flex-direction:column;align-items:flex-start;text-align:left;flex:1;min-width:0;line-height:1.15}.cst small{font-size:11.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#93c5fd}
 .cst b{font-size:21px;font-weight:800;color:#fff;letter-spacing:-.01em}.csn{margin-left:auto;font-size:12.5px;font-weight:600;color:#93c5fd;white-space:nowrap}
 .cofh,.cofb{display:grid;grid-template-columns:minmax(0,1fr) 120px 120px 90px;gap:12px;align-items:center}
-.cofh{padding:6px 4px;font-size:11.5px;color:var(--muted);border-bottom:1px solid var(--line)}.cofh span:not(:first-child){text-align:right}
+.cofh{padding:6px 44px 6px 4px;font-size:11.5px;color:var(--muted);border-bottom:1px solid var(--line)}.cofh span:not(:first-child){text-align:right}
 .cof{border-bottom:1px solid var(--line)}
-.cofb{all:unset;box-sizing:border-box;width:100%;display:grid;grid-template-columns:minmax(0,1fr) 120px 120px 90px;gap:12px;align-items:center;padding:11px 4px;cursor:pointer}
+.cofr{display:flex;align-items:center;gap:6px}
+.cofb{flex:1;min-width:0;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) 120px 120px 90px;gap:12px;align-items:center;padding:11px 4px;cursor:pointer;border-radius:8px;-webkit-user-select:text;user-select:text}
+.cofcp{all:unset;box-sizing:border-box;display:grid;place-items:center;flex:none;width:34px;height:34px;border-radius:9px;color:var(--muted);cursor:pointer}.cofcp svg{width:17px;height:17px}
+.cofcp:hover{background:rgba(148,163,184,.12);color:var(--ink)}.cofcp:focus-visible{outline:2px solid var(--cyan)}
+.ctc{position:relative}.ctc>.cofcp{position:absolute;top:8px;right:8px}.ctc>.cofcp+b{padding-right:30px}
+.comgh .comcpall{margin-left:auto}
 .cofb:hover{background:rgba(148,163,184,.06)}.cofb:focus-visible{outline:2px solid var(--cyan)}
 .cofm{display:flex;flex-direction:column;align-items:flex-start;min-width:0}.cofm b{font-size:14.5px;font-weight:600;color:var(--ink);overflow-wrap:anywhere}
 .cofn,.cofo,.cofd2{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.cofn{font-size:14px;color:#cbd5e1}.cofo{font-size:16px;font-weight:800;color:#fbbf24}
 .cofd{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:2px 4px 8px;font-size:13px}.cofd dt{color:var(--muted)}.cofd dd{margin:0}
 .cof.open{background:rgba(148,163,184,.05)}.cof .chips{margin:0 4px 10px}
-@media (max-width:640px){.cst b{font-size:17px}.csi{width:40px;height:40px}.csi svg{width:22px;height:22px}.cofh{display:none}.cofb{grid-template-columns:1fr 1fr 1fr;gap:4px 10px}.cofm{grid-column:1/-1}.comart{display:none}.comgrp,.comlist{padding:10px}
+@media (max-width:640px){.cst b{font-size:17px}.csi{width:40px;height:40px}.csi svg{width:22px;height:22px}.cofh{display:none}.cofr{align-items:flex-start}.cofcp{margin-top:8px}.cofb{grid-template-columns:1fr 1fr 1fr;gap:4px 10px}.cofm{grid-column:1/-1}.comart{display:none}.comgrp,.comlist{padding:10px}
   .cofn,.cofo,.cofd2{text-align:left}.cofn::before,.cofo::before,.cofd2::before{content:attr(data-l);display:block;font-size:10.5px;font-weight:400;color:var(--muted)}}
 .rthint{display:flex;gap:6px;align-items:flex-start;margin:6px 0 0;font-size:12.5px}.rthint svg{width:14px;height:14px;flex:none;margin-top:2px}
 .jpnow .chips,.jp-top{flex-wrap:wrap}
@@ -4309,7 +4314,7 @@ document.addEventListener("click", e => {
   pop.style.left = Math.max(8, Math.min(r.left, innerWidth - pw - 8)) + "px";
   pop.style.top = (r.bottom + ph + 8 > innerHeight ? Math.max(8, r.top - ph - 4) : r.bottom + 4) + "px";
 });
-document.addEventListener("keydown", e => { if (e.key === "Escape") closeStageMenu(); if ((e.key === "Enter" || e.key === " ") && e.target.matches?.(".card[data-stagemenu],[data-jficha][role=button],.arow[data-ago],.jproc li[data-jmove],[data-ibopen]")){ e.preventDefault(); e.target.click(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeStageMenu(); if ((e.key === "Enter" || e.key === " ") && e.target.matches?.(".card[data-stagemenu],[data-jficha][role=button],.arow[data-ago],.jproc li[data-jmove],[data-ibopen],.cofb[data-comopen]")){ e.preventDefault(); e.target.click(); } });
 document.addEventListener("click", e => {
   const o = e.target.closest("[data-stageset]"); if (!o) return;
   closeStageMenu();
@@ -8417,8 +8422,18 @@ const COM_GUIDE = {
 };
 const comGuide = k => COM_GUIDE[k] ? `<p class="comguide">${icon("info")}<span><b>${COM_GUIDE[k][0]}</b><small>Indicación del Excel: “${COM_GUIDE[k][1]}”</small></span></p>` : "";
 // Tarjeta de un destacado: precio de oferta grande en amarillo, el precio de antes y el % bien visibles.
-const comCard = i => { const pc = comPct(i), was = typeof i.pvp === "number" && i.of !== i.pvp;
-  return `<div class="ctc"><b>${esc(comNice(i.desc))}</b><div class="ctp"><em>${esc(comOfTxt(i))}</em>${pc && !/x/i.test(pc) ? `<span class="cpct">−${esc(pc)}</span>` : ""}</div>${was ? `<span class="cwas">Antes ${gs(i.pvp)}</span>` : ""}<small>${esc(comSec(i.sec || i.sector))}</small></div>`; };
+// Producto, precios y descuento en texto, para pegar donde haga falta (un producto: una línea por dato; la lista: columnas).
+const comPcTxt = i => { const pc = comPct(i); return pc && !/x/i.test(pc) ? pc : ""; };
+const comCopyTxt = i => [comNice(i.desc), typeof i.pvp === "number" && i.of !== i.pvp ? `Antes: ${gs(i.pvp)}` : "", `Oferta: ${comOfTxt(i)}`, comPcTxt(i) ? `Descuento: ${comPcTxt(i)}` : ""].filter(Boolean).join("\n");
+const comCopyBtn = id => `<button type="button" class="cofcp" data-comcopy="${esc(id)}" title="Copiar producto y precios" aria-label="Copiar producto y precios">${icon("copy")}</button>`;
+async function comClip(txt, msg){
+  try { await navigator.clipboard.writeText(txt); toast(msg); return; } catch {}
+  const t = document.createElement("textarea"); t.value = txt; t.setAttribute("readonly", ""); t.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+  document.body.appendChild(t); t.select(); let ok = false; try { ok = document.execCommand("copy"); } catch {} t.remove();
+  toast(ok ? msg : "No se pudo copiar: seleccioná el texto y copialo.");
+}
+const comCard = (i, id) => { const pc = comPct(i), was = typeof i.pvp === "number" && i.of !== i.pvp;
+  return `<div class="ctc">${id ? comCopyBtn(id) : ""}<b>${esc(comNice(i.desc))}</b><div class="ctp"><em>${esc(comOfTxt(i))}</em>${pc && !/x/i.test(pc) ? `<span class="cpct">−${esc(pc)}</span>` : ""}</div>${was ? `<span class="cwas">Antes ${gs(i.pvp)}</span>` : ""}<small>${esc(comSec(i.sec || i.sector))}</small></div>`; };
 function pComercial(){
   const per = comPeriods();
   if (!comUI.auto && !window.RMH?.previewing){ comUI.auto = true; if (!COMERCIAL.syncedAt || Date.now() - Date.parse(COMERCIAL.syncedAt) > 3 * 3600e3) setTimeout(() => comSync(false), 0); }
@@ -8438,13 +8453,12 @@ function pComercial(){
   const dupTapa = all.filter(i => i.flag !== "Tapa" && i.cod && tapaCods.has(i.cod) && !/tapa/i.test(i.sec || ""));
   const groupsTop = [["Tapa", "star", "tapa", all.filter(i => i.flag === "Tapa")], ["Redes", "smartphone", "redes", all.filter(i => i.flag === "Zócalo redes")], ["Destacados", "sparkles", "dest", all.filter(i => i.flag === "Destacar")]].filter(g => g[3].length);
   const row = (i, k) => { const id = f.id + ":" + sheets.indexOf(sh) + ":" + k, open = comUI.open === id, pc = comPct(i);
-    return `<div class="cof${open ? " open" : ""}"><button type="button" class="cofb" data-comopen="${esc(id)}" aria-expanded="${open}">
+    return `<div class="cof${open ? " open" : ""}"><div class="cofr"><div class="cofb" data-comopen="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">
       <span class="cofm"><b>${esc(comNice(i.desc))}</b>${i.flag ? comFlag(i) : ""}</span>
       <span class="cofn" data-l="Antes">${typeof i.pvp === "number" ? gs(i.pvp) : "—"}</span>
       <span class="cofo" data-l="Oferta">${esc(comOfTxt(i))}</span>
-      <span class="cofd2" data-l="${pc ? "Descuento" : ""}">${pc ? `<span class="cpct sm">−${esc(pc)}</span>` : ""}</span></button>
-      ${open ? `<dl class="cofd">${[["Código", i.cod], ["Material", i.mat], ["Sector", comSent(i.sector)], ["Temática", comSent(i.tem)], ["Reconocimiento", typeof i.rec === "number" ? gs(i.rec) : i.rec], ["Oferta negociada", i.neg], ["Proveedor", comNice(i.prov) + (i.nprov ? " · N.° " + i.nprov : "")], ["Subcategoría", comSent(i.sub)], ["Página del folleto", comSec(i.sec)], ["Destacado", COM_FLAG_TXT[i.flag] || i.flag]].filter(([, v]) => v && String(v).trim()).map(([l, v]) => `<dt>${l}</dt><dd>${esc(String(v))}</dd>`).join("")}</dl>
-        <div class="chips"><button type="button" class="btn sm" data-comcopy="${esc(id)}">${icon("copy")} Copiar para redes</button></div>` : ""}</div>`; };
+      <span class="cofd2" data-l="${pc ? "Descuento" : ""}">${pc ? `<span class="cpct sm">−${esc(pc)}</span>` : ""}</span></div>${comCopyBtn(id)}</div>
+      ${open ? `<dl class="cofd">${[["Código", i.cod], ["Material", i.mat], ["Sector", comSent(i.sector)], ["Temática", comSent(i.tem)], ["Reconocimiento", typeof i.rec === "number" ? gs(i.rec) : i.rec], ["Oferta negociada", i.neg], ["Proveedor", comNice(i.prov) + (i.nprov ? " · N.° " + i.nprov : "")], ["Subcategoría", comSent(i.sub)], ["Página del folleto", comSec(i.sec)], ["Destacado", COM_FLAG_TXT[i.flag] || i.flag]].filter(([, v]) => v && String(v).trim()).map(([l, v]) => `<dt>${l}</dt><dd>${esc(String(v))}</dd>`).join("")}</dl>` : ""}</div>`; };
   const bySec = []; list.forEach(i => { const k = comSec(i.sec || i.sector); let g = bySec.find(x => x[0] === k); if (!g) bySec.push(g = [k, []]); g[1].push(i); });
   return head + `<div class="comper" role="group" aria-label="Quincena">${chips.map(x => { const st = comState(x); return `<button type="button" class="comchip s-${st} ${x.id === f.id ? "on" : ""}" data-comper="${x.id}" aria-pressed="${x.id === f.id}"><small>${icon(st === "vig" ? "circle-check" : st === "prox" ? "calendar-clock" : "history")}${COM_ST[st]}</small><b>${comRange(x)}</b>${x.folleto ? `<small class="cfol">${icon("book-open")}Folleto ${esc(x.folleto)}</small>` : ""}</button>`; }).join("")}
       ${older.length ? `<select class="base sm" data-comold aria-label="Quincenas anteriores"><option value="">Quincenas anteriores…</option>${older.map(x => `<option value="${x.id}" ${x.id === f.id ? "selected" : ""}>${comRange(x)} ${x.from.slice(0, 4)}</option>`).join("")}</select>` : ""}</div>
@@ -8453,9 +8467,9 @@ function pComercial(){
       <div class="comk"><span>${icon("package")}<b>${all.length}</b> productos</span>${groupsTop.map(g => `<span class="k-${g[2]}">${icon(g[1])}<b>${g[3].length}</b> ${g[3].length === 1 && g[0] === "Destacados" ? "destacado" : g[0].toLowerCase()}</span>`).join("")}${best ? `<span class="k-pct">${icon("badge-percent")}hasta <b>${best}%</b> de descuento</span>` : ""}</div>
       <div class="comsrc">${f.inDrive === false ? `<span class="comgone">${icon("file-x")} Ya no se encuentra el archivo original en Drive (los datos quedan guardados acá)</span>` : /^[\w-]{10,}$/.test(f.id) ? `<a class="btn sm" href="https://drive.google.com/file/d/${encodeURIComponent(f.id)}/view" target="_blank" rel="noopener">${icon("file-spreadsheet")} Ver Excel original</a>` : ""}${f.backup?.url ? `<a class="btn sm" href="${esc(f.backup.url)}" target="_blank" rel="noopener">${icon("hard-drive")} Respaldo en Drive</a>` : ""}<span class="note">${icon("refresh-cw")} Revisado ${COMERCIAL.syncedAt ? inboxAge(COMERCIAL.syncedAt) : "—"}</span></div>
       ${COMERCIAL.backupScript === false && viewer.role === "Admin total" ? `<p class="note comwarn">${icon("info")} Para que el respaldo se guarde solo en Drive, actualizá el script de Google Drive en Configuración → Integraciones.</p>` : ""}</section>
-    ${groupsTop.map(([t, ic, cls, items]) => `<section class="comgrp g-${cls}"><h3 class="comgh">${icon(ic)}<span>${t}</span><small>${items.length}</small></h3>${comGuide(cls)}${cls === "tapa" && dupTapa.length ? `<p class="comdup">${icon("triangle-alert")}<span><b>Revisar:</b> ${dupTapa.length === 1 ? "este producto de tapa también aparece" : "estos productos de tapa también aparecen"} adentro del folleto: ${dupTapa.map(i => `${esc(comNice(i.desc))} (${esc(comSec(i.sec || i.sector))})`).join(" · ")}.</span></p>` : ""}<div class="comtop">${items.slice(0, 24).map(comCard).join("")}</div></section>`).join("")}
+    ${groupsTop.map(([t, ic, cls, items]) => `<section class="comgrp g-${cls}"><h3 class="comgh">${icon(ic)}<span>${t}</span><small>${items.length}</small></h3>${comGuide(cls)}${cls === "tapa" && dupTapa.length ? `<p class="comdup">${icon("triangle-alert")}<span><b>Revisar:</b> ${dupTapa.length === 1 ? "este producto de tapa también aparece" : "estos productos de tapa también aparecen"} adentro del folleto: ${dupTapa.map(i => `${esc(comNice(i.desc))} (${esc(comSec(i.sec || i.sector))})`).join(" · ")}.</span></p>` : ""}<div class="comtop">${items.slice(0, 24).map(i => { const si = sheets.findIndex(x => x.items.includes(i)); return comCard(i, si < 0 ? "" : f.id + ":" + si + ":" + sheets[si].items.indexOf(i)); }).join("")}</div></section>`).join("")}
     <section class="comlist">
-      <h3 class="comgh">${icon("list")}<span>Todas las ofertas</span><small>${all.length}</small></h3>
+      <h3 class="comgh">${icon("list")}<span>Todas las ofertas</span><small>${all.length}</small>${list.length ? `<button type="button" class="btn sm comcpall" data-comcopyall title="Copia producto, precio de antes, oferta y descuento de lo que se ve (con el filtro), para pegar en Excel o en un texto">${icon("copy")} Copiar lista</button>` : ""}</h3>
       ${sheets.length > 1 ? `<div class="comtabs" role="tablist">${sheets.map((x, k) => `<button type="button" role="tab" class="${x === sh ? "on" : ""}" aria-selected="${x === sh}" data-comsheet="${k}">${esc(comSheetName(x, k))} <span>${x.items.length}</span></button>`).join("")}</div>` : ""}
       <div class="comfil"><input class="base" id="comQ" placeholder="Buscar producto, proveedor o código" value="${esc(comUI.q)}" autocomplete="off">
         <select class="base" data-comsec aria-label="Página"><option value="Todas">Todas las páginas</option>${secs.map(x => `<option ${x === comUI.sec ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>
@@ -8472,10 +8486,14 @@ document.addEventListener("click", e => {
   const p = e.target.closest("[data-comper]"); if (p){ comUI = { ...comUI, id:p.dataset.comper, sheet:0, sec:"Todas", open:null }; render(); return; }
   const sh = e.target.closest("[data-comsheet]"); if (sh){ comUI.sheet = +sh.dataset.comsheet; comUI.sec = "Todas"; comUI.open = null; render(); return; }
   if (e.target.closest("[data-comtop]")){ comUI.top = !comUI.top; render(); return; }
-  const o = e.target.closest("[data-comopen]"); if (o){ comUI.open = comUI.open === o.dataset.comopen ? null : o.dataset.comopen; render(); return; }
-  const cp = e.target.closest("[data-comcopy]"); if (cp){ const [fid, si, k] = cp.dataset.comcopy.split(":"), i = COMERCIAL.files?.[fid]?.sheets?.[+si]?.items?.[+k]; if (!i) return;
-    const pc = comPct(i), txt = `${comNice(i.desc)}: ${comOfTxt(i)}${typeof i.pvp === "number" && i.of !== i.pvp ? ` (antes ${gs(i.pvp)})` : ""}${pc && !/x/i.test(pc) ? ` · ${pc} de descuento` : ""}`;
-    navigator.clipboard?.writeText(txt).then(() => toast("Copiado: " + txt), () => toast(txt)); }
+  const o = e.target.closest("[data-comopen]"); if (o){ const sel = getSelection(); if (sel && !sel.isCollapsed && o.contains(sel.anchorNode)) return; // está seleccionando texto para copiar
+    comUI.open = comUI.open === o.dataset.comopen ? null : o.dataset.comopen; render(); return; }
+  const cp = e.target.closest("[data-comcopy]"); if (cp){ const [si, k] = cp.dataset.comcopy.split(":").slice(-2), fid = cp.dataset.comcopy.split(":").slice(0, -2).join(":"), i = COMERCIAL.files?.[fid]?.sheets?.[+si]?.items?.[+k]; if (!i) return;
+    comClip(comCopyTxt(i), `Copiado: ${comNice(i.desc)}`); return; }
+  if (e.target.closest("[data-comcopyall]")){ const rows = [...document.querySelectorAll(".comlist [data-comcopy]")].map(b => { const [si, k] = b.dataset.comcopy.split(":").slice(-2), fid = b.dataset.comcopy.split(":").slice(0, -2).join(":"); return COMERCIAL.files?.[fid]?.sheets?.[+si]?.items?.[+k]; }).filter(Boolean);
+    const cell = v => String(v ?? "").replace(/[\t\r\n]+/g, " ").trim();
+    const txt = [["Página", "Producto", "Antes", "Oferta", "Descuento"], ...rows.map(i => [comSec(i.sec || i.sector), comNice(i.desc), typeof i.pvp === "number" && i.of !== i.pvp ? gs(i.pvp) : "", comOfTxt(i), comPcTxt(i)])].map(r => r.map(cell).join("\t")).join("\n");
+    comClip(txt, `Lista copiada: ${rows.length} ${rows.length === 1 ? "producto" : "productos"}. Pegala en Excel o en un texto.`); return; }
 });
 document.addEventListener("change", e => {
   if (e.target.matches?.("[data-comold]") && e.target.value){ comUI = { ...comUI, id:e.target.value, sheet:0, sec:"Todas", open:null }; render(); }
