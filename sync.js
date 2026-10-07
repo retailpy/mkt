@@ -235,14 +235,16 @@ const RMH = (() => {
   async function checkClock(){
     clockAt = Date.now();
     try {
-      const clock = () => performance.timeOrigin + performance.now(); // la hora de la compu
+      // La hora de la compu: Date.now() (la del sistema). No performance.timeOrigin + now(): ese reloj se frena
+      // mientras la compu está suspendida (Mac con la tapa cerrada) y daba "atrasada" con la hora bien.
+      const clock = () => Date.now();
       const t0 = clock(), r = await fetch("sw.js?t=" + Math.round(t0), { method:"HEAD", cache:"no-store" }), d = Date.parse(r.headers.get("date") || "");
       if (isNaN(d)) return;
       const off = d + 500 - (t0 + clock()) / 2; clockOffset = Math.abs(off) > 2000 ? Math.round(off) : 0; // la hora del servidor viene en segundos enteros
       const skew = Math.round(((t0 + clock()) / 2 - d) / 60000), old = $id("clockBar");
       if (Math.abs(skew) < 3){ old?.remove(); return; }
       const b = old || Object.assign(document.createElement("div"), { id:"clockBar", className:"lostbar warn" }); b.setAttribute("role", "alert");
-      b.innerHTML = `<div><b>La hora de esta computadora está ${skew > 0 ? "adelantada" : "atrasada"} ${Math.abs(skew) >= 90 ? Math.round(Math.abs(skew) / 60) + " h" : Math.abs(skew) + " min"}.</b><span>Corregila (en Windows: Configuración → Hora e idioma → “Establecer la hora automáticamente”). Con la hora mal, la sesión se corta y no se guarda lo que cargás.</span></div><button type="button" class="btn sm" data-clockok>Entendido</button>`;
+      b.innerHTML = `<div><b>La hora de esta computadora está ${skew > 0 ? "adelantada" : "atrasada"} ${Math.abs(skew) >= 90 ? Math.round(Math.abs(skew) / 60) + " h" : Math.abs(skew) + " min"}.</b><span>Corregila (Windows: Configuración → Hora e idioma → “Establecer la hora automáticamente”; Mac: Configuración del Sistema → General → Fecha y hora → “Ajustar automáticamente”). Con la hora mal, la sesión se corta y no se guarda lo que cargás.</span></div><button type="button" class="btn sm" data-clockok>Entendido</button>`;
       if (!old) document.body.appendChild(b);
       b.querySelector("[data-clockok]").onclick = () => b.remove();
     } catch (e) {}
