@@ -1,6 +1,7 @@
 // Mensajes directos reales de cada marca: Instagram (DM) y Facebook (Messenger). Guarda en app_state → s:META_INBOX:
 //   { "updated": "...", "Stock": { "page": "...", "pageId": "...", "handle": "@...", "err": null,
 //       "convs": [ { id, net:"IG"|"FB", who, ts, answered, waitSince, msgs:[ { t, me, ts, att } ] } ],
+//       "hist": [ { id, conv, net, who, ts, t, ctx } ],   ← mensajes con queja del mes actual y el anterior (Reclamos del mes)
 //       "diag": { "IG": { lista, detalle, total, n, omitidas, cortado } } }, ... }   ← diag: cuántos segundos tardó Meta y cuántas llegaron
 // Lo usa la sección “Mensajes” del Panel de Trabajo de CM: quién escribió y si ya se contestó (solo lectura:
 // para contestar se usa Meta Business Suite). La leen solo Admin total, Admin y CM (lo controla la base).
@@ -132,6 +133,26 @@ function shape(c, net, meIds){
 }
 
 const NET = { FB: "Facebook", IG: "Instagram" };
+// Reclamos del mes: los mensajes de clientes con palabras de queja se guardan aparte (hist) para que la app arme el
+// resumen del mes entero, aunque la conversación ya tenga más mensajes nuevos o tenga más de 30 días.
+// Quedan los del mes actual y el anterior (la app muestra cada mes).
+const fold = t => String(t || "").toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+const QUEJA = /reclam|queja|quejar|pesim|malisim|mala atencion|mal atendid|atendieron mal|maltrat|groser|falta de respeto|mal educad|vencid|podrid|mal estado|cucarach|intoxic|cobr\w* (de mas|mal|doble|dos veces)|me cobraron|precio (distinto|diferente|incorrecto|equivocado)|no respet\w* (el |la |los |las )?(precio|oferta|descuento)|estafa|enganos?\b|devolucion|reembols|no me (devolvieron|atendieron|quisieron|dejaron)|horrible|verguenza|indignad|decepcion|nunca mas|sucio|suciedad|defensa del consumidor|denuncia|me cobran|te cobra|cobran mal|en caja me|filas? (eran |son |muy |bastante )*largas|mas cajer|pocas cajas|pocos cajer|destruid|descompon|aplastad|danad|revisar bien|circuito cerrado|extraviad|robaron|no (da|das) gusto|no funcion|lastimosamente/;
+const pyMonth = ts => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date(ts)).slice(0, 7);
+function quejas(prevHist, convs){
+  const now = new Date(), cur = pyMonth(now), d = new Date(now); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - 1);
+  const keep = [pyMonth(d), cur], map = new Map();
+  (Array.isArray(prevHist) ? prevHist : []).forEach(h => { if (h?.id && keep.includes(pyMonth(h.ts))) map.set(h.id, h); });
+  for (const c of convs){
+    const own = (c.msgs || []).filter(m => !m.me && m.t && m.ts), ctx = short(own.map(m => m.t).join(" · "), 600);
+    for (const m of own){
+      if (!QUEJA.test(fold(m.t)) || !keep.includes(pyMonth(m.ts))) continue;
+      const id = c.id + "|" + m.ts, o = map.get(id);
+      map.set(id, { id, conv: c.id, net: c.net, who: c.who, ts: m.ts, t: m.t, ctx: o && o.ctx.length > ctx.length ? o.ctx : ctx });
+    }
+  }
+  return [...map.values()].sort((a, b) => String(b.ts).localeCompare(String(a.ts))).slice(0, 400);
+}
 const meOf = (p, net) => (net === "IG" ? [p.pageId, p.igId] : [p.pageId]).map(String); // los id de la marca en esa red
 const fresh = c => c?.ts && Date.now() - new Date(c.ts).getTime() <= DAYS * 864e5;
 
@@ -214,7 +235,7 @@ async function handle(req, res){
         n[net] = r.list.length; if (r.skipped) n[net + "omitidas"] = r.skipped;
       }
       convs.sort((a, c) => String(c.ts || "").localeCompare(String(a.ts || "")));
-      payload[b] = { page: s.p.page, pageId: s.p.pageId, handle: s.p.handle, convs, err: errs.length ? errs.join(" · ") : null, diag: s.diag };
+      payload[b] = { page: s.p.page, pageId: s.p.pageId, handle: s.p.handle, convs, hist: quejas(prev[b]?.hist, convs), err: errs.length ? errs.join(" · ") : null, diag: s.diag };
       summary[b] = { ...n, sinContestar: convs.filter(c => !c.answered).length, err: payload[b].err };
     }
     if (!dry) await save("s:META_INBOX", payload);
