@@ -1,5 +1,5 @@
 // Retail MKT Hub · service worker: la app abre aunque no haya internet (muestra lo último que se cargó).
-const CACHE = "mkthub-v131";
+const CACHE = "mkthub-v132";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./logo.png", "./logo-wide.png", "./marcas.png", "./config.js", "./sync.js", "./vendor/supabase.js"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
@@ -12,6 +12,8 @@ self.addEventListener("fetch", e => {
   if (url.origin === location.origin && url.pathname.endsWith(".js") && !url.pathname.includes("/vendor/")){ e.respondWith(fetch(req).then(r => { if (r.ok){ const cp = r.clone(); caches.open(CACHE).then(c => c.put(req, cp)); } return r; }).catch(() => caches.match(req))); return; }
   // La página: primero internet (para tener siempre la última versión); si no hay, la guardada.
   // Solo se guardan las respuestas buenas (un error del servidor nunca reemplaza a la versión que anda).
+  // Otras páginas del sitio (por ejemplo la política de privacidad) van directo, sin guardarse como si fueran la app.
+  if (req.mode === "navigate" && !/\/(index\.html)?$/.test(url.pathname)) return;
   if (req.mode === "navigate"){ e.respondWith(fetch(req).then(r => { if (r.ok){ const cp = r.clone(); caches.open(CACHE).then(c => c.put("./index.html", cp)); } return r; }).catch(() => caches.match("./index.html"))); return; }
   // Fotos y videos de afuera (fotos del chat en Drive, Instagram, GIFs, Pinterest…): directo de internet, sin guardarlos
   // acá, así no se acumulan en el celular (el navegador los maneja con su propio caché, que se limpia solo).
