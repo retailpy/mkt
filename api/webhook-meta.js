@@ -83,7 +83,8 @@ module.exports = async (req, res) => {
   if (req.method === "GET" && (q.setup || q.status)){
     if (!(await cronOrUser(req))) return res.status(401).json({ ok: false, error: "No autorizado" });
     try {
-      const p = await pages(), out = {};
+      // De qué app de Meta es el token (META_TOKEN): el webhook y la clave secreta tienen que ser de esa misma app.
+      const [p, app] = await Promise.all([pages(), graph("/app", { fields: "id,name" }).then(a => ({ id: String(a.id), name: a.name || "" }), e => ({ error: e.message }))]), out = {};
       for (const b of ORDEN){
         const x = p.byBrand[b]; if (!x?.igId) continue;
         const tok = p.tokens[x.pageId]; if (!tok){ out[b] = { ok: false, error: "sin token de la página" }; continue; }
@@ -97,8 +98,8 @@ module.exports = async (req, res) => {
           }
         } catch (e){ out[b] = { ok: false, error: e.message }; }
       }
-      await log({ kind: q.setup ? "setup" : "status", secret: SECRETS().length > 0, pages: Object.fromEntries(Object.entries(out).map(([b, x]) => [b, x.ok ? "ok" : String(x.error || "no").slice(0, 120)])) });
-      return res.status(200).json({ ok: true, secret: SECRETS().length > 0, verify: process.env.META_VERIFY_TOKEN ? "propio" : "retail-mkt-hub", pages: out });
+      await log({ kind: q.setup ? "setup" : "status", secret: SECRETS().length > 0, app, pages: Object.fromEntries(Object.entries(out).map(([b, x]) => [b, x.ok ? "ok" : String(x.error || "no").slice(0, 120)])) });
+      return res.status(200).json({ ok: true, app, secret: SECRETS().length > 0, verify: process.env.META_VERIFY_TOKEN ? "propio" : "retail-mkt-hub", pages: out });
     } catch (e){ return res.status(500).json({ ok: false, error: e.message }); }
   }
   if (req.method !== "POST") return res.status(405).json({ ok: false });
