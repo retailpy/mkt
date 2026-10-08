@@ -675,6 +675,14 @@ html.nomotion .jproc li.can .pdot{animation:none}
 .cbump.msgc,.cbump#msgCount,.cbump#menuCount,.cbump.tbc{animation:cbump .7s ease,cglow 1.2s ease 2}
 .nav a.cbump,.tabbar .tbi.cbump{animation:cglow 1.2s ease 3;border-radius:12px}
 .msgc,#msgCount,.tabbar a[data-page="mensajes"] .tbc{animation:cglow 2.4s ease-out infinite}
+/* Panel de Trabajo con pedidos sin abrir: el número late y el ícono se mueve suave hasta que se abren */
+@keyframes wkglow{0%{box-shadow:0 0 0 0 rgba(239,68,68,.6)}100%{box-shadow:0 0 0 10px rgba(239,68,68,0)}}
+@keyframes wknudge{0%,72%,100%{transform:none}80%{transform:scale(1.18) rotate(-7deg)}88%{transform:scale(1.12) rotate(6deg)}94%{transform:scale(1.05)}}
+.nav a.wknew .ibc,.tabbar a.wknew .tbc,.pring .ibc.new{animation:wkglow 1.8s ease-out infinite}
+.nav a.wknew>svg,.tabbar a.wknew .tbi svg{animation:wknudge 3.2s ease-in-out infinite;transform-origin:50% 60%}
+.nav a.wknew{color:var(--ink)}
+html.nomotion .nav a.wknew .ibc,html.nomotion .tabbar a.wknew .tbc,html.nomotion .pring .ibc.new,html.nomotion .nav a.wknew>svg,html.nomotion .tabbar a.wknew .tbi svg{animation:none}
+@media (prefers-reduced-motion:reduce){.nav a.wknew .ibc,.tabbar a.wknew .tbc,.pring .ibc.new,.nav a.wknew>svg,.tabbar a.wknew .tbi svg{animation:none}}
 .cmute.on{color:#f59e0b}.cmuted svg{width:13px;height:13px;vertical-align:-2px;opacity:.7}
 .pthumb{width:44px;height:44px;border-radius:10px;object-fit:cover;flex:none;display:grid;place-items:center;background:var(--line-2,#1e293b);color:var(--faint);font-size:11px;font-weight:600}
 .pthumb.lg{width:100%;height:auto;aspect-ratio:1;border-radius:12px}
@@ -2099,6 +2107,7 @@ html.light img,html.light .thprev,html.light video{filter:invert(1) hue-rotate(1
 .pmbc{all:unset;box-sizing:border-box;padding:6px 12px;border:1px solid var(--line-3);border-radius:12px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer}
 .pmbc:hover{color:var(--ink);border-color:#64748b}
 .pmbc.on{color:var(--ink);border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan)}
+.pmall{display:inline-flex;align-items:center;gap:6px}.pmall svg{width:14px;height:14px}
 
 .pmform{grid-template-columns:repeat(3,minmax(0,1fr))}
 .pmform .w2{grid-column:span 2}.pmform .w3{grid-column:1/-1}
@@ -4248,7 +4257,9 @@ function panelStats(){
 function pPanel(ar){
   const dg = ar === "dg", st = panelStats();
   const icons = [...(dg ? PANEL_DESIGN : PANEL_CM), ...PANEL_TOOLS.filter(x => x.a === (dg ? "Diseño" : "CM"))].filter(x => can(x.k))
-    .map((x, i) => `<button type="button" class="picon" data-page="${x.k}" style="--i:${i}" aria-label="Abrir ${esc(x.t)}"><span class="pring" aria-hidden="true">${icon(x.i)}${x.k === "inbox" ? pendBadge() : ""}</span><b>${x.t}</b><small>${x.d}</small><span class="pmeta">${st[x.k] || ""}</span></button>`).join("");
+    .map((x, i) => { const open = JOB_SECS.includes(x.k) ? myJobsOpen(x.k) : [], nw = open.filter(isUnseenJob).length;
+      const badge = x.k === "inbox" ? pendBadge() : open.length ? `<span class="count ibc${nw ? " new" : ""}" title="${open.length} pedido${open.length === 1 ? "" : "s"} a tu nombre sin terminar${nw ? ` · ${nw} sin abrir` : ""}">+${open.length > 99 ? 99 : open.length}</span>` : "";
+      return `<button type="button" class="picon" data-page="${x.k}" style="--i:${i}" aria-label="Abrir ${esc(x.t)}${open.length ? ` (${open.length} pedido${open.length === 1 ? "" : "s"} a tu nombre sin terminar)` : ""}"><span class="pring" aria-hidden="true">${icon(x.i)}${badge}</span><b>${x.t}</b><small>${x.d}</small><span class="pmeta">${st[x.k] || ""}</span></button>`; }).join("");
   const al = panelMine(ar), shown = panelAll ? al : al.slice(0, 5);
   const area = dg ? "Diseño" : "CM", mineOnly = ownsJobs();
   const scope = jobs.filter(j => j.area === area && seesBrand(j.brand) && (!mineOnly || j.owner === viewer.name));
@@ -7081,6 +7092,12 @@ function pmMarkIcon(k){
   const nm = document.getElementById("pmiName"); if (nm) nm.textContent = pmIconName(k);
   if (pmUI.iconManual) document.getElementById("pmiAuto")?.remove();
 }
+// Marcas: una o varias; “Las tres” marca Superseis, Stock y Delimarket juntas (ej.: Halloween o Navidad para todas).
+const campBrands = c => (c.brands && c.brands.length ? c.brands : [c.brand]).filter(Boolean);
+function pmBrandPick(sel, label){
+  const all3 = MAIN_BRANDS.every(b => sel.includes(b));
+  return `<div class="w3 pmbrandsel"><span>${label}</span><div class="pmbrands"><button type="button" class="pmbc pmall${all3 ? " on" : ""}" data-pmall aria-pressed="${all3}">${icon("layers")} Las tres: ${MAIN_BRANDS.join(" · ")}</button>${[...new Set([...Object.keys(BRANDS), ...sel])].map(b => `<button type="button" class="pmbc${sel.includes(b) ? " on" : ""}" data-pmbrand="${esc(b)}" aria-pressed="${sel.includes(b)}">${esc(b)}</button>`).join("")}</div></div>`;
+}
 const pmFormBtns = (kind, it, label) => `<div class="chips" style="grid-column:1/-1;justify-content:flex-end">${it ? `<button class="btn danger" type="button" data-pmdel="${kind}|${it.id}" style="margin-right:auto">Borrar</button>` : ""}<button class="btn" type="button" data-pmform="">Cancelar</button><button class="btn primary" type="submit">${it ? "Guardar cambios" : label}</button></div>`;
 function pmObjForm(){
   const o = pmUI.edit ? OBJECTIVES.find(x => x.id === pmUI.edit) : null, v = o ? objVerb(o) : "", verb = o ? (v || "_") : OBJ_VERBS[0];
@@ -7100,7 +7117,8 @@ function pmCampForm(){
   const c = pmUI.edit ? MONTH_CAMPAIGNS.find(x => x.id === pmUI.edit) : null;
   const from = c ? (c.from || "") : `${MONTH}-01`, until = c ? (c.until || "") : monthEnd(MONTH);
   return `<form class="panel pform pmform" id="pmCampForm"><h3 style="margin:0;grid-column:1/-1">${c ? "Editar campaña" : `Nueva campaña de ${monthName(MONTH)}`}</h3>
-      <label>Marca<select class="base" id="pcBrand">${[...new Set([...Object.keys(BRANDS), c?.brand].filter(Boolean))].map(b => `<option ${c && c.brand === b ? "selected" : ""}>${esc(b)}</option>`).join("")}</select></label><label class="w2">Campaña<input class="base" id="pcTitle" required maxlength="80" value="${esc(c?.title || "")}" placeholder="Ej.: Ofertas de primavera"></label>
+      <label class="w3">Campaña<input class="base" id="pcTitle" required maxlength="80" value="${esc(c?.title || "")}" placeholder="Ej.: Ofertas de primavera, Halloween, Navidad"></label>
+      ${pmBrandPick(c ? campBrands(c) : [], "Marcas * <span class=\"note\">(una o varias)</span>")}
       <label>Desde<input class="base" type="date" id="pcFrom" value="${from}"></label><label>Hasta<input class="base" type="date" id="pcUntil" value="${until}"></label><label>Canales<input class="base" id="pcCh" value="${esc(c?.channels || "")}" placeholder="IG · FB · cartelería"></label>
       <label class="w3">Qué destacar<input class="base" id="pcDesc" required value="${esc(c?.desc || "")}" placeholder="Productos, mensaje, beneficio…"></label>
       ${c && !c.from && c.dates ? `<p class="note" style="grid-column:1/-1;margin:0">Antes decía “${esc(c.dates)}”: poné desde y hasta para que se vea en cada mes hasta que termine.</p>` : `<p class="note" style="grid-column:1/-1;margin:0">Se ve en cada mes que toquen sus fechas, hasta que termina.</p>`}
@@ -7116,7 +7134,7 @@ function pmUpForm(){
       <label>Fecha o desde *<input class="base" type="date" id="puFrom" required value="${from}"></label>
       <label>Hasta (opcional)<input class="base" type="date" id="puUntil" value="${until}"></label>
       <p class="note" style="margin:0;align-self:center">Se ve en Planificación hasta que termina la fecha (la de “Hasta” o, si no ponés, la de arriba).</p>
-      <div class="w3 pmbrandsel"><span>Marcas (opcional)</span><div class="pmbrands">${[...new Set([...Object.keys(BRANDS), ...brands])].map(b => `<button type="button" class="pmbc${brands.includes(b) ? " on" : ""}" data-pmbrand="${esc(b)}" aria-pressed="${brands.includes(b)}">${esc(b)}</button>`).join("")}</div></div>
+      ${pmBrandPick(brands, "Marcas (opcional)")}
       <label class="w3">Detalle<input class="base" id="puDesc" value="${esc(u?.desc || "")}" placeholder="Qué hay que preparar y para cuándo"></label>
       ${pmIconPicker(u ? u.title : "", kind)}
       ${pmFormBtns("up", u, "Agregar")}</form>`;
@@ -7165,7 +7183,7 @@ function pPlanMes(){
     return `<li class="oitem"${tap("obj", o.id)}><span class="onum">${n}</span><div><b>${v ? `<span class="overb">${esc(v)}</span>` : ""}${esc(rest)}</b>${o.why ? `<p><span class="olab">Para qué:</span> ${esc(o.why)}</p>` : ""}${o.metric ? `<p><span class="olab">Cómo lo medimos:</span> ${esc(o.metric)}</p>` : ""}${o.due ? `<p class="odue">${icon("calendar")} Para el ${dm(o.due)}${o.month !== MONTH ? ` · viene de ${monthName(o.month)}` : ""}</p>` : ""}</div>${del("obj", o.id)}</li>`; };
   const group = (area, list) => list.length ? `<div class="ogroup" style="--ac:${OBJ_AREAS[area].c}"><h3 class="oglabel">${pmIco(OBJ_AREAS[area].i)} ${area === "Equipo" ? "Todo el equipo" : area === "CM" ? "Community Manager" : "Diseño gráfico"}</h3><ol class="olist">${list.map((o, i) => objCard(o, i + 1)).join("")}</ol></div>` : "";
   const campCard = c => { const st = campState(c), when = c.from && c.until ? pmRange(c.from, c.until) : c.dates || "";
-    return `<article class="panel ccard"${tap("camp", c.id)}><header><span class="pmic">${icon(campIcon(c))}</span><span class="pmbr">${esc(c.brand)}</span><span class="grow"></span>${st ? `<span class="cstat">${st}</span>` : ""}${del("camp", c.id)}</header><h3>${esc(c.title)}</h3>${c.desc ? `<p>${esc(c.desc)}</p>` : ""}<footer><span class="pmfoot">${icon("calendar")} ${esc(when)}</span><span>${esc(c.channels || "")}</span></footer></article>`; };
+    return `<article class="panel ccard"${tap("camp", c.id)}><header><span class="pmic">${icon(campIcon(c))}</span><span class="pmbr">${esc(campBrands(c).join(" · "))}</span><span class="grow"></span>${st ? `<span class="cstat">${st}</span>` : ""}${del("camp", c.id)}</header><h3>${esc(c.title)}</h3>${c.desc ? `<p>${esc(c.desc)}</p>` : ""}<footer><span class="pmfoot">${icon("calendar")} ${esc(when)}</span><span>${esc(c.channels || "")}</span></footer></article>`; };
   const upCard = u => { const when = pmRange(u.from, u.until);
     return `<article class="upitem"${tap("up", u.id)}><header><span class="pmic">${icon(upIcon(u))}</span><span class="ukind">${esc(u.kind || "")}</span><span class="grow"></span>${del("up", u.id)}</header><b>${esc(u.title)}</b>${when ? `<span class="pmfoot updates">${icon("calendar")} ${when}</span>` : ""}${u.desc ? `<p>${esc(u.desc)}</p>` : ""}${(u.brands || []).length ? `<span class="pmbr">${u.brands.map(esc).join(" · ")}</span>` : ""}</article>`; };
   const form = k => pmUI.form !== k ? "" : k === "obj" ? pmObjForm() : k === "camp" ? pmCampForm() : pmUpForm();
@@ -7191,9 +7209,12 @@ document.addEventListener("click", e => {
     const [k, id] = d.dataset.pmdel.split("|"), arr = PM_ARR[k](), i = arr.findIndex(x => x.id === +id); if (i < 0) return;
     arr.splice(i, 1); if (pmUI.edit === +id && pmUI.form === k) pmUI = { form:null, edit:null, icon:"", iconManual:false }; render(); toast("Borrado."); return; }
   const ic = e.target.closest("[data-pmicon]"); if (ic){ pmUI.icon = ic.dataset.pmicon; pmUI.iconManual = true; pmMarkIcon(pmUI.icon); return; }
-  const br = e.target.closest("[data-pmbrand]"); if (br){ const on = br.classList.toggle("on"); br.setAttribute("aria-pressed", on); return; }
+  const br = e.target.closest("[data-pmbrand]"); if (br){ const on = br.classList.toggle("on"); br.setAttribute("aria-pressed", on); pmSyncAll(br.closest("form")); return; }
+  const a3 = e.target.closest("[data-pmall]"); if (a3){ const f = a3.closest("form"), bs = MAIN_BRANDS.map(b => f.querySelector(`[data-pmbrand="${b}"]`)).filter(Boolean), on = !bs.every(b => b.classList.contains("on"));
+    bs.forEach(b => { b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); }); pmSyncAll(f); return; }
   const ed = e.target.closest("[data-pmedit]"); if (ed && isAT()){ const [k, id] = ed.dataset.pmedit.split("|"), it = PM_ARR[k]().find(x => x.id === +id); if (it) pmOpen(k, it); }
 });
+const pmSyncAll = f => { const a = f?.querySelector("[data-pmall]"); if (!a) return; const on = MAIN_BRANDS.every(b => f.querySelector(`[data-pmbrand="${b}"]`)?.classList.contains("on")); a.classList.toggle("on", on); a.setAttribute("aria-pressed", on); };
 // Mientras se escribe el título, el ícono sugerido se actualiza solo (si todavía no se eligió uno a mano).
 document.addEventListener("input", e => { if (pmUI.iconManual || !e.target.closest("#pmUpForm,#pmCampForm")) return;
   pmMarkIcon(e.target.closest("#pmUpForm") ? pmGuessIcon($("#puTitle").value, $("#puKind").value) : pmGuessIcon(`${$("#pcTitle").value} ${$("#pcDesc").value}`, "Campaña")); });
@@ -7210,8 +7231,9 @@ document.addEventListener("submit", e => {
     const o = ed && OBJECTIVES.find(x => x.id === ed); if (o) Object.assign(o, data); else OBJECTIVES.push({ id:nid(OBJECTIVES), month:MONTH, ...data }); }
   if (id === "pmCampForm"){ const from = $("#pcFrom").value, until = $("#pcUntil").value, c = ed && MONTH_CAMPAIGNS.find(x => x.id === ed);
     if (!$("#pcTitle").value.trim() || !$("#pcDesc").value.trim()){ toast("Completá la campaña y qué destacar."); return; }
+    const brands = [...document.querySelectorAll("#pmCampForm [data-pmbrand].on")].map(b => b.dataset.pmbrand); if (!brands.length){ toast("Elegí al menos una marca (o las tres)."); return; }
     if (from && until && until < from){ toast("La fecha “Hasta” tiene que ser después de “Desde”."); return; }
-    const data = { brand:$("#pcBrand").value, title:$("#pcTitle").value.trim(), from, until, dates:from && until ? pmRange(from, until) : (c?.dates || ""), channels:$("#pcCh").value.trim(), desc:$("#pcDesc").value.trim(), icon:ico, month:from ? from.slice(0, 7) : (c?.month || MONTH) };
+    const data = { brand:brands.join(" · "), brands, title:$("#pcTitle").value.trim(), from, until, dates:from && until ? pmRange(from, until) : (c?.dates || ""), channels:$("#pcCh").value.trim(), desc:$("#pcDesc").value.trim(), icon:ico, month:from ? from.slice(0, 7) : (c?.month || MONTH) };
     if (c) Object.assign(c, data); else MONTH_CAMPAIGNS.push({ id:nid(MONTH_CAMPAIGNS), status:"Próxima", ...data }); }
   if (id === "pmUpForm"){ const title = $("#puTitle").value.trim(), from = $("#puFrom").value, until = $("#puUntil").value;
     if (!title || !from){ toast("Poné el título y la fecha."); return; }
@@ -8006,6 +8028,7 @@ const GUIDE = [
     ["search","¿No encontrás algo?","Usá el buscador de esta guía: escribí, por ejemplo, “pauta”, “cumpleaños” o “contraseña”."]]],
   ["Cómo funciona", [
     ["gauge","Carga de trabajo","Cada persona tiene una barra: suman los trabajos sin terminar según su complejidad (Baja 1 · Media 2 · Alta 3) sobre 10 puntos de capacidad. En los CM también suma 1 punto cada publicación del mes que todavía no está programada. Verde = ideal, amarillo = carga alta, naranja = al límite, rojo = sobrecargado."],
+    ["bell-ring","Avisos de pedidos (+1)","Cuando te cargan un pedido (o te piden cambios), el botón Panel de Trabajo (en el celular, “Trabajo”) muestra +1, +2… y late hasta que abrís cada pedido. Adentro del panel, cada sección (Redes Sociales, Cartelería, Web, Pantallas y Gestión de Videos) muestra cuántos pedidos tenés sin terminar: el número queda hasta que el pedido se aprueba, se termina o se cancela."],
     ["alarm-clock","Alarmas de entrega","Cada pedido y publicación avisa cuánto falta: falta 7 días, falta 3, falta 1, hoy, o ⏰ retraso de tantos días. La alarma queda hasta que se marca como terminado."],
     ["list-ordered","Etapas con cuadraditos","Cada tarjeta muestra sus etapas numeradas. Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección) → Aprobado (final). Admin total carga el pedido. El diseñador o el CM toca el pedido y ve la ficha completa; el diseñador lo lleva hasta Boceto finalizado y le llega el aviso a Admin total, que pide cambios con un mensaje escrito (se cuentan en la ficha) o toca Diseño finalizado y cierra el ciclo. El CM recibe el pedido y lo marca Programado → Publicado. Tocás el cuadradito de la etapa o arrastrás la tarjeta a otra columna."],
     ["check-check","Terminé mi etapa (diseñadores)","El diseñador toca “Terminé mi etapa”: pasa a revisión y le llega un aviso a Admin total, que aprueba o pide correcciones. Con correcciones aparece “Terminé las correcciones”."],
@@ -8021,7 +8044,7 @@ const GUIDE = [
     ["messages-square","Chat Retail MKT","Grupos y mensajes privados del equipo, en tiempo real. Podés mandar fotos (tocá el ícono de imagen en el campo de texto: se achican solas y se guardan en Google Drive, en la carpeta del mes), emojis, stickers y GIFs. Arriba de los mensajes directos estás vos: escribite notas, links o fotos, como en WhatsApp. Mantené apretado un mensaje (o clic derecho en la compu) para responder, reenviar, copiar, editar o eliminar. La goma de arriba vacía la conversación solo para vos."],
     ["notebook-pen","Bloc de notas","Tus notas y checklists privadas. “+ Reunión” arma una lista para la minuta. Cambiás el orden arrastrando desde ⋮⋮ o con las flechitas."]]],
   ["Planificación", [
-    ["target","Planificación del mes","Arriba, siempre, los Objetivos principales: las tres prioridades del área (Admin total las edita). Debajo, todo en una página: Objetivos del mes (por equipo, Diseño gráfico y CM: verbo, qué y para qué), Campañas del mes y Lo que se viene. Admin total agrega con los botones “Agregar” y edita tocando cualquier objetivo, campaña o punto de lo que se viene. Cada cosa tiene su fecha (desde y hasta) y se ve en cada mes hasta que termina: lo que se carga en octubre para noviembre sigue apareciendo en noviembre. En campañas y en lo que se viene se elige un ícono (Verano, Carnaval, Vuelta a clases, Navidad, Año Nuevo y las demás fechas del año, u otros); si no se elige, sale solo según el título."]]],
+    ["target","Planificación del mes","Arriba, siempre, los Objetivos principales: las tres prioridades del área (Admin total las edita). Debajo, todo en una página: Objetivos del mes (por equipo, Diseño gráfico y CM: verbo, qué y para qué), Campañas del mes y Lo que se viene. Admin total agrega con los botones “Agregar” y edita tocando cualquier objetivo, campaña o punto de lo que se viene. Cada cosa tiene su fecha (desde y hasta) y se ve en cada mes hasta que termina: lo que se carga en octubre para noviembre sigue apareciendo en noviembre. Una campaña puede ser de una o de varias marcas: “Las tres” marca Superseis, Stock y Delimarket juntas (por ejemplo, Halloween o Navidad). En campañas y en lo que se viene se elige un ícono (Verano, Carnaval, Vuelta a clases, Navidad, Año Nuevo y las demás fechas del año, u otros); si no se elige, sale solo según el título."]]],
   ["Diseño gráfico", [
     ["image","Diseño para Redes","Los pedidos de diseño para redes (posts, carruseles, historias y reels). Arranca en Calendario (cada entrega en su fecha, una marca a la vez; tocás una entrega para abrirla o un día para cargar un pedido); también tiene Tabla y Tablero. En el tablero tocás una tarjeta para cambiar su etapa y con el lápiz lo editás. Con “Solo yo” ves solo lo tuyo."],
     ["signpost","Diseño para Cartelería","Cartelería, flyers, vía pública y empaques. Arranca en Calendario (cada entrega en su fecha, una marca a la vez); también tiene Tabla y Tablero. Con “Solo yo” ves solo lo que está a tu nombre."],
@@ -8386,9 +8409,10 @@ function renderTabbar(){
   const tb = document.getElementById("tabbar"); if (!tb) return;
   const work = isDesigner() ? ["paneldg","Trabajo","layout-grid"] : viewer.role === "CM" ? ["panelcm","Trabajo","layout-grid"] : ["dashboard","Dashboard","layout-dashboard"];
   const tabs = [["inicio","Inicio","house"],work,["mensajes","Chat","messages-square"]].filter(([k]) => can(k));
-  const cnt = k => { const n = k === "inicio" ? alerts().length : k === "mensajes" ? chatUnreadTotal() : 0; return n ? `<span class="tbc">${n > 99 ? "99+" : n}</span>` : ""; };
+  const cnt = k => { const w = k === "paneldg" || k === "panelcm", n = k === "inicio" ? alerts().length : k === "mensajes" ? chatUnreadTotal() : workPend(k);
+    return n ? `<span class="tbc"${w ? ` title="${n} pedido${n === 1 ? "" : "s"} sin abrir"` : ""}>${w ? "+" : ""}${n > 99 ? "99+" : n}</span>` : ""; };
   const open = document.querySelector(".side")?.classList.contains("open");
-  tb.innerHTML = tabs.map(([k, l, i]) => `<a href="#${k}" data-page="${k}" class="${page === k && !open ? "on" : ""}" ${page === k ? 'aria-current="page"' : ""}><span class="tbi">${tbIcon(i)}${cnt(k)}</span><span>${l}</span></a>`).join("")
+  tb.innerHTML = tabs.map(([k, l, i]) => `<a href="#${k}" data-page="${k}" class="${page === k && !open ? "on" : ""}${workPend(k) ? " wknew" : ""}" ${page === k ? 'aria-current="page"' : ""}><span class="tbi">${tbIcon(i)}${cnt(k)}</span><span>${l}</span></a>`).join("")
     + `<button type="button" class="${open || !tabs.some(([k]) => k === page) ? "on" : ""}" data-tabmore><span class="tbi">${tbIcon("menu")}</span><span>Más</span></button>`;
 }
 document.addEventListener("click", e => { if (!e.target.closest("[data-tabmore]")) return; document.getElementById("menuBtn")?.click(); renderTabbar(); });
@@ -8426,6 +8450,8 @@ function renderNav(){
     const shut = navClosed.has(g);
     return `<div class="nav-group${shut ? " closed" : ""}"><button type="button" class="nav-label navtog" data-navtog="${esc(g)}" aria-expanded="${!shut}">${g}${shut ? items.map(x => navBadge(x.k)).join("") : ""}${icon("chevron-down")}</button>${items.map(s => `<a href="#${s.k}" data-page="${s.k}" title="${esc(s.n || s.l)}" class="${page===s.k || (s.k === "paneldg" && PANEL_DG_KEYS.includes(page)) || (s.k === "panelcm" && PANEL_CM_KEYS.includes(page)) ?"on":""}">${icon(s.i)}<span>${s.n || s.l}</span>${s.k==="mensajes" && chatUnreadTotal() ? `<span class="count msgc">${chatUnreadTotal()}</span>` : ""}${s.k==="alertas" && alerts().length ? `<span class="count">${alerts().length}</span>` : ""}${navBadge(s.k)}</a>`).join("")}</div>`;
   }).join("");
+  document.querySelectorAll('.nav a[data-page="paneldg"], .nav a[data-page="panelcm"]').forEach(a => a.classList.toggle("wknew", workPend(a.dataset.page) > 0));
+  const wn = workPend("paneldg") + workPend("panelcm"); if (workLast !== null && wn > workLast) setTimeout(bumpWorkBadges, 0); workLast = wn;
 }
 // Aparición animada de todo lo que se ve: paneles, tablas (fila por fila), calendarios (día por día), tableros, listas y tarjetas.
 // Cada cosa se anima recién cuando entra en pantalla (también al bajar con el scroll), con un pequeño escalonado.
@@ -8475,10 +8501,23 @@ const inboxPend = () => can("inbox") ? inboxBrands().reduce((n, b) => n + inboxC
 // Botonera del costado: solo la carga de trabajo de la persona (los mensajes se avisan dentro del Panel de Trabajo).
 // Cuenta sus pedidos nuevos o con cambios que todavía no abrió; al abrir la hoja del pedido deja de contar.
 const seenSig = j => `${j.status}|${(j.changes || []).length}`;
-const markSeen = j => { if (!j || !viewer || j.owner !== viewer.name || window.RMH?.previewing) return; const sig = seenSig(j); if (j.seenBy?.[viewer.id] !== sig) j.seenBy = { ...(j.seenBy || {}), [viewer.id]:sig }; };
-const myJobsPend = area => viewer ? jobs.filter(j => !j.ex && j.owner === viewer.name && (j.area === "CM") === (area === "CM") && ["Pendiente", "En corrección", "Corrección"].includes(j.status) && j.seenBy?.[viewer.id] !== seenSig(j)).length : 0;
-const navBadge = k => { const n = k === "paneldg" ? myJobsPend("Diseño") : k === "panelcm" ? myJobsPend("CM") : 0;
-  return n ? `<span class="count ibc" title="${n} trabajo${n === 1 ? "" : "s"} nuevo${n === 1 ? "" : "s"} o con cambios para vos, sin abrir">+${n > 99 ? 99 : n}</span>` : ""; };
+const markSeen = j => { if (!j || !viewer || j.owner !== viewer.name || window.RMH?.previewing) return; const sig = seenSig(j);
+  if (j.seenBy?.[viewer.id] !== sig){ j.seenBy = { ...(j.seenBy || {}), [viewer.id]:sig }; setTimeout(renderNav, 0); } }; // el menú se dibuja antes que la ficha: se actualiza enseguida
+const isUnseenJob = j => ["Pendiente", "En corrección", "Corrección"].includes(j.status) && j.seenBy?.[viewer.id] !== seenSig(j);
+const myJobsPend = area => viewer ? jobs.filter(j => !j.ex && j.owner === viewer.name && (j.area === "CM") === (area === "CM") && isUnseenJob(j)).length : 0;
+const workPend = k => k === "paneldg" ? myJobsPend("Diseño") : k === "panelcm" ? myJobsPend("CM") : 0;
+// Adentro del Panel de Trabajo: los pedidos a tu nombre sin terminar de cada sección (Redes Sociales, Cartelería, Web,
+// Pantallas, Videos). El número queda hasta que el pedido se aprueba, se termina o se cancela.
+const JOB_SECS = ["pedidos","cartel","web","pantallas","gestioncm"];
+const myJobsOpen = k => viewer ? jobs.filter(j => !j.ex && j.owner === viewer.name && jobSection(j) === k && !isClosedJob(j)) : [];
+const navBadge = k => { const n = workPend(k);
+  return n ? `<span class="count ibc" title="${n} pedido${n === 1 ? "" : "s"} nuevo${n === 1 ? "" : "s"} o con cambios para vos, sin abrir">+${n > 99 ? 99 : n}</span>` : ""; };
+// Cuando llega un pedido nuevo (también en vivo), el botón del Panel de Trabajo salta una vez.
+let workLast = null;
+function bumpWorkBadges(){
+  document.querySelectorAll('.nav a[data-page="paneldg"], .nav a[data-page="panelcm"], .tabbar a[data-page="paneldg"] .tbc, .tabbar a[data-page="panelcm"] .tbc, .tabbar a[data-page="paneldg"] .tbi, .tabbar a[data-page="panelcm"] .tbi').forEach(el => {
+    el.classList.remove("cbump"); void el.offsetWidth; el.classList.add("cbump"); });
+}
 const pendBadge = () => { const n = inboxPend(); return n ? `<span class="count ibc" title="${n} mensajes sin contestar">+${n > 99 ? 99 : n}</span>` : ""; };
 // “Actualizar”: le pide a las funciones de Meta (en Vercel) que traigan lo último ahora, con la sesión de la persona.
 const canMetaRefresh = () => ["Admin total","Admin","CM"].includes(viewer.role) && !window.RMH?.previewing;
