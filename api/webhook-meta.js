@@ -117,7 +117,7 @@ async function actItems(c, brandId, handle, ts, posts){
   if (kind === "mention"){ const it = await mentionItem(brandId, v, ts); return it ? [it] : []; }
   if (!digits(v.id)) return [];
   const from = v.from || {}, mine = String(from.id || "") === brandId || (handle && String(from.username || "").toLowerCase() === handle);
-  if (mine) return digits(v.parent_id) ? [{ id: "c" + v.parent_id, answered: true, upd: true }] : [];
+  if (mine) return [{ id: "c" + v.id, mine: true, upd: true }, ...(digits(v.parent_id) ? [{ id: "c" + v.parent_id, answered: true, upd: true }] : [])];
   const mId = v.media?.id, post = await postInfo(mId);
   if (post) posts[mId] = post;
   return [{ id: "c" + v.id, kind, who: from.username ? "@" + from.username : null, t: short(v.text || ""), ts,

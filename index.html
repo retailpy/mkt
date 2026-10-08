@@ -9062,7 +9062,7 @@ const iaKey = (b, it) => `igc:${b}:${it.id}`;
 function iaItems(kinds){
   const out = [];
   ORDER_INBOX().forEach(b => { const x = META_IG_ACT[b]; if (!x || !Array.isArray(x.items)) return;
-    x.items.forEach(it => { if (!it || !kinds.includes(it.kind) || !inboxRecent(it)) return;
+    x.items.forEach(it => { if (!it || it.mine || !kinds.includes(it.kind) || !inboxRecent(it)) return;
       const byHand = INBOX_DONE[iaKey(b, it)], sorteo = it.kind === "comment" && iaTagOnly(it.t);
       out.push({ ...it, b, post:it.m ? (x.posts || {})[it.m] || null : null, byHand, sorteo, ok:!!it.answered || !!byHand || sorteo }); }); });
   return out.sort((a, c) => String(c.ts || "").localeCompare(String(a.ts || "")));
@@ -9088,7 +9088,7 @@ function iaBody(view, when){
       const st = i.sorteo ? `<span class="ibst" title="Solo etiquetas a amigos: no hace falta contestar">Etiquetas</span>` : i.ok ? `<span class="ibst ok" ${i.byHand ? `title="Marcado por ${esc(i.byHand.by || "")}"` : ""}>${icon("check")} Contestado</span>` : `<span class="ibst no">Esperando · ${inboxAge(i.ts).replace("hace ", "")}</span>`;
       return `<div class="ibrow${i.ok ? "" : " pend"}${open ? " open" : ""}" data-ibopen="${esc(key)}" role="button" tabindex="0" aria-expanded="${open}">
         <span class="ibnet ig" title="Instagram">${ICO.IG}</span>
-        <div class="grow"><div class="ibh"><b>${esc(i.who || "Alguien")}</b>${bTag(i.b)}${i.kind === "live" ? `<span class="iak">En vivo</span>` : ""}${i.parent ? `<span class="iak">Respuesta</span>` : ""}</div>
+        <div class="grow"><div class="ibh"><b>${esc(i.who || "Usuario de Instagram")}</b>${bTag(i.b)}${i.kind === "live" ? `<span class="iak">En vivo</span>` : ""}${i.parent ? `<span class="iak">Respuesta</span>` : ""}</div>
           <div class="ibl">${esc(i.t || "Foto o sticker")}</div>${i.post?.cap ? `<div class="iapost">${icon("image")}<span>${esc(i.post.cap)}</span></div>` : ""}</div>
         <div class="ibside"><small>${inboxAge(i.ts)}</small>${st}${open ? "" : doneBtn(i)}</div>
         ${open ? `<div class="ibthread"><div class="ibm"><span>${esc(i.t || "Foto o sticker")}</span><small>${when(i.ts)}${i.likes ? ` · ${i.likes} me gusta` : ""}</small></div>
@@ -9102,7 +9102,7 @@ function iaBody(view, when){
   const row = i => { const key = "ia|" + i.b + "|" + i.id, open = inboxUI.open === key, k = iaMenKind(i), link = i.media?.link, img = i.media?.img;
     return `<div class="ibrow${open ? " open" : ""}" data-ibopen="${esc(key)}" role="button" tabindex="0" aria-expanded="${open}">
       <span class="ibnet ig" title="Instagram">${ICO.IG}</span>
-      <div class="grow"><div class="ibh"><b>${esc(i.who || "Alguien")}</b>${bTag(i.b)}</div>
+      <div class="grow"><div class="ibh"><b>${esc(i.who || "Usuario de Instagram")}</b>${bTag(i.b)}</div>
         <div class="ibl"><em>${IA_MEN_TXT[k]}${i.t ? ":" : ""}</em> ${esc(i.t || "")}</div></div>
       <div class="ibside"><small>${inboxAge(i.ts)}</small></div>
       ${open ? `<div class="ibthread">${i.t ? `<div class="ibm"><span>${esc(i.t)}</span><small>${when(i.ts)}</small></div>` : ""}${img ? `<div class="iapv">${thumb(img)}</div>` : ""}

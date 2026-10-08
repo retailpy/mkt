@@ -4,6 +4,9 @@
 //   comentario: { id:"c<id>", kind:"comment", who:"@usuario", t, ts, likes, parent?, answered, m:<id de la publicación> }
 //   etiqueta:   { id:"t<id>", kind:"tag", who, t:(texto de la publicación), ts, media:{ link, img } }
 // "answered": la marca le contestó en la misma conversación (después del comentario).
+// Con acceso estándar Meta no da el usuario de quien comenta (username): la respuesta de la marca se reconoce por "user"
+// (Meta solo lo manda en los comentarios de la propia cuenta) o por from.id. Las etiquetas (/tags) piden acceso avanzado:
+// si no está, no es un error de la marca (queda en diag.etiquetas = "sin acceso").
 // La llaman: el cron de Vercel (dos veces por día) y el botón “Actualizar” de Mensajes → Comentarios (Admin o CM).
 // Permisos del META_TOKEN: instagram_basic, instagram_manage_comments y pages_read_engagement.
 // Probar sin guardar:  /api/interacciones?dry=1&secret=EL_CRON_SECRET
@@ -17,17 +20,26 @@ const short = (s, n = 300) => { s = String(s || ""); return s.length > n ? s.sli
 const iso = t => { const d = new Date(t); return isNaN(d) ? new Date().toISOString() : d.toISOString(); };
 const fresh = m => Date.now() - new Date(m.timestamp).getTime() <= DAYS * 864e5;
 const postOf = m => ({ link: m.permalink || null, cap: short(m.caption, 90) || null, img: m.thumbnail_url || m.media_url || null });
-const permErr = e => e.code === 10 || e.code === 200 ? " (falta el permiso instagram_manage_comments en el token)" : "";
+const noPerm = e => e.code === 10 || e.code === 200;
+const permErr = e => noPerm(e) ? " (falta el permiso instagram_manage_comments en el token)" : "";
+// Campos de los comentarios: si Meta no conoce alguno en esta versión (error 100), se pide con menos.
+const CFIELDS = ["id,text,timestamp,username,from,user,like_count,replies{id,text,timestamp,username,from,user}",
+  "id,text,timestamp,username,user,like_count,replies{id,text,timestamp,username,user}",
+  "id,text,timestamp,username,like_count,replies{id,text,timestamp,username}"];
 async function pool(list, n, fn){ const q = [...list]; await Promise.all(Array.from({ length: Math.min(n, q.length) }, async () => { while (q.length) await fn(q.shift()); })); }
 
 // Una conversación (comentario y sus respuestas) → ítems de la gente, con "answered" si la marca contestó después.
-function threadItems(c, mId, me){
+function threadItems(c, mId, me, igId){
   const all = [{ ...c, parent: null }, ...((c.replies && c.replies.data) || []).map(r => ({ ...r, parent: c.id }))];
-  const mine = all.filter(x => String(x.username || "").toLowerCase() === me).map(x => iso(x.timestamp));
-  return all.filter(x => String(x.username || "").toLowerCase() !== me).map(x => ({
-    id: "c" + x.id, kind: "comment", who: x.username ? "@" + x.username : null, t: short(x.text), ts: iso(x.timestamp),
+  const name = x => x.username || x.from?.username || "";
+  const isMe = x => !!x.user || (!!igId && String(x.from?.id || "") === String(igId)) || (!!me && name(x).toLowerCase() === me);
+  const mine = all.filter(isMe).map(x => iso(x.timestamp));
+  return [...all.filter(x => !isMe(x)).map(x => ({
+    id: "c" + x.id, kind: "comment", who: name(x) ? "@" + name(x) : null, t: short(x.text), ts: iso(x.timestamp),
     likes: x.like_count ?? null, parent: x.parent ? "c" + x.parent : null, answered: mine.some(ts => ts > iso(x.timestamp)), m: String(mId),
-  }));
+  })),
+  // Los de la marca no son ítems; si alguno quedó guardado como de una persona (antes no se reconocían), se marca "mine".
+  ...all.filter(isMe).map(x => ({ id: "c" + x.id, mine: true, upd: true }))];
 }
 
 async function brandAct(g, p){
@@ -36,22 +48,25 @@ async function brandAct(g, p){
     const j = await g(`/${p.igId}/media`, { fields: "id,caption,permalink,timestamp,media_type,thumbnail_url,media_url,comments_count", limit: "30" });
     const list = (j.data || []).filter(m => fresh(m) && (m.comments_count || 0) > 0).slice(0, POSTS);
     diag.posts = list.length;
+    let fi = 0;
     await pool(list, 5, async m => {
       try {
-        const c = await g(`/${m.id}/comments`, { fields: "id,text,timestamp,username,like_count,replies{id,text,timestamp,username}", limit: String(PER) });
-        const got = (c.data || []).flatMap(x => threadItems(x, m.id, me));
+        let c;
+        for (;;){ const f = fi; try { c = await g(`/${m.id}/comments`, { fields: CFIELDS[f], limit: String(PER) }); break; }
+          catch (e){ if (e.code === 100 && f < CFIELDS.length - 1){ fi = Math.max(fi, f + 1); continue; } throw e; } }
+        const got = (c.data || []).flatMap(x => threadItems(x, m.id, me, p.igId));
         if (got.length){ posts[m.id] = postOf(m); items.push(...got); }
       } catch (e){ if (!errs.some(x => x.startsWith("Comentarios"))) errs.push(`Comentarios: ${e.message}${permErr(e)}`); }
     });
-    diag.comentarios = items.length;
   } catch (e){ errs.push(`Publicaciones: ${e.message}${permErr(e)}`); }
   try {
     const t = await g(`/${p.igId}/tags`, { fields: "id,caption,permalink,timestamp,username,media_type,thumbnail_url,media_url", limit: "25" });
     (t.data || []).filter(fresh).forEach(m => { const x = postOf(m);
       items.push({ id: "t" + m.id, kind: "tag", who: m.username ? "@" + m.username : null, t: short(m.caption), ts: iso(m.timestamp), media: { link: x.link, img: x.img } }); diag.etiquetas++; });
-  } catch (e){ errs.push(`Etiquetas: ${e.message}${permErr(e)}`); }
-  items.sort((a, c) => c.ts.localeCompare(a.ts));
-  const keep = items.slice(0, 250), used = new Set(keep.map(x => x.m).filter(Boolean));
+  } catch (e){ if (noPerm(e)) diag.etiquetas = "sin acceso"; else errs.push(`Etiquetas: ${e.message}`); }
+  const marks = items.filter(x => x.upd).slice(0, 200), people = items.filter(x => !x.upd).sort((a, c) => c.ts.localeCompare(a.ts));
+  const keep = [...people.slice(0, 250), ...marks], used = new Set(keep.map(x => x.m).filter(Boolean));
+  diag.comentarios = people.filter(x => x.kind === "comment").length;
   return { items: keep, info: { handle: p.handle || null, pulled: new Date().toISOString(), err: errs.length ? errs.join(" · ") : null, diag,
     posts: Object.fromEntries(Object.entries(posts).filter(([id]) => used.has(id))) } };
 }
