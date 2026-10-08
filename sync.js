@@ -473,6 +473,7 @@ const RMH = (() => {
     loggingOut = true; await flush(); ready = false;
     // Al salir, este dispositivo deja de recibir los mensajes de esta persona.
     try { const reg = await navigator.serviceWorker?.getRegistration(), sub = await reg?.pushManager?.getSubscription(); if (sub) await sb.from("push_subs").delete().eq("endpoint", sub.endpoint); } catch (e) {}
+    try { localStorage.setItem("rmh-navreset", "1"); } catch (e) {} // al volver a entrar, el menú arranca con General y el área de la persona abiertos
     await sb.auth.signOut({ scope:"local" }); location.reload();
   });
 
