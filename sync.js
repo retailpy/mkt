@@ -39,6 +39,7 @@ const RMH = (() => {
     resetRequests:[() => resetRequests, v => { resetRequests = v; }],
     RECURRING:[() => RECURRING, v => { RECURRING = v; }],
     RECUR_DONE:[() => RECUR_DONE, v => { RECUR_DONE = v; }],
+    RECUR_ST:[() => RECUR_ST, v => { RECUR_ST = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // etapa de cada repetitivo por fecha
     SAT_OFF:[() => SAT_OFF, v => { SAT_OFF = v; }],
     SAT_TURN:[() => SAT_TURN, v => { SAT_TURN = v; }],
     PAUTA_LIMITS:[() => PAUTA_LIMITS, v => { PAUTA_LIMITS = v; }],

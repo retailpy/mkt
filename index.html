@@ -1344,6 +1344,15 @@ html.light .pbdot{filter:invert(1) hue-rotate(180deg)}
 .pbrules span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
 .pbrules b{font-weight:500;font-size:13.5px;color:var(--ink)}
 .pbmodes{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+/* Procesos de CM a la vista (Planificación y Plan de posteo) */
+.cmproc{display:flex;flex-direction:column;gap:6px;padding:12px 16px;border:1px solid var(--line-2);border-radius:14px}
+.cmproc>div{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.cmproc b{flex:0 0 190px;font-size:12.5px;font-weight:700;color:var(--ink)}
+.cmproc>div>span{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:12.5px;color:var(--muted)}
+.cmproc .cps{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.cmproc i{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+.cmproc em{font-style:normal;color:var(--faint)}
+@media (max-width:640px){.cmproc b{flex-basis:100%}}
 /* Prompts: evento festivo (un solo color, como las modalidades) */
 .pm2 .pfest{display:flex;flex-direction:column;gap:10px;margin-top:14px}
 .pm2 .pfchips{display:flex;flex-wrap:wrap;gap:8px}
@@ -2876,20 +2885,23 @@ const REVIEW_WAIT = ["Boceto finalizado","En revisión","Revisión"]; // esperan
 // Gestión Videos (pedidos a CM): Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado.
 // En Revisión, Admin total aprueba (pasa a Programado) o pide cambios (Corrección, con un mensaje).
 const CM_STAGES = ["Pendiente","Grabación","Edición","Revisión","Corrección","Programado","Publicado","Pautado"];
-// Semáforo de CM (calendarios, Planificación y repetitivos): rojo pendiente → ámbar en proceso → verde claro
-// finalizado (terminado o programado) → verde lleno publicado.
-const SEM = ["#ef4444","#f59e0b","#84cc16","#16a34a"], SEM_L = ["Pendiente","En proceso","Finalizado","Publicado"];
+const PLAN_STAGES = ["Pendiente","En proceso","Grabación","Edición","Revisión","Corrección","Programado","Publicado","Pautado"]; // las de todos los procesos de CM, en orden
+// Los procesos de CM a la vista (Planificación y Plan de posteo): cada contenido sigue el suyo, también los repetitivos.
+const CM_PROC_LEGEND = () => `<div class="cmproc" aria-label="Procesos de CM">${[["Publicaciones e historias", POST_STAGES], ["Canal de WhatsApp", CANAL_STAGES], ["Videos", CM_STAGES]].map(([t, st]) => `<div><b>${t}</b><span>${st.map(x => `<span class="cps"><i style="--c:${SEM[semLvl(x)]}"></i>${x}</span>`).join(`<em aria-hidden="true">→</em>`)}</span></div>`).join("")}</div>`;
+// Color de cada etapa de CM (calendarios, Planificación y repetitivos): rojo pendiente → ámbar trabajando → verde claro
+// lista (en revisión o programada) → verde lleno publicada. El texto es siempre la etapa de su proceso.
+const SEM = ["#ef4444","#f59e0b","#84cc16","#16a34a"];
 function semLvl(st){
   if (["Publicado","Pautado","Entregado","Hecho"].includes(st)) return 3;
   if (["Listo","Programado","Finalizado","En revisión","Revisión","Aprobado"].includes(st)) return 2;
   if (["En diseño","En proceso","Grabación","Edición","En corrección","Corrección","Boceto finalizado"].includes(st)) return 1;
   return 0;
 }
-const semText = st => { const l = SEM_L[semLvl(st)]; return st && st !== l && st !== "Hecho" ? `${l} · ${st}` : l; };
 // Los repetitivos los marca como publicados el CM (o Admin total).
 const canMarkRec = () => !isViewOnly() && !isClosed() && (viewer.role === "Admin total" || viewer.role === "CM");
-const recChip = (r, d) => { const done = RECUR_DONE.has(r.id + "|" + d), l = done ? 3 : 0;
-  return canMarkRec() ? `<button type="button" class="semchip s${l}" data-recdone="${r.id}|${d}" title="${done ? "Publicado · tocá para volver a pendiente" : "Pendiente · tocá cuando ya se publicó"}">${done ? icon("check") + " Publicado" : "Pendiente"}</button>` : `<span class="semchip s${l}">${done ? icon("check") + " Publicado" : "Pendiente"}</span>`; };
+// Etapa de un repetitivo en una fecha: tocándola se elige la siguiente, dentro del proceso de su tipo.
+const recChip = (r, d) => { const st = recSt(r, d), l = semLvl(st), txt = `${l === 3 ? icon("check") + " " : ""}${st}`;
+  return canMarkRec() ? `<button type="button" class="semchip s${l}" data-stagemenu="rec:${r.id}~${d}" title="Etapa: ${st} · tocá para cambiarla">${txt} ▾</button>` : `<span class="semchip s${l}">${txt}</span>`; };
 const JOB_COLOR = { "Pendiente":"#334155","En proceso":"#3b82f6","Boceto finalizado":"#06b6d4","En revisión":"#eab308","En corrección":"#f97316","Aprobado":"#14b8a6","Finalizado":"#84cc16","Entregado":"#10b981","Grabación":"#3b82f6","Edición":"#6366f1","Revisión":"#eab308","Corrección":"#f97316","Programado":"#8b5cf6","Publicado":"#10b981","Pautado":"#d946ef","Cancelado":"#64748b" };
 const stagesOf = a => ((a && a.area) || a) === "CM" ? CM_STAGES : JOB_STAGES;
 const statesOf = a => [...stagesOf(a), "Cancelado"];
@@ -4293,6 +4305,7 @@ function stageOptions(kind, it){
   if (!it || isViewOnly() || isClosed()) return [];
   if (kind === "post") return canEditPost() ? POST_STAGES : [];
   if (kind === "canal") return canEditPost() ? CANAL_STAGES : [];
+  if (kind === "rec") return canMarkRec() ? recStages(it.r).filter(st => st !== "Corrección" || viewer.role === "Admin total") : []; // como los videos: Corrección la pide Admin total
   if (viewer.role === "Admin total") return statesOf(it);
   if (isDesigner()){
     if (it.area !== "Diseño" || it.owner !== viewer.name) return [];
@@ -4315,9 +4328,10 @@ document.addEventListener("click", e => {
   const b = e.target.closest("[data-stagemenu]");
   if (!b || (b.classList.contains("card") && e.target.closest("button,a,select,input"))){ if (!e.target.closest("#stagepop")) closeStageMenu(); return; }
   e.preventDefault(); closeStageMenu();
-  const [kind, id] = b.dataset.stagemenu.split(":"), it = kind === "post" ? postById(id) : kind === "canal" ? canalById(id) : jobs.find(x => x.id === id);
+  const [kind, id] = b.dataset.stagemenu.split(":"), it = kind === "post" ? postById(id) : kind === "canal" ? canalById(id) : kind === "rec" ? recItem(id) : jobs.find(x => x.id === id);
   const opts = stageOptions(kind, it); if (!opts.length) return;
-  const colorOf = st => kind === "job" ? (st === "Pendiente" ? "#94a3b8" : JOB_COLOR[st] || "#94a3b8") : (POST_COLOR[st] === "#334155" ? "#94a3b8" : POST_COLOR[st]);
+  const vid = kind === "job" || (kind === "rec" && it.r.kind === "Grabación");
+  const colorOf = st => vid ? (st === "Pendiente" ? "#94a3b8" : JOB_COLOR[st] || "#94a3b8") : (POST_COLOR[st] === "#334155" ? "#94a3b8" : POST_COLOR[st]);
   const pop = document.createElement("div"); pop.id = "stagepop"; pop.setAttribute("role", "menu");
   pop.innerHTML = `<div class="sp-h">Etapa de “${esc(it.title)}”</div>${opts.map(st => `<button type="button" role="menuitemradio" aria-checked="${st === it.status}" class="${st === it.status ? "on" : ""}" data-stageset="${kind}:${id}|${esc(st)}" style="--c:${colorOf(st)}"><i></i>${esc(st)}${st === it.status ? " ✓" : ""}</button>`).join("")}${isDesigner() ? `<div class="sp-n">Aprobar y entregar lo hace Admin total.</div>` : ""}`;
   document.body.appendChild(pop);
@@ -4333,6 +4347,8 @@ document.addEventListener("click", e => {
   if (kind === "post"){ const p = postById(id); if (!p || p.status === to) return;
     p.status = to; render(); toast(`“${p.title}” pasó a ${to}.`); return; }
   if (kind === "canal"){ const k = canalById(id); if (!k || k.status === to) return; k.status = to; render(); toast(`“${k.title}” pasó a ${to}.`); return; }
+  if (kind === "rec"){ const x = recItem(id); if (!x || x.status === to || !stageOptions("rec", x).includes(to)) return;
+    setRecSt(x.r, x.d, to); render(); window.RMH?.flushNow?.(); toast(`“${x.r.title}” del ${dm(x.d)} pasó a ${to}.`); return; }
   const j = jobs.find(x => x.id === id); if (!j || j.status === to || !stageOptions("job", j).includes(to)) return;
   moveJob(j, to);
 });
@@ -4449,7 +4465,7 @@ function postTable(list, kind){
     ${list.map(p => `<tr><td class="num" style="white-space:nowrap">${dm(p.date)}</td><td>${brandTag(p.brand)}</td><td>${esc(firstName(p.cm || ""))}</td><td style="white-space:nowrap">${canal ? `${icon(CH_ICO[p.channel] || "message-circle")} ${esc(p.channel)}` : `<span class="net">${p.net}</span> ${p.format}`}</td><td style="min-width:180px">${canEditPost() ? `<button type="button" class="linkish" data-pedit="${canal ? "canal" : "post"}:${p.id}">${esc(p.title)}</button>` : `<b style="color:#fff">${esc(p.title)}</b>`}</td>${canal ? "" : `<td style="white-space:nowrap">${postDesignCell(p)}</td>`}<td><div class="chips" style="flex-wrap:nowrap">${canal ? canalStatusCell(p) : `${postStatusCell(p)}${postUrgBadge(p)}`}</div></td></tr>`).join("") || `<tr><td colspan="7" class="empty">No hay nada cargado con estos filtros.</td></tr>`}
   </tbody></table></div>`;
 }
-const canalStatusCell = k => canEditPost() ? `<select class="base sm semsel" data-kstatus="${k.id}" aria-label="Estado de ${esc(k.title)}" style="--c:${SEM[semLvl(k.status)]}">${CANAL_STAGES.map(st => `<option value="${st}" ${st === k.status ? "selected" : ""}>${semText(st)}</option>`).join("")}</select>` : pill(semText(k.status), SEM[semLvl(k.status)]);
+const canalStatusCell = k => canEditPost() ? `<select class="base sm semsel" data-kstatus="${k.id}" aria-label="Estado de ${esc(k.title)}" style="--c:${SEM[semLvl(k.status)]}">${CANAL_STAGES.map(st => `<option value="${st}" ${st === k.status ? "selected" : ""}>${st}</option>`).join("")}</select>` : pill(k.status, SEM[semLvl(k.status)]);
 document.addEventListener("click", e => { const b = e.target.closest("[data-pedit]"); if (!b || e.target.closest("[data-stagemenu]")) return; const [kind, id] = b.dataset.pedit.split(":");
   if (kind === "canal") postUI.form = { mode:"edit", kind:"Canal", post:{ ...canalById(id) } }; else { const p = postById(id); postUI.form = { mode:"edit", kind:p.format === "Historia" ? "Historia" : "Feed", post:{ ...p } }; }
   render(); });
@@ -4465,10 +4481,10 @@ function pCalCM(kind){
   const head = gHead(`Gestión ${hist ? "Historia" : "Redes"}${view === "calendario" ? " · " + calName : ""}`, `${monthLabel(MONTH)} · ${hist ? "las historias de cada día: las del plan y las repetitivas" : "las publicaciones del feed (posts, carruseles y reels) en su fecha, y las repetitivas"}.`, hist ? "smartphone" : "calendar-days");
   if (view !== "calendario") return `${head}${adds}${gFilters(view === "tablero" ? "Tocá una tarjeta para cambiar su etapa · el lápiz para editar" : "Tocá el tema para editarlo")}${view === "tablero" ? postBoard(vp, kind) : postTable(vp, kind)}${postForm()}${jobForm()}${recDrawer()}`;
   return `${head}${adds}${gFilters("")}
-  <div class="legend">${POST_STAGES.map(st => `<span><span class="sw" style="background:${POST_COLOR[st]}"></span>${st}</span>`).join("")}<span><span class="sw" style="background:${REC_KINDS[kind].c}"></span>${icon("repeat")} ${kind} repetitiva</span>${hist ? "" : `<span><span class="sw" style="background:${REC_KINDS["Grabación"].c}"></span>${icon("repeat")} Grabación repetitiva</span>`}</div>${calHint()}
+  <div class="legend">${POST_STAGES.map(st => `<span><span class="sw" style="background:${SEM[semLvl(st)]}"></span>${st}</span>`).join("")}<span><span class="sw" style="background:${REC_KINDS[kind].c}"></span>${icon("repeat")} ${kind} repetitiva</span>${hist ? "" : `<span><span class="sw" style="background:${REC_KINDS["Grabación"].c}"></span>${icon("repeat")} Grabación repetitiva</span>`}</div>${calHint()}
   ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("")
-    + vp.filter(p => p.date === c).map(p => `<div class="ev${sepCls(p.brand)}"${calDrag("post", p.id)}${canEditPost() ? ` data-open="post:${p.id}"` : ""} style="--c:${BRANDS[p.brand]};--s:${SEM[semLvl(p.status)]}" data-sem="${semLvl(p.status)}" title="${esc(p.title)} · ${p.net} ${p.format} · ${p.status} · ${esc(p.cm || "")}"><span>${postUrgency(p)?.late ? icon("alarm-clock") + " " : ""}${p.brand} · ${esc(p.title)}</span>${evStage("post", p, `${semText(p.status)} · ${p.net}${hist ? "" : " " + p.format} · ${esc(firstName(p.cm || ""))}`, SEM[semLvl(p.status)])}</div>`).join(""), false)}
-  <p class="note">${icon("repeat")} = repetitivo: se carga una sola vez y aparece solo en cada fecha. Tocalo para marcarlo como hecho.</p>
+    + vp.filter(p => p.date === c).map(p => `<div class="ev${sepCls(p.brand)}"${calDrag("post", p.id)}${canEditPost() ? ` data-open="post:${p.id}"` : ""} style="--c:${BRANDS[p.brand]};--s:${SEM[semLvl(p.status)]}" data-sem="${semLvl(p.status)}" title="${esc(p.title)} · ${p.net} ${p.format} · ${p.status} · ${esc(p.cm || "")}"><span>${postUrgency(p)?.late ? icon("alarm-clock") + " " : ""}${p.brand} · ${esc(p.title)}</span>${evStage("post", p, `${p.status} · ${p.net}${hist ? "" : " " + p.format} · ${esc(firstName(p.cm || ""))}`, SEM[semLvl(p.status)])}</div>`).join(""), false)}
+  <p class="note">${icon("repeat")} = repetitivo: se carga una sola vez y aparece solo en cada fecha. Tocá su etapa para cambiarla: sigue el mismo proceso (${hist ? "historias" : "feed"}: Pendiente → En proceso → Programado → Publicado → Pautado${hist ? "" : "; grabaciones: Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado"}).</p>
   ${postForm()}${jobForm()}${recDrawer()}`;
 }
 // Borrar pide confirmación: el segundo toque (en 8 s) borra, aunque la pantalla se haya redibujado en el medio.
@@ -4487,9 +4503,9 @@ function pCalCanales(){
   const head = gHead(`Gestión Canal WhatsApp${view === "calendario" ? " · " + calName : ""}`, `${monthLabel(MONTH)} · lo que se publica en el Canal de WhatsApp de cada marca, cada contenido en su fecha.`, "message-circle");
   if (view !== "calendario") return `${head}${adds}${gFilters(view === "tablero" ? "Tocá una tarjeta para cambiar su etapa · el lápiz para editar" : "Tocá el tema para editarlo")}${view === "tablero" ? postBoard(list, "Canal") : postTable(list, "Canal")}${postForm()}${jobForm()}${recDrawer()}`;
   return `${head}${adds}${gFilters("")}
-  <div class="legend">${CANAL_STAGES.map(st => `<span><span class="sw" style="background:${POST_COLOR[st]}"></span>${st}</span>`).join("")}<span><span class="sw" style="background:${REC_KINDS.Canal.c}"></span>${icon("repeat")} Canal de WhatsApp repetitivo</span></div>${calHint()}
-  ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("") + list.filter(k => k.date === c).map(k => `<div class="ev${sepCls(k.brand)}"${calDrag("canal", k.id)}${canEditPost() ? ` data-open="canal:${k.id}"` : ""} style="--c:${BRANDS[k.brand]};--s:${SEM[semLvl(k.status)]}" data-sem="${semLvl(k.status)}" title="${esc(k.title)} · ${esc(k.channel)} · ${k.status} · ${esc(k.cm || "")}"><span>${icon(CH_ICO[k.channel] || "message-circle")} ${k.brand} · ${esc(k.title)}</span>${evStage("canal", k, `${semText(k.status)} · ${esc(firstName(k.cm || ""))}`, SEM[semLvl(k.status)])}</div>`).join(""), false)}
-  <p class="note">${icon("repeat")} = repetitivo: un contenido que sale siempre los mismos días en el Canal de WhatsApp (ej.: ofertas cada lunes). Se carga una vez y aparece solo en cada fecha; tocalo para marcarlo como hecho.${list.some(k => k.date.slice(0,7) === MONTH) ? "" : ` Todavía no hay contenidos cargados en ${monthName(MONTH)}.`}</p>
+  <div class="legend">${CANAL_STAGES.map(st => `<span><span class="sw" style="background:${SEM[semLvl(st)]}"></span>${st}</span>`).join("")}<span><span class="sw" style="background:${REC_KINDS.Canal.c}"></span>${icon("repeat")} Canal de WhatsApp repetitivo</span></div>${calHint()}
+  ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("") + list.filter(k => k.date === c).map(k => `<div class="ev${sepCls(k.brand)}"${calDrag("canal", k.id)}${canEditPost() ? ` data-open="canal:${k.id}"` : ""} style="--c:${BRANDS[k.brand]};--s:${SEM[semLvl(k.status)]}" data-sem="${semLvl(k.status)}" title="${esc(k.title)} · ${esc(k.channel)} · ${k.status} · ${esc(k.cm || "")}"><span>${icon(CH_ICO[k.channel] || "message-circle")} ${k.brand} · ${esc(k.title)}</span>${evStage("canal", k, `${k.status} · ${esc(firstName(k.cm || ""))}`, SEM[semLvl(k.status)])}</div>`).join(""), false)}
+  <p class="note">${icon("repeat")} = repetitivo: un contenido que sale siempre los mismos días en el Canal de WhatsApp (ej.: ofertas cada lunes). Se carga una vez y aparece solo en cada fecha; tocá su etapa para cambiarla (Pendiente → En proceso → Programado → Publicado).${list.some(k => k.date.slice(0,7) === MONTH) ? "" : ` Todavía no hay contenidos cargados en ${monthName(MONTH)}.`}</p>
   ${postForm()}${jobForm()}${recDrawer()}`;
 }
 function pCalendario(){ return pCalCM("Feed"); }
@@ -4499,25 +4515,30 @@ function pPlan(){
   const calOnly = page === "calcm", view = calOnly ? "calendario" : planUI.view;
   // Plan de posteo: todo lo de CM del mes junto: feed, historias, Canal de WhatsApp, videos (pedidos a CM) y repetitivos.
   const byCm = x => cmUI.cm === "Todos" || x === cmUI.cm, allSt = cmUI.st === "Todos";
-  const all = [...visiblePosts(), ...visibleCanales().map(k => ({ ...k, canal:true }))];
-  const vids = visibleJobs().filter(j => j.area === "CM" && j.status !== "Cancelado" && j.due.slice(0, 7) === MONTH && byCm(j.owner) && soloMine(j) && allSt)
+  const canalesMes = visibleCanales().filter(k => k.date.slice(0, 7) === MONTH).map(k => ({ ...k, canal:true }));
+  const vidsAll = visibleJobs().filter(j => j.area === "CM" && j.status !== "Cancelado" && j.due.slice(0, 7) === MONTH)
     .map(j => ({ vid:true, id:j.id, date:j.due, brand:j.brand, title:j.title, status:j.status, cm:j.owner, piece:j.piece, job:j }));
-  const recs = []; if (allSt){ const rl = recVisible().filter(r => byCm(r.owner) && soloRec(r)); for (let d = 1; d <= lastDay(MONTH); d++){ const c = MONTH + "-" + String(d).padStart(2, "0"); rl.filter(r => recOn(r, c)).forEach(r => recs.push({ rec:true, id:r.id + "|" + c, date:c, brand:r.brand, title:r.title, cm:r.owner, r, done:RECUR_DONE.has(r.id + "|" + c) })); } }
-  const vp = [...cmPosts(), ...visibleCanales().filter(k => byCm(k.cm) && (allSt || k.status === cmUI.st)).map(k => ({ ...k, canal:true }))].filter(soloPost);
+  const recsAll = []; { const rl = recVisible(); for (let d = 1; d <= lastDay(MONTH); d++){ const c = MONTH + "-" + String(d).padStart(2, "0"); rl.filter(r => recOn(r, c)).forEach(r => recsAll.push({ rec:true, id:r.id + "|" + c, sid:r.id + "~" + c, date:c, brand:r.brand, title:r.title, cm:r.owner, r, status:recSt(r, c) })); } }
+  const vids = vidsAll.filter(x => byCm(x.cm) && soloMine(x.job) && (allSt || x.status === cmUI.st));
+  const recs = recsAll.filter(x => byCm(x.cm) && soloRec(x.r) && (allSt || x.status === cmUI.st));
+  const vp = [...cmPosts(), ...canalesMes.filter(k => byCm(k.cm) && (allSt || k.status === cmUI.st))].filter(soloPost);
   const items = [...vp, ...vids, ...recs].sort((a, b) => a.date.localeCompare(b.date) || (a.r?.time || "").localeCompare(b.r?.time || ""));
+  // Resumen: todo lo de CM del mes (feed, historias, canal, videos y repetitivos), por etapa de su proceso.
+  const all = [...visiblePosts(), ...canalesMes, ...vidsAll, ...recsAll];
   const names = [...new Set([...all.map(p => p.cm), ...CM_NAMES()])].filter(Boolean).sort();
   const count = st => all.filter(p => p.status === st).length;
   const done = all.filter(p => ["Publicado","Pautado"].includes(p.status)).length;
-  const summary = `<div class="pubsum">${POST_STAGES.map(st => `<button class="pubst ${cmUI.st === st ? "on" : ""}" data-cmst="${st}" style="--c:${POST_COLOR[st] === "#334155" ? "#94a3b8" : POST_COLOR[st]}"><b class="num">${count(st)}</b><span>${st}</span></button>`).join("")}
-    <div class="pubpct"><b class="num">${all.length ? Math.round(done / all.length * 100) : 0}%</b><span>del plan ya publicado (${done} de ${all.length})</span></div></div>`;
+  const sumSt = PLAN_STAGES.filter(st => POST_STAGES.includes(st) || count(st) || cmUI.st === st); // las de video, solo si hay algo en esa etapa
+  const summary = `<div class="pubsum">${sumSt.map(st => `<button class="pubst ${cmUI.st === st ? "on" : ""}" data-cmst="${st}" style="--c:${SEM[semLvl(st)]}"><b class="num">${count(st)}</b><span>${st}</span></button>`).join("")}
+    <div class="pubpct"><b class="num">${all.length ? Math.round(done / all.length * 100) : 0}%</b><span>del mes ya publicado (${done} de ${all.length})</span></div></div>`;
   const filters = `<div class="panel" style="padding:14px;display:flex;flex-direction:column;gap:10px"><div class="head"><div class="chips">${brandChips()}${calOnly ? "" : soloBtn()}</div></div>
     ${calOnly ? `<div class="chips pedscope"><button type="button" class="chip ${soloYo ? "on" : ""}" data-soloset="1">${icon("user-round")} Mi calendario</button><button type="button" class="chip ${soloYo ? "" : "on"}" data-soloset="0">${icon("users")} Todo el equipo</button></div>` : ""}
     <div class="jfilters"><select class="base" data-cmf="cm"><option value="Todos">CM: todos</option>${names.map(n => `<option ${cmUI.cm === n ? "selected" : ""}>${n}</option>`).join("")}</select>
-    <select class="base" data-cmf="st"><option value="Todos">Estado: todos</option>${POST_STAGES.map(st => `<option ${cmUI.st === st ? "selected" : ""}>${st}</option>`).join("")}</select></div></div>`;
+    <select class="base" data-cmf="st"><option value="Todos">Etapa: todas</option>${PLAN_STAGES.map(st => `<option ${cmUI.st === st ? "selected" : ""}>${st}</option>`).join("")}</select></div></div>`;
   const tema = (x, kind) => canEditPost() ? `<button type="button" class="linkish" data-pedit="${kind}:${x.id}">${esc(x.title)}</button>` : `<b style="color:#fff">${esc(x.title)}</b>`;
   const row = x => {
     if (x.rec) return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)} <span class="note">${x.r.time}</span></td><td>${brandTag(x.brand)}</td><td>${esc(firstName(x.cm || ""))}</td><td style="white-space:nowrap">${icon("repeat")} ${x.r.kind === "Canal" ? "Canal de WhatsApp" : x.r.kind} · repetitivo</td><td style="min-width:190px"><b style="color:#fff">${esc(x.title)}</b></td><td><span class="note">—</span></td><td>${recChip(x.r, x.date)}</td><td><span class="note">—</span></td></tr>`;
-    if (x.vid) return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${esc(firstName(x.cm || ""))}</td><td style="white-space:nowrap">${icon("clapperboard")} ${esc(x.piece)}</td><td style="min-width:190px">${canCreateJobs() ? `<button type="button" class="linkish" data-jedit="${x.id}">${esc(x.title)}</button>` : `<b style="color:#fff">${esc(x.title)}</b>`}</td><td><span class="note">—</span></td><td><div class="chips" style="flex-wrap:nowrap">${pill(x.status, JOB_COLOR[x.status])}${urgBadge(x.job)}</div></td><td><span class="note">—</span></td></tr>`;
+    if (x.vid) return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${esc(firstName(x.cm || ""))}</td><td style="white-space:nowrap">${icon("clapperboard")} ${esc(x.piece)}</td><td style="min-width:190px">${canCreateJobs() ? `<button type="button" class="linkish" data-jedit="${x.id}">${esc(x.title)}</button>` : `<b style="color:#fff">${esc(x.title)}</b>`}</td><td><span class="note">—</span></td><td><div class="chips" style="flex-wrap:nowrap">${stageOptions("job", x.job).length ? `<button type="button" class="semchip s${semLvl(x.status)}" data-stagemenu="job:${x.id}" title="Etapa: ${esc(x.status)} · tocá para cambiarla">${esc(x.status)} ▾</button>` : pill(x.status, JOB_COLOR[x.status])}${urgBadge(x.job)}</div></td><td><span class="note">—</span></td></tr>`;
     if (x.canal) return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${esc(firstName(x.cm || ""))}</td><td style="white-space:nowrap">${icon("message-circle")} Canal de WhatsApp</td><td style="min-width:190px">${tema(x, "canal")}</td><td><span class="note">—</span></td><td>${canalStatusCell(x)}</td><td><span class="note">—</span></td></tr>`;
     const lbl = canEditPost() && { "En proceso":"Programar", "Programado":"Marcar publicado", "Publicado":"Pautar" }[x.status];
     return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${canEditPost() ? `<select class="base sm" data-pcm="${x.id}" aria-label="CM de ${esc(x.title)}">${[...new Set([...CM_NAMES(), x.cm].filter(Boolean))].map(n => `<option value="${esc(n)}" ${n === x.cm ? "selected" : ""}>${esc(firstName(n))}</option>`).join("")}</select>` : esc(firstName(x.cm))}</td><td style="white-space:nowrap">${icon(x.format === "Historia" ? "smartphone" : "image")} <span class="net">${x.net}</span> ${x.format}</td><td style="min-width:190px">${tema(x, "post")}${x.carried ? `<span class="carried">↩ Arrastrado de ${x.carried}</span>` : ""}</td><td style="white-space:nowrap">${postDesignCell(x)}</td><td><div class="chips" style="flex-wrap:nowrap">${postStatusCell(x)}${postUrgBadge(x)}</div></td><td>${lbl ? `<button class="btn" data-adv-post="${x.id}">${lbl}</button>` : `<span class="note">—</span>`}</td></tr>`;
@@ -4525,7 +4546,7 @@ function pPlan(){
   return `<div class="head"><div><h1 class="pmh">${pmIco(calOnly ? "calendar-days" : "list-checks")}${calOnly ? "Planificación" : "Plan de posteo"}</h1><p class="sub">${monthLabel(MONTH)} · todo lo de CM del mes, junto: feed (posts, carruseles y reels), historias, Canal de WhatsApp, videos y repetitivos. ${calOnly ? "Mirá solo lo tuyo o lo de todo el equipo." : "Cargalo desde acá o desde cada Gestión."}</p></div>${calOnly ? "" : viewTabs([["tabla","Tabla","table-2"],["calendario","Calendario","calendar-days"]], planUI.view, "data-plview")}</div>
   ${isClosed() ? `<div class="ro">${icon("lock")} ${monthLabel(MONTH)} está cerrado: se puede consultar, pero no modificar. Lo que no se cumplió pasó al mes siguiente como “arrastrado”.</div>` : ""}
   ${calAdds(canEditPost() ? [['data-pnew="Feed"', "image", "Cargar publicación", "Post, carrusel o reel para el feed."], ['data-pnew="Historia"', "smartphone", "Cargar historia", "Una historia en su fecha."], ['data-pnew="Canal"', "message-circle", "Cargar para el Canal de WhatsApp", "Un contenido para el canal."], ...(canCreateJobs() && can("gestioncm") ? [['data-plvid', "clapperboard", "Cargar pedido de video", "Grabación, edición o cobertura, con su fecha."]] : [])] : [])}
-  ${summary}${filters}
+  ${summary}${filters}${CM_PROC_LEGEND()}
   ${view === "calendario" ? planCal(items) : `<div class="head"><span class="note">${items.length} ${items.length === 1 ? "contenido" : "contenidos"} en ${monthName(MONTH)} · ordenados por fecha${canEditPost() ? " · cambiá el estado desde la lista" : ""}</span></div>
   <div class="tw"><table><thead><tr><th>Fecha</th><th>Marca</th><th>CM</th><th>Qué es</th><th>Tema</th><th>Diseño gráfico</th><th>Estado</th><th>Siguiente paso</th></tr></thead><tbody>
     ${items.map(row).join("") || `<tr><td colspan="8" class="empty">No hay contenidos con estos filtros.</td></tr>`}
@@ -4572,11 +4593,11 @@ const PLAN_SEC = x => x.rec ? REC_SEC[x.r.kind] || x.r.kind : x.vid ? "Videos" :
 // Lo mismo en la Planificación de Diseño gráfico: la sección del pedido adelante ("Cartelería: Liquidación").
 const DG_SEC = { pedidos:"Redes Sociales", cartel:"Cartelería", web:"Web", pantallas:"Pantallas", gestioncm:"Videos" };
 function planCal(items){
-  return `<div class="plcal">${calGrid(c => items.filter(x => x.date === c).map(x => { const lv = x.rec ? (x.done ? 3 : 0) : semLvl(x.status), st = SEM_L[lv], col = SEM[lv];
+  return `<div class="plcal">${calGrid(c => items.filter(x => x.date === c).map(x => { const st = x.status, lv = semLvl(st), col = SEM[lv];
     const act = x.rec ? (canCreateJobs() ? ` data-recedit="${x.r.id}" data-recat="${x.date}" role="button" tabindex="0"${recDrag(x.r, x.date)}` : "") : x.vid ? (canCreateJobs() ? ` data-jedit="${x.id}" role="button" tabindex="0"` : "") : canEditPost() ? ` data-pedit="${x.canal ? "canal" : "post"}:${x.id}" role="button" tabindex="0"` : "";
-    const sk = x.rec ? null : x.vid ? "job" : x.canal ? "canal" : "post", it = x.vid ? x.job : x.canal ? canalById(x.id) : x.rec ? null : postById(x.id), can2 = sk && stageOptions(sk, it).length;
-    return `<div class="pev" data-sem="${lv}" style="--sem:${col}"${sk ? calDrag(sk, x.id) : ""}${act} title="${PLAN_SEC(x)}: ${esc(x.title)} · ${x.brand} · ${x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${x.rec ? st : semText(x.status)} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} <b class="evk">${PLAN_SEC(x)}:</b> ${esc(x.title)}</span>${can2 ? `<button type="button" class="pst" data-stagemenu="${sk}:${x.id}" style="--c:${col}" title="Cambiar el estado">${st} ▾</button>` : x.rec ? recChip(x.r, x.date) : `<em style="--c:${col}">${st}</em>`}</div>`; }).join(""), canEditPost())}</div>
-  <p class="note">Todo lo de CM junto, cada uno con el punto de color de su marca, su ícono (${icon("image")} feed, ${icon("smartphone")} historia, ${icon("message-circle")} Canal de WhatsApp, ${icon("clapperboard")} video, ${icon("repeat")} repetitivo) y su estado en colores: <b style="color:#ef4444">rojo pendiente</b> · <b style="color:#f59e0b">ámbar en proceso</b> · <b style="color:#84cc16">verde claro finalizado</b> · <b style="color:#16a34a">verde publicado</b>. Tocá uno para editarlo, su estado para cambiarlo (${icon("chevron-down")}), o un día vacío para cargar algo en esa fecha. En un repetitivo, tocá “Pendiente” cuando se publicó y queda en verde.</p>`;
+    const sk = x.rec ? "rec" : x.vid ? "job" : x.canal ? "canal" : "post", sid = x.rec ? x.sid : x.id, it = x.rec ? recItem(x.sid) : x.vid ? x.job : x.canal ? canalById(x.id) : postById(x.id), can2 = stageOptions(sk, it).length;
+    return `<div class="pev" data-sem="${lv}" style="--sem:${col}"${x.rec ? "" : calDrag(sk, x.id)}${act} title="${PLAN_SEC(x)}: ${esc(x.title)} · ${x.brand} · ${x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${st} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} <b class="evk">${PLAN_SEC(x)}:</b> ${esc(x.title)}</span>${can2 ? `<button type="button" class="pst" data-stagemenu="${sk}:${sid}" style="--c:${col}" title="Cambiar la etapa">${st} ▾</button>` : `<em style="--c:${col}">${st}</em>`}</div>`; }).join(""), canEditPost())}</div>
+  <p class="note">Todo lo de CM junto, cada uno con el punto de color de su marca, su ícono (${icon("image")} feed, ${icon("smartphone")} historia, ${icon("message-circle")} Canal de WhatsApp, ${icon("clapperboard")} video, ${icon("repeat")} repetitivo) y la etapa de su proceso (el color va de rojo, pendiente, a verde, publicado). Los repetitivos siguen el proceso de su tipo. Tocá uno para editarlo, su etapa para cambiarla (${icon("chevron-down")}), o un día vacío para cargar algo en esa fecha.</p>`;
 }
 let jobUI = { area:"Todos", view:"calendario", status:"Activos", owner:"Todos", prio:"Todas", q:"", form:null };
 const canCreateJobs = () => viewer.role === "Admin total" && !isClosed(); // cargar, editar y borrar pedidos: solo Admin total
@@ -5192,7 +5213,7 @@ function postDesignCell(p){
 }
 function postStatusCell(p){
   if (!canEditPost()) return postPill(p);
-  return `<select class="base sm semsel" data-pstatus="${p.id}" aria-label="Estado de ${esc(p.title)}" style="--c:${SEM[semLvl(p.status)]}">${POST_STAGES.map(st => `<option value="${st}" ${st === p.status ? "selected" : ""}>${semText(st)}</option>`).join("")}</select>`;
+  return `<select class="base sm semsel" data-pstatus="${p.id}" aria-label="Estado de ${esc(p.title)}" style="--c:${SEM[semLvl(p.status)]}">${POST_STAGES.map(st => `<option value="${st}" ${st === p.status ? "selected" : ""}>${st}</option>`).join("")}</select>`;
 }
 // Ficha de un posteo: se abre tocándolo en el calendario (o tocando un día vacío para cargar uno nuevo).
 // El CM responsable se elige libremente: un CM de Superseis puede hacer de CM de Stock, por ejemplo.
@@ -5362,7 +5383,7 @@ function newJobOn(due){
   render();
 }
 document.addEventListener("click", e => {
-  if (!isCalPage() || e.target.closest("[data-recdone],[data-stagemenu]")) return;
+  if (!isCalPage() || e.target.closest("[data-stagemenu]")) return;
   const ev = e.target.closest(".cal [data-open]");
   if (ev){ const [kind, id] = ev.dataset.open.split(":");
     if (kind === "post" && canEditPost()){ const p = postById(id); postUI.form = { mode:"edit", kind:p.format === "Historia" ? "Historia" : "Feed", post:{ ...p } }; render(); }
@@ -5387,14 +5408,26 @@ let RECURRING = [
   { id:4, title:"Grabación de recetas en el local", brand:"Delimarket", kind:"Grabación", days:[1], time:"10:00", owner:"Miguel Sebastián Kunzle Insfrán", from:"2026-09-01", until:"" },
   { id:5, title:"Grabación de novedades en tienda", brand:"Superseis", kind:"Grabación", days:[3], time:"15:00", owner:"Aníbal Iván Martinez", from:"2026-09-01", until:"" },
 ];
-let RECUR_DONE = new Set(["1|2026-09-21","2|2026-09-23","4|2026-09-22"]);
+let RECUR_DONE = new Set(["1|2026-09-21","2|2026-09-23","4|2026-09-22"]); // publicados (lo siguen leyendo las versiones anteriores)
+// Etapa de cada repetitivo en cada fecha ("id|fecha" → etapa). Cada tipo sigue su proceso: Feed e Historia como las
+// publicaciones, el Canal de WhatsApp igual pero sin Pautado, y las grabaciones como los videos.
+let RECUR_ST = {};
+const recStages = r => r.kind === "Grabación" ? CM_STAGES : r.kind === "Canal" ? CANAL_STAGES : POST_STAGES;
+const REC_DONE_ST = ["Publicado","Pautado"];
+function recSt(r, d){ const k = r.id + "|" + d, s = RECUR_ST[k];
+  if (RECUR_DONE.has(k)) return REC_DONE_ST.includes(s) && recStages(r).includes(s) ? s : "Publicado";
+  return s && !REC_DONE_ST.includes(s) && recStages(r).includes(s) ? s : "Pendiente"; }
+function setRecSt(r, d, st){ const k = r.id + "|" + d;
+  if (st === "Pendiente") delete RECUR_ST[k]; else RECUR_ST[k] = st;
+  if (REC_DONE_ST.includes(st)) RECUR_DONE.add(k); else RECUR_DONE.delete(k); }
+const recItem = id => { const [rid, d] = String(id).split("~"), r = RECURRING.find(x => x.id === +rid); return r && d ? { id, r, d, title:r.title, status:recSt(r, d) } : null; };
 let recUI = { form:false, days:[] };
 const recOn = (r, d) => r.days.includes((new Date(d + "T12:00").getDay() + 6) % 7) && (!r.from || d >= r.from) && (!r.until || d <= r.until);
 const recVisible = () => RECURRING.filter(r => seesBrand(r.brand) && inFilter(r.brand));
 const recDays = r => r.days.length === 7 ? "Todos los días" : r.days.length === 5 && r.days.every(d => d < 5) ? "De lunes a viernes" : "Todos los " + r.days.map(d => WEEKDAYS[d].toLowerCase()).join(" y ").replace(/ y (?=.* y )/g, ", ");
 function recEv(r, d){
-  const done = RECUR_DONE.has(r.id + "|" + d), k = REC_KINDS[r.kind];
-  return `<div class="ev rec ${done ? "done" : ""}${sepCls(r.brand)}" style="--c:${BRANDS[r.brand]};--s:${SEM[done ? 3 : 0]}" data-sem="${done ? 3 : 0}" title="Repetitivo: ${esc(r.title)} · ${r.kind} · ${recDays(r)} ${r.time} · ${esc(r.owner)} · ${done ? "publicado" : "pendiente"}"${canCreateJobs() ? ` data-recedit="${r.id}" data-recat="${d}" role="button" tabindex="0"${recDrag(r, d)}` : ""}><span>${icon(done ? "check" : "repeat")} ${r.time} · ${esc(r.title)}</span><span class="st">● ${r.kind} · ${esc(firstName(r.owner))}</span>${calDateOk(d) || done ? recChip(r, d) : ""}</div>`;
+  const st = recSt(r, d), lv = semLvl(st), done = lv === 3;
+  return `<div class="ev rec ${done ? "done" : ""}${sepCls(r.brand)}" style="--c:${BRANDS[r.brand]};--s:${SEM[lv]}" data-sem="${lv}" title="Repetitivo: ${esc(r.title)} · ${r.kind} · ${recDays(r)} ${r.time} · ${esc(r.owner)} · ${st}"${canCreateJobs() ? ` data-recedit="${r.id}" data-recat="${d}" role="button" tabindex="0"${recDrag(r, d)}` : ""}><span>${icon(done ? "check" : "repeat")} ${r.time} · ${esc(r.title)}</span><span class="st">● ${r.kind} · ${esc(firstName(r.owner))}</span>${calDateOk(d) || st !== "Pendiente" ? recChip(r, d) : ""}</div>`;
 }
 // Arrastrar un repetitivo a otro día cambia el día de la semana en que se repite (ej.: de lunes a miércoles).
 const recDrag = (r, d) => canCalMove() && calDateOk(d) ? ` draggable="true" data-drag="rec:${r.id}|${d}"` : "";
@@ -5411,7 +5444,7 @@ function recurringList(){
   const next = []; for (let i = 0; i < 7; i++){ const d = addDays(TODAY, i); list.filter(r => recOn(r, d)).sort((a, b) => a.time.localeCompare(b.time)).forEach(r => next.push([r, d])); }
   return `<div class="panel recpanel"><div class="head"><div><h2 style="margin:0" class="pmh">${pmIco("repeat")}Pedidos repetitivos</h2><p class="sub" style="margin:4px 0 0">Lo que sale siempre los mismos días. Se cargan solos en su calendario (Historia, Feed o Canales), desde la fecha de inicio hasta la de fin, o sin fin.</p></div></div>
     <div class="reclist">${list.map(r => { const k = REC_KINDS[r.kind]; return `<div class="recitem" style="--k:${k.c}"><span class="rk">${k.i}</span><div class="grow"><b>${esc(r.title)}</b><div class="m">${brandTag(r.brand)}<span class="rkind">${r.kind}</span><span>${recDays(r)} · ${r.time} hs</span><span>${esc(r.owner)}</span><span>${r.from ? "desde " + dm(r.from) : ""}${r.until ? " hasta " + dm(r.until) : " · sin fecha de fin"}</span></div></div>${edit ? `<button class="btn sm ib" data-recedit="${r.id}" aria-label="Editar">${icon("pencil")}</button><button class="btn danger sm ib" data-recdel="${r.id}" aria-label="Borrar">${icon("trash-2")}</button>` : ""}</div>`; }).join("") || `<div class="empty">Todavía no hay pedidos repetitivos.</div>`}</div>
-    ${next.length ? `<h3 class="rech">Próximos 7 días</h3><div class="recnext">${next.map(([r, d]) => { const done = RECUR_DONE.has(r.id + "|" + d); return `<div class="rn ${done ? "done" : ""}" style="--k:${REC_KINDS[r.kind].c}"><span class="rnd">${["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][new Date(d + "T12:00").getDay()]} ${dm(d)}<small>${r.time}</small></span><span class="grow">${REC_KINDS[r.kind].i} ${esc(r.title)} <span class="note">· ${r.brand} · ${esc(firstName(r.owner))}</span></span>${recChip(r, d)}</div>`; }).join("")}</div>` : ""}
+    ${next.length ? `<h3 class="rech">Próximos 7 días</h3><div class="recnext">${next.map(([r, d]) => { const done = semLvl(recSt(r, d)) === 3; return `<div class="rn ${done ? "done" : ""}" style="--k:${REC_KINDS[r.kind].c}"><span class="rnd">${["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][new Date(d + "T12:00").getDay()]} ${dm(d)}<small>${r.time}</small></span><span class="grow">${REC_KINDS[r.kind].i} ${esc(r.title)} <span class="note">· ${r.brand} · ${esc(firstName(r.owner))}</span></span>${recChip(r, d)}</div>`; }).join("")}</div>` : ""}
   </div>`;
 }
 // Ventana para cargar (o editar) un pedido repetitivo: días de la semana, hora, fecha de inicio y fecha de fin (o sin fin).
@@ -5423,7 +5456,7 @@ function recDrawer(){
   return `<div class="drawer-bg" data-recform></div><aside class="drawer" aria-label="Pedido repetitivo">
     <div class="drawer-h"><div><h2 style="margin:0">${r ? "Editar pedido repetitivo" : "Cargar pedido repetitivo para CM"}</h2><div class="note">Se carga solo en el calendario, en cada día elegido</div></div><button class="btn" data-recform aria-label="Cerrar">✕</button></div>
     <form class="pform drawer-b recform" id="recForm" style="grid-template-columns:1fr 1fr">
-      ${r && recUI.at ? (() => { const done = RECUR_DONE.has(r.id + "|" + recUI.at); return `<div class="recat" style="grid-column:1/-1"><span>${icon("calendar-days")} <b>${WEEKDAYS[(new Date(recUI.at + "T12:00").getDay() + 6) % 7]} ${dm(recUI.at)}</b> · ${done ? "hecho" : "pendiente"}</span>${recChip(r, recUI.at)}</div>`; })() : ""}
+      ${r && recUI.at ? `<div class="recat" style="grid-column:1/-1"><span>${icon("calendar-days")} <b>${WEEKDAYS[(new Date(recUI.at + "T12:00").getDay() + 6) % 7]} ${dm(recUI.at)}</b> · etapa</span>${recChip(r, recUI.at)}</div>` : ""}
       <label style="grid-column:1/-1">Qué se publica o se hace *<input class="base" id="rcTitle" required value="${esc(v.title)}" placeholder="Ej.: Ofertas de la semana"></label>
       <label>Marca *<select class="base" id="rcBrand">${opt(myBrands(), v.brand)}</select></label>
       <label>Tipo *<select class="base" id="rcKind">${Object.keys(REC_KINDS).map(k => `<option value="${k}" ${k === (recUI.kind || v.kind) ? "selected" : ""}>${k === "Canal" ? "Canal de WhatsApp" : k}</option>`).join("")}</select></label>
@@ -5441,11 +5474,10 @@ document.addEventListener("click", e => {
   const f = e.target.closest("[data-recform]"); if (f){ recUI = { form:!recUI.form, days:[], kind:null, edit:null, noEnd:null }; render(); return; }
   // Desde un calendario: “🔁 Repetitivo” abre la ventana ahí mismo, con el tipo elegido.
   const g = e.target.closest("[data-recgo]"); if (g){ recUI = { form:true, days:[], kind:g.dataset.recgo, edit:null, noEnd:null }; render(); return; }
-  const ed = !e.target.closest("[data-recdone],#recForm") && e.target.closest("[data-recedit]"); if (ed){ const r = RECURRING.find(x => x.id === +ed.dataset.recedit); if (!r) return; recUI = { form:true, days:[...r.days], kind:r.kind, edit:r.id, noEnd:null, at:ed.dataset.recat || null }; render(); return; }
+  const ed = !e.target.closest("[data-stagemenu],#recForm") && e.target.closest("[data-recedit]"); if (ed){ const r = RECURRING.find(x => x.id === +ed.dataset.recedit); if (!r) return; recUI = { form:true, days:[...r.days], kind:r.kind, edit:r.id, noEnd:null, at:ed.dataset.recat || null }; render(); return; }
   const ne = e.target.closest("#rcNoEnd"); if (ne){ recUI.noEnd = ne.checked; const u = document.getElementById("rcUntil"); if (u){ u.disabled = ne.checked; if (ne.checked) u.value = ""; } return; }
   const dy = e.target.closest("[data-recday]"); if (dy){ const i = +dy.dataset.recday; recUI.days = recUI.days.includes(i) ? recUI.days.filter(x => x !== i) : [...recUI.days, i].sort(); dy.classList.toggle("on"); return; }
   const dl = e.target.closest("[data-recdel]"); if (dl){ if (!confirmTap(dl, "rec:" + dl.dataset.recdel, "¿Seguro?")) return; RECURRING = RECURRING.filter(r => r.id !== +dl.dataset.recdel); recUI = { form:false, days:[] }; render(); toast("Pedido repetitivo borrado."); return; }
-  const dn = e.target.closest("[data-recdone]"); if (dn){ e.stopPropagation(); if (!canMarkRec()) return; const k = dn.dataset.recdone; RECUR_DONE.has(k) ? RECUR_DONE.delete(k) : RECUR_DONE.add(k); render(); window.RMH?.flushNow?.(); toast(RECUR_DONE.has(k) ? "Listo: publicado (en verde)." : "Vuelve a pendiente (en rojo)."); }
 });
 document.addEventListener("submit", e => { if (e.target.id !== "recForm") return; e.preventDefault();
   if (!recUI.days.length){ toast("Elegí al menos un día de la semana."); return; }
@@ -7887,12 +7919,12 @@ const GUIDE = [
     ["gauge","Carga de trabajo Diseño gráfico","Cuánto tiene cada diseñador: los trabajos sin finalizar según su complejidad. Sirve para repartir los pedidos nuevos."],
     ["archive","Historial Diseño gráfico","Los trabajos de diseño gráfico entregados en el mes, con su fecha y si salieron a tiempo."]]],
   ["Community Manager", [
-    ["calendar-days","Gestión Redes","Las publicaciones del feed (posts, carruseles y reels) y sus repetitivas. Etapas: Pendiente → En proceso → Programado → Publicado → Pautado. Arranca en Calendario; también tiene Tablero (tocás una tarjeta para cambiar la etapa) y Tabla. Con “Solo yo” ves solo lo tuyo."],
-    ["smartphone","Gestión Historia","Igual que Gestión Redes, pero solo con las historias: las del plan y las repetitivas. Calendario, Tablero y Tabla."],
-    ["message-circle","Gestión Canal WhatsApp","Lo que se publica en el Canal de WhatsApp de cada marca. Calendario, Tablero y Tabla."],
-    ["clapperboard","Gestión Videos","Los pedidos a los CM: grabaciones, ediciones de video, coberturas, copys y pauta. Etapas: Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado (en Revisión, Admin total aprueba o pide cambios). Calendario (cada pedido en su fecha límite, con las grabaciones repetitivas), Tablero, Tabla y la lista de Repetitivos."],
+    ["calendar-days","Gestión Redes","Las publicaciones del feed (posts, carruseles y reels) y sus repetitivas. Etapas: Pendiente → En proceso → Programado → Publicado → Pautado (las repetitivas también; las grabaciones repetitivas, las de Videos). Arranca en Calendario; también tiene Tablero (tocás una tarjeta para cambiar la etapa) y Tabla. Con “Solo yo” ves solo lo tuyo."],
+    ["smartphone","Gestión Historia","Igual que Gestión Redes, pero solo con las historias: las del plan y las repetitivas, todas con las mismas etapas (Pendiente → En proceso → Programado → Publicado → Pautado). Calendario, Tablero y Tabla."],
+    ["message-circle","Gestión Canal WhatsApp","Lo que se publica en el Canal de WhatsApp de cada marca. Etapas: Pendiente → En proceso → Programado → Publicado (sin Pautado), también en los repetitivos. Calendario, Tablero y Tabla."],
+    ["clapperboard","Gestión Videos","Los pedidos a los CM: grabaciones, ediciones de video, coberturas, copys y pauta. Etapas: Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado (en Revisión, Admin total aprueba o pide cambios). Tabla y Procesos (una columna por etapa), más la lista de Repetitivos; las grabaciones repetitivas siguen las mismas etapas. En el calendario de Planificación se ven todos los videos y las grabaciones en su fecha."],
     ["gauge","Carga de trabajo CM","Cuánto tiene cada CM: los pedidos sin terminar y las publicaciones del mes que todavía no están programadas."],
-    ["list-checks","Plan de posteo","Lo que se tiene que subir en el mes. Arriba, cuántas hay en cada estado y el % ya publicado (tocá un estado para filtrar). En cada publicación marcás Pendiente, En proceso, Programado, Publicado o Pautado, cambiás el CM que la hace y pedís el diseño si hace falta."],
+    ["list-checks","Plan de posteo","Todo lo de CM del mes: feed, historias, Canal de WhatsApp, videos y repetitivos. Arriba, cuántos hay en cada etapa y el % ya publicado (tocá una etapa para filtrar) y los tres procesos a la vista. Cada contenido sigue el suyo: publicaciones e historias Pendiente → En proceso → Programado → Publicado → Pautado; Canal de WhatsApp igual sin Pautado; videos Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado. Cambiás la etapa ahí mismo, el CM que la hace y pedís el diseño si hace falta."],
     ["archive","Historial CM","Lo que ya salió en el mes: publicaciones publicadas o pautadas y pedidos de CM terminados."]]],
   ["Recursos", [
     ["wand-sparkles","Prompts de imágenes","Primero elegís la marca (Superseis, Stock o Delimarket): se carga su estilo de fotos (luz, cámara, colores de la escena y emoción) y el prompt lo respeta siempre, aunque cambies el escenario. Después armás el prompt para ChatGPT, Gemini o Nano Banana en seis modalidades: producto en escenario, varios productos, producto con modelos, modelos en locación, fondo pleno o transparente y opción libre. Si es para un evento festivo, tocá Sí y elegí la fecha (Verano, Carnaval, Vuelta a Clases, Otoño, Semana Santa, Independencia Paraguay, Día de la Madre, Día del Padre, Invierno, Día del Niño, Primavera, Halloween, Navidad, Año Nuevo) o tocá Otro y escribila: se suma su decoración, siempre con los colores y la onda de la marca. Si adjuntás fotos (producto, fondo o persona), el prompt pide respetarlas al 100%: sin deformar productos, logos, letras ni caras. La cámara, el lente y la exposición se eligen solos; se suman bloques de realismo y la lista de lo que hay que evitar."],
