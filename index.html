@@ -4287,8 +4287,8 @@ function pInicio(){
     const banner = lateJobs.length || soon.length ? `<div class="panel alarm-banner"><span class="urg late" style="--u:#ef4444">${ALARM_SVG}Alarma</span><div><b>${lateJobs.length ? `Tenés ${lateJobs.length} ${lateJobs.length === 1 ? "trabajo atrasado" : "trabajos atrasados"}` : ""}${lateJobs.length && soon.length ? " y " : ""}${soon.length ? `${soon.length} para entregar ${soon.length === 1 ? "mañana u hoy" : "entre hoy y mañana"}` : ""}.</b> <span>La alarma queda encendida hasta que se marque como entregado.</span></div></div>` : "";
     return `${prioStrip()}${helloHead("Tus trabajos de diseño, ordenados por fecha de entrega.")}${banner}${inicioAlertsPanel()}
     ${kpiRow(progStats(jobs.filter(j => j.owner === viewer.name)))}
-    ${progressPanel("team")}
     <div class="panel"><div class="head" style="margin-bottom:14px"><h2 style="margin:0" class="pmh">${pmIco("list-checks")}Mis trabajos</h2>${URG_LEGEND}</div>${mine.length ? `<div class="list">${mine.map(j => jobRow(j)).join("")}</div>` : `<div class="empty">No tenés trabajos pendientes.</div>`}</div>
+    ${progressPanel("team")}
     ${progressPanel("people")}`;
   }
   const vp = posts.filter(p => seesBrand(p.brand) && p.date.slice(0,7) === MONTH);
@@ -4308,9 +4308,10 @@ function pInicio(){
   }
   return `${prioStrip()}${helloHead(`${monthLabel(MONTH)} · ${viewer.brands ? "tus calendarios: " + viewer.brands.map(g => g === "Otros" ? "Otras marcas" : g).join(", ") : "todas las marcas del grupo"}`)}${banner}${inicioAlertsPanel()}
   ${kpiRow(progStats(isAdminAny() ? jobs : jobs.filter(j => j.owner === viewer.name)))}
-  ${progressPanel("team")}
+  ${isAdminAny() ? progressPanel("team") : ""}
+    ${viewer.role === "CM" ? (() => { const mine = jobs.filter(j => j.owner === viewer.name && !isClosedJob(j)).sort((a,b) => a.due.localeCompare(b.due)); return `<div class="panel"><div class="head" style="margin-bottom:14px"><h2 style="margin:0" class="pmh">${pmIco("clapperboard")}Mis trabajos de CM</h2>${URG_LEGEND}</div>${mine.length ? `<div class="list">${mine.map(j => jobRow(j)).join("")}</div>` : `<div class="empty">No tenés trabajos abiertos.</div>`}</div>`; })() : ""}
+  ${isAdminAny() ? "" : progressPanel("team")}
   <div class="grid">
-    ${viewer.role === "CM" ? (() => { const mine = jobs.filter(j => j.owner === viewer.name && !isClosedJob(j)).sort((a,b) => a.due.localeCompare(b.due)); return `<div class="panel" style="grid-column:1/-1"><div class="head" style="margin-bottom:14px"><h2 style="margin:0" class="pmh">${pmIco("clapperboard")}Mis trabajos de CM</h2>${URG_LEGEND}</div>${mine.length ? `<div class="list">${mine.map(j => jobRow(j)).join("")}</div>` : `<div class="empty">No tenés trabajos abiertos.</div>`}</div>`; })() : ""}
     <div class="panel"><h2 class="pmh">${pmIco("calendar-days")}${weekTitle}</h2>${week.length ? `<div class="list wklist">${week.map(p => `<div class="row${postUrgStyle(p)}"><span class="date">${dm(p.date)}</span><div class="grow"><div class="t">${esc(p.title)}</div><div class="m">${brandTag(p.brand)} · <span class="net">${p.net}</span> ${p.format}</div></div><div class="wkb">${postUrgBadge(p)}${postPill(p)}</div></div>`).join("")}</div>` : `<div class="empty">${isClosed() ? "Se cumplió todo el plan." : "Nada programado."}</div>`}</div>
   </div>
   ${progressPanel("people")}`;
@@ -8028,7 +8029,7 @@ const GUIDE = [
     ["search","¿No encontrás algo?","Usá el buscador de esta guía: escribí, por ejemplo, “pauta”, “cumpleaños” o “contraseña”."]]],
   ["Cómo funciona", [
     ["gauge","Carga de trabajo","Cada persona tiene una barra: suman los trabajos sin terminar según su complejidad (Baja 1 · Media 2 · Alta 3) sobre 10 puntos de capacidad. En los CM también suma 1 punto cada publicación del mes que todavía no está programada. Verde = ideal, amarillo = carga alta, naranja = al límite, rojo = sobrecargado."],
-    ["bell-ring","Avisos de pedidos (+1)","Cuando te cargan un pedido (o te piden cambios), el botón Panel de Trabajo (en el celular, “Trabajo”) muestra +1, +2… y late hasta que abrís cada pedido. Adentro del panel, cada sección (Redes Sociales, Cartelería, Web, Pantallas y Gestión de Videos) muestra cuántos pedidos tenés sin terminar: el número queda hasta que el pedido se aprueba, se termina o se cancela."],
+    ["bell-ring","Avisos de pedidos (+1)","Cuando te cargan un pedido (o te piden cambios), el botón Panel de Trabajo (en el celular, “Trabajo”) muestra +1, +2… y late hasta que abrís cada pedido. En Diseño gráfico el número no se apaga al abrirlo: sigue sumando hasta que el pedido se aprueba o se cancela. En CM se apaga al abrirlo. Adentro del panel, cada sección (Redes Sociales, Cartelería, Web, Pantallas y Gestión de Videos) muestra cuántos pedidos tenés sin terminar: el número queda hasta que el pedido se aprueba, se termina o se cancela."],
     ["alarm-clock","Alarmas de entrega","Cada pedido y publicación avisa cuánto falta: falta 7 días, falta 3, falta 1, hoy, o ⏰ retraso de tantos días. La alarma queda hasta que se marca como terminado."],
     ["list-ordered","Etapas con cuadraditos","Cada tarjeta muestra sus etapas numeradas. Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección) → Aprobado (final). Admin total carga el pedido. El diseñador o el CM toca el pedido y ve la ficha completa; el diseñador lo lleva hasta Boceto finalizado y le llega el aviso a Admin total, que pide cambios con un mensaje escrito (se cuentan en la ficha) o toca Diseño finalizado y cierra el ciclo. El CM recibe el pedido y lo marca Programado → Publicado. Tocás el cuadradito de la etapa o arrastrás la tarjeta a otra columna."],
     ["check-check","Terminé mi etapa (diseñadores)","El diseñador toca “Terminé mi etapa”: pasa a revisión y le llega un aviso a Admin total, que aprueba o pide correcciones. Con correcciones aparece “Terminé las correcciones”."],
@@ -8410,9 +8411,9 @@ function renderTabbar(){
   const work = isDesigner() ? ["paneldg","Trabajo","layout-grid"] : viewer.role === "CM" ? ["panelcm","Trabajo","layout-grid"] : ["dashboard","Dashboard","layout-dashboard"];
   const tabs = [["inicio","Inicio","house"],work,["mensajes","Chat","messages-square"]].filter(([k]) => can(k));
   const cnt = k => { const w = k === "paneldg" || k === "panelcm", n = k === "inicio" ? alerts().length : k === "mensajes" ? chatUnreadTotal() : workPend(k);
-    return n ? `<span class="tbc"${w ? ` title="${n} pedido${n === 1 ? "" : "s"} sin abrir"` : ""}>${w ? "+" : ""}${n > 99 ? "99+" : n}</span>` : ""; };
+    return n ? `<span class="tbc"${w ? ` title="${k === "paneldg" ? `${n} pedido${n === 1 ? "" : "s"} sin terminar` : `${n} pedido${n === 1 ? "" : "s"} sin abrir`}"` : ""}>${w ? "+" : ""}${n > 99 ? "99+" : n}</span>` : ""; };
   const open = document.querySelector(".side")?.classList.contains("open");
-  tb.innerHTML = tabs.map(([k, l, i]) => `<a href="#${k}" data-page="${k}" class="${page === k && !open ? "on" : ""}${workPend(k) ? " wknew" : ""}" ${page === k ? 'aria-current="page"' : ""}><span class="tbi">${tbIcon(i)}${cnt(k)}</span><span>${l}</span></a>`).join("")
+  tb.innerHTML = tabs.map(([k, l, i]) => `<a href="#${k}" data-page="${k}" class="${page === k && !open ? "on" : ""}${workNew(k) ? " wknew" : ""}" ${page === k ? 'aria-current="page"' : ""}><span class="tbi">${tbIcon(i)}${cnt(k)}</span><span>${l}</span></a>`).join("")
     + `<button type="button" class="${open || !tabs.some(([k]) => k === page) ? "on" : ""}" data-tabmore><span class="tbi">${tbIcon("menu")}</span><span>Más</span></button>`;
 }
 document.addEventListener("click", e => { if (!e.target.closest("[data-tabmore]")) return; document.getElementById("menuBtn")?.click(); renderTabbar(); });
@@ -8450,7 +8451,7 @@ function renderNav(){
     const shut = navClosed.has(g);
     return `<div class="nav-group${shut ? " closed" : ""}"><button type="button" class="nav-label navtog" data-navtog="${esc(g)}" aria-expanded="${!shut}">${g}${shut ? items.map(x => navBadge(x.k)).join("") : ""}${icon("chevron-down")}</button>${items.map(s => `<a href="#${s.k}" data-page="${s.k}" title="${esc(s.n || s.l)}" class="${page===s.k || (s.k === "paneldg" && PANEL_DG_KEYS.includes(page)) || (s.k === "panelcm" && PANEL_CM_KEYS.includes(page)) ?"on":""}">${icon(s.i)}<span>${s.n || s.l}</span>${s.k==="mensajes" && chatUnreadTotal() ? `<span class="count msgc">${chatUnreadTotal()}</span>` : ""}${s.k==="alertas" && alerts().length ? `<span class="count">${alerts().length}</span>` : ""}${navBadge(s.k)}</a>`).join("")}</div>`;
   }).join("");
-  document.querySelectorAll('.nav a[data-page="paneldg"], .nav a[data-page="panelcm"]').forEach(a => a.classList.toggle("wknew", workPend(a.dataset.page) > 0));
+  document.querySelectorAll('.nav a[data-page="paneldg"], .nav a[data-page="panelcm"]').forEach(a => a.classList.toggle("wknew", workNew(a.dataset.page) > 0));
   const wn = workPend("paneldg") + workPend("panelcm"); if (workLast !== null && wn > workLast) setTimeout(bumpWorkBadges, 0); workLast = wn;
 }
 // Aparición animada de todo lo que se ve: paneles, tablas (fila por fila), calendarios (día por día), tableros, listas y tarjetas.
@@ -8505,13 +8506,19 @@ const markSeen = j => { if (!j || !viewer || j.owner !== viewer.name || window.R
   if (j.seenBy?.[viewer.id] !== sig){ j.seenBy = { ...(j.seenBy || {}), [viewer.id]:sig }; setTimeout(renderNav, 0); } }; // el menú se dibuja antes que la ficha: se actualiza enseguida
 const isUnseenJob = j => ["Pendiente", "En corrección", "Corrección"].includes(j.status) && j.seenBy?.[viewer.id] !== seenSig(j);
 const myJobsPend = area => viewer ? jobs.filter(j => !j.ex && j.owner === viewer.name && (j.area === "CM") === (area === "CM") && isUnseenJob(j)).length : 0;
-const workPend = k => k === "paneldg" ? myJobsPend("Diseño") : k === "panelcm" ? myJobsPend("CM") : 0;
+// Botón Panel de Trabajo. Diseño gráfico: cuenta los pedidos a tu nombre sin terminar (no se apaga al abrirlos, sigue hasta
+// que se aprueban o se cancelan). CM: cuenta los pedidos nuevos o con cambios que todavía no abriste (se apaga al abrirlos).
+// En los dos, el botón late mientras haya alguno sin abrir.
+const myDesignOpen = () => viewer ? jobs.filter(j => !j.ex && j.owner === viewer.name && j.area !== "CM" && !isClosedJob(j)).length : 0;
+const workPend = k => k === "paneldg" ? myDesignOpen() : k === "panelcm" ? myJobsPend("CM") : 0;
+const workNew = k => k === "paneldg" ? myJobsPend("Diseño") : k === "panelcm" ? myJobsPend("CM") : 0;
 // Adentro del Panel de Trabajo: los pedidos a tu nombre sin terminar de cada sección (Redes Sociales, Cartelería, Web,
 // Pantallas, Videos). El número queda hasta que el pedido se aprueba, se termina o se cancela.
 const JOB_SECS = ["pedidos","cartel","web","pantallas","gestioncm"];
 const myJobsOpen = k => viewer ? jobs.filter(j => !j.ex && j.owner === viewer.name && jobSection(j) === k && !isClosedJob(j)) : [];
-const navBadge = k => { const n = workPend(k);
-  return n ? `<span class="count ibc" title="${n} pedido${n === 1 ? "" : "s"} nuevo${n === 1 ? "" : "s"} o con cambios para vos, sin abrir">+${n > 99 ? 99 : n}</span>` : ""; };
+const navBadge = k => { const n = workPend(k), nw = workNew(k);
+  const t = k === "paneldg" ? `${n} pedido${n === 1 ? "" : "s"} de diseño a tu nombre sin terminar${nw ? ` (${nw} sin abrir)` : ""}` : `${n} pedido${n === 1 ? "" : "s"} nuevo${n === 1 ? "" : "s"} o con cambios para vos, sin abrir`;
+  return n ? `<span class="count ibc" title="${t}">+${n > 99 ? 99 : n}</span>` : ""; };
 // Cuando llega un pedido nuevo (también en vivo), el botón del Panel de Trabajo salta una vez.
 let workLast = null;
 function bumpWorkBadges(){
