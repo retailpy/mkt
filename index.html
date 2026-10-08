@@ -4287,8 +4287,8 @@ function pInicio(){
     const banner = lateJobs.length || soon.length ? `<div class="panel alarm-banner"><span class="urg late" style="--u:#ef4444">${ALARM_SVG}Alarma</span><div><b>${lateJobs.length ? `Tenés ${lateJobs.length} ${lateJobs.length === 1 ? "trabajo atrasado" : "trabajos atrasados"}` : ""}${lateJobs.length && soon.length ? " y " : ""}${soon.length ? `${soon.length} para entregar ${soon.length === 1 ? "mañana u hoy" : "entre hoy y mañana"}` : ""}.</b> <span>La alarma queda encendida hasta que se marque como entregado.</span></div></div>` : "";
     return `${prioStrip()}${helloHead("Tus trabajos de diseño, ordenados por fecha de entrega.")}${banner}${inicioAlertsPanel()}
     ${kpiRow(progStats(jobs.filter(j => j.owner === viewer.name)))}
-    ${progressPanel("team")}
     <div class="panel"><div class="head" style="margin-bottom:14px"><h2 style="margin:0" class="pmh">${pmIco("list-checks")}Mis trabajos</h2>${URG_LEGEND}</div>${mine.length ? `<div class="list">${mine.map(j => jobRow(j)).join("")}</div>` : `<div class="empty">No tenés trabajos pendientes.</div>`}</div>
+    ${progressPanel("team")}
     ${progressPanel("people")}`;
   }
   const vp = posts.filter(p => seesBrand(p.brand) && p.date.slice(0,7) === MONTH);
@@ -4308,9 +4308,10 @@ function pInicio(){
   }
   return `${prioStrip()}${helloHead(`${monthLabel(MONTH)} · ${viewer.brands ? "tus calendarios: " + viewer.brands.map(g => g === "Otros" ? "Otras marcas" : g).join(", ") : "todas las marcas del grupo"}`)}${banner}${inicioAlertsPanel()}
   ${kpiRow(progStats(isAdminAny() ? jobs : jobs.filter(j => j.owner === viewer.name)))}
-  ${progressPanel("team")}
+  ${isAdminAny() ? progressPanel("team") : ""}
+    ${viewer.role === "CM" ? (() => { const mine = jobs.filter(j => j.owner === viewer.name && !isClosedJob(j)).sort((a,b) => a.due.localeCompare(b.due)); return `<div class="panel"><div class="head" style="margin-bottom:14px"><h2 style="margin:0" class="pmh">${pmIco("clapperboard")}Mis trabajos de CM</h2>${URG_LEGEND}</div>${mine.length ? `<div class="list">${mine.map(j => jobRow(j)).join("")}</div>` : `<div class="empty">No tenés trabajos abiertos.</div>`}</div>`; })() : ""}
+  ${isAdminAny() ? "" : progressPanel("team")}
   <div class="grid">
-    ${viewer.role === "CM" ? (() => { const mine = jobs.filter(j => j.owner === viewer.name && !isClosedJob(j)).sort((a,b) => a.due.localeCompare(b.due)); return `<div class="panel" style="grid-column:1/-1"><div class="head" style="margin-bottom:14px"><h2 style="margin:0" class="pmh">${pmIco("clapperboard")}Mis trabajos de CM</h2>${URG_LEGEND}</div>${mine.length ? `<div class="list">${mine.map(j => jobRow(j)).join("")}</div>` : `<div class="empty">No tenés trabajos abiertos.</div>`}</div>`; })() : ""}
     <div class="panel"><h2 class="pmh">${pmIco("calendar-days")}${weekTitle}</h2>${week.length ? `<div class="list wklist">${week.map(p => `<div class="row${postUrgStyle(p)}"><span class="date">${dm(p.date)}</span><div class="grow"><div class="t">${esc(p.title)}</div><div class="m">${brandTag(p.brand)} · <span class="net">${p.net}</span> ${p.format}</div></div><div class="wkb">${postUrgBadge(p)}${postPill(p)}</div></div>`).join("")}</div>` : `<div class="empty">${isClosed() ? "Se cumplió todo el plan." : "Nada programado."}</div>`}</div>
   </div>
   ${progressPanel("people")}`;
