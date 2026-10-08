@@ -8036,6 +8036,7 @@ const GUIDE = [
     ["calendar-clock","Meses y cierre","Arriba cambiás de mes con ‹ Anterior / Siguiente ›. Admin total cierra el mes desde Informe mensual: queda para consultar y lo no cumplido pasa al mes siguiente como “arrastrado”."],
     ["mouse-pointer-click","Cambiar de etapa desde el calendario","En cualquier calendario, tocá la línea de estado de un contenido (● Estado ▾) y elegí la etapa: Programado, Publicado, Aprobado… Los CM cambian todas las etapas de lo suyo. Los diseñadores llevan sus trabajos hasta “En revisión” (terminado); aprobar y entregar lo hace solo Admin total."],
     ["hand","Arrastrar y ordenar","En la compu podés arrastrar tarjetas entre columnas, posteos y entregas a otro día (o a otro mes) y reordenar notas. En iPad y celular usá los botones y las flechitas."],
+    ["menu","Menú al entrar","Cuando salís de la app y volvés a entrar (o la primera vez en un dispositivo), el menú arranca con General y tu área abiertos: Diseño gráfico si sos diseñador, Community Manager si sos CM. Lo demás queda comprimido; tocá el título de un grupo para abrirlo. Mientras usás la app, se recuerda lo que abriste."],
     ["shield","Quién ve qué","Admin total ve y maneja todo. Admin (control) ve todo pero no modifica. CM ve lo de CM y sus marcas. Diseñador ve lo de diseño gráfico y sus trabajos. Los permisos se ajustan en Usuarios y permisos."]]],
   ["General", [
     ["layout-dashboard","Dashboard","Seguidores y público de todas las marcas, actualizados desde Meta. Es lo primero que ves al entrar."],
@@ -8420,6 +8421,13 @@ document.addEventListener("click", e => { if (!e.target.closest("[data-tabmore]"
 // Menú desplegable: tocar el título de un área la cierra (queda solo el título) o la abre. Se recuerda en este dispositivo.
 // Menú: de entrada solo "General" está abierto; los demás grupos se abren con la flechita (y se recuerda lo que cada persona abrió).
 const navClosed = (() => { const def = () => new Set([...new Set(SECTIONS.map(s => s.g))].filter(g => g !== "General")); try { const v = localStorage.getItem("rmh-navclosed2"); return v ? new Set(JSON.parse(v)) : def(); } catch { return def(); } })();
+// Al entrar después de salir de la app (o la primera vez en este dispositivo): General abierto y el área de la persona
+// (Diseño gráfico para diseñadores, Community Manager para CM); lo demás, comprimido. Mientras se usa, se recuerda lo que se abre.
+function navResetFor(role){
+  const open = new Set(["General", role === "Diseñador" ? "Diseño gráfico" : role === "CM" ? "Community Manager" : ""]);
+  navClosed.clear(); [...new Set(SECTIONS.map(s => s.g))].filter(g => !open.has(g)).forEach(g => navClosed.add(g));
+  try { localStorage.setItem("rmh-navclosed2", JSON.stringify([...navClosed])); localStorage.removeItem("rmh-navreset"); } catch {}
+}
 document.addEventListener("click", e => { const b = e.target.closest("[data-navtog]"); if (!b) return; e.preventDefault(); const g = b.dataset.navtog;
   navClosed.has(g) ? navClosed.delete(g) : navClosed.add(g); try { localStorage.setItem("rmh-navclosed2", JSON.stringify([...navClosed])); } catch {} renderNav(); if (window.lucide) lucide.createIcons(); });
 // Menú lateral en computadora: completo → reducido (solo íconos) → oculto, y de vuelta. El contenido usa el espacio libre.
@@ -9392,7 +9400,7 @@ document.addEventListener("click", e => {
   if (e.target.closest("#menuBtn")){ const o = side.classList.toggle("open"); e.target.closest("#menuBtn").setAttribute("aria-expanded", o); document.body.classList.toggle("menuopen", o); return; }
   if (side.classList.contains("open") && e.target.closest(".side [data-page], .tabbar [data-page], #logout")){ side.classList.remove("open"); document.body.classList.remove("menuopen"); document.getElementById("menuBtn")?.setAttribute("aria-expanded", "false"); scrollTo(0, 0); }
 });
-function enterApp(){ setTimeout(seedExamples, 0); setTimeout(() => { const a = spawnRepeats(), b = spawnPostRepeats(); if (a || b) render(); }, 1500); loadPrefs(viewer); applyPrefs(); loadWeather(); presenceOnEnter(); viewer.last = "hoy " + new Date().toTimeString().slice(0,5);
+function enterApp(){ try { if (localStorage.getItem("rmh-navreset") || !localStorage.getItem("rmh-navclosed2")) navResetFor(viewer.role); } catch {} setTimeout(seedExamples, 0); setTimeout(() => { const a = spawnRepeats(), b = spawnPostRepeats(); if (a || b) render(); }, 1500); loadPrefs(viewer); applyPrefs(); loadWeather(); presenceOnEnter(); viewer.last = "hoy " + new Date().toTimeString().slice(0,5);
   const want = enterApp.done ? "" : START_PAGE; enterApp.done = true; page = PAGES[want] && can(want) ? want : "dashboard"; render.lastKey = null; brandFilter = "Todas"; $("#login").hidden = true; $("#changeForm").hidden = true; $("#loginForm").hidden = false; $("#loginMsg").hidden = true; render(); toast(`${hello()}. Entraste como ${viewer.role}.`);
   if (notifOn() && notifSupported() && Notification.permission === "granted") pushSubscribe().then(ok => { if (ok && page === "config") render(); });
   const oc = new URLSearchParams(location.search).get("chat"); if (oc){ history.replaceState(null, "", location.pathname + "#mensajes"); openChatFrom(oc); } }
