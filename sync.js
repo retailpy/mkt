@@ -47,7 +47,6 @@ const RMH = (() => {
     OBJECTIVES:[() => OBJECTIVES, v => { OBJECTIVES = v; }],
     MONTH_CAMPAIGNS:[() => MONTH_CAMPAIGNS, v => { MONTH_CAMPAIGNS = v; }],
     UPCOMING:[() => UPCOMING, v => { UPCOMING = v; }],
-    OBJ_PROPOSALS:[() => OBJ_PROPOSALS, v => { OBJ_PROPOSALS = v; }],
     SURVEYS:[() => SURVEYS, v => { SURVEYS = v; }],
     LINKS:[() => LINKS, v => { LINKS = v; }],
     AVISOS:[() => AVISOS, v => { AVISOS = v; }],
