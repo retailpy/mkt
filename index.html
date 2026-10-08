@@ -634,6 +634,8 @@ tr.tot td{border-top:1px solid var(--line-3)}
 .iak{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--faint);border:1px solid var(--line-2);border-radius:999px;padding:1px 7px;white-space:nowrap}
 .iapost{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:12px;color:var(--faint);min-width:0}.iapost svg{width:13px;height:13px;flex:none}.iapost span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .iapv{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted);max-width:520px}.iathumb{width:56px;height:56px;border-radius:10px;object-fit:cover;flex:none;background:var(--inner)}
+.ibreply{display:flex;align-items:flex-end;gap:8px;margin-top:6px}.ibreply textarea{flex:1;min-width:0;resize:vertical;min-height:44px;border:1px solid var(--line-3);background:var(--inner);border-radius:12px;padding:9px 12px;color:#f1f5f9;font:inherit;font-size:14px;outline:none}.ibreply textarea:focus{border-color:var(--cyan)}.ibreply .btn{display:inline-flex;align-items:center;gap:6px}.ibreply .btn svg{width:14px;height:14px}
+.ibrnote{margin:2px 0 0;font-size:12px}
 @media (max-width:560px){.ibtabs button{flex:1 1 auto;justify-content:center;padding:9px 6px 10px;font-size:13.5px;gap:5px}.ibbar{flex-direction:column;align-items:stretch}.ibseg{justify-content:space-between}.ibseg button{padding:7px 10px;font-size:13px}.ibfil select{flex:1;min-width:0}.ibthread{padding-left:0}.ibm{max-width:90%}}
 /* Hoja blanca tipo Word para el texto del pedido */
 .rtedit,.rtview{background:#fff !important;color:#1f2937 !important;border:1px solid #e5e7eb !important;border-radius:6px !important;padding:28px 32px !important;font-size:15.5px;line-height:1.65;box-shadow:0 18px 40px -18px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.04)}
@@ -8108,7 +8110,7 @@ const GUIDE = [
     ["gauge","Carga de trabajo CM","Cuánto tiene cada CM: los pedidos sin terminar y las publicaciones del mes que todavía no están programadas."],
     ["list-checks","Plan de posteo","Todo lo de CM del mes: feed, historias, Canal de WhatsApp, videos y repetitivos. Arriba, cuántos hay en cada etapa y el % ya publicado (tocá una etapa para filtrar) y los tres procesos a la vista. Cada contenido sigue el suyo: publicaciones e historias Pendiente → En proceso → Programado → Publicado → Pautado; Canal de WhatsApp igual sin Pautado; videos Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado. Cambiás la etapa ahí mismo, el CM que la hace y pedís el diseño si hace falta."],
     ["archive","Historial CM","Lo que ya salió en el mes: publicaciones publicadas o pautadas y pedidos de CM terminados."],
-    ["inbox","Mensajes y menciones","En Panel de CM → Mensajes hay dos pestañas. Mensajes: los mensajes directos de Instagram y Facebook de cada marca. Menciones: los comentarios de Instagram que arroban a la marca (escriben @ y la cuenta), en sus publicaciones o en las de otras cuentas; los demás comentarios no aparecen. Los que son solo etiquetas a amigos (sorteos) no esperan respuesta. Cada uno dice si ya se contestó; tocalo para abrirlo en Instagram, o marcá “Contestado” si se respondió desde el celular. Llegan al momento y, además, se actualizan solos dos veces por día (o con “Actualizar”). Son los de los últimos 30 días."]]],
+    ["inbox","Mensajes y menciones","En Panel de CM → Mensajes hay dos pestañas. Mensajes: los mensajes directos de Instagram y Facebook de cada marca; los de Instagram se pueden contestar desde la app (abrí la conversación, escribí y tocá Enviar: sale desde la cuenta de la marca, hasta 24 horas después del último mensaje de la persona). Menciones: los comentarios de Instagram que arroban a la marca (escriben @ y la cuenta), en sus publicaciones o en las de otras cuentas; los demás comentarios no aparecen. Los que son solo etiquetas a amigos (sorteos) no esperan respuesta. Cada uno dice si ya se contestó; tocalo para abrirlo en Instagram, o marcá “Contestado” si se respondió desde el celular. Llegan al momento y, además, se actualizan solos dos veces por día (o con “Actualizar”). Son los de los últimos 30 días."]]],
   ["Recursos", [
     ["wand-sparkles","Prompts de imágenes","Primero elegís la marca (Superseis, Stock o Delimarket): se carga su estilo de fotos (luz, cámara, colores de la escena y emoción) y el prompt lo respeta siempre, aunque cambies el escenario. Después armás el prompt para ChatGPT, Gemini o Nano Banana en seis modalidades: producto en escenario, varios productos, producto con modelos, modelos en locación, fondo pleno o transparente y opción libre. En el paso 2, “¿Es para un evento festivo?”, elegí la fecha (Verano, Carnaval, Vuelta a Clases, Otoño, Semana Santa, Independencia Paraguay, Día de la Madre, Día del Padre, Invierno, Día del Niño, Primavera, Halloween, Navidad, Año Nuevo) o tocá Otro y escribila: se suma su decoración, sus colores y su emoción, siempre con la onda de la marca. Si no es para una fecha, dejá “Ninguno”. Si adjuntás fotos (producto, fondo o persona), el prompt pide respetarlas al 100%: sin deformar productos, logos, letras ni caras. La cámara, el lente y la exposición se eligen solos; se suman bloques de realismo y la lista de lo que hay que evitar."],
     ["link","Archivos y enlaces","Los links de Canva, Drive y descarga de cada marca por mes, más los que quieras agregar. Arriba las marcas que ya tienen links; abajo las pendientes. “Abrir” abre el archivo y el ícono de al lado copia el link."]]],
@@ -8549,7 +8551,7 @@ function inboxConvs(b){
   const have = new Set(base.filter(c => c.net === "IG").map(c => String(c.who || "").toLowerCase()));
   const live = Object.entries(dm).filter(([, c]) => c && Array.isArray(c.msgs) && c.msgs.length).map(([k, c]) => {
     const msgs = c.msgs.map(m => ({ t:m.t || "", me:!!m.me, ts:m.ts, att:!!m.att })), answered = msgs.some(m => m.me);
-    return { id:"igdm-" + k, net:"IG", who:c.who || "Cliente de Instagram", ts:c.ts || msgs[msgs.length - 1].ts, answered, waitSince:answered ? null : msgs[0].ts, msgs, live:true };
+    return { id:"igdm-" + k, net:"IG", uid:c.uid || k, who:c.who || "Cliente de Instagram", ts:c.ts || msgs[msgs.length - 1].ts, answered, waitSince:answered ? null : msgs[0].ts, msgs, live:true };
   }).filter(c => !have.has(String(c.who).toLowerCase()));
   return live.length ? [...base, ...live].sort((a, c) => String(c.ts || "").localeCompare(String(a.ts || ""))) : base;
 }
@@ -9121,7 +9123,7 @@ function pInbox(){
         <div class="ibl">${last.me ? `<em>Vos:</em> ` : ""}${esc(last.t || (last.att ? "Foto o adjunto" : ""))}</div></div>
       <div class="ibside"><small>${inboxAge(c.ts)}</small>${c.answered ? `<span class="ibst ok" ${c.byHand ? `title="Marcado por ${esc(c.byHand.by || "")}"` : ""}>${icon("check")} Contestado</span>` : `<span class="ibst no">Esperando${c.waitSince ? ` · ${inboxAge(c.waitSince).replace("hace ", "")}` : ""}</span>`}${open ? "" : doneBtn(c)}</div>
       ${open ? `<div class="ibthread">${c.msgs.map(m => `<div class="ibm ${m.me ? "me" : ""}"><span>${esc(m.t || (m.att ? "Foto o adjunto" : ""))}</span><small>${m.me ? esc(c.b) + " · " : ""}${when(m.ts)}</small></div>`).join("")}
-        <div class="ibacts"><a class="btn sm primary" href="${suite(c.b)}" target="_blank" rel="noopener">${icon("external-link")} Contestar en Meta</a>${doneBtn(c)}${c.byHand ? `<span class="note">Marcado por ${esc(firstName(c.byHand.by || ""))}</span>${mark ? `<button type="button" class="ibdone" data-ibundo="${esc(c.id)}">Volver a sin contestar</button>` : ""}` : ""}</div></div>` : ""}</div>`; };
+        ${ibReplyBox(c)}<div class="ibacts"><a class="btn sm${ibCanReply(c) ? "" : " primary"}" href="${suite(c.b)}" target="_blank" rel="noopener">${icon("external-link")} ${ibCanReply(c) ? "Abrir en Meta" : "Contestar en Meta"}</a>${doneBtn(c)}${c.byHand ? `<span class="note">Marcado por ${esc(firstName(c.byHand.by || ""))}</span>${mark ? `<button type="button" class="ibdone" data-ibundo="${esc(c.id)}">Volver a sin contestar</button>` : ""}` : ""}</div></div>` : ""}</div>`; };
   return `<div class="ibpage"><div class="head"><div><h1 class="pmh">${pmIco("inbox")}Mensajes</h1><p class="sub">Instagram y Facebook de cada marca · últimos 30 días${META_INBOX.updated ? ` · actualizado ${inboxAge(META_INBOX.updated)}` : ""}${META_DM.updated ? ` · Instagram en vivo (último hace ${inboxAge(META_DM.updated).replace("hace ", "")})` : ""}</p></div>${metaBtn("mensajes", "Mensajes")}</div>
   ${tabs}${!META_DM.updated && ORDER_INBOX().some(b => /Instagram/.test(META_INBOX[b]?.err || "")) ? (igLiveReady()
     ? `<div class="ibig">${icon("info")}<div><b>La conexión en vivo de Instagram ya está lista.</b> Meta ya verificó la dirección y la clave. Los mensajes de Instagram van a aparecer acá apenas Meta los mande, cuando la app de Meta esté <b>En producción</b>${viewer.role === "Admin total" ? ` (<a href="#config" data-igcfg>ver los pasos</a>)` : ""}.</div></div>`
@@ -9133,6 +9135,30 @@ function pInbox(){
 }
 document.addEventListener("change", e => { const f = e.target.closest("[data-ibsel]"); if (f){ inboxUI[f.dataset.ibsel] = f.value; inboxUI.open = null; render(); } });
 const canInboxMark = () => can("inbox") && !isViewOnly();
+// Contestar un mensaje de Instagram desde la app (/api/responder): solo Admin total y CM, en conversaciones de Instagram
+// con el id de la persona. Sale desde la cuenta de la marca; Meta deja contestar hasta 24 h después de su último mensaje.
+const ibReply = { drafts:{}, busy:null };
+const ibCanReply = c => c.net === "IG" && !!c.uid && ["Admin total", "CM"].includes(viewer.role) && !window.RMH?.previewing;
+const ibReplyBox = c => { if (!ibCanReply(c)) return ""; const k = c.b + "|" + c.uid, busy = ibReply.busy === k;
+  return `<form class="ibreply" data-ibreply="${esc(k)}"><textarea class="base" name="t" rows="2" maxlength="1000" placeholder="Escribí la respuesta…" aria-label="Respuesta" ${busy ? "disabled" : ""}>${esc(ibReply.drafts[k] || "")}</textarea><button class="btn sm primary" type="submit" ${busy ? "disabled" : ""}>${icon("send")} ${busy ? "Enviando…" : "Enviar"}</button></form>
+    <p class="note ibrnote">Sale desde la cuenta de ${esc(c.b)} en Instagram. Meta deja contestar hasta 24 horas después del último mensaje de la persona.</p>`; };
+document.addEventListener("input", e => { const f = e.target.closest("[data-ibreply] textarea"); if (f) ibReply.drafts[f.closest("[data-ibreply]").dataset.ibreply] = f.value; });
+document.addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && e.target.closest("[data-ibreply] textarea")) e.target.closest("form").requestSubmit(); });
+document.addEventListener("submit", async e => {
+  const f = e.target.closest("[data-ibreply]"); if (!f) return; e.preventDefault();
+  const k = f.dataset.ibreply, [brand, to] = k.split("|"), text = (f.querySelector("textarea").value || "").trim();
+  if (!text){ toast("Escribí la respuesta."); return; } if (ibReply.busy) return;
+  ibReply.drafts[k] = text; ibReply.busy = k; render();
+  let j = {};
+  try { const tok = window.RMH?.token ? await RMH.token() : null;
+    const r = await fetch("/api/responder", { method:"POST", headers:{ "Content-Type":"application/json", ...(tok ? { Authorization:"Bearer " + tok } : {}) }, body:JSON.stringify({ brand, to, text }) });
+    j = await r.json().catch(() => ({})); if (!r.ok && !j.error) j.error = `HTTP ${r.status}`;
+  } catch { j = { error:"No se pudo conectar" }; }
+  ibReply.busy = null;
+  if (j.ok){ delete ibReply.drafts[k]; toast("Respuesta enviada por Instagram."); await window.RMH?.catchUp?.(); }
+  else toast(j.hint || `No se pudo enviar: ${j.error || "error"}.`);
+  render();
+});
 const ORDER_INBOX = () => ["Superseis","Stock","Delimarket","Bianca","Clasipar","Dayo","PediWOW"].filter(b => seesBrand(b));
 // Tendencias: las 10 novedades más llamativas para Diseño (packaging, marcas y tiendas) o para CM (campañas y redes),
 // tomadas de medios especializados por la función "integraciones" (se actualiza sola cada 3 horas). Cada una abre su nota.

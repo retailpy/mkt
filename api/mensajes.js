@@ -128,7 +128,7 @@ function shape(c, net, meIds){
   const last = msgs[msgs.length - 1];
   // Contestado: la marca ya respondió algo en la conversación (un “gracias” del cliente después no la vuelve a abrir).
   const answered = msgs.some(m => m.me);
-  return { id: c.id, net, who: other.username ? "@" + other.username : other.name || "Cliente", ts: c.updated_time || last?.ts || null,
+  return { id: c.id, net, who: other.username ? "@" + other.username : other.name || "Cliente", uid: other.id ? String(other.id) : null, ts: c.updated_time || last?.ts || null,
     answered, waitSince: answered ? null : msgs[0]?.ts || null, msgs };
 }
 
