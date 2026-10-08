@@ -1,9 +1,10 @@
 // Instagram en vivo. Meta llama a esta dirección cada vez que alguien le escribe a una cuenta de Instagram de las marcas
 // (y cuando la marca contesta): se guarda en s:META_DM (función ingest_dm de Supabase). Hace falta porque la lista de
 // conversaciones de Instagram que da Meta corta por tiempo en las cuentas con mucho movimiento.
-// También llegan (campos comments, live_comments y mentions del webhook) los comentarios en las publicaciones y en los
-// vivos de la marca y las menciones con @ (en comentarios y publicaciones de otros); las menciones en historias llegan
-// como mensaje. Van a s:META_IG_ACT (función ingest_ig_act), junto con lo que lee /api/interacciones.
+// También llegan (campos comments, live_comments y mentions del webhook) los comentarios que arroban a la marca: en sus
+// publicaciones y vivos (se guardan solo los que tienen @cuenta) y en publicaciones de otras cuentas (mentions con
+// comment_id). Van a s:META_IG_ACT (función ingest_ig_act), junto con lo que lee /api/interacciones. Las menciones en el
+// texto de una publicación o en historias no se guardan ahí (la de historia se ve en Mensajes).
 //
 //   GET  ?hub.mode=subscribe&hub.verify_token=…&hub.challenge=…   → verificación de Meta al configurar el webhook
 //   POST (de Meta, firmado con la clave secreta de la app)          → guarda cada mensaje, comentario o mención
@@ -16,7 +17,7 @@
 // Cada aviso queda anotado (sin el texto de los mensajes) en s:META_DM_LOG con log_dm, para ver dónde se corta.
 // Token de verificación: META_VERIFY_TOKEN, o si no está, "retail-mkt-hub" (no es secreto: lo que protege es la firma).
 const crypto = require("crypto");
-const { ORDEN, cronOrUser, brandPages, graph } = require("./_lib/meta");
+const { ORDEN, cronOrUser, brandPages, graph, arroba } = require("./_lib/meta");
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 const VERIFY = () => process.env.META_VERIFY_TOKEN || "retail-mkt-hub";
@@ -88,27 +89,18 @@ async function postInfo(id){
   if (x) postCache.set(id, x);
   return x;
 }
-// Una mención con @: en un comentario (comment_id) o en el texto de una publicación (media_id). Meta solo manda los
-// números: el detalle se pide a la cuenta de la marca. Si no se puede leer, queda igual (con lo que se sepa).
+// Una mención con @ en un comentario de otra cuenta (comment_id). Meta solo manda los números: el detalle se pide a la
+// cuenta de la marca. Meta no dice quién comentó: "owner" es la cuenta dueña de la publicación. Si no se puede leer,
+// queda igual (con lo que se sepa).
 async function mentionItem(igId, v, ts){
-  const cid = v.comment_id, mid = v.media_id;
-  if (digits(cid)){
-    const base = { id: "mc" + cid, kind: "mention", where: "comment", ts };
-    for (const f of ["id,text,timestamp,media{id,permalink,caption,username,thumbnail_url,media_url}", "id,text,timestamp"]){
-      try { const c = (await graph(`/${igId}`, { fields: `mentioned_comment.comment_id(${cid}){${f}}` })).mentioned_comment; if (!c) continue;
-        return { ...base, t: short(c.text || ""), ts: c.timestamp ? isoOf(c.timestamp) : ts, who: c.media?.username ? "@" + c.media.username : null, owner: !!c.media?.username, media: c.media ? { link: c.media.permalink || null, img: c.media.thumbnail_url || c.media.media_url || null } : null }; } catch {}
-    }
-    return { ...base, t: "" };
+  const cid = v.comment_id;
+  if (!digits(cid)) return null; // solo comentarios (no el texto de una publicación)
+  const base = { id: "mc" + cid, kind: "mention", where: "comment", ts };
+  for (const f of ["id,text,timestamp,media{id,permalink,caption,username,thumbnail_url,media_url}", "id,text,timestamp"]){
+    try { const c = (await graph(`/${igId}`, { fields: `mentioned_comment.comment_id(${cid}){${f}}` })).mentioned_comment; if (!c) continue;
+      return { ...base, t: short(c.text || ""), ts: c.timestamp ? isoOf(c.timestamp) : ts, who: null, owner: c.media?.username ? "@" + c.media.username : null, media: c.media ? { link: c.media.permalink || null, img: c.media.thumbnail_url || c.media.media_url || null } : null }; } catch {}
   }
-  if (digits(mid)){
-    const base = { id: "mm" + mid, kind: "mention", where: "post", ts };
-    for (const f of ["id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,username", "id,caption,media_type,media_url,timestamp"]){
-      try { const m = (await graph(`/${igId}`, { fields: `mentioned_media.media_id(${mid}){${f}}` })).mentioned_media; if (!m) continue;
-        return { ...base, t: short(m.caption || ""), ts: m.timestamp ? isoOf(m.timestamp) : ts, who: m.username ? "@" + m.username : null, media: { link: m.permalink || null, img: m.thumbnail_url || m.media_url || null } }; } catch {}
-    }
-    return { ...base, t: "" };
-  }
-  return null;
+  return { ...base, t: "" };
 }
 // Lo que llega de comments, live_comments y mentions → ítems para s:META_IG_ACT. Si comenta la marca misma (su
 // respuesta), el comentario al que contesta queda como contestado.
@@ -118,6 +110,7 @@ async function actItems(c, brandId, handle, ts, posts){
   if (!digits(v.id)) return [];
   const from = v.from || {}, mine = String(from.id || "") === brandId || (handle && String(from.username || "").toLowerCase() === handle);
   if (mine) return [{ id: "c" + v.id, mine: true, upd: true }, ...(digits(v.parent_id) ? [{ id: "c" + v.parent_id, answered: true, upd: true }] : [])];
+  if (!arroba(v.text, handle)) return []; // solo los que arroban a la marca
   const mId = v.media?.id, post = await postInfo(mId);
   if (post) posts[mId] = post;
   return [{ id: "c" + v.id, kind, who: from.username ? "@" + from.username : null, t: short(v.text || ""), ts,
@@ -185,7 +178,6 @@ module.exports = async (req, res) => {
         // Mención en una historia: llega como mensaje con un adjunto "story_mention".
         const story = !me && (msg.attachments || []).some(a => a && a.type === "story_mention");
         await ingest(brand, uid, { net: "IG", uid, who }, { mid: msg.mid, t: short(msg.text || (story ? "Te mencionó en su historia" : "")), me, ts: mts, att: !msg.text && !story });
-        if (story) items.push({ id: "s" + crypto.createHash("sha1").update(String(msg.mid)).digest("hex").slice(0, 24), kind: "story", who: who || null, t: "", ts: mts, conv: uid });
         n++;
       }
       for (const c of acts){ try { items.push(...await actItems(c, brandId, handle, ts, posts)); } catch (err){ skipped.push(`${c.field}: ${String(err.message).slice(0, 60)}`); } }

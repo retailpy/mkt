@@ -128,6 +128,10 @@ async function igAct(brand, items, info){
   if (!r.ok) throw new Error(`Supabase: ${(await r.text()).slice(0, 200)}`);
 }
 
+// ¿El texto arroba a la cuenta (sin @, en minúsculas)? @cuenta sin que siga otra letra de usuario: así @superseis no
+// cuenta como @superseis_ok, y el punto final de una oración no corta la mención.
+const arroba = (t, me) => !!me && new RegExp(`@${me.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![A-Za-z0-9_]|\\.[A-Za-z0-9_])`, "i").test(String(t || ""));
+
 // Leer lo que ya se guardó (solo s:META_POSTS y s:META_INBOX), con la misma clave que para guardar.
 async function readMeta(key){
   const url = process.env.SUPABASE_URL, apikey = process.env.SUPABASE_KEY, secret = process.env.INGEST_KEY;
@@ -154,4 +158,4 @@ function tokenHint(e){
   return null;
 }
 
-module.exports = { NOMBRES, ORDEN, authorized, allowedUser, memberUser, cronOrUser, graph, brandPages, save, igAct, readMeta, today, tokenHint };
+module.exports = { NOMBRES, ORDEN, authorized, allowedUser, memberUser, cronOrUser, graph, brandPages, save, igAct, arroba, readMeta, today, tokenHint };
