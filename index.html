@@ -50,6 +50,7 @@ button{cursor:pointer}
 @media (max-width:480px){.side .logo > div:last-child{display:none}.menubtn{max-width:calc(100vw - 110px)!important;margin-left:auto}}
 @media (max-width:640px){.brandbar{gap:10px}.logo-wide{width:150px!important;min-width:0}.bclock svg{display:none}.bclock{font-size:14px}.brandlogos{height:20px!important;min-width:0}}
 .logo-wide{display:block;width:260px;max-width:60vw;height:auto}
+.brandbar .logo-wide{min-width:0;flex-shrink:1} /* tablet con menú abierto: el logo se achica en vez de empujar los logos de marcas fuera de la pantalla */
 html.light .logo-wide{background:#0f172a;border-radius:12px;padding:6px 10px;box-sizing:border-box}
 @media (max-width:1024px){.brandbar{padding:14px 16px 0}.logo-wide{width:200px}.brandlogos{height:24px}}
 .nav{display:flex;flex-direction:column;gap:14px}
@@ -1343,6 +1344,20 @@ html.light .pbdot{filter:invert(1) hue-rotate(180deg)}
 .pbrules span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
 .pbrules b{font-weight:500;font-size:13.5px;color:var(--ink)}
 .pbmodes{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+/* Prompts: evento festivo (un solo color, como las modalidades) */
+.pm2 .pfest{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.pm2 .pfchips{display:flex;flex-wrap:wrap;gap:8px}
+.pm2 .pfchip{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--line-3);border-radius:12px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:border-color .15s,color .15s}
+.pm2 .pfchip:hover{border-color:#64748b;color:var(--ink)}
+.pm2 .pfchip:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.pm2 .pfchip.on{border-color:var(--cyan);color:var(--ink);box-shadow:inset 0 0 0 1px var(--cyan)}
+.pm2 .pfchip svg{width:14px;height:14px}
+.pm2 .pfotro{display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--muted);max-width:440px}
+.pm2 .pfotro input.base{border:1px solid var(--line-3);background:var(--inner);border-radius:14px;padding:9px 12px;color:var(--ink);font:inherit;font-size:14px;outline:none;width:100%;box-sizing:border-box}
+.pm2 .pfotro input.base:focus{border-color:var(--cyan)}
+.pm2 .pfnote{border-left:2px solid var(--cyan);padding:2px 0 2px 12px;display:flex;flex-direction:column;gap:4px}
+.pm2 .pfnote p{margin:0;font-size:13px;color:var(--muted);line-height:1.5}
+.pm2 .pfnote b{color:var(--ink)}
 .pm2 .pynbtns.big button{padding:10px 18px;font-size:14px}
 .pm2 .btn.pgen{background:transparent;border:1.5px solid var(--cyan);color:var(--cyan);font-weight:700;display:inline-flex;align-items:center;gap:8px}
 .pm2 .btn.pgen:hover{background:rgba(34,211,238,.08)}
@@ -7314,6 +7329,8 @@ const PM_BRANDS = {
     avoid:["studio look","clinical","catalogue look","sterile","cold lighting"],
     cutout:"the brand's warm natural look: medium earthy saturation, warm 4200K color feel, visible natural textures, no cold clinical tones",
     store:"a warm, welcoming modern supermarket with neatly organized, well-stocked shelves",
+    fest:"the occasion lives in a real, lived-in home or table moment, with homemade food, natural materials (wood, linen, artisanal ceramics, natural greenery, dried flowers, candlelight) and warm family gestures; the occasion colors appear in a few objects of the scene next to the brand deep green #005226 or olive #97A219, over the warm beige and wood base; at night, the same soft, warm and enveloping light comes from string lights and candles; tasteful and natural, never plastic, never kitsch",
+    festEs:"Con la onda de Superseis: hogar, mesa compartida y materiales naturales. Los colores de la fecha van en algunos objetos, junto al verde de la marca; la luz cálida no cambia.",
     def:{ ambiente:"cocina moderna de una casa de clase media-alta, mesada de nogal o granito claro, plantas y ventana grande", fondo:"cocina luminosa desenfocada con plantas", superficie:"walnut", encuadre:"34" },
     modos:[
       { l:"Mesa servida", ambiente:"mesa de almuerzo en una casa moderna y cuidada, con el plato terminado y una bebida al lado", fondo:"cocina luminosa desenfocada con plantas y ventana grande", superficie:"walnut", detalles:"servilleta de lino movida, migas, vajilla artesanal verde oliva", encuadre:"34" },
@@ -7336,6 +7353,8 @@ const PM_BRANDS = {
     avoid:["film grain","vignette","moody low-key look","heavy dark shadows","shallow depth of field"],
     cutout:"bright, clean, high-saturation look, everything in focus, no grain",
     store:"a bright, clean, modern supermarket with well-stocked, neatly organized shelves",
+    fest:"the occasion is bright, cheerful and generous: a clean, tidy family celebration, high-key and fully in focus; the occasion colors appear in a few objects of the scene while Stock blue #1A428A and yellow #FFD600 remain the predominant accents, with sky blue #3CB4E5 as secondary; simple, well-organized decoration, never cluttered; at night, still bright, clean and evenly lit",
+    festEs:"Con la onda de Stock: luminosa, alegre y ordenada. Los colores de la fecha suman, pero el azul y el amarillo de Stock siguen mandando.",
     def:{ ambiente:"", fondo:"fondo claro, luminoso y limpio", superficie:"", encuadre:"medium" },
     modos:[
       { l:"Producto protagonista", ambiente:"", fondo:"fondo claro, luminoso y limpio", superficie:"", detalles:"producto grande y nítido, colores vivos", encuadre:"medium" },
@@ -7357,6 +7376,8 @@ const PM_BRANDS = {
     avoid:["cheerful","bright high-key look","bargain look","abundance","urgency","discount energy","price tags","price labels","cluttered composition"],
     cutout:"the brand's refined look: controlled specular highlights, low desaturated neutral palette, one subtle warm gold highlight #CDAF5F",
     store:"an upscale gourmet specialty store with dark refined shelving, few carefully chosen products and warm spot lighting",
+    fest:"the occasion is suggested, not shown: the festive elements are placed with intention in the single beam of light and everything else falls into black; the occasion colors only as a muted, desaturated small detail and gold #CDAF5F only as a reflection; an intimate, quiet celebration, never abundance, never a party look, never a price",
+    festEs:"Con la onda de Delimarket: apenas uno o dos detalles finos de la fecha, en penumbra. Nada de abundancia, fiesta ni precio.",
     def:{ ambiente:"cocina de autor con isla de mármol negro, acero inoxidable mate y madera oscura; pocos objetos, todos elegidos", fondo:"gris carbón que se funde en negro", superficie:"darkmarble", encuadre:"close" },
     modos:[
       { l:"Macro de textura", ambiente:"detalle macro que llena el cuadro", fondo:"negro profundo", superficie:"darkmarble", detalles:"brillo de aceite, cristales de sal, veta del mármol", encuadre:"close" },
@@ -7385,6 +7406,145 @@ const PM_ESC_BRAND = {
     super:["tienda gourmet de alta gama, estantería oscura con pocos productos elegidos y luz puntual cálida", "estantería oscura que se funde en negro", "darkwood"],
     exterior:["terraza o jardín de noche, en penumbra, con un solo foco de luz dirigido", "noche, se funde en negro", "stone"] },
 };
+// ---------- Eventos festivos ----------
+// Fechas y temporadas de Paraguay, en orden del año. Cada una suma su decoración, sus colores (solo como acentos) y su emoción;
+// la luz, la cámara, la paleta y la onda de la marca no cambian. Delimarket y el fondo pleno usan solo el detalle fino (mini).
+// es / esMini: lo que se ve en pantalla. n, en, cues, colors, mini, mood, people, avoid: lo que va al prompt (en inglés).
+const PM_FIESTAS = [
+  { k:"verano", l:"Verano", n:"summer",
+    es:"sol, tereré bien frío, frutas de estación (sandía, mango, piña), hielo, pileta o patio.",
+    esMini:"un vaso o una guampa de tereré con hielo y gotitas de frío, y una fruta fresca cortada.",
+    en:"Paraguayan summer (December to March), hot, sunny and bright",
+    cues:"tereré (iced yerba mate) in a guampa with a thermos of ice-cold water and fresh herbs, fresh seasonal fruit such as watermelon, mango and pineapple, ice cubes and cold drinks with condensation, a pool, patio or garden, straw hats and light linen",
+    colors:"fresh turquoise, lime green, sunny yellow and watermelon red",
+    mini:"a chilled glass or a tereré guampa with ice and condensation, and a slice of fresh fruit",
+    mood:"fresh, sunny, carefree and refreshing", people:"light summer clothing, relaxed and refreshed", avoid:["winter clothing"] },
+  { k:"carnaval", l:"Carnaval", n:"Carnival",
+    es:"papel picado, serpentinas, plumas, lentejuelas y antifaces; alegría en familia.",
+    esMini:"un antifaz elegante con plumas y unos pocos papelitos.",
+    en:"carnival in Paraguay (February), colorful and joyful like the Encarnación carnival",
+    cues:"confetti, serpentine streamers, feathers, sequins, a touch of glitter and festive masks, a lively family celebration",
+    colors:"vivid multicolor accents of magenta, yellow, turquoise and green",
+    mini:"an elegant feathered mask and a few pieces of confetti",
+    mood:"joyful, colorful, energetic and festive", people:"colorful, family-friendly festive clothing with sequins or feathers, smiling and celebrating", avoid:["revealing costumes"] },
+  { k:"clases", l:"Vuelta a Clases", n:"back to school",
+    es:"mochilas, cuadernos, lápices de colores, merienda y un escritorio de estudio ordenado.",
+    esMini:"unos cuadernos apilados y algunos lápices de colores.",
+    en:"back to school in Paraguay (late February and March), a fresh start",
+    cues:"backpacks, notebooks, colored pencils and school supplies neatly arranged, a lunch box with a healthy snack, a tidy study desk",
+    colors:"cheerful primary colors (red, blue, yellow and green) in the school supplies",
+    mini:"a neat stack of notebooks and a few colored pencils",
+    mood:"fresh start, organized, hopeful and cheerful", people:"children with their backpacks, in a white school shirt or casual clothes, smiling", avoid:[] },
+  { k:"otono", l:"Otoño", n:"autumn",
+    es:"hojas secas, tonos ocre, mandarinas, bebidas calientes y texturas tejidas.",
+    esMini:"una hoja seca y una bebida caliente con vapor suave.",
+    en:"autumn in Paraguay (March to June), mild and golden",
+    cues:"dry leaves in ochre, orange and brown, mandarins and seasonal citrus, warm drinks such as mate cocido or coffee with gentle steam, knit textures and wool throws",
+    colors:"ochre, terracotta, burnt orange and warm brown",
+    mini:"a single dry leaf and a warm drink with faint steam",
+    mood:"cozy, warm, calm and gently nostalgic", people:"light knitwear and layered clothing", avoid:[] },
+  { k:"santa", l:"Semana Santa", n:"Holy Week (Semana Santa)",
+    es:"chipa recién horneada, sopa paraguaya, chipa guasu, tatakua, la familia cocinando junta y huevitos de Pascua.",
+    esMini:"unas chipas doradas recién horneadas, con vapor suave.",
+    en:"Holy Week (Semana Santa) in Paraguay, with the family tradition of baking chipa",
+    cues:"freshly baked chipa (cassava starch and cheese bread rings) in a woven basket, sopa paraguaya and chipa guasu, the traditional tatakua clay oven, family hands kneading chipa dough together, palm leaves, chocolate Easter eggs for the children",
+    colors:"warm golden bread tones and earthy colors, with soft pastel accents on the Easter eggs",
+    mini:"a few golden, freshly baked chipa rings with faint steam",
+    mood:"traditional, warm, united and serene", people:"family members cooking together in simple everyday clothes", avoid:["disrespectful religious imagery"] },
+  { k:"independencia", l:"Independencia Paraguay", n:"Paraguayan Independence Day",
+    es:"rojo, blanco y azul, escarapela, ñandutí, sopa paraguaya, chipa guasu y mesa en familia.",
+    esMini:"una escarapela roja, blanca y azul y un detalle de ñandutí blanco.",
+    en:"Paraguayan Independence Day (May 14 and 15), proud and traditional",
+    cues:"the Paraguayan flag colors red, white and blue, an escarapela (round red, white and blue rosette), ñandutí lace (traditional colorful Paraguayan spiderweb lace), traditional food such as sopa paraguaya, chipa guasu, chipa and mbeju on a family table; prefer the flag colors, the escarapela and ñandutí over a full flag, and if a flag appears it must be the correct Paraguayan flag: three equal horizontal stripes, red on top, white in the middle with the round national emblem and blue at the bottom",
+    colors:"Paraguayan flag red #D52B1E, white #FFFFFF and blue #0038A8",
+    mini:"a small red, white and blue escarapela and a piece of white ñandutí lace",
+    mood:"proud, traditional, warm and united", people:"a small red, white and blue escarapela pinned on the clothing", avoid:["wrong flag","flag of another country","inverted flag stripes"] },
+  { k:"madre", l:"Día de la Madre", n:"Mother's Day",
+    es:"flores frescas, regalo con moño, desayuno especial y un momento tierno de mamá con sus hijos.",
+    esMini:"una flor fresca y una caja de regalo elegante con un moño fino.",
+    en:"Mother's Day in Paraguay (May 15), tender and grateful",
+    cues:"a bouquet of fresh flowers, a gift box with a ribbon, a special breakfast or brunch, a handwritten card, a tender moment between a mother and her children",
+    colors:"soft pink, blush, cream and white",
+    mini:"a single fresh flower and an elegant gift box with a thin ribbon",
+    mood:"tender, grateful, loving and warm", people:"a tender, loving interaction between mother and children: hugs, smiles, hands together", avoid:[] },
+  { k:"padre", l:"Día del Padre", n:"Father's Day",
+    es:"asado en familia, regalo, tereré compartido y papá con sus hijos.",
+    esMini:"una caja de regalo elegante con un detalle de cuero.",
+    en:"Father's Day in Paraguay (June), close and relaxed",
+    cues:"a family asado on the grill, a gift box, a shared tereré or mate moment, father and children together, a football or a classic watch as symbolic details",
+    colors:"deep navy blue, warm grey, leather brown and natural wood",
+    mini:"an elegant gift box with a classic leather detail",
+    mood:"proud, close, relaxed and grateful", people:"father and children sharing a relaxed moment, casual clothes", avoid:[] },
+  { k:"invierno", l:"Invierno", n:"winter",
+    es:"bebidas calientes, vori vori o puchero con vapor, mantas tejidas y buzos de lana.",
+    esMini:"una taza o un plato caliente con vapor y una textura tejida.",
+    en:"winter in Paraguay (June to August), mild and cozy",
+    cues:"hot drinks such as mate cocido, hot chocolate or coffee with rising steam, warm soups and stews such as vori vori or puchero, knit blankets and wool sweaters, a soft, warm indoor atmosphere",
+    colors:"cream, camel, burgundy and warm grey",
+    mini:"a steaming cup or bowl and a soft knit texture",
+    mood:"cozy, comforting, warm and sheltered", people:"wool sweaters, scarves and warm layers", avoid:["snow"] },
+  { k:"nino", l:"Día del Niño", n:"Children's Day",
+    es:"chicos jugando y riendo, juguetes, globos de colores, regalos con moño y golosinas.",
+    esMini:"un regalo con moño y un juguete clásico de madera.",
+    en:"Children's Day in Paraguay (August 16), joyful and playful",
+    cues:"children playing and laughing, colorful toys, balloons, gift boxes with bows, sweets and a party table",
+    colors:"bright playful colors: red, yellow, blue and green",
+    mini:"a gift box with a bow and a small classic wooden toy",
+    mood:"joyful, playful, innocent and full of wonder", people:"children playing happily and safely in comfortable, colorful clothes", avoid:["unsafe situations for children"] },
+  { k:"primavera", l:"Primavera", n:"spring",
+    es:"flores, lapachos en flor, picnic al aire libre y colores frescos (21 de septiembre).",
+    esMini:"una flor de lapacho o una flor fresca chiquita.",
+    en:"spring in Paraguay (September 21, Spring and Youth Day), fresh and blooming",
+    cues:"flowers in bloom, pink and yellow lapacho trees in blossom (typical of Paraguay), fresh greenery, an outdoor picnic, light fresh food and drinks, young people celebrating",
+    colors:"fresh floral tones of pink, yellow, light green and lilac",
+    mini:"a single lapacho blossom or a small fresh flower",
+    mood:"fresh, blooming, young and light", people:"light, colorful spring clothing, young and joyful", avoid:[] },
+  { k:"halloween", l:"Halloween", n:"Halloween",
+    es:"calabazas talladas con velas, golosinas y disfraces divertidos; sin terror ni sangre.",
+    esMini:"una calabaza tallada chica con la luz cálida de una vela.",
+    en:"Halloween (October 31), fun and family-friendly",
+    cues:"carved pumpkins (jack-o'-lanterns) with candle glow, candles, sweets and candy in a bowl, friendly costumes for children, a few playful decorations such as paper bats",
+    colors:"orange, black and purple",
+    mini:"a small carved pumpkin with a warm candle glow",
+    mood:"playful, fun, spooky-cute and family-friendly", people:"friendly, fun costumes, especially for children, smiling", avoid:["gore","blood","horror","frightening imagery"] },
+  { k:"navidad", l:"Navidad", n:"Christmas",
+    es:"pesebre con flor de coco, pan dulce, clericó, guirnaldas y luces; Navidad de verano, sin nieve.",
+    esMini:"una ramita de flor de coco o de pino, una luz dorada y un regalo chico.",
+    en:"Christmas in Paraguay (December 24 and 25), a summer Christmas: warm, sunny and without snow",
+    cues:"a nativity scene (pesebre) with flor de coco (the fragrant coconut palm flower), pan dulce, clericó (fruit and wine punch) in a glass pitcher, sopa paraguaya and chipa guasu on the table, natural pine or palm garlands, warm string lights and wrapped gifts",
+    colors:"Christmas red, green and gold",
+    mini:"a sprig of flor de coco or pine with a warm golden light and a small wrapped gift",
+    mood:"joyful, generous, grateful and together", people:"light summer clothing with a festive touch, family together", avoid:["snow","winter coats and scarves"] },
+  { k:"anio", l:"Año Nuevo", n:"New Year's Eve",
+    es:"brindis con sidra, clericó, luces doradas, papel picado y fuegos artificiales en la noche de verano.",
+    esMini:"dos copas de cristal con burbujas finas.",
+    en:"New Year's Eve in Paraguay (December 31), a warm summer night",
+    cues:"glasses of sidra or sparkling wine raised in a toast, clericó, a table set for the midnight dinner, warm golden string lights, confetti and fireworks glowing in the night sky",
+    colors:"gold, silver and white",
+    mini:"two crystal flutes with sparkling wine and fine bubbles",
+    mood:"celebratory, hopeful, elegant and joyful", people:"elegant summer evening clothing, toasting together", avoid:["snow"] },
+];
+const PM_FEST_LIBRE = "the occasion is clear at first glance through authentic decorations, props and details, integrated naturally into the scene, tasteful and well balanced";
+// El evento elegido (o el que se escribió en “Otro”); null si la foto no es para un evento festivo.
+function pmFiesta(f){
+  if (f.fiestaOn !== "si" || !f.fiesta) return null;
+  if (f.fiesta !== "otro") return PM_FIESTAS.find(x => x.k === f.fiesta) || null;
+  const t = f.fiestaOtro.trim(); if (!t) return null;
+  return { k:"otro", custom:true, l:t, n:`“${t}”`, en:`${t}, as celebrated in Paraguay`, cues:"the decorations, props, food and details typical of this occasion in Paraguay, authentic and tasteful", colors:"",
+    mini:"one or two small, symbolic elements of this occasion", mood:"celebratory and authentic", people:"", avoid:[] };
+}
+// Lo que suma el evento al prompt, siempre dentro del estilo de la marca.
+function pmFiestaLines(f, X, o){
+  const B = PM_BRANDS[f.brand], deli = f.brand === "Delimarket";
+  if (o.cutout) return [`Occasion accent for ${X.n}: ${X.mini}, small and secondary next to the product on the same clean background, never covering the product.`];
+  const out = [`Occasion: ${deli && !X.custom ? X.en.split(/,(?![^(]*\))/)[0] : X.en}.`, deli ? `Occasion elements: only ${X.mini}.` : `Occasion elements (pick what fits the scene, never overcrowded): ${X.cues}.`];
+  if (X.colors) out.push(`Occasion colors: ${X.colors}, ${deli ? "muted and desaturated, in one small detail only" : B ? `only as accents in a few objects; the ${f.brand} light and palette still rule` : "as accents in the decorations and props"}.`);
+  out.push(`Occasion touch${B ? ` in the ${f.brand} way` : ""}: ${B ? B.fest : PM_FEST_LIBRE}.${o.product ? " The occasion elements never cover, hide or overshadow the product." : ""}`);
+  if (o.people && X.people && !deli) out.push(`People in the occasion: ${X.people}.`);
+  if (o.fondoAdj) out.push("Attached background: add the occasion elements only around the subject and in the foreground; the attached place stays as it is.");
+  out.push(`Occasion mood: ${deli ? `an intimate, quiet celebration of ${X.n}` : X.mood}.`);
+  return out;
+}
 // Valores de un botón de Escenario para una marca.
 const pmEscVals = (b, k) => { const x = PM_ESC_BRAND[b]?.[k]; return x ? { ambiente:x[0], locacion:x[0], fondo:x[1], superficie:x[2] } : null; };
 // Al elegir la marca se carga el mismo escenario que tenías (cocina, sala, súper…) pero con la colorimetría de la nueva marca, más su encuadre.
@@ -7412,7 +7572,7 @@ function pmSize(f){ const w = +f.pxW, h = +f.pxH, g = (a, b) => b ? g(b, a % b) 
 const pmFmtLabel = f => f.formato === "px" ? `${+f.pxW}×${+f.pxH} px` : pmv("formato", f.formato, 1);
 const pmv = (list, k, i = 2) => (PM[list].find(x => x[0] === k) || PM[list][0])[i];
 const PM_MODEL = () => ({ edad:"", genero:"f", peinado:"long", expresion:"smile", ropa:"", pose:"" });
-const PM_EMPTY = () => ({ brand:"", libreMarca:"", pickup:"no", refProd:"no", refFondo:"no", fondoTipo:"super", modTipo:"ia", rostro:"si",
+const PM_EMPTY = () => ({ brand:"", libreMarca:"", fiestaOn:"no", fiesta:"", fiestaOtro:"", pickup:"no", refProd:"no", refFondo:"no", fondoTipo:"super", modTipo:"ia", rostro:"si",
   producto:"", productos:"", material:"", colores:"", marca:"", ambiente:"", fondo:"", detalles:"", disposicion:"hero", interaccion:"hold",
   superficie:"", escena:"cart", superProds:"", locacion:"", tipoFondo:"white", fondoHex:"", sombra:"soft", libreQue:"", elemento:"", conPersonas:"no",
   nModelos:1, modelos:[PM_MODEL(), PM_MODEL(), PM_MODEL(), PM_MODEL()],
@@ -7437,6 +7597,8 @@ const ageWord = (edad, g) => { const a = +edad, w = g === "m" ? ["boy","teenage 
 
 function validatePrompt(m, f){
   if (!pmBrandOk(f.brand)) return "Elegí para qué marca es la foto.";
+  if (f.fiestaOn === "si" && !f.fiesta) return "Elegí qué evento festivo es (o tocá No).";
+  if (f.fiestaOn === "si" && f.fiesta === "otro" && !f.fiestaOtro.trim()) return "Escribí qué evento festivo es.";
   if ([1,3,5].includes(m) && !f.producto.trim()) return "Describí el producto.";
   if (m === 2 && f.productos.split("\n").filter(x => x.trim()).length < 2) return "Poné al menos 2 productos, uno por línea.";
   if (pmHasPeople(m, f) && !pmRealPeople(m, f) && f.modelos.slice(0, f.nModelos).some(x => !String(x.edad).trim() || isNaN(+x.edad) || +x.edad <= 0)) return "Poné la edad exacta de cada modelo.";
@@ -7451,9 +7613,9 @@ function buildPrompt(m, f){
   const people = pmHasPeople(m, f), product = pmHasProduct(m, f), fondoAdj = pmFondoAdj(f);
   const refProd = pmRefProd(m, f), refPers = pmRealPeople(m, f), noFace = pmNoFace(m, f);
   const st = PM.estilo.find(x => x[0] === f.estilo) || PM.estilo[0], B = PM_BRANDS[f.brand];
-  const cutout = m === 5 && !fondoAdj, premium = B ? f.brand === "Delimarket" : f.estilo === "premium";
+  const cutout = m === 5 && !fondoAdj, premium = B ? f.brand === "Delimarket" : f.estilo === "premium", FX = pmFiesta(f), forFx = FX ? ` for ${FX.n}` : "";
   const L = [];
-  L.push(B ? `Professional ${B.genre}, photorealistic, shot for a real ${f.brand} advertising campaign.` : `Professional ${st[2]}, photorealistic, shot for a real advertising campaign.`);
+  L.push(B ? `Professional ${B.genre}, photorealistic, shot for a real ${f.brand} advertising campaign${forFx}.` : `Professional ${st[2]}, photorealistic, shot for a real advertising campaign${forFx}.`);
   // Referencias adjuntas
   const R = [];
   if (refProd) R.push(m === 2 ? "Use the attached product photos as the exact products: keep shapes, labels, logos, colors and proportions identical, do not redesign them."
@@ -7506,6 +7668,7 @@ function buildPrompt(m, f){
   } else if (m === 5) L.push("Shadow: natural contact shadow matching the scene.");
   else if ([1,2,6].includes(m) && f.superficie) L.push(`Surface: ${pmv("superficie", f.superficie)}.`);
   if (f.detalles.trim()) L.push(`Details: ${f.detalles.trim()}.`);
+  if (FX) L.push(...pmFiestaLines(f, FX, { cutout, people, product, fondoAdj })); // evento festivo, con la onda de la marca
   L.push(`Composition: ${pmv("encuadre", f.encuadre)}, ${pmv("espacio", f.espacio)}${B && !cutout ? `; ${B.composition}` : ""}.`);
   const lighting = cutout ? "even high-key studio lighting with two large softboxes and a white sweep, 5600K, no color cast" : B ? B.light : pmv("ilum", f.ilum);
   L.push(`Lighting: ${lighting}.`);
@@ -7546,6 +7709,7 @@ function buildPrompt(m, f){
   if (refProd) N.push("altered or redrawn logo", "changed label text", "misspelled or reshaped lettering", "modified packaging design", "different product than the attached one");
   if (refPers) N.push(...(noFace ? ["different body type", "changed skin tone"] : ["changed face", "different person", "altered identity", "face swap", "beautified or aged face"]));
   if (B && !cutout) N.push(...B.avoid);
+  if (FX){ N = N.map(x => x === "extra objects" ? "unrelated extra objects" : x); N.push("cheap plastic decorations", "kitschy or overcrowded decorations", "generic stock-photo holiday look", ...FX.avoid); if (f.brand === "Delimarket") N.push("party clutter"); }
   L.push(`Avoid: ${N.join(", ")}.`);
   return L.join("\n");
 }
@@ -7559,13 +7723,19 @@ function pPrompts(){
   const prodBlock = (required, label = "Producto", ph = "botella de aceite de oliva extra virgen de 1 litro, vidrio verde oscuro, etiqueta crema") => `${T("producto", label, ph, required, true)}${matSel()}${T("marca", "Marca o texto visible", "OLIVAR")}`;
   const B = PM_BRANDS[f.brand], libre = f.brand === PM_LIBRE, realP = pmRealPeople(m, f), noFace = pmNoFace(m, f);
   const sw = (list, big) => list.map(([hex, n]) => `<i class="pbdot${big ? " big" : ""}" style="--sw:${hex}" title="${esc(n)} ${hex}"></i>`).join("");
-  const histBlock = hist.length ? `<section class="panel phist"><h3 style="margin-top:0">Tus últimos prompts</h3><div class="list">${hist.map((h, i) => `<div class="row"><i class="pbdot" style="--sw:${pmHistColor(h)}"></i><div class="grow"><div class="t">${esc(h.title || "Sin nombre")}</div><div class="m"><b class="phb">${esc(pmHistBrand(h))}</b> · ${esc(h.mode || "")} · ${esc(h.fmt || "")} · ${esc(pmWhen(h))}</div></div><button class="btn" data-phist="${i}">${icon("copy")} Copiar</button></div>`).join("")}</div></section>` : "";
+  const histBlock = hist.length ? `<section class="panel phist"><h3 style="margin-top:0">Tus últimos prompts</h3><div class="list">${hist.map((h, i) => `<div class="row"><i class="pbdot" style="--sw:${pmHistColor(h)}"></i><div class="grow"><div class="t">${esc(h.title || "Sin nombre")}</div><div class="m"><b class="phb">${esc(pmHistBrand(h))}</b> · ${esc(h.mode || "")}${h.fiesta ? ` · ${esc(h.fiesta)}` : ""} · ${esc(h.fmt || "")} · ${esc(pmWhen(h))}</div></div><button class="btn" data-phist="${i}">${icon("copy")} Copiar</button></div>`).join("")}</div></section>` : "";
   const brandPick = `<section class="panel pbrandpick"><h2 class="pmh" style="margin:0">${pmIco("palette")}¿Para qué marca es la foto?</h2><p class="sub" style="margin:4px 0 14px">Cada marca tiene su estilo de fotos. Elegila primero: su estilo se carga solo y el prompt lo respeta siempre, aunque cambies el escenario.</p>
     <div class="pbrands">${PM_BRAND_LIST.map(b => { const x = PM_BRANDS[b]; return `<button type="button" class="pbrand" data-pbrand="${b}" style="--bc:${x.ui}"><span class="pbsw">${sw(x.swatches.slice(0, 4))}</span><b>${b}</b><span class="pbtag">${x.tag}</span><small>${x.resumen}</small></button>`; }).join("")}
       <button type="button" class="pbrand libre" data-pbrand="${PM_LIBRE}" style="--bc:var(--muted)"><span class="pbsw">${icon("pencil-line")}</span><b>Otra marca (libre)</b><span class="pbtag">Estilo a elección</span><small>Para otra marca u otro uso: elegís vos el estilo y la luz</small></button></div></section>`;
   if (!B && !libre) return `<div class="pm2"><div class="head"><div><h1>Prompts de imágenes</h1><p class="sub">Para ChatGPT, Gemini o Nano Banana. Primero elegí la marca.</p></div></div>${brandPick}${histBlock}</div>`;
   const step = (n, t) => `<h2 class="pstep"><i>${n}</i>${t}</h2>`;
   const opt = (k, label, hint, a, b) => `<div class="pyn"><div><b>${label}</b>${hint ? `<span>${hint}</span>` : ""}</div><div class="pynbtns" role="group" aria-label="${label}">${[a, b].map(([v, l]) => `<button type="button" class="${f[k] === v ? "on" : ""}" data-pyn="${k}|${v}">${l}</button>`).join("")}</div></div>`;
+  // 1 · ¿Es para un evento festivo? Las fechas en orden del año, más “Otro” para escribirla.
+  const fOn = f.fiestaOn === "si", FX = pmFiesta(f), fine = f.brand === "Delimarket" || (m === 5 && !fondoAdj);
+  const fiestaBlock = `<div class="pfest">${opt("fiestaOn", "¿Es para un evento festivo?", fOn ? `Elegí la fecha: se suma su decoración${B ? ` con los colores y la onda de ${f.brand}` : ""}.` : "Navidad, Día de la Madre, Halloween, Verano y más.", ["si", "Sí"], ["no", "No"])}
+    ${fOn ? `<div class="pfchips" role="group" aria-label="Evento festivo">${PM_FIESTAS.map(x => `<button type="button" class="pfchip${f.fiesta === x.k ? " on" : ""}" data-pfiesta="${x.k}" aria-pressed="${f.fiesta === x.k}">${x.l}</button>`).join("")}<button type="button" class="pfchip${f.fiesta === "otro" ? " on" : ""}" data-pfiesta="otro" aria-pressed="${f.fiesta === "otro"}">${icon("plus")} Otro</button></div>
+      ${f.fiesta === "otro" ? `<label class="pfotro">¿Qué evento? *<input class="base" data-pf="fiestaOtro" value="${esc(f.fiestaOtro)}" maxlength="80" placeholder="San Juan, aniversario de la marca, Día de los Enamorados…"></label>` : ""}
+      ${f.fiesta ? `<div class="pfnote">${FX && !FX.custom ? `<p><b>${FX.l}:</b> ${fine ? FX.esMini : FX.es}</p>` : ""}<p>${B ? B.festEs : "Se suma la decoración típica de la fecha, con el estilo que elijas."}${m === 5 && !fondoAdj ? " En fondo pleno o transparente va solo un detalle chico al lado del producto." : ""}</p></div>` : ""}` : ""}</div>`;
   // 1 · Marca (arriba, chica) con Volver
   const brandBar = `<section class="panel pbrandbar" style="--bc:${libre ? "var(--muted)" : B.ui}"><div class="pbb-h"><div class="pbb-n"><span class="note">Marca</span><b>${libre ? "Otra marca (libre)" : f.brand}</b><span class="pbtag">${libre ? "Estilo a elección" : B.tag}</span></div>${B ? `<span class="pbsw">${sw(B.swatches, true)}</span>` : ""}</div>
     ${libre ? `<label class="pblibre"><span>¿Para qué marca o uso? <span class="note">(opcional, para tu historial)</span></span><input class="base" data-pf="libreMarca" value="${esc(f.libreMarca)}" placeholder="Bianca, Clasipar, evento interno…"></label>`
@@ -7618,7 +7788,7 @@ function pPrompts(){
     ${m === 5 ? `<p class="note" style="margin:0">En fondo pleno o transparente la luz es de estudio (el producto va recortado); de la marca se respetan el color y el acabado.</p>` : ""}</details>` : "";
   return `<div class="pm2"><div class="head"><div><button type="button" class="btn sm pback" data-pbrand="">${icon("arrow-left")} Volver</button><h1>Prompts de imágenes</h1><p class="sub">Para ChatGPT, Gemini o Nano Banana. Seguí los pasos, tocá <b>Generar prompt</b> y copiá el texto.</p></div></div>
   ${brandBar}
-  <section class="pstepw">${step(1, "¿Qué foto vas a hacer?")}<div class="pmtabs2" role="tablist">${PM_MODES.map(x => `<button type="button" role="tab" aria-selected="${m === x.n}" class="${m === x.n ? "on" : ""}" data-pmmode="${x.n}">${icon(x.i)}<span>${x.l}</span></button>`).join("")}</div></section>
+  <section class="pstepw">${step(1, "¿Qué foto vas a hacer?")}<div class="pmtabs2" role="tablist">${PM_MODES.map(x => `<button type="button" role="tab" aria-selected="${m === x.n}" class="${m === x.n ? "on" : ""}" data-pmmode="${x.n}">${icon(x.i)}<span>${x.l}</span></button>`).join("")}</div>${fiestaBlock}</section>
   ${useBlock}
   <form class="panel pform promptform" id="promptForm" novalidate>
     <div class="w3">${step(3, "Contanos la foto")}</div>
@@ -7664,8 +7834,12 @@ document.addEventListener("click", e => {
   const pbm = e.target.closest("[data-pbmode]"); if (pbm){ const x = PM_BRANDS[promptUI.f.brand]?.modos[+pbm.dataset.pbmode]; if (!x) return; const f = promptUI.f;
     if (promptUI.mode === 4) f.locacion = x.ambiente; else f.ambiente = x.ambiente;
     f.fondo = x.fondo; f.superficie = x.superficie; f.detalles = x.detalles; f.encuadre = x.encuadre; f.esc = ""; promptUI.out = ""; promptUI.err = ""; render(); toast(`Escena “${x.l}” cargada. Podés cambiar lo que quieras.`); return; }
+  const fz = e.target.closest("[data-pfiesta]"); if (fz){ const f = promptUI.f, k = fz.dataset.pfiesta; f.fiesta = k; promptUI.out = ""; promptUI.err = ""; render();
+    if (k === "otro") { document.querySelector('[data-pf="fiestaOtro"]')?.focus(); toast("Escribí qué evento es."); }
+    else { const x = PM_FIESTAS.find(y => y.k === k); toast(PM_BRANDS[f.brand] ? `${x.l} con la onda de ${f.brand}.` : `${x.l} cargado.`); } return; }
   const m = e.target.closest("[data-pmmode]"); if (m){ promptUI.mode = +m.dataset.pmmode; promptUI.out = ""; promptUI.err = ""; render(); return; }
-  if (e.target.closest("[data-pclear]")){ const b = promptUI.f.brand, lm = promptUI.f.libreMarca; promptUI.f = PM_EMPTY(); if (b){ pmApplyBrand(b); promptUI.f.libreMarca = lm; } promptUI.out = ""; promptUI.err = ""; render(); return; }
+  if (e.target.closest("[data-pclear]")){ const o = promptUI.f, b = o.brand, lm = o.libreMarca, keep = { fiestaOn:o.fiestaOn, fiesta:o.fiesta, fiestaOtro:o.fiestaOtro };
+    promptUI.f = { ...PM_EMPTY(), ...keep }; if (b){ pmApplyBrand(b); promptUI.f.libreMarca = lm; } promptUI.out = ""; promptUI.err = ""; render(); return; }
   const cp = e.target.closest("[data-pcopy],[data-phist]"); if (cp){ const txt = cp.dataset.phist !== undefined ? PROMPT_HISTORY[viewer.id][+cp.dataset.phist].text : $("#promptText").value;
     navigator.clipboard?.writeText(txt).then(() => toast("Prompt copiado. Pegalo en la IA."), () => { const ta = $("#promptText"); if (ta) ta.select(); toast("No se pudo copiar solo: quedó seleccionado, copialo a mano."); }); }
 });
@@ -7675,7 +7849,7 @@ document.addEventListener("submit", e => {
   promptUI.err = err; if (err){ promptUI.out = ""; render(); document.querySelector(".perr")?.scrollIntoView({ block:"center" }); return; }
   promptUI.out = buildPrompt(m, f);
   const title = m === 2 ? f.productos.split("\n").find(x => x.trim()) : m === 6 ? f.libreQue : m === 4 && f.escena !== "featured" ? pmv("escena", f.escena, 1) : f.producto;
-  (PROMPT_HISTORY[viewer.id] = PROMPT_HISTORY[viewer.id] || []).unshift({ title:(title || "").trim().slice(0, 80), brand:pmBrandLabel(f), brandKey:f.brand, mode:PM_MODES[m - 1].l, fmt:pmFmtLabel(f), text:promptUI.out, time:nowTime(), at:new Date().toISOString() }); PROMPT_HISTORY[viewer.id].splice(5);
+  (PROMPT_HISTORY[viewer.id] = PROMPT_HISTORY[viewer.id] || []).unshift({ title:(title || "").trim().slice(0, 80), brand:pmBrandLabel(f), brandKey:f.brand, mode:PM_MODES[m - 1].l, fiesta:pmFiesta(f)?.l || "", fmt:pmFmtLabel(f), text:promptUI.out, time:nowTime(), at:new Date().toISOString() }); PROMPT_HISTORY[viewer.id].splice(5);
   render(); document.querySelector(".promptout")?.scrollIntoView({ behavior:"smooth", block:"start" }); toast("Prompt listo. Tocá “Copiar prompt”.");
 });
 // ---------- Guía de uso ----------
@@ -7721,7 +7895,7 @@ const GUIDE = [
     ["list-checks","Plan de posteo","Lo que se tiene que subir en el mes. Arriba, cuántas hay en cada estado y el % ya publicado (tocá un estado para filtrar). En cada publicación marcás Pendiente, En proceso, Programado, Publicado o Pautado, cambiás el CM que la hace y pedís el diseño si hace falta."],
     ["archive","Historial CM","Lo que ya salió en el mes: publicaciones publicadas o pautadas y pedidos de CM terminados."]]],
   ["Recursos", [
-    ["wand-sparkles","Prompts de imágenes","Primero elegís la marca (Superseis, Stock o Delimarket): se carga su estilo de fotos (luz, cámara, colores de la escena y emoción) y el prompt lo respeta siempre, aunque cambies el escenario. Después armás el prompt para ChatGPT, Gemini o Nano Banana en seis modalidades: producto en escenario, varios productos, producto con modelos, modelos en locación, fondo pleno o transparente y opción libre. Si adjuntás fotos (producto, fondo o persona), el prompt pide respetarlas al 100%: sin deformar productos, logos, letras ni caras. La cámara, el lente y la exposición se eligen solos; se suman bloques de realismo y la lista de lo que hay que evitar."],
+    ["wand-sparkles","Prompts de imágenes","Primero elegís la marca (Superseis, Stock o Delimarket): se carga su estilo de fotos (luz, cámara, colores de la escena y emoción) y el prompt lo respeta siempre, aunque cambies el escenario. Después armás el prompt para ChatGPT, Gemini o Nano Banana en seis modalidades: producto en escenario, varios productos, producto con modelos, modelos en locación, fondo pleno o transparente y opción libre. Si es para un evento festivo, tocá Sí y elegí la fecha (Verano, Carnaval, Vuelta a Clases, Otoño, Semana Santa, Independencia Paraguay, Día de la Madre, Día del Padre, Invierno, Día del Niño, Primavera, Halloween, Navidad, Año Nuevo) o tocá Otro y escribila: se suma su decoración, siempre con los colores y la onda de la marca. Si adjuntás fotos (producto, fondo o persona), el prompt pide respetarlas al 100%: sin deformar productos, logos, letras ni caras. La cámara, el lente y la exposición se eligen solos; se suman bloques de realismo y la lista de lo que hay que evitar."],
     ["link","Archivos y enlaces","Los links de Canva, Drive y descarga de cada marca por mes, más los que quieras agregar. Arriba las marcas que ya tienen links; abajo las pendientes. Botones para abrir y copiar."]]],
   ["Informes", [
     ["megaphone","Meta Ads","Plan de pauta: el límite de cada marca por mes, lo cargado y la calificación de cada pauta. Informe Meta Ads: lo gastado, alcance y resultados."],
