@@ -627,7 +627,14 @@ tr.tot td{border-top:1px solid var(--line-3)}
 .ibm{align-self:flex-start;max-width:78%;display:flex;flex-direction:column;gap:2px;background:rgba(148,163,184,.12);border-radius:14px 14px 14px 4px;padding:7px 11px;overflow-wrap:anywhere}.ibm.me{align-self:flex-end;background:rgba(34,211,238,.12);border-radius:14px 14px 4px 14px}.ibm small{font-size:11px;color:var(--faint)}
 .ibacts{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px}.ibacts a{text-decoration:none}
 .ibempty{display:flex;flex-direction:column;align-items:center;gap:6px;padding:38px 16px;text-align:center;color:var(--muted)}.ibempty svg{width:26px;height:26px;color:#34d399}.ibempty b{color:var(--text,#fff)}
-@media (max-width:560px){.ibbar{flex-direction:column;align-items:stretch}.ibseg{justify-content:space-between}.ibseg button{padding:7px 10px;font-size:13px}.ibfil select{flex:1;min-width:0}.ibthread{padding-left:0}.ibm{max-width:90%}}
+.ibtabs{display:flex;gap:2px;border-bottom:1px solid var(--line-2);margin:0 0 14px;overflow-x:auto;scrollbar-width:none}.ibtabs::-webkit-scrollbar{display:none}
+.ibtabs button{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:7px;padding:9px 14px 10px;font-size:14px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.ibtabs button span{font-size:11.5px;font-weight:700;min-width:18px;padding:1px 6px;border-radius:999px;background:rgba(148,163,184,.16);color:var(--muted);text-align:center;font-variant-numeric:tabular-nums}
+.ibtabs button.on{color:var(--ink);border-bottom-color:var(--cyan)}.ibtabs button.on span{background:rgba(34,211,238,.16);color:var(--cyan)}.ibtabs button:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
+.iak{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--faint);border:1px solid var(--line-2);border-radius:999px;padding:1px 7px;white-space:nowrap}
+.iapost{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:12px;color:var(--faint);min-width:0}.iapost svg{width:13px;height:13px;flex:none}.iapost span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iapv{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted);max-width:520px}.iathumb{width:56px;height:56px;border-radius:10px;object-fit:cover;flex:none;background:var(--inner)}
+@media (max-width:560px){.ibtabs button{flex:1 1 auto;justify-content:center;padding:9px 6px 10px;font-size:13.5px;gap:5px}.ibbar{flex-direction:column;align-items:stretch}.ibseg{justify-content:space-between}.ibseg button{padding:7px 10px;font-size:13px}.ibfil select{flex:1;min-width:0}.ibthread{padding-left:0}.ibm{max-width:90%}}
 /* Hoja blanca tipo Word para el texto del pedido */
 .rtedit,.rtview{background:#fff !important;color:#1f2937 !important;border:1px solid #e5e7eb !important;border-radius:6px !important;padding:28px 32px !important;font-size:15.5px;line-height:1.65;box-shadow:0 18px 40px -18px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.04)}
 .rtedit{min-height:300px !important}.rtedit b,.rtview b,.rtedit strong,.rtview strong{color:#0f172a}.rtedit a,.rtview a{color:#2563eb}
@@ -3241,6 +3248,7 @@ function metaAdsPanel(simple = false){
 // META_FOLLOWERS = { updated, "AAAA-MM": { Marca: { ig, fb, handle, page } } } · META_DEMO = { updated, Marca: { handle, foll, cities, ages, gender } } (cantidades).
 let META_FOLLOWERS = {}, META_DEMO = {}, META_POSTS = {}, META_CREATIVES = {}, META_INBOX = {}, META_REFS = {};
 let META_DM = {}; // mensajes de Instagram que llegan en vivo (webhook de Meta → /api/webhook-meta → s:META_DM)
+let META_IG_ACT = {}; // comentarios, comentarios en vivo y menciones de Instagram (webhook y /api/interacciones → s:META_IG_ACT)
 let META_DM_LOG = {}; // los últimos avisos de Meta a ese webhook y qué pasó con cada uno (sin el texto de los mensajes)
 let COMERCIAL = {}; // ofertas publicadas de cada quincena (las lee el servidor del Excel de Comercial en Drive)
 let INBOX_DONE = {}; // conversaciones marcadas a mano como contestadas: { id: { by, at } }
@@ -3849,6 +3857,7 @@ const ICONS = {
 "megaphone":"<path d=\"m3 11 18-5v12L3 14v-3z\"/><path d=\"M11.6 16.8a3 3 0 1 1-5.8-1.6\"/>",
 "menu":"<line x1=\"4\" x2=\"20\" y1=\"12\" y2=\"12\"/><line x1=\"4\" x2=\"20\" y1=\"6\" y2=\"6\"/><line x1=\"4\" x2=\"20\" y1=\"18\" y2=\"18\"/>",
 "message-circle":"<path d=\"M7.9 20A9 9 0 1 0 4 16.1L2 22Z\"/>",
+"at-sign":"<circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8\"/>",
 "message-circle-question":"<path d=\"M7.9 20A9 9 0 1 0 4 16.1L2 22Z\"/><path d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\"/><path d=\"M12 17h.01\"/>",
 "message-square":"<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/>",
 "message-square-plus":"<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/><path d=\"M12 7v6\"/><path d=\"M9 10h6\"/>",
@@ -4251,7 +4260,7 @@ const PANEL_CM = [
   { k:"calhistoria", t:"Historias", d:"Historias de Instagram y Facebook, día por día.", i:"smartphone" },
   { k:"calcanales", t:"Canal de WhatsApp", d:"Ofertas y novedades del canal, y los envíos repetitivos.", i:"message-circle" },
   { k:"gestioncm", t:"Gestión de Videos", d:"Grabaciones, ediciones, coberturas, copys y armado de pauta.", i:"clapperboard" },
-  { k:"inbox", t:"Mensajes", d:"Los mensajes directos de Instagram y Facebook de cada marca: quién escribió y si ya se contestó.", i:"inbox" },
+  { k:"inbox", t:"Mensajes", d:"Mensajes directos, comentarios y menciones de Instagram y Facebook de cada marca: quién escribió y si ya se contestó.", i:"inbox" },
   { k:"reclamos", t:"Reclamos del mes", d:"Se arma solo con los mensajes del mes: quién reclamó, el motivo, la sucursal y qué pide, resumido para compartir con la empresa.", i:"message-square-warning" },
   { k:"ideas", t:"Ideas Random", d:"Ideas para creadores de contenido: lo que es tendencia en TikTok, Instagram y Facebook, para Superseis, Stock y Delimarket.", i:"lightbulb" },
 ];
@@ -8098,7 +8107,8 @@ const GUIDE = [
     ["clapperboard","Gestión Videos","Los pedidos a los CM: grabaciones, ediciones de video, coberturas, copys y pauta. Etapas: Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado (en Revisión, Admin total aprueba o pide cambios). Tabla y Procesos (una columna por etapa), más la lista de Repetitivos; las grabaciones repetitivas siguen las mismas etapas. En el calendario de Planificación se ven todos los videos y las grabaciones en su fecha."],
     ["gauge","Carga de trabajo CM","Cuánto tiene cada CM: los pedidos sin terminar y las publicaciones del mes que todavía no están programadas."],
     ["list-checks","Plan de posteo","Todo lo de CM del mes: feed, historias, Canal de WhatsApp, videos y repetitivos. Arriba, cuántos hay en cada etapa y el % ya publicado (tocá una etapa para filtrar) y los tres procesos a la vista. Cada contenido sigue el suyo: publicaciones e historias Pendiente → En proceso → Programado → Publicado → Pautado; Canal de WhatsApp igual sin Pautado; videos Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado. Cambiás la etapa ahí mismo, el CM que la hace y pedís el diseño si hace falta."],
-    ["archive","Historial CM","Lo que ya salió en el mes: publicaciones publicadas o pautadas y pedidos de CM terminados."]]],
+    ["archive","Historial CM","Lo que ya salió en el mes: publicaciones publicadas o pautadas y pedidos de CM terminados."],
+    ["inbox","Mensajes, comentarios y menciones","En Panel de CM → Mensajes hay tres pestañas. Mensajes: los mensajes directos de Instagram y Facebook de cada marca. Comentarios: lo que comentan en las publicaciones y en los vivos de Instagram (los que son solo etiquetas a amigos, como en los sorteos, no esperan respuesta). Menciones: cuando alguien escribe @ y la cuenta de la marca en un comentario, en una publicación o en su historia, o la etiqueta en una foto. Cada uno dice si ya se contestó; tocalo para abrirlo en Instagram, o marcá “Contestado” si se respondió desde el celular. Llegan al momento y, además, se actualizan solos dos veces por día (o con “Actualizar”). Son los de los últimos 30 días."]]],
   ["Recursos", [
     ["wand-sparkles","Prompts de imágenes","Primero elegís la marca (Superseis, Stock o Delimarket): se carga su estilo de fotos (luz, cámara, colores de la escena y emoción) y el prompt lo respeta siempre, aunque cambies el escenario. Después armás el prompt para ChatGPT, Gemini o Nano Banana en seis modalidades: producto en escenario, varios productos, producto con modelos, modelos en locación, fondo pleno o transparente y opción libre. En el paso 2, “¿Es para un evento festivo?”, elegí la fecha (Verano, Carnaval, Vuelta a Clases, Otoño, Semana Santa, Independencia Paraguay, Día de la Madre, Día del Padre, Invierno, Día del Niño, Primavera, Halloween, Navidad, Año Nuevo) o tocá Otro y escribila: se suma su decoración, sus colores y su emoción, siempre con la onda de la marca. Si no es para una fecha, dejá “Ninguno”. Si adjuntás fotos (producto, fondo o persona), el prompt pide respetarlas al 100%: sin deformar productos, logos, letras ni caras. La cámara, el lente y la exposición se eligen solos; se suman bloques de realismo y la lista de lo que hay que evitar."],
     ["link","Archivos y enlaces","Los links de Canva, Drive y descarga de cada marca por mes, más los que quieras agregar. Arriba las marcas que ya tienen links; abajo las pendientes. “Abrir” abre el archivo y el ícono de al lado copia el link."]]],
@@ -8311,14 +8321,15 @@ function igLogTxt(e){
   if (e.sig && e.sig !== "ok") return ["bad", e.sig === "no coincide" ? "Llegó un aviso de Meta pero la firma no coincide: la clave secreta cargada en Vercel no es la de la app que manda el webhook (si se configuró en Instagram → inicio de sesión de Instagram, va la clave secreta de la app de Instagram en META_IG_APP_SECRET)" : e.sig === "sin firma" ? "Llegó un aviso sin firma de Meta (no se usa)" : "Llegó un aviso de Meta pero falta la clave secreta en Vercel (paso 2)"];
   if (e.skip) return ["note", `Llegó un aviso de ${e.object === "page" ? "la página de Facebook" : e.object || "Meta"} (no es de Instagram: se ignora)`];
   if (e.err) return ["bad", `Llegó un aviso de Instagram pero falló al guardarlo: ${e.err}`];
-  if ((e.unknown || []).length && !e.n) return ["bad", `Llegó un aviso de Instagram de una cuenta que no es de ninguna marca (${(e.unknown || []).join(", ")}). Si fue la prueba del panel de Meta, es normal; si fue un mensaje real, el webhook está configurado con otra app o con el inicio de sesión de Instagram.`];
-  if (e.n) return ["ok", `${e.n} ${e.n === 1 ? "mensaje guardado" : "mensajes guardados"} (${(e.brands || []).join(", ")})`];
+  if ((e.unknown || []).length && !e.n && !e.acts && (e.unknown || []).every(id => id === "0")) return ["ok", `Llegó la prueba del panel de Meta${(e.fields || []).length ? ` (${e.fields.join(", ")})` : ""} y la firma coincide: la dirección y la clave secreta están bien`];
+  if ((e.unknown || []).length && !e.n && !e.acts) return ["bad", `Llegó un aviso de Instagram de una cuenta que no es de ninguna marca (${(e.unknown || []).join(", ")}). Si fue la prueba del panel de Meta, es normal; si fue un mensaje real, el webhook está configurado con otra app o con el inicio de sesión de Instagram.`];
+  if (e.n || e.acts) return ["ok", `${[e.n ? `${e.n} ${e.n === 1 ? "mensaje guardado" : "mensajes guardados"}` : "", e.acts ? `${e.acts} ${e.acts === 1 ? "comentario o mención" : "comentarios o menciones"}` : ""].filter(Boolean).join(" y ")} (${(e.brands || []).join(", ")})`];
   return ["note", `Llegó un aviso de Instagram sin mensajes nuevos${(e.skipped || []).length ? ` (${e.skipped.join(", ")})` : ""}`];
 }
 function igLogHtml(){
   const ev = (META_DM_LOG.events || []).slice(0, 8);
   const head = `<h3 class="iglh">${icon("bell")} Últimos avisos de Meta</h3>`;
-  if (!ev.length) return head + `<p class="note">Todavía no llegó ningún aviso de Meta a la app. Si ya hiciste los pasos: revisá que en Meta for Developers el webhook de <b>Instagram</b> diga la dirección de arriba y que <b>messages</b> esté suscripto, tocá <b>Conectar las páginas</b>, activá <b>Permitir acceso a los mensajes</b> en la app de Instagram de la marca, y mandá un mensaje desde una cuenta que tenga un rol en la app (mientras no tenga Acceso avanzado, Meta solo avisa esos).</p>`;
+  if (!ev.length) return head + `<p class="note">Todavía no llegó ningún aviso de Meta a la app. Si ya hiciste los pasos: revisá que en Meta for Developers el webhook de <b>Instagram</b> diga la dirección de arriba y que <b>messages</b>, <b>comments</b>, <b>live_comments</b> y <b>mentions</b> estén suscriptos, tocá <b>Conectar las páginas</b>, activá <b>Permitir acceso a los mensajes</b> en la app de Instagram de la marca, y mandá un mensaje desde una cuenta que tenga un rol en la app (mientras no tenga Acceso avanzado, Meta solo avisa esos).</p>`;
   return head + `<div class="list iglog">${ev.map(e => { const [k, t] = igLogTxt(e); return `<div class="row"><span class="iglk ${k}">${icon(k === "ok" ? "circle-check" : k === "bad" ? "circle-alert" : "info")}</span><div class="grow">${esc(t)}<small>${e.at ? inboxAge(e.at) : ""}</small></div></div>`; }).join("")}</div>`;
 }
 async function igLiveCall(setup){
@@ -8339,15 +8350,15 @@ function integCfg(){
   if (integSt === null){ integSt = "loading"; setTimeout(integRefresh, 0); }
   const st = integSt && integSt !== "loading" ? integSt : {}, on = ok => ok ? `<span class="pfid" style="margin:0">${icon("check")} Conectado</span>` : `<span class="note">Sin conectar</span>`;
   const ig = igLive.st, igOk = ig && ig.secret && Object.values(ig.pages || {}).length && Object.values(ig.pages).every(x => x.ok);
-  return `<section class="panel cfgsec" id="igLiveSec"><h2 class="pmh">${pmIco("instagram")}Mensajes de Instagram en vivo ${META_DM.updated ? `<span class="pfid" style="margin:0">${icon("check")} Llegando · último hace ${inboxAge(META_DM.updated).replace("hace ", "")}</span>` : igOk ? `<span class="pfid" style="margin:0">${icon("check")} Configurado</span>` : `<span class="note">Sin configurar</span>`}</h2>
-    <p class="note">Meta no entrega la lista de conversaciones de Instagram de estas cuentas (corta por tiempo). Con esto, Meta avisa a la app cada mensaje apenas llega, y aparece en Mensajes y en Reclamos del mes. Se hace una sola vez.</p>
+  return `<section class="panel cfgsec" id="igLiveSec"><h2 class="pmh">${pmIco("instagram")}Instagram en vivo: mensajes, comentarios y menciones ${META_DM.updated ? `<span class="pfid" style="margin:0">${icon("check")} Llegando · último hace ${inboxAge(META_DM.updated).replace("hace ", "")}</span>` : igOk ? `<span class="pfid" style="margin:0">${icon("check")} Configurado</span>` : `<span class="note">Sin configurar</span>`}</h2>
+    <p class="note">Meta no entrega la lista de conversaciones de Instagram de estas cuentas (corta por tiempo). Con esto, Meta avisa a la app cada mensaje, comentario y mención apenas llega: aparecen en <b>Mensajes</b> (pestañas Mensajes, Comentarios y Menciones) y las quejas en Reclamos del mes. Se hace una sola vez.</p>
     <ol class="isteps">
       <li>En <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener">Meta for Developers</a> abrí la app <b>${ig?.app?.name ? esc(ig.app.name) : "de la que es el token (tocá Revisar para ver cuál es)"}</b> → <b>Configuración de la app → Básica</b> → <b>Clave secreta de la app</b> → <b>Mostrar</b> y copiala.</li>
       <li>En <a href="https://vercel.com/" target="_blank" rel="noopener">Vercel</a> → proyecto <b>mkt</b> → <b>Settings → Environment Variables</b>: agregá <code>META_APP_SECRET</code> con esa clave (Production) y después <b>Deployments → Redeploy</b> el último. No la pegues en ningún chat.</li>
       <li>Volvé a la app en Meta for Developers → <b>Webhooks</b> (o Instagram → Configuración de la API → Configurar webhooks) → elegí <b>Instagram</b>:
         <br>URL de devolución de llamada: <code>https://retailmkt.vercel.app/api/webhook-meta</code>
-        <br>Token de verificación: <code>retail-mkt-hub</code> → <b>Verificar y guardar</b> → en la lista de campos, <b>Suscribirse</b> a <b>messages</b>.<br><small class="note">Si lo configurás en <b>Instagram → Configuración de la API con inicio de sesión de Instagram</b>, Meta firma con la <b>clave secreta de la app de Instagram</b> (otra distinta): cargala también en Vercel como <code>META_IG_APP_SECRET</code> y hacé Redeploy.</small></li>
-      <li>Arriba en el panel de la app, el modo tiene que estar en <b>Publicado</b> (Live). En modo Desarrollo, Meta solo avisa los mensajes de quienes tienen un rol en la app. En <b>Revisión de la app → Permisos y funciones</b>, <b>instagram_manage_messages</b> tiene que tener <b>Acceso avanzado</b> (si Meta lo pide, completá la verificación del negocio).</li>
+        <br>Token de verificación: <code>retail-mkt-hub</code> → <b>Verificar y guardar</b> → en la lista de campos, <b>Suscribirse</b> a <b>messages</b>, <b>comments</b>, <b>live_comments</b> y <b>mentions</b>. Con <b>Probar</b> → <b>Enviar a mi servidor</b>, abajo en “Últimos avisos de Meta” se ve si la clave está bien.<br><small class="note">Si lo configurás en <b>Instagram → Configuración de la API con inicio de sesión de Instagram</b>, Meta firma con la <b>clave secreta de la app de Instagram</b> (otra distinta): cargala también en Vercel como <code>META_IG_APP_SECRET</code> y hacé Redeploy.</small></li>
+      <li>Arriba en el panel de la app, el modo tiene que estar en <b>Publicado</b> (Live). En modo Desarrollo, Meta solo avisa los mensajes de quienes tienen un rol en la app. En <b>Revisión de la app → Permisos y funciones</b>, <b>instagram_manage_messages</b> e <b>instagram_manage_comments</b> tienen que tener <b>Acceso avanzado</b> (si Meta lo pide, completá la verificación del negocio).</li>
       <li>En la app de <b>Instagram</b> del celular, en cada cuenta de marca: <b>Configuración y actividad → Mensajes y respuestas a historias → Herramientas conectadas → Permitir acceso a los mensajes</b> (activado). Sin esto, Meta no le pasa los mensajes a ninguna app.</li>
       <li>Tocá <b>Conectar las páginas</b> (acá abajo): suscribe la página de cada marca para que lleguen sus mensajes.</li>
       <li>Probá: desde otra cuenta de Instagram mandale un mensaje a una marca. En unos segundos aparece en <b>Mensajes</b>.</li></ol>
@@ -9037,7 +9048,75 @@ document.addEventListener("click", e => {
     const done = r.st !== "Resuelto"; rclMark(r.conv, { st:done ? "Resuelto" : "Abierto" }); toast(done ? `Reclamo de ${r.who} resuelto.` : `Reclamo de ${r.who} vuelve a sin resolver.`); return; }
   const sk = e.target.closest("[data-rclskip]"); if (sk){ rclMark(sk.dataset.rclskip, { skip:true }); toast("Listo, no se cuenta como reclamo."); }
 });
+// ---------- Comentarios y menciones de Instagram de cada marca (pestañas de Mensajes) ----------
+// Llegan en vivo por el webhook de Meta (campos comments, live_comments y mentions; las menciones en historias llegan
+// como mensaje) y dos veces por día (y con “Actualizar”) desde /api/interacciones, a s:META_IG_ACT. Es para controlar:
+// quién comentó o mencionó a la marca y si ya se contestó. Para contestar se abre la publicación en Instagram.
+const IA_COM = ["comment", "live"], IA_MEN = ["mention", "tag", "story"];
+// Comentarios que son solo etiquetas a amigos (sorteos): no hace falta contestarlos.
+const iaTagOnly = t => /^(\s*@[\w.]+[\s,.!]*)+$/.test(String(t || ""));
+const iaKey = (b, it) => `igc:${b}:${it.id}`;
+function iaItems(kinds){
+  const out = [];
+  ORDER_INBOX().forEach(b => { const x = META_IG_ACT[b]; if (!x || !Array.isArray(x.items)) return;
+    x.items.forEach(it => { if (!it || !kinds.includes(it.kind) || !inboxRecent(it)) return;
+      const byHand = INBOX_DONE[iaKey(b, it)], sorteo = it.kind === "comment" && iaTagOnly(it.t);
+      out.push({ ...it, b, post:it.m ? (x.posts || {})[it.m] || null : null, byHand, sorteo, ok:!!it.answered || !!byHand || sorteo }); }); });
+  return out.sort((a, c) => String(c.ts || "").localeCompare(String(a.ts || "")));
+}
+const iaPend = () => can("inbox") ? iaItems(IA_COM).filter(i => !i.ok).length : 0;
+const IA_MEN_TXT = { comment:"Mencionó a la marca en un comentario", post:"Mencionó a la marca en una publicación", tag:"Etiquetó a la marca en una publicación", story:"Mencionó a la marca en su historia" };
+const iaMenKind = i => i.kind === "tag" ? "tag" : i.kind === "story" ? "story" : i.where === "post" ? "post" : "comment";
+function iaBody(view, when){
+  const bs = ORDER_INBOX().filter(b => META_IG_ACT[b]), mark = canInboxMark();
+  const pick = (k, opts) => `<select class="base sm" data-ibsel="${k}" aria-label="${k === "brand" ? "Marca" : "Tipo"}">${opts.map(([v, l]) => `<option value="${esc(v)}" ${(inboxUI[k] || "Todas") === v ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
+  const brands = pick("brand", [["Todas", "Todas las marcas"], ...(bs.length ? bs : ORDER_INBOX()).map(b => [b, b])]);
+  const errs = canMetaRefresh() ? bs.filter(b => META_IG_ACT[b].err).map(b => `<b>${esc(b)}:</b> ${esc(META_IG_ACT[b].err)}`) : [];
+  const warn = errs.length ? `<div class="ibig">${icon("info")}<div><b>No se pudo leer todo de Instagram.</b> ${errs.join(" · ")}</div></div>` : "";
+  const thumb = src => src ? `<img class="iathumb" src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : "";
+  const bTag = b => `<span class="ibb" style="--c:${BRANDS[b] || "#94a3b8"}">${esc(b)}</span>`;
+  if (view === "com"){
+    const all = iaItems(IA_COM), sin = all.filter(i => !i.ok).length;
+    const list = all.filter(i => (inboxUI.brand === "Todas" || i.b === inboxUI.brand) && (inboxUI.st === "todos" || (inboxUI.st === "sin" ? !i.ok : i.ok)));
+    if (inboxUI.st === "sin") list.reverse(); // los que esperan hace más, primero
+    const tab = (v, l, n) => `<button type="button" class="${inboxUI.st === v ? "on" : ""}" data-ibf="st|${v}" aria-pressed="${inboxUI.st === v}">${l}<span>${n}</span></button>`;
+    const doneBtn = i => mark && !i.ok ? `<button type="button" class="ibdone" data-ibdone="${esc(iaKey(i.b, i))}" title="Ya se contestó (por ejemplo, desde el celular)">${icon("check")} Contestado</button>` : "";
+    const row = i => { const key = "ia|" + i.b + "|" + i.id, open = inboxUI.open === key, link = i.post?.link;
+      const st = i.sorteo ? `<span class="ibst" title="Solo etiquetas a amigos: no hace falta contestar">Etiquetas</span>` : i.ok ? `<span class="ibst ok" ${i.byHand ? `title="Marcado por ${esc(i.byHand.by || "")}"` : ""}>${icon("check")} Contestado</span>` : `<span class="ibst no">Esperando · ${inboxAge(i.ts).replace("hace ", "")}</span>`;
+      return `<div class="ibrow${i.ok ? "" : " pend"}${open ? " open" : ""}" data-ibopen="${esc(key)}" role="button" tabindex="0" aria-expanded="${open}">
+        <span class="ibnet ig" title="Instagram">${ICO.IG}</span>
+        <div class="grow"><div class="ibh"><b>${esc(i.who || "Alguien")}</b>${bTag(i.b)}${i.kind === "live" ? `<span class="iak">En vivo</span>` : ""}${i.parent ? `<span class="iak">Respuesta</span>` : ""}</div>
+          <div class="ibl">${esc(i.t || "Foto o sticker")}</div>${i.post?.cap ? `<div class="iapost">${icon("image")}<span>${esc(i.post.cap)}</span></div>` : ""}</div>
+        <div class="ibside"><small>${inboxAge(i.ts)}</small>${st}${open ? "" : doneBtn(i)}</div>
+        ${open ? `<div class="ibthread"><div class="ibm"><span>${esc(i.t || "Foto o sticker")}</span><small>${when(i.ts)}${i.likes ? ` · ${i.likes} me gusta` : ""}</small></div>
+          ${i.post ? `<div class="iapv">${thumb(i.post.img)}<span>${esc(i.post.cap || "Publicación de " + i.b)}</span></div>` : ""}
+          <div class="ibacts">${link ? `<a class="btn sm primary" href="${esc(link)}" target="_blank" rel="noopener">${icon("external-link")} Contestar en Instagram</a>` : ""}${doneBtn(i)}${i.byHand ? `<span class="note">Marcado por ${esc(firstName(i.byHand.by || ""))}</span>${mark ? `<button type="button" class="ibdone" data-ibundo="${esc(iaKey(i.b, i))}">Volver a sin contestar</button>` : ""}` : ""}</div></div>` : ""}</div>`; };
+    return `${warn}<div class="ibbar"><div class="ibseg" role="group" aria-label="Estado">${tab("sin", "Sin contestar", sin)}${tab("ok", "Contestados", all.length - sin)}${tab("todos", "Todos", all.length)}</div><div class="ibfil">${brands}</div></div>
+      <div class="iblist">${list.map(row).join("") || `<div class="ibempty">${!bs.length ? `${icon("message-circle")}<span>Todavía no hay comentarios cargados.${canMetaRefresh() ? " Tocá “Actualizar” para traerlos de Instagram." : ""}</span>` : inboxUI.st === "sin" ? `${icon("check-check")}<b>Todo contestado</b><span>No hay comentarios esperando respuesta.</span>` : "<span>No hay comentarios con estos filtros.</span>"}</div>`}</div>`;
+  }
+  const all = iaItems(IA_MEN), mk = inboxUI.mk || "Todas";
+  const list = all.filter(i => (inboxUI.brand === "Todas" || i.b === inboxUI.brand) && (mk === "Todas" || iaMenKind(i) === mk));
+  const row = i => { const key = "ia|" + i.b + "|" + i.id, open = inboxUI.open === key, k = iaMenKind(i), link = i.media?.link, img = i.media?.img;
+    return `<div class="ibrow${open ? " open" : ""}" data-ibopen="${esc(key)}" role="button" tabindex="0" aria-expanded="${open}">
+      <span class="ibnet ig" title="Instagram">${ICO.IG}</span>
+      <div class="grow"><div class="ibh"><b>${esc(i.who || "Alguien")}</b>${bTag(i.b)}</div>
+        <div class="ibl"><em>${IA_MEN_TXT[k]}${i.t ? ":" : ""}</em> ${esc(i.t || "")}</div></div>
+      <div class="ibside"><small>${inboxAge(i.ts)}</small></div>
+      ${open ? `<div class="ibthread">${i.t ? `<div class="ibm"><span>${esc(i.t)}</span><small>${when(i.ts)}</small></div>` : ""}${img ? `<div class="iapv">${thumb(img)}</div>` : ""}
+        <div class="ibacts">${link ? `<a class="btn sm primary" href="${esc(link)}" target="_blank" rel="noopener">${icon("external-link")} Ver en Instagram</a>` : k === "story" ? `<button type="button" class="btn sm primary" data-ibf="view|msgs">${icon("inbox")} Ver en Mensajes</button><span class="note">Las historias duran 24 horas.</span>` : `<span class="note">Meta no mandó el link de esta publicación.</span>`}</div></div>` : ""}</div>`; };
+  return `${warn}<div class="ibbar"><div class="ibfil">${brands}${pick("mk", [["Todas", "Todas las menciones"], ["comment", "En comentarios"], ["post", "En publicaciones"], ["tag", "Etiquetas en fotos"], ["story", "En historias"]])}</div></div>
+    <div class="iblist">${list.map(row).join("") || `<div class="ibempty">${icon("at-sign")}<span>${all.length ? "No hay menciones con estos filtros." : "Todavía no hay menciones. Llegan cuando alguien escribe @ y la cuenta de la marca, o la etiqueta en una foto."}</span></div>`}</div>`;
+}
 function pInbox(){
+  const view = ["com", "men"].includes(inboxUI.view) ? inboxUI.view : "msgs";
+  const when = ts => new Date(ts).toLocaleString("es-PY", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" });
+  const vtab = (v, l, n, t) => `<button type="button" class="${view === v ? "on" : ""}" data-ibf="view|${v}" aria-pressed="${view === v}"${t ? ` title="${t}"` : ""}>${l}${n ? `<span>${n}</span>` : ""}</button>`;
+  const tabs = `<div class="ibtabs" role="group" aria-label="Qué ver">${vtab("msgs", "Mensajes", inboxPend(), "Mensajes sin contestar")}${vtab("com", "Comentarios", iaPend(), "Comentarios sin contestar")}${vtab("men", "Menciones", iaItems(IA_MEN).length, "Menciones de los últimos 30 días")}</div>`;
+  if (view !== "msgs"){
+    const ages = ORDER_INBOX().map(b => META_IG_ACT[b]?.pulled).filter(Boolean).sort(), live = ORDER_INBOX().map(b => META_IG_ACT[b]?.live).filter(Boolean).sort();
+    return `<div class="ibpage"><div class="head"><div><h1 class="pmh">${pmIco("inbox")}Mensajes</h1><p class="sub">${view === "com" ? "Comentarios en las publicaciones y en los vivos" : "Menciones y etiquetas"} de Instagram de cada marca · últimos 30 días${ages.length ? ` · actualizado ${inboxAge(ages[ages.length - 1])}` : ""}${live.length ? ` · en vivo (último hace ${inboxAge(live[live.length - 1]).replace("hace ", "")})` : ""}</p></div>${metaBtn("interacciones", "Comentarios")}</div>
+      ${tabs}${iaBody(view, when)}</div>`;
+  }
   const bs = inboxBrands(), all = [];
   bs.forEach(b => inboxConvs(b).filter(inboxRecent).forEach(c => all.push({ ...c, b, answered:ibOk(c), byHand:INBOX_DONE[c.id] }))); // solo los últimos 30 días
   const list = all.filter(c => (inboxUI.brand === "Todas" || c.b === inboxUI.brand) && (inboxUI.net === "Todas" || c.net === inboxUI.net) && (inboxUI.st === "todos" || (inboxUI.st === "sin" ? !c.answered : c.answered)))
@@ -9047,7 +9126,6 @@ function pInbox(){
   const pick = (k, opts) => `<select class="base sm" data-ibsel="${k}" aria-label="${k === "brand" ? "Marca" : "Red"}">${opts.map(([v, l]) => `<option value="${esc(v)}" ${inboxUI[k] === v ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
   const suite = b => META_INBOX[b]?.pageId ? `https://business.facebook.com/latest/inbox/all?asset_id=${encodeURIComponent(META_INBOX[b].pageId)}` : "https://business.facebook.com/latest/inbox";
   const mark = canInboxMark(), doneBtn = c => mark && !c.answered ? `<button type="button" class="ibdone" data-ibdone="${esc(c.id)}" title="Ya se contestó (por ejemplo, desde el celular)">${icon("check")} Contestado</button>` : "";
-  const when = ts => new Date(ts).toLocaleString("es-PY", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" });
   const row = c => { const last = c.msgs[c.msgs.length - 1] || {}, key = c.b + "|" + c.id, open = inboxUI.open === key;
     return `<div class="ibrow${c.answered ? "" : " pend"}${open ? " open" : ""}" data-ibopen="${esc(key)}" role="button" tabindex="0" aria-expanded="${open}">
       <span class="ibnet ${c.net === "IG" ? "ig" : "fb"}" title="${c.net === "IG" ? "Instagram" : "Facebook"}">${c.net === "IG" ? ICO.IG : ICO.FB}</span>
@@ -9057,7 +9135,7 @@ function pInbox(){
       ${open ? `<div class="ibthread">${c.msgs.map(m => `<div class="ibm ${m.me ? "me" : ""}"><span>${esc(m.t || (m.att ? "Foto o adjunto" : ""))}</span><small>${m.me ? esc(c.b) + " · " : ""}${when(m.ts)}</small></div>`).join("")}
         <div class="ibacts"><a class="btn sm primary" href="${suite(c.b)}" target="_blank" rel="noopener">${icon("external-link")} Contestar en Meta</a>${doneBtn(c)}${c.byHand ? `<span class="note">Marcado por ${esc(firstName(c.byHand.by || ""))}</span>${mark ? `<button type="button" class="ibdone" data-ibundo="${esc(c.id)}">Volver a sin contestar</button>` : ""}` : ""}</div></div>` : ""}</div>`; };
   return `<div class="ibpage"><div class="head"><div><h1 class="pmh">${pmIco("inbox")}Mensajes</h1><p class="sub">Instagram y Facebook de cada marca · últimos 30 días${META_INBOX.updated ? ` · actualizado ${inboxAge(META_INBOX.updated)}` : ""}${META_DM.updated ? ` · Instagram en vivo (último hace ${inboxAge(META_DM.updated).replace("hace ", "")})` : ""}</p></div>${metaBtn("mensajes", "Mensajes")}</div>
-  ${!META_DM.updated && ORDER_INBOX().some(b => /Instagram/.test(META_INBOX[b]?.err || "")) ? `<div class="ibig">${icon("info")}<div><b>Los mensajes de Instagram todavía no llegan.</b> Meta no entrega la lista de conversaciones de Instagram de estas cuentas (corta por tiempo). ${viewer.role === "Admin total" ? `Se solucionan recibiéndolos en vivo: <a href="#config" data-igcfg>Configuración → Integraciones → Instagram en vivo</a>.` : "Admin total los está activando para que lleguen en vivo."}</div></div>` : ""}
+  ${tabs}${!META_DM.updated && ORDER_INBOX().some(b => /Instagram/.test(META_INBOX[b]?.err || "")) ? `<div class="ibig">${icon("info")}<div><b>Los mensajes de Instagram todavía no llegan.</b> Meta no entrega la lista de conversaciones de Instagram de estas cuentas (corta por tiempo). ${viewer.role === "Admin total" ? `Se solucionan recibiéndolos en vivo: <a href="#config" data-igcfg>Configuración → Integraciones → Instagram en vivo</a>.` : "Admin total los está activando para que lleguen en vivo."}</div></div>` : ""}
   ${bs.length ? `<div class="ibbar"><div class="ibseg" role="group" aria-label="Estado">${tab("sin", "Sin contestar", sin)}${tab("ok", "Contestados", all.length - sin)}${tab("todos", "Todos", all.length)}</div>
     <div class="ibfil">${pick("brand", [["Todas", "Todas las marcas"], ...bs.map(b => [b, b])])}${pick("net", [["Todas", "Instagram y Facebook"], ["IG", "Instagram"], ["FB", "Facebook"]])}</div></div>
   <div class="iblist">${list.map(row).join("") || `<div class="ibempty">${inboxUI.st === "sin" ? `${icon("check-check")}<b>Todo contestado</b><span>No hay mensajes esperando respuesta.</span>` : "<span>No hay conversaciones con estos filtros.</span>"}</div>`}</div>`

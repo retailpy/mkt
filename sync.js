@@ -59,6 +59,7 @@ const RMH = (() => {
     META_CREATIVES:[() => META_CREATIVES, v => { META_CREATIVES = v || {}; }],
     META_INBOX:[() => META_INBOX, v => { META_INBOX = v || {}; }],
     META_DM:[() => META_DM, v => { META_DM = v || {}; }], // mensajes de Instagram en vivo (los escribe el webhook)
+    META_IG_ACT:[() => META_IG_ACT, v => { META_IG_ACT = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // comentarios y menciones de Instagram (webhook y /api/interacciones)
     META_DM_LOG:[() => META_DM_LOG, v => { META_DM_LOG = v || {}; }], // qué pasó con cada aviso de Meta (sin el texto)
     INBOX_DONE:[() => INBOX_DONE, v => { INBOX_DONE = v || {}; }],
     RECLAMOS:[() => RECLAMOS, v => { RECLAMOS = Array.isArray(v) ? v : []; }], // solo Admin total, Admin y CM
@@ -77,7 +78,7 @@ const RMH = (() => {
   // Claves que solo existen para Admin total (la base no se las deja leer ni guardar al resto).
   const ADMIN_ONLY = new Set(["s:SUGGESTIONS", "s:SURVEYS"]);
   // Claves que solo existen para Admin total, Admin y CM (reclamos de clientes: tienen nombres y datos personales).
-  const CM_ONLY = new Set(["s:RECLAMOS", "s:META_DM", "s:META_DM_LOG"]);
+  const CM_ONLY = new Set(["s:RECLAMOS", "s:META_DM", "s:META_DM_LOG", "s:META_IG_ACT"]);
   const isCMish = () => ["Admin total", "Admin", "CM"].includes(member?.role);
   // Claves que todos leen pero solo Admin total guarda. (Los grupos de chat los crea cualquiera: la base controla
   // que cada uno cambie solo los suyos.)
@@ -163,7 +164,7 @@ const RMH = (() => {
   let flushing = null, lastSeen = "", changedAt = 0, dirtySince = 0, rerenderPending = false, saveErrShown = false, retryAt = 0;
   // Pendiente de guardar: cambió desde lo último del servidor, o todavía no existe en la base (v 0: se crea).
   // De solo lectura: las escriben las funciones de Meta; la app las lee pero nunca las guarda.
-  const READONLY = new Set(["s:META_FOLLOWERS", "s:META_DEMO", "s:META_POSTS", "s:META_CREATIVES", "s:META_INBOX", "s:META_REFS", "s:COMERCIAL", "s:META_DM", "s:META_DM_LOG"]);
+  const READONLY = new Set(["s:META_FOLLOWERS", "s:META_DEMO", "s:META_POSTS", "s:META_CREATIVES", "s:META_INBOX", "s:META_REFS", "s:COMERCIAL", "s:META_DM", "s:META_DM_LOG", "s:META_IG_ACT"]);
   const noSave = k => READONLY.has(k) || (ADMIN_WRITE.has(k) && !isAT());
   function dirtyKeys(){ return localKeys().filter(k => { if (noSave(k) || getLocal(k) === undefined) return false; const b = base.get(k); return !b || b.v === 0 || C(enc(getLocal(k))) !== b.json; }); }
   async function saveKey(key){

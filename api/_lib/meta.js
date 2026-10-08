@@ -115,6 +115,19 @@ async function save(key, data){
   return t;
 }
 
+// Comentarios, etiquetas y menciones de Instagram de una marca → s:META_IG_ACT. Se suman por id (no borra lo que
+// trajo el webhook); info son datos de la marca (handle, pulled, err…).
+async function igAct(brand, items, info){
+  const url = process.env.SUPABASE_URL, apikey = process.env.SUPABASE_KEY, secret = process.env.INGEST_KEY;
+  if (!url || !apikey || !secret) throw new Error("Faltan variables SUPABASE_URL, SUPABASE_KEY o INGEST_KEY en Vercel");
+  const r = await fetch(`${url}/rest/v1/rpc/ingest_ig_act`, {
+    method: "POST",
+    headers: { apikey, Authorization: `Bearer ${apikey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_secret: secret, p_brand: brand, p_items: items, p_info: info || null }, (k, v) => typeof v === "string" ? v.replace(LONE, "") : v),
+  });
+  if (!r.ok) throw new Error(`Supabase: ${(await r.text()).slice(0, 200)}`);
+}
+
 // Leer lo que ya se guardó (solo s:META_POSTS y s:META_INBOX), con la misma clave que para guardar.
 async function readMeta(key){
   const url = process.env.SUPABASE_URL, apikey = process.env.SUPABASE_KEY, secret = process.env.INGEST_KEY;
@@ -141,4 +154,4 @@ function tokenHint(e){
   return null;
 }
 
-module.exports = { NOMBRES, ORDEN, authorized, allowedUser, memberUser, cronOrUser, graph, brandPages, save, readMeta, today, tokenHint };
+module.exports = { NOMBRES, ORDEN, authorized, allowedUser, memberUser, cronOrUser, graph, brandPages, save, igAct, readMeta, today, tokenHint };
