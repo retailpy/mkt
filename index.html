@@ -703,6 +703,9 @@ html.nomotion .nav a.wknew .ibc,html.nomotion .tabbar a.wknew .tbc,html.nomotion
 @media (max-width:560px){.lpgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .lpitem{display:flex;flex-direction:column;gap:4px;text-decoration:none;color:inherit}.lpitem:hover .pthumb{outline:2px solid var(--cyan)}
 .lpmeta{font-size:11px;color:var(--faint)}
+.pwrap{position:relative;display:block}
+.reelbadge{position:absolute;top:5px;right:5px;display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:999px;background:rgba(15,23,42,.82);color:#fff;font-size:10px;font-weight:700;line-height:1.3;pointer-events:none}
+.reelbadge svg{width:11px;height:11px}
 .pproc{display:flex;flex-wrap:wrap;gap:6px}.pproc button{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:7px;padding:7px 13px 7px 8px;border-radius:999px;border:1px solid var(--line-2);font-size:13.5px;color:var(--muted)}
 .pproc button span{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:rgba(148,163,184,.15);font-size:11px;font-weight:700}
 .pproc button.done{color:#cbd5e1}.pproc button.done span{background:color-mix(in srgb,var(--c) 35%,transparent)}
@@ -3388,13 +3391,15 @@ function tvBrandHero(b){
 // ---------- TV Impacto Redes: 1) lo mejor de cada marca  2…) top 10 de cada marca. 10 segundos cada pantalla ----------
 // Últimas 6 publicaciones de Instagram de cada marca (imagen reducida), debajo de Seguidores por marca.
 const IG_MAIN = ["Superseis","Stock","Delimarket"]; // las marcas principales: sus últimas publicaciones de Instagram en el Dashboard y en el Informe mensual
-// Las últimas 9 publicaciones con imagen (sin reels) del mes elegido.
-const last9 = (b, m = MONTH) => igPosts(b, m).filter(x => !/reel|video/i.test(x.type || "")).slice(0, 9);
+// Las últimas 9 publicaciones del mes elegido, con los reels incluidos (su portada lleva la etiqueta “Reel”).
+const last9 = (b, m = MONTH) => igPosts(b, m).slice(0, 9);
+const isReelPost = x => /reel|video/i.test(x?.type || "");
+const reelBadge = x => isReelPost(x) ? `<span class="reelbadge" title="Reel">${icon("clapperboard")}Reel</span>` : "";
 function lastPostsPanel(bs){
   const rows = bs.map(b => ({ b, list:last9(b), h:META_POSTS[b]?.handle })).filter(r => r.list.length);
   return `<div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram</h2><div class="tag-row"><span class="tag">${monthLabel(MONTH)}</span><span class="tag">Fuente: Meta</span>${updTag(postsUpdated())}${rows.length > 1 ? `<button type="button" class="btn sm" data-lpfull="${esc(rows.map(r => r.b).join(","))}">${icon("maximize-2")} Ver todas en grande</button>` : ""}${metaBtn("publicaciones", "Publicaciones")}</div></div>
     <div class="panel-b">${rows.length ? rows.map(r => `<div class="lpost"><div class="lph">${brandTag(r.b)}${r.h ? `<span class="note">${esc(r.h)}</span>` : ""}<button type="button" class="btn sm lpbig" data-lpfull="${esc(rows.map(x => x.b).join(","))}" data-lpsel="${esc(r.b)}" title="Ver las 9 de ${esc(r.b)} en grande, con sus números">${icon("maximize-2")} Ver en grande</button></div><div class="lpgrid">${r.list.map(x => { const pp = { img:x.img, format:x.type };
-      return `<a class="lpitem" href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="${esc((x.cap || "").slice(0, 140))}">${pubThumb(pp, "lg")}<span class="lpmeta">${dm(pyDate(x.ts))} · ♥ ${dots(x.likes || 0)}</span></a>`; }).join("")}</div></div>`).join("")
+      return `<a class="lpitem" href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="${esc((x.cap || "").slice(0, 140))}"><span class="pwrap">${pubThumb(pp, "lg")}${reelBadge(x)}</span><span class="lpmeta">${dm(pyDate(x.ts))} · ♥ ${dots(x.likes || 0)}</span></a>`; }).join("")}</div></div>`).join("")
       : `<div class="empty">${isFuture() ? `${monthLabel(MONTH)} todavía no empezó: acá van a salir sus publicaciones.` : `Todavía no hay publicaciones de ${monthName(MONTH)}: llegan con la actualización diaria de Meta.`}</div>`}
       ${rows.length && bs.some(b => !rows.some(r => r.b === b)) ? `<p class="note" style="margin:8px 0 0">Todavía sin publicaciones en ${monthName(MONTH)}: ${bs.filter(b => !rows.some(r => r.b === b)).join(", ")}${canMetaRefresh() ? " (tocá “Actualizar”)" : ""}.</p>` : ""}</div></div>`;
 }
@@ -3402,10 +3407,10 @@ function lastPostsPanel(bs){
 let lpFull = null; // { bs: marcas del panel, sel: la marca elegida o null = todas }
 function lpFullPage(){
   const all = (lpFull?.bs || []).filter(b => last9(b).length), sel = all.includes(lpFull?.sel) ? lpFull.sel : null, bs = sel ? [sel] : all, n = v => isNum(v) ? dots(v) : "—";
-  return `<div class="lpfull"><div class="head"><div><h1 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram${sel ? " · " + esc(sel) : ""}</h1><p class="sub">${monthLabel(MONTH)} · las últimas 9 ${sel ? "" : "de cada marca "}(sin reels), con sus números. Fuente: Meta · ${metaWhen(postsUpdated())}.</p></div><button type="button" class="btn" data-lpclose>${icon("arrow-left")} Volver</button></div>
+  return `<div class="lpfull"><div class="head"><div><h1 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram${sel ? " · " + esc(sel) : ""}</h1><p class="sub">${monthLabel(MONTH)} · las últimas 9 ${sel ? "" : "de cada marca "}(reels incluidos), con sus números. Fuente: Meta · ${metaWhen(postsUpdated())}.</p></div><button type="button" class="btn" data-lpclose>${icon("arrow-left")} Volver</button></div>
     ${all.length > 1 ? `<div class="chips lpchips">${all.map(b => `<button type="button" class="chip ${b === sel ? "on" : ""}" data-lpsel2="${esc(b)}" aria-pressed="${b === sel}">${esc(b)}</button>`).join("")}<button type="button" class="chip ${sel ? "" : "on"}" data-lpsel2="" aria-pressed="${!sel}">Todas</button></div>` : ""}
     ${bs.map(b => `<section class="lpfb"><div class="lph">${brandTag(b)}${META_POSTS[b]?.handle ? `<span class="note">${esc(META_POSTS[b].handle)}</span>` : ""}</div><div class="lpfgrid">${last9(b).map(x => `<article class="lpcard">
-      <a href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="Ver en Instagram">${pubThumb({ img:x.img, format:x.type }, "xl")}</a>
+      <a href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="Ver en Instagram"><span class="pwrap">${pubThumb({ img:x.img, format:x.type }, "xl")}${reelBadge(x)}</span></a>
       <div class="lpst"><span title="Me gusta">${icon("heart")} ${n(x.likes)}</span><span title="Comentarios">${icon("message-circle")} ${n(x.comments)}</span><span title="Alcance (cuentas únicas)">${icon("eye")} ${n(x.reach)}</span><span title="Guardados">${icon("bookmark")} ${n(x.saved)}</span><span title="Compartidos">${icon("send")} ${n(x.shares)}</span></div>
       <div class="lpd"><b>${dm(pyDate(x.ts))}</b> · ${esc(x.type || "Post")}${x.link ? ` · <a href="${esc(x.link)}" target="_blank" rel="noopener">Ver en Instagram</a>` : ""}</div>
       ${x.cap ? `<p class="lpcap">${esc(x.cap)}</p>` : ""}</article>`).join("")}</div></section>`).join("") || `<div class="panel empty">${NO_DATA}</div>`}</div>`;

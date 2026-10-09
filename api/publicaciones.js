@@ -2,7 +2,7 @@
 //   { "updated": "...",
 //     "Stock": { "handle": "@...", "posts": [ { id, type, cap, img, link, ts, likes, comments, reach, saved, shares } ] },   ← las últimas 30
 //     "m:2026-09": { "Stock": [ ... ], ... }, "m:2026-10": { ... }, ... }                                                    ← archivo de cada mes
-// Cada mes muestra sus publicaciones: las últimas 9 con imagen y el top por alcance. El archivo de cada mes guarda solo eso
+// Cada mes muestra sus publicaciones: las últimas 9 con imagen (reels incluidos) y el top por alcance. El archivo de cada mes guarda solo eso
 // (para que la app cargue liviana) y queda guardado aunque pasen los meses; las imágenes de los meses viejos se renuevan acá
 // porque las de Instagram vencen a los pocos días (por eso corre todos los días).
 //
@@ -19,7 +19,7 @@ const KEEP_IMG = 9, KEEP_TOP = 15; // por marca y por mes: las últimas 9 con im
 
 const ym = ts => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date(ts)).slice(0, 7);
 const prevOf = m => { const [y, n] = m.split("-").map(Number); return n === 1 ? `${y - 1}-12` : `${y}-${String(n - 1).padStart(2, "0")}`; };
-const isImg = p => !/reel|video/i.test(p.type || "");
+const hasImg = p => !!p.img; // incluye los reels: se muestran con su portada
 const score = p => p.reach ?? ((p.likes || 0) + (p.comments || 0) + (p.saved || 0) + (p.shares || 0));
 const typeOf = m => m.media_product_type === "REELS" ? "Reel" : m.media_type === "CAROUSEL_ALBUM" ? "Carrusel" : m.media_type === "VIDEO" ? "Video" : "Post";
 const imgOf = m => m.thumbnail_url || (m.media_type === "VIDEO" ? null : m.media_url) || null;
@@ -43,7 +43,7 @@ async function pool(items, n, fn){
 function monthPick(list){
   const byTs = [...list].sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
   const keep = new Map();
-  byTs.filter(isImg).slice(0, KEEP_IMG).forEach(p => keep.set(p.id, p));
+  byTs.filter(hasImg).slice(0, KEEP_IMG).forEach(p => keep.set(p.id, p));
   [...list].sort((a, b) => score(b) - score(a)).slice(0, KEEP_TOP).forEach(p => keep.set(p.id, p));
   return [...keep.values()].sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
 }
