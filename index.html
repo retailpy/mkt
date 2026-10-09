@@ -4302,7 +4302,8 @@ function panelStats(){
     plan:pm(vp), calendario:pm(vp.filter(p => p.format !== "Historia")), calhistoria:pm(vp.filter(p => p.format === "Historia")), calcanales:canales.length ? `${canales.length} este mes` : "Nada cargado este mes",
     historial:"Meses anteriores", historialcm:"Meses anteriores",
     reclamos:(() => { const l = rclMonth(), ab = l.filter(r => r.st !== "Resuelto").length; return l.length ? `${l.length} en ${monthName(MONTH)}${ab ? ` · <em>${ab} sin resolver</em>` : " · todos resueltos"}` : "Sin reclamos este mes"; })(),
-    inbox:(() => { const n = inboxBrands().reduce((t, b) => t + inboxConvs(b).filter(c => !ibOk(c)).length, 0); return Object.keys(META_INBOX).length || Object.keys(META_DM).length ? (n ? `<em>${n} sin contestar</em>` : "Todo contestado") : "Sin datos todavía"; })() };
+    inbox:(() => { const cnt = net => inboxBrands().reduce((t, b) => t + inboxConvs(b).filter(c => c.net === net && !ibOk(c)).length, 0), fb = cnt("FB"), ig = cnt("IG"); // Facebook e Instagram, por separado
+      const txt = [fb ? `${fb} Facebook` : "", ig ? `${ig} Instagram` : ""].filter(Boolean).join(" · "); return Object.keys(META_INBOX).length || Object.keys(META_DM).length ? (txt ? `<em>${txt} sin contestar</em>` : "Todo contestado") : "Sin datos todavía"; })() };
 }
 function pPanel(ar){
   const dg = ar === "dg", st = panelStats();
