@@ -1,10 +1,11 @@
-// Contestar un mensaje directo de Instagram desde la app (Mensajes → abrir la conversación → Enviar).
-// Sale desde la cuenta de la marca: POST /{página}/messages con el token de la página (API de mensajes de Instagram).
-// Lo que se manda se guarda en s:META_DM (ingest_dm) para que se vea al momento; el aviso de Meta que llega después
-// (is_echo) trae el mismo id y no se repite.
-//   POST { brand:"Superseis", to:"<id de la persona en Instagram>", text:"…" }   (sesión de Admin total o CM)
-// Meta solo deja contestar dentro de las 24 horas del último mensaje de la persona, y hace falta el permiso
-// instagram_manage_messages (con acceso avanzado para escribirle a cualquier persona).
+// Contestar un mensaje directo de Instagram o de Facebook (Messenger) desde la app (Mensajes → abrir la conversación → Enviar).
+// Sale desde la cuenta de la marca: POST /{página}/messages con el token de la página (la misma API sirve para las dos redes).
+// Instagram: lo que se manda se guarda en s:META_DM (ingest_dm) para que se vea al momento; el aviso de Meta que llega después
+// (is_echo) trae el mismo id y no se repite. Facebook: no hay aviso en vivo; la app marca la conversación como contestada
+// y la próxima lectura de /api/mensajes trae el mensaje enviado.
+//   POST { brand:"Superseis", to:"<id de la persona>", text:"…", net:"IG"|"FB" }   (sesión de Admin total o CM; net es IG si no se manda)
+// Meta solo deja contestar dentro de las 24 horas del último mensaje de la persona. Permisos: instagram_manage_messages
+// (Instagram) y pages_messaging (Facebook), con acceso avanzado para escribirle a cualquier persona.
 const { ORDEN, brandPages } = require("./_lib/meta");
 
 const GRAPH = "https://graph.facebook.com/v21.0";
@@ -22,11 +23,12 @@ async function sender(req){
   return m ? { id: m.person_id || u.id } : null;
 }
 // Lo que dice Meta, en palabras.
-function hint(e){
+function hint(e, fb){
+  const red = fb ? "Facebook" : "Instagram";
   const code = e?.code, sub = e?.error_subcode, msg = String(e?.message || "");
-  if (sub === 2534022 || /outside of allowed window|24 hours/i.test(msg)) return "Pasaron más de 24 horas desde el último mensaje de la persona: Meta no deja contestar desde otras apps. Contestá desde Instagram.";
+  if (sub === 2534022 || /outside of allowed window|24 hours/i.test(msg)) return "Pasaron más de 24 horas desde el último mensaje de la persona: Meta no deja contestar desde otras apps. Contestá desde " + red + ".";
   if (code === 551 || /not available/i.test(msg)) return "Esa persona no está disponible para recibir mensajes ahora.";
-  if (code === 10 || code === 200 || code === 230 || /permission|advanced access/i.test(msg)) return "Meta todavía no habilitó el envío desde la app (falta el acceso avanzado de instagram_manage_messages). Mientras tanto, contestá desde Instagram.";
+  if (code === 10 || code === 200 || code === 230 || /permission|advanced access/i.test(msg)) return `Meta todavía no habilitó el envío desde la app (falta el acceso avanzado de ${fb ? "pages_messaging" : "instagram_manage_messages"}). Mientras tanto, contestá desde ${red}.`;
   if (code === 190) return "El token de Meta venció: hay que generar uno nuevo.";
   return null;
 }
@@ -45,7 +47,7 @@ module.exports = async (req, res) => {
   if (!who) return res.status(401).json({ ok: false, error: "No autorizado" });
   let body = req.body;
   if (typeof body === "string"){ try { body = JSON.parse(body); } catch { body = null; } }
-  const brand = String(body?.brand || ""), to = String(body?.to || ""), text = String(body?.text || "").replace(LONE, "").trim();
+  const fb = body?.net === "FB", brand = String(body?.brand || ""), to = String(body?.to || ""), text = String(body?.text || "").replace(LONE, "").trim();
   if (!ORDEN.includes(brand) || !/^\d{5,40}$/.test(to) || !text) return res.status(400).json({ ok: false, error: "Faltan datos (marca, persona o texto)" });
   if (text.length > 1000) return res.status(400).json({ ok: false, error: "El mensaje es muy largo (hasta 1000 letras)" });
   try {
@@ -61,14 +63,14 @@ module.exports = async (req, res) => {
     const j = await r.json().catch(() => ({}));
     if (!r.ok || j.error || !j.message_id){
       console.error(`ERROR responder: ${j.error?.message || r.status} (código ${j.error?.code || "-"}/${j.error?.error_subcode || "-"})`);
-      return res.status(400).json({ ok: false, error: j.error?.message || `Meta respondió ${r.status}`, hint: hint(j.error) });
+      return res.status(400).json({ ok: false, error: j.error?.message || `Meta respondió ${r.status}`, hint: hint(j.error, fb) });
     }
-    try { await ingest(brand, to, { mid: j.message_id, t: text.slice(0, 400), me: true, ts: new Date().toISOString(), att: false }); }
+    if (!fb) try { await ingest(brand, to, { mid: j.message_id, t: text.slice(0, 400), me: true, ts: new Date().toISOString(), att: false }); }
     catch (e){ console.error(`ERROR responder (guardar): ${e.message}`); }
-    console.log(`[responder] ${brand}: mensaje enviado por ${who.id}`);
+    console.log(`[responder] ${brand} (${fb ? "Facebook" : "Instagram"}): mensaje enviado por ${who.id}`);
     return res.status(200).json({ ok: true, id: j.message_id });
   } catch (e){
     console.error(`ERROR responder: ${e.message}`);
-    return res.status(500).json({ ok: false, error: e.message, hint: hint(e) });
+    return res.status(500).json({ ok: false, error: e.message, hint: hint(e, fb) });
   }
 };
