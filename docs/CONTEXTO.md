@@ -2,7 +2,7 @@
 
 > Pegá o adjuntá este archivo al empezar una conversación nueva. Resume qué es la app, cómo está armada,
 > cómo se trabaja y en qué punto quedó todo, con el detalle de Instagram (mensajes, menciones y la
-> revisión de Meta). Última actualización: **9 de octubre de 2026** (versión publicada **v149**).
+> revisión de Meta). Última actualización: **9 de octubre de 2026** (versión publicada **v149**; en la rama de trabajo hasta **v152**, ver sección 5).
 > **Acá no hay contraseñas, tokens ni claves**: esas están solo en Vercel/Supabase/Meta.
 
 ---
@@ -184,7 +184,10 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 
 ---
 
-## 5. Otras cosas recientes (v137–v149)
+## 5. Otras cosas recientes (v137–v152)
+- **v150:** los reels salen también en las últimas 9 publicaciones del Dashboard e Informes (con etiqueta “Reel”); el archivo mensual de `api/publicaciones.js` los guarda.
+- **v151:** se puede contestar desde la app también los mensajes de **Facebook** (`api/responder.js` acepta `net: "FB"`, permiso `pages_messaging`); al enviar, la conversación queda como contestada.
+- **v152:** Mensajes se ordena por red: **Facebook** (Inbox · Comentarios) e **Instagram** (DM · Comentarios), cada uno con Sin contestar / Contestados / Todos. Comentarios de Instagram = solo los que arroban a la marca (lo que antes era “Menciones”). Comentarios de Facebook: todavía no llegan (falta permiso de Meta); la pantalla lo avisa.
 - Prompts de imágenes: paso 2 "¿Es para un evento festivo?" (14 fechas + Otro) con la onda de cada marca.
 - Procesos de CM en todos lados (incluidos repetitivos y calendarios).
 - Planificación del mes: "Lo que se viene" editable, dura hasta su fecha, íconos, campañas de varias marcas ("Las tres").

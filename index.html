@@ -630,6 +630,7 @@ tr.tot td{border-top:1px solid var(--line-3)}
 .ibtabs{display:flex;gap:2px;border-bottom:1px solid var(--line-2);margin:0 0 14px;overflow-x:auto;scrollbar-width:none}.ibtabs::-webkit-scrollbar{display:none}
 .ibtabs button{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:7px;padding:9px 14px 10px;font-size:14px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
 .ibtabs button span{font-size:11.5px;font-weight:700;min-width:18px;padding:1px 6px;border-radius:999px;background:rgba(148,163,184,.16);color:var(--muted);text-align:center;font-variant-numeric:tabular-nums}
+.ibtabs button svg{width:15px;height:15px;flex:none}.ibtabs.ibsub{margin-top:-8px}.ibtabs.ibsub button{font-size:13px;font-weight:500;padding:7px 12px 8px}.ibtabs.ibsub button.on{font-weight:700}
 .ibtabs button.on{color:var(--ink);border-bottom-color:var(--cyan)}.ibtabs button.on span{background:rgba(34,211,238,.16);color:var(--cyan)}.ibtabs button:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
 .iak{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--faint);border:1px solid var(--line-2);border-radius:999px;padding:1px 7px;white-space:nowrap}
 .iapost{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:12px;color:var(--faint);min-width:0}.iapost svg{width:13px;height:13px;flex:none}.iapost span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -8543,7 +8544,7 @@ function reveal(){
 // ---------- Mensajes de las cuentas: los DM reales de Instagram y Facebook (Messenger) de cada marca ----------
 // Los trae la función /api/mensajes (todos los días y con “Actualizar”) a s:META_INBOX. Es solo para controlar:
 // quién escribió y si ya se contestó. Para contestar se abre la bandeja de Meta Business Suite.
-let inboxUI = { brand:"Todas", st:"sin", net:"Todas", open:null, busy:false };
+let inboxUI = { brand:"Todas", st:"sin", net:"IG", view:"msgs", open:null, busy:false }; // net: Facebook o Instagram · view: msgs (Inbox / DM) o men (Comentarios)
 const inboxAge = ts => { if (!ts) return ""; const m = Math.round((Date.now() - new Date(ts)) / 60000); return m < 1 ? "recién" : m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} d`; };
 // Mensajes de las cuentas: solo los últimos 30 días; los sin contestar se cuentan en un globito rojo.
 const INBOX_DAYS = 30;
@@ -9103,18 +9104,27 @@ function iaBody(when){
     <div class="iblist">${list.map(row).join("") || `<div class="ibempty">${!all.length ? `${icon("at-sign")}<span>Todavía no hay comentarios que arroben a las marcas en los últimos 30 días.${canMetaRefresh() && !bs.length ? " Tocá “Actualizar” para traerlos de Instagram." : ""}</span>` : inboxUI.st === "sin" ? `${icon("check-check")}<b>Todo contestado</b><span>No hay menciones esperando respuesta.</span>` : "<span>No hay menciones con estos filtros.</span>"}</div>`}</div>`;
 }
 function pInbox(){
-  const view = ["men", "com"].includes(inboxUI.view) ? "men" : "msgs";
+  // Arriba la red (Facebook / Instagram); abajo lo que se ve de esa red: Inbox (Facebook) o DM (Instagram), y Comentarios.
+  const net = inboxUI.net === "FB" ? "FB" : "IG", com = ["men", "com"].includes(inboxUI.view), view = com ? "men" : "msgs", netName = net === "FB" ? "Facebook" : "Instagram";
   const when = ts => new Date(ts).toLocaleString("es-PY", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" });
+  const pendNet = n => can("inbox") ? inboxBrands().reduce((t, b) => t + inboxConvs(b).filter(c => c.net === n && inboxRecent(c) && !ibOk(c)).length, 0) : 0;
+  const ntab = (n, l, ico, cnt, t) => `<button type="button" class="${net === n ? "on" : ""}" data-ibf="net|${n}" aria-pressed="${net === n}" title="${t}">${ico}${l}${cnt ? `<span>${cnt}</span>` : ""}</button>`;
   const vtab = (v, l, n, t) => `<button type="button" class="${view === v ? "on" : ""}" data-ibf="view|${v}" aria-pressed="${view === v}"${t ? ` title="${t}"` : ""}>${l}${n ? `<span>${n}</span>` : ""}</button>`;
-  const tabs = `<div class="ibtabs" role="group" aria-label="Qué ver">${vtab("msgs", "Mensajes", inboxPend(), "Mensajes sin contestar")}${vtab("men", "Menciones", iaPend(), "Comentarios que arroban a la marca, sin contestar")}</div>`;
-  if (view === "men"){
+  const tabs = `<div class="ibtabs ibnets" role="group" aria-label="Red">${ntab("FB", "Facebook", ICO.FB, pendNet("FB"), "Facebook: mensajes sin contestar")}${ntab("IG", "Instagram", ICO.IG, pendNet("IG") + iaPend(), "Instagram: mensajes y comentarios sin contestar")}</div>
+    <div class="ibtabs ibsub" role="group" aria-label="Qué ver">${vtab("msgs", net === "FB" ? "Inbox" : "DM", pendNet(net), net === "FB" ? "Mensajes de Facebook sin contestar" : "Mensajes directos de Instagram sin contestar")}${vtab("men", "Comentarios", net === "IG" ? iaPend() : 0, net === "IG" ? "Comentarios que arroban a la marca, sin contestar" : "Comentarios de Facebook")}</div>`;
+  if (com && net === "FB"){
+    const pg = inboxBrands().map(b => META_INBOX[b]?.pageId).find(Boolean);
+    return `<div class="ibpage"><div class="head"><div><h1 class="pmh">${pmIco("inbox")}Mensajes</h1><p class="sub">Facebook · comentarios</p></div></div>
+      ${tabs}<div class="iblist"><div class="ibempty">${icon("message-circle")}<b>Los comentarios de Facebook todavía no llegan a la app</b><span>Falta un permiso de Meta para leerlos. Mientras tanto, contestalos desde Facebook.</span><a class="btn sm primary" href="${pg ? `https://business.facebook.com/latest/inbox/all?asset_id=${encodeURIComponent(pg)}` : "https://business.facebook.com/latest/inbox"}" target="_blank" rel="noopener">${icon("external-link")} Abrir en Meta</a></div></div></div>`;
+  }
+  if (com){
     const ages = ORDER_INBOX().map(b => META_IG_ACT[b]?.pulled).filter(Boolean).sort(), live = ORDER_INBOX().map(b => META_IG_ACT[b]?.live).filter(Boolean).sort();
-    return `<div class="ibpage"><div class="head"><div><h1 class="pmh">${pmIco("inbox")}Mensajes</h1><p class="sub">Comentarios de Instagram que arroban a la marca (@cuenta), en sus publicaciones o en las de otros · últimos 30 días${ages.length ? ` · actualizado ${inboxAge(ages[ages.length - 1])}` : ""}${live.length ? ` · en vivo (último hace ${inboxAge(live[live.length - 1]).replace("hace ", "")})` : ""}</p></div>${metaBtn("interacciones", "Menciones", "Menciones actualizadas con lo último de Instagram.")}</div>
+    return `<div class="ibpage"><div class="head"><div><h1 class="pmh">${pmIco("inbox")}Mensajes</h1><p class="sub">Instagram · comentarios que arroban a la marca (@cuenta), en sus publicaciones o en las de otros · últimos 30 días${ages.length ? ` · actualizado ${inboxAge(ages[ages.length - 1])}` : ""}${live.length ? ` · en vivo (último hace ${inboxAge(live[live.length - 1]).replace("hace ", "")})` : ""}</p></div>${metaBtn("interacciones", "Menciones", "Menciones actualizadas con lo último de Instagram.")}</div>
       ${tabs}${iaBody(when)}</div>`;
   }
   const bs = inboxBrands(), all = [];
-  bs.forEach(b => inboxConvs(b).filter(inboxRecent).forEach(c => all.push({ ...c, b, answered:ibOk(c), byHand:INBOX_DONE[c.id] }))); // solo los últimos 30 días
-  const list = all.filter(c => (inboxUI.brand === "Todas" || c.b === inboxUI.brand) && (inboxUI.net === "Todas" || c.net === inboxUI.net) && (inboxUI.st === "todos" || (inboxUI.st === "sin" ? !c.answered : c.answered)))
+  bs.forEach(b => inboxConvs(b).filter(inboxRecent).filter(c => c.net === net).forEach(c => all.push({ ...c, b, answered:ibOk(c), byHand:INBOX_DONE[c.id] }))); // solo los últimos 30 días y de esta red
+  const list = all.filter(c => (inboxUI.brand === "Todas" || c.b === inboxUI.brand) && (inboxUI.st === "todos" || (inboxUI.st === "sin" ? !c.answered : c.answered)))
     .sort((a, c) => inboxUI.st === "sin" ? String(a.waitSince || a.ts).localeCompare(String(c.waitSince || c.ts)) : String(c.ts).localeCompare(String(a.ts)));
   const sin = all.filter(c => !c.answered).length;
   const tab = (v, l, n) => `<button type="button" class="${inboxUI.st === v ? "on" : ""}" data-ibf="st|${v}" aria-pressed="${inboxUI.st === v}">${l}<span>${n}</span></button>`;
@@ -9129,12 +9139,12 @@ function pInbox(){
       <div class="ibside"><small>${inboxAge(c.ts)}</small>${c.answered ? `<span class="ibst ok" ${c.byHand ? `title="Marcado por ${esc(c.byHand.by || "")}"` : ""}>${icon("check")} Contestado</span>` : `<span class="ibst no">Esperando${c.waitSince ? ` · ${inboxAge(c.waitSince).replace("hace ", "")}` : ""}</span>`}${open ? "" : doneBtn(c)}</div>
       ${open ? `<div class="ibthread">${c.msgs.map(m => `<div class="ibm ${m.me ? "me" : ""}"><span>${esc(m.t || (m.att ? "Foto o adjunto" : ""))}</span><small>${m.me ? esc(c.b) + " · " : ""}${when(m.ts)}</small></div>`).join("")}
         ${ibReplyBox(c)}<div class="ibacts"><a class="btn sm${ibCanReply(c) ? "" : " primary"}" href="${suite(c.b)}" target="_blank" rel="noopener">${icon("external-link")} ${ibCanReply(c) ? "Abrir en Meta" : "Contestar en Meta"}</a>${doneBtn(c)}${c.byHand ? `<span class="note">Marcado por ${esc(firstName(c.byHand.by || ""))}</span>${mark ? `<button type="button" class="ibdone" data-ibundo="${esc(c.id)}">Volver a sin contestar</button>` : ""}` : ""}</div></div>` : ""}</div>`; };
-  return `<div class="ibpage"><div class="head"><div><h1 class="pmh">${pmIco("inbox")}Mensajes</h1><p class="sub">Instagram y Facebook de cada marca · últimos 30 días${META_INBOX.updated ? ` · actualizado ${inboxAge(META_INBOX.updated)}` : ""}${META_DM.updated ? ` · Instagram en vivo (último hace ${inboxAge(META_DM.updated).replace("hace ", "")})` : ""}</p></div>${metaBtn("mensajes", "Mensajes")}</div>
-  ${tabs}${!META_DM.updated && ORDER_INBOX().some(b => /Instagram/.test(META_INBOX[b]?.err || "")) ? (igLiveReady()
+  return `<div class="ibpage"><div class="head"><div><h1 class="pmh">${pmIco("inbox")}Mensajes</h1><p class="sub">${netName} · ${net === "FB" ? "Inbox" : "DM"} de cada marca · últimos 30 días${META_INBOX.updated ? ` · actualizado ${inboxAge(META_INBOX.updated)}` : ""}${net === "IG" && META_DM.updated ? ` · en vivo (último hace ${inboxAge(META_DM.updated).replace("hace ", "")})` : ""}</p></div>${metaBtn("mensajes", "Mensajes")}</div>
+  ${tabs}${net === "IG" && !META_DM.updated && ORDER_INBOX().some(b => /Instagram/.test(META_INBOX[b]?.err || "")) ? (igLiveReady()
     ? `<div class="ibig">${icon("info")}<div><b>La conexión en vivo de Instagram ya está lista.</b> Meta ya verificó la dirección y la clave. Los mensajes de Instagram van a aparecer acá apenas Meta los mande, cuando la app de Meta esté <b>En producción</b>${viewer.role === "Admin total" ? ` (<a href="#config" data-igcfg>ver los pasos</a>)` : ""}.</div></div>`
     : `<div class="ibig">${icon("info")}<div><b>Los mensajes de Instagram todavía no llegan.</b> Meta no entrega la lista de conversaciones de Instagram de estas cuentas (corta por tiempo). ${viewer.role === "Admin total" ? `Se solucionan recibiéndolos en vivo: <a href="#config" data-igcfg>Configuración → Integraciones → Instagram en vivo</a>.` : "Admin total los está activando para que lleguen en vivo."}</div></div>`) : ""}
   ${bs.length ? `<div class="ibbar"><div class="ibseg" role="group" aria-label="Estado">${tab("sin", "Sin contestar", sin)}${tab("ok", "Contestados", all.length - sin)}${tab("todos", "Todos", all.length)}</div>
-    <div class="ibfil">${pick("brand", [["Todas", "Todas las marcas"], ...bs.map(b => [b, b])])}${pick("net", [["Todas", "Instagram y Facebook"], ["IG", "Instagram"], ["FB", "Facebook"]])}</div></div>
+    <div class="ibfil">${pick("brand", [["Todas", "Todas las marcas"], ...bs.map(b => [b, b])])}</div></div>
   <div class="iblist">${list.map(row).join("") || `<div class="ibempty">${inboxUI.st === "sin" ? `${icon("check-check")}<b>Todo contestado</b><span>No hay mensajes esperando respuesta.</span>` : "<span>No hay conversaciones con estos filtros.</span>"}</div>`}</div>`
   : `<div class="iblist"><div class="ibempty">${icon("inbox")}<span>${META_INBOX.updated ? "No hay mensajes de los últimos 30 días." : "Todavía no hay mensajes cargados. Tocá “Actualizar” para traerlos de Meta."}</span></div></div>`}</div>`;
 }
