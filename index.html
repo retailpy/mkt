@@ -9140,27 +9140,29 @@ function pInbox(){
 }
 document.addEventListener("change", e => { const f = e.target.closest("[data-ibsel]"); if (f){ inboxUI[f.dataset.ibsel] = f.value; inboxUI.open = null; render(); } });
 const canInboxMark = () => can("inbox") && !isViewOnly();
-// Contestar un mensaje de Instagram desde la app (/api/responder): solo Admin total y CM, en conversaciones de Instagram
+// Contestar un mensaje de Instagram o de Facebook desde la app (/api/responder): solo Admin total y CM, en conversaciones
 // con el id de la persona. Sale desde la cuenta de la marca; Meta deja contestar hasta 24 h después de su último mensaje.
 const ibReply = { drafts:{}, busy:null };
-const ibCanReply = c => c.net === "IG" && !!c.uid && ["Admin total", "CM"].includes(viewer.role) && !window.RMH?.previewing;
-const ibReplyBox = c => { if (!ibCanReply(c)) return ""; const k = c.b + "|" + c.uid, busy = ibReply.busy === k;
+const ibCanReply = c => (c.net === "IG" || c.net === "FB") && !!c.uid && ["Admin total", "CM"].includes(viewer.role) && !window.RMH?.previewing;
+const ibReplyBox = c => { if (!ibCanReply(c)) return ""; const k = [c.b, c.uid, c.net, c.id].join("|"), busy = ibReply.busy === k;
   return `<form class="ibreply" data-ibreply="${esc(k)}"><textarea class="base" name="t" rows="2" maxlength="1000" placeholder="Escribí la respuesta…" aria-label="Respuesta" ${busy ? "disabled" : ""}>${esc(ibReply.drafts[k] || "")}</textarea><button class="btn sm primary" type="submit" ${busy ? "disabled" : ""}>${icon("send")} ${busy ? "Enviando…" : "Enviar"}</button></form>
-    <p class="note ibrnote">Sale desde la cuenta de ${esc(c.b)} en Instagram. Meta deja contestar hasta 24 horas después del último mensaje de la persona.</p>`; };
+    <p class="note ibrnote">Sale desde la cuenta de ${esc(c.b)} en ${c.net === "FB" ? "Facebook" : "Instagram"}. Meta deja contestar hasta 24 horas después del último mensaje de la persona.</p>`; };
 document.addEventListener("input", e => { const f = e.target.closest("[data-ibreply] textarea"); if (f) ibReply.drafts[f.closest("[data-ibreply]").dataset.ibreply] = f.value; });
 document.addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && e.target.closest("[data-ibreply] textarea")) e.target.closest("form").requestSubmit(); });
 document.addEventListener("submit", async e => {
   const f = e.target.closest("[data-ibreply]"); if (!f) return; e.preventDefault();
-  const k = f.dataset.ibreply, [brand, to] = k.split("|"), text = (f.querySelector("textarea").value || "").trim();
+  const k = f.dataset.ibreply, [brand, to, net, convId] = k.split("|"), fb = net === "FB", text = (f.querySelector("textarea").value || "").trim();
   if (!text){ toast("Escribí la respuesta."); return; } if (ibReply.busy) return;
   ibReply.drafts[k] = text; ibReply.busy = k; render();
   let j = {};
   try { const tok = window.RMH?.token ? await RMH.token() : null;
-    const r = await fetch("/api/responder", { method:"POST", headers:{ "Content-Type":"application/json", ...(tok ? { Authorization:"Bearer " + tok } : {}) }, body:JSON.stringify({ brand, to, text }) });
+    const r = await fetch("/api/responder", { method:"POST", headers:{ "Content-Type":"application/json", ...(tok ? { Authorization:"Bearer " + tok } : {}) }, body:JSON.stringify({ brand, to, text, net:fb ? "FB" : "IG" }) });
     j = await r.json().catch(() => ({})); if (!r.ok && !j.error) j.error = `HTTP ${r.status}`;
   } catch { j = { error:"No se pudo conectar" }; }
   ibReply.busy = null;
-  if (j.ok){ delete ibReply.drafts[k]; toast("Respuesta enviada por Instagram."); await window.RMH?.catchUp?.(); }
+  if (j.ok){ delete ibReply.drafts[k];
+    if (fb && convId){ INBOX_DONE = { ...INBOX_DONE, [convId]:{ by:viewer.name, at:new Date().toISOString() } }; } // Facebook no avisa en vivo: queda como contestada
+    toast(fb ? "Respuesta enviada por Facebook." : "Respuesta enviada por Instagram."); await window.RMH?.catchUp?.(); }
   else toast(j.hint || `No se pudo enviar: ${j.error || "error"}.`);
   render();
 });
