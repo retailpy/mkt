@@ -518,6 +518,7 @@ tr.tot td{border-top:1px solid var(--line-3)}
 .comk span{display:inline-flex;align-items:center;gap:5px}.comk svg{width:16px;height:16px;color:#94a3b8}.comk .k-tapa svg{color:#ef4444}.comk .k-redes svg{color:#60a5fa}.comk .k-dest svg,.comk .k-pct svg{color:#fbbf24}
 .comsrc{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}.comsrc .note{display:inline-flex;align-items:center;gap:5px;font-size:12px}.comsrc .note svg{width:13px;height:13px}
 .comgone{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#fca5a5;border:1px solid rgba(239,68,68,.4);border-radius:10px;padding:5px 10px}.comgone svg{width:15px;height:15px}.comhead p{margin:0;color:var(--muted);font-size:14.5px}.comhead p b{color:var(--ink)}.comhead .note{margin-top:6px;font-size:12px}.comhead .note a{color:#60a5fa}.comwarn{display:flex;gap:6px;align-items:center;color:#fbbf24!important}.comwarn svg{width:14px;height:14px}
+.comnew{font-style:normal;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(52,211,153,.16);color:#34d399;white-space:nowrap}
 .comk{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:14px;color:var(--muted)}.comk b{color:var(--ink);font-size:16px}
 .comgrp{border-radius:16px;padding:14px;border:1px solid var(--line)}.comgrp.g-tapa{border-color:rgba(239,68,68,.45);background:rgba(239,68,68,.06)}
 .comguide{display:flex;gap:8px;align-items:flex-start;margin:-2px 0 12px;font-size:13.5px;color:var(--ink)}.comguide svg{width:16px;height:16px;flex:none;margin-top:2px;color:#94a3b8}
@@ -8758,7 +8759,9 @@ const newsTag = b => `<span class="ntag" style="--c:${BRANDS[b] || "#94a3b8"}">$
 // ---------- Comercial: las ofertas publicadas de cada quincena ----------
 // El servidor lee los Excel "PUBLICADAS" de la carpeta de Comercial en Drive (Actualizar, al abrir y en la rutina diaria).
 // Cada quincena queda guardada aunque después borren el archivo (memoria del mes).
-let comUI = { id:null, q:"", sec:"Todas", top:false, sheet:0, open:null, busy:false, auto:false };
+// added: productos que llegaron en la última actualización de cada quincena { idArchivo: { n, at } } (queda en este dispositivo).
+const comAddedLoad = () => { try { return JSON.parse(localStorage.getItem("rmh-com-added") || "{}") || {}; } catch { return {}; } };
+let comUI = { id:null, q:"", sec:"Todas", top:false, sheet:0, open:null, busy:false, auto:false, added:comAddedLoad() };
 const comState = f => TODAY < f.from ? "prox" : TODAY > f.to ? "fin" : "vig";
 // Orden: primero la quincena vigente, después la que sigue, y así; al final las que ya terminaron (la más reciente primero).
 // Cada mes muestra sus quincenas (las que caen en el mes elegido arriba; la que cruza de un mes al otro sale en los dos).
@@ -8814,12 +8817,21 @@ const COM_COLS = [["Página / sección", i => comSec(i.sec || i.sector)], ["Prod
 const COM_ART = `<svg class="comart" viewBox="0 0 120 84" aria-hidden="true"><rect x="6" y="10" width="108" height="64" rx="16" fill="rgba(37,99,235,.14)"/>
   <path d="M30 24h8l7 28h28l6-20H42" fill="none" stroke="#60a5fa" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="49" cy="60" r="4" fill="#60a5fa"/><circle cx="70" cy="60" r="4" fill="#60a5fa"/>
   <g transform="rotate(-14 92 30)"><path d="M78 20h22l8 10-8 10H78z" fill="#fbbf24"/><circle cx="83" cy="30" r="2.6" fill="#0f172a"/><text x="96" y="34" font-size="11" font-weight="800" text-anchor="middle" fill="#0f172a" font-family="system-ui,sans-serif">%</text></g></svg>`;
+// Cuántas veces aparece cada producto (código + nombre) en cada quincena: sirve para ver qué se agregó con la actualización.
+const comKeys = () => Object.fromEntries(comAll().map(f => { const c = {}; (f.sheets || []).forEach(sh => (sh.items || []).forEach(i => { const k = (i.cod || "") + "|" + (i.desc || ""); c[k] = (c[k] || 0) + 1; })); return [f.id, c]; }));
 async function comSync(force){
   if (comUI.busy) return; comUI.busy = true; if (page === "comercial") render();
+  const before = comKeys();
   const j = await integ({ action:"comercial_sync", force:!!force }).catch(() => ({ ok:false, error:"No se pudo conectar" }));
   comUI.busy = false; if (j.ok && !j.skipped) await window.RMH?.catchUp?.();
+  let added = 0;
+  if (j.ok){ const after = comKeys(); // solo quincenas que ya estaban: una quincena nueva entera no es “productos nuevos”
+    for (const [id, c] of Object.entries(after)){ if (!before[id]) continue;
+      const n = Object.entries(c).reduce((t, [k, v]) => t + Math.max(0, v - (before[id][k] || 0)), 0);
+      if (n > 0){ added += n; comUI.added = { ...comUI.added, [id]:{ n, at:new Date().toISOString() } }; } }
+    if (added){ try { localStorage.setItem("rmh-com-added", JSON.stringify(comUI.added)); } catch {} } }
   if (page === "comercial") render();
-  if (force) toast(j.ok ? (j.nuevos ? `Listo: ${j.nuevos === 1 ? "1 archivo nuevo o cambiado" : j.nuevos + " archivos nuevos o cambiados"}.` : "Ya estaba al día: no hay cambios en los Excel.") + (j.errores ? ` (${j.errores} no se pudo leer)` : "") + (j.respaldos ? ` Respaldo en Drive: ${j.respaldos}.` : "") : j.error || "No se pudo actualizar.");
+  if (force) toast(j.ok ? (j.nuevos ? `Listo: ${j.nuevos === 1 ? "1 archivo nuevo o cambiado" : j.nuevos + " archivos nuevos o cambiados"}.` : added ? "Listo." : "Ya estaba al día: no hay cambios en los Excel.") + (j.errores ? ` (${j.errores} no se pudo leer)` : "") + (added ? ` ${added === 1 ? "Se agregó 1 producto nuevo" : `Se agregaron ${added} productos nuevos`}.` : "") + (j.respaldos ? ` Respaldo en Drive: ${j.respaldos}.` : "") : j.error || "No se pudo actualizar.");
 }
 async function comExcel(f){
   const rows = sh => [COM_COLS.map(c => c[0]), ...sh.items.map(i => COM_COLS.map(c => c[1](i)))];
@@ -8899,7 +8911,7 @@ function pComercial(){
       ${older.length ? `<select class="base sm" data-comold aria-label="Quincenas anteriores"><option value="">Quincenas anteriores…</option>${older.map(x => `<option value="${x.id}" ${x.id === f.id ? "selected" : ""}>${comRange(x)} ${x.from.slice(0, 4)}</option>`).join("")}</select>` : ""}</div>
     <section class="comhead"><h2>${esc(comBrand(f))}${f.folleto ? `<span class="comfol">${icon("book-open")}Folleto ${esc(f.folleto)}</span>` : ""}</h2>
       <p class="comdate">${icon("calendar-range")}<span>Ofertas del <b>${comRange(f)}</b> · ${COM_ST[comState(f)].toLowerCase()}</span></p>
-      <div class="comk"><span>${icon("package")}<b>${all.length}</b> productos</span>${groupsTop.map(g => `<span class="k-${g[2]}">${icon(g[1])}<b>${g[3].length}</b> ${g[3].length === 1 && g[0] === "Destacados" ? "destacado" : g[0].toLowerCase()}</span>`).join("")}${best ? `<span class="k-pct">${icon("badge-percent")}hasta <b>${best}%</b> de descuento</span>` : ""}</div>
+      <div class="comk"><span>${icon("package")}<b>${all.length}</b> productos${(() => { const ad = comUI.added?.[f.id]; return ad?.n ? `<em class="comnew" title="Agregados en la actualización del ${esc(new Date(ad.at).toLocaleString("es-PY", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" }))}">+${ad.n} ${ad.n === 1 ? "nuevo" : "nuevos"}</em>` : ""; })()}</span>${groupsTop.map(g => `<span class="k-${g[2]}">${icon(g[1])}<b>${g[3].length}</b> ${g[3].length === 1 && g[0] === "Destacados" ? "destacado" : g[0].toLowerCase()}</span>`).join("")}${best ? `<span class="k-pct">${icon("badge-percent")}hasta <b>${best}%</b> de descuento</span>` : ""}</div>
       <div class="comsrc">${f.inDrive === false ? `<span class="comgone">${icon("file-x")} Ya no se encuentra el archivo original en Drive (los datos quedan guardados acá)</span>` : /^[\w-]{10,}$/.test(f.id) ? `<a class="btn sm" href="https://drive.google.com/file/d/${encodeURIComponent(f.id)}/view" target="_blank" rel="noopener">${icon("file-spreadsheet")} Ver Excel original</a>` : ""}${f.backup?.url ? `<a class="btn sm" href="${esc(f.backup.url)}" target="_blank" rel="noopener">${icon("hard-drive")} Respaldo en Drive</a>` : ""}<span class="note">${icon("refresh-cw")} Revisado ${COMERCIAL.syncedAt ? inboxAge(COMERCIAL.syncedAt) : "—"}</span></div>
       ${COMERCIAL.backupScript === false && viewer.role === "Admin total" ? `<p class="note comwarn">${icon("info")} Para que el respaldo se guarde solo en Drive, actualizá el script de Google Drive en Configuración → Integraciones.</p>` : ""}</section>
     ${groupsTop.map(([t, ic, cls, items]) => `<section class="comgrp g-${cls}"><h3 class="comgh">${icon(ic)}<span>${t}</span><small>${items.length}</small></h3>${comGuide(cls)}${cls === "tapa" && dupTapa.length ? `<p class="comdup">${icon("triangle-alert")}<span><b>Revisar:</b> ${dupTapa.length === 1 ? "este producto de tapa también aparece" : "estos productos de tapa también aparecen"} adentro del folleto: ${dupTapa.map(i => `${esc(comNice(i.desc))} (${esc(comSec(i.sec || i.sector))})`).join(" · ")}.</span></p>` : ""}<div class="comtop">${items.slice(0, 24).map(i => { const si = sheets.findIndex(x => x.items.includes(i)); return comCard(i, si < 0 ? "" : f.id + ":" + si + ":" + sheets[si].items.indexOf(i)); }).join("")}</div></section>`).join("")}
