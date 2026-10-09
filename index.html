@@ -664,6 +664,26 @@ tr.tot td{border-top:1px solid var(--line-3)}
   .ibxcard{grid-template-columns:auto 1fr;padding:12px 14px 14px}.ibxcard .ibxnum{grid-column:1/-1;flex-direction:row;align-items:baseline;gap:6px;justify-content:flex-start}.ibxcard .ibxnum b{font-size:24px}.ibxname b{font-size:15px}.ibxlogo{width:38px;height:38px}
   .ibxcard.sel{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(34,211,238,.35)}}
 @media (min-width:1180px){.ibxcard{cursor:default}.ibxcard:hover{border-color:var(--line-2)}}
+/* Hoja de permisos (Usuarios y permisos) */
+.pxcard{border:1px solid var(--line-2);border-radius:20px;background:var(--panel);overflow:hidden}
+.pxcard>header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;padding:14px 18px;border-bottom:1px solid var(--line-2)}
+.pxhead{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.pxsum{font-size:12.5px;font-weight:700;padding:3px 10px;border-radius:999px;background:rgba(34,211,238,.12);color:var(--cyan)}.pxsum.basic{background:rgba(148,163,184,.14);color:var(--muted)}
+.pxbody{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px 22px;padding:16px 18px 18px}
+.pxl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:700;margin:0 0 7px}
+.pxchips{display:flex;flex-wrap:wrap;gap:6px}
+.pxchip{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600;color:var(--muted);border:1px solid var(--line-2);transition:background .15s,color .15s,border-color .15s}
+.pxchip svg{width:13px;height:13px}.pxchip:hover{border-color:var(--line-3);color:var(--ink)}.pxchip.on{background:rgba(34,211,238,.14);border-color:rgba(34,211,238,.55);color:var(--ink)}.pxchip:focus-visible{outline:2px solid var(--cyan);outline-offset:1px}
+/* Celebración de cumpleaños (hoy) */
+.bdparty{position:relative;overflow:hidden;display:flex;align-items:center;gap:16px;padding:18px 22px;border-color:rgba(244,63,94,.55);background:linear-gradient(120deg,rgba(244,63,94,.16),rgba(245,158,11,.12) 55%,rgba(34,211,238,.12))}
+.bdparty .bdhorn{position:relative;z-index:1;flex:none;width:56px;height:56px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(135deg,#f43f5e,#f59e0b);color:#fff;box-shadow:0 0 22px rgba(244,63,94,.5);transform-origin:15% 85%;animation:hornpop 2.6s ease-in-out infinite}
+.bdparty .bdhorn svg{width:30px;height:30px}
+.bdparty .bdtxt{position:relative;z-index:1;min-width:0}.bdparty .bdtxt b{display:block;color:#fff;font-size:18px;line-height:1.3}.bdparty .bdtxt span{color:#e2e8f0;font-size:13.5px}
+.bdconf{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.bdconf i{position:absolute;top:-14px;left:var(--x);width:var(--w);height:calc(var(--w)*1.6);background:var(--c);border-radius:2px;opacity:0;transform:rotate(var(--r));animation:confetti var(--t) linear var(--d) infinite}
+@keyframes confetti{0%{opacity:0;transform:translateY(-10px) rotate(var(--r))}8%{opacity:1}100%{opacity:.85;transform:translateY(130px) translateX(22px) rotate(calc(var(--r) + 540deg))}}
+@keyframes hornpop{0%,68%,100%{transform:rotate(0) scale(1)}76%{transform:rotate(-16deg) scale(1.16)}84%{transform:rotate(9deg) scale(1.08)}92%{transform:rotate(-4deg) scale(1.03)}}
+@media (prefers-reduced-motion:reduce){.bdparty .bdhorn{animation:none}.bdconf{display:none}}
+html.nomotion .bdconf{display:none}
 /* Hoja blanca tipo Word para el texto del pedido */
 .rtedit,.rtview{background:#fff !important;color:#1f2937 !important;border:1px solid #e5e7eb !important;border-radius:6px !important;padding:28px 32px !important;font-size:15.5px;line-height:1.65;box-shadow:0 18px 40px -18px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.04)}
 .rtedit{min-height:300px !important}.rtedit b,.rtview b,.rtedit strong,.rtview strong{color:#0f172a}.rtedit a,.rtview a{color:#2563eb}
@@ -2720,11 +2740,13 @@ const SECTIONS = [
   { g:"Equipo", k:"cumples", l:"Cumpleaños", i:"cake" },
   { g:"Ayuda", k:"guia", l:"Guía de uso", i:"book-open", hide:true }, // ahora está dentro de Configuración
 ];
+// Lo que ve cualquier persona que no es Admin ni Admin total: solo esto. Admin total le habilita el resto, persona por persona (Usuarios y permisos).
+const ROLE_BASIC = ["dashboard","prompts","staff","cumples"];
 const ROLE_DEFAULTS = {
   "Admin total": SECTIONS.map(s => s.k),
   "Admin": SECTIONS.map(s => s.k).filter(k => !["usuarios","config"].includes(k)),
-  "CM": ["dashboard","tvredes","tvimpacto","tv","inicio","alertas","staff","cumples","caldiseno","calcartel","calendario","calhistoria","calcanales","plan","pedidos","cartel","web","pantallas","cargadiseno","gestioncm","cargacm","historialcm","pauta","redes","reportes"],
-  "Diseñador": ["dashboard","tvredes","tvimpacto","inicio","alertas","staff","cumples","caldiseno","calcartel","calendario","calhistoria","calcanales","pedidos","cartel","web","pantallas","cargadiseno","tv","historial"],
+  "CM": ROLE_BASIC,
+  "Diseñador": ROLE_BASIC,
 };
 const PEOPLE = [
   { id:"alyssa", username:"Alesme", workPhone:"+595 21 618 1001", phone:"+595 981 111 222", mainBrand:"Varias", skills:["Planificación estratégica","Gestión de equipos","Análisis de datos"], birthday:"11-08", brandsHandled:["Superseis","Stock","Delimarket"], quote:"Mi idea es cambiar las cosas", name:"Alyssa Lesme", cargo:"Jefa de Marketing", email:"alyssa.lesme@empresa.com.py", role:"Admin total", brands:null, last:"hoy 08:12" },
@@ -2739,14 +2761,18 @@ const PEOPLE = [
 PEOPLE.forEach(p => { p.perms = new Set(p.perms || ROLE_DEFAULTS[p.role]); p.active = true; p.mustChange = false; if (p.role !== "Diseñador" && p.perms.has("pedidos")) { p.perms.add("gestioncm"); p.perms.add("historialcm"); } if (p.perms.has("calendario")) p.perms.add("caldiseno"); upgradePerms(p); });
 // Secciones que se agregaron después: quien ya veía la sección de origen, ve también la nueva (una sola vez;
 // después cada permiso se prende o apaga por separado en Usuarios y permisos).
-function upgradePerms(p){ const v = p.permsV || 1; if (v >= 6) return; [[2,"pedidos","cargadiseno"],[2,"gestioncm","cargacm"],[2,"calendario","calhistoria"],[3,"calendario","calcanales"],[4,"pedidos","cartel"],[4,"caldiseno","calcartel"],[5,"cartel","web"],[6,"cartel","pantallas"]].forEach(([ver, from, to]) => { if (v < ver && p.perms.has(from)) p.perms.add(to); }); p.permsV = 6; }
+function upgradePerms(p){ const v = p.permsV || 1; if (v >= 7) return;
+  if (v < 6) [[2,"pedidos","cargadiseno"],[2,"gestioncm","cargacm"],[2,"calendario","calhistoria"],[3,"calendario","calcanales"],[4,"pedidos","cartel"],[4,"caldiseno","calcartel"],[5,"cartel","web"],[6,"cartel","pantallas"]].forEach(([ver, from, to]) => { if (v < ver && p.perms.has(from)) p.perms.add(to); });
+  // v7: quien no es Admin ni Admin total pasa a ver solo lo básico (una sola vez); después Admin total le prende lo que haga falta.
+  if (p.role !== "Admin total" && p.role !== "Admin") p.perms = new Set(ROLE_BASIC);
+  p.permsV = 7; }
 let DESIGNERS = [];
 const ROLES = ["Admin total","Admin","Diseñador","CM"];
 const ROLE_INFO = {
   "Admin total":"Configura y controla todo: usuarios, permisos, marcas y cierres de mes.",
   "Admin":"Ve todo el sitio para control, descarga informes. No modifica ni configura.",
-  "Diseñador":"Ve y avanza sus pedidos de diseño y materiales.",
-  "CM":"Planifica y publica contenidos, pide diseños, ve pauta y redes.",
+  "Diseñador":"Ve el Dashboard, los Prompts de imágenes, Staff y Cumpleaños. Admin total le habilita lo demás.",
+  "CM":"Ve el Dashboard, los Prompts de imágenes, Staff y Cumpleaños. Admin total le habilita lo demás.",
 };
 let resetRequests = [];
 let userUI = { newOpen:false, confirm:null, lastPass:null };
@@ -2972,6 +2998,16 @@ const bdayLabel = b => `${+b.slice(3)} de ${MONTHS_ES[+b.slice(0,2)-1]}`;
 const ZODIAC = [["Capricornio","♑",1,19],["Acuario","♒",2,18],["Piscis","♓",3,20],["Aries","♈",4,19],["Tauro","♉",5,20],["Géminis","♊",6,20],["Cáncer","♋",7,22],["Leo","♌",8,22],["Virgo","♍",9,22],["Libra","♎",10,22],["Escorpio","♏",11,21],["Sagitario","♐",12,21],["Capricornio","♑",12,31]];
 function zodiacOf(b){ if (!b) return null; const m = +b.slice(0,2), d = +b.slice(3); const z = ZODIAC.find(([, , zm, zd]) => m < zm || (m === zm && d <= zd)); return z ? { n:z[0], s:z[1] } : null; }
 const zodiacTag = b => { const z = zodiacOf(b); return z ? `<span class="zod">${z.n}</span>` : ""; };
+// Cumpleaños de hoy: cornetita que revienta y papelitos de colores cayendo (Dashboard e Inicio). Sin animación si la persona la apagó.
+function bdayParty(){
+  const hoy = PEOPLE.filter(pp => pp.active && bdayIn(pp) === 0); if (!hoy.length) return "";
+  const cols = ["#f43f5e","#f59e0b","#22d3ee","#a78bfa","#34d399","#f472b6","#facc15","#60a5fa"];
+  const conf = Array.from({ length:38 }, (_, i) => `<i style="--x:${(i * 37 + 11) % 100}%;--d:${((i * 53) % 30) / 10}s;--t:${(3.2 + ((i * 17) % 18) / 10).toFixed(1)}s;--c:${cols[i % cols.length]};--r:${(i * 47) % 360}deg;--w:${6 + (i % 3) * 2}px"></i>`).join("");
+  const mine = hoy.some(pp => pp.id === viewer.id), names = hoy.map(pp => esc(pp.name));
+  const title = mine ? `¡Feliz cumpleaños, ${esc(nickOf(viewer))}! 🎂` : `¡Hoy ${hoy.length > 1 ? "cumplen" : "cumple"} años ${names.length > 1 ? names.slice(0, -1).join(", ") + " y " + names[names.length - 1] : names[0]}! 🎉`;
+  const sub = mine ? "Todo el equipo de Retail MKT te desea un día increíble." : `${hoy.length === 1 ? esc(hoy[0].cargo || hoy[0].role) + " · " : ""}${bdayLabel(hoy[0].birthday)} · ¡No te olvides de saludar!`;
+  return `<div class="panel bdparty" role="status" aria-label="Cumpleaños de hoy"><div class="bdconf" aria-hidden="true">${conf}</div><div class="bdhorn" aria-hidden="true">${icon("party-popper")}</div><div class="bdtxt"><b>${title}</b><span>${sub}</span></div></div>`;
+}
 function bdayAlerts(){
   return PEOPLE.map(pp => ({ pp, d:bdayIn(pp) })).filter(x => x.d !== null && x.d <= 3).sort((a,b) => a.d - b.d);
 }
@@ -4010,7 +4046,13 @@ const ONLY_ADMINS = ["historial","historialcm","pauta","reportes"]; // Historial
 // y el Informe Redes (Diseño y CM incluidos). Meta Ads (pauta) y el Informe del mes siguen solo para Admin total y Admin.
 // Lo que cada uno puede cambiar lo sigue decidiendo su rol (cargar pedidos, editar posteos, mover fechas…).
 const ALL_SEE = () => ["comercial","paneldg","panelcm","caldg","calcm","cargadiseno","cargacm","ideas","redes","plan", ...PANEL_DESIGN.map(x => x.k), ...PANEL_CM.map(x => x.k).filter(k => k !== "inbox" && k !== "reclamos")];
-const can = key => ALL_SEE().includes(key) ? true : key === "inbox" || key === "reclamos" ? ["Admin total","Admin","CM"].includes(viewer.role) : key === "encuestas" || key === "sugerencias" ? viewer.id === "fede" && viewer.role === "Admin total" : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : ONLY_AT.includes(key) ? viewer.role === "Admin total" : ONLY_ADMINS.includes(key) ? isAdminAny() && viewer.perms.has(key) : ["sabados","avisos","perfil","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
+const canAdmin = key => ALL_SEE().includes(key) ? true : key === "inbox" || key === "reclamos" ? ["Admin total","Admin","CM"].includes(viewer.role) : key === "encuestas" || key === "sugerencias" ? viewer.id === "fede" && viewer.role === "Admin total" : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : ONLY_AT.includes(key) ? viewer.role === "Admin total" : ONLY_ADMINS.includes(key) ? isAdminAny() && viewer.perms.has(key) : ["sabados","avisos","perfil","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
+// Admin total y Admin: todo como antes. Las demás personas (CM, Diseñador): solo lo que Admin total les habilitó en Usuarios y permisos.
+const MEMBER_ALWAYS = ["perfil","config","guia"]; // su cuenta: entrar a su perfil, cambiar la contraseña y la ayuda
+const canMember = key => ONLY_AT.includes(key) || ONLY_ADMINS.includes(key) ? false : MEMBER_ALWAYS.includes(key) ? true
+  : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan")
+  : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : viewer.perms.has(key);
+const can = key => isAdminAny() ? canAdmin(key) : canMember(key);
 const myGroups = () => viewer.brands || GROUPS;
 const seesBrand = b => myGroups().includes(groupOf(b));
 const myBrands = () => Object.keys(BRANDS).filter(seesBrand);
@@ -6331,6 +6373,22 @@ document.addEventListener("click", async e => {
     try { await navigator.clipboard.writeText(accessMsg(x)); toast(`Mensaje para ${x.nick} copiado: pegalo en WhatsApp.`); } catch { toast("No se pudo copiar."); } return; }
   if (e.target.closest("[data-accdone]")){ userUI.access = null; render(); }
 });
+// Hoja de permisos: una tarjeta por persona con lo que ve, agrupado por sección. Un toque prende o apaga cada cosa.
+// Admin total y Admin ven todo (no hace falta marcarles nada). El resto arranca viendo solo lo básico (ROLE_BASIC).
+const PERM_EXTRA = ["comercial","inbox","reclamos","ideas"]; // secciones “virtuales” que también se pueden habilitar a mano
+const permSections = () => SECTIONS.filter(sc => (!sc.virtual || PERM_EXTRA.includes(sc.k)) && !ONLY_AT.includes(sc.k) && !ONLY_ADMINS.includes(sc.k));
+function permSheet(){
+  const secs = permSections(), groups = [...new Set(secs.map(sc => sc.g))];
+  const members = PEOPLE.filter(pp => pp.active && pp.role !== "Admin total" && pp.role !== "Admin"), admins = PEOPLE.filter(pp => pp.active && (pp.role === "Admin total" || pp.role === "Admin"));
+  const card = pp => { const on = secs.filter(sc => pp.perms.has(sc.k)).length, basic = ROLE_BASIC.length === on && ROLE_BASIC.every(k => pp.perms.has(k));
+    return `<section class="pxcard"><header><div class="person">${avatarHTML(pp)}<div><b>${esc(pp.name)}</b><span>${esc(pp.role)}${pp.cargo ? " · " + esc(pp.cargo) : ""}</span></div></div>
+      <div class="pxhead"><span class="pxsum${basic ? " basic" : ""}">${basic ? "Ve solo lo básico" : `Ve ${on} de ${secs.length}`}</span><button type="button" class="btn sm" data-pxpreset="${pp.id}|basic">Dejar solo lo básico</button><button type="button" class="btn sm" data-pxpreset="${pp.id}|all">Activar todo</button></div></header>
+      <div class="pxbody">${groups.map(g => `<div class="pxg"><div class="pxl">${esc(g)}</div><div class="pxchips">${secs.filter(sc => sc.g === g).map(sc => { const v = pp.perms.has(sc.k); return `<button type="button" class="pxchip${v ? " on" : ""}" data-perm="${pp.id}|${sc.k}" aria-pressed="${v}" aria-label="${esc(sc.l)} para ${esc(pp.name)}">${v ? icon("check") : ""}${esc(PERM_EXTRA.includes(sc.k) ? sc.l : (sc.n || sc.l))}</button>`; }).join("")}</div></div>`).join("")}
+        <div class="pxg"><div class="pxl">Marcas que ve</div><div class="pxchips">${GROUPS.map(b => { const v = !pp.brands || pp.brands.includes(b); return `<button type="button" class="bchip ${v ? "on" : ""}" style="--c:${GROUP_COLOR[b]}" data-pb="${pp.id}|${b}" aria-pressed="${v}">${b === "Otros" ? "Otras" : b}</button>`; }).join("")}</div></div></div></section>`; };
+  return `<h2 style="margin:6px 0 -4px" class="pmh">${pmIco("shield-check")}Qué ve cada persona</h2>
+  <p class="sub" style="margin:0 0 4px">Tocá una opción para que la persona la vea (✓) o no. ${admins.length ? `${admins.map(pp => esc(nickOf(pp))).join(", ")} (Admin) ven todo siempre.` : ""}</p>
+  ${members.length ? members.map(card).join("") : `<div class="panel"><div class="empty">No hay personas con rol CM o Diseñador.</div></div>`}`;
+}
 function pUsuarios(){
   const ok = n => n === 1 ? "trabajo abierto" : "trabajos abiertos";
   const form = userUI.newOpen ? `<div class="panel"><h2 class="pmh">${pmIco("user-plus")}Nueva persona</h2>
@@ -6373,17 +6431,12 @@ function pUsuarios(){
   ${roleCards}${at ? accessPanel() : ""}${pass}${reqs}${form}
   <div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("users")}Personas del equipo</h2><div class="tag-row">${counts}<span class="tag">Admin total activos: ${activeAdmins().length} (se recomienda 2 o más)</span></div></div>
     <div class="tw" style="border:0;border-radius:0;box-shadow:none"><table><thead><tr><th>Persona</th><th>Rol</th><th>Estado</th><th>Último ingreso</th><th class="r">Acciones</th></tr></thead><tbody>${rows}</tbody></table></div></div>
-  <h2 style="margin:6px 0 -8px" class="pmh">${pmIco("shield-check")}Qué ve cada persona</h2>
-  <div class="tw"><table class="perm"><thead><tr><th>Persona</th><th>Calendarios que ve</th>${SECTIONS.filter(sc => !sc.virtual).map(sc => `<th>${sc.l}</th>`).join("")}</tr></thead><tbody>
-  ${PEOPLE.filter(pp => pp.active).map(pp => {
-    const locked = pp.role === "Admin total";
-    return `<tr><td><div class="who"><b>${pp.name}</b><span>${pp.role}</span></div></td>
-    <td><div class="chips" style="flex-wrap:nowrap">${GROUPS.map(b => { const on = !pp.brands || pp.brands.includes(b); return `<button class="bchip ${on?"on":""}" style="--c:${GROUP_COLOR[b]}" data-pb="${pp.id}|${b}" ${locked?"disabled":""} aria-pressed="${on}">${b === "Otros" ? "Otras" : b}</button>`; }).join("")}</div></td>
-    ${SECTIONS.filter(sc => !sc.virtual).map(sc => { const at = ONLY_AT.includes(sc.k) && pp.role !== "Admin total"; return `<td><button class="tog" aria-label="${sc.l} para ${pp.name}" aria-pressed="${at ? false : pp.perms.has(sc.k)}" data-perm="${pp.id}|${sc.k}" ${locked || at ? "disabled" : ""} ${at ? 'title="Solo Admin total"' : ""}></button></td>`; }).join("")}</tr>`;
-  }).join("")}
-  </tbody></table></div>
-  <p class="note">Los admins siempre ven todo. En la app real, crear personas y restablecer contraseñas lo hace una función segura del servidor que primero verifica que quien lo pide sea admin; las contraseñas se guardan cifradas y nadie puede verlas.</p>`;
+  ${permSheet()}
+  <p class="note">Admin total y Admin siempre ven todo. En la app real, crear personas y restablecer contraseñas lo hace una función segura del servidor que primero verifica que quien lo pide sea admin; las contraseñas se guardan cifradas y nadie puede verlas.</p>`;
 }
+document.addEventListener("click", e => { const t = e.target.closest("[data-pxpreset]"); if (!t) return;
+  const [pid, mode] = t.dataset.pxpreset.split("|"), p = PEOPLE.find(x => x.id === pid); if (!p || p.role === "Admin total" || p.role === "Admin") return;
+  p.perms = new Set(mode === "all" ? permSections().map(sc => sc.k) : ROLE_BASIC); toast(mode === "all" ? `${p.name}: ve todo.` : `${p.name}: ve solo lo básico.`); render(); });
 function pCumples(){
   const list = PEOPLE.filter(pp => pp.active && pp.birthday);
   const missing = PEOPLE.filter(pp => pp.active && !pp.birthday);
@@ -9523,7 +9576,7 @@ function render(){
   const ro = isViewOnly() && ["calendario","calhistoria","calcanales","caldiseno","caldg","calcm","plan","pedidos","gestioncm","inicio"].includes(page) ? `<div class="ro">👁 Perfil Admin (control): ves todo el sitio y descargás informes, pero no modificás contenidos, usuarios ni configuración.</div>` : "";
   const avb = page === "inicio" ? avActiveFor(viewer).filter(a => !a.seen.includes(viewer.id)).sort((a, b) => ["Urgente","Importante","Informativo"].indexOf(a.level) - ["Urgente","Importante","Informativo"].indexOf(b.level)).map(avBanner).join("") : "";
   const inst = false && page === "inicio" && !isInstalledApp() && !installTipClosed() ? `<div class="panel insttip"><span class="pico">${icon("smartphone")}</span><div class="grow"><b>Tené la app a un toque</b><span>Instalala en tu celular, tablet o computadora: queda con su ícono y abre a pantalla completa.</span></div><button class="btn pgen" data-install>${icon("download")} Ver cómo</button><button class="btn ib" data-installclose aria-label="Cerrar aviso">${icon("x")}</button></div>` : "";
-  const bdays = page === "inicio" && can("cumples") ? bdayAlerts().map(({ pp, d }) => `<div class="panel bday ${d === 0 ? "today" : ""}" style="--u:${d === 0 ? "#ef4444" : "#f97316"}"><div class="ic">${CAKE_SVG}</div><div><b>${d === 0 ? `¡Hoy cumple años ${esc(pp.name)}! 🎉` : `${d === 1 ? "Mañana" : `En ${d} días`} cumple años ${esc(pp.name)}`}</b> <span>${esc(pp.cargo || pp.role)} · ${bdayLabel(pp.birthday)}${d === 0 ? " · ¡No te olvides de saludar!" : ""}</span></div></div>`).join("") : "";
+  const bdays = (page === "inicio" || page === "dashboard" ? bdayParty() : "") + (page === "inicio" && can("cumples") ? bdayAlerts().filter(x => x.d > 0).map(({ pp, d }) => `<div class="panel bday" style="--u:#f97316"><div class="ic">${CAKE_SVG}</div><div><b>${d === 1 ? "Mañana" : `En ${d} días`} cumple años ${esc(pp.name)}</b> <span>${esc(pp.cargo || pp.role)} · ${bdayLabel(pp.birthday)}</span></div></div>`).join("") : "");
   const demo = window.RMH?.previewing ? `<div class="panel demo">${icon("info")}<div><b>Vista previa como ${esc(viewer.name)}.</b> <span>Lo que cambies acá no se guarda. Volvé a tu usuario en “ver como” (abajo a la izquierda).</span></div></div>` : "";
   const i = MONTHS_APP.findIndex(m => m.v === MONTH);
   const est = isClosed() ? pill("🔒 Cerrado", "#334155") : isFuture() ? pill("En planificación", "#d946ef") : "";
