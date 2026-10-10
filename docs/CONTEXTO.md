@@ -2,7 +2,7 @@
 
 > Pegá o adjuntá este archivo al empezar una conversación nueva. Resume qué es la app, cómo está armada,
 > cómo se trabaja y en qué punto quedó todo, con el detalle de Instagram (mensajes, menciones y la
-> revisión de Meta). Última actualización: **9 de octubre de 2026** (versión publicada **v149**; en la rama de trabajo hasta **v157**, ver sección 5).
+> revisión de Meta). Última actualización: **9 de octubre de 2026** (versión publicada **v149**; en la rama de trabajo hasta **v160**, ver sección 5).
 > **Acá no hay contraseñas, tokens ni claves**: esas están solo en Vercel/Supabase/Meta.
 
 ---
@@ -184,7 +184,7 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 
 ---
 
-## 5. Otras cosas recientes (v137–v157)
+## 5. Otras cosas recientes (v137–v160)
 - **v150:** los reels salen también en las últimas 9 publicaciones del Dashboard e Informes (con etiqueta “Reel”); el archivo mensual de `api/publicaciones.js` los guarda.
 - **v151:** se puede contestar desde la app también los mensajes de **Facebook** (`api/responder.js` acepta `net: "FB"`, permiso `pages_messaging`); al enviar, la conversación queda como contestada.
 - **v152:** Mensajes se ordena por red: **Facebook** (Inbox · Comentarios) e **Instagram** (DM · Comentarios), cada uno con Sin contestar / Contestados / Todos. Comentarios de Instagram = solo los que arroban a la marca (lo que antes era “Menciones”). Comentarios de Facebook: todavía no llegan (falta permiso de Meta); la pantalla lo avisa.
@@ -193,6 +193,10 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 - **v155:** Mensajes rediseñado: Facebook e Instagram **lado a lado**, cada uno con su tarjeta (sin contestar y % contestado) y su columna (Inbox/DM y Comentarios). Estado y marca se eligen con botones (sin desplegables). En pantallas chicas se ve una red a la vez: se elige tocando su tarjeta.
 - **v156 · permisos:** quien no es Admin ni Admin total (CM y Diseñador) ve **solo** Dashboard, Prompts de imágenes, Staff y Cumpleaños (más su Perfil y Configuración). Admin total le habilita el resto en **Usuarios y permisos**: ahora es una hoja simple, una tarjeta por persona con botones por sección (✓ = lo ve), “Dejar solo lo básico” y “Activar todo”. Admin y Admin total ven todo como antes. Es solo de pantalla: la base (RLS) no cambió. Los permisos viejos se reinician una sola vez (`permsV` 7 en `upgradePerms`).
 - **v157 · cumpleaños:** si hoy cumple años alguien, el Dashboard y el Inicio muestran una celebración (cornetita que revienta y papelitos de colores). Al que cumple le dice “¡Feliz cumpleaños!”. Se apaga con “reducir animaciones”.
+- **v158:** “Vista previa · ver como” es **solo para Fede** (Admin total); Alyssa y el resto no lo tienen. En la vista previa la persona siempre figura “Disponible”. El cartel de cumpleaños va arriba de todo, dentro del margen y probado a 390–1920 px (varios cumpleaños y nombres largos).
+- **v160 · calendarios:** los calendarios (Cumpleaños, Gestión, Planificación…) ya no tienen ancho mínimo fijo: los 7 días entran siempre en el margen de la compu (probado de 1024 a 1920 px). Solo en el celular se desliza de costado.
+- **v159 · Pauta Meta Ads:** la sección Meta Ads pasa a llamarse **Pauta Meta Ads**. Arriba (en las dos pestañas) hay miniaturas de los anuncios que **corren ahora**; al tocar una se ve en grande con su texto y números. `api/anuncios.js` ahora trae **todos los anuncios activos** (aunque todavía no tengan impresiones en el mes), en grupos chicos y todas las marcas a la vez; si una marca falla, el motivo queda en `s:META_CREATIVES.errors` y la pantalla lo avisa. Antes Superseis y Delimarket no guardaban nada (falla sin registro) y las demás marcas quedaban vacías: hay que tocar **Actualizar** en “Corriendo ahora” después de publicar. El botón Actualizar de la app ahora también puede llamar a `/api/anuncios` (Admin total, Admin y CM).
+- **v159 · Comercial:** cuando el servidor lee un Excel que ya estaba y trae productos de más, lo anota (`files[id].added = { n, at, keys }`, función `integraciones` → `comercial_sync`) y la app muestra “**+N más**” al lado del total, el cartel “Se sumaron N productos más en la última actualización”, la etiqueta **Nuevo** en cada producto y el filtro “Ver solo los nuevos”. Lo ve todo el equipo (no depende del dispositivo). **Hay que desplegar la Edge Function `integraciones`** en Supabase para que empiece a anotarlo.
 - Prompts de imágenes: paso 2 "¿Es para un evento festivo?" (14 fechas + Otro) con la onda de cada marca.
 - Procesos de CM en todos lados (incluidos repetitivos y calendarios).
 - Planificación del mes: "Lo que se viene" editable, dura hasta su fecha, íconos, campañas de varias marcas ("Las tres").

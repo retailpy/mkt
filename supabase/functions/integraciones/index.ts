@@ -259,6 +259,16 @@ async function noticias(force: boolean){
 // ---------- Comercial: las ofertas publicadas de cada quincena (Excel "PUBLICADAS" de la carpeta de ofertas) ----------
 // Se guarda en app_state (s:COMERCIAL), una entrada por archivo. Los que después se borran de Drive quedan en la app
 // (memoria del mes); de las quincenas de hace más de 4 meses quedan solo los productos destacados.
+// Productos que aparecen de más cuando se vuelve a leer un Excel que ya estaba (mismo código + nombre, contando repetidos).
+const claveProducto = (i: any) => `${i.cod || ""}|${i.desc || ""}`;
+function productosNuevos(antes: any[] = [], despues: any[] = []){
+  const cont = new Map<string, number>();
+  for (const sh of antes) for (const i of sh.items || []){ const k = claveProducto(i); cont.set(k, (cont.get(k) || 0) + 1); }
+  const keys: string[] = [];
+  for (const sh of despues) for (const i of sh.items || []){ const k = claveProducto(i), n = cont.get(k) || 0; if (n > 0) cont.set(k, n - 1); else keys.push(k); }
+  return keys;
+}
+
 async function comercialSync(c: any, minAge: number){
   if (!c?.sticker_url) return { ok: false, nokey: true, error: "Falta conectar Google Drive (Configuración → Integraciones)." };
   if (await scriptVersion(c.sticker_url, c.sticker_secret) < 4) return { ok: false, old: true, error: "Falta actualizar el script de Google Drive para leer las ofertas: Admin total lo hace en Configuración → Integraciones." };
@@ -269,7 +279,7 @@ async function comercialSync(c: any, minAge: number){
     const l = await scriptPost(c, { kind: "comercial_list" });
     if (!l.ok) throw new Error(l.error || "No se pudo leer la carpeta de ofertas");
     const list = (l.files || []).filter((f: any) => /PUBLICAD/i.test(f.name) && /\.xlsx?$/i.test(f.name));
-    const files: Record<string, any> = { ...(prev.files || {}) }; let nuevos = 0, errores = 0;
+    const files: Record<string, any> = { ...(prev.files || {}) }; let nuevos = 0, errores = 0, agregados = 0;
     for (const f of list){
       const o = files[f.id];
       if (o && o.modified === f.modified && o.v === PARSE_V){ o.inDrive = true; continue; }
@@ -277,8 +287,16 @@ async function comercialSync(c: any, minAge: number){
       if (!j.ok || !j.b64){ errores++; continue; }
       const bin = atob(j.b64), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
       let p; try { p = parseOfertas(bytes); } catch { errores++; continue; }
-      files[f.id] = { id: f.id, name: f.name, brand: marcaDe(f.name), ...periodo(f.name, new Date(f.created || f.modified)), folleto: p.folleto, title: p.title,
+      const fresh: any = { id: f.id, name: f.name, brand: marcaDe(f.name), ...periodo(f.name, new Date(f.created || f.modified)), folleto: p.folleto, title: p.title,
         modified: f.modified, v: PARSE_V, inDrive: true, n: p.count, at: new Date().toISOString(), sheets: p.sheets };
+      // Si el Excel ya estaba y ahora trae productos de más, queda anotado cuántos y cuáles (la app avisa “Se sumaron N productos más”).
+      // Solo si se leyó con el mismo lector: si cambió el lector, la diferencia no es de productos nuevos.
+      if (o && o.v === PARSE_V){
+        const keys = productosNuevos(o.sheets, p.sheets);
+        if (keys.length){ fresh.added = { n: keys.length, at: fresh.at, keys: keys.slice(0, 300) }; agregados += keys.length; }
+        else if (o.added) fresh.added = o.added;
+      }
+      files[f.id] = fresh;
       nuevos++;
     }
     const ids = new Set(list.map((f: any) => f.id));
@@ -298,9 +316,9 @@ async function comercialSync(c: any, minAge: number){
       } catch { /* se reintenta en la próxima revisión */ }
     }
     const now = new Date().toISOString(), data = { v: 1, updated: nuevos || respaldos || !prev.updated ? now : prev.updated, syncedAt: now, backupScript: canBackup, files };
-    if (!row){ const { error } = await db.from("app_state").insert({ key: "s:COMERCIAL", data }); if (!error) return { ok: true, nuevos, errores, respaldos, n: list.length }; continue; }
+    if (!row){ const { error } = await db.from("app_state").insert({ key: "s:COMERCIAL", data }); if (!error) return { ok: true, nuevos, agregados, errores, respaldos, n: list.length }; continue; }
     const { data: up } = await db.from("app_state").update({ data, version: row.version + 1, updated_at: now }).eq("key", "s:COMERCIAL").eq("version", row.version).select("version");
-    if (up && up.length) return { ok: true, nuevos, errores, respaldos, n: list.length };
+    if (up && up.length) return { ok: true, nuevos, agregados, errores, respaldos, n: list.length };
   }
   return { ok: false, error: "Se estaba actualizando al mismo tiempo: probá de nuevo." };
 }

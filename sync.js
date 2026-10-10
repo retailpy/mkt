@@ -422,7 +422,7 @@ const RMH = (() => {
     if (!pp){ await sb.auth.signOut({ scope:"local" }); showLogin(); msg("Tu usuario no está en la lista del equipo. Pedile a un Admin total que lo revise.", true); return; }
     viewer = pp; viewer.role = m.role; viewer.mustChange = false; viewer.active = true;
     const restored = restorePending(); // lo que no se llegó a guardar la vez anterior (sesión cortada o página cerrada)
-    document.querySelectorAll('label[for="viewas"], #viewas').forEach(el => el.hidden = m.role !== "Admin total");
+    document.querySelectorAll('label[for="viewas"], #viewas').forEach(el => el.hidden = m.role !== "Admin total" || me !== "fede"); // “ver como”: solo Admin total Fede
     ready = true; subscribe(); presence(); enterApp();
     if (restored) setTimeout(() => { try { toast(`Se recuperó lo que habías cargado sin guardar (${restored === 1 ? "1 sección" : restored + " secciones"}). Ya se está guardando.`); } catch (e) {} }, 1200);
     checkClock(); if (!clockTimer) clockTimer = setInterval(checkClock, 30 * 60e3);
