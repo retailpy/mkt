@@ -1159,6 +1159,23 @@ td.r,th.r{text-align:right}
 .plist{display:flex;flex-direction:column;gap:14px}
 .prow{display:grid;grid-template-columns:230px 1fr;gap:14px;align-items:center}
 @media (max-width:760px){.prow{grid-template-columns:1fr}}
+/* bienvenida (provisoria) */
+.welcome{max-width:620px;margin:6vh auto 40px;padding:0 8px;text-align:center;display:flex;flex-direction:column;align-items:center}
+.welcome h1{font-size:clamp(22px,4vw,30px);line-height:1.25;font-weight:600;color:var(--white);margin:14px 0 18px;letter-spacing:-.01em}
+.welcome p{color:var(--muted);font-size:15.5px;line-height:1.65;margin:0 0 14px}
+.welcome .wv-lead{color:var(--ink);font-size:17px}
+.welcome .wv-lead b{color:var(--cyan);font-weight:600}
+.welcome .wv-note{margin-top:10px;padding:14px 18px;border:1px dashed var(--line-3);border-radius:14px;font-size:14.5px}
+.welcome .wv-sign{color:var(--faint);font-size:13.5px;margin-top:8px}
+.wv-beta{font-size:11.5px;text-transform:uppercase;letter-spacing:.16em;color:var(--cyan);border:1px solid rgba(34,211,238,.4);border-radius:999px;padding:4px 12px}
+.wv-hand{width:150px;height:150px;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.wv-halo{fill:rgba(34,211,238,.07);stroke:none}
+.wv-palm{stroke:var(--ink);stroke-width:5;transform-origin:78px 128px;animation:wvWave 2.4s ease-in-out infinite}
+.wv-lines{stroke:var(--cyan);stroke-width:3.5;opacity:.75;animation:wvFade 2.4s ease-in-out infinite}
+@keyframes wvWave{0%,60%,100%{transform:rotate(0)}10%,30%{transform:rotate(14deg)}20%,40%{transform:rotate(-8deg)}}
+@keyframes wvFade{0%,60%,100%{opacity:.25}15%,35%{opacity:.85}}
+@media (prefers-reduced-motion:reduce){.wv-palm,.wv-lines{animation:none}}
+@media (max-width:640px){.welcome{margin-top:3vh}.wv-hand{width:120px;height:120px}}
 /* dashboard */
 .fcard{border:1px solid rgba(30,41,59,.9);background:linear-gradient(to bottom,rgba(2,6,23,.55),rgba(15,23,42,.35));border-radius:20px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
 .fhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px}
@@ -2713,6 +2730,7 @@ const GROUP_COLOR = { Superseis:"var(--b-superseis)", Stock:"var(--b-stock)", De
 const groupOf = b => MAIN_BRANDS.includes(b) ? b : "Otros";
 const SECTIONS = [
   { g:"General", k:"dashboard", l:"Dashboard", i:"layout-dashboard" },
+  { g:"General", k:"bienvenida", l:"Bienvenida", i:"hand", virtual:true }, // página provisoria de bienvenida (edición beta), la ven todos
   { g:"General", k:"inicio", l:"Inicio", i:"house" },
   { g:"General", k:"planmes", l:"Planificación del mes", i:"target" },
   { g:"General", k:"alertas", l:"Alertas", i:"bell", hide:true }, // ahora están en Inicio
@@ -3587,6 +3605,26 @@ function postsAuto(){
   const u = postsUpdated(); if (u && Date.now() - new Date(u) < 20 * 3600e3) return;
   postsAuto.done = true; setTimeout(() => metaRefresh("publicaciones", "Publicaciones"), 600);
 }
+// Bienvenida (provisoria): pantalla limpia con una mano que saluda y el porqué de la app. Edición beta.
+function pBienvenida(){
+  const n = viewer && viewer.name ? firstName(viewer.name) : "";
+  return `<section class="welcome">
+    <svg class="wv-hand" viewBox="0 0 160 160" role="img" aria-label="Una mano que saluda">
+      <circle cx="80" cy="84" r="62" class="wv-halo"/>
+      <g class="wv-lines"><path d="M30 46c-6 7-9 15-9 24"/><path d="M40 36c-9 9-14 20-14 32"/><path d="M130 46c6 7 9 15 9 24"/><path d="M120 36c9 9 14 20 14 32"/></g>
+      <g class="wv-palm">
+        <path d="M100 82V50a8 8 0 0 0-16 0v26"/><path d="M84 74V40a8 8 0 0 0-16 0v34"/><path d="M68 76V50a8 8 0 0 0-16 0v42"/>
+        <path d="M100 66a8 8 0 0 1 16 0v26a38 38 0 0 1-38 38h-6c-13 0-21-4-28-11l-17-17a8 8 0 0 1 11-12l10 10"/>
+      </g>
+    </svg>
+    <span class="wv-beta">Edición beta</span>
+    <h1>${n ? `¡Hola, ${esc(n)}!` : "¡Hola!"}<br>Gracias por sumarte a este espacio de trabajo.</h1>
+    <p class="wv-lead">Retail MKT Hub nació para <b>acelerar los procesos</b>, <b>reducir los tiempos de espera</b> y que el equipo esté <b>más comunicado</b>.</p>
+    <p>Queremos una conexión más cercana entre Diseño gráfico, Community Managers y todo Marketing, para lograr juntos nuestros objetivos, con herramientas que nos ayuden a conseguir mejores resultados.</p>
+    <p class="wv-note">Esta es una edición beta: con las semanas la iremos ajustando, con tus ideas y comentarios, para que sea una herramienta de trabajo eficaz para todo el equipo.</p>
+    <p class="wv-sign">— Equipo de Marketing · Retail S.A.</p>
+  </section>`;
+}
 function pDashboard(){
   const bs = socialBrands(); postsAuto();
   return `<div><h1>${helloHTML()}</h1><p class="sub">Dashboard · seguidores y público de todas las cuentas, actualizados todos los días desde Meta.</p></div>
@@ -4063,9 +4101,9 @@ const ONLY_ADMINS = ["historial","historialcm","pauta","reportes"]; // Historial
 // y el Informe Redes (Diseño y CM incluidos). Meta Ads (pauta) y el Informe del mes siguen solo para Admin total y Admin.
 // Lo que cada uno puede cambiar lo sigue decidiendo su rol (cargar pedidos, editar posteos, mover fechas…).
 const ALL_SEE = () => ["comercial","paneldg","panelcm","caldg","calcm","cargadiseno","cargacm","ideas","redes","plan", ...PANEL_DESIGN.map(x => x.k), ...PANEL_CM.map(x => x.k).filter(k => k !== "inbox" && k !== "reclamos")];
-const canAdmin = key => ALL_SEE().includes(key) ? true : key === "inbox" || key === "reclamos" ? ["Admin total","Admin","CM"].includes(viewer.role) : key === "encuestas" || key === "sugerencias" ? viewer.id === "fede" && viewer.role === "Admin total" : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : ONLY_AT.includes(key) ? viewer.role === "Admin total" : ONLY_ADMINS.includes(key) ? isAdminAny() && viewer.perms.has(key) : ["sabados","avisos","perfil","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
+const canAdmin = key => ALL_SEE().includes(key) ? true : key === "inbox" || key === "reclamos" ? ["Admin total","Admin","CM"].includes(viewer.role) : key === "encuestas" || key === "sugerencias" ? viewer.id === "fede" && viewer.role === "Admin total" : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : ONLY_AT.includes(key) ? viewer.role === "Admin total" : ONLY_ADMINS.includes(key) ? isAdminAny() && viewer.perms.has(key) : ["bienvenida","sabados","avisos","perfil","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
 // Admin total y Admin: todo como antes. Las demás personas (CM, Diseñador): solo lo que Admin total les habilitó en Usuarios y permisos.
-const MEMBER_ALWAYS = ["perfil","config","guia"]; // su cuenta: entrar a su perfil, cambiar la contraseña y la ayuda
+const MEMBER_ALWAYS = ["bienvenida","perfil","config","guia"]; // la bienvenida (beta) y su cuenta: entrar a su perfil, cambiar la contraseña y la ayuda
 const canMember = key => ONLY_AT.includes(key) || ONLY_ADMINS.includes(key) ? false : MEMBER_ALWAYS.includes(key) ? true
   : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan")
   : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : viewer.perms.has(key);
@@ -8206,6 +8244,7 @@ const GUIDE = [
     ["shield","Quién ve qué","Admin total ve y maneja todo. Admin (control) ve todo pero no modifica. CM ve lo de CM y sus marcas. Diseñador ve lo de diseño gráfico y sus trabajos. Los permisos se ajustan en Usuarios y permisos."]]],
   ["General", [
     ["layout-dashboard","Dashboard","Seguidores y público de todas las marcas, actualizados desde Meta. Es lo primero que ves al entrar."],
+    ["hand","Bienvenida","Página provisoria de esta edición beta: por qué existe la app y hacia dónde vamos como equipo."],
     ["house","Inicio","Tu resumen del día: saludo, hora y clima de Asunción, una frase según tu carga (si estás en rojo te da ánimo; si estás en verde, te invita a proponer ideas), avisos y cumpleaños, tus tareas y la carga del equipo."],
     ["bell","Alertas","Todo lo pendiente en un solo lugar. Desde cada alerta podés responder, aprobar, pedir correcciones o ir a ver."],
     ["megaphone","Avisos","Comunicados de Admin total para todos, para un grupo (Diseño gráfico, CM, admins) con fecha de inicio y fin. Aparecen arriba en Inicio hasta que tocás “Entendido”; Admin total ve cuántos lo leyeron."],
@@ -8559,8 +8598,8 @@ function pConfig(){
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-pref]"); if (!b) return; const [k, val] = b.dataset.pref.split("|"); viewer[k] = val; savePrefs(viewer); applyPrefs(); render();
   toast(k === "theme" ? `Listo: versión ${val === "light" ? "clara" : "oscura"}.` : k === "textSize" ? `Texto ${val === "big" ? "grande" : "normal"}.` : val === "off" ? "Animaciones desactivadas." : "Animaciones activadas."); });
-const EYEBROW = { comercial:"Ofertas", reclamos:"Community Manager", ideas:"Community Manager", inbox:"Community Manager", noticias:"Community Manager", tendg:"Diseño gráfico", tencm:"Community Manager", paneldg:"Diseño gráfico", panelcm:"Community Manager", caldg:"Diseño gráfico", calcm:"Community Manager", web:"Diseño gráfico", pantallas:"Diseño gráfico", sabados:"Equipo", caldiseno:"Redes sociales", cartel:"Diseño gráfico", calcartel:"Cartelería", historialcm:"Community managers", gestioncm:"Community managers", avisos:"Comunicados del equipo", prompts:"Inteligencia artificial", guia:"Ayuda", archivos:"Diseños y archivos", encuestas:"La voz del equipo", planmes:"Hacia dónde vamos", notas:"Tu espacio", mensajes:"Comunicación interna", sugerencias:"Buzón confidencial", tvimpacto:"Pantalla de oficina", inicio:"Panel general", alertas:"Control", calendario:"Community managers", calhistoria:"Community managers", calcanales:"Community managers", cargadiseno:"Diseño gráfico", cargacm:"Community managers", plan:"Contenidos", pedidos:"Diseño gráfico", tv:"Equipo de diseño", historial:"Diseño gráfico", pauta:"Meta Ads", redes:"Audiencia", reportes:"Resultados del mes", usuarios:"Administración", perfil:"Tu cuenta", cumples:"Equipo", dashboard:"Visión general", tvredes:"Pantalla de oficina", staff:"Equipo", config:"Tu cuenta" };
-const PAGES = { ideas:pIdeas, inbox:pInbox, reclamos:pReclamos, noticias:pNoticias, comercial:pComercial, tendg:() => pTend("dg"), tencm:() => pTend("cm"), paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), caldg:pCalDG, calcm:pPlan, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
+const EYEBROW = { bienvenida:"Edición beta", comercial:"Ofertas", reclamos:"Community Manager", ideas:"Community Manager", inbox:"Community Manager", noticias:"Community Manager", tendg:"Diseño gráfico", tencm:"Community Manager", paneldg:"Diseño gráfico", panelcm:"Community Manager", caldg:"Diseño gráfico", calcm:"Community Manager", web:"Diseño gráfico", pantallas:"Diseño gráfico", sabados:"Equipo", caldiseno:"Redes sociales", cartel:"Diseño gráfico", calcartel:"Cartelería", historialcm:"Community managers", gestioncm:"Community managers", avisos:"Comunicados del equipo", prompts:"Inteligencia artificial", guia:"Ayuda", archivos:"Diseños y archivos", encuestas:"La voz del equipo", planmes:"Hacia dónde vamos", notas:"Tu espacio", mensajes:"Comunicación interna", sugerencias:"Buzón confidencial", tvimpacto:"Pantalla de oficina", inicio:"Panel general", alertas:"Control", calendario:"Community managers", calhistoria:"Community managers", calcanales:"Community managers", cargadiseno:"Diseño gráfico", cargacm:"Community managers", plan:"Contenidos", pedidos:"Diseño gráfico", tv:"Equipo de diseño", historial:"Diseño gráfico", pauta:"Meta Ads", redes:"Audiencia", reportes:"Resultados del mes", usuarios:"Administración", perfil:"Tu cuenta", cumples:"Equipo", dashboard:"Visión general", tvredes:"Pantalla de oficina", staff:"Equipo", config:"Tu cuenta" };
+const PAGES = { bienvenida:pBienvenida, ideas:pIdeas, inbox:pInbox, reclamos:pReclamos, noticias:pNoticias, comercial:pComercial, tendg:() => pTend("dg"), tencm:() => pTend("cm"), paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), caldg:pCalDG, calcm:pPlan, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
 
 /* ---------- render ---------- */
 // Barra de pestañas abajo (celular), como en cualquier app: lo que más usa cada rol + “Más” para el menú completo.
