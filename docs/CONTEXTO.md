@@ -2,7 +2,7 @@
 
 > Pegá o adjuntá este archivo al empezar una conversación nueva. Resume qué es la app, cómo está armada,
 > cómo se trabaja y en qué punto quedó todo, con el detalle de Instagram (mensajes, menciones y la
-> revisión de Meta). Última actualización: **9 de octubre de 2026** (versión publicada **v149**; en la rama de trabajo hasta **v157**, ver sección 5).
+> revisión de Meta). Última actualización: **9 de octubre de 2026** (versión publicada **v149**; en la rama de trabajo hasta **v158**, ver sección 5).
 > **Acá no hay contraseñas, tokens ni claves**: esas están solo en Vercel/Supabase/Meta.
 
 ---
@@ -184,7 +184,7 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 
 ---
 
-## 5. Otras cosas recientes (v137–v157)
+## 5. Otras cosas recientes (v137–v158)
 - **v150:** los reels salen también en las últimas 9 publicaciones del Dashboard e Informes (con etiqueta “Reel”); el archivo mensual de `api/publicaciones.js` los guarda.
 - **v151:** se puede contestar desde la app también los mensajes de **Facebook** (`api/responder.js` acepta `net: "FB"`, permiso `pages_messaging`); al enviar, la conversación queda como contestada.
 - **v152:** Mensajes se ordena por red: **Facebook** (Inbox · Comentarios) e **Instagram** (DM · Comentarios), cada uno con Sin contestar / Contestados / Todos. Comentarios de Instagram = solo los que arroban a la marca (lo que antes era “Menciones”). Comentarios de Facebook: todavía no llegan (falta permiso de Meta); la pantalla lo avisa.
@@ -193,6 +193,7 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 - **v155:** Mensajes rediseñado: Facebook e Instagram **lado a lado**, cada uno con su tarjeta (sin contestar y % contestado) y su columna (Inbox/DM y Comentarios). Estado y marca se eligen con botones (sin desplegables). En pantallas chicas se ve una red a la vez: se elige tocando su tarjeta.
 - **v156 · permisos:** quien no es Admin ni Admin total (CM y Diseñador) ve **solo** Dashboard, Prompts de imágenes, Staff y Cumpleaños (más su Perfil y Configuración). Admin total le habilita el resto en **Usuarios y permisos**: ahora es una hoja simple, una tarjeta por persona con botones por sección (✓ = lo ve), “Dejar solo lo básico” y “Activar todo”. Admin y Admin total ven todo como antes. Es solo de pantalla: la base (RLS) no cambió. Los permisos viejos se reinician una sola vez (`permsV` 7 en `upgradePerms`).
 - **v157 · cumpleaños:** si hoy cumple años alguien, el Dashboard y el Inicio muestran una celebración (cornetita que revienta y papelitos de colores). Al que cumple le dice “¡Feliz cumpleaños!”. Se apaga con “reducir animaciones”.
+- **v158:** “Vista previa · ver como” es **solo para Fede** (Admin total); Alyssa y el resto no lo tienen. En la vista previa la persona siempre figura “Disponible”. El cartel de cumpleaños va arriba de todo, dentro del margen y probado a 390–1920 px (varios cumpleaños y nombres largos).
 - Prompts de imágenes: paso 2 "¿Es para un evento festivo?" (14 fechas + Otro) con la onda de cada marca.
 - Procesos de CM en todos lados (incluidos repetitivos y calendarios).
 - Planificación del mes: "Lo que se viene" editable, dura hasta su fecha, íconos, campañas de varias marcas ("Las tres").

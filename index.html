@@ -6574,6 +6574,8 @@ let chatUI = { open:"", q:"", emoji:false, react:null, grpForm:null, status:fals
 // ----- Estados -----
 const ST_DEF = { on:{ l:"Disponible", c:"#22c55e", e:"🟢" }, away:{ l:"Ausente", c:"#eab308", e:"🟡" }, dnd:{ l:"No molestar", c:"#ef4444", e:"🔴" }, vac:{ l:"Vacaciones", c:"#38bdf8", e:"🏖️" }, off:{ l:"Fuera de línea", c:"#94a3b8", e:"⚪" } };
 function presenceOf(id){
+  // Vista previa (“ver como”): la persona que se está mirando figura siempre Disponible, sin importar cómo dejó su estado.
+  if (window.RMH?.previewing && viewer && id === viewer.id) return { k:"on", ...ST_DEF.on, since:ONLINE[id] || new Date().toISOString() };
   const p = PRESENCE[id] || {}, now = Date.now(), today = TODAY;
   if (p.st === "vac" && p.from && p.to && today >= p.from && today <= p.to) return { k:"vac", ...ST_DEF.vac, note:`hasta el ${dm(p.to)}` };
   const on = ONLINE[id] || (viewer && id === viewer.id ? (ONLINE[id] = new Date().toISOString()) : null); // vos siempre estás en línea mientras usás la app
@@ -9589,7 +9591,7 @@ function render(){
   const keepChat = ci0 ? { v:ci0.value, s:ci0.selectionStart, e:ci0.selectionEnd, f:document.activeElement === ci0 } : null;
   const atBottom = !cm0 || cm0.scrollHeight - cm0.scrollTop - cm0.clientHeight < 60, top0 = cm0?.scrollTop;
   const calSL = render.calPage === page ? [...document.querySelectorAll("#content .calw")].map(w => w.scrollLeft) : null; // el calendario queda donde estaba al volver a dibujarse
-  $("#content").innerHTML = `<div class="${animate && !CAL_PAGES.includes(page) ? (page === "pedidos" || page === "gestioncm" ? "anim" : "fade anim") : "noanim"}${["pedidos","cartel","web","pantallas","gestioncm","calendario","calhistoria","calcanales","inicio","alertas","avisos","mensajes","sugerencias","plan","calcm","caldg","reportes","usuarios","staff","perfil","pauta"].includes(page) ? " clean" : ""}" style="display:flex;flex-direction:column;gap:24px">${bar}${["tv","tvredes","tvimpacto"].includes(page) ? "" : `${EYEBROW[page] ? `<p class="eyebrow">${EYEBROW[page]}</p>` : ""}`}${ro}${avb}${inst}${bdays}${PAGES[page]()}${demo}</div>${installDrawer()}`;
+  $("#content").innerHTML = `<div class="${animate && !CAL_PAGES.includes(page) ? (page === "pedidos" || page === "gestioncm" ? "anim" : "fade anim") : "noanim"}${["pedidos","cartel","web","pantallas","gestioncm","calendario","calhistoria","calcanales","inicio","alertas","avisos","mensajes","sugerencias","plan","calcm","caldg","reportes","usuarios","staff","perfil","pauta"].includes(page) ? " clean" : ""}" style="display:flex;flex-direction:column;gap:24px">${bar}${bdays}${["tv","tvredes","tvimpacto"].includes(page) ? "" : `${EYEBROW[page] ? `<p class="eyebrow">${EYEBROW[page]}</p>` : ""}`}${ro}${avb}${inst}${PAGES[page]()}${demo}</div>${installDrawer()}`;
   if (jobUI.form){ const ff = jobForm(); if (ff) $("#content").innerHTML = ff; } // crear o editar un pedido: página completa
   else if (postUI.form){ const pf = postForm(); if (pf){ $("#content").innerHTML = pf; if (render.pfOpen !== postUI.form){ render.pfOpen = postUI.form; window.scrollTo(0, 0); } } } // publicación, historia o canal: página completa
   else if (lpFull){ $("#content").innerHTML = lpFullPage(); } // últimas publicaciones en grande: página completa
@@ -9631,7 +9633,9 @@ function render(){
 }
 
 refreshPeople();
-$("#viewas").addEventListener("change", e => { const id = e.target.value; RMH.viewAs(id, () => { viewer = PEOPLE.find(p => p.id === id); loadPrefs(viewer); applyPrefs(); brandFilter = "Todas"; render(); const na = (viewer.role === "Admin total" ? adminNotifs().length : myNotifs().length) + msgAlerts().length; toast(RMH.previewing ? `Vista previa como ${viewer.name} (${viewer.role}): lo que cambies no se guarda.` : `Volviste a tu usuario.${na ? ` 🔔 Tenés ${na} ${na === 1 ? "aviso nuevo" : "avisos nuevos"} en Alertas.` : ""}`); }); });
+// “Ver como” (vista previa de otra persona): solo para Fede (Admin total). Alyssa y el resto no lo tienen.
+const viewAsOk = () => window.RMH?.me === "fede";
+$("#viewas").addEventListener("change", e => { if (!viewAsOk()){ e.target.value = viewer.id; return; } const id = e.target.value; RMH.viewAs(id, () => { viewer = PEOPLE.find(p => p.id === id); loadPrefs(viewer); applyPrefs(); brandFilter = "Todas"; render(); const na = (viewer.role === "Admin total" ? adminNotifs().length : myNotifs().length) + msgAlerts().length; toast(RMH.previewing ? `Vista previa como ${viewer.name} (${viewer.role}): lo que cambies no se guarda.` : `Volviste a tu usuario.${na ? ` 🔔 Tenés ${na} ${na === 1 ? "aviso nuevo" : "avisos nuevos"} en Alertas.` : ""}`); }); });
 
 // Menú del celular / iPad: se abre con el botón y se cierra al elegir una sección.
 document.addEventListener("click", e => {
