@@ -27,7 +27,7 @@ equipo. Es una **PWA** (se instala en celular, tablet y compu).
   **Mensajes de las cuentas** (pestañas Mensajes y Menciones), Reclamos del mes.
 - **Recursos:** Prompts de imágenes (con eventos festivos), Archivos y enlaces.
 - **Informes:** Meta Ads, Informe Redes, Informe mensual. **Vista TV:** TV Team, TV Redes, TV Impacto.
-- **Admin:** Usuarios y permisos. **Equipo:** Staff, Turnos Sábados, Cumpleaños. **Ayuda:** Guía de uso.
+- **Admin:** Usuarios y permisos. **Equipo:** Team MKT (antes Staff), Turnos Sábados, Cumpleaños. **Ayuda:** Guía de uso.
 
 ### Procesos (etapas) que la app respeta
 - **Diseño gráfico:** Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección) → Aprobado.
@@ -191,7 +191,9 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 - **v153:** Comercial: al tocar “Actualizar”, al lado del total de productos sale “+N nuevos” (lo agregado en esa actualización, por quincena; queda hasta la próxima novedad y se guarda en el dispositivo).
 - **v154:** en el Panel de CM, el ícono de Mensajes cuenta los sin contestar por separado (“2 Facebook · 3 Instagram sin contestar”).
 - **v155:** Mensajes rediseñado: Facebook e Instagram **lado a lado**, cada uno con su tarjeta (sin contestar y % contestado) y su columna (Inbox/DM y Comentarios). Estado y marca se eligen con botones (sin desplegables). En pantallas chicas se ve una red a la vez: se elige tocando su tarjeta.
-- **v156 · permisos:** quien no es Admin ni Admin total (CM y Diseñador) ve **solo** Dashboard, Prompts de imágenes, Staff y Cumpleaños (más su Perfil y Configuración). Admin total le habilita el resto en **Usuarios y permisos**: ahora es una hoja simple, una tarjeta por persona con botones por sección (✓ = lo ve), “Dejar solo lo básico” y “Activar todo”. Admin y Admin total ven todo como antes. Es solo de pantalla: la base (RLS) no cambió. Los permisos viejos se reinician una sola vez (`permsV` 7 en `upgradePerms`).
+- **v165 · Comercial:** en vez de “Folleto N”, las quincenas se muestran con la fecha de la oferta (botones, título, nombre del Excel y del PDF).
+- **v163 · Comercial:** al lado de “Ver Excel original” hay un botón “Abrir carpeta en Drive” que abre la carpeta de las ofertas.
+- **v156 · permisos:** quien no es Admin ni Admin total (CM y Diseñador) ve **solo** Dashboard, Prompts de imágenes, Team MKT y Cumpleaños (más su Perfil y Configuración). Admin total le habilita el resto en **Usuarios y permisos**: ahora es una hoja simple, una tarjeta por persona con botones por sección (✓ = lo ve), “Dejar solo lo básico” y “Activar todo”. Admin y Admin total ven todo como antes. Es solo de pantalla: la base (RLS) no cambió. Los permisos viejos se reinician una sola vez (`permsV` 7 en `upgradePerms`).
 - **v157 · cumpleaños:** si hoy cumple años alguien, el Dashboard y el Inicio muestran una celebración (cornetita que revienta y papelitos de colores). Al que cumple le dice “¡Feliz cumpleaños!”. Se apaga con “reducir animaciones”.
 - **v158:** “Vista previa · ver como” es **solo para Fede** (Admin total); Alyssa y el resto no lo tienen. En la vista previa la persona siempre figura “Disponible”. El cartel de cumpleaños va arriba de todo, dentro del margen y probado a 390–1920 px (varios cumpleaños y nombres largos).
 - **v160 · calendarios:** los calendarios (Cumpleaños, Gestión, Planificación…) ya no tienen ancho mínimo fijo: los 7 días entran siempre en el margen de la compu (probado de 1024 a 1920 px). Solo en el celular se desliza de costado.

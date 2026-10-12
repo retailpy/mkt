@@ -2770,7 +2770,7 @@ const SECTIONS = [
   { g:"Vista TV", k:"tvredes", l:"Vista TV Redes", i:"monitor-play" },
   { g:"Vista TV", k:"tvimpacto", l:"TV Impacto Redes", i:"trophy" },
   { g:"Admin", k:"usuarios", l:"Usuarios y permisos", i:"shield-check" },
-  { g:"Equipo", k:"staff", l:"Staff", i:"users" },
+  { g:"Equipo", k:"staff", l:"Team MKT", i:"users" },
   { g:"Equipo", k:"sabados", l:"Turnos Sábados", i:"calendar-clock" },
   { g:"Equipo", k:"cumples", l:"Cumpleaños", i:"cake" },
   { g:"Ayuda", k:"guia", l:"Guía de uso", i:"book-open", hide:true }, // ahora está dentro de Configuración
@@ -2806,8 +2806,8 @@ const ROLES = ["Admin total","Admin","Diseñador","CM"];
 const ROLE_INFO = {
   "Admin total":"Configura y controla todo: usuarios, permisos, marcas y cierres de mes.",
   "Admin":"Ve todo el sitio para control, descarga informes. No modifica ni configura.",
-  "Diseñador":"Ve el Dashboard, los Prompts de imágenes, Staff y Cumpleaños. Admin total le habilita lo demás.",
-  "CM":"Ve el Dashboard, los Prompts de imágenes, Staff y Cumpleaños. Admin total le habilita lo demás.",
+  "Diseñador":"Ve el Dashboard, los Prompts de imágenes, Team MKT y Cumpleaños. Admin total le habilita lo demás.",
+  "CM":"Ve el Dashboard, los Prompts de imágenes, Team MKT y Cumpleaños. Admin total le habilita lo demás.",
 };
 let resetRequests = [];
 let userUI = { newOpen:false, confirm:null, lastPass:null };
@@ -3636,19 +3636,19 @@ function pDashboard(){
   <div class="head"><h2 style="margin:0">Demográfico por marca</h2><div class="chips">${bs.map(b => `<button class="chip ${dashBrand === b ? "on" : ""}" data-dbrand="${b}">${b}</button>`).join("")}</div></div>
   <div class="dash-demo" id="dashDemo">${demoBlock(bs.includes(dashBrand) ? dashBrand : bs[0], 0)}${lastPostsPanel([bs.includes(dashBrand) ? dashBrand : bs[0]])}</div>`;
 }
-// Sábados de turno en la tarjeta de Staff; si todavía no eligió los suyos, sale la alerta.
+// Sábados de turno en la tarjeta de Team MKT; si todavía no eligió los suyos, sale la alerta.
 function staffSat(pp){
   if (!satPeople().includes(pp)) return "";
   const l = satList(SAT_TURN[CURRENT_MONTH] || {}, pp.id);
   return `<dt>Sábados de ${MONTHS_ES[+CURRENT_MONTH.slice(5) - 1]}</dt><dd>${l.length ? l.map(dm).join(" y ") : ""}${l.length < SATS_PER ? `<span class="satmiss" data-page="sabados" role="link" tabindex="0">${icon("triangle-alert")} ${l.length ? "Falta elegir 1 sábado" : "Todavía no eligió sus sábados"}</span>` : ""}</dd>`;
 }
 const STAFF_GROUPS = [["Jefa de Marketing", pp => pp.role === "Admin total" || pp.role === "Admin"], ["Diseñador gráfico", pp => pp.role === "Diseñador"], ["Community Manager", pp => pp.role === "CM"]];
-// Cómo se nombra cada puesto en Staff (sin siglas ni nombres internos de permisos).
+// Cómo se nombra cada puesto en Team MKT (sin siglas ni nombres internos de permisos).
 const CARGO_OF = { "Admin total":"Jefa de Marketing", "Admin":"Jefa de Marketing", "CM":"Community Manager", "Diseñador":"Diseñador gráfico" };
 const cargoOf = pp => { const c = (pp.cargo || "").trim(); return !c || CARGO_OF[c] ? CARGO_OF[c || pp.role] || pp.role : c; };
 function pStaff(){
   const sup = viewer.role === "Admin total";
-  // Tu tarjeta te lleva a Mi perfil. Admin total elige quién aparece en Staff (los ocultos solo los ve Admin total).
+  // Tu tarjeta te lleva a Mi perfil. Admin total elige quién aparece en Team MKT (los ocultos solo los ve Admin total).
   const card = pp => { const me = pp.id === viewer.id;
     return `<div class="scard${me ? " mine" : ""}${pp.staffHidden ? " shidden" : ""}"${me ? ` data-mycard role="link" tabindex="0" title="Tocá para editar tu perfil"` : ""}><div class="top">${avatarHTML(pp, "", "width:52px;height:52px;border-radius:16px")}<div><b>${gname(pp.name)}</b>${pp.nick ? `<span class="snick">Le dicen: ${esc(pp.nick)}</span>` : ""}<span>${esc(cargoOf(pp))}</span></div></div>
     ${pp.pending ? `<p class="spend">⚠ ${esc(pp.pending)}</p>` : ""}
@@ -3667,7 +3667,7 @@ function pStaff(){
     </dl>
     <div class="facts" style="display:flex;gap:6px;flex-wrap:wrap">${(pp.skills || []).map(sk => `<span class="skill">${esc(sk)}</span>`).join("") || `<span class="note">Sin habilidades cargadas</span>`}</div>${me ? `<p class="myedit">${icon("pencil")} Tocá tu tarjeta para editar tu perfil</p>` : `<button type="button" class="btn sm schat" data-chatwith="${pp.id}">${icon("messages-square")} Chatear con ${esc(nickOf(pp) || gname(pp.name))}</button>`}${sup ? `<div class="svisrow"><button class="btn sm" data-staffedit="${pp.id}">${icon("pencil")} Editar datos</button><button class="btn sm" data-staffvis="${pp.id}">${pp.staffHidden ? `${icon("eye-off")} Oculto · mostrar` : `${icon("eye")} Visible · ocultar`}</button></div>` : ""}</div>`; };
   const hidden = PEOPLE.filter(pp => pp.active && pp.staffHidden).length;
-  return `<div><h1>Staff</h1><p class="sub">Las personas que forman parte de Retail MKT, para que todos se conozcan.${sup ? ` Como Admin total podés editar los datos de cada persona y elegir quién aparece (“Visible” / “Oculto”)${hidden ? ` · ${hidden} ${hidden === 1 ? "oculta" : "ocultas"}` : ""}.` : ""}</p></div>
+  return `<div><h1>Team MKT</h1><p class="sub">Las personas que forman parte de Retail MKT, para que todos se conozcan.${sup ? ` Como Admin total podés editar los datos de cada persona y elegir quién aparece (“Visible” / “Oculto”)${hidden ? ` · ${hidden} ${hidden === 1 ? "oculta" : "ocultas"}` : ""}.` : ""}</p></div>
   ${STAFF_GROUPS.map(([title, f]) => { const list = PEOPLE.filter(pp => pp.active && f(pp) && (sup || !pp.staffHidden)); return list.length ? `<h2 style="margin:6px 0 -8px;font-size:18px">${title} <span class="note">· ${list.length}</span></h2><div class="staff-grid">${list.map(card).join("")}</div>` : ""; }).join("")}
   <p class="note">Cada persona completa su foto, frase, teléfonos, email personal y habilidades en Mi perfil. El email de la empresa y el usuario de ingreso los carga un admin.</p>${staffDrawer()}`;
 }
@@ -3689,7 +3689,7 @@ function staffDrawer(){
       <label>Teléfono corporativo<input class="base" id="sfWork" value="${esc(pp.workPhone || "")}" placeholder="(021) 000 000 o 0981 000 000"></label>
       <label>Celular personal<input class="base" id="sfPhone" value="${esc(pp.phone || "")}" placeholder="0981 000 000"></label>
       <label>Celular personal adicional<input class="base" id="sfPhone2" value="${esc(pp.phone2 || "")}" placeholder="0981 000 000"><span class="note">Opcional: otro número personal.</span></label>
-      <label>E-mail de la empresa<input class="base" type="email" id="sfMail" value="${esc(pp.email || "")}"><span class="note">Solo se muestra en Staff.</span></label>
+      <label>E-mail de la empresa<input class="base" type="email" id="sfMail" value="${esc(pp.email || "")}"><span class="note">Solo se muestra en Team MKT.</span></label>
       <label>E-mail personal<input class="base" type="email" id="sfMail2" value="${esc(pp.personalEmail || "")}"></label>
       <label>Marca principal<select class="base" id="sfBrand"><option value="">—</option>${mainBrandOptions(pp.mainBrand)}</select></label>
       <label>Cumpleaños<span style="display:flex;gap:6px"><select class="base" id="sfDay" aria-label="Día"><option value="">Día</option>${Array.from({ length:31 }, (_, i) => `<option ${bd[0] === i + 1 ? "selected" : ""}>${i + 1}</option>`).join("")}</select><select class="base" id="sfMonth" aria-label="Mes"><option value="">Mes</option>${MONTHS_ES.map((m, i) => `<option value="${i + 1}" ${bd[1] === i + 1 ? "selected" : ""}>${m}</option>`).join("")}</select></span></label>
@@ -3723,7 +3723,7 @@ document.addEventListener("submit", e => { if (e.target.id !== "staffForm") retu
 });
 document.addEventListener("click", e => {
   const v = e.target.closest("[data-staffvis]");
-  if (v){ if (viewer.role !== "Admin total") return; const pp = PEOPLE.find(x => x.id === v.dataset.staffvis); pp.staffHidden = !pp.staffHidden; render(); toast(pp.staffHidden ? `${pp.name} ya no aparece en Staff.` : `${pp.name} aparece en Staff.`); return; }
+  if (v){ if (viewer.role !== "Admin total") return; const pp = PEOPLE.find(x => x.id === v.dataset.staffvis); pp.staffHidden = !pp.staffHidden; render(); toast(pp.staffHidden ? `${pp.name} ya no aparece en Team MKT.` : `${pp.name} aparece en Team MKT.`); return; }
   if (e.target.closest("[data-mycard]")){ page = "config"; cfgTab = "perfil"; render(); scrollTo(0, 0); }
 });
 document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("[data-mycard]")){ e.preventDefault(); page = "config"; cfgTab = "perfil"; render(); scrollTo(0, 0); } });
@@ -6420,7 +6420,7 @@ function accessPanel(){
     ${!list && withMail.length ? `<p class="note" style="margin:10px 0 0">Para: ${withMail.map(pp => esc(nickOf(pp))).join(", ")}.</p>` : ""}
     ${list ? `<div class="acclist">${list.map(row).join("")}</div><p class="note" style="margin:10px 0 0">Mandáselas por WhatsApp privado o en persona (no por mail ni en grupos). Quedan también en Configuración → Apariencia → Contraseñas provisorias hasta que cada uno elija la suya.</p>
       <div class="chips"><button type="button" class="btn sm" data-accdone>Listo, ya las pasé</button></div>` : ""}
-    ${noMail.length ? `<p class="note accmiss">${icon("mail-warning")} Sin usuario de ingreso (no se les puede dar acceso todavía): ${noMail.map(pp => esc(pp.name)).join(", ")}. Cargalo en Staff → Editar datos.</p>` : ""}</div>`;
+    ${noMail.length ? `<p class="note accmiss">${icon("mail-warning")} Sin usuario de ingreso (no se les puede dar acceso todavía): ${noMail.map(pp => esc(pp.name)).join(", ")}. Cargalo en Team MKT → Editar datos.</p>` : ""}</div>`;
 }
 document.addEventListener("click", async e => {
   if (viewer?.role !== "Admin total") return;
@@ -6432,7 +6432,7 @@ document.addEventListener("click", async e => {
       const pass = genPass(), email = mainEmail(pp).toLowerCase();
       const r = await RMH.admin({ action:"set_password", person_id:pp.id, email, role:pp.role, password:pass, username:pp.username || undefined });
       if (r && r.ok){ pp.mustChange = true; pp.tempPass = pass; out.push({ id:pp.id, name:pp.name, nick:nickOf(pp), email, user:pp.username || "", pass, wa:waPhone(pp), ok:true }); }
-      else out.push({ id:pp.id, name:pp.name, email, user:pp.username || "", ok:false, err:"No se pudo crear: revisá el usuario de ingreso en Staff" });
+      else out.push({ id:pp.id, name:pp.name, email, user:pp.username || "", ok:false, err:"No se pudo crear: revisá el usuario de ingreso en Team MKT" });
     }
     userUI.accBusy = false; userUI.access = out; resetRequests = resetRequests.filter(id => !out.some(x => x.ok && x.id === id));
     refreshPeople(); render(); accessRefresh();
@@ -8280,7 +8280,7 @@ const GUIDE = [
     ["monitor-play","Vista TV Redes","Seguidores y público de cada marca en pantalla completa."],
     ["trophy","TV Impacto Redes","La mejor publicación de cada marca y después el top 10 de cada una."]]],
   ["Equipo", [
-    ["users","Staff","Quién es quién: puesto, frase, marcas, cumpleaños con su signo, número y email de la empresa, email y celular personal y habilidades. Tocá tu propia tarjeta para editar tu perfil. Admin total elige quién aparece (Visible / Oculto)."],
+    ["users","Team MKT","Quién es quién: puesto, frase, marcas, cumpleaños con su signo, número y email de la empresa, email y celular personal y habilidades. Tocá tu propia tarjeta para editar tu perfil. Admin total elige quién aparece (Visible / Oculto)."],
     ["calendar-clock","Turnos Sábados","Cada persona elige los dos sábados del mes que viene a trabajar a la oficina, en la tarjeta de cada sábado (hay un máximo por sábado y avisa si falta un CM o un diseñador de turno). Admin total puede organizar los de todos."],
     ["cake","Cumpleaños","Quién cumple hoy, en una semana y en los próximos meses. También aparecen en Inicio."]]],
   ["Tu cuenta y buzón", [
@@ -8367,7 +8367,7 @@ function pPerfil(){
       <h2 style="margin-top:18px" class="pmh">${pmIco("camera")}Tu foto</h2>
       <div class="chips"><label class="btn primary" style="cursor:pointer">Subir foto<input type="file" id="photoIn" accept="image/png,image/jpeg,image/webp" hidden></label>${v.photo ? `<button class="btn" type="button" data-photo-del>Quitar foto</button>` : ""}</div>
       <p class="note" style="margin:8px 0 0">Se recorta cuadrada y se achica sola. JPG, PNG o WebP.</p>
-      <h2 style="margin-top:18px" class="pmh">${pmIco("id-card")}Tus datos para el Staff</h2>
+      <h2 style="margin-top:18px" class="pmh">${pmIco("id-card")}Tus datos para Team MKT</h2>
       <form id="meForm" class="pform" style="grid-template-columns:1fr">
         <label>¿Cómo querés que te llamen?<input class="base" id="meNick" maxlength="30" value="${esc(v.nick || "")}" placeholder="Ej.: ${esc(v.name.split(" ")[0])}${v.name.split(" ").length > 1 ? ", " + esc(v.name.split(" ")[1]) : ""} o un apodo"><span class="note">Así te saluda la app y así aparecés en tableros, calendarios y la Vista TV. Si lo dejás vacío, usamos tu primer nombre.</span></label>
         <label>Email de la empresa<input class="base" type="email" id="meMail" value="${esc(v.email || "")}" placeholder="Ej.: nombre@retail.com.py" autocomplete="email"><span class="note">Es el de contacto. Para entrar a la app seguís usando tu usuario de ingreso${v.username ? ` (${esc(v.username)})` : ""}.</span></label>
@@ -8381,7 +8381,7 @@ function pPerfil(){
           <div class="hchecks">${Object.keys(BRANDS).map(b => `<label class="hck" style="--c:${BRANDS[b]}"><input type="checkbox" name="meHandled" value="${b}" ${(v.brandsHandled || []).includes(b) ? "checked" : ""}><i></i>${b}</label>`).join("")}</div>
           <button class="btn" type="button" data-hall>Marcar todas</button></fieldset>
         <fieldset class="hbox"><legend>Marcas secundarias</legend><div class="hchecks">${MAIN_BRANDS.map(b => `<label class="hck" style="--c:${BRANDS[b]}"><input type="checkbox" name="meSecond" value="${b}" ${(v.secondBrands || []).includes(b) ? "checked" : ""}><i></i>${b}</label>`).join("")}</div></fieldset>
-        <label>Una frase que te define<input class="base" id="meQuote" maxlength="120" value="${esc(v.quote || "")}" placeholder="Ej.: Siempre a las órdenes · Mi idea es cambiar las cosas"><span class="note">Se ve en tu tarjeta de Staff, para que el equipo te conozca un poco más.</span></label>
+        <label>Una frase que te define<input class="base" id="meQuote" maxlength="120" value="${esc(v.quote || "")}" placeholder="Ej.: Siempre a las órdenes · Mi idea es cambiar las cosas"><span class="note">Se ve en tu tarjeta de Team MKT, para que el equipo te conozca un poco más.</span></label>
         <label>Habilidades (separadas por coma)<input class="base" id="meSkills" value="${esc((v.skills || []).join(", "))}" placeholder="Ej.: Análisis de datos, Informe administrativo"></label>
         <div><button class="btn primary" type="submit">Guardar datos</button></div>
       </form>
@@ -8394,7 +8394,7 @@ function pPerfil(){
         <button class="btn primary" type="submit">Guardar</button>
         ${v.birthday ? `<button class="btn" type="button" data-bdclear>Quitar</button>` : ""}
       </form>
-      <p class="note" style="margin:10px 0 0">Opcional. El año queda privado: en Staff y en Cumpleaños el equipo ve solo el día, el mes y tu signo${v.birthday ? ` (${zodiacOf(v.birthday).n})` : ""}.</p></div>
+      <p class="note" style="margin:10px 0 0">Opcional. El año queda privado: en Team MKT y en Cumpleaños el equipo ve solo el día, el mes y tu signo${v.birthday ? ` (${zodiacOf(v.birthday).n})` : ""}.</p></div>
     <div class="panel"><h2 class="pmh">${pmIco("lock")}Cambiar contraseña</h2>
       <form id="pwForm" class="pform" style="grid-template-columns:1fr">
         <label>Contraseña actual<input class="base" type="password" id="pwOld" autocomplete="current-password" required></label>
@@ -8955,8 +8955,8 @@ const comIco = s => { const t = rclFold(s); return (COM_ICO.find(([re]) => re.te
 const comOfTxt = it => typeof it.of === "number" ? gs(it.of) : comNice(it.of || "");
 const comSheetName = (x, k) => k === 0 || /^PUBLICADAS$/i.test(x.name) ? "Folleto" : comNice(x.name);
 const comBrand = f => f.brand || "Superseis";
-const comTitle = f => `${comBrand(f)}${f.folleto ? " · Folleto " + f.folleto : ""}`;
-const comFileName = f => `Ofertas ${comBrand(f)} del ${comRange(f)}${f.folleto ? " (Folleto " + f.folleto + ")" : ""}`;
+const comTitle = f => `${comBrand(f)} · ${comRange(f)}`;
+const comFileName = f => `Ofertas ${comBrand(f)} del ${comRange(f)}`;
 const COM_FLAG_TXT = { "Tapa":"Tapa", "Destacar":"Destacado", "Zócalo redes":"Redes", "Publicada":"Publicada", "Confirmado":"Confirmado" };
 const comFlag = it => it.flag ? `<span class="cflag f-${rclFold(COM_FLAG_TXT[it.flag] || "x").replace(/\W/g, "")}">${esc(COM_FLAG_TXT[it.flag] || comNice(it.flag))}</span>` : "";
 const COM_COLS = [["Página / sección", i => comSec(i.sec || i.sector)], ["Producto", i => comNice(i.desc)], ["Precio normal", i => typeof i.pvp === "number" ? i.pvp : ""], ["Precio oferta", i => typeof i.of === "number" ? i.of : comNice(i.of)],
@@ -9031,7 +9031,7 @@ function pComercial(){
   if (!comUI.auto && !window.RMH?.previewing){ comUI.auto = true; if (!COMERCIAL.syncedAt || Date.now() - Date.parse(COMERCIAL.syncedAt) > 3 * 3600e3) setTimeout(() => comSync(false), 0); }
   const f0 = per.find(x => x.id === comUI.id) || per[0];
   const head = `<div class="comhero">${COM_ART}<div class="grow"><h1>Ofertas de Comercial</h1><p>Lo que sale en el folleto de cada quincena, listo para diseñar.</p></div>
-    <div class="comacts">${f0 ? `<button class="btn" type="button" data-comxls>${icon("download")} Excel</button><button class="btn" type="button" data-compdf>${icon("file-text")} PDF</button>` : ""}<button class="btn" type="button" data-comsync ${comUI.busy ? "disabled" : ""}>${icon("refresh-cw")} ${comUI.busy ? "Revisando…" : "Actualizar"}</button></div></div>`;
+    <div class="comacts">${f0 ? `<button class="btn" type="button" data-comxls>${icon("download")} Excel</button><button class="btn" type="button" data-compdf>${icon("file-text")} PDF</button>` : ""}<a class="btn" href="https://drive.google.com/drive/folders/1ciqZuhAtcIa-_OYYutd-8Zq8CTPZS-5N" target="_blank" rel="noopener" title="Abre la carpeta original de Drive donde Comercial envía las ofertas">${icon("folder-open")} Carpeta de Comercial (Drive)</a><button class="btn" type="button" data-comsync ${comUI.busy ? "disabled" : ""}>${icon("refresh-cw")} ${comUI.busy ? "Revisando…" : "Actualizar"}</button></div></div>`;
   if (!per.length) return head + `<div class="panel"><div class="empty">${comUI.busy ? "Leyendo las ofertas del Drive…" : comAll().length ? `${icon("calendar-x")} No hay ofertas de Comercial en ${monthName(MONTH)}.` : `Todavía no se leyeron las ofertas. Tocá <b>Actualizar</b>.${viewer.role === "Admin total" ? " Si avisa que falta el script, actualizalo en Configuración → Integraciones." : ""}`}</div></div>`;
   const f = f0; comUI.id = f.id;
   const chips = per.slice(0, 4), older = per.slice(4);
@@ -9053,13 +9053,13 @@ function pComercial(){
       <span class="cofd2" data-l="${pc ? "Descuento" : ""}">${pc ? `<span class="cpct sm">−${esc(pc)}</span>` : ""}</span></div>${comCopyBtn(id)}</div>
       ${open ? `<dl class="cofd">${[["Código", i.cod], ["Material", i.mat], ["Sector", comSent(i.sector)], ["Temática", comSent(i.tem)], ["Reconocimiento", typeof i.rec === "number" ? gs(i.rec) : i.rec], ["Oferta negociada", i.neg], ["Proveedor", comNice(i.prov) + (i.nprov ? " · N.° " + i.nprov : "")], ["Subcategoría", comSent(i.sub)], ["Página del folleto", comSec(i.sec)], ["Destacado", COM_FLAG_TXT[i.flag] || i.flag]].filter(([, v]) => v && String(v).trim()).map(([l, v]) => `<dt>${l}</dt><dd>${esc(String(v))}</dd>`).join("")}</dl>` : ""}</div>`; };
   const bySec = []; list.forEach(i => { const k = comSec(i.sec || i.sector); let g = bySec.find(x => x[0] === k); if (!g) bySec.push(g = [k, []]); g[1].push(i); });
-  return head + `<div class="comper" role="group" aria-label="Quincena">${chips.map(x => { const st = comState(x); return `<button type="button" class="comchip s-${st} ${x.id === f.id ? "on" : ""}" data-comper="${x.id}" aria-pressed="${x.id === f.id}"><small>${icon(st === "vig" ? "circle-check" : st === "prox" ? "calendar-clock" : "history")}${COM_ST[st]}</small><b>${comRange(x)}</b>${x.folleto ? `<small class="cfol">${icon("book-open")}Folleto ${esc(x.folleto)}</small>` : ""}</button>`; }).join("")}
+  return head + `<div class="comper" role="group" aria-label="Quincena">${chips.map(x => { const st = comState(x); return `<button type="button" class="comchip s-${st} ${x.id === f.id ? "on" : ""}" data-comper="${x.id}" aria-pressed="${x.id === f.id}"><small>${icon(st === "vig" ? "circle-check" : st === "prox" ? "calendar-clock" : "history")}${COM_ST[st]}</small><b>${comRange(x)}</b></button>`; }).join("")}
       ${older.length ? `<select class="base sm" data-comold aria-label="Quincenas anteriores"><option value="">Quincenas anteriores…</option>${older.map(x => `<option value="${x.id}" ${x.id === f.id ? "selected" : ""}>${comRange(x)} ${x.from.slice(0, 4)}</option>`).join("")}</select>` : ""}</div>
-    <section class="comhead"><h2>${esc(comBrand(f))}${f.folleto ? `<span class="comfol">${icon("book-open")}Folleto ${esc(f.folleto)}</span>` : ""}</h2>
+    <section class="comhead"><h2>${esc(comBrand(f))}</h2>
       <p class="comdate">${icon("calendar-range")}<span>Ofertas del <b>${comRange(f)}</b> · ${COM_ST[comState(f)].toLowerCase()}</span></p>
       ${newN ? `<div class="comalert" role="status">${icon("sparkles")}<div><b>${newN === 1 ? "Se sumó 1 producto más" : `Se sumaron ${newN} productos más`}</b> en la última actualización <span class="note">· ${esc(comAddedAt(f))}</span></div><button type="button" class="btn sm" data-comnewonly-btn>${comUI.onlyNew ? "Ver todos" : "Ver solo los nuevos"}</button></div>` : ""}
       <div class="comk"><span>${icon("package")}<b>${all.length}</b> productos${newN ? `<em class="comnew" title="Se sumaron en la última actualización (${esc(comAddedAt(f))})">+${newN} más</em>` : ""}</span>${groupsTop.map(g => `<span class="k-${g[2]}">${icon(g[1])}<b>${g[3].length}</b> ${g[3].length === 1 && g[0] === "Destacados" ? "destacado" : g[0].toLowerCase()}</span>`).join("")}${best ? `<span class="k-pct">${icon("badge-percent")}hasta <b>${best}%</b> de descuento</span>` : ""}</div>
-      <div class="comsrc">${f.inDrive === false ? `<span class="comgone">${icon("file-x")} Ya no se encuentra el archivo original en Drive (los datos quedan guardados acá)</span>` : /^[\w-]{10,}$/.test(f.id) ? `<a class="btn sm" href="https://drive.google.com/file/d/${encodeURIComponent(f.id)}/view" target="_blank" rel="noopener">${icon("file-spreadsheet")} Ver Excel original</a>` : ""}${f.backup?.url ? `<a class="btn sm" href="${esc(f.backup.url)}" target="_blank" rel="noopener">${icon("hard-drive")} Respaldo en Drive</a>` : ""}<span class="note">${icon("refresh-cw")} Revisado ${COMERCIAL.syncedAt ? inboxAge(COMERCIAL.syncedAt) : "—"}</span></div>
+      <div class="comsrc">${f.inDrive === false ? `<span class="comgone">${icon("file-x")} Ya no se encuentra el archivo original en Drive (los datos quedan guardados acá)</span>` : /^[\w-]{10,}$/.test(f.id) ? `<a class="btn sm" href="https://drive.google.com/file/d/${encodeURIComponent(f.id)}/view" target="_blank" rel="noopener">${icon("file-spreadsheet")} Ver Excel original</a>` : ""}<a class="btn sm" href="https://drive.google.com/drive/folders/1ciqZuhAtcIa-_OYYutd-8Zq8CTPZS-5N" target="_blank" rel="noopener" title="Abre la carpeta de Drive con los Excel de las ofertas">${icon("folder-open")} Abrir carpeta en Drive</a>${f.backup?.url ? `<a class="btn sm" href="${esc(f.backup.url)}" target="_blank" rel="noopener">${icon("hard-drive")} Respaldo en Drive</a>` : ""}<span class="note">${icon("refresh-cw")} Revisado ${COMERCIAL.syncedAt ? inboxAge(COMERCIAL.syncedAt) : "—"}</span></div>
       ${COMERCIAL.backupScript === false && viewer.role === "Admin total" ? `<p class="note comwarn">${icon("info")} Para que el respaldo se guarde solo en Drive, actualizá el script de Google Drive en Configuración → Integraciones.</p>` : ""}</section>
     ${groupsTop.map(([t, ic, cls, items]) => `<section class="comgrp g-${cls}"><h3 class="comgh">${icon(ic)}<span>${t}</span><small>${items.length}</small></h3>${comGuide(cls)}${cls === "tapa" && dupTapa.length ? `<p class="comdup">${icon("triangle-alert")}<span><b>Revisar:</b> ${dupTapa.length === 1 ? "este producto de tapa también aparece" : "estos productos de tapa también aparecen"} adentro del folleto: ${dupTapa.map(i => `${esc(comNice(i.desc))} (${esc(comSec(i.sec || i.sector))})`).join(" · ")}.</span></p>` : ""}<div class="comtop">${items.slice(0, 24).map(i => { const si = sheets.findIndex(x => x.items.includes(i)); return comCard(i, si < 0 ? "" : f.id + ":" + si + ":" + sheets[si].items.indexOf(i)); }).join("")}</div></section>`).join("")}
     <section class="comlist">
@@ -9834,7 +9834,7 @@ document.addEventListener("change", e => {
     const r = new FileReader(); r.onload = () => { const img = new Image(); img.onload = () => {
       const c = document.createElement("canvas"); c.width = c.height = 160; const sz = Math.min(img.width, img.height);
       c.getContext("2d").drawImage(img, (img.width - sz) / 2, (img.height - sz) / 2, sz, sz, 0, 0, 160, 160);
-      viewer.photo = c.toDataURL("image/jpeg", 0.85); render(); toast("¡Foto actualizada! Ya se ve en Staff, Usuarios y tu Inicio."); };
+      viewer.photo = c.toDataURL("image/jpeg", 0.85); render(); toast("¡Foto actualizada! Ya se ve en Team MKT, Usuarios y tu Inicio."); };
       img.onerror = () => toast("No se pudo leer esa imagen."); img.src = r.result; }; r.readAsDataURL(f);
   }
 });
@@ -9847,7 +9847,7 @@ document.addEventListener("submit", e => {
     viewer.nick = $("#meNick").value.trim() || null; viewer.secondBrands = [...document.querySelectorAll('input[name="meSecond"]:checked')].map(x => x.value);
     viewer.quote = $("#meQuote").value.trim() || null; viewer.personalEmail = m2 || null; viewer.brandsHandled = [...document.querySelectorAll('input[name="meHandled"]:checked')].map(x => x.value);
     viewer.phone = $("#mePhone").value.trim(); viewer.phone2 = $("#mePhone2").value.trim() || null; viewer.workPhone = $("#meWork").value.trim(); viewer.mainBrand = $("#meBrand").value || null; if (viewer.mainBrand !== VARIAS) viewer.brandsHandled = []; viewer.skills = $("#meSkills").value.split(",").map(x => x.trim()).filter(Boolean);
-    render(); window.RMH?.flushNow?.(); toast("Guardado. Tus datos ya se ven en Staff."); return; }
+    render(); window.RMH?.flushNow?.(); toast("Guardado. Tus datos ya se ven en Team MKT."); return; }
   if (e.target.id === "jobForm"){ e.preventDefault();
     if (rtUploading(document.getElementById("jBriefF"))){ toast("Esperá que termine de subir la imagen."); return; }
     const f = jobUI.form, j = f.job, title = $("#jTitle").value.trim(), due = $("#jDue").value;
