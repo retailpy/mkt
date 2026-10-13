@@ -191,6 +191,7 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 - **v153:** Comercial: al tocar “Actualizar”, al lado del total de productos sale “+N nuevos” (lo agregado en esa actualización, por quincena; queda hasta la próxima novedad y se guarda en el dispositivo).
 - **v154:** en el Panel de CM, el ícono de Mensajes cuenta los sin contestar por separado (“2 Facebook · 3 Instagram sin contestar”).
 - **v155:** Mensajes rediseñado: Facebook e Instagram **lado a lado**, cada uno con su tarjeta (sin contestar y % contestado) y su columna (Inbox/DM y Comentarios). Estado y marca se eligen con botones (sin desplegables). En pantallas chicas se ve una red a la vez: se elige tocando su tarjeta.
+- **v169 · Videos:** el pedido de video elige “Video para redes” (formato Reel, TikTok o Reel + TikTok, y tema) o “Video para pantallas” (tema). Planificación y Plan de posteo tienen vista Tablero además del Calendario.
 - **v168 · Gestión Videos:** ahora es igual a Gestión Redes, Historia y Canal: Calendario (predeterminado), Tablero y Tabla, con el proceso de videos (Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado). Los tipos de trabajo son solo de video (v167).
 - **v165 · Comercial:** en vez de “Folleto N”, las quincenas se muestran con la fecha de la oferta (botones, título, nombre del Excel y del PDF).
 - **v163 · Comercial:** al lado de “Ver Excel original” hay un botón “Abrir carpeta en Drive” que abre la carpeta de las ofertas.
