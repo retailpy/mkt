@@ -2776,12 +2776,16 @@ const SECTIONS = [
   { g:"Ayuda", k:"guia", l:"Guía de uso", i:"book-open", hide:true }, // ahora está dentro de Configuración
 ];
 // Lo que ve cualquier persona que no es Admin ni Admin total: solo esto. Admin total le habilita el resto, persona por persona (Usuarios y permisos).
-const ROLE_BASIC = ["dashboard","prompts","staff","cumples"];
+const ROLE_BASIC = ["dashboard","prompts","staff","cumples"]; // el botón “Dejar solo lo básico” de Usuarios y permisos
+// Lo que CM y Diseñador ven de arranque: todo menos lo que es solo de Admin (Vista TV, historiales, Pauta Meta Ads, Informe mensual,
+// Usuarios y permisos, Encuestas y Sugerencias). Mensajes de las cuentas y Reclamos: solo CM.
+const ROLE_COMMON = ["dashboard","inicio","alertas","avisos","mensajes","notas","planmes","comercial","prompts","archivos","staff","sabados","cumples","guia","ideas","redes","plan","calcm","cargadiseno","cargacm","pedidos","cartel","web","pantallas","caldiseno","calcartel","calendario","calhistoria","calcanales","gestioncm"];
+const ROLE_CM = [...ROLE_COMMON, "inbox", "reclamos"], ROLE_DESIGN = ROLE_COMMON;
 const ROLE_DEFAULTS = {
   "Admin total": SECTIONS.map(s => s.k),
   "Admin": SECTIONS.map(s => s.k).filter(k => !["usuarios","config"].includes(k)),
-  "CM": ROLE_BASIC,
-  "Diseñador": ROLE_BASIC,
+  "CM": ROLE_CM,
+  "Diseñador": ROLE_DESIGN,
 };
 const PEOPLE = [
   { id:"alyssa", username:"Alesme", workPhone:"+595 21 618 1001", phone:"+595 981 111 222", mainBrand:"Varias", skills:["Planificación estratégica","Gestión de equipos","Análisis de datos"], birthday:"11-08", brandsHandled:["Superseis","Stock","Delimarket"], quote:"Mi idea es cambiar las cosas", name:"Alyssa Lesme", cargo:"Jefa de Marketing", email:"alyssa.lesme@empresa.com.py", role:"Admin total", brands:null, last:"hoy 08:12" },
@@ -2796,18 +2800,18 @@ const PEOPLE = [
 PEOPLE.forEach(p => { p.perms = new Set(p.perms || ROLE_DEFAULTS[p.role]); p.active = true; p.mustChange = false; if (p.role !== "Diseñador" && p.perms.has("pedidos")) { p.perms.add("gestioncm"); p.perms.add("historialcm"); } if (p.perms.has("calendario")) p.perms.add("caldiseno"); upgradePerms(p); });
 // Secciones que se agregaron después: quien ya veía la sección de origen, ve también la nueva (una sola vez;
 // después cada permiso se prende o apaga por separado en Usuarios y permisos).
-function upgradePerms(p){ const v = p.permsV || 1; if (v >= 7) return;
+function upgradePerms(p){ const v = p.permsV || 1; if (v >= 8) return;
   if (v < 6) [[2,"pedidos","cargadiseno"],[2,"gestioncm","cargacm"],[2,"calendario","calhistoria"],[3,"calendario","calcanales"],[4,"pedidos","cartel"],[4,"caldiseno","calcartel"],[5,"cartel","web"],[6,"cartel","pantallas"]].forEach(([ver, from, to]) => { if (v < ver && p.perms.has(from)) p.perms.add(to); });
-  // v7: quien no es Admin ni Admin total pasa a ver solo lo básico (una sola vez); después Admin total le prende lo que haga falta.
-  if (p.role !== "Admin total" && p.role !== "Admin") p.perms = new Set(ROLE_BASIC);
-  p.permsV = 7; }
+  // v8: CM y Diseñador vuelven a ver todo lo de antes (menos lo que es solo de Admin), una sola vez; después Admin total ajusta por persona.
+  if (p.role === "CM" || p.role === "Diseñador") p.perms = new Set(ROLE_DEFAULTS[p.role]);
+  p.permsV = 8; }
 let DESIGNERS = [];
 const ROLES = ["Admin total","Admin","Diseñador","CM"];
 const ROLE_INFO = {
   "Admin total":"Configura y controla todo: usuarios, permisos, marcas y cierres de mes.",
   "Admin":"Ve todo el sitio para control, descarga informes. No modifica ni configura.",
-  "Diseñador":"Ve el Dashboard, los Prompts de imágenes, Team MKT y Cumpleaños. Admin total le habilita lo demás.",
-  "CM":"Ve el Dashboard, los Prompts de imágenes, Team MKT y Cumpleaños. Admin total le habilita lo demás.",
+  "Diseñador":"Ve todo menos Vista TV, los historiales, Pauta Meta Ads, el Informe mensual y Usuarios (esas son solo para Admin). Admin total puede sacarle o darle secciones. No ve los mensajes de las cuentas ni los reclamos.",
+  "CM":"Ve todo menos Vista TV, los historiales, Pauta Meta Ads, el Informe mensual y Usuarios (esas son solo para Admin). Admin total puede sacarle o darle secciones.",
 };
 let resetRequests = [];
 let userUI = { newOpen:false, confirm:null, lastPass:null };
@@ -6477,7 +6481,7 @@ document.addEventListener("click", async e => {
   if (e.target.closest("[data-accdone]")){ userUI.access = null; render(); }
 });
 // Hoja de permisos: una tarjeta por persona con lo que ve, agrupado por sección. Un toque prende o apaga cada cosa.
-// Admin total y Admin ven todo (no hace falta marcarles nada). El resto arranca viendo solo lo básico (ROLE_BASIC).
+// Admin total y Admin ven todo (no hace falta marcarles nada). CM y Diseñador arrancan viendo todo menos lo de Admin (ROLE_CM / ROLE_DESIGN).
 const PERM_EXTRA = ["comercial","inbox","reclamos","ideas"]; // secciones “virtuales” que también se pueden habilitar a mano
 const permSections = () => SECTIONS.filter(sc => (!sc.virtual || PERM_EXTRA.includes(sc.k)) && !ONLY_AT.includes(sc.k) && !ONLY_ADMINS.includes(sc.k));
 function permSheet(){
