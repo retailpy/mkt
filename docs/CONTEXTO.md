@@ -23,7 +23,7 @@ equipo. Es una **PWA** (se instala en celular, tablet y compu).
 - **General:** Dashboard, Inicio, Planificación del mes, Alertas, Avisos, Chat Retail MKT, Comercial, Bloc de notas.
 - **Diseño gráfico:** Panel de Trabajo, Planificación, Carga de trabajo, Tendencias, Diseño para Redes / Cartelería / Web / Pantallas, Historial.
 - **Community Manager:** Panel de Trabajo, Planificación, Carga de trabajo, Tendencias, Noticias, Plan de posteo,
-  Gestión Redes, Gestión Historia, Gestión Canal WhatsApp, Gestión Videos, Historial CM, Ideas Random,
+  Gestión Redes, Gestión Historia, Gestión Canal WhatsApp, Gestión de Video, Historial CM, Ideas Random,
   **Mensajes de las cuentas** (pestañas Mensajes y Menciones), Reclamos del mes.
 - **Recursos:** Prompts de imágenes (con eventos festivos), Archivos y enlaces.
 - **Informes:** Meta Ads, Informe Redes, Informe mensual. **Vista TV:** TV Team, TV Redes, TV Impacto.
@@ -33,7 +33,7 @@ equipo. Es una **PWA** (se instala en celular, tablet y compu).
 - **Diseño gráfico:** Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección) → Aprobado.
 - **CM publicaciones** (feed, historias, Plan de posteo): Pendiente → En proceso → Programado → Publicado → Pautado.
 - **Canal de WhatsApp:** las mismas, sin Pautado.
-- **Gestión Videos:** Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado.
+- **Gestión de Video:** Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado.
 - Los repetitivos siguen el proceso de su tipo.
 
 ---
@@ -191,8 +191,9 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 - **v153:** Comercial: al tocar “Actualizar”, al lado del total de productos sale “+N nuevos” (lo agregado en esa actualización, por quincena; queda hasta la próxima novedad y se guarda en el dispositivo).
 - **v154:** en el Panel de CM, el ícono de Mensajes cuenta los sin contestar por separado (“2 Facebook · 3 Instagram sin contestar”).
 - **v155:** Mensajes rediseñado: Facebook e Instagram **lado a lado**, cada uno con su tarjeta (sin contestar y % contestado) y su columna (Inbox/DM y Comentarios). Estado y marca se eligen con botones (sin desplegables). En pantallas chicas se ve una red a la vez: se elige tocando su tarjeta.
+- **v171 · CM:** se llama “Gestión de Video” (ya no “Pedido de video”). Las vistas de CM van Calendario → Tabla → Tablero. En los calendarios de Gestión, tocar un día vacío lleva a Planificación (con el menú para cargar ese día) y tocar un video abre la ficha del pedido con sus textos.
 - **v169 · Videos:** el pedido de video elige “Video para redes” (formato Reel, TikTok o Reel + TikTok, y tema) o “Video para pantallas” (tema). Planificación y Plan de posteo tienen vista Tablero además del Calendario.
-- **v168 · Gestión Videos:** ahora es igual a Gestión Redes, Historia y Canal: Calendario (predeterminado), Tablero y Tabla, con el proceso de videos (Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado). Los tipos de trabajo son solo de video (v167).
+- **v168 · Gestión de Video:** ahora es igual a Gestión Redes, Historia y Canal: Calendario (predeterminado), Tablero y Tabla, con el proceso de videos (Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado). Los tipos de trabajo son solo de video (v167).
 - **v165 · Comercial:** en vez de “Folleto N”, las quincenas se muestran con la fecha de la oferta (botones, título, nombre del Excel y del PDF).
 - **v163 · Comercial:** al lado de “Ver Excel original” hay un botón “Abrir carpeta en Drive” que abre la carpeta de las ofertas.
 - **v156 · permisos:** quien no es Admin ni Admin total (CM y Diseñador) ve **solo** Dashboard, Prompts de imágenes, Team MKT y Cumpleaños (más su Perfil y Configuración). Admin total le habilita el resto en **Usuarios y permisos**: ahora es una hoja simple, una tarjeta por persona con botones por sección (✓ = lo ve), “Dejar solo lo básico” y “Activar todo”. Admin y Admin total ven todo como antes. Es solo de pantalla: la base (RLS) no cambió. Los permisos viejos se reinician una sola vez (`permsV` 7 en `upgradePerms`).
