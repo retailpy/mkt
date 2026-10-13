@@ -3085,7 +3085,7 @@ const isClosedJob = j => isFin(j) || j.status === "Cancelado";
 // Gestión Diseño y Gestión CM: mismo sistema para Diseño y CM (como Creative Flow), cada área con sus tipos de trabajo.
 const areaName = a => a === "Diseño" ? "Diseño gráfico" : a;
 const AREAS = { "Diseño":{ icon:"🎨", prefix:"DI" }, "CM":{ icon:"🎬", prefix:"CM" } };
-const CM_TYPES = ["Edición de video","Grabación de video","Copys y textos","Publicación y programación","Armado de pauta","Cobertura de evento","Otro"];
+const CM_TYPES = ["Grabación de video","Edición de video","Grabación y edición","Cobertura de evento","Reel","Otro"]; // Gestión Videos: solo trabajos de video
 const DESIGN_TYPES = ["Post RRSS","Carrusel","Historia","Reel","Banner web","PDF de ofertas de la semana","Flyer impreso","Cartelería","Vía pública","Catálogo digital","Empaque o etiqueta","Pantalla","Video para pantallas","Pantalla LED","Menú digital","Email marketing","Otro"];
 const SOLICITANTES = ["Marketing","Trade Marketing","E-commerce","Visual Merchandising","Gerencia Comercial","Gerencia General","RRSS","Emanuel Goia","Comercial","Patricia Chapp","Enrique Ortiz","Omnicanalidad","Otro"];
 const PRIORIDADES = ["Baja","Media","Alta","Urgente"];
@@ -4390,7 +4390,7 @@ const PANEL_CM = [
   { k:"calendario", t:"Redes Sociales", d:"El feed de cada marca: posts, carruseles y reels con su fecha y estado.", i:"calendar-days" },
   { k:"calhistoria", t:"Historias", d:"Historias de Instagram y Facebook, día por día.", i:"smartphone" },
   { k:"calcanales", t:"Canal de WhatsApp", d:"Ofertas y novedades del canal, y los envíos repetitivos.", i:"message-circle" },
-  { k:"gestioncm", t:"Gestión de Videos", d:"Grabaciones, ediciones, coberturas, copys y armado de pauta.", i:"clapperboard" },
+  { k:"gestioncm", t:"Gestión de Videos", d:"Grabaciones, ediciones y coberturas de video.", i:"clapperboard" },
   { k:"inbox", t:"Mensajes", d:"Mensajes directos de Instagram y Facebook de cada marca y los comentarios que la arroban (@marca): quién escribió y si ya se contestó.", i:"inbox" },
   { k:"reclamos", t:"Reclamos del mes", d:"Se arma solo con los mensajes del mes: quién reclamó, el motivo, la sucursal y qué pide, resumido para compartir con la empresa.", i:"message-square-warning" },
   { k:"ideas", t:"Ideas Random", d:"Ideas para creadores de contenido: lo que es tendencia en TikTok, Instagram y Facebook, para Superseis, Stock y Delimarket.", i:"lightbulb" },
@@ -5217,7 +5217,7 @@ function jobForm(){
   if (!f.repDays) f.repDays = [...(f.job.rep?.days || [])];
   const j = f.job, area = j.area;
   // Redes Sociales y Cartelería tienen cada una sus tipos de pieza.
-  const sec = jobSection(j), types = area === "CM" ? CM_TYPES : page === "caldg" ? [...new Set([...DESIGN_TYPES, j.piece].filter(Boolean))] : secPieces(sec); // en el Calendario de Diseño se elige cualquier tipo de pieza
+  const sec = jobSection(j), types = area === "CM" ? [...new Set([...CM_TYPES, j.piece].filter(Boolean))] : page === "caldg" ? [...new Set([...DESIGN_TYPES, j.piece].filter(Boolean))] : secPieces(sec); // en el Calendario de Diseño se elige cualquier tipo de pieza
   const opt = (list, v) => list.map(x => `<option ${x === v ? "selected" : ""}>${x}</option>`).join("");
   return `<div class="jpage jformpage" aria-label="Formulario de trabajo">
     <div class="jp-top"><button class="btn" type="button" data-jclose>${icon("arrow-left")} Volver</button></div>
@@ -5704,7 +5704,7 @@ function pGestionCM(){
   if (cmUI.tview === "repetitivos" && canCreateJobs()) return `<div class="head"><div><h1 class="pmh">${pmIco("repeat")}Pedidos repetitivos</h1><p class="sub">Lo que se repite ciertos días de la semana. Se carga solo en el calendario.</p></div><button class="btn" data-cmtv="calendario">‹ Volver a Gestión Videos</button></div>
     <button class="panel cmnew cmrec" data-recgo="Historia"><span class="cmplus">${icon("repeat")}</span><span><b>Cargar pedido repetitivo</b><small>Todos los lunes, o lunes y viernes… desde una fecha hasta otra (o sin fin).</small></span></button>
     ${recurringList()}${recDrawer()}`;
-  return pedPage("CM", "Gestión Videos", "clapperboard", `Los pedidos a los CM: grabaciones, ediciones de video, coberturas, copys y armado de pauta.${ownsJobs() ? " Cambiá el estado de tus pedidos desde la tabla o desde Procesos." : ""}`,
+  return pedPage("CM", "Gestión Videos", "clapperboard", `Los pedidos de video a los CM: grabaciones, ediciones y coberturas.${ownsJobs() ? " Cambiá el estado de tus pedidos desde la tabla o desde Procesos." : ""}`,
     "Qué se necesita, para qué marca, quién lo hace y para cuándo.", canCreateJobs() ? `<button class="btn" data-cmtv="repetitivos">${icon("repeat")} Repetitivos</button>` : "") + recDrawer();
 }
 const TV_TEAM_MIN = 10;
