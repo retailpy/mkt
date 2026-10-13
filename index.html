@@ -486,6 +486,14 @@ html.nomotion .picon{animation:none}
 .rtimg{display:block;max-width:min(100%,560px);max-height:520px;width:auto;margin:8px 0;border-radius:6px;border:1px solid #e5e7eb;background:#f8fafc}
 .rtimg.up{opacity:.55}.rtview .rtimg{cursor:zoom-in}
 .rtimgbtn{gap:6px}
+/* Imagen elegida en la hoja: se agranda o achica arrastrando la esquina (o con los botones) y se borra */
+.rtwrap{position:relative}
+.rtedit img{-webkit-user-drag:none;cursor:pointer}
+.rtimg[data-w]{max-width:100%;max-height:none}
+.rtedit img.rtsel{outline:3px solid #22d3ee;outline-offset:2px}
+.rtimgtool{position:absolute;z-index:6;display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding:5px;border-radius:10px;background:#0f172a;border:1px solid #334155;box-shadow:0 6px 18px rgba(0,0,0,.35);max-width:calc(100% - 8px)}
+.rtimgtool .btn{font-size:12.5px}.rtimgtool .rtwpct{font-size:12px;color:#94a3b8;padding:0 6px;font-variant-numeric:tabular-nums}
+.rthandle{position:absolute;z-index:7;width:18px;height:18px;border-radius:5px;background:#22d3ee;border:2px solid #fff;cursor:nwse-resize;touch-action:none;box-shadow:0 1px 4px rgba(0,0,0,.45)}
 /* Plan de pauta: presupuesto en dólares compartido entre las marcas */
 .pbudget{border-left:4px solid var(--c)}.pbh{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:flex-end}
 .pbh h2{margin:4px 0 0;font-size:28px;color:#fff}.pbh h2 span{font-size:15px;color:var(--muted);font-weight:600}
@@ -4886,7 +4894,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-jcse
 // ----- Texto del pedido: un mini editor (tamaño, negrita, cursiva, subrayado, listas) para el brief, -----
 // el texto que va en el diseño o el guion del video. Lo editan Admin total y el responsable.
 const RT_TAGS = { B:"b", STRONG:"b", I:"i", EM:"i", U:"u", UL:"ul", OL:"ol", LI:"li", P:"p", DIV:"p", BR:"br", H2:"h2", H3:"h3", SPAN:null, FONT:null };
-const rtImg = id => `<img class="rtimg" data-drive="${id}" src="https://drive.google.com/thumbnail?id=${id}&amp;sz=w1600" alt="Imagen" loading="lazy" referrerpolicy="no-referrer" onerror="imgRetry(this)">`;
+const rtImg = (id, w) => `<img class="rtimg" data-drive="${id}"${w ? ` data-w="${w}" style="width:${w}%"` : ""} src="https://drive.google.com/thumbnail?id=${id}&amp;sz=w1600" alt="Imagen" loading="lazy" referrerpolicy="no-referrer" onerror="imgRetry(this)">`;
 function cleanRich(html){
   const t = document.createElement("template"); t.innerHTML = String(html || "");
   const walk = node => [...node.childNodes].map(n => {
@@ -4897,7 +4905,7 @@ function cleanRich(html){
     if (tag === "SPAN"){ const c = n.className; return c === "rt-l" || c === "rt-s" ? `<span class="${c}">${inner}</span>` : inner; }
     // Imágenes: solo las subidas a Google Drive (se guarda el id; la imagen no ocupa lugar en la base).
     // Una que todavía se está subiendo (sin id) no se guarda.
-    if (tag === "IMG"){ const id = n.getAttribute("data-drive") || ""; return /^[\w-]{10,80}$/.test(id) ? rtImg(id) : ""; }
+    if (tag === "IMG"){ const id = n.getAttribute("data-drive") || "", w = Math.round(+n.getAttribute("data-w") || 0); return /^[\w-]{10,80}$/.test(id) ? rtImg(id, w >= 10 && w <= 100 ? w : 0) : ""; }
     const k = RT_TAGS[tag]; if (k === undefined) return inner;
     return k === "br" ? "<br>" : `<${k}>${inner}</${k}>`;
   }).join("");
@@ -4916,7 +4924,7 @@ function rtEditor(id, html, ph){
       <button type="button" class="btn ib sm" data-rt="clear" title="Quitar formato" aria-label="Quitar formato">${icon("remove-formatting")}</button>
       <button type="button" class="btn sm rtimgbtn" data-rt="img" title="Agregar una imagen de ejemplo o un boceto (se guarda en Google Drive)">${icon("image-plus")} Imagen</button><input type="file" class="rtimgin" accept="image/*" multiple hidden></div>
     <div class="rtedit" id="${id}" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Texto del pedido" data-ph="${esc(ph || BRIEF_PH["Diseño"])}">${html}</div>
-    <p class="note rthint">${icon("image")}<span>Para explicar con un ejemplo o un boceto: pegá una imagen o una captura (Ctrl+V), arrastrala a la hoja o tocá <b>Imagen</b>. Se guarda en Google Drive y la ven todos en el pedido.</span></p></div>`;
+    <p class="note rthint">${icon("image")}<span>Para explicar con un ejemplo o un boceto: pegá una imagen o una captura (Ctrl+V), arrastrala a la hoja o tocá <b>Imagen</b>. Se guarda en Google Drive y la ven todos en el pedido. Tocá una imagen para agrandarla o achicarla (arrastrá la esquina) o para borrarla.</span></p></div>`;
 }
 function jobBriefSection(j){
   const ed = canEditBrief(j), html = j.brief ? cleanRich(j.brief) : "";
@@ -4935,15 +4943,19 @@ function rtSaveSel(ed){ const s = getSelection(); ed._sel = s.rangeCount && ed.c
 async function rtAddImage(ed, file){
   if (!ed || !file || !/^image\//.test(file.type)) return;
   if (window.RMH?.previewing) return toast("Estás en vista previa: no se suben imágenes.");
+  // La misma imagen dos veces seguidas en la misma hoja (doble toque, soltarla y pegarla…): no se sube otra vez.
+  const sig = `${file.name}|${file.size}|${file.type}`; ed._sigs = ed._sigs || new Map();
+  if (Date.now() - (ed._sigs.get(sig) || 0) < 8000) return toast("Esa imagen ya se está agregando a la hoja: no se sube dos veces.");
+  ed._sigs.set(sig, Date.now());
   let shr; try { shr = await shrinkPhoto(file, 1600, .85); } catch { return toast("No se pudo leer la imagen. Probá con otra."); }
   const edId = ed.id, tmp = "up" + Date.now().toString(36), local = URL.createObjectURL(shr.blob), img = document.createElement("img");
-  img.src = local; img.dataset.up = tmp; img.className = "rtimg up"; img.alt = "Subiendo…";
+  img.src = local; img.dataset.up = tmp; img.dataset.sig = sig; img.className = "rtimg up"; img.alt = "Subiendo…";
   const r = ed._sel && ed.contains(ed._sel.commonAncestorContainer) ? ed._sel : null;
   if (r){ r.deleteContents(); r.insertNode(img); r.setStartAfter(img); r.collapse(true); } else ed.appendChild(img);
   ed.dataset.dirty = "1"; ed._sel = r || null; // si se agregan varias, la siguiente va después de esta
   const j = await integ({ action:"chat_image", type:"image/jpeg", data:await toB64(shr.blob) }).catch(() => ({ ok:false }));
   const el = document.querySelector(`img[data-up="${tmp}"]`); // la hoja pudo volver a dibujarse mientras subía
-  if (!j.ok || !j.id){ el?.remove(); URL.revokeObjectURL(local); return toast(j.error || "No se pudo subir la imagen. Probá de nuevo."); }
+  if (!j.ok || !j.id){ el?.remove(); ed._sigs.delete(sig); URL.revokeObjectURL(local); return toast(j.error || "No se pudo subir la imagen. Probá de nuevo."); }
   IMG_LOCAL[j.id] = local;
   if (el){ el.dataset.drive = j.id; delete el.dataset.up; el.classList.remove("up"); el.alt = "Imagen"; el.closest(".rtedit")?.setAttribute("data-dirty", "1"); }
   else { const ed2 = document.getElementById(edId); if (!ed2) return toast("La imagen se subió, pero la hoja se cerró: volvé a agregarla."); ed2.insertAdjacentHTML("beforeend", rtImg(j.id)); ed2.dataset.dirty = "1"; }
@@ -4968,9 +4980,53 @@ document.addEventListener("paste", async e => {
   for (const f of files) await rtAddImage(ed, f);
   if (miss) toast(`${miss === 1 ? "Una imagen no se pudo" : miss + " imágenes no se pudieron"} copiar de ahí: guardala en la compu y subila con “Imagen”, o pegá una captura.`);
 });
+document.addEventListener("dragstart", e => { if (e.target.closest?.(".rtedit") && e.target.tagName === "IMG") e.preventDefault(); });
 document.addEventListener("dragover", e => { if (e.target.closest?.(".rtedit") && [...(e.dataTransfer?.items || [])].some(i => i.kind === "file")) e.preventDefault(); });
 document.addEventListener("drop", e => { const ed = e.target.closest?.(".rtedit"); if (!ed) return; const f = [...(e.dataTransfer?.files || [])].find(x => /^image\//.test(x.type)); if (!f) return; e.preventDefault();
   const r = document.caretRangeFromPoint?.(e.clientX, e.clientY); ed._sel = r && ed.contains(r.startContainer) ? r : null; rtAddImage(ed, f); });
+// Tocar una imagen de la hoja la elige: arriba salen Chica / Mediana / Grande / Original / Borrar y en la esquina una
+// manija para agrandarla o achicarla con el mouse (o el dedo). El tamaño se guarda como % del ancho de la hoja.
+let rtSelImg = null, rtJustResized = false; // después de arrastrar la manija, el “click” que sigue no cierra los botones
+const rtBaseW = im => { const p = im.parentElement, cs = getComputedStyle(p); return Math.max(1, p.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)); };
+function rtSetW(im, w){ const ed = im.closest(".rtedit");
+  if (w){ w = Math.max(10, Math.min(100, Math.round(w))); im.dataset.w = w; im.style.width = w + "%"; } else { delete im.dataset.w; im.style.width = ""; }
+  if (ed) ed.dataset.dirty = "1"; }
+function rtImgPlace(){
+  const im = rtSelImg, wrap = im?.isConnected && im.closest(".rtwrap");
+  if (!wrap){ document.querySelectorAll(".rtimgtool,.rthandle").forEach(x => x.remove()); if (im) im.classList.remove("rtsel"); rtSelImg = null; return; }
+  let bar = wrap.querySelector(".rtimgtool"), h = wrap.querySelector(".rthandle");
+  if (!bar){ bar = document.createElement("div"); bar.className = "rtimgtool"; bar.setAttribute("role", "toolbar"); bar.setAttribute("aria-label", "Imagen elegida");
+    bar.innerHTML = `${[[30, "Chica"], [60, "Mediana"], [100, "Grande"]].map(([w, l]) => `<button type="button" class="btn sm" data-rtw="${w}">${l}</button>`).join("")}<button type="button" class="btn sm" data-rtw="0" title="Volver al tamaño de cuando se subió">Original</button><span class="rtwpct"></span><button type="button" class="btn sm danger" data-rtdel title="Sacar esta imagen de la hoja">${icon("trash-2")} Borrar</button>`;
+    h = document.createElement("div"); h.className = "rthandle"; h.title = "Arrastrá para agrandar o achicar la imagen"; h.setAttribute("aria-hidden", "true");
+    wrap.append(bar, h); if (window.lucide) lucide.createIcons(); }
+  const wr = wrap.getBoundingClientRect(), r = im.getBoundingClientRect(), top = r.top - wr.top - bar.offsetHeight - 6;
+  bar.style.left = Math.max(4, Math.min(r.left - wr.left, wr.width - bar.offsetWidth - 4)) + "px"; bar.style.top = (top >= 0 ? top : r.top - wr.top + 6) + "px";
+  bar.querySelector(".rtwpct").textContent = im.dataset.w ? im.dataset.w + "%" : "";
+  h.style.left = (r.right - wr.left - 10) + "px"; h.style.top = (r.bottom - wr.top - 10) + "px";
+}
+function rtSelect(im){ if (rtSelImg && rtSelImg !== im) rtSelImg.classList.remove("rtsel"); rtSelImg = im; if (im){ im.classList.add("rtsel"); const s = getSelection(), r = document.createRange(); r.setStartAfter(im); r.collapse(true); s.removeAllRanges(); s.addRange(r); } rtImgPlace(); }
+function rtDelImg(){ const im = rtSelImg; if (!im) return; const ed = im.closest(".rtedit"); ed?._sigs?.delete(im.dataset.sig); im.remove(); rtSelImg = null; rtImgPlace();
+  if (ed){ ed.dataset.dirty = "1"; ed.focus(); } toast("Imagen borrada de la hoja. Acordate de guardar."); }
+document.addEventListener("click", e => {
+  if (e.target.closest?.(".rtimgtool,.rthandle")) return;
+  if (rtJustResized){ rtJustResized = false; return; }
+  const im = e.target.closest?.(".rtedit img");
+  if (im && !im.dataset.up){ rtSelect(im); return; }
+  if (rtSelImg) rtSelect(null);
+});
+document.addEventListener("click", e => { const b = e.target.closest?.(".rtimgtool [data-rtw], .rtimgtool [data-rtdel]"); if (!b || !rtSelImg) return;
+  if (b.dataset.rtdel !== undefined) return rtDelImg();
+  rtSetW(rtSelImg, +b.dataset.rtw); rtImgPlace(); });
+document.addEventListener("pointerdown", e => { const h = e.target.closest?.(".rthandle"); if (!h || !rtSelImg) return; e.preventDefault();
+  const im = rtSelImg, x0 = e.clientX, w0 = im.getBoundingClientRect().width, base = rtBaseW(im);
+  const mv = ev => { rtSetW(im, (w0 + ev.clientX - x0) / base * 100); rtImgPlace(); };
+  const up = () => { rtJustResized = true; setTimeout(() => { rtJustResized = false; }, 250); removeEventListener("pointermove", mv); removeEventListener("pointerup", up); removeEventListener("pointercancel", up); };
+  addEventListener("pointermove", mv); addEventListener("pointerup", up); addEventListener("pointercancel", up); });
+document.addEventListener("keydown", e => { if (!rtSelImg || !e.target.closest?.(".rtedit")) return;
+  if (e.key === "Delete" || e.key === "Backspace"){ e.preventDefault(); rtDelImg(); } else if (e.key !== "Shift") rtSelect(null); });
+document.addEventListener("input", e => { if (rtSelImg && e.target.classList?.contains("rtedit")) rtImgPlace(); });
+addEventListener("resize", () => { if (rtSelImg) rtImgPlace(); });
+document.addEventListener("load", e => { if (rtSelImg && e.target === rtSelImg) rtImgPlace(); }, true);
 // En la vista del pedido, tocar una imagen la abre en grande.
 document.addEventListener("click", e => { const im = e.target.closest?.(".rtview img[data-drive]"); if (im) openPhoto(im.dataset.drive); });
 document.addEventListener("input", e => { if (e.target.classList?.contains("rtedit")) e.target.dataset.dirty = "1"; });
