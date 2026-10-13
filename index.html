@@ -5704,8 +5704,14 @@ function pGestionCM(){
   if (cmUI.tview === "repetitivos" && canCreateJobs()) return `<div class="head"><div><h1 class="pmh">${pmIco("repeat")}Pedidos repetitivos</h1><p class="sub">Lo que se repite ciertos días de la semana. Se carga solo en el calendario.</p></div><button class="btn" data-cmtv="calendario">‹ Volver a Gestión Videos</button></div>
     <button class="panel cmnew cmrec" data-recgo="Historia"><span class="cmplus">${icon("repeat")}</span><span><b>Cargar pedido repetitivo</b><small>Todos los lunes, o lunes y viernes… desde una fecha hasta otra (o sin fin).</small></span></button>
     ${recurringList()}${recDrawer()}`;
-  return pedPage("CM", "Gestión Videos", "clapperboard", `Los pedidos de video a los CM: grabaciones, ediciones y coberturas.${ownsJobs() ? " Cambiá el estado de tus pedidos desde la tabla o desde Procesos." : ""}`,
-    "Qué se necesita, para qué marca, quién lo hace y para cuándo.", canCreateJobs() ? `<button class="btn" data-cmtv="repetitivos">${icon("repeat")} Repetitivos</button>` : "") + recDrawer();
+  // Igual que Gestión Redes, Historia y Canal: Calendario (predeterminado), Tablero y Tabla, con el proceso de los videos.
+  const view = gView(), calName = brandFilter === "Todas" ? "Todas las marcas" : brandFilter === "Otros" ? "Otras marcas" : brandFilter;
+  const list = jobs.filter(j => j.area === "CM" && (seesBrand(j.brand) || j.ex) && inFilter(j.brand) && jobMonth(j) === MONTH && j.status !== "Cancelado" && (!pedMine() || j.owner === viewer.name || j.ex)).sort((a, b) => !!b.ex - !!a.ex || a.due.localeCompare(b.due));
+  const head = gHead(`Gestión Videos${view === "calendario" ? " · " + calName : ""}`, `${monthLabel(MONTH)} · los videos de cada día: grabaciones, ediciones y coberturas, con su proceso hasta que se publican y se pautan.`, "clapperboard");
+  const adds = canCreateJobs() ? calAdds([['data-jnew', "clapperboard", "Cargar pedido de video", "Qué video, para qué marca, quién lo hace y para cuándo."], ['data-cmtv="repetitivos"', "repeat", "Repetitivos", "Lo que se repite ciertos días de la semana."]]) : "";
+  const proc = `<div class="legend">${CM_STAGES.map(st => `<span><span class="sw" style="background:${SEM[semLvl(st)]}"></span>${st}</span>`).join("")}</div>`;
+  const body = view === "calendario" ? jobDeliveryCal(list, "CM") : view === "tablero" ? proc + jobBoard(list, "CM") : jobTable(list);
+  return `${head}${adds}${pedScopeChips("CM")}<div class="head"><div class="chips">${brandChips()}</div>${!isViewOnly() && !isClosed() ? `<span class="note">${view === "tablero" ? "Tocá una tarjeta para cambiar su etapa · el lápiz para editar" : view === "tabla" ? "Tocá el trabajo para ver el pedido completo" : ""}</span>` : ""}</div>${body}${jobForm()}${recDrawer()}`;
 }
 const TV_TEAM_MIN = 10;
 let tvTeam = { timer:null, clock:null, slideT:null, updated:"", i:0, paused:false };
