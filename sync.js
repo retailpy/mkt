@@ -181,7 +181,7 @@ const RMH = (() => {
       if (!row){ base.delete(key); continue; }
       const merged = merge(b?.json ? JSON.parse(b.json) : undefined, enc(getLocal(key)), row.data, CONVO(key));
       base.set(key, { v:row.version, json:C(row.data) });
-      setLocal(key, dec(merged)); scheduleRender();
+      setLocal(key, dec(merged)); scheduleRender([key]);
     }
   }
   // Una conexión colgada no puede trabar el guardado: a los 20 s se corta y se reintenta.
@@ -324,9 +324,9 @@ const RMH = (() => {
     const sel = getSelection(); if (page !== "mensajes" && sel && !sel.isCollapsed && sel.rangeCount && document.getElementById("content")?.contains(sel.getRangeAt(0).commonAncestorContainer)) return true;
     return !!(typingForm && document.body.contains(typingForm));
   }
-  function scheduleRender(){
+  function scheduleRender(news){ // news: las claves con datos nuevos de otra persona (no solo quién está conectado)
     if (!ready) return;
-    if (busy()){ rerenderPending = true; try { renderNav(); chatNotify(); } catch (e) {} return; } // el aviso de chat nuevo llega igual, aunque estés escribiendo
+    if (busy()){ rerenderPending = true; try { renderNav(); chatNotify(); if (news) document.dispatchEvent(new CustomEvent("rmh-pending", { detail:{ keys:news } })); } catch (e) {} return; } // el aviso de chat nuevo llega igual, aunque estés escribiendo; el botón Actualizar se destaca
     rerenderPending = false; render();
   }
   document.addEventListener("focusout", () => setTimeout(() => { if (rerenderPending) scheduleRender(); }, 150));
@@ -354,28 +354,32 @@ const RMH = (() => {
       const key = p.new?.key; if (!key || previewing) return;
       if ((base.get(key)?.v || 0) >= (p.new.version || 0)) return;
       const { data: row } = await sb.from("app_state").select("key, data, version").eq("key", key).maybeSingle();
-      if (row && applyRow(row)) scheduleRender();
+      if (row && applyRow(row)) scheduleRender([key]);
     }).subscribe(status => { if (status === "SUBSCRIBED") catchUp(); }); // al (re)conectar se trae lo que llegó mientras tanto
   }
   // La conexión en vivo se corta (celular bloqueado, pestaña en segundo plano, wifi, sesión renovada) y lo que llega
   // durante el corte no se repite. Por eso, además, se revisa qué cambió: cada 10 s, al volver a la app y al volver internet.
-  let catching = false;
-  async function catchUp(){
-    if (!ready || previewing || catching) return; catching = true;
+  let catching = null; // si ya se está revisando, el que pide “Actualizar” espera a que termine esa revisión
+  function catchUp(){
+    if (!ready || previewing) return Promise.resolve();
+    if (catching) return catching;
+    catching = catchUpNow().finally(() => { catching = null; });
+    return catching;
+  }
+  async function catchUpNow(){
     try {
       const { data, error } = await sb.from("app_state").select("key, version");
       if (error && isAuthErr(error)) lostSession();
       if (error || !Array.isArray(data)) return;
       const stale = data.filter(r => (base.get(r.key)?.v || 0) < r.version).map(r => r.key);
       if (!stale.length) return;
-      let changed = false;
+      const changed = [];
       for (let i = 0; i < stale.length; i += 50){
         const { data: rows } = await sb.from("app_state").select("key, data, version").in("key", stale.slice(i, i + 50));
-        (rows || []).forEach(r => { if (applyRow(r)) changed = true; });
+        (rows || []).forEach(r => { if (applyRow(r)) changed.push(r.key); });
       }
-      if (changed) scheduleRender();
+      if (changed.length) scheduleRender(changed);
     } catch (e) { console.warn("catchUp", e); }
-    finally { catching = false; }
   }
   setInterval(catchUp, 10000);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") catchUp(); });
@@ -517,6 +521,8 @@ const RMH = (() => {
     async fileDel(path){ const { error } = await sb.storage.from("material").remove([path]); return !error; },
     // Sesión actual (para pedirle a las funciones de Vercel que actualicen datos, por ejemplo los mensajes de las cuentas).
     catchUp(){ return catchUp(); },
+    // El botón Actualizar ya redibujó con lo último: no queda nada pendiente para redibujar.
+    refreshed(){ rerenderPending = false; },
     async token(){ const { data } = await sb.auth.getSession(); return data?.session?.access_token || null; },
     async pushKey(){ const { data, error } = await sb.functions.invoke("chat-push", { method:"GET" }); return error ? null : data?.key || null; },
     async pushSave(sub){ if (!me || previewing) return false; const { error } = await sb.from("push_subs").upsert({ endpoint:sub.endpoint, person_id:me, sub }); return !error; },

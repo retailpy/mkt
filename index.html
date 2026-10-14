@@ -842,6 +842,11 @@ html.nomotion .nav a.wknew .ibc,html.nomotion .tabbar a.wknew .tbc,html.nomotion
 @media (max-width:480px){.rclst{margin-left:0}}
 .jpage{display:flex;flex-direction:column;gap:14px;max-width:980px;margin:0 auto;width:100%}
 .jp-top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.row.iopen{cursor:pointer;transition:background .15s}.row.iopen:hover{background:rgba(148,163,184,.08)}.ronote{margin:0 0 6px;display:flex;align-items:center;gap:6px}
+/* Botón Actualizar: trae lo último que cargaron los demás. Si hay novedades esperando, se destaca. */
+.rfbtn{gap:6px}.rfbtn.busy svg{animation:rfspin .8s linear infinite}@keyframes rfspin{to{transform:rotate(360deg)}}
+.rfbtn.new{border-color:var(--cyan);color:#fff;background:color-mix(in srgb,var(--cyan) 22%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--cyan) 25%,transparent)}
+.jp-top .rfbtn{margin-left:auto}
 .jp-h h1{margin:4px 0 8px;font-size:clamp(22px,3vw,30px)}
 .jp-sec{margin:0}.jp-sec h2{margin:0 0 12px;font-size:17px}
 .jp-sec .jfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(200px,100%),1fr));gap:12px}
@@ -2820,11 +2825,13 @@ const PEOPLE = [
 PEOPLE.forEach(p => { p.perms = new Set(p.perms || ROLE_DEFAULTS[p.role]); p.active = true; p.mustChange = false; if (p.role !== "Diseñador" && p.perms.has("pedidos")) { p.perms.add("gestioncm"); p.perms.add("historialcm"); } if (p.perms.has("calendario")) p.perms.add("caldiseno"); upgradePerms(p); });
 // Secciones que se agregaron después: quien ya veía la sección de origen, ve también la nueva (una sola vez;
 // después cada permiso se prende o apaga por separado en Usuarios y permisos).
-function upgradePerms(p){ const v = p.permsV || 1; if (v >= 8) return;
+function upgradePerms(p){ const v = p.permsV || 1; if (v >= 9) return;
   if (v < 6) [[2,"pedidos","cargadiseno"],[2,"gestioncm","cargacm"],[2,"calendario","calhistoria"],[3,"calendario","calcanales"],[4,"pedidos","cartel"],[4,"caldiseno","calcartel"],[5,"cartel","web"],[6,"cartel","pantallas"]].forEach(([ver, from, to]) => { if (v < ver && p.perms.has(from)) p.perms.add(to); });
   // v8: CM y Diseñador vuelven a ver todo lo de antes (menos lo que es solo de Admin), una sola vez; después Admin total ajusta por persona.
-  if (p.role === "CM" || p.role === "Diseñador") p.perms = new Set(ROLE_DEFAULTS[p.role]);
-  p.permsV = 8; }
+  if (v < 8 && (p.role === "CM" || p.role === "Diseñador")) p.perms = new Set(ROLE_DEFAULTS[p.role]);
+  // v9: los Admin ven el Inicio, como Admin total (todos los procesos del equipo).
+  if (p.role === "Admin") p.perms.add("inicio");
+  p.permsV = 9; }
 let DESIGNERS = [];
 const ROLES = ["Admin total","Admin","Diseñador","CM"];
 const ROLE_INFO = {
@@ -4518,10 +4525,15 @@ function pInicio(){
     ${viewer.role === "CM" ? (() => { const mine = jobs.filter(j => j.owner === viewer.name && !isClosedJob(j)).sort((a,b) => a.due.localeCompare(b.due)); return `<div class="panel"><div class="head" style="margin-bottom:14px"><h2 style="margin:0" class="pmh">${pmIco("clapperboard")}Mis trabajos de CM</h2>${URG_LEGEND}</div>${mine.length ? `<div class="list">${mine.map(j => jobRow(j)).join("")}</div>` : `<div class="empty">No tenés trabajos abiertos.</div>`}</div>`; })() : ""}
   ${isAdminAny() ? "" : progressPanel("team")}
   <div class="grid">
-    <div class="panel"><h2 class="pmh">${pmIco("calendar-days")}${weekTitle}</h2>${week.length ? `<div class="list wklist">${week.map(p => `<div class="row${postUrgStyle(p)}"><span class="date">${dm(p.date)}</span><div class="grow"><div class="t">${esc(p.title)}</div><div class="m">${brandTag(p.brand)} · <span class="net">${p.net}</span> ${p.format}</div></div><div class="wkb">${postUrgBadge(p)}${postPill(p)}</div></div>`).join("")}</div>` : `<div class="empty">${isClosed() ? "Se cumplió todo el plan." : "Nada programado."}</div>`}</div>
+    <div class="panel"><h2 class="pmh">${pmIco("calendar-days")}${weekTitle}</h2>${week.length ? `<div class="list wklist">${week.map(p => `<div class="row iopen${postUrgStyle(p)}" data-iopen="post:${esc(p.id)}" role="button" tabindex="0" title="Tocá para ver la publicación"><span class="date">${dm(p.date)}</span><div class="grow"><div class="t">${esc(p.title)}</div><div class="m">${brandTag(p.brand)} · <span class="net">${p.net}</span> ${p.format}</div></div><div class="wkb">${postUrgBadge(p)}${postPill(p)}</div></div>`).join("")}</div>` : `<div class="empty">${isClosed() ? "Se cumplió todo el plan." : "Nada programado."}</div>`}</div>
   </div>
   ${progressPanel("people")}`;
 }
+// Inicio: tocar una publicación de la lista la abre (CM y Admin total la pueden cambiar; el resto, solo verla).
+document.addEventListener("click", e => { const r = e.target.closest?.("[data-iopen]"); if (!r || e.target.closest("button,a,select,input,[data-stagemenu]")) return;
+  const [k, id] = r.dataset.iopen.split(":"), p = k === "post" ? postById(id) : null; if (!p) return;
+  postUI.form = { mode:"edit", kind:p.format === "Historia" ? "Historia" : "Feed", post:{ ...p } }; render(); window.scrollTo(0, 0); });
+document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("[data-iopen]")){ e.preventDefault(); e.target.click(); } });
 const ALARM_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/></svg>';
 // Alarma de entrega (se ve en cada tarjeta y fila): falta 7 a 4 días amarillo, 3 a 2 naranja, 1 día u hoy rojo, y retraso con ⏰ hasta que se entregue.
 function urgency(j){
@@ -4620,7 +4632,7 @@ function jobRow(j){
   const due = d < 0 ? `<span class="down">venció ${dm(j.due)}</span>` : d === 0 ? `<span class="warn">vence hoy</span>` : `vence ${dm(j.due)}`;
   const p = j.post && postById(j.post);
   const next = stagesOf(j)[stagesOf(j).indexOf(j.status)+1];
-  return `<div class="row${urgStyle(j)}"><div class="grow"><div class="t">${esc(j.title)}</div><div class="m">${icon(j.area === "CM" ? "clapperboard" : "palette")} ${brandTag(j.brand)} · ${esc(cmPiece(j))} · fecha límite ${dm(j.due)}${p ? ` · para el post del ${dm(p.date)}` : ""}</div></div>${urgBadge(j)}${pill(j.status, JOB_COLOR[j.status])}${isDesigner() ? designerAction(j) : next ? `<button class="btn" data-adv-job="${j.id}">Pasar a ${next}</button>` : ""}</div>`;
+  return `<div class="row iopen${urgStyle(j)}" data-jficha="${esc(j.id)}" role="button" tabindex="0" title="Tocá para ver el pedido completo"><div class="grow"><div class="t">${esc(j.title)}</div><div class="m">${icon(j.area === "CM" ? "clapperboard" : "palette")} ${brandTag(j.brand)} · ${esc(cmPiece(j))} · fecha límite ${dm(j.due)}${p ? ` · para el post del ${dm(p.date)}` : ""}</div></div>${urgBadge(j)}${pill(j.status, JOB_COLOR[j.status])}${isDesigner() ? designerAction(j) : next ? `<button class="btn" data-adv-job="${j.id}">Pasar a ${next}</button>` : ""}</div>`;
 }
 // Alertas y avisos, dentro de Inicio: tocar una alerta lleva a donde está la info; la ✕ la quita.
 // De dónde viene cada alerta: así Inicio las muestra separadas por sección.
@@ -4716,7 +4728,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-pedi
   if (kind === "canal") postUI.form = { mode:"edit", kind:"Canal", post:{ ...canalById(id) } }; else { const p = postById(id); postUI.form = { mode:"edit", kind:p.format === "Historia" ? "Historia" : "Feed", post:{ ...p } }; }
   render(); });
 document.addEventListener("change", e => { const k = e.target.closest("[data-kstatus]"); if (!k) return; const c = canalById(k.dataset.kstatus); if (!c || c.status === k.value) return; c.status = k.value; render(); toast(`“${c.title}” pasó a ${c.status}.`); });
-const gHead = (title, sub, ico) => `<div class="head"><div><h1 class="pmh">${pmIco(ico)}${title}</h1><p class="sub">${sub}</p></div>${viewTabs(G_VIEWS, gView(), "data-gview")}</div>`;
+const gHead = (title, sub, ico) => `<div class="head"><div><h1 class="pmh">${pmIco(ico)}${title}</h1><p class="sub">${sub}</p></div><div class="chips">${refreshBtn()}${viewTabs(G_VIEWS, gView(), "data-gview")}</div></div>`;
 const gFilters = note => `<div class="head"><div class="chips">${brandChips()}${soloBtn()}</div>${note && !isViewOnly() && !isClosed() ? `<span class="note">${note}</span>` : ""}</div>`;
 // Gestión Redes (feed) y Gestión Historia.
 function pCalCM(kind){
@@ -5256,6 +5268,18 @@ function linkRow(u, kind){
   let short = url; try { const x = new URL(url); short = x.hostname.replace(/^www\./, "") + (x.pathname.length > 1 ? x.pathname.slice(0, 38) + (x.pathname.length > 38 ? "…" : "") : ""); } catch {}
   return `<a class="jlrow2 ${k}" href="${esc(url)}" target="_blank" rel="noopener"><span class="jlic">${icon(ic)}</span><span class="jlt"><b>${esc(t)}</b><small>${esc(d)} · ${esc(short)}</small></span><span class="jlgo">Abrir ${icon("arrow-up-right")}</span></a>`;
 }
+// Actualizar: trae ya lo último que cargaron los demás (sin esperar los 10 s) y redibuja, sin perder lo que estás
+// escribiendo en el texto del pedido. Mientras escribís la pantalla no se redibuja sola: si llegó algo, el botón se destaca.
+const refreshBtn = () => `<button type="button" class="btn rfbtn" data-refresh title="Traer lo último que cargaron los demás">${icon("refresh-cw")}<span>Actualizar</span></button>`;
+const REFRESH_KEYS = ["s:jobs","s:posts","s:CHANNEL_POSTS","s:RECURRING","s:RECUR_ST","s:RECUR_DONE"]; // pedidos, publicaciones y repetitivos
+document.addEventListener("rmh-pending", e => (e.detail?.keys || []).some(k => REFRESH_KEYS.includes(k)) && document.querySelectorAll("[data-refresh]").forEach(b => { if (b.classList.contains("new")) return; b.classList.add("new"); b.querySelector("span").textContent = "Hay novedades · Actualizar"; b.title = "Otra persona cargó algo: tocá para verlo"; }));
+document.addEventListener("click", async e => { const b = e.target.closest("[data-refresh]"); if (!b || b.classList.contains("busy")) return;
+  b.classList.add("busy");
+  const keep = [...document.querySelectorAll(".rtedit[data-dirty]")].map(ed => [ed.id, ed.innerHTML]), sy = scrollY;
+  try { await window.RMH?.catchUp?.(); } catch {}
+  render(); window.RMH?.refreshed?.(); scrollTo(0, sy);
+  keep.forEach(([id, html]) => { const ed = id && document.getElementById(id); if (ed){ ed.innerHTML = html; ed.dataset.dirty = "1"; } });
+  toast(`Actualizado ${new Date().toTimeString().slice(0, 5)}: ya ves lo último que cargaron los demás.${keep.length ? " Lo que estabas escribiendo sigue ahí (acordate de guardar)." : ""}`); });
 // Chat del pedido: quien lo cargó habla con el responsable, y el responsable con quien lo cargó (o con Admin total).
 function jobChatBtns(j, about = "el pedido"){
   if (!viewer || isViewOnly() || window.RMH?.previewing) return "";
@@ -5326,7 +5350,7 @@ function jobFicha(){
   const mine = j.owner === viewer.name && !isFin(j) && !isViewOnly() && j.area !== "CM";
   // Página completa del pedido: datos del pedido, el texto (hoja tipo Word), los links de acceso, el proceso (tocable) y al final los cambios.
   return `<div class="jpage jficha" aria-label="Pedido completo">
-    <div class="jp-top"><button class="btn" data-jfclose>${icon("arrow-left")} Volver</button>${jobChatBtns(j)}${at ? `<button class="btn" data-jedit="${j.id}">${icon("pencil")} Editar pedido</button>` : ""}</div>
+    <div class="jp-top"><button class="btn" data-jfclose>${icon("arrow-left")} Volver</button>${jobChatBtns(j)}${at ? `<button class="btn" data-jedit="${j.id}">${icon("pencil")} Editar pedido</button>` : ""}${refreshBtn()}</div>
     <header class="jp-h"><span class="note">${j.area === "CM" ? "Gestión de Video" : "Pedido de diseño gráfico"}${j.ex ? ` <span class="exbadge sm">Ejemplo para mostrar cómo se carga</span>` : ""}</span><h1>${esc(j.title)}</h1><div class="chips">${pill(j.status, JOB_COLOR[j.status])}${urgBadge(j)}${j.rep?.days?.length ? `<span class="repbadge">${icon("repeat")} Se repite: ${esc(repText(j.rep).toLowerCase())}</span>${at ? `<button class="btn sm" type="button" data-jrepstop="${j.id}">Dejar de repetir</button>` : ""}` : j.repOf ? `<span class="repbadge">${icon("repeat")} Pedido que se repite</span>` : ""}</div></header>
     ${last ? `<div class="jfmsg"><b>${icon("pencil")} Cambios que pidió Admin total</b><p>${esc(last.text)}</p><span>${dm(last.date)} · ${last.time}</span></div>` : ""}
     ${j.area === "CM" ? videoBlock(j) : ""}
@@ -5536,7 +5560,7 @@ function procExample(A){
 }
 function pedPage(A, title, ico, sub, newHint, extra = ""){
   const list = pedList(A);
-  return `<div class="head"><div><h1 class="pmh">${pmIco(ico)}${title}</h1><p class="sub">${sub}</p></div>${extra}</div>
+  return `<div class="head"><div><h1 class="pmh">${pmIco(ico)}${title}</h1><p class="sub">${sub}</p></div><div class="chips">${extra}${refreshBtn()}</div></div>
   ${canCreateJobs() ? `<button class="panel cmnew" data-jnew><span class="cmplus">${icon("plus")}</span><span><b>Cargar pedido</b><small>${newHint}</small></span></button>` : ""}
   ${pedScopeChips(A)}
   <div class="head"><h2 class="pmh" style="margin:0">${pmIco(pedView === "procesos" ? "kanban" : "table-2")}${pedMine() ? "Mis pedidos" : "Pedidos"} de ${monthName(MONTH)} <span class="note" style="font-weight:400">· ${list.length}</span></h2>${viewTabs([["tabla","Tabla","table-2"],["procesos","Procesos","kanban"]], pedView, "data-pedview")}</div>
@@ -5596,6 +5620,12 @@ function newPostOn(date, kind){
 // Hoja de la publicación de CM (feed, historia o Canal de WhatsApp): igual que el pedido de Diseño gráfico.
 // 1) Qué hay que hacer · 2) Quién y para cuándo · 3) Texto (tipo documento) y links · 4) Proceso · 5) Cambios pedidos. Arriba, el chat con quien corresponde.
 const POST_BRIEF_PH = "Ej.: el copy de la publicación, los hashtags, lo que dice la imagen o el video y lo que hay que tener en cuenta.";
+// Quien no puede cambiar publicaciones (Diseño, Admin): la ve completa, pero sin poder editarla.
+function postReadOnly(){ const f = document.getElementById("postForm"); if (!f) return;
+  f.querySelectorAll("input,select,textarea,button[type=submit],[data-rt],.rtimgbtn,[data-lkadd],[data-shadd],[data-lkdel],[data-shdel]").forEach(x => { x.disabled = true; });
+  f.querySelectorAll("[contenteditable]").forEach(x => x.setAttribute("contenteditable", "false"));
+  f.querySelectorAll("button[type=submit]").forEach(x => x.hidden = true);
+  if (!f.querySelector(".ronote")) f.insertAdjacentHTML("afterbegin", `<p class="note ronote">${icon("eye")} Solo para ver: la publicación la cambian el CM y Admin total.</p>`); if (window.lucide) lucide.createIcons(); }
 function postForm(){
   const f = postUI.form; if (!f) return "";
   if (!f.repDays) f.repDays = [...(f.post.rep?.days || [])];
@@ -5674,6 +5704,7 @@ document.addEventListener("click", e => {
 document.addEventListener("change", e => { if (e.target.id === "poBrand"){ const cm = CM_BY_BRAND[e.target.value], s2 = $("#poCm"); if (cm && s2 && [...s2.options].some(o => o.value === cm)) s2.value = cm; } });
 document.addEventListener("submit", e => {
   if (e.target.id !== "postForm") return; e.preventDefault();
+  if (!canEditPost()){ toast("Solo la pueden cambiar el CM y Admin total."); return; }
   if (rtUploading(document.getElementById("poBrief"))){ toast("Esperá que termine de subir la imagen."); return; }
   const f = postUI.form; readPostForm(f.post); const title = $("#poTitle").value.trim(), date = $("#poDate").value;
   if (!title || !date){ toast("Completá el tema y la fecha."); return; }
@@ -9828,7 +9859,7 @@ function render(){
   const calSL = render.calPage === page ? [...document.querySelectorAll("#content .calw")].map(w => w.scrollLeft) : null; // el calendario queda donde estaba al volver a dibujarse
   $("#content").innerHTML = `<div class="${animate && !CAL_PAGES.includes(page) ? (page === "pedidos" || page === "gestioncm" ? "anim" : "fade anim") : "noanim"}${["pedidos","cartel","web","pantallas","gestioncm","calendario","calhistoria","calcanales","inicio","alertas","avisos","mensajes","sugerencias","plan","calcm","caldg","reportes","usuarios","staff","perfil","pauta"].includes(page) ? " clean" : ""}" style="display:flex;flex-direction:column;gap:24px">${bar}${bdays}${["tv","tvredes","tvimpacto"].includes(page) ? "" : `${EYEBROW[page] ? `<p class="eyebrow">${EYEBROW[page]}</p>` : ""}`}${ro}${avb}${inst}${PAGES[page]()}${demo}</div>${installDrawer()}${adModal()}`;
   if (jobUI.form){ const ff = jobForm(); if (ff) $("#content").innerHTML = ff; } // crear o editar un pedido: página completa
-  else if (postUI.form){ const pf = postForm(); if (pf){ $("#content").innerHTML = pf; if (render.pfOpen !== postUI.form){ render.pfOpen = postUI.form; window.scrollTo(0, 0); } } } // publicación, historia o canal: página completa
+  else if (postUI.form){ const pf = postForm(); if (pf){ $("#content").innerHTML = pf; if (!canEditPost()) postReadOnly(); if (render.pfOpen !== postUI.form){ render.pfOpen = postUI.form; window.scrollTo(0, 0); } } } // publicación, historia o canal: página completa
   else if (lpFull){ $("#content").innerHTML = lpFullPage(); } // últimas publicaciones en grande: página completa
   else if (!jobUI.ficha && backTo() && !$("#content .pback")){ const b = backTo(), x = [...PANEL_DESIGN, ...PANEL_CM, ...PANEL_TOOLS].find(y => y.k === page);
     $("#content").insertAdjacentHTML("afterbegin", `<nav class="pcrumb" aria-label="Ubicación"><button type="button" class="btn gback" data-page="${b.k}"${b.back ? " data-back" : ""} title="Volver a ${esc(b.t)}">${icon("arrow-left")} Volver</button>${x && b.k.startsWith("panel") ? `<span>›</span><b>${esc(x.t)}</b>` : ""}</nav>`); }

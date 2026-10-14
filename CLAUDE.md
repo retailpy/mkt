@@ -4,3 +4,4 @@
 - Explicar en palabras simples y con pasos numerados cuando haya que hacer algo en Meta, Vercel, Supabase o Google.
 - No mostrar ni pedir tokens, claves secretas, contraseñas ni credenciales; recordar no pegarlos en el chat.
 - Al empezar una conversación nueva, leer `docs/CONTEXTO.md`: qué es la app, cómo se trabaja y en qué quedó todo (Instagram, Meta, etc.).
+- Si el trabajo es solo de la sección **Comercial**, leer además `docs/COMERCIAL.md` (cómo funciona, dónde está el código y qué no tocar).
