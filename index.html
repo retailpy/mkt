@@ -2875,11 +2875,14 @@ function refreshPeople(){
   if (v) v.innerHTML = opts; if (l){ const cur = l.value; l.innerHTML = opts; if (cur) l.value = cur; }
 }
 let drag = null;
-document.addEventListener("click", e => { const b = e.target.closest("[data-jset]"); if (!b) return; e.stopPropagation(); const j = jobs.find(x => x.id === b.dataset.jset); if (j && canSetAnyStatus(j)) setJobStatus(j, b.dataset.st); });
+document.addEventListener("click", e => { const b = e.target.closest("[data-jset]"); if (!b) return; e.stopPropagation(); const j = jobs.find(x => x.id === b.dataset.jset); if (j && stageOptions("job", j).includes(b.dataset.st)) moveJob(j, b.dataset.st); });
 // Diseñador: “Terminé mi etapa” / “Terminé las correcciones” → pasa a revisión y le llega el aviso a Admin total
 document.addEventListener("click", e => { const b = e.target.closest("[data-jdone]"); if (!b) return; e.stopPropagation();
   const j = jobById(b.dataset.jdone); if (!j || j.owner !== viewer.name) return;
   moveJob(j, reviewStage(j)); });
+// Diseñador: “Empezar” pasa el pedido de Pendiente a En proceso
+document.addEventListener("click", e => { const b = e.target.closest("[data-jstart]"); if (!b) return; e.stopPropagation();
+  const j = jobById(b.dataset.jstart); if (!j || j.owner !== viewer.name) return; moveJob(j, "En proceso"); });
 // Diseñador: un diseño aprobado se marca como entregado
 document.addEventListener("click", e => { const b = e.target.closest("[data-jdeliver]"); if (!b) return; e.stopPropagation();
   const j = jobById(b.dataset.jdeliver); if (!j || j.owner !== viewer.name || (j.area !== "CM" && j.status !== "Aprobado")) return; if (j.area === "CM") moveJob(j, j.status === "Publicado" ? "Pautado" : "Publicado"); });
@@ -3985,6 +3988,7 @@ const ICONS = {
 "folder":"<path d=\"M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z\"/>",
 "server":"<rect width=\"20\" height=\"8\" x=\"2\" y=\"2\" rx=\"2\" ry=\"2\"/><rect width=\"20\" height=\"8\" x=\"2\" y=\"14\" rx=\"2\" ry=\"2\"/><line x1=\"6\" x2=\"6.01\" y1=\"6\" y2=\"6\"/><line x1=\"6\" x2=\"6.01\" y1=\"18\" y2=\"18\"/>",
 "clipboard-paste":"<path d=\"M15 2H9a1 1 0 0 0-1 1v2c0 .6.4 1 1 1h6c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1Z\"/><path d=\"M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2M16 4h2a2 2 0 0 1 2 2v2M11 14h10\"/><path d=\"m17 10 4 4-4 4\"/>",
+"play":"<polygon points=\"6 3 20 12 6 21 6 3\"/>",
 "paperclip":"<path d=\"m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551\"/>",
 "presentation":"<path d=\"M2 3h20\"/><path d=\"M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3\"/><path d=\"m7 21 5-5 5 5\"/>",
 "file-archive":"<path d=\"M10 12v-1\"/><path d=\"M10 18v-2\"/><path d=\"M10 7V6\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/><path d=\"M15.5 22H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v16a2 2 0 0 0 .274 1.01\"/><circle cx=\"10\" cy=\"20\" r=\"2\"/>",
@@ -4577,18 +4581,21 @@ const urgBadge = j => { const u = urgency(j); return u ? `<span class="urg ${u.l
 const urgStyle = j => { const u = urgency(j); return u ? ` u" style="--u:${u.c};` : `" style="`; };
 const URG_LEGEND = ""; // las alarmas se ven en cada tarjeta y fila, no arriba
 // Etapas que cada uno puede elegir. CM: todas las de publicaciones, canales y pedidos a CM.
-// Diseñador: solo sus trabajos, hasta “Boceto finalizado”. La revisión (En revisión, En corrección, Aprobado): solo Admin total.
+// Pedidos de Diseño gráfico: la etapa la cambian solo Admin total (todas) y el diseñador responsable, paso a paso y hacia
+// adelante: Pendiente → En proceso → Boceto finalizado (y, si le piden cambios, En corrección → Boceto finalizado). CM y Admin
+// los ven pero no cambian la etapa. La revisión (En revisión, En corrección, Aprobado): solo Admin total.
+const DESIGN_NEXT = { "Pendiente":"En proceso", "En proceso":"Boceto finalizado", "En corrección":"Boceto finalizado" };
 function stageOptions(kind, it){
   if (!it || isViewOnly() || isClosed()) return [];
   if (kind === "post") return canEditPost() ? POST_STAGES : [];
   if (kind === "canal") return canEditPost() ? CANAL_STAGES : [];
   if (kind === "rec") return canMarkRec() ? recStages(it.r).filter(st => st !== "Corrección" || viewer.role === "Admin total") : []; // como los videos: Corrección la pide Admin total
   if (viewer.role === "Admin total") return statesOf(it);
-  if (isDesigner()){
-    if (it.area !== "Diseño" || it.owner !== viewer.name) return [];
-    if (["Pendiente","En proceso","Boceto finalizado","En corrección"].includes(it.status)) return ["Pendiente","En proceso","Boceto finalizado"];
-    return [];
+  if (it.area !== "CM"){ // Diseño gráfico
+    if (!isDesigner() || it.owner !== viewer.name || !DESIGN_NEXT[it.status]) return [];
+    return [it.status, DESIGN_NEXT[it.status]];
   }
+  if (isDesigner()) return [];
   if (!canChangeStatus(it)) return [];
   if (it.area === "CM"){ // el CM avanza hasta Revisión; Admin total aprueba o pide cambios (Corrección); después el CM programa, publica y pauta
     return CM_STAGES.filter(st => st !== "Corrección");
@@ -4629,8 +4636,8 @@ document.addEventListener("click", e => {
   const j = jobs.find(x => x.id === id); if (!j || j.status === to || !stageOptions("job", j).includes(to)) return;
   moveJob(j, to);
 });
-// El diseñador no mueve etapas a mano: avisa que terminó y Admin total revisa.
-const canSetAnyStatus = j => canChangeStatus(j) && !isDesigner();
+// Selector de etapa en la tabla: solo quien puede cambiarla (los diseñadores usan sus botones y su selector de dos etapas).
+const canSetAnyStatus = j => !isDesigner() && stageOptions("job", j).length > 0;
 function designerAction(j){
   if (j.owner !== viewer.name || isClosed()) return "";
   if (j.area === "CM"){
@@ -4640,7 +4647,8 @@ function designerAction(j){
     if (j.status === "Programado") return `<button class="btn primary donebtn" data-jdeliver="${j.id}">✓ Publicado</button>`;
     if (j.status === "Publicado") return `<button class="btn donebtn" data-jdeliver="${j.id}">Pautado</button>`;
     return ""; }
-  if (["Pendiente","En proceso"].includes(j.status)) return `<button class="btn primary donebtn" data-jdone="${j.id}">✓ Boceto finalizado</button>`;
+  if (j.status === "Pendiente") return `<button class="btn primary donebtn" data-jstart="${j.id}">${icon("play")} Empezar · En proceso</button>`;
+  if (j.status === "En proceso") return `<button class="btn primary donebtn" data-jdone="${j.id}">✓ Boceto finalizado</button>`;
   if (j.status === "En corrección") return `<button class="btn primary donebtn fix" data-jdone="${j.id}">✓ Terminé las correcciones</button>`;
   if (REVIEW_WAIT.includes(j.status)) return `<span class="waitchip">${icon("hourglass")} Esperando revisión</span>`;
   if (j.status === "Aprobado") return j.area === "CM" ? `<span class="okchip">✓ Aprobado</span><button class="btn primary donebtn" data-jdeliver="${j.id}">✓ Publicado</button>` : `<span class="okchip">✓ Aprobado · terminado</span>`;
@@ -5023,6 +5031,8 @@ function rtClipFiles(cd){
   const out = [], seen = new Set();
   for (const f of [...(cd?.files || []), ...[...(cd?.items || [])].filter(i => i.kind === "file").map(i => i.getAsFile())]){
     if (!f || !/^image\//.test(f.type)) continue; const k = `${f.name}|${f.size}|${f.type}`; if (!seen.has(k)){ seen.add(k); out.push(f); } }
+  // La captura de Mac trae la misma imagen en PNG y en TIFF: con una sola alcanza (la PNG).
+  if (out.length > 1 && out.every(f => /^image\/(png|tiff)$/.test(f.type)) && out.some(f => f.type === "image/png") && out.some(f => f.type === "image/tiff")) return out.filter(f => f.type !== "image/tiff").slice(0, 6);
   return out.slice(0, 6);
 }
 // ¿Lo copiado trae texto de verdad? (Word, PowerPoint y Outlook mandan estilos y comentarios que no cuentan)
@@ -5048,42 +5058,59 @@ function rtNoShot(ed){
 }
 document.addEventListener("click", e => { if (e.target.closest("[data-rtnoshotx]")) e.target.closest(".rtnoshot")?.remove(); });
 // Botón “Pegar captura”: lee la imagen copiada (el navegador puede pedir permiso la primera vez).
-async function rtPasteBtn(ed){
-  if (!navigator.clipboard?.read) return toast("Este navegador no deja leer lo copiado desde un botón: tocá la hoja y apretá Ctrl+V (en Mac ⌘V; en el celular mantené apretado y Pegar).");
-  let items; try { items = await navigator.clipboard.read(); } catch (err){
-    return err?.name === "NotAllowedError" ? toast("El navegador no dio permiso para leer lo copiado: tocá la hoja y apretá Ctrl+V (en Mac ⌘V), o permitilo cuando lo pida.") : rtNoShot(ed); }
+// El tipo de imagen preferido de lo copiado (PNG antes que TIFF, que es lo que también deja la captura de Mac).
+const RT_IMG_PREF = ["image/png","image/jpeg","image/webp","image/gif"];
+const rtPickType = types => RT_IMG_PREF.find(t => types.includes(t)) || types.find(t => /^image\//.test(t));
+// Lee las imágenes directo del portapapeles (el navegador puede pedir permiso la primera vez). Se usa con el botón
+// “Pegar captura” y cuando el pegado no trae la imagen como archivo: algunas capturas de Windows llegan solo como un link a
+// un archivo temporal de la compu (Word la lee, el navegador no) y Safari a veces no la pasa.
+async function rtReadClip(){
+  if (!navigator.clipboard?.read) return { files:[], why:"nosupport" };
+  let items; try { items = await navigator.clipboard.read(); } catch (err){ return { files:[], why:err?.name === "NotAllowedError" ? "denied" : "error" }; }
   const files = [];
-  for (const it of items){ const t = it.types.find(x => /^image\//.test(x)); if (t){ try { const b = await it.getType(t); files.push(new File([b], "captura." + (t.split("/")[1] || "png"), { type:t })); } catch {} } }
-  if (!files.length) return rtNoShot(ed);
-  if (!ed._sel){ const r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); ed._sel = r; }
-  for (const f of files.slice(0, 6)) await rtAddImage(ed, f);
+  for (const it of items){ const t = rtPickType(it.types || []); if (t){ try { const b = await it.getType(t); files.push(new File([b], "captura." + (t.split("/")[1] || "png"), { type:t })); } catch {} } }
+  return { files:files.slice(0, 6), why:files.length ? "" : "noimage" };
 }
+async function rtFromClip(ed, quiet){
+  const { files, why } = await rtReadClip();
+  if (files.length){ if (!ed._sel){ const r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); ed._sel = r; } for (const f of files) await rtAddImage(ed, f); return true; }
+  if (why === "denied") toast("El navegador no dio permiso para leer la captura copiada: cuando lo pida, tocá “Permitir” y probá de nuevo.");
+  else if (why === "nosupport" && !quiet) toast("Este navegador no deja leer lo copiado desde un botón: tocá la hoja y apretá Ctrl+V (en Mac ⌘V; en el celular mantené apretado y Pegar).");
+  else if (why !== "nosupport") rtNoShot(ed);
+  return false;
+}
+const rtPasteBtn = ed => rtFromClip(ed);
 document.addEventListener("paste", async e => {
   const cd = e.clipboardData; if (!cd) return;
   let ed = e.target.closest?.(".rtedit");
-  const html = cd.getData("text/html") || "", hasText = rtHtmlHasText(html);
-  const files = hasText ? [] : rtClipFiles(cd);
-  // Pegar en la hoja sin nada copiado (la captura se guardó como archivo): se explica cómo copiarla.
-  if (ed && !files.length && !html && !cd.getData("text/plain") && !(cd.types || []).length){ e.preventDefault(); return rtNoShot(ed); }
+  const html = cd.getData("text/html") || "", hasText = rtHtmlHasText(html), plain = (cd.getData("text/plain") || "").trim();
+  const files = hasText ? [] : rtClipFiles(cd), imgOnly = !hasText && !plain && (files.length > 0 || /<img/i.test(html));
   if (!ed){
-    if (!files.length || e.target.closest?.("select,[contenteditable],#chatInput")) return;
-    // Una captura pegada en una caja de solo texto (cambios pedidos, links…) no entra ahí: va a la hoja del pedido.
-    const box = e.target.closest?.("input,textarea"); if (box && cd.getData("text/plain")) return;
+    // Una captura pegada sin el cursor en la hoja, o en una caja de solo texto (cambios pedidos, links…): va a la hoja del pedido.
+    if (!imgOnly || e.target.closest?.("select,[contenteditable],#chatInput")) return;
     ed = rtTarget(); if (!ed) return;
-    if (box) toast("La captura va en la hoja del “Texto del pedido” (en esa caja va solo texto): la pegué ahí.");
+    if (e.target.closest?.("input,textarea")) toast("La captura va en la hoja del “Texto del pedido” (en esa caja va solo texto): la pegué ahí.");
     e.preventDefault(); ed.focus({ preventScroll:true }); ed.scrollIntoView({ block:"center" });
-    const r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); ed._sel = r;
-    for (const f of files) await rtAddImage(ed, f);
-    return;
+    const r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); const sl = getSelection(); sl.removeAllRanges(); sl.addRange(r);
   }
   const srcs = files.length ? [] : [...html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)].map(m => m[1].replace(/&amp;/g, "&")).slice(0, 6);
-  if (!files.length && !srcs.length) return; // texto común: lo pega el navegador
+  if (!files.length && !srcs.length){
+    if (hasText || plain) return; // texto común: lo pega el navegador
+    // Sin texto y sin la imagen como archivo. Si el pegado trae algo, se deja que el navegador lo pegue (Safari y los
+    // celulares meten la imagen solos y rtAdopt la sube); si no aparece ninguna imagen, se lee del portapapeles.
+    rtSaveSel(ed);
+    if ((cd.types || []).length){ const n0 = ed.querySelectorAll("img").length;
+      setTimeout(() => { if (ed.isConnected && ed.querySelectorAll("img").length <= n0) rtFromClip(ed, true); }, 400); return; }
+    e.preventDefault(); return rtFromClip(ed, true);
+  }
   e.preventDefault(); rtSaveSel(ed);
   if (hasText){ document.execCommand("insertHTML", false, cleanRich(html)); ed.dataset.dirty = "1"; rtSaveSel(ed); }
   let miss = 0;
   for (const src of srcs){ let f = null;
-    try { const b = await (await fetch(src)).blob(); if (/^image\//.test(b.type)) f = new File([b], "pegada", { type:b.type }); } catch {}
+    if (!/^file:/i.test(src)) try { const b = await (await fetch(src)).blob(); if (/^image\//.test(b.type)) f = new File([b], "pegada", { type:b.type }); } catch {}
     if (f) files.push(f); else miss++; }
+  // Solo una imagen que no se pudo bajar (ej. la captura de Windows que llega como link a un archivo de la compu): se lee del portapapeles.
+  if (miss && !files.length && !hasText){ const { files:fs } = await rtReadClip(); if (fs.length){ files.push(...fs); miss = 0; } }
   for (const f of files) await rtAddImage(ed, f);
   if (miss) rtMissMsg(miss);
 });
@@ -5091,7 +5118,7 @@ document.addEventListener("paste", async e => {
 // una imagen desde otra página): se bajan y se suben a Drive en el mismo lugar. Las que no se pueden bajar se sacan y se avisa
 // (si no, al guardar desaparecían sin aviso).
 async function rtImgFile(im){
-  try { const b = await (await fetch(im.currentSrc || im.src)).blob(); if (/^image\//.test(b.type)) return new File([b], "pegada-" + Date.now(), { type:b.type }); } catch {}
+  if (!/^file:/i.test(im.src)) try { const b = await (await fetch(im.currentSrc || im.src)).blob(); if (/^image\//.test(b.type)) return new File([b], "pegada-" + Date.now(), { type:b.type }); } catch {}
   try { if (!im.complete || !im.naturalWidth) await new Promise((ok, no) => { im.onload = ok; im.onerror = no; setTimeout(no, 4000); });
     const cv = document.createElement("canvas"); cv.width = im.naturalWidth; cv.height = im.naturalHeight; cv.getContext("2d").drawImage(im, 0, 0);
     const b = await new Promise(ok => cv.toBlob(ok, "image/png")); if (b) return new File([b], "pegada-" + Date.now(), { type:"image/png" }); } catch {}
@@ -8601,9 +8628,9 @@ const GUIDE = [
     ["bell-ring","Avisos de pedidos (+1)","Cuando te cargan un pedido (o te piden cambios), el botón Panel de Trabajo (en el celular, “Trabajo”) muestra +1, +2… y late hasta que abrís cada pedido. En Diseño gráfico el número no se apaga al abrirlo: sigue sumando hasta que el pedido se aprueba o se cancela. En CM se apaga al abrirlo. Adentro del panel, cada sección (Redes Sociales, Cartelería, Web, Pantallas y Gestión de Videos) muestra cuántos pedidos tenés sin terminar: el número queda hasta que el pedido se aprueba, se termina o se cancela."],
     ["alarm-clock","Alarmas de entrega","Cada pedido y publicación avisa cuánto falta: falta 7 días, falta 3, falta 1, hoy, o ⏰ retraso de tantos días. La alarma queda hasta que se marca como terminado."],
     ["list-ordered","Etapas con cuadraditos","Cada tarjeta muestra sus etapas numeradas. Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección) → Aprobado (final). Admin total carga el pedido. El diseñador o el CM toca el pedido y ve la ficha completa; el diseñador lo lleva hasta Boceto finalizado y le llega el aviso a Admin total, que pide cambios con un mensaje escrito (se cuentan en la ficha) o toca Diseño finalizado y cierra el ciclo. El CM recibe el pedido y lo marca Programado → Publicado. Tocás el cuadradito de la etapa o arrastrás la tarjeta a otra columna."],
-    ["check-check","Terminé mi etapa (diseñadores)","El diseñador toca “Terminé mi etapa”: pasa a revisión y le llega un aviso a Admin total, que aprueba o pide correcciones. Con correcciones aparece “Terminé las correcciones”."],
+    ["check-check","Etapas de los pedidos de diseño: quién las cambia","Solo el diseñador responsable y Admin total. El diseñador va paso a paso: “Empezar · En proceso” y después “✓ Boceto finalizado” (pasa a revisión y le llega un aviso a Admin total, que aprueba o pide correcciones; con correcciones aparece “Terminé las correcciones”). No vuelve para atrás ni salta etapas. Los CM y Admin ven las etapas pero no las cambian."],
     ["calendar-clock","Meses y cierre","Arriba cambiás de mes con ‹ Anterior / Siguiente ›. Admin total cierra el mes desde Informe mensual: queda para consultar y lo no cumplido pasa al mes siguiente como “arrastrado”."],
-    ["mouse-pointer-click","Cambiar de etapa desde el calendario","En cualquier calendario, tocá la línea de estado de un contenido (● Estado ▾) y elegí la etapa: Programado, Publicado, Aprobado… Los CM cambian todas las etapas de lo suyo. Los diseñadores llevan sus trabajos hasta “En revisión” (terminado); aprobar y entregar lo hace solo Admin total."],
+    ["mouse-pointer-click","Cambiar de etapa desde el calendario","En cualquier calendario, tocá la línea de estado de un contenido (● Estado ▾) y elegí la etapa: Programado, Publicado, Aprobado… Los CM cambian las etapas de lo suyo (publicaciones y videos), no las de los pedidos de diseño. Los diseñadores llevan sus trabajos paso a paso hasta “Boceto finalizado”; aprobar o pedir cambios lo hace solo Admin total."],
     ["hand","Arrastrar y ordenar","En la compu podés arrastrar tarjetas entre columnas, posteos y entregas a otro día (o a otro mes) y reordenar notas. En iPad y celular usá los botones y las flechitas."],
     ["refresh-cw","Versión nueva","Cuando se publica una versión nueva de la app, aparece abajo el aviso “Hay una versión nueva de la app” con el botón Actualizar: tocalo y se guarda lo que estabas haciendo y se recarga con lo último."],
     ["menu","Menú al entrar","Cuando salís de la app y volvés a entrar (o la primera vez en un dispositivo), el menú arranca con General y tu área abiertos: Diseño gráfico si sos diseñador, Community Manager si sos CM. Lo demás queda comprimido; tocá el título de un grupo para abrirlo. Mientras usás la app, se recuerda lo que abriste."],
