@@ -515,6 +515,13 @@ html.nomotion .picon{animation:none}
 .rtwrap{position:relative}
 .rtnoshot{display:flex;gap:8px;align-items:flex-start;margin:6px 0;padding:10px 12px;border-radius:10px;background:rgba(250,204,21,.12);border:1px solid rgba(250,204,21,.45);font-size:13.5px;line-height:1.45}
 .rtnoshot>svg{flex:none;width:18px;height:18px;margin-top:1px;color:#facc15}.rtnoshot span{flex:1}
+.shotbox{position:fixed;inset:0;z-index:9000;background:rgba(2,6,23,.82);display:grid;place-items:center;padding:16px}
+.shotin{background:var(--panel,#0f172a);border:1px solid var(--line-3,#334155);border-radius:16px;padding:14px;max-width:min(1100px,100%);width:100%;max-height:100%;display:flex;flex-direction:column;gap:10px}
+.shoth{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}.shoth b{display:flex;align-items:center;gap:6px}.shoth svg{width:18px;height:18px}
+.shotstage{position:relative;overflow:auto;min-height:0;flex:1;display:flex;justify-content:center;align-items:flex-start}
+.shotstage img{max-width:100%;max-height:68vh;display:block;cursor:crosshair;user-select:none;-webkit-user-select:none;touch-action:none;border-radius:6px}
+.shotsel{position:absolute;border:2px solid #22d3ee;background:rgba(34,211,238,.15);box-shadow:0 0 0 9999px rgba(2,6,23,.45);pointer-events:none}
+.shotacts{justify-content:flex-end}
 .rtnoshot .rtdiag{display:block;margin-top:6px;font-size:11.5px;color:var(--faint);overflow-wrap:anywhere}
 .rtedit img{-webkit-user-drag:none;cursor:pointer}
 .rtimg[data-w]{max-width:100%;max-height:none}
@@ -3992,6 +3999,7 @@ const ICONS = {
 "server":"<rect width=\"20\" height=\"8\" x=\"2\" y=\"2\" rx=\"2\" ry=\"2\"/><rect width=\"20\" height=\"8\" x=\"2\" y=\"14\" rx=\"2\" ry=\"2\"/><line x1=\"6\" x2=\"6.01\" y1=\"6\" y2=\"6\"/><line x1=\"6\" x2=\"6.01\" y1=\"18\" y2=\"18\"/>",
 "clipboard-paste":"<path d=\"M15 2H9a1 1 0 0 0-1 1v2c0 .6.4 1 1 1h6c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1Z\"/><path d=\"M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2M16 4h2a2 2 0 0 1 2 2v2M11 14h10\"/><path d=\"m17 10 4 4-4 4\"/>",
 "play":"<polygon points=\"6 3 20 12 6 21 6 3\"/>",
+"crop":"<path d=\"M6 2v14a2 2 0 0 0 2 2h14\"/><path d=\"M18 22V8a2 2 0 0 0-2-2H2\"/>",
 "paperclip":"<path d=\"m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551\"/>",
 "presentation":"<path d=\"M2 3h20\"/><path d=\"M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3\"/><path d=\"m7 21 5-5 5 5\"/>",
 "file-archive":"<path d=\"M10 12v-1\"/><path d=\"M10 18v-2\"/><path d=\"M10 7V6\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/><path d=\"M15.5 22H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v16a2 2 0 0 0 .274 1.01\"/><circle cx=\"10\" cy=\"20\" r=\"2\"/>",
@@ -4973,15 +4981,16 @@ const canEditBrief = j => !isViewOnly() && !isClosedJob(j) && (viewer.role === "
 // Texto de ejemplo (en gris) que se ve en la hoja en blanco hasta que se empieza a escribir.
 const BRIEF_PH = { "Diseño":"Ejemplo:\nOBJETIVO: anunciar la canasta navideña con 20% OFF y llevar gente a la tienda.\nTEXTO QUE VA EN LA PIEZA:\n• Título: Tu Navidad, completa\n• Subtítulo: Canasta navideña con 20% OFF\n• Legal: Válido del 1 al 24 de diciembre o hasta agotar stock.\nFORMATO Y MEDIDAS: post 1080×1350 y una historia 1080×1920.\nREFERENCIAS: campaña de Navidad del año pasado (link en Material adjunto).\nOBSERVACIONES: que se lea bien el 20%. Usar el logo nuevo.",
   "CM":"Ejemplo:\nOBJETIVO: inspirar con una receta fácil y mostrar los productos de la tienda.\nGUION / TEXTO:\n• Gancho (primeros 3 segundos): ¿Clericó en 1 minuto? Mirá\n• Paso a paso con los productos y su precio\n• Copy: Todo lo que necesitás está en Superseis 🎄\nFORMATO: reel vertical 1080×1920, 30 a 45 segundos, con subtítulos.\nREFERENCIAS: reels de recetas de la cuenta.\nOBSERVACIONES: música en tendencia, sin marcas de agua." };
+const RT_CAN_SHOT = !!navigator.mediaDevices?.getDisplayMedia && !/iphone|ipad|android/i.test(navigator.userAgent);
 function rtEditor(id, html, ph){
   const tb = [["bold","bold","Negrita"],["italic","italic","Cursiva"],["underline","underline","Subrayado"],["insertUnorderedList","list","Viñetas"],["insertOrderedList","list-ordered","Lista numerada"]];
   return `<div class="rtwrap"><div class="rtbar" role="toolbar" aria-label="Formato del texto">
       <button type="button" class="btn ib sm" data-rt="small" title="Letra más chica" aria-label="Letra más chica">A−</button><button type="button" class="btn ib sm" data-rt="big" title="Letra más grande" aria-label="Letra más grande">A+</button>
       ${tb.map(([c, i, l]) => `<button type="button" class="btn ib sm" data-rt="${c}" title="${l}" aria-label="${l}">${icon(i)}</button>`).join("")}
       <button type="button" class="btn ib sm" data-rt="clear" title="Quitar formato" aria-label="Quitar formato">${icon("remove-formatting")}</button>
-      <button type="button" class="btn sm rtimgbtn" data-rt="img" title="Agregar una imagen de ejemplo o un boceto (se guarda en Google Drive)">${icon("image-plus")} Imagen</button><button type="button" class="btn sm rtimgbtn" data-rt="paste" title="Pegar la captura de pantalla o la imagen que copiaste">${icon("clipboard-paste")} Pegar captura</button><input type="file" class="rtimgin" accept="image/*" multiple hidden></div>
+      <button type="button" class="btn sm rtimgbtn" data-rt="img" title="Agregar una imagen de ejemplo o un boceto (se guarda en Google Drive)">${icon("image-plus")} Imagen</button><button type="button" class="btn sm rtimgbtn" data-rt="paste" title="Pegar la captura de pantalla o la imagen que copiaste">${icon("clipboard-paste")} Pegar captura</button>${RT_CAN_SHOT ? `<button type="button" class="btn sm rtimgbtn" data-rt="shot" title="Sacar una captura de la pantalla, de una ventana o de una pestaña desde acá mismo y elegir la parte">${icon("crop")} Capturar pantalla</button>` : ""}<input type="file" class="rtimgin" accept="image/*" multiple hidden></div>
     <div class="rtedit" id="${id}" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Texto del pedido" data-ph="${esc(ph || BRIEF_PH["Diseño"])}">${html}</div>
-    <p class="note rthint">${icon("image")}<span>Para explicar con un ejemplo o un boceto: sacá una captura de pantalla y pegala en la hoja con Ctrl+V (en Mac ⌘V) o con el botón <b>Pegar captura</b>; en el celular mantené apretado en la hoja y tocá <b>Pegar</b>. También podés arrastrar una imagen o tocar <b>Imagen</b>. Se guarda en Google Drive y la ven todos en el pedido. Tocá una imagen para agrandarla o achicarla (arrastrá la esquina) o para borrarla.</span></p></div>`;
+    <p class="note rthint">${icon("image")}<span>Para explicar con un ejemplo o un boceto: sacá una captura de pantalla y pegala en la hoja con Ctrl+V (en Mac ⌘V) o con el botón <b>Pegar captura</b>; en el celular mantené apretado en la hoja y tocá <b>Pegar</b>. En la compu también está <b>Capturar pantalla</b>: la saca la app y elegís la parte. Además podés arrastrar una imagen o tocar <b>Imagen</b>. Se guarda en Google Drive y la ven todos en el pedido. Tocá una imagen para agrandarla o achicarla (arrastrá la esquina) o para borrarla.</span></p></div>`;
 }
 // Quién puede cambiar el texto y los bocetos del pedido: el responsable y Admin total. Los demás lo ven (hoja blanca, solo lectura).
 function jobPermNote(j, what){
@@ -5060,12 +5069,13 @@ function rtTarget(){
 // Cuando no hay ninguna imagen copiada: la captura quedó guardada como archivo (Mac, celular) y no en el portapapeles.
 function rtNoShot(ed){
   const ua = navigator.userAgent, how = /iphone|ipad|android/i.test(ua) ? "En el celular la captura va a la galería: tocá la miniatura que aparece abajo → Compartir → <b>Copiar</b>, y después “Pegar captura”. O tocá <b>Imagen</b> y elegila de la galería."
-    : /mac/i.test(ua) ? "En Mac, para que la captura quede copiada sumá Control: <b>⌘ + Control + Shift + 4</b> (con ⌘ + Shift + 4 se guarda como archivo en el escritorio: arrastrá ese archivo a la hoja o tocá <b>Imagen</b>)."
+    : /mac/i.test(ua) ? "En Mac, ⌘ + Shift + 4 guarda la captura como archivo en el escritorio (no la copia). Para copiarla: <b>⌘ + Control + Shift + 4</b>. O dejalo fijo: <b>⌘ + Shift + 5 → Opciones → Guardar en: Portapapeles</b>. Si ya la tenés como archivo, arrastrala a la hoja o tocá <b>Imagen</b>."
     : "En Windows: <b>Windows + Shift + S</b>, elegí la parte de la pantalla y después pegá. Si la captura quedó guardada como archivo, arrastrala a la hoja o tocá <b>Imagen</b>.";
   toast("No encontré ninguna imagen copiada: mirá cómo copiar la captura arriba de la hoja.");
+  const shot = RT_CAN_SHOT ? ` <b>O más fácil: tocá “Capturar pantalla”</b> en la barra de la hoja y elegí la parte.` : "";
   const w = ed?.closest(".rtwrap"); if (!w) return; w.querySelector(".rtnoshot")?.remove();
   const d = rtDiagSend("paste-noimage");
-  w.querySelector(".rtbar")?.insertAdjacentHTML("afterend", `<div class="rtnoshot" role="status">${icon("info")}<span><b>No hay ninguna imagen copiada.</b> ${how}<small class="rtdiag">Detalle técnico: ${esc(rtDiagTxt(d))}</small></span><button type="button" class="btn ib sm" data-rtnoshotx aria-label="Cerrar">${icon("x")}</button></div>`);
+  w.querySelector(".rtbar")?.insertAdjacentHTML("afterend", `<div class="rtnoshot" role="status">${icon("info")}<span><b>No hay ninguna imagen copiada</b> (lo copiado es texto). ${how}${shot}<small class="rtdiag">Detalle técnico: ${esc(rtDiagTxt(d))}</small></span><button type="button" class="btn ib sm" data-rtnoshotx aria-label="Cerrar">${icon("x")}</button></div>`);
   if (window.lucide) lucide.createIcons();
 }
 document.addEventListener("click", e => { if (e.target.closest("[data-rtnoshotx]")) e.target.closest(".rtnoshot")?.remove(); });
@@ -5079,6 +5089,52 @@ function rtDiagSend(kind, extra){
   return info;
 }
 const rtDiagTxt = d => [d.ev && `pegado: ${(d.types || []).join(", ") || "sin datos"} · archivos ${(d.files || []).length}`, d.read && `portapapeles: ${d.read.join(" | ") || "vacío"}`, (d.readImgs || d.imgs) && `imágenes con link de: ${(d.readImgs || d.imgs).join(", ")}`, d.readErr && `error: ${d.readErr}`, d.srv && `servidor: ${d.srv.join(" / ")}`].filter(Boolean).join(" · ");
+// “Capturar pantalla”: la app saca la captura (de toda la pantalla, una ventana o una pestaña, lo que elijas en el aviso
+// del navegador), la muestra para elegir la parte con el mouse y la agrega a la hoja. No depende del portapapeles.
+async function rtScreenShot(ed){
+  if (window.RMH?.previewing) return toast("Estás en vista previa: no se suben imágenes.");
+  let st; try { st = await navigator.mediaDevices.getDisplayMedia({ video:{ displaySurface:"window" }, audio:false, selfBrowserSurface:"include", surfaceSwitching:"exclude", monitorTypeSurfaces:"include" }); }
+  catch (err){ rtDiagSend("shot-fail", { err:`${err?.name || "Error"}: ${String(err?.message || "").slice(0, 120)}` });
+    return toast(err?.name === "NotAllowedError" ? "Captura cancelada. En Mac, si no aparece la pantalla, dale permiso al navegador en Ajustes del Sistema → Privacidad y seguridad → Grabación de pantalla." : "Este navegador no deja sacar capturas desde la app: usá “Imagen” o pegá la captura."); }
+  const stop = () => st.getTracks().forEach(t => t.stop());
+  try {
+    const v = document.createElement("video"); v.muted = true; v.playsInline = true; v.srcObject = st; await v.play();
+    await new Promise(r => setTimeout(r, 450)); // que se vaya el cartel del navegador antes de tomar la imagen
+    const cv = document.createElement("canvas"); cv.width = v.videoWidth; cv.height = v.videoHeight; cv.getContext("2d").drawImage(v, 0, 0);
+    stop(); if (!cv.width || !cv.height) throw new Error("vacía");
+    rtCropOpen(ed, cv);
+  } catch (err){ stop(); rtDiagSend("shot-fail", { err:String(err?.message || err).slice(0, 120) }); toast("No se pudo sacar la captura. Probá de nuevo."); }
+}
+// Elegir la parte de la captura: se arrastra un rectángulo sobre la imagen (o “Usar toda”).
+function rtCropOpen(ed, cv){
+  document.getElementById("shotbox")?.remove();
+  const box = document.createElement("div"); box.id = "shotbox"; box.className = "shotbox"; box.setAttribute("role", "dialog"); box.setAttribute("aria-label", "Elegir la parte de la captura");
+  box.innerHTML = `<div class="shotin"><div class="shoth"><b>${icon("crop")} Arrastrá sobre la imagen para elegir la parte que va en la hoja</b><span class="note">o usá toda la captura</span></div>
+    <div class="shotstage"><img alt="Captura de pantalla" draggable="false"><div class="shotsel" hidden></div></div>
+    <div class="chips shotacts"><button type="button" class="btn" data-shotx>Cancelar</button><button type="button" class="btn" data-shotall>Usar toda</button><button type="button" class="btn primary" data-shotok disabled>${icon("check")} Usar la parte elegida</button></div></div>`;
+  document.body.appendChild(box);
+  const img = box.querySelector("img"), sel = box.querySelector(".shotsel"), ok = box.querySelector("[data-shotok]"); img.src = cv.toDataURL("image/png");
+  let r0 = null, rect = null;
+  const pt = e => { const b = img.getBoundingClientRect(); return [Math.max(0, Math.min(b.width, e.clientX - b.left)), Math.max(0, Math.min(b.height, e.clientY - b.top))]; };
+  const draw = () => { if (!rect) return; Object.assign(sel.style, { left:img.offsetLeft + rect.x + "px", top:img.offsetTop + rect.y + "px", width:rect.w + "px", height:rect.h + "px" }); sel.hidden = false; };
+  img.addEventListener("pointerdown", e => { e.preventDefault(); img.setPointerCapture?.(e.pointerId); r0 = pt(e); rect = { x:r0[0], y:r0[1], w:0, h:0 }; draw(); });
+  img.addEventListener("pointermove", e => { if (!r0) return; const [x, y] = pt(e); rect = { x:Math.min(x, r0[0]), y:Math.min(y, r0[1]), w:Math.abs(x - r0[0]), h:Math.abs(y - r0[1]) }; draw(); });
+  const end = () => { if (!r0) return; r0 = null; ok.disabled = !(rect && rect.w > 8 && rect.h > 8); if (ok.disabled){ rect = null; sel.hidden = true; } };
+  img.addEventListener("pointerup", end); img.addEventListener("pointercancel", end);
+  const close = () => { box.remove(); removeEventListener("keydown", esc); };
+  const esc = e => { if (e.key === "Escape") close(); }; addEventListener("keydown", esc);
+  const use = async part => {
+    let src = cv;
+    if (part && rect){ const k = cv.width / img.getBoundingClientRect().width, c2 = document.createElement("canvas");
+      c2.width = Math.max(1, Math.round(rect.w * k)); c2.height = Math.max(1, Math.round(rect.h * k)); c2.getContext("2d").drawImage(cv, rect.x * k, rect.y * k, c2.width, c2.height, 0, 0, c2.width, c2.height); src = c2; }
+    const b = await new Promise(okk => src.toBlob(okk, "image/png")); close(); if (!b) return toast("No se pudo usar la captura.");
+    if (!ed.isConnected) return toast("La hoja se cerró: volvé a abrirla y sacá la captura de nuevo.");
+    ed.focus({ preventScroll:true }); if (ed._sel && ed.contains(ed._sel.commonAncestorContainer)){ const sl = getSelection(); sl.removeAllRanges(); sl.addRange(ed._sel.cloneRange()); } // vuelve el cursor a donde estaba
+    await rtAddImage(ed, new File([b], `captura-${Date.now()}.png`, { type:"image/png" }));
+  };
+  box.addEventListener("click", e => { if (e.target.closest("[data-shotx]") || e.target === box) close(); else if (e.target.closest("[data-shotall]")) use(false); else if (e.target.closest("[data-shotok]")) use(true); });
+  box.querySelector("[data-shotall]").focus();
+}
 // Imagen pegada que llegó como link: primero la baja el navegador; si la otra página no lo permite, la baja el servidor.
 const rtSrcHost = src => /^data:/i.test(src) ? "data:" : /^blob:/i.test(src) ? "blob:" : (() => { try { const u = new URL(src); return u.protocol + "//" + u.hostname; } catch { return "?"; } })();
 async function rtFetchImg(src){
@@ -5229,6 +5285,7 @@ document.addEventListener("click", e => {
   const b = e.target.closest("[data-rt]"); if (b){ const ed = b.closest(".rtwrap")?.querySelector(".rtedit"); if (!ed) return; ed.dataset.dirty = "1"; ed.focus(); const c = b.dataset.rt;
     if (c === "img"){ rtSaveSel(ed); b.parentElement.querySelector(".rtimgin")?.click(); return; }
     if (c === "paste"){ rtSaveSel(ed); rtPasteBtn(ed); return; }
+    if (c === "shot"){ rtSaveSel(ed); rtScreenShot(ed); return; }
     if (c === "big" || c === "small") document.execCommand("fontSize", false, c === "big" ? "5" : "2");
     else if (c === "clear") document.execCommand("removeFormat");
     else document.execCommand(c); return; }
