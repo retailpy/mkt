@@ -515,6 +515,7 @@ html.nomotion .picon{animation:none}
 .rtwrap{position:relative}
 .rtnoshot{display:flex;gap:8px;align-items:flex-start;margin:6px 0;padding:10px 12px;border-radius:10px;background:rgba(250,204,21,.12);border:1px solid rgba(250,204,21,.45);font-size:13.5px;line-height:1.45}
 .rtnoshot>svg{flex:none;width:18px;height:18px;margin-top:1px;color:#facc15}.rtnoshot span{flex:1}
+.rtnoshot .rtdiag{display:block;margin-top:6px;font-size:11.5px;color:var(--faint);overflow-wrap:anywhere}
 .rtedit img{-webkit-user-drag:none;cursor:pointer}
 .rtimg[data-w]{max-width:100%;max-height:none}
 .rtedit img.rtsel{outline:3px solid #22d3ee;outline-offset:2px}
@@ -5001,7 +5002,7 @@ async function rtAddImage(ed, file){
   const sig = `${file.name}|${file.size}|${file.type}`; ed._sigs = ed._sigs || new Map();
   if (Date.now() - (ed._sigs.get(sig) || 0) < 8000) return toast("Esa imagen ya se está agregando a la hoja: no se sube dos veces.");
   ed._sigs.set(sig, Date.now());
-  let shr; try { shr = await shrinkPhoto(file, 1600, .85); } catch { return toast("No se pudo leer la imagen. Probá con otra."); }
+  let shr; try { shr = await shrinkPhoto(file, 1600, .85); } catch (err){ ed._sigs.delete(sig); rtDiagSend("decode-fail", { type:file.type, size:file.size, err:String(err?.message || err).slice(0, 120) }); return toast("No se pudo leer la imagen. Probá con otra."); }
   const edId = ed.id, tmp = "up" + Date.now().toString(36), local = URL.createObjectURL(shr.blob), img = document.createElement("img");
   img.src = local; img.dataset.up = tmp; img.dataset.sig = sig; img.className = "rtimg up"; img.alt = "Subiendo…";
   const r = ed._sel && ed.contains(ed._sel.commonAncestorContainer) ? ed._sel : null;
@@ -5011,7 +5012,7 @@ async function rtAddImage(ed, file){
   ed.closest(".rtwrap")?.querySelector(".rtnoshot")?.remove();
   const j = await integ({ action:"chat_image", type:"image/jpeg", data:await toB64(shr.blob) }).catch(() => ({ ok:false }));
   const el = document.querySelector(`img[data-up="${tmp}"]`); // la hoja pudo volver a dibujarse mientras subía
-  if (!j.ok || !j.id){ el?.remove(); ed._sigs.delete(sig); URL.revokeObjectURL(local); return toast(j.error || "No se pudo subir la imagen. Probá de nuevo."); }
+  if (!j.ok || !j.id){ rtDiagSend("upload-fail", { err:String(j.error || "").slice(0, 200), size:shr.blob.size }); el?.remove(); ed._sigs.delete(sig); URL.revokeObjectURL(local); return toast(j.error || "No se pudo subir la imagen. Probá de nuevo."); }
   IMG_LOCAL[j.id] = local;
   if (el){ el.dataset.drive = j.id; delete el.dataset.up; el.classList.remove("up"); el.alt = "Imagen"; el.closest(".rtedit")?.setAttribute("data-dirty", "1");
     // Si el cursor sigue justo después de la imagen (no escribiste nada), queda elegida: ya se puede achicar o borrar.
@@ -5053,11 +5054,21 @@ function rtNoShot(ed){
     : "En Windows: <b>Windows + Shift + S</b>, elegí la parte de la pantalla y después pegá. Si la captura quedó guardada como archivo, arrastrala a la hoja o tocá <b>Imagen</b>.";
   toast("No encontré ninguna imagen copiada: mirá cómo copiar la captura arriba de la hoja.");
   const w = ed?.closest(".rtwrap"); if (!w) return; w.querySelector(".rtnoshot")?.remove();
-  w.querySelector(".rtbar")?.insertAdjacentHTML("afterend", `<div class="rtnoshot" role="status">${icon("info")}<span><b>No hay ninguna imagen copiada.</b> ${how}</span><button type="button" class="btn ib sm" data-rtnoshotx aria-label="Cerrar">${icon("x")}</button></div>`);
+  const d = rtDiagSend("paste-noimage");
+  w.querySelector(".rtbar")?.insertAdjacentHTML("afterend", `<div class="rtnoshot" role="status">${icon("info")}<span><b>No hay ninguna imagen copiada.</b> ${how}<small class="rtdiag">Detalle técnico: ${esc(rtDiagTxt(d))}</small></span><button type="button" class="btn ib sm" data-rtnoshotx aria-label="Cerrar">${icon("x")}</button></div>`);
   if (window.lucide) lucide.createIcons();
 }
 document.addEventListener("click", e => { if (e.target.closest("[data-rtnoshotx]")) e.target.closest(".rtnoshot")?.remove(); });
 // Botón “Pegar captura”: lee la imagen copiada (el navegador puede pedir permiso la primera vez).
+// Diagnóstico del pegado: qué entregó el navegador (solo tipos, tamaños y errores; nunca el texto ni la imagen). Si no se
+// pudo pegar, se muestra en la ayuda y se manda al registro del servidor para ver la causa.
+let rtDiag = {};
+function rtDiagSend(kind, extra){
+  const info = { ...rtDiag, ...extra, ua:navigator.userAgent.slice(0, 180), sc:isSecureContext, cr:!!navigator.clipboard?.read, at:new Date().toISOString() };
+  try { if (!window.RMH?.previewing) integ({ action:"diag", kind, info }).catch(() => {}); } catch {}
+  return info;
+}
+const rtDiagTxt = d => [d.ev && `pegado: ${(d.types || []).join(", ") || "sin datos"} · archivos ${(d.files || []).length}`, d.read && `portapapeles: ${d.read.join(" | ") || "vacío"}`, d.readErr && `error: ${d.readErr}`].filter(Boolean).join(" · ");
 // El tipo de imagen preferido de lo copiado (PNG antes que TIFF, que es lo que también deja la captura de Mac).
 const RT_IMG_PREF = ["image/png","image/jpeg","image/webp","image/gif"];
 const rtPickType = types => RT_IMG_PREF.find(t => types.includes(t)) || types.find(t => /^image\//.test(t));
@@ -5066,7 +5077,8 @@ const rtPickType = types => RT_IMG_PREF.find(t => types.includes(t)) || types.fi
 // un archivo temporal de la compu (Word la lee, el navegador no) y Safari a veces no la pasa.
 async function rtReadClip(){
   if (!navigator.clipboard?.read) return { files:[], why:"nosupport" };
-  let items; try { items = await navigator.clipboard.read(); } catch (err){ return { files:[], why:err?.name === "NotAllowedError" ? "denied" : "error" }; }
+  let items; try { items = await navigator.clipboard.read(); } catch (err){ rtDiag.readErr = `${err?.name || "Error"}: ${String(err?.message || "").slice(0, 120)}`; return { files:[], why:err?.name === "NotAllowedError" ? "denied" : "error" }; }
+  rtDiag.read = items.map(it => (it.types || []).join("+")); delete rtDiag.readErr;
   const files = [];
   for (const it of items){ const t = rtPickType(it.types || []); if (t){ try { const b = await it.getType(t); files.push(new File([b], "captura." + (t.split("/")[1] || "png"), { type:t })); } catch {} } }
   return { files:files.slice(0, 6), why:files.length ? "" : "noimage" };
@@ -5074,17 +5086,19 @@ async function rtReadClip(){
 async function rtFromClip(ed, quiet){
   const { files, why } = await rtReadClip();
   if (files.length){ if (!ed._sel){ const r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); ed._sel = r; } for (const f of files) await rtAddImage(ed, f); return true; }
-  if (why === "denied") toast("El navegador no dio permiso para leer la captura copiada: cuando lo pida, tocá “Permitir” y probá de nuevo.");
+  if (why === "denied"){ rtDiagSend("paste-denied"); toast("El navegador no dio permiso para leer la captura copiada: cuando lo pida, tocá “Permitir” y probá de nuevo."); }
   else if (why === "nosupport" && !quiet) toast("Este navegador no deja leer lo copiado desde un botón: tocá la hoja y apretá Ctrl+V (en Mac ⌘V; en el celular mantené apretado y Pegar).");
   else if (why !== "nosupport") rtNoShot(ed);
   return false;
 }
-const rtPasteBtn = ed => rtFromClip(ed);
+const rtPasteBtn = ed => { rtDiag = { ev:"", btn:true }; return rtFromClip(ed); };
 document.addEventListener("paste", async e => {
   const cd = e.clipboardData; if (!cd) return;
   let ed = e.target.closest?.(".rtedit");
   const html = cd.getData("text/html") || "", hasText = rtHtmlHasText(html), plain = (cd.getData("text/plain") || "").trim();
   const files = hasText ? [] : rtClipFiles(cd), imgOnly = !hasText && !plain && (files.length > 0 || /<img/i.test(html));
+  rtDiag = { ev:"paste", types:[...(cd.types || [])], files:[...(cd.files || [])].map(f => `${f.type}:${f.size}`), items:[...(cd.items || [])].map(i => `${i.kind}:${i.type}`),
+    html:html.replace(/>[^<]*</g, "><").replace(/\s+/g, " ").slice(0, 300), plain:plain.length, inSheet:!!ed, tag:e.target.tagName };
   if (!ed){
     // Una captura pegada sin el cursor en la hoja, o en una caja de solo texto (cambios pedidos, links…): va a la hoja del pedido.
     if (!imgOnly || e.target.closest?.("select,[contenteditable],#chatInput")) return;
