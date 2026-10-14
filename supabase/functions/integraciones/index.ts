@@ -374,6 +374,10 @@ Deno.serve(async (req) => {
   const c = await cfg();
   try {
     switch (b.action){
+      // Diagnóstico de la app (ej. qué entrega el navegador al pegar una captura): queda solo en el registro de la función.
+      case "diag":
+        console.log("DIAG", m.person_id, String(b.kind || "").slice(0, 30), JSON.stringify(b.info ?? null).slice(0, 2500));
+        return json({ ok: true });
       case "status":
         if (!admin) return json({ ok: false, error: "Solo Admin total" }, 403);
         return json({ ok: true, giphy: !!c.giphy_key, stickers: !!c.sticker_url, scriptV: c.sticker_url ? await scriptVersion(c.sticker_url, c.sticker_secret) : 0, scriptNeed: SCRIPT_V });
