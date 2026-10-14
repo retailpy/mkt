@@ -4,6 +4,8 @@
 //   status · set_giphy {key} · script · set_sticker_url {url}       → solo Admin total
 //   gifs {q} · stickers · sticker_upload {name,type,data}           → cualquier persona del equipo
 //   chat_image {type,data} · chat_image_delete {id}                  → fotos del chat (carpeta "Fotos Retail MKT", una carpeta por mes)
+//   fetch_image {url}                                               → baja una imagen pegada que llegó como link (la devuelve en base64)
+//   diag {kind,info}                                                → diagnóstico de la app (solo queda en el registro)
 //   boceto_upload {job,name,type,data} · boceto_delete {id}          → bocetos de los pedidos (carpeta de Bocetos, una carpeta por mes)
 //   doc_session {name,type,size} · doc_done {id} · doc_folder        → documentos del chat, en su formato original ("Documentos Retail MKT", una carpeta por mes)
 //   tendencias {area:"dg"|"cm"|"ideas", force?}                      → campañas, piezas y contenidos con foto, en español (force: solo Admin total)
@@ -426,6 +428,24 @@ Deno.serve(async (req) => {
         const j = await scriptPost(c, { name: b.name, type: b.type, data: b.data, by: m.person_id });
         if (!j.ok) return json({ ok: false, error: j.error || "No se pudo guardar" });
         return json({ ok: true, sticker: { ...j.sticker, url: thumb(j.sticker.id) } });
+      }
+      // Imagen pegada en la hoja del pedido que llegó como link (copiada de una página, un documento, un correo o Canva): el
+      // navegador no la puede bajar (la otra página no lo permite); la baja el servidor y se la devuelve a la app, que la
+      // achica y la sube a Drive como siempre. Solo https a nombres de sitio (no a direcciones internas) y hasta 8 MB.
+      case "fetch_image": {
+        let u: URL; try { u = new URL(String(b.url || "")); } catch { return json({ ok: false, error: "Link inválido" }); }
+        const h = u.hostname.toLowerCase();
+        if (u.protocol !== "https:" || !h.includes(".") || /^[\d.]+$/.test(h) || h.includes(":") || /(^|\.)(localhost|local|internal|supabase\.co)$/.test(h)) return json({ ok: false, error: "Ese link no se puede bajar" });
+        const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 15000);
+        try {
+          const r = await fetch(u, { signal: ctl.signal, redirect: "follow", headers: { "User-Agent": "Mozilla/5.0 (RetailMKTHub)", "Accept": "image/avif,image/webp,image/png,image/jpeg,image/*;q=0.8" } });
+          const type = (r.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+          if (!r.ok || !/^image\/(png|jpeg|webp|gif)$/.test(type)) return json({ ok: false, error: `No se pudo bajar la imagen (${r.status}${type ? " " + type : ""})` });
+          const buf = new Uint8Array(await r.arrayBuffer());
+          if (!buf.length || buf.length > 8 * 1048576) return json({ ok: false, error: "La imagen es muy pesada (más de 8 MB)" });
+          let bin = ""; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+          return json({ ok: true, type, data: btoa(bin) });
+        } catch { return json({ ok: false, error: "No se pudo bajar la imagen (tardó demasiado o el sitio no responde)" }); } finally { clearTimeout(t); }
       }
       // Fotos del chat: se guardan en Google Drive ("Fotos Retail MKT" → carpeta del mes), no en la base.
       case "chat_image": {

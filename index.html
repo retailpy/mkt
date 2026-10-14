@@ -737,6 +737,8 @@ html.nomotion .bdconf{display:none}
 .admeta.big{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted)}.admeta.big b{color:#fff;font-size:15px}
 @media (max-width:700px){.adbox{grid-template-columns:1fr}.adbigimg img{max-height:50vh}}
 /* Hoja blanca tipo Word para el texto del pedido */
+.jperm{display:flex;align-items:center;gap:6px;margin:0 0 8px;font-size:12.5px;color:var(--muted)}.jperm svg{width:14px;height:14px;flex:none}
+.rtview .rtempty{color:#9ca3af !important;font-style:italic;margin:0}
 .rtedit,.rtview{background:#fff !important;color:#1f2937 !important;border:1px solid #e5e7eb !important;border-radius:6px !important;padding:28px 32px !important;font-size:15.5px;line-height:1.65;box-shadow:0 18px 40px -18px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.04)}
 .rtedit{min-height:300px !important}.rtedit b,.rtview b,.rtedit strong,.rtview strong{color:#0f172a}.rtedit a,.rtview a{color:#2563eb}
 .rtedit:empty::before{content:attr(data-ph) !important;color:#9ca3af !important;white-space:pre-line;font-style:italic}
@@ -4981,14 +4983,22 @@ function rtEditor(id, html, ph){
     <div class="rtedit" id="${id}" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Texto del pedido" data-ph="${esc(ph || BRIEF_PH["Diseño"])}">${html}</div>
     <p class="note rthint">${icon("image")}<span>Para explicar con un ejemplo o un boceto: sacá una captura de pantalla y pegala en la hoja con Ctrl+V (en Mac ⌘V) o con el botón <b>Pegar captura</b>; en el celular mantené apretado en la hoja y tocá <b>Pegar</b>. También podés arrastrar una imagen o tocar <b>Imagen</b>. Se guarda en Google Drive y la ven todos en el pedido. Tocá una imagen para agrandarla o achicarla (arrastrá la esquina) o para borrarla.</span></p></div>`;
 }
+// Quién puede cambiar el texto y los bocetos del pedido: el responsable y Admin total. Los demás lo ven (hoja blanca, solo lectura).
+function jobPermNote(j, what){
+  const own = j.owner && j.owner !== "Sin asignar" ? firstName(j.owner) : "", mine = j.owner === viewer.name, at = viewer.role === "Admin total";
+  if (isClosedJob(j) && (at || mine)) return `${icon("lock")} El pedido ya terminó: ${what} queda guardado así.`;
+  return mine ? `${icon("pencil")} Lo ven todos. Lo pueden cambiar solo vos (responsable) y Admin total.`
+    : at ? `${icon("pencil")} Lo ven todos. Lo pueden cambiar solo ${own ? own + " (responsable) y " : ""}vos (Admin total).`
+    : `${icon("lock")} Lo ven todos. Lo pueden cambiar solo ${own ? own + " (responsable) y " : ""}Admin total.`;
+}
 function jobBriefSection(j){
   const ed = canEditBrief(j), html = j.brief ? cleanRich(j.brief) : "";
-  if (!ed && !html) return "";
   return `<section class="panel jp-sec"><h2 class="pmh">${pmIco("file-text")}Texto del pedido</h2>
     <p class="note" style="margin:0 0 8px">De qué se trata, el texto que tiene que ir en el diseño o lo que dice el video.${j.briefBy ? ` Última edición: ${esc(firstName(j.briefBy))} · ${dm(j.briefAt?.slice(0, 10))} ${j.briefAt?.slice(11, 16) || ""}` : ""}</p>
+    <p class="jperm">${jobPermNote(j, "el texto")}</p>
     ${ed ? `${rtEditor("jBrief", html, BRIEF_PH[j.area] || BRIEF_PH["Diseño"])}
       <div class="chips" style="justify-content:flex-end;margin-top:8px"><button type="button" class="btn primary" data-briefsave="${j.id}">${icon("save")} Guardar texto</button></div>`
-    : `<div class="rtview">${html}</div>`}</section>`;
+    : `<div class="rtview" aria-readonly="true">${html || `<p class="rtempty">Todavía no hay texto en este pedido.</p>`}</div>`}</section>`;
 }
 document.addEventListener("mousedown", e => { if (e.target.closest("[data-rt]")) e.preventDefault(); }); // no perder la selección
 // ----- Imágenes en el texto del pedido: se achican, se suben a Google Drive (carpeta de fotos, por mes) y en el texto
@@ -5068,7 +5078,19 @@ function rtDiagSend(kind, extra){
   try { if (!window.RMH?.previewing) integ({ action:"diag", kind, info }).catch(() => {}); } catch {}
   return info;
 }
-const rtDiagTxt = d => [d.ev && `pegado: ${(d.types || []).join(", ") || "sin datos"} · archivos ${(d.files || []).length}`, d.read && `portapapeles: ${d.read.join(" | ") || "vacío"}`, d.readErr && `error: ${d.readErr}`].filter(Boolean).join(" · ");
+const rtDiagTxt = d => [d.ev && `pegado: ${(d.types || []).join(", ") || "sin datos"} · archivos ${(d.files || []).length}`, d.read && `portapapeles: ${d.read.join(" | ") || "vacío"}`, (d.readImgs || d.imgs) && `imágenes con link de: ${(d.readImgs || d.imgs).join(", ")}`, d.readErr && `error: ${d.readErr}`, d.srv && `servidor: ${d.srv.join(" / ")}`].filter(Boolean).join(" · ");
+// Imagen pegada que llegó como link: primero la baja el navegador; si la otra página no lo permite, la baja el servidor.
+const rtSrcHost = src => /^data:/i.test(src) ? "data:" : /^blob:/i.test(src) ? "blob:" : (() => { try { const u = new URL(src); return u.protocol + "//" + u.hostname; } catch { return "?"; } })();
+async function rtFetchImg(src){
+  if (!src || /^file:/i.test(src)) return null;
+  try { const b = await (await fetch(src)).blob(); if (/^image\//.test(b.type)) return new File([b], "pegada", { type:b.type }); } catch {}
+  if (!/^https:\/\//i.test(src)) return null;
+  const j = await integ({ action:"fetch_image", url:src }).catch(() => ({ ok:false }));
+  if (!j.ok || !j.data){ (rtDiag.srv = rtDiag.srv || []).push(String(j.error || "sin respuesta").slice(0, 90)); return null; }
+  const bin = atob(j.data), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  return new File([u], "pegada", { type:j.type });
+}
+const rtImgSrcs = html => [...String(html || "").matchAll(/<img[^>]+src=["']([^"']+)["']/gi)].map(m => m[1].replace(/&amp;/g, "&")).slice(0, 6);
 // El tipo de imagen preferido de lo copiado (PNG antes que TIFF, que es lo que también deja la captura de Mac).
 const RT_IMG_PREF = ["image/png","image/jpeg","image/webp","image/gif"];
 const rtPickType = types => RT_IMG_PREF.find(t => types.includes(t)) || types.find(t => /^image\//.test(t));
@@ -5079,15 +5101,19 @@ async function rtReadClip(){
   if (!navigator.clipboard?.read) return { files:[], why:"nosupport" };
   let items; try { items = await navigator.clipboard.read(); } catch (err){ rtDiag.readErr = `${err?.name || "Error"}: ${String(err?.message || "").slice(0, 120)}`; return { files:[], why:err?.name === "NotAllowedError" ? "denied" : "error" }; }
   rtDiag.read = items.map(it => (it.types || []).join("+")); delete rtDiag.readErr;
-  const files = [];
-  for (const it of items){ const t = rtPickType(it.types || []); if (t){ try { const b = await it.getType(t); files.push(new File([b], "captura." + (t.split("/")[1] || "png"), { type:t })); } catch {} } }
-  return { files:files.slice(0, 6), why:files.length ? "" : "noimage" };
+  const files = [], srcs = [];
+  for (const it of items){ const t = rtPickType(it.types || []);
+    if (t){ try { const b = await it.getType(t); files.push(new File([b], "captura." + (t.split("/")[1] || "png"), { type:t })); } catch {} }
+    else if ((it.types || []).includes("text/html")){ try { const h = await (await it.getType("text/html")).text(); srcs.push(...rtImgSrcs(h)); rtDiag.readHtml = h.replace(/>[^<]*</g, "><").replace(/\s+/g, " ").slice(0, 300); } catch {} } }
+  if (!files.length && srcs.length){ rtDiag.readImgs = srcs.map(rtSrcHost); for (const src of srcs){ const f = await rtFetchImg(src); if (f) files.push(f); } }
+  return { files:files.slice(0, 6), why:files.length ? "" : srcs.length ? "nofetch" : "noimage" };
 }
 async function rtFromClip(ed, quiet){
   const { files, why } = await rtReadClip();
   if (files.length){ if (!ed._sel){ const r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); ed._sel = r; } for (const f of files) await rtAddImage(ed, f); return true; }
   if (why === "denied"){ rtDiagSend("paste-denied"); toast("El navegador no dio permiso para leer la captura copiada: cuando lo pida, tocá “Permitir” y probá de nuevo."); }
   else if (why === "nosupport" && !quiet) toast("Este navegador no deja leer lo copiado desde un botón: tocá la hoja y apretá Ctrl+V (en Mac ⌘V; en el celular mantené apretado y Pegar).");
+  else if (why === "nofetch"){ rtDiagSend("paste-nofetch"); rtMissMsg(1); }
   else if (why !== "nosupport") rtNoShot(ed);
   return false;
 }
@@ -5107,7 +5133,8 @@ document.addEventListener("paste", async e => {
     e.preventDefault(); ed.focus({ preventScroll:true }); ed.scrollIntoView({ block:"center" });
     const r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); const sl = getSelection(); sl.removeAllRanges(); sl.addRange(r);
   }
-  const srcs = files.length ? [] : [...html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)].map(m => m[1].replace(/&amp;/g, "&")).slice(0, 6);
+  const srcs = files.length ? [] : rtImgSrcs(html);
+  if (srcs.length) rtDiag.imgs = srcs.map(rtSrcHost);
   if (!files.length && !srcs.length){
     if (hasText || plain) return; // texto común: lo pega el navegador
     // Sin texto y sin la imagen como archivo. Si el pegado trae algo, se deja que el navegador lo pegue (Safari y los
@@ -5120,19 +5147,17 @@ document.addEventListener("paste", async e => {
   e.preventDefault(); rtSaveSel(ed);
   if (hasText){ document.execCommand("insertHTML", false, cleanRich(html)); ed.dataset.dirty = "1"; rtSaveSel(ed); }
   let miss = 0;
-  for (const src of srcs){ let f = null;
-    if (!/^file:/i.test(src)) try { const b = await (await fetch(src)).blob(); if (/^image\//.test(b.type)) f = new File([b], "pegada", { type:b.type }); } catch {}
-    if (f) files.push(f); else miss++; }
+  for (const src of srcs){ const f = await rtFetchImg(src); if (f) files.push(f); else miss++; }
   // Solo una imagen que no se pudo bajar (ej. la captura de Windows que llega como link a un archivo de la compu): se lee del portapapeles.
   if (miss && !files.length && !hasText){ const { files:fs } = await rtReadClip(); if (fs.length){ files.push(...fs); miss = 0; } }
   for (const f of files) await rtAddImage(ed, f);
-  if (miss) rtMissMsg(miss);
+  if (miss){ rtDiagSend("paste-miss", { miss }); rtMissMsg(miss); }
 });
 // Imágenes que entraron a la hoja sin pasar por la subida (algunos celulares y Safari pegan la captura solos, o se arrastró
 // una imagen desde otra página): se bajan y se suben a Drive en el mismo lugar. Las que no se pueden bajar se sacan y se avisa
 // (si no, al guardar desaparecían sin aviso).
 async function rtImgFile(im){
-  if (!/^file:/i.test(im.src)) try { const b = await (await fetch(im.currentSrc || im.src)).blob(); if (/^image\//.test(b.type)) return new File([b], "pegada-" + Date.now(), { type:b.type }); } catch {}
+  const ff = await rtFetchImg(im.currentSrc || im.src); if (ff) return ff;
   try { if (!im.complete || !im.naturalWidth) await new Promise((ok, no) => { im.onload = ok; im.onerror = no; setTimeout(no, 4000); });
     const cv = document.createElement("canvas"); cv.width = im.naturalWidth; cv.height = im.naturalHeight; cv.getContext("2d").drawImage(im, 0, 0);
     const b = await new Promise(ok => cv.toBlob(ok, "image/png")); if (b) return new File([b], "pegada-" + Date.now(), { type:"image/png" }); } catch {}
@@ -5268,15 +5293,15 @@ document.addEventListener("click", async e => {
 const BK_MAX = 10 * 1048576, bkBusy = {};
 const bkKind = t => /^image\//.test(t || "") ? "img" : /pdf/.test(t || "") ? "pdf" : "file";
 const bkDrive = id => `https://drive.google.com/file/d/${encodeURIComponent(id)}/view`;
-const canDelBk = b => !isViewOnly() && (viewer.role === "Admin total" || b.by === viewer.name);
+const canDelBk = (b, j) => !isViewOnly() && !isClosed() && (viewer.role === "Admin total" || (j?.owner === viewer.name && b.by === viewer.name));
 function bocetoBlock(j){
   const list = (j.bocetos || []).slice().reverse(), ed = canAttach(j), last = list[0];
-  if (!ed && !list.length) return "";
   const view = (b, cls = "") => bkKind(b.t) === "file" ? `<a class="bkfile ${cls}" href="${bkDrive(b.id)}" target="_blank" rel="noopener">${icon("file")}<b>${esc(b.n)}</b><small>Abrir en Drive</small></a>`
     : `<button type="button" class="bkimg ${cls}" data-bkimg="${esc(b.id)}" title="${esc(b.n)}" aria-label="Ver el boceto en grande"><img src="${esc(driveImg(b.id, 1000))}" alt="Boceto" loading="lazy" referrerpolicy="no-referrer" onerror="imgRetry(this)"></button>`;
   return `<section class="panel jp-sec jp-bk"><h2 class="pmh">${pmIco("image")}Boceto <span class="note" style="font-weight:500">· para ver cómo va</span></h2>
+    <p class="jperm">${jobPermNote(j, "el boceto")}</p>
     ${last ? `<div class="bkmain">${view(last)}<div class="bkinfo"><b>${esc(last.n)}</b><small>${fileSize(last.s || 0)} · ${esc(firstName(last.by || ""))} · ${dm(String(last.at).slice(0, 10))} ${new Date(last.at).toLocaleTimeString("es-PY", { hour:"2-digit", minute:"2-digit", hour12:false })}</small>
-      <div class="chips"><a class="btn sm" href="${bkDrive(last.id)}" target="_blank" rel="noopener">${icon("external-link")} Abrir en Drive</a>${canDelBk(last) ? `<button type="button" class="btn sm" data-bkdel="${esc(j.id)}|${esc(last.id)}">${icon("trash-2")} Quitar</button>` : ""}</div></div></div>`
+      <div class="chips"><a class="btn sm" href="${bkDrive(last.id)}" target="_blank" rel="noopener">${icon("external-link")} Abrir en Drive</a>${canDelBk(last, j) ? `<button type="button" class="btn sm" data-bkdel="${esc(j.id)}|${esc(last.id)}">${icon("trash-2")} Quitar</button>` : ""}</div></div></div>`
       : `<p class="note" style="margin:0">Todavía no hay boceto.</p>`}
     ${list.length > 1 ? `<div class="bkold"><span class="note">Versiones anteriores</span><div class="bkthumbs">${list.slice(1).map(b => view(b)).join("")}</div></div>` : ""}
     ${ed ? `<div class="bkup"><label class="btn sm primary${bkBusy[j.id] ? " disabled" : ""}">${icon("upload")} ${bkBusy[j.id] ? "Subiendo…" : last ? "Subir otra versión" : "Subir boceto"}<input type="file" data-bkup="${esc(j.id)}" hidden ${bkBusy[j.id] ? "disabled" : ""}></label>
@@ -5302,7 +5327,7 @@ document.addEventListener("change", async e => {
 document.addEventListener("click", e => {
   const v = e.target.closest("[data-bkimg]"); if (v){ openPhoto(v.dataset.bkimg); return; }
   const d = e.target.closest("[data-bkdel]"); if (!d) return;
-  const [jid, id] = d.dataset.bkdel.split("|"), j = fileJob(jid), b = j?.bocetos?.find(x => x.id === id); if (!b || !canDelBk(b)) return;
+  const [jid, id] = d.dataset.bkdel.split("|"), j = fileJob(jid), b = j?.bocetos?.find(x => x.id === id); if (!b || !canDelBk(b, j)) return;
   if (!confirmTap(d, "bkdel:" + id, "¿Quitar? Tocá de nuevo")) return;
   j.bocetos = j.bocetos.filter(x => x !== b); render(); window.RMH?.flushNow?.();
   integ({ action:"boceto_delete", id }).catch(() => {}); toast("Boceto quitado (va a la papelera de Drive).");
