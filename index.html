@@ -453,7 +453,10 @@ html.nomotion .picon{animation:none}
 .iteam li{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line-2)}.iteam li span{flex:1;min-width:0}.iteam li small{color:var(--muted);white-space:nowrap;font-size:12px}
 .lked{display:flex;flex-direction:column;gap:10px}
 .lkrow{display:grid;grid-template-columns:minmax(150px,220px) 1fr auto auto auto;gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--line-2);border-radius:16px;background:rgba(148,163,184,.04);--lc:var(--cyan)}
-.lkrow.drive{--lc:#22c55e}.lkrow.canva{--lc:#a78bfa}.lkrow.designLink{--lc:#f59e0b}.lkrow.share{--lc:#38bdf8;grid-template-columns:minmax(150px,220px) 1fr auto auto}.lkrow.share .lkin,.lkrow.share .lkurl{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13.5px;word-break:break-all}
+.lkrow.drive{--lc:#22c55e}.lkrow.canva{--lc:#a78bfa}.lkrow.designLink{--lc:#f59e0b}.lkrow.share{--lc:#38bdf8}
+.shhow{grid-column:1/-1;padding:12px 14px;border-radius:12px;border:1px solid color-mix(in srgb,#38bdf8 45%,transparent);background:color-mix(in srgb,#38bdf8 10%,transparent);font-size:14px}
+.shhow b.t{display:block;color:#fff;margin-bottom:6px}.shhow ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}.shhow kbd{font:600 12.5px ui-monospace,Menlo,Consolas,monospace;padding:1px 6px;border-radius:6px;border:1px solid var(--line-3);background:rgba(148,163,184,.12);color:#fff}
+.shhow .note{display:block;margin-top:8px}.lkrow.share .lkin,.lkrow.share .lkurl{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13.5px;word-break:break-all}
 .lkname{display:flex;align-items:center;gap:10px;min-width:0;padding-top:6px;border-top:4px solid var(--lc);border-radius:2px}.lkname b{font-size:15px}.lkname .lkn{min-width:0}
 .lkic.logo{background:#fff;padding:5px}.lkic.logo svg{width:24px;height:24px}.lkn-w{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}.lkn-w small{font-size:11.5px;color:var(--muted)}.lkadd{white-space:normal;flex-wrap:wrap;text-align:left;height:auto;max-width:100%}.lkadd .note{font-weight:400;white-space:normal}
 .lkic{width:34px;height:34px;flex:none;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--lc) 18%,transparent);color:var(--lc)}.lkic svg{width:18px;height:18px}
@@ -5157,7 +5160,13 @@ const LK_LOGO = {
 // Ruta de la compartida: la carpeta del servidor de la empresa (ej.: \\retsvrfs01\Marketing\DELIMARKET\2026\…). Es texto, no un link:
 // el navegador no puede abrir ni subir archivos ahí, así que se copia y se pega en el Explorador de archivos.
 const shareClean = v => String(v || "").replace(/[\u0000-\u001f<>"]/g, "").trim().slice(0, 300);
-const shHintTxt = v => v ? `${icon("check")} Ruta guardada · para abrirla, tocá <b>Copiar ruta</b> y pegala en la barra del Explorador de archivos${isMacUI() ? " (en Mac: Finder → Ir → Conectarse al servidor)" : ""}.` : "Sin ruta guardada. Pegá la carpeta del servidor donde están los archivos de este trabajo.";
+const shHintTxt = v => v ? `${icon("check")} Ruta guardada · tocá <b>Abrir</b> para ir a la carpeta, o <b>Copiar link</b> para pegarla donde quieras.` : "Sin ruta guardada. Pegá la carpeta del servidor donde están los archivos de este trabajo.";
+// “Abrir” una carpeta del servidor: la ruta como link file:// (se abre si la compu lo permite) y, como los navegadores
+// suelen bloquear que una página abra carpetas de la red, también se copia y se muestran los 3 pasos para abrirla.
+const shareFileUrl = v => /^\\\\/.test(v) ? "file://" + v.slice(2).split("\\").map(encodeURIComponent).join("/") : /^[a-z]:\\/i.test(v) ? "file:///" + v.replace(/\\/g, "/").split("/").map((x, i) => i ? encodeURIComponent(x) : x).join("/") : /^smb:\/\//i.test(v) ? v : "";
+const shHowTxt = () => isMacUI()
+  ? `<b class="t">${icon("folder-open")} La ruta ya está copiada. Para abrir la carpeta:</b><ol><li>En Finder tocá <b>Ir → Conectarse al servidor</b> (<kbd>⌘</kbd> + <kbd>K</kbd>).</li><li>Pegá la ruta (<kbd>⌘</kbd> + <kbd>V</kbd>).</li><li>Tocá <b>Conectar</b>.</li></ol>`
+  : `<b class="t">${icon("folder-open")} La ruta ya está copiada. Para abrir la carpeta:</b><ol><li>Apretá <kbd>Windows</kbd> + <kbd>R</kbd> (se abre la ventanita “Ejecutar”).</li><li>Pegá la ruta con <kbd>Ctrl</kbd> + <kbd>V</kbd>.</li><li>Apretá <kbd>Enter</kbd>: se abre la carpeta del servidor.</li></ol><span class="note">Tenés que estar en la red de la empresa (o con la VPN). El navegador no deja que una página abra carpetas del servidor directamente; por eso se copia.</span>`;
 const shareList = j => Array.isArray(j.shares) ? j.shares : j.share ? [{ n:"", p:shareClean(j.share) }] : []; // antes había una sola (j.share)
 const isMacUI = () => /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
 const shareForCopy = v => isMacUI() && /^\\\\/.test(v) ? "smb:" + v.replace(/\\/g, "/") : v; // en Mac: smb://servidor/carpeta
@@ -5176,9 +5185,10 @@ function linkEditor(j, mode){ // mode: "form" (formulario), "ficha" (se guarda a
   const shareRow = (x, i) => { const v = shareClean(x.p); if (!ed && !v) return "";
     return `<div class="lkrow share" data-shi="${i}"><div class="lkname"><span class="lkic">${icon("server")}</span>${ed ? `<span class="lkn-w"><small>Ruta de la compartida · ¿qué es?</small><input class="base lkn" data-shn value="${esc(x.n || "")}" maxlength="80" placeholder="Ej.: Tortas de Halloween" aria-label="Ruta de la compartida: qué es"></span>` : `<span class="lkn-w"><b>Ruta de la compartida</b>${x.n ? `<small>${esc(x.n)}</small>` : ""}</span>`}</div>
       ${ed ? `<input class="base lkin" data-shp type="text" spellcheck="false" autocomplete="off" value="${esc(v)}" placeholder="Pegar la ruta, ej.: \\\\retsvrfs01\\Marketing\\DELIMARKET\\2026\\Temporada Halloween\\tortas" aria-label="Ruta de la compartida">` : `<span class="lkurl">${esc(v)}</span>`}
-      <button type="button" class="btn lkbtn" data-shcopy="${esc(v)}" ${v ? "" : "disabled"}>${icon("copy")} Copiar ruta</button>
+      <button type="button" class="btn lkbtn" data-shcopy="${esc(v)}" ${v ? "" : "disabled"}>${icon("copy")} Copiar link</button>
+      <button type="button" class="btn lkbtn" data-shopen="${esc(v)}" ${v ? "" : "disabled"}>${icon("arrow-up-right")} Abrir</button>
       ${ed && i > 0 ? `<button type="button" class="btn ib sm" data-shdel="${i}" aria-label="Quitar esta ruta">${icon("x")}</button>` : "<span></span>"}
-      <div class="lkstate">${shHintTxt(v)}</div></div>`; };
+      <div class="lkstate">${shHintTxt(v)}</div><div class="shhow" hidden></div></div>`; };
   const shares = shareList(j).length ? shareList(j) : ed ? [{ n:"", p:"" }] : [];
   const shareRows = shares.map(shareRow).join("") + (ed ? `<button type="button" class="btn sm lkadd" data-shadd>${icon("plus")} Agregar otra ruta de la compartida <span class="note">(otra carpeta del servidor)</span></button>` : "");
   // Orden: 1) Ruta de la compartida, 2) Canva, 3) Google Drive, 4) otros links con su nombre (siempre hay uno para completar), y el diseño para revisar (Diseño).
@@ -5196,8 +5206,11 @@ function readLinkEditor(box, j){
   j.xlinks = xs; j.links = xs.map(x => x.u).filter(Boolean); j.link = j.links[0] || "";
 }
 document.addEventListener("click", e => {
-  const sc = e.target.closest("[data-shcopy]"); if (sc){ const v = sc.dataset.shcopy; if (!v) return; const t = shareForCopy(v), ok = () => toast(isMacUI() ? "Ruta copiada. En Finder: Ir → Conectarse al servidor (⌘K), pegala y tocá Conectar." : "Ruta copiada. Pegala en la barra del Explorador de archivos (o en Windows + R) y apretá Enter.");
-    (navigator.clipboard?.writeText(t) || Promise.reject()).then(ok, () => { const ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); ok(); } catch { toast(t); } ta.remove(); }); return; }
+  const sc = e.target.closest("[data-shcopy],[data-shopen]"); if (sc){ const v = sc.dataset.shcopy ?? sc.dataset.shopen; if (!v) return; const open = sc.dataset.shopen !== undefined, t = shareForCopy(v);
+    const done = () => { if (!open) return toast(isMacUI() ? "Link copiado. En Finder: Ir → Conectarse al servidor (⌘K), pegalo y tocá Conectar." : "Link copiado. Pegalo en el Explorador de archivos (o en Windows + R) y apretá Enter.");
+      const how = sc.closest(".lkrow")?.querySelector(".shhow"); if (how){ how.innerHTML = shHowTxt(); how.hidden = false; if (window.lucide) lucide.createIcons(); } toast("Ruta copiada: seguí los pasos para abrir la carpeta."); };
+    if (open){ const u = shareFileUrl(v); if (u){ const a2 = document.createElement("a"); a2.href = u; a2.target = "_blank"; a2.rel = "noopener"; document.body.appendChild(a2); try { a2.click(); } catch {} a2.remove(); } }
+    (navigator.clipboard?.writeText(t) || Promise.reject()).then(done, () => { const ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); done(); } catch { toast(t); } ta.remove(); }); return; }
   const cp = e.target.closest("[data-lkcopy]"); if (cp){ const u = cp.dataset.lkcopy; if (!u) return;
     (navigator.clipboard?.writeText(u) || Promise.reject()).then(() => toast("Link copiado."), () => { const t = document.createElement("textarea"); t.value = u; document.body.appendChild(t); t.select(); try { document.execCommand("copy"); toast("Link copiado."); } catch { toast(u); } t.remove(); }); return; }
   const sa = e.target.closest("[data-shadd]"), sd = e.target.closest("[data-shdel]");
@@ -5221,7 +5234,8 @@ document.addEventListener("change", e => {
   const v = x.value.trim();
   if (x.matches("[data-shp],[data-shn]")){ readLinkEditor(box, j); if (x.dataset.shn !== undefined) return;
     const r = x.closest(".lkrow"), pv = shareClean(x.value), b = r.querySelector("[data-shcopy]"), st = r.querySelector(".lkstate");
-    if (b){ b.dataset.shcopy = pv; b.disabled = !pv; } if (st) st.innerHTML = shHintTxt(pv);
+    const ob = r.querySelector("[data-shopen]"), how = r.querySelector(".shhow");
+    if (b){ b.dataset.shcopy = pv; b.disabled = !pv; } if (ob){ ob.dataset.shopen = pv; ob.disabled = !pv; } if (how) how.hidden = true; if (st) st.innerHTML = shHintTxt(pv);
     if (window.lucide) lucide.createIcons(); return toast(pv ? "Ruta de la compartida guardada." : "Ruta borrada."); }
   if (v && !safeUrl(v) && !x.dataset.lkn && !x.dataset.lkfn) return toast("Pegá un link que empiece con https://");
   readLinkEditor(box, j); // se guarda sin volver a dibujar la página (así no se pierde lo que se está escribiendo en otro campo)
