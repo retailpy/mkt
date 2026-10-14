@@ -74,9 +74,13 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
    `python3 -m http.server 8765` desde la raíz del repo y `node test-lote35.js` (Chromium: `/opt/pw-browsers/chromium`).
    Las pruebas abren la app en `ROOT = '/home/user/mkt'`.
 4. Commit y push a la rama del chat; PR a `main` y merge (Vercel publica `main` en https://retailmkt.vercel.app).
-5. **Si cambiaste `supabase/functions/integraciones/*`**, además hay que desplegar la función en Supabase
-   (proyecto `retail-mkt-hub`, función `integraciones`, con los **4 archivos**: `index.ts`, `comercial.ts`, `tendencias.ts`,
-   `noticias.ts`, y `verify_jwt` apagado). Sin ese paso, el servidor sigue con la versión vieja.
+5. **Si cambiaste `supabase/functions/integraciones/*`**, además hay que desplegar la función en Supabase (proyecto
+   `retail-mkt-hub`, función `integraciones`, `verify_jwt` apagado). Forma recomendada (el repo es público): primero commit y
+   push, y después desplegar un `index.ts` de una línea que importa el código de ese commit, así queda idéntico al repo:
+   `import "https://raw.githubusercontent.com/retailpy/mkt/<SHA-del-commit>/supabase/functions/integraciones/index.ts";`
+   (los otros 3 archivos los trae solo). Para comprobar que anda: desde la base, `select net.http_post(url := '…/functions/v1/integraciones',
+   body := '{"action":"status"}'::jsonb)` y en `net._http_response` tiene que responder 401 “Iniciá sesión en la app”.
+   Sin este paso, el servidor sigue con la versión vieja.
 6. Antes de empezar, traé lo último de `main` (`git fetch origin main` y mezclalo): el otro chat también publica.
 
 ## 5. Cuidado con
