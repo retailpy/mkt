@@ -226,6 +226,15 @@ html.navmini .nav-group.closed > a{display:flex}
 .cmsg.me .cres{justify-content:flex-end;padding-left:0}
 .rchip{all:unset;cursor:pointer;font-size:13px;padding:1px 8px;border-radius:999px;border:1px solid var(--line-3);color:var(--ink)}
 .rchip.mine{border-color:var(--cyan);background:rgba(34,211,238,.12)}
+/* Quiénes reaccionaron: se abre tocando las reacciones de un mensaje */
+.cres{align-items:flex-start}.rewhow{flex:0 0 100%;display:flex}.cmsg.me .rewhow{justify-content:flex-end}
+.rewho{width:min(340px,100%);margin-top:4px;background:var(--panel);border:1px solid var(--line-3);border-radius:12px;padding:8px 10px;box-shadow:0 8px 24px rgba(0,0,0,.35);font-size:13.5px;text-align:left}
+.rewh{display:flex;align-items:center;gap:8px;margin-bottom:6px}.rewh b{color:#fff}.rewh .rewn{color:var(--muted)}
+.rewh button{all:unset;cursor:pointer;margin-left:auto;padding:0 6px;font-size:20px;line-height:1;color:var(--muted)}.rewh button:hover{color:#fff}
+.rewg+.rewg{border-top:1px solid var(--line-2);margin-top:6px;padding-top:6px}
+.rewe{display:flex;align-items:center;gap:8px}.rewemo{font-size:20px;line-height:1}.rewe .rewn{color:var(--muted)}.rewe .btn{margin-left:auto}
+.rewg ul{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:5px}
+.rewg li{display:flex;align-items:center;gap:8px;color:var(--ink)}.rewg li .avatar{width:24px;height:24px;flex:none}.rewg li.me span{color:var(--cyan);font-weight:600}
 .cempty{margin:auto;color:var(--faint);text-align:center;padding:30px}
 .cvcomp{position:relative;display:flex;gap:8px;align-items:flex-end;padding:10px 12px;border-top:1px solid var(--line-2)}
 .cvcomp textarea{flex:1;resize:none;max-height:140px;border:1px solid var(--line-3);background:var(--inner);border-radius:18px;padding:9px 14px;color:var(--ink);font:inherit;outline:none}
@@ -6990,8 +6999,16 @@ function bubbles(c){
         <button type="button" class="creact" data-react="${esc(mid)}" aria-label="Reaccionar">${icon("smile-plus")}</button>
         ${chatUI.react === mid ? `<div class="rqpick">${QUICK_RE.map(x => `<button type="button" data-re="${x}" data-rmid="${esc(mid)}">${x}</button>`).join("")}<button type="button" data-remore="${esc(mid)}" aria-label="Más emojis">＋</button></div>${chatUI.reactMore === mid ? emojiPanel("re:" + mid) : ""}${msgActions(m, mid, mine)}` : ""}
       </div>
-      ${re.length ? `<div class="cres">${re.map(([e, ids]) => `<button type="button" class="rchip ${ids.includes(viewer.id) ? "mine" : ""}" data-re="${e}" data-rmid="${esc(mid)}" title="${esc(ids.map(id => nickOf(personById(id)) || id).join(", "))}">${e} ${ids.length}</button>`).join("")}</div>` : ""}</div>`;
+      ${re.length ? `<div class="cres">${re.map(([e, ids]) => `<button type="button" class="rchip ${ids.includes(viewer.id) ? "mine" : ""}" data-rewho="${esc(mid)}" aria-expanded="${chatUI.whoRe === mid}" title="${esc(ids.map(id => id === viewer.id ? "Vos" : nickOf(personById(id)) || id).join(", "))} · tocá para ver quiénes">${e} ${ids.length}</button>`).join("")}${chatUI.whoRe === mid ? reWho(re, mid) : ""}</div>` : ""}</div>`;
   }).join("") || `<div class="cempty">Todavía no hay mensajes. ¡Escribí el primero!</div>`;
+}
+// Quiénes reaccionaron a un mensaje: cada emoji con las personas (vos primero) y un botón para sumarte o quitar el tuyo.
+function reWho(re, mid){
+  const total = re.reduce((n, [, ids]) => n + ids.length, 0);
+  const row = id => { const p = personById(id), me = id === viewer.id; return `<li class="${me ? "me" : ""}">${p ? avatarHTML(p) : ""}<span>${me ? "Vos" : esc(p ? nickOf(p) : id)}</span></li>`; };
+  return `<div class="rewhow"><div class="rewho" role="dialog" aria-label="Quiénes reaccionaron"><div class="rewh"><b>Reacciones</b><span class="rewn">${total}</span><button type="button" data-rewhoclose aria-label="Cerrar">×</button></div>
+    ${re.map(([e, ids]) => { const mine = ids.includes(viewer.id); return `<div class="rewg"><div class="rewe"><span class="rewemo">${e}</span><span class="rewn">${ids.length}</span><button type="button" class="btn sm" data-re="${e}" data-rmid="${esc(mid)}">${mine ? "Quitar la mía" : "Sumarme"}</button></div>
+      <ul>${[...ids].sort((a, b) => (b === viewer.id) - (a === viewer.id)).map(row).join("")}</ul></div>`; }).join("")}</div></div>`;
 }
 // Mensaje que es solo emojis (hasta 3): se muestra grande, como en los chats del celular.
 function emojiOnly(t){
@@ -7126,7 +7143,10 @@ document.addEventListener("click", e => {
     if (t.startsWith("re:")) return toggleReact(t.slice(3), em.dataset.em); return; }
   const rc = e.target.closest("[data-react]"); if (rc){ chatUI.react = chatUI.react === rc.dataset.react ? null : rc.dataset.react; chatUI.reactMore = null; render(); return; }
   const rm = e.target.closest("[data-remore]"); if (rm){ chatUI.reactMore = rm.dataset.remore; render(); return; }
+  const rw = e.target.closest("[data-rewho]"); if (rw){ chatUI.whoRe = chatUI.whoRe === rw.dataset.rewho ? null : rw.dataset.rewho; render(); return; }
+  if (e.target.closest("[data-rewhoclose]")){ chatUI.whoRe = null; render(); return; }
   const re = e.target.closest("[data-re]"); if (re) return toggleReact(re.dataset.rmid, re.dataset.re);
+  if (chatUI.whoRe && !e.target.closest(".rewho")){ chatUI.whoRe = null; render(); }
   if (chatUI.stk && !e.target.closest(".stkpanel")){ chatUI.stk = false; render(); }
   else if (chatUI.gif && !e.target.closest(".gifpanel")){ chatUI.gif = false; render(); }
   else if (chatUI.emoji && !e.target.closest(".empanel")){ chatUI.emoji = false; render(); }
