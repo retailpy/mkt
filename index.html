@@ -842,6 +842,10 @@ html.nomotion .nav a.wknew .ibc,html.nomotion .tabbar a.wknew .tbc,html.nomotion
 @media (max-width:480px){.rclst{margin-left:0}}
 .jpage{display:flex;flex-direction:column;gap:14px;max-width:980px;margin:0 auto;width:100%}
 .jp-top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+/* Botón Actualizar: trae lo último que cargaron los demás. Si hay novedades esperando, se destaca. */
+.rfbtn{gap:6px}.rfbtn.busy svg{animation:rfspin .8s linear infinite}@keyframes rfspin{to{transform:rotate(360deg)}}
+.rfbtn.new{border-color:var(--cyan);color:#fff;background:color-mix(in srgb,var(--cyan) 22%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--cyan) 25%,transparent)}
+.jp-top .rfbtn{margin-left:auto}
 .jp-h h1{margin:4px 0 8px;font-size:clamp(22px,3vw,30px)}
 .jp-sec{margin:0}.jp-sec h2{margin:0 0 12px;font-size:17px}
 .jp-sec .jfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(200px,100%),1fr));gap:12px}
@@ -2820,11 +2824,13 @@ const PEOPLE = [
 PEOPLE.forEach(p => { p.perms = new Set(p.perms || ROLE_DEFAULTS[p.role]); p.active = true; p.mustChange = false; if (p.role !== "Diseñador" && p.perms.has("pedidos")) { p.perms.add("gestioncm"); p.perms.add("historialcm"); } if (p.perms.has("calendario")) p.perms.add("caldiseno"); upgradePerms(p); });
 // Secciones que se agregaron después: quien ya veía la sección de origen, ve también la nueva (una sola vez;
 // después cada permiso se prende o apaga por separado en Usuarios y permisos).
-function upgradePerms(p){ const v = p.permsV || 1; if (v >= 8) return;
+function upgradePerms(p){ const v = p.permsV || 1; if (v >= 9) return;
   if (v < 6) [[2,"pedidos","cargadiseno"],[2,"gestioncm","cargacm"],[2,"calendario","calhistoria"],[3,"calendario","calcanales"],[4,"pedidos","cartel"],[4,"caldiseno","calcartel"],[5,"cartel","web"],[6,"cartel","pantallas"]].forEach(([ver, from, to]) => { if (v < ver && p.perms.has(from)) p.perms.add(to); });
   // v8: CM y Diseñador vuelven a ver todo lo de antes (menos lo que es solo de Admin), una sola vez; después Admin total ajusta por persona.
-  if (p.role === "CM" || p.role === "Diseñador") p.perms = new Set(ROLE_DEFAULTS[p.role]);
-  p.permsV = 8; }
+  if (v < 8 && (p.role === "CM" || p.role === "Diseñador")) p.perms = new Set(ROLE_DEFAULTS[p.role]);
+  // v9: los Admin ven el Inicio, como Admin total (todos los procesos del equipo).
+  if (p.role === "Admin") p.perms.add("inicio");
+  p.permsV = 9; }
 let DESIGNERS = [];
 const ROLES = ["Admin total","Admin","Diseñador","CM"];
 const ROLE_INFO = {
@@ -4716,7 +4722,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-pedi
   if (kind === "canal") postUI.form = { mode:"edit", kind:"Canal", post:{ ...canalById(id) } }; else { const p = postById(id); postUI.form = { mode:"edit", kind:p.format === "Historia" ? "Historia" : "Feed", post:{ ...p } }; }
   render(); });
 document.addEventListener("change", e => { const k = e.target.closest("[data-kstatus]"); if (!k) return; const c = canalById(k.dataset.kstatus); if (!c || c.status === k.value) return; c.status = k.value; render(); toast(`“${c.title}” pasó a ${c.status}.`); });
-const gHead = (title, sub, ico) => `<div class="head"><div><h1 class="pmh">${pmIco(ico)}${title}</h1><p class="sub">${sub}</p></div>${viewTabs(G_VIEWS, gView(), "data-gview")}</div>`;
+const gHead = (title, sub, ico) => `<div class="head"><div><h1 class="pmh">${pmIco(ico)}${title}</h1><p class="sub">${sub}</p></div><div class="chips">${refreshBtn()}${viewTabs(G_VIEWS, gView(), "data-gview")}</div></div>`;
 const gFilters = note => `<div class="head"><div class="chips">${brandChips()}${soloBtn()}</div>${note && !isViewOnly() && !isClosed() ? `<span class="note">${note}</span>` : ""}</div>`;
 // Gestión Redes (feed) y Gestión Historia.
 function pCalCM(kind){
@@ -5256,6 +5262,18 @@ function linkRow(u, kind){
   let short = url; try { const x = new URL(url); short = x.hostname.replace(/^www\./, "") + (x.pathname.length > 1 ? x.pathname.slice(0, 38) + (x.pathname.length > 38 ? "…" : "") : ""); } catch {}
   return `<a class="jlrow2 ${k}" href="${esc(url)}" target="_blank" rel="noopener"><span class="jlic">${icon(ic)}</span><span class="jlt"><b>${esc(t)}</b><small>${esc(d)} · ${esc(short)}</small></span><span class="jlgo">Abrir ${icon("arrow-up-right")}</span></a>`;
 }
+// Actualizar: trae ya lo último que cargaron los demás (sin esperar los 10 s) y redibuja, sin perder lo que estás
+// escribiendo en el texto del pedido. Mientras escribís la pantalla no se redibuja sola: si llegó algo, el botón se destaca.
+const refreshBtn = () => `<button type="button" class="btn rfbtn" data-refresh title="Traer lo último que cargaron los demás">${icon("refresh-cw")}<span>Actualizar</span></button>`;
+const REFRESH_KEYS = ["s:jobs","s:posts","s:CHANNEL_POSTS","s:RECURRING","s:RECUR_ST","s:RECUR_DONE"]; // pedidos, publicaciones y repetitivos
+document.addEventListener("rmh-pending", e => (e.detail?.keys || []).some(k => REFRESH_KEYS.includes(k)) && document.querySelectorAll("[data-refresh]").forEach(b => { if (b.classList.contains("new")) return; b.classList.add("new"); b.querySelector("span").textContent = "Hay novedades · Actualizar"; b.title = "Otra persona cargó algo: tocá para verlo"; }));
+document.addEventListener("click", async e => { const b = e.target.closest("[data-refresh]"); if (!b || b.classList.contains("busy")) return;
+  b.classList.add("busy");
+  const keep = [...document.querySelectorAll(".rtedit[data-dirty]")].map(ed => [ed.id, ed.innerHTML]), sy = scrollY;
+  try { await window.RMH?.catchUp?.(); } catch {}
+  render(); window.RMH?.refreshed?.(); scrollTo(0, sy);
+  keep.forEach(([id, html]) => { const ed = id && document.getElementById(id); if (ed){ ed.innerHTML = html; ed.dataset.dirty = "1"; } });
+  toast(`Actualizado ${new Date().toTimeString().slice(0, 5)}: ya ves lo último que cargaron los demás.${keep.length ? " Lo que estabas escribiendo sigue ahí (acordate de guardar)." : ""}`); });
 // Chat del pedido: quien lo cargó habla con el responsable, y el responsable con quien lo cargó (o con Admin total).
 function jobChatBtns(j, about = "el pedido"){
   if (!viewer || isViewOnly() || window.RMH?.previewing) return "";
@@ -5326,7 +5344,7 @@ function jobFicha(){
   const mine = j.owner === viewer.name && !isFin(j) && !isViewOnly() && j.area !== "CM";
   // Página completa del pedido: datos del pedido, el texto (hoja tipo Word), los links de acceso, el proceso (tocable) y al final los cambios.
   return `<div class="jpage jficha" aria-label="Pedido completo">
-    <div class="jp-top"><button class="btn" data-jfclose>${icon("arrow-left")} Volver</button>${jobChatBtns(j)}${at ? `<button class="btn" data-jedit="${j.id}">${icon("pencil")} Editar pedido</button>` : ""}</div>
+    <div class="jp-top"><button class="btn" data-jfclose>${icon("arrow-left")} Volver</button>${jobChatBtns(j)}${at ? `<button class="btn" data-jedit="${j.id}">${icon("pencil")} Editar pedido</button>` : ""}${refreshBtn()}</div>
     <header class="jp-h"><span class="note">${j.area === "CM" ? "Gestión de Video" : "Pedido de diseño gráfico"}${j.ex ? ` <span class="exbadge sm">Ejemplo para mostrar cómo se carga</span>` : ""}</span><h1>${esc(j.title)}</h1><div class="chips">${pill(j.status, JOB_COLOR[j.status])}${urgBadge(j)}${j.rep?.days?.length ? `<span class="repbadge">${icon("repeat")} Se repite: ${esc(repText(j.rep).toLowerCase())}</span>${at ? `<button class="btn sm" type="button" data-jrepstop="${j.id}">Dejar de repetir</button>` : ""}` : j.repOf ? `<span class="repbadge">${icon("repeat")} Pedido que se repite</span>` : ""}</div></header>
     ${last ? `<div class="jfmsg"><b>${icon("pencil")} Cambios que pidió Admin total</b><p>${esc(last.text)}</p><span>${dm(last.date)} · ${last.time}</span></div>` : ""}
     ${j.area === "CM" ? videoBlock(j) : ""}
@@ -5536,7 +5554,7 @@ function procExample(A){
 }
 function pedPage(A, title, ico, sub, newHint, extra = ""){
   const list = pedList(A);
-  return `<div class="head"><div><h1 class="pmh">${pmIco(ico)}${title}</h1><p class="sub">${sub}</p></div>${extra}</div>
+  return `<div class="head"><div><h1 class="pmh">${pmIco(ico)}${title}</h1><p class="sub">${sub}</p></div><div class="chips">${extra}${refreshBtn()}</div></div>
   ${canCreateJobs() ? `<button class="panel cmnew" data-jnew><span class="cmplus">${icon("plus")}</span><span><b>Cargar pedido</b><small>${newHint}</small></span></button>` : ""}
   ${pedScopeChips(A)}
   <div class="head"><h2 class="pmh" style="margin:0">${pmIco(pedView === "procesos" ? "kanban" : "table-2")}${pedMine() ? "Mis pedidos" : "Pedidos"} de ${monthName(MONTH)} <span class="note" style="font-weight:400">· ${list.length}</span></h2>${viewTabs([["tabla","Tabla","table-2"],["procesos","Procesos","kanban"]], pedView, "data-pedview")}</div>
