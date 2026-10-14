@@ -4935,12 +4935,14 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-jcse
 // ----- Texto del pedido: un mini editor (tamaño, negrita, cursiva, subrayado, listas) para el brief, -----
 // el texto que va en el diseño o el guion del video. Lo editan Admin total y el responsable.
 const RT_TAGS = { B:"b", STRONG:"b", I:"i", EM:"i", U:"u", UL:"ul", OL:"ol", LI:"li", P:"p", DIV:"p", BR:"br", H2:"h2", H3:"h3", SPAN:null, FONT:null };
+const RT_SKIP = /^(style|script|head|title|meta|link|xml|noscript|template|svg|iframe|object|embed)$/i;
 const rtImg = (id, w) => `<img class="rtimg" data-drive="${id}"${w ? ` data-w="${w}" style="width:${w}%"` : ""} src="${driveSrc(id, 1600)}" alt="Imagen" loading="lazy" referrerpolicy="no-referrer" onerror="imgRetry(this)">`;
 function cleanRich(html){
   const t = document.createElement("template"); t.innerHTML = String(html || "");
   const walk = node => [...node.childNodes].map(n => {
     if (n.nodeType === 3) return esc(n.nodeValue);
     if (n.nodeType !== 1) return "";
+    if (RT_SKIP.test(n.tagName)) return ""; // estilos de Word/PowerPoint, scripts…: no se pegan como texto
     const tag = n.tagName, inner = walk(n);
     if (tag === "FONT"){ const sz = +n.getAttribute("size"); return sz >= 5 ? `<span class="rt-l">${inner}</span>` : sz && sz <= 2 ? `<span class="rt-s">${inner}</span>` : inner; }
     if (tag === "SPAN"){ const c = n.className; return c === "rt-l" || c === "rt-s" ? `<span class="${c}">${inner}</span>` : inner; }
@@ -4965,7 +4967,7 @@ function rtEditor(id, html, ph){
       <button type="button" class="btn ib sm" data-rt="clear" title="Quitar formato" aria-label="Quitar formato">${icon("remove-formatting")}</button>
       <button type="button" class="btn sm rtimgbtn" data-rt="img" title="Agregar una imagen de ejemplo o un boceto (se guarda en Google Drive)">${icon("image-plus")} Imagen</button><input type="file" class="rtimgin" accept="image/*" multiple hidden></div>
     <div class="rtedit" id="${id}" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Texto del pedido" data-ph="${esc(ph || BRIEF_PH["Diseño"])}">${html}</div>
-    <p class="note rthint">${icon("image")}<span>Para explicar con un ejemplo o un boceto: pegá una imagen o una captura (Ctrl+V), arrastrala a la hoja o tocá <b>Imagen</b>. Se guarda en Google Drive y la ven todos en el pedido. Tocá una imagen para agrandarla o achicarla (arrastrá la esquina) o para borrarla.</span></p></div>`;
+    <p class="note rthint">${icon("image")}<span>Para explicar con un ejemplo o un boceto: sacá una captura de pantalla y pegala en la hoja (Ctrl+V; en Mac ⌘V; en el celular mantené apretado y tocá <b>Pegar</b>), arrastrá una imagen o tocá <b>Imagen</b>. Se guarda en Google Drive y la ven todos en el pedido. Tocá una imagen para agrandarla o achicarla (arrastrá la esquina) o para borrarla.</span></p></div>`;
 }
 function jobBriefSection(j){
   const ed = canEditBrief(j), html = j.brief ? cleanRich(j.brief) : "";
@@ -4979,7 +4981,7 @@ function jobBriefSection(j){
 document.addEventListener("mousedown", e => { if (e.target.closest("[data-rt]")) e.preventDefault(); }); // no perder la selección
 // ----- Imágenes en el texto del pedido: se achican, se suben a Google Drive (carpeta de fotos, por mes) y en el texto
 // queda solo el id. Se pueden elegir con el botón, pegar (Ctrl+V) o arrastrar a la hoja. -----
-const rtUploading = ed => !!ed?.querySelector("img[data-up]");
+const rtUploading = ed => !!ed?.querySelector("img[data-up],img[data-adopt]");
 function rtSaveSel(ed){ const s = getSelection(); ed._sel = s.rangeCount && ed.contains(s.getRangeAt(0).commonAncestorContainer) ? s.getRangeAt(0).cloneRange() : null; }
 async function rtAddImage(ed, file){
   if (!ed || !file || !/^image\//.test(file.type)) return;
@@ -4993,23 +4995,56 @@ async function rtAddImage(ed, file){
   img.src = local; img.dataset.up = tmp; img.dataset.sig = sig; img.className = "rtimg up"; img.alt = "Subiendo…";
   const r = ed._sel && ed.contains(ed._sel.commonAncestorContainer) ? ed._sel : null;
   if (r){ r.deleteContents(); r.insertNode(img); r.setStartAfter(img); r.collapse(true); } else ed.appendChild(img);
+  if (ed.contains(document.activeElement)){ const s = getSelection(), rc = document.createRange(); rc.setStartAfter(img); rc.collapse(true); s.removeAllRanges(); s.addRange(rc); } // el cursor sigue después de la imagen
   ed.dataset.dirty = "1"; ed._sel = r || null; // si se agregan varias, la siguiente va después de esta
   const j = await integ({ action:"chat_image", type:"image/jpeg", data:await toB64(shr.blob) }).catch(() => ({ ok:false }));
   const el = document.querySelector(`img[data-up="${tmp}"]`); // la hoja pudo volver a dibujarse mientras subía
   if (!j.ok || !j.id){ el?.remove(); ed._sigs.delete(sig); URL.revokeObjectURL(local); return toast(j.error || "No se pudo subir la imagen. Probá de nuevo."); }
   IMG_LOCAL[j.id] = local;
-  if (el){ el.dataset.drive = j.id; delete el.dataset.up; el.classList.remove("up"); el.alt = "Imagen"; el.closest(".rtedit")?.setAttribute("data-dirty", "1"); }
+  if (el){ el.dataset.drive = j.id; delete el.dataset.up; el.classList.remove("up"); el.alt = "Imagen"; el.closest(".rtedit")?.setAttribute("data-dirty", "1");
+    // Si el cursor sigue justo después de la imagen (no escribiste nada), queda elegida: ya se puede achicar o borrar.
+    const s = getSelection(), rr = s.rangeCount && s.isCollapsed ? s.getRangeAt(0) : null;
+    if (rr && rr.startContainer === el.parentNode && rr.startContainer.childNodes[rr.startOffset - 1] === el && el.closest(".rtedit")?.contains(document.activeElement)) rtSelect(el); }
   else { const ed2 = document.getElementById(edId); if (!ed2) return toast("La imagen se subió, pero la hoja se cerró: volvé a agregarla."); ed2.insertAdjacentHTML("beforeend", rtImg(j.id)); ed2.dataset.dirty = "1"; }
   toast("Imagen agregada al texto (guardada en Google Drive).");
 }
 document.addEventListener("change", async e => { if (!e.target.classList?.contains("rtimgin")) return; const fs = [...(e.target.files || [])].slice(0, 6); e.target.value = "";
   const ed = e.target.closest(".rtwrap")?.querySelector(".rtedit"); for (const f of fs) await rtAddImage(ed, f); });
-// Pegar (Ctrl+V): una captura o una imagen copiada llega como archivo. Si se copió texto con imágenes (de una página o un
-// documento), se pega el texto y las imágenes se bajan y se suben a Drive; las que no se pueden bajar se avisan.
+// Pegar (Ctrl+V, ⌘V o “Pegar” en el celular): una captura de pantalla o una imagen copiada llega como archivo. Si se copió
+// texto con imágenes (de una página o un documento), se pega el texto y las imágenes se bajan y se suben a Drive; las que no
+// se pueden bajar se avisan. Si la hoja no tenía el cursor (sacaste la captura y pegaste sin tocarla), va al final de la hoja.
+const rtMissMsg = miss => toast(`${miss === 1 ? "Una imagen no se pudo" : miss + " imágenes no se pudieron"} copiar de ahí: guardala en la compu y subila con “Imagen”, o pegá una captura.`);
+// Las imágenes del portapapeles: unos navegadores las dan en “files” y otros (Safari, celulares) solo en “items”.
+function rtClipFiles(cd){
+  const out = [], seen = new Set();
+  for (const f of [...(cd?.files || []), ...[...(cd?.items || [])].filter(i => i.kind === "file").map(i => i.getAsFile())]){
+    if (!f || !/^image\//.test(f.type)) continue; const k = `${f.name}|${f.size}|${f.type}`; if (!seen.has(k)){ seen.add(k); out.push(f); } }
+  return out.slice(0, 6);
+}
+// ¿Lo copiado trae texto de verdad? (Word, PowerPoint y Outlook mandan estilos y comentarios que no cuentan)
+function rtHtmlHasText(html){
+  if (!html) return false; const t = document.createElement("template"); t.innerHTML = html;
+  t.content.querySelectorAll("*").forEach(x => { if (RT_SKIP.test(x.tagName)) x.remove(); });
+  return !!t.content.textContent.replace(/[\s\u00a0\u200b]/g, "");
+}
+// La hoja donde va una captura pegada sin cursor: la del formulario abierto o la única que hay en la pantalla.
+function rtTarget(){
+  const eds = [...document.querySelectorAll(".rtedit")].filter(x => x.isContentEditable && x.getClientRects().length);
+  return eds.find(x => x.closest("#jobForm,#postForm")) || (eds.length === 1 ? eds[0] : null);
+}
 document.addEventListener("paste", async e => {
-  const ed = e.target.closest?.(".rtedit"), cd = e.clipboardData; if (!ed || !cd) return;
-  const html = cd.getData("text/html") || "", hasText = !!html.replace(/<[^>]*>|&nbsp;|\s/g, "");
-  const files = hasText ? [] : [...(cd.files || [])].filter(x => /^image\//.test(x.type)).slice(0, 6);
+  const cd = e.clipboardData; if (!cd) return;
+  let ed = e.target.closest?.(".rtedit");
+  const html = cd.getData("text/html") || "", hasText = rtHtmlHasText(html);
+  const files = hasText ? [] : rtClipFiles(cd);
+  if (!ed){
+    if (!files.length || e.target.closest?.("input,textarea,select,[contenteditable]")) return;
+    ed = rtTarget(); if (!ed) return;
+    e.preventDefault(); ed.focus({ preventScroll:true }); ed.scrollIntoView({ block:"center" });
+    const r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); ed._sel = r;
+    for (const f of files) await rtAddImage(ed, f);
+    return;
+  }
   const srcs = files.length ? [] : [...html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)].map(m => m[1].replace(/&amp;/g, "&")).slice(0, 6);
   if (!files.length && !srcs.length) return; // texto común: lo pega el navegador
   e.preventDefault(); rtSaveSel(ed);
@@ -5019,8 +5054,30 @@ document.addEventListener("paste", async e => {
     try { const b = await (await fetch(src)).blob(); if (/^image\//.test(b.type)) f = new File([b], "pegada", { type:b.type }); } catch {}
     if (f) files.push(f); else miss++; }
   for (const f of files) await rtAddImage(ed, f);
-  if (miss) toast(`${miss === 1 ? "Una imagen no se pudo" : miss + " imágenes no se pudieron"} copiar de ahí: guardala en la compu y subila con “Imagen”, o pegá una captura.`);
+  if (miss) rtMissMsg(miss);
 });
+// Imágenes que entraron a la hoja sin pasar por la subida (algunos celulares y Safari pegan la captura solos, o se arrastró
+// una imagen desde otra página): se bajan y se suben a Drive en el mismo lugar. Las que no se pueden bajar se sacan y se avisa
+// (si no, al guardar desaparecían sin aviso).
+async function rtImgFile(im){
+  try { const b = await (await fetch(im.currentSrc || im.src)).blob(); if (/^image\//.test(b.type)) return new File([b], "pegada-" + Date.now(), { type:b.type }); } catch {}
+  try { if (!im.complete || !im.naturalWidth) await new Promise((ok, no) => { im.onload = ok; im.onerror = no; setTimeout(no, 4000); });
+    const cv = document.createElement("canvas"); cv.width = im.naturalWidth; cv.height = im.naturalHeight; cv.getContext("2d").drawImage(im, 0, 0);
+    const b = await new Promise(ok => cv.toBlob(ok, "image/png")); if (b) return new File([b], "pegada-" + Date.now(), { type:"image/png" }); } catch {}
+  return null;
+}
+async function rtAdopt(ed){
+  const list = [...ed.querySelectorAll("img:not([data-drive]):not([data-up]):not([data-adopt])")]; if (!list.length) return;
+  list.forEach(im => { im.dataset.adopt = "1"; im.classList.add("rtimg", "up"); im.removeAttribute("width"); im.removeAttribute("height"); im.removeAttribute("style"); });
+  let miss = 0;
+  for (const im of list){
+    const f = await rtImgFile(im);
+    if (f && im.isConnected){ const r = document.createRange(); r.selectNode(im); ed._sel = r; await rtAddImage(ed, f); }
+    if (im.isConnected){ im.remove(); if (!f) miss++; } // si no se pudo subir, no queda una imagen que después no se guarda
+  }
+  if (miss) rtMissMsg(miss);
+}
+document.addEventListener("input", e => { if (e.target.classList?.contains("rtedit")) rtAdopt(e.target); });
 document.addEventListener("dragstart", e => { if (e.target.closest?.(".rtedit") && e.target.tagName === "IMG") e.preventDefault(); });
 document.addEventListener("dragover", e => { if (e.target.closest?.(".rtedit") && [...(e.dataTransfer?.items || [])].some(i => i.kind === "file")) e.preventDefault(); });
 document.addEventListener("drop", e => { const ed = e.target.closest?.(".rtedit"); if (!ed) return; const f = [...(e.dataTransfer?.files || [])].find(x => /^image\//.test(x.type)); if (!f) return; e.preventDefault();
