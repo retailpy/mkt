@@ -4907,7 +4907,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-jcse
 // ----- Texto del pedido: un mini editor (tamaño, negrita, cursiva, subrayado, listas) para el brief, -----
 // el texto que va en el diseño o el guion del video. Lo editan Admin total y el responsable.
 const RT_TAGS = { B:"b", STRONG:"b", I:"i", EM:"i", U:"u", UL:"ul", OL:"ol", LI:"li", P:"p", DIV:"p", BR:"br", H2:"h2", H3:"h3", SPAN:null, FONT:null };
-const rtImg = (id, w) => `<img class="rtimg" data-drive="${id}"${w ? ` data-w="${w}" style="width:${w}%"` : ""} src="https://drive.google.com/thumbnail?id=${id}&amp;sz=w1600" alt="Imagen" loading="lazy" referrerpolicy="no-referrer" onerror="imgRetry(this)">`;
+const rtImg = (id, w) => `<img class="rtimg" data-drive="${id}"${w ? ` data-w="${w}" style="width:${w}%"` : ""} src="${driveSrc(id, 1600)}" alt="Imagen" loading="lazy" referrerpolicy="no-referrer" onerror="imgRetry(this)">`;
 function cleanRich(html){
   const t = document.createElement("template"); t.innerHTML = String(html || "");
   const walk = node => [...node.childNodes].map(n => {
@@ -5138,7 +5138,8 @@ document.addEventListener("change", async e => {
   if (!r?.ok || !r.id){ render(); return toast(r?.error || (blob.size > 4 * 1048576 ? "No se pudo subir el boceto: probá con una versión más liviana (con 1–2 MB alcanza)." : "No se pudo subir el boceto. Probá de nuevo.")); }
   if (bkKind(type) === "img") IMG_LOCAL[r.id] = URL.createObjectURL(blob);
   (j.bocetos = j.bocetos || []).push({ id:r.id, n:name, t:type, s:blob.size, by:viewer.name, at:new Date().toISOString() });
-  render(); window.RMH?.flushNow?.(); toast("Listo: el boceto quedó guardado en Drive.");
+  if (viewer.role !== "Admin total") notify({ to:"admin", type:"nota", job:j.id, who:viewer.name, text:`Subió un boceto: ${name}` });
+  render(); window.RMH?.flushNow?.(); toast("Listo: el boceto quedó guardado en Drive y lo ven todos en el pedido.");
 });
 document.addEventListener("click", e => {
   const v = e.target.closest("[data-bkimg]"); if (v){ openPhoto(v.dataset.bkimg); return; }
@@ -6934,14 +6935,21 @@ document.addEventListener("click", async e => {
 // ----- Fotos del chat: se achican en el celular/compu y se guardan en Google Drive (carpeta "Fotos Retail MKT", una
 // carpeta por mes), no en la base. En el chat se ven chicas; al tocarlas se abren grandes (y con otro toque, a tamaño real).
 const IMG_LOCAL = {}; // id de Drive → la foto en este dispositivo: quien la subió la ve al instante (Drive tarda unos segundos en la miniatura)
-const driveImg = (id, w = 640) => IMG_LOCAL[id] || `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${w}`;
+// Imagen de Google Drive para mostrar en la app. Se usa la dirección pública de Google (lh3), que anda para todos
+// (con o sin sesión de Google, también en Safari y en el celular). Si falla, imgRetry prueba la miniatura de Drive.
+const driveSrc = (id, w = 640) => `https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w${w}`;
+const driveImg = (id, w = 640) => IMG_LOCAL[id] || driveSrc(id, w);
 // Foto que todavía se está subiendo: quien la manda la ve con “Subiendo…”; los demás, el lugar reservado.
 // Si quedó a medio subir (se cerró la app), a los 3 minutos dice que no se envió.
 const photoUp = (im, m) => { const loc = IMG_LOCAL["up:" + m.id], late = Date.now() - Date.parse(msgTs(m)) > 3 * 60e3 && !loc;
   return `<span class="cimg up${late ? " broken" : ""}" style="aspect-ratio:${+im.w || 4}/${+im.h || 3}">${loc ? `<img src="${esc(loc)}" alt="">` : ""}${late ? "" : `<span class="cupl">${icon("loader-circle")} ${loc ? "Subiendo…" : "Enviando foto…"}</span>`}</span>`; };
 const photoTag = im => `<button type="button" class="cimg" data-cimg="${esc(im.id)}" style="aspect-ratio:${+im.w || 4}/${+im.h || 3}" aria-label="Ver la foto en grande"><img src="${esc(driveImg(im.id))}" alt="Foto" loading="lazy" referrerpolicy="no-referrer" onerror="imgRetry(this)"></button>`;
 // Recién subida, Drive puede no tener la miniatura todavía: se reintenta unas veces.
-function imgRetry(el){ const n = +(el.dataset.r || 0) + 1; if (n > 4 || !/^https:/.test(el.src)){ el.closest(".cimg,.bkimg")?.classList.add("broken"); return; } el.dataset.r = n; setTimeout(() => { el.src = el.src.replace(/&r=\d+$/, "") + "&r=" + n; }, 1500 * n); }
+// Si no carga: se alterna entre la dirección pública (lh3) y la miniatura de Drive, unas veces y cada vez con más espera.
+function imgRetry(el){ const n = +(el.dataset.r || 0) + 1; if (n > 6 || !/^https:/.test(el.src)){ el.closest(".cimg,.bkimg,.cstkw")?.classList.add("broken"); return; } el.dataset.r = n;
+  const m = el.src.match(/googleusercontent\.com\/d\/([\w-]+)=w(\d+)/) || el.src.match(/[?&]id=([\w-]+)&sz=w(\d+)/);
+  const next = m ? (n % 2 ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w${m[2]}&r=${n}` : driveSrc(m[1], m[2])) : el.src.replace(/&r=\d+$/, "") + "&r=" + n;
+  setTimeout(() => { el.src = next; }, n === 1 ? 0 : 1200 * n); }
 async function shrinkPhoto(file, max = 1600, q = .82){
   let src, url = "";
   try { src = await createImageBitmap(file, { imageOrientation:"from-image" }); }
@@ -6982,7 +6990,7 @@ function openPhoto(id){
   document.getElementById("imgbox")?.remove();
   const w = document.createElement("div"); w.id = "imgbox"; w.className = "imgbox"; w.setAttribute("role", "dialog"); w.setAttribute("aria-modal", "true"); w.setAttribute("aria-label", "Foto");
   w.innerHTML = `<div class="imgbar"><a class="btn sm" href="https://drive.google.com/file/d/${encodeURIComponent(id)}/view" target="_blank" rel="noopener">${icon("external-link")} Abrir en Drive</a><button type="button" class="btn ib" data-imgx aria-label="Cerrar">${icon("x")}</button></div>
-    <div class="imgsc"><img src="${esc(IMG_LOCAL[id] || driveImg(id, 2000))}" alt="Foto" referrerpolicy="no-referrer" title="Tocá para ver a tamaño real"></div>`;
+    <div class="imgsc"><img src="${esc(IMG_LOCAL[id] || driveImg(id, 2000))}" alt="Foto" referrerpolicy="no-referrer" onerror="imgRetry(this)" title="Tocá para ver a tamaño real"></div>`;
   document.body.appendChild(w); if (window.lucide) lucide.createIcons();
   w.addEventListener("click", ev => { if (ev.target.closest("[data-imgx]") || ev.target === w || ev.target.classList.contains("imgsc")) w.remove(); else if (ev.target.tagName === "IMG") w.classList.toggle("zoom"); });
   w.querySelector("[data-imgx]")?.focus();
@@ -7041,7 +7049,7 @@ function bubbles(c){
     if (m.del) return `${sep}<div class="cmsg ${mine ? "me" : ""}" data-mid="${esc(mid)}">${!mine && c.kind === "g" ? (head ? `<span class="cmav">${who ? avatarHTML(who) : ""}</span>` : `<span class="cmav"></span>`) : ""}
       <div class="cbub cdelb">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}<div class="ctext cdel">${icon("ban")} <i>${mine ? "Eliminaste este mensaje." : "Se eliminó este mensaje."}</i></div><span class="ctime">${msgTime(m)}</span></div></div>`;
     return `${sep}<div class="cmsg ${mine ? "me" : ""}" data-mid="${esc(mid)}">${!mine && c.kind === "g" ? (head ? `<span class="cmav">${who ? avatarHTML(who) : ""}</span>` : `<span class="cmav"></span>`) : ""}
-      <div class="cbub${!m.text && !m.rp && !m.fw && ((m.stk && stkSrc(m.stk)) || m.gif || m.img?.id || m.img?.up) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.fw ? `<span class="cfw">${icon("forward")} Reenviado</span>` : ""}${m.rp ? `<button type="button" class="crq" data-cjump="${esc(m.rp.id)}"><b>${esc(m.rp.from === viewer.id ? "Vos" : nickOf(personById(m.rp.from)) || "")}</b><span>${esc(m.rp.t || "")}</span></button>` : ""}${m.stk && stkSrc(m.stk) ? `<span class="cstkw"><img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer"><button type="button" class="cstkfav${stkFavs().includes(m.stk) ? " on" : ""}" data-stkfav="${esc(m.stk)}" title="${stkFavs().includes(m.stk) ? "Está en tus favoritos (tocá para quitarlo)" : "Guardar en mis favoritos"}" aria-label="${stkFavs().includes(m.stk) ? "Quitar de favoritos" : "Guardar en favoritos"}">${stkFavs().includes(m.stk) ? "★" : "☆"}</button></span>` : ""}${m.img?.id ? photoTag(m.img) : m.img?.up ? photoUp(m.img, m) : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${chatLinks(m.text)}</div>${chatPrev(m.text)}` : ""}${m.via ? `<span class="cvia">Prueba enviada por ${esc(nickOf(personById(m.via)) || m.via)} como ${esc(nickOf(who) || m.from)}</span>` : ""}<span class="ctime">${m.ed ? "editado · " : ""}${msgTime(m)}${mine ? msgTicks(m, c) : ""}</span>
+      <div class="cbub${!m.text && !m.rp && !m.fw && ((m.stk && stkSrc(m.stk)) || m.gif || m.img?.id || m.img?.up) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.fw ? `<span class="cfw">${icon("forward")} Reenviado</span>` : ""}${m.rp ? `<button type="button" class="crq" data-cjump="${esc(m.rp.id)}"><b>${esc(m.rp.from === viewer.id ? "Vos" : nickOf(personById(m.rp.from)) || "")}</b><span>${esc(m.rp.t || "")}</span></button>` : ""}${m.stk && stkSrc(m.stk) ? `<span class="cstkw"><img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer" onerror="imgRetry(this)"><button type="button" class="cstkfav${stkFavs().includes(m.stk) ? " on" : ""}" data-stkfav="${esc(m.stk)}" title="${stkFavs().includes(m.stk) ? "Está en tus favoritos (tocá para quitarlo)" : "Guardar en mis favoritos"}" aria-label="${stkFavs().includes(m.stk) ? "Quitar de favoritos" : "Guardar en favoritos"}">${stkFavs().includes(m.stk) ? "★" : "☆"}</button></span>` : ""}${m.img?.id ? photoTag(m.img) : m.img?.up ? photoUp(m.img, m) : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${chatLinks(m.text)}</div>${chatPrev(m.text)}` : ""}${m.via ? `<span class="cvia">Prueba enviada por ${esc(nickOf(personById(m.via)) || m.via)} como ${esc(nickOf(who) || m.from)}</span>` : ""}<span class="ctime">${m.ed ? "editado · " : ""}${msgTime(m)}${mine ? msgTicks(m, c) : ""}</span>
         <button type="button" class="creact" data-react="${esc(mid)}" aria-label="Reaccionar">${icon("smile-plus")}</button>
         ${chatUI.react === mid ? `<div class="rqpick">${QUICK_RE.map(x => `<button type="button" data-re="${x}" data-rmid="${esc(mid)}">${x}</button>`).join("")}<button type="button" data-remore="${esc(mid)}" aria-label="Más emojis">＋</button></div>${chatUI.reactMore === mid ? emojiPanel("re:" + mid) : ""}${msgActions(m, mid, mine)}` : ""}
       </div>
@@ -7234,7 +7242,7 @@ const STICKERS_M = {
 Object.entries(STICKERS_M).forEach(([k, v]) => { STICKERS_B[k] = v; });
 const STK_EMO = ["feliz","risa","amor","sorpresa","triste","enojado","pensando","genial","fiesta","cansado"];
 const stkSrc = k => { if (!k) return ""; if (k.startsWith("b:") && STICKERS_B[k.slice(2)]) return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(STICKERS_B[k.slice(2)][1]);
-  if (k.startsWith("d:") && /^[\w-]{10,80}$/.test(k.slice(2))) return `https://drive.google.com/thumbnail?id=${k.slice(2)}&sz=w320`; return ""; };
+  if (k.startsWith("d:") && /^[\w-]{10,80}$/.test(k.slice(2))) return driveSrc(k.slice(2), 320); return ""; };
 let STICKER_FAVS = {}; // persona → stickers favoritos (en todos sus dispositivos)
 const stkFavs = () => STICKER_FAVS[viewer?.id] || [];
 const stkRecents = () => { try { return JSON.parse(localStorage.getItem("rmh-stkrec-" + viewer.id) || "[]"); } catch { return []; } };
@@ -7247,7 +7255,7 @@ async function stkLoad(force){
 function stkPanel(){
   const tab = chatUI.stkTab || (stkFavs().length ? "fav" : stkRecents().length ? "rec" : "boc");
   const tile = k => { const src = stkSrc(k); if (!src) return ""; const fav = stkFavs().includes(k);
-    return `<span class="stk"><button type="button" data-stksend="${esc(k)}" title="${esc(k.startsWith("b:") ? STICKERS_B[k.slice(2)][0] : "Enviar sticker")}"><img src="${esc(src)}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer"></button><button type="button" class="stkfav${fav ? " on" : ""}" data-stkfav="${esc(k)}" aria-label="${fav ? "Quitar de favoritos" : "Guardar en favoritos"}" title="${fav ? "Quitar de favoritos" : "Guardar en favoritos"}">${fav ? "★" : "☆"}</button></span>`; };
+    return `<span class="stk"><button type="button" data-stksend="${esc(k)}" title="${esc(k.startsWith("b:") ? STICKERS_B[k.slice(2)][0] : "Enviar sticker")}"><img src="${esc(src)}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer" onerror="imgRetry(this)"></button><button type="button" class="stkfav${fav ? " on" : ""}" data-stkfav="${esc(k)}" aria-label="${fav ? "Quitar de favoritos" : "Guardar en favoritos"}" title="${fav ? "Quitar de favoritos" : "Guardar en favoritos"}">${fav ? "★" : "☆"}</button></span>`; };
   const grid = list => list.length ? `<div class="stkgrid">${list.map(tile).join("")}</div>` : "";
   let body;
   if (tab === "rec") body = grid(stkRecents()) || `<p class="note">Todavía no mandaste stickers desde este dispositivo.</p>`;
