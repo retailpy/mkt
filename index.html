@@ -513,6 +513,8 @@ html.nomotion .picon{animation:none}
 .rtimgbtn{gap:6px}
 /* Imagen elegida en la hoja: se agranda o achica arrastrando la esquina (o con los botones) y se borra */
 .rtwrap{position:relative}
+.rtnoshot{display:flex;gap:8px;align-items:flex-start;margin:6px 0;padding:10px 12px;border-radius:10px;background:rgba(250,204,21,.12);border:1px solid rgba(250,204,21,.45);font-size:13.5px;line-height:1.45}
+.rtnoshot>svg{flex:none;width:18px;height:18px;margin-top:1px;color:#facc15}.rtnoshot span{flex:1}
 .rtedit img{-webkit-user-drag:none;cursor:pointer}
 .rtimg[data-w]{max-width:100%;max-height:none}
 .rtedit img.rtsel{outline:3px solid #22d3ee;outline-offset:2px}
@@ -3982,6 +3984,7 @@ const ICONS = {
 "flower":"<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5\"/><path d=\"M12 7.5V9\"/><path d=\"M7.5 12H9\"/><path d=\"M16.5 12H15\"/><path d=\"M12 16.5V15\"/><path d=\"m8 8 1.88 1.88\"/><path d=\"M14.12 9.88 16 8\"/><path d=\"m8 16 1.88-1.88\"/><path d=\"M14.12 14.12 16 16\"/>",
 "folder":"<path d=\"M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z\"/>",
 "server":"<rect width=\"20\" height=\"8\" x=\"2\" y=\"2\" rx=\"2\" ry=\"2\"/><rect width=\"20\" height=\"8\" x=\"2\" y=\"14\" rx=\"2\" ry=\"2\"/><line x1=\"6\" x2=\"6.01\" y1=\"6\" y2=\"6\"/><line x1=\"6\" x2=\"6.01\" y1=\"18\" y2=\"18\"/>",
+"clipboard-paste":"<path d=\"M15 2H9a1 1 0 0 0-1 1v2c0 .6.4 1 1 1h6c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1Z\"/><path d=\"M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2M16 4h2a2 2 0 0 1 2 2v2M11 14h10\"/><path d=\"m17 10 4 4-4 4\"/>",
 "paperclip":"<path d=\"m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551\"/>",
 "presentation":"<path d=\"M2 3h20\"/><path d=\"M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3\"/><path d=\"m7 21 5-5 5 5\"/>",
 "file-archive":"<path d=\"M10 12v-1\"/><path d=\"M10 18v-2\"/><path d=\"M10 7V6\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/><path d=\"M15.5 22H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v16a2 2 0 0 0 .274 1.01\"/><circle cx=\"10\" cy=\"20\" r=\"2\"/>",
@@ -4965,9 +4968,9 @@ function rtEditor(id, html, ph){
       <button type="button" class="btn ib sm" data-rt="small" title="Letra más chica" aria-label="Letra más chica">A−</button><button type="button" class="btn ib sm" data-rt="big" title="Letra más grande" aria-label="Letra más grande">A+</button>
       ${tb.map(([c, i, l]) => `<button type="button" class="btn ib sm" data-rt="${c}" title="${l}" aria-label="${l}">${icon(i)}</button>`).join("")}
       <button type="button" class="btn ib sm" data-rt="clear" title="Quitar formato" aria-label="Quitar formato">${icon("remove-formatting")}</button>
-      <button type="button" class="btn sm rtimgbtn" data-rt="img" title="Agregar una imagen de ejemplo o un boceto (se guarda en Google Drive)">${icon("image-plus")} Imagen</button><input type="file" class="rtimgin" accept="image/*" multiple hidden></div>
+      <button type="button" class="btn sm rtimgbtn" data-rt="img" title="Agregar una imagen de ejemplo o un boceto (se guarda en Google Drive)">${icon("image-plus")} Imagen</button><button type="button" class="btn sm rtimgbtn" data-rt="paste" title="Pegar la captura de pantalla o la imagen que copiaste">${icon("clipboard-paste")} Pegar captura</button><input type="file" class="rtimgin" accept="image/*" multiple hidden></div>
     <div class="rtedit" id="${id}" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Texto del pedido" data-ph="${esc(ph || BRIEF_PH["Diseño"])}">${html}</div>
-    <p class="note rthint">${icon("image")}<span>Para explicar con un ejemplo o un boceto: sacá una captura de pantalla y pegala en la hoja (Ctrl+V; en Mac ⌘V; en el celular mantené apretado y tocá <b>Pegar</b>), arrastrá una imagen o tocá <b>Imagen</b>. Se guarda en Google Drive y la ven todos en el pedido. Tocá una imagen para agrandarla o achicarla (arrastrá la esquina) o para borrarla.</span></p></div>`;
+    <p class="note rthint">${icon("image")}<span>Para explicar con un ejemplo o un boceto: sacá una captura de pantalla y pegala en la hoja con Ctrl+V (en Mac ⌘V) o con el botón <b>Pegar captura</b>; en el celular mantené apretado en la hoja y tocá <b>Pegar</b>. También podés arrastrar una imagen o tocar <b>Imagen</b>. Se guarda en Google Drive y la ven todos en el pedido. Tocá una imagen para agrandarla o achicarla (arrastrá la esquina) o para borrarla.</span></p></div>`;
 }
 function jobBriefSection(j){
   const ed = canEditBrief(j), html = j.brief ? cleanRich(j.brief) : "";
@@ -4997,6 +5000,7 @@ async function rtAddImage(ed, file){
   if (r){ r.deleteContents(); r.insertNode(img); r.setStartAfter(img); r.collapse(true); } else ed.appendChild(img);
   if (ed.contains(document.activeElement)){ const s = getSelection(), rc = document.createRange(); rc.setStartAfter(img); rc.collapse(true); s.removeAllRanges(); s.addRange(rc); } // el cursor sigue después de la imagen
   ed.dataset.dirty = "1"; ed._sel = r || null; // si se agregan varias, la siguiente va después de esta
+  ed.closest(".rtwrap")?.querySelector(".rtnoshot")?.remove();
   const j = await integ({ action:"chat_image", type:"image/jpeg", data:await toB64(shr.blob) }).catch(() => ({ ok:false }));
   const el = document.querySelector(`img[data-up="${tmp}"]`); // la hoja pudo volver a dibujarse mientras subía
   if (!j.ok || !j.id){ el?.remove(); ed._sigs.delete(sig); URL.revokeObjectURL(local); return toast(j.error || "No se pudo subir la imagen. Probá de nuevo."); }
@@ -5032,14 +5036,41 @@ function rtTarget(){
   const eds = [...document.querySelectorAll(".rtedit")].filter(x => x.isContentEditable && x.getClientRects().length);
   return eds.find(x => x.closest("#jobForm,#postForm")) || (eds.length === 1 ? eds[0] : null);
 }
+// Cuando no hay ninguna imagen copiada: la captura quedó guardada como archivo (Mac, celular) y no en el portapapeles.
+function rtNoShot(ed){
+  const ua = navigator.userAgent, how = /iphone|ipad|android/i.test(ua) ? "En el celular la captura va a la galería: tocá la miniatura que aparece abajo → Compartir → <b>Copiar</b>, y después “Pegar captura”. O tocá <b>Imagen</b> y elegila de la galería."
+    : /mac/i.test(ua) ? "En Mac, para que la captura quede copiada sumá Control: <b>⌘ + Control + Shift + 4</b> (con ⌘ + Shift + 4 se guarda como archivo en el escritorio: arrastrá ese archivo a la hoja o tocá <b>Imagen</b>)."
+    : "En Windows: <b>Windows + Shift + S</b>, elegí la parte de la pantalla y después pegá. Si la captura quedó guardada como archivo, arrastrala a la hoja o tocá <b>Imagen</b>.";
+  toast("No encontré ninguna imagen copiada: mirá cómo copiar la captura arriba de la hoja.");
+  const w = ed?.closest(".rtwrap"); if (!w) return; w.querySelector(".rtnoshot")?.remove();
+  w.querySelector(".rtbar")?.insertAdjacentHTML("afterend", `<div class="rtnoshot" role="status">${icon("info")}<span><b>No hay ninguna imagen copiada.</b> ${how}</span><button type="button" class="btn ib sm" data-rtnoshotx aria-label="Cerrar">${icon("x")}</button></div>`);
+  if (window.lucide) lucide.createIcons();
+}
+document.addEventListener("click", e => { if (e.target.closest("[data-rtnoshotx]")) e.target.closest(".rtnoshot")?.remove(); });
+// Botón “Pegar captura”: lee la imagen copiada (el navegador puede pedir permiso la primera vez).
+async function rtPasteBtn(ed){
+  if (!navigator.clipboard?.read) return toast("Este navegador no deja leer lo copiado desde un botón: tocá la hoja y apretá Ctrl+V (en Mac ⌘V; en el celular mantené apretado y Pegar).");
+  let items; try { items = await navigator.clipboard.read(); } catch (err){
+    return err?.name === "NotAllowedError" ? toast("El navegador no dio permiso para leer lo copiado: tocá la hoja y apretá Ctrl+V (en Mac ⌘V), o permitilo cuando lo pida.") : rtNoShot(ed); }
+  const files = [];
+  for (const it of items){ const t = it.types.find(x => /^image\//.test(x)); if (t){ try { const b = await it.getType(t); files.push(new File([b], "captura." + (t.split("/")[1] || "png"), { type:t })); } catch {} } }
+  if (!files.length) return rtNoShot(ed);
+  if (!ed._sel){ const r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); ed._sel = r; }
+  for (const f of files.slice(0, 6)) await rtAddImage(ed, f);
+}
 document.addEventListener("paste", async e => {
   const cd = e.clipboardData; if (!cd) return;
   let ed = e.target.closest?.(".rtedit");
   const html = cd.getData("text/html") || "", hasText = rtHtmlHasText(html);
   const files = hasText ? [] : rtClipFiles(cd);
+  // Pegar en la hoja sin nada copiado (la captura se guardó como archivo): se explica cómo copiarla.
+  if (ed && !files.length && !html && !cd.getData("text/plain") && !(cd.types || []).length){ e.preventDefault(); return rtNoShot(ed); }
   if (!ed){
-    if (!files.length || e.target.closest?.("input,textarea,select,[contenteditable]")) return;
+    if (!files.length || e.target.closest?.("select,[contenteditable],#chatInput")) return;
+    // Una captura pegada en una caja de solo texto (cambios pedidos, links…) no entra ahí: va a la hoja del pedido.
+    const box = e.target.closest?.("input,textarea"); if (box && cd.getData("text/plain")) return;
     ed = rtTarget(); if (!ed) return;
+    if (box) toast("La captura va en la hoja del “Texto del pedido” (en esa caja va solo texto): la pegué ahí.");
     e.preventDefault(); ed.focus({ preventScroll:true }); ed.scrollIntoView({ block:"center" });
     const r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); ed._sel = r;
     for (const f of files) await rtAddImage(ed, f);
@@ -5131,6 +5162,7 @@ document.addEventListener("input", e => { if (e.target.classList?.contains("rted
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-rt]"); if (b){ const ed = b.closest(".rtwrap")?.querySelector(".rtedit"); if (!ed) return; ed.dataset.dirty = "1"; ed.focus(); const c = b.dataset.rt;
     if (c === "img"){ rtSaveSel(ed); b.parentElement.querySelector(".rtimgin")?.click(); return; }
+    if (c === "paste"){ rtSaveSel(ed); rtPasteBtn(ed); return; }
     if (c === "big" || c === "small") document.execCommand("fontSize", false, c === "big" ? "5" : "2");
     else if (c === "clear") document.execCommand("removeFormat");
     else document.execCommand(c); return; }
