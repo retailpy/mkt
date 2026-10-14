@@ -5,6 +5,7 @@
 //   gifs {q} · stickers · sticker_upload {name,type,data}           → cualquier persona del equipo
 //   chat_image {type,data} · chat_image_delete {id}                  → fotos del chat (carpeta "Fotos Retail MKT", una carpeta por mes)
 //   boceto_upload {job,name,type,data} · boceto_delete {id}          → bocetos de los pedidos (carpeta de Bocetos, una carpeta por mes)
+//   doc_session {name,type,size} · doc_done {id} · doc_folder        → documentos del chat, en su formato original ("Documentos Retail MKT", una carpeta por mes)
 //   tendencias {area:"dg"|"cm"|"ideas", force?}                      → campañas, piezas y contenidos con foto, en español (force: solo Admin total)
 //   noticias {force?}                                                → lo que sale en los medios de Paraguay sobre Retail S.A. y sus marcas (3 meses)
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -28,11 +29,12 @@ const BOCETO_FOLDER_ID = "11CTrI4SXqPnHj6an0xwcFnDy7lbU1XJK"; // carpeta de los 
 const COMERCIAL_FOLDER_ID = "1ciqZuhAtcIa-_OYYutd-8Zq8CTPZS-5N"; // ofertas de Comercial: los Excel "PUBLICADAS" de cada quincena (solo lectura)
 const VIDEO_FOLDER_ID = "1OZxiVg0RQlJL2PUDLUXkct5NAFIGw09o"; // videos editados de CM (adentro, una carpeta por mes con el año)
 const BACKUP_FOLDER_ID = "1A_WCm2AkSN9H6GdNazCk-9L4ngoaNWfZ"; // respaldo de las ofertas: el Excel de cada quincena, en la carpeta del mes y año de la oferta
+const DOCS_FOLDER_ID = "1w0G3EphbFMN6rKWVvEoybBWxr9PJZKz3"; // documentos del chat (PDF, fotos en alta, videos, Word…): "Documentos Retail MKT", una carpeta por mes
 const MAX_BYTES = 400 * 1024;
 const CHAT_MAX = 4 * 1024 * 1024; // la app achica las fotos antes de subirlas (suelen quedar en 200-600 KB)
 const BOCETO_MAX = 10 * 1024 * 1024; // boceto liviano para ver cómo va (el original va en los links del pedido)
 const TYPES = ["image/png", "image/webp", "image/gif", "image/jpeg"];
-const SCRIPT_V = 5; // versión del script de Drive que necesita la app (2: fotos del chat por mes · 3: bocetos · 4: Comercial y videos de CM · 5: respaldo de las ofertas)
+const SCRIPT_V = 6; // versión del script de Drive que necesita la app (2: fotos del chat por mes · 3: bocetos · 4: Comercial y videos de CM · 5: respaldo de las ofertas · 6: documentos del chat)
 const SCRIPT_RE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]{20,}\/exec$/;
 const thumb = (id: string) => `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w320`;
 
@@ -46,6 +48,7 @@ const scriptText = (secret: string) => `// Retail MKT Hub · stickers, fotos del
 //   Comercial → lee (sin cambiar nada) los Excel "PUBLICADAS" de la carpeta de ofertas.
 //   Videos editados de CM → su carpeta, con una carpeta por mes y año; el video se sube directo a Drive.
 //   Respaldo de las ofertas → el Excel de cada quincena, el día que empieza, en la carpeta del mes y año de la oferta.
+//   Documentos del chat (PDF, fotos en alta, videos, Word, Excel…) → "Documentos Retail MKT", una carpeta por mes; se suben directo a Drive, en su formato original.
 // Pegalo en script.google.com y publicalo como Aplicación web (Ejecutar como: Yo · Acceso: Cualquier usuario).
 // Si ya estaba publicado: Implementar → Administrar implementaciones → lápiz → Versión: Nueva versión → Implementar
 // (así queda la misma URL). Tiene una clave secreta adentro: no lo compartas.
@@ -57,6 +60,7 @@ const BOCETO_FOLDER_ID = "${BOCETO_FOLDER_ID}";
 const COMERCIAL_FOLDER_ID = "${COMERCIAL_FOLDER_ID}";
 const VIDEO_FOLDER_ID = "${VIDEO_FOLDER_ID}";
 const BACKUP_FOLDER_ID = "${BACKUP_FOLDER_ID}";
+const DOCS_FOLDER_ID = "${DOCS_FOLDER_ID}";
 const MAX_BYTES = ${MAX_BYTES};
 const CHAT_MAX = ${CHAT_MAX};
 const BOCETO_MAX = ${BOCETO_MAX};
@@ -97,6 +101,9 @@ function doPost(e){
   if (b.kind === "video_folder") return out({ ok: true, folder: monthFolder(VIDEO_FOLDER_ID).getUrl() });
   if (b.kind === "video_session") return videoSession(b);
   if (b.kind === "video_done") return videoDone(b);
+  if (b.kind === "doc_folder") return docFolder();
+  if (b.kind === "doc_session") return docSession(b);
+  if (b.kind === "doc_done") return docDone(b);
   if (b.kind === "backup_copy") return backupCopy(b);
   if (b.kind === "backup_file") return backupFile(b);
   if (TYPES.indexOf(b.type) < 0) return out({ ok: false, error: "tipo de imagen no permitido" });
@@ -153,6 +160,33 @@ function videoDone(b){
   if (!ok) return out({ ok: false, error: "no es de la carpeta de videos" });
   try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (err){}
   return out({ ok: true, link: f.getUrl(), name: f.getName() });
+}
+
+// Documentos del chat: cualquier archivo, en su formato original, a la carpeta del mes de "Documentos Retail MKT".
+// La carpeta y sus meses se ven con el link (solo ver), así cualquiera del equipo entra desde la app.
+function docShare(f){ try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (err){} return f; }
+function docFolder(){
+  const root = docShare(DriveApp.getFolderById(DOCS_FOLDER_ID)), month = docShare(monthFolder(DOCS_FOLDER_ID));
+  return out({ ok: true, folder: month.getUrl(), root: root.getUrl(), month: month.getName() });
+}
+function docSession(b){
+  const folder = docShare(monthFolder(DOCS_FOLDER_ID)), size = Number(b.size) || 0;
+  if (!size || size > 5 * 1024 * 1024 * 1024) return out({ ok: false, error: "tamaño inválido" });
+  const res = UrlFetchApp.fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id,name,mimeType,size,webViewLink", {
+    method: "post", contentType: "application/json; charset=UTF-8", muteHttpExceptions: true,
+    headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken(), "X-Upload-Content-Type": String(b.type || "application/octet-stream"), "X-Upload-Content-Length": String(size), Origin: String(b.origin || "") },
+    payload: JSON.stringify({ name: String(b.name || "documento").slice(0, 160), parents: [folder.getId()], description: String(b.by || "").slice(0, 40) }),
+  });
+  const url = res.getHeaders()["Location"] || res.getHeaders()["location"];
+  if (res.getResponseCode() >= 300 || !url) return out({ ok: false, error: "Drive no abrió la subida (" + res.getResponseCode() + ")" });
+  return out({ ok: true, url: url, folder: folder.getUrl() });
+}
+function docDone(b){
+  let f; try { f = DriveApp.getFileById(String(b.id || "")); } catch (err){ return out({ ok: false, error: "no existe" }); }
+  let ok = false; for (const ps = f.getParents(); ps.hasNext();){ const p = ps.next(); for (const pp = p.getParents(); pp.hasNext();) if (pp.next().getId() === DOCS_FOLDER_ID) ok = true; }
+  if (!ok) return out({ ok: false, error: "no es de la carpeta de documentos" });
+  docShare(f);
+  return out({ ok: true, link: f.getUrl(), name: f.getName(), mime: f.getMimeType(), size: f.getSize() });
 }
 
 // Respaldo de las ofertas: copia el Excel original (o guarda el que arma la app si el original ya no está) en la carpeta
@@ -442,6 +476,21 @@ Deno.serve(async (req) => {
         if (!size || size > 5 * 1024 ** 3) return json({ ok: false, error: "El video supera 5 GB" });
         const name = String(b.name || "video").replace(/[\\/:*?"<>|#%]+/g, "_").slice(-140);
         return json(await scriptPost(c, { kind: "video_session", name, type, size, origin: req.headers.get("origin") || "", by: m.person_id }));
+      }
+      // Documentos del chat (cualquiera del equipo): PDF, fotos en alta, videos, Word, Excel… en su formato original,
+      // directo a Drive ("Documentos Retail MKT" → carpeta del mes). El navegador sube el archivo a la dirección que abre Drive.
+      case "doc_folder": case "doc_session": case "doc_done": {
+        if (!c.sticker_url) return json({ ok: false, nokey: true, error: "Falta conectar Google Drive (Configuración → Integraciones)." });
+        if (await scriptVersion(c.sticker_url, c.sticker_secret) < 6) return json({ ok: false, old: true, error: "Falta actualizar el script de Google Drive para los documentos del chat: Admin total lo hace en Configuración → Integraciones." });
+        if (b.action === "doc_folder") return json(await scriptPost(c, { kind: "doc_folder" }));
+        if (b.action === "doc_done"){
+          if (!/^[\w-]{10,100}$/.test(String(b.id || ""))) return json({ ok: false, error: "Documento inválido" });
+          return json(await scriptPost(c, { kind: "doc_done", id: String(b.id) }));
+        }
+        const size = Number(b.size) || 0, type = String(b.type || "application/octet-stream").slice(0, 120);
+        if (!size || size > 5 * 1024 ** 3) return json({ ok: false, error: "El archivo supera 5 GB" });
+        const name = String(b.name || "documento").replace(/[\\/:*?"<>|#%]+/g, "_").replace(/\s+/g, " ").trim().slice(-160) || "documento";
+        return json(await scriptPost(c, { kind: "doc_session", name, type, size, origin: req.headers.get("origin") || "", by: m.person_id }));
       }
       case "boceto_delete": {
         const id = String(b.id || "");
