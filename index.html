@@ -552,7 +552,21 @@ tr.tot td{border-top:1px solid var(--line-3)}
 .vidprog{position:relative;margin-top:10px;height:30px;border-radius:10px;background:var(--inner);overflow:hidden;border:1px solid var(--line)}
 .vidprog span{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#16a34a,#4ade80);transition:width .3s}.vidprog b{position:relative;display:block;padding:5px 10px;font-size:12.5px;color:#fff}
 .vidpaste{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}.vidpaste input{flex:1 1 240px}
-/* Comercial: ofertas de la quincena */
+/* Comercial: ofertas de Superseis, Stock y Delimarket */
+.comhub{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:6px 0 14px;align-items:start}
+.comb{border:1px solid var(--line);border-radius:16px;padding:12px;background:linear-gradient(180deg,color-mix(in srgb,var(--c) 10%,transparent),transparent 70%);min-width:0}
+.comb h2{display:flex;align-items:center;gap:8px;margin:0 0 9px;font-size:15px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}.comb h2 i{width:10px;height:10px;border-radius:50%;background:var(--c);flex:none}
+.combtns{display:grid;gap:6px}
+.comcat{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--inner);min-width:0}
+.comcat>svg{width:18px;height:18px;flex:none;color:var(--c)}.comcat span{display:flex;flex-direction:column;min-width:0;line-height:1.25}.comcat b{font-size:14px;font-weight:700;color:var(--ink)}
+.comcat small{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.comcat small.s-vig{color:#4ade80}.comcat small.s-prox{color:#60a5fa}.comcat small.s-err{color:#fbbf24}
+.comcat:hover{border-color:var(--line-3)}.comcat.on{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c);background:color-mix(in srgb,var(--c) 14%,var(--inner))}.comcat:focus-visible{outline:2px solid var(--cyan)}
+.comcatt{font-size:15px;font-weight:700;color:var(--c,#60a5fa);border:1px solid color-mix(in srgb,var(--c,#60a5fa) 55%,transparent);border-radius:999px;padding:2px 11px}
+.compend{margin:12px 0 0;border:1px solid rgba(251,191,36,.45);border-radius:12px;background:rgba(251,191,36,.07);padding:9px 12px;font-size:13px}.compend summary{cursor:pointer;display:flex;align-items:center;gap:7px;color:#fde68a;font-weight:600}.compend summary svg{width:15px;height:15px}
+.compend ul{margin:8px 0 2px;padding-left:18px;display:flex;flex-direction:column;gap:6px}.compend li b{color:var(--ink);overflow-wrap:anywhere}.compend li small{display:block;color:var(--muted)}.compend a{color:#60a5fa}
+.comempty{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}.comempty .btn{margin-top:4px}
+@media (max-width:900px){.comhub{grid-template-columns:1fr 1fr}.comb.b-delimarket{grid-column:1/-1}}
+@media (max-width:640px){.comhub{grid-template-columns:1fr}.combtns{grid-template-columns:1fr 1fr}.comb.b-delimarket .combtns{grid-template-columns:1fr}.comcat{align-items:flex-start}.comcat small{white-space:normal}}
 .comacts{display:flex;gap:6px;flex-wrap:wrap}
 .comhero{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.comhero h1{margin:0;font-size:26px}.comhero p{margin:2px 0 0;color:var(--muted)}
 .comart{width:104px;height:72px;flex:none}
@@ -3191,7 +3205,7 @@ const cmPiece = j => j.area === "CM" && VID_TOPICS[j.piece] ? [j.piece, j.piece 
 function vidDefaults(j){ if (j.area !== "CM" || !VID_TOPICS[j.piece]) return j;
   if (j.piece === "Video para redes"){ if (!VID_FORMATS.includes(j.vfmt)) j.vfmt = VID_FORMATS[0]; } else delete j.vfmt;
   if (!VID_TOPICS[j.piece].includes(j.vtopic)) j.vtopic = VID_TOPICS[j.piece][0]; return j; }
-// Categorías y tipos de trabajo de Diseño gráfico para los pedidos nuevos (v194, pedido de Admin total). Los pedidos
+// Categorías y tipos de trabajo de Diseño gráfico para los pedidos nuevos (v195, pedido de Admin total). Los pedidos
 // cargados antes conservan su tipo (DESIGN_TYPES) y se siguen trabajando igual.
 const DG_CATS = {
   "Diseño digital":["Post RRSS","Historia","Carrusel","Banner web/app","Pieza para WhatsApp/Mailing","KV de campaña","Plantilla editable","Folleto de ofertas digital","Catálogo/revista digital"],
@@ -5725,7 +5739,7 @@ function jobForm(){
   if (!f.repDays) f.repDays = [...(f.job.rep?.days || [])];
   const j = f.job, area = j.area;
   // Redes Sociales y Cartelería tienen cada una sus tipos de pieza.
-  // Diseño: categoría y tipo de trabajo (v194). Un pedido de antes con un tipo que ya no está conserva su tipo.
+  // Diseño: categoría y tipo de trabajo (v195). Un pedido de antes con un tipo que ya no está conserva su tipo.
   const sec = jobSection(j), dgCat = area === "CM" ? null : dgCatOf(j);
   const types = area === "CM" ? [...new Set([...CM_TYPES, j.piece].filter(Boolean))] : dgCat ? [...new Set([...DG_CATS[dgCat], j.piece].filter(Boolean))] : [j.piece].filter(Boolean);
   const opt = (list, v) => list.map(x => `<option ${x === v ? "selected" : ""}>${x}</option>`).join("");
@@ -9569,17 +9583,29 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-newsre]") && !newsBusy){ newsLoad(true); render(); }
 });
 const newsTag = b => `<span class="ntag" style="--c:${BRANDS[b] || "#94a3b8"}">${esc(b)}</span>`;
-// ---------- Comercial: las ofertas publicadas de cada quincena ----------
+// ---------- Comercial: las ofertas de Superseis, Stock y Delimarket (quincenales, fin de semana, Express e Imbatibles) ----------
 // El servidor lee los Excel "PUBLICADAS" de la carpeta de Comercial en Drive (Actualizar, al abrir y en la rutina diaria).
 // Cada quincena queda guardada aunque después borren el archivo (memoria del mes).
-let comUI = { id:null, q:"", sec:"Todas", top:false, sheet:0, open:null, busy:false, auto:false, onlyNew:false, pg:{} }; // pg: orden y búsqueda de cada página ({ o:"desc"|"asc", q })
+let comUI = { cat:"Superseis|quincenal", id:null, q:"", sec:"Todas", top:false, sheet:0, open:null, busy:false, auto:false, onlyNew:false, pg:{} }; // cat: supermercado|categoría elegidos // pg: orden y búsqueda de cada página ({ o:"desc"|"asc", q })
 const comState = f => TODAY < f.from ? "prox" : TODAY > f.to ? "fin" : "vig";
 // Orden: primero la quincena vigente, después la que sigue, y así; al final las que ya terminaron (la más reciente primero).
 // Cada mes muestra sus quincenas (las que caen en el mes elegido arriba; la que cruza de un mes al otro sale en los dos).
-const comAll = () => Object.values(COMERCIAL.files || {}).filter(f => f.from && f.to);
+// Los 3 supermercados y sus 9 categorías, cada una con su carpeta de Drive (la misma lista que FUENTES en el servidor).
+// Express e Imbatibles comparten carpeta entre Superseis y Stock: el servidor separa por el nombre del archivo.
+const COM_FOLDER = { quincenal:{ Superseis:"1ciqZuhAtcIa-_OYYutd-8Zq8CTPZS-5N", Stock:"1RIqkeQ7iR22JX_j3k5JqZXdMsPl0x7eP" },
+  fds:{ Superseis:"16e3im1-9kYWZ7rZixRtRPUelHyDSoxxy", Stock:"1iHSUvW6WbZO2WDSZ0o3VtS345p48aAdR", Delimarket:"1NnZGuw3iWQaWNqz5axsE4zWlUAW-sXhA" },
+  express:{ Superseis:"14b8mp9dItU2SmoJUbiaCNc9g3vBI3xal", Stock:"14b8mp9dItU2SmoJUbiaCNc9g3vBI3xal" }, imbatibles:{ Superseis:"1wnr3i0WNIUOuOEILUg5z_LWdmHd1A79W", Stock:"1wnr3i0WNIUOuOEILUg5z_LWdmHd1A79W" } };
+const COM_BRANDS = [["Superseis", ["quincenal", "fds", "express", "imbatibles"]], ["Stock", ["quincenal", "fds", "express", "imbatibles"]], ["Delimarket", ["fds"]]];
+const COM_CAT = { quincenal:["Ofertas quincenales", "calendar-range"], fds:["Fin de semana", "sun"], express:["Express", "zap"], imbatibles:["Imbatibles", "trophy"] };
+const comCatName = (b, c) => c === "express" ? `${b} Express` : COM_CAT[c][0];
+const comKeyOf = f => (f.brand || "Superseis") + "|" + (f.cat || "quincenal"); // las de antes no tienen categoría: son las quincenales de Superseis
+const comFolderUrl = (key = comUI.cat) => { const [b, c] = key.split("|"); return "https://drive.google.com/drive/folders/" + (COM_FOLDER[c]?.[b] || COM_FOLDER.quincenal.Superseis); };
+const comAllOf = key => Object.values(COMERCIAL.files || {}).filter(f => f.from && f.to && comKeyOf(f) === key);
+const comAll = () => comAllOf(comUI.cat);
 const comPeriods = () => { const r = { vig:0, prox:1, fin:2 }; return comAll().filter(f => f.from.slice(0, 7) <= MONTH && f.to.slice(0, 7) >= MONTH)
   .sort((a, b) => r[comState(a)] - r[comState(b)] || (comState(a) === "fin" ? b.from.localeCompare(a.from) : a.from.localeCompare(b.from))); };
 const COM_ST = { vig:"Vigente", prox:"Oferta quincenal", fin:"Terminó" };
+const comStName = (st, f) => st === "prox" && (f?.cat || "quincenal") !== "quincenal" ? "Próxima" : COM_ST[st];
 const comRange = f => { const [a, b] = [f.from, f.to].map(d => new Date(d + "T12:00")); const mm = d => MONTHS_ES[d.getMonth()];
   return a.getMonth() === b.getMonth() ? `${a.getDate()} al ${b.getDate()} de ${mm(b)}` : `${a.getDate()} de ${mm(a)} al ${b.getDate()} de ${mm(b)}`; };
 // % de descuento solo cuando es un precio rebajado. Si es una promo (2x1, 2 x 28.000…), el descuento queda vacío.
@@ -9615,10 +9641,37 @@ const COM_ICO = [[/rotiser|confiter|panader|pan\b/, "croissant"], [/carne|carnic
   [/halloween|fiesta|oktober|navidad/, "party-popper"], [/tapa/, "star"]];
 const comIco = s => { const t = rclFold(s); return (COM_ICO.find(([re]) => re.test(t)) || [0, "tag"])[1]; };
 const comOfTxt = it => typeof it.of === "number" ? gs(it.of) : comNice(it.of || "");
-const comSheetName = (x, k) => k === 0 || /^PUBLICADAS$/i.test(x.name) ? "Folleto" : comNice(x.name);
+const comSheetName = (x, k, f) => /^PUBLICADAS$/i.test(x.name) || (k === 0 && (f?.cat || "quincenal") === "quincenal") ? "Folleto" : comNice(x.name);
 const comBrand = f => f.brand || "Superseis";
-const comTitle = f => `${comBrand(f)} · ${comRange(f)}`;
-const comFileName = f => `Ofertas ${comBrand(f)} del ${comRange(f)}`;
+const comLabel = f => { const b = comBrand(f); return { fds:`fin de semana ${b}`, express:`${b} Express`, imbatibles:`Imbatibles ${b}` }[f.cat] || b; };
+const comTitle = f => `${comLabel(f)} · ${comRange(f)}`;
+const comFileName = f => `Ofertas ${comLabel(f)} del ${comRange(f)}`;
+// Estado de cada botón: la oferta vigente o la próxima de esa categoría, o por qué no hay (carpeta sin acceso, script viejo…).
+function comCatStatus(key){
+  const [b, c] = key.split("|"), fid = COM_FOLDER[c][b], src = COMERCIAL.src?.[fid], all = comAllOf(key);
+  const vig = all.find(f => comState(f) === "vig"), prox = all.filter(f => comState(f) === "prox").sort((x, y) => x.from.localeCompare(y.from))[0];
+  const dm = d => `${+d.slice(8)}/${+d.slice(5, 7)}`;
+  if (vig) return ["vig", `Vigente hasta\u00a0${dm(vig.to)}`];
+  if (prox) return ["prox", `Próxima desde\u00a0${dm(prox.from)}`];
+  if (src?.err) return ["err", "No se pudo abrir la carpeta"];
+  if (key !== "Superseis|quincenal" && (!src || src.old)) return ["", "Todavía no se leyó"];
+  return ["", all.length ? "Sin ofertas vigentes" : "Sin ofertas todavía"];
+}
+const comHub = () => `<div class="comhub">${COM_BRANDS.map(([b, cats]) => `<section class="comb b-${b.toLowerCase()}" style="--c:${BRANDS[b]}" aria-label="${b}"><h2><i></i>${b}</h2><div class="combtns">${cats.map(c => { const key = b + "|" + c, [st, txt] = comCatStatus(key), on = comUI.cat === key;
+  return `<button type="button" class="comcat${on ? " on" : ""}" data-comcat="${key}" aria-pressed="${on}">${icon(COM_CAT[c][1])}<span><b>${esc(comCatName(b, c))}</b><small class="${st ? "s-" + st : ""}">${esc(txt)}</small></span></button>`; }).join("")}</div></section>`).join("")}</div>`;
+// Archivos de la carpeta de esta categoría que no se pudieron identificar o leer (el servidor los deja para revisar).
+const comPending = key => { const [b, c] = key.split("|"), fid = COM_FOLDER[c][b], list = (COMERCIAL.pending || []).filter(x => x.src === fid);
+  return list.length ? `<details class="compend"><summary>${icon("triangle-alert")}${list.length === 1 ? "1 archivo pendiente de revisión" : list.length + " archivos pendientes de revisión"} en la carpeta de Drive</summary><ul>${list.map(x => `<li><b>${esc(x.name)}</b>${x.path ? ` <span class="note">(${esc(x.path)})</span>` : ""}<small>${esc(x.reason)} ${/^[\w-]{10,}$/.test(x.id) ? `<a href="https://drive.google.com/file/d/${encodeURIComponent(x.id)}/view" target="_blank" rel="noopener">Ver en Drive</a>` : ""}</small></li>`).join("")}</ul></details>` : ""; };
+// Sin ofertas para mostrar en esta categoría: se dice por qué (sin suponer que la carpeta está vacía si no se pudo leer).
+function comEmptyMsg(key){
+  const [b, c] = key.split("|"), fid = COM_FOLDER[c][b], src = COMERCIAL.src?.[fid], name = comCatName(b, c) + (c === "express" ? "" : " de " + b), at = viewer.role === "Admin total";
+  if (comUI.busy) return "Leyendo las ofertas del Drive…";
+  if (src?.err) return `${icon("folder-x")} <b>No se pudo abrir la carpeta de Drive de ${esc(name)}.</b><span class="note">${esc(src.err)}. Revisá que la carpeta siga compartida con la cuenta de Google de la app${at ? "" : " (avisale a Admin total)"}.</span>`;
+  if (key !== "Superseis|quincenal" && (!src || src.old)) return `${icon("clock-alert")} <b>Todavía no se leyeron las ofertas de ${esc(name)}.</b><span class="note">${at ? "Falta actualizar el script de Google Drive: copialo de nuevo en Configuración → Integraciones y publicalo." : "Falta que Admin total actualice el script de Google Drive en Configuración → Integraciones."}</span>`;
+  if (comAll().length) return `${icon("calendar-x")} No hay ofertas de ${esc(name)} en ${monthName(MONTH)}.`;
+  if (src?.ok) return `${icon("calendar-x")} No hay archivos de ${esc(name)} en la carpeta de Drive todavía.`;
+  return `Todavía no se leyeron las ofertas. Tocá <b>Actualizar</b>.${at ? " Si avisa que falta el script, actualizalo en Configuración → Integraciones." : ""}`;
+}
 const COM_FLAG_TXT = { "Tapa":"Tapa", "Destacar":"Destacado", "Zócalo redes":"Redes", "Publicada":"Publicada", "Confirmado":"Confirmado" };
 const comFlag = it => it.flag ? `<span class="cflag f-${rclFold(COM_FLAG_TXT[it.flag] || "x").replace(/\W/g, "")}">${esc(COM_FLAG_TXT[it.flag] || comNice(it.flag))}</span>` : "";
 const COM_COLS = [["Página / sección", i => comSec(i.sec || i.sector)], ["Producto", i => comNice(i.desc)], ["Precio normal", i => typeof i.pvp === "number" ? i.pvp : ""], ["Precio oferta", i => typeof i.of === "number" ? i.of : comNice(i.of)],
@@ -9638,7 +9691,9 @@ async function comSync(force){
   comUI.busy = false; if (j.ok && !j.skipped) await window.RMH?.catchUp?.();
   const added = j.ok ? +j.agregados || 0 : 0; // productos de más que encontró el servidor al leer los Excel
   if (page === "comercial") render();
-  if (force) toast(j.ok ? (j.nuevos ? `Listo: ${j.nuevos === 1 ? "1 archivo nuevo o cambiado" : j.nuevos + " archivos nuevos o cambiados"}.` : added ? "Listo." : "Ya estaba al día: no hay cambios en los Excel.") + (j.errores ? ` (${j.errores} no se pudo leer)` : "") + (added ? ` ${added === 1 ? "Se sumó 1 producto más" : `Se sumaron ${added} productos más`}.` : "") + (j.respaldos ? ` Respaldo en Drive: ${j.respaldos}.` : "") : j.error || "No se pudo actualizar.");
+  if (force) toast(j.ok ? (j.nuevos ? `Listo: ${j.nuevos === 1 ? "1 archivo nuevo o cambiado" : j.nuevos + " archivos nuevos o cambiados"}.` : added ? "Listo." : "Ya estaba al día: no hay cambios en los Excel.") + (j.errores ? ` (${j.errores} no se pudo leer)` : "") + (added ? ` ${added === 1 ? "Se sumó 1 producto más" : `Se sumaron ${added} productos más`}.` : "") + (j.respaldos ? ` Respaldo en Drive: ${j.respaldos}.` : "")
+    + (j.faltan ? ` Quedan ${j.faltan} por leer: tocá Actualizar de nuevo.` : "") + (j.carpetasConError ? ` ${j.carpetasConError === 1 ? "1 carpeta de Drive no se pudo abrir" : j.carpetasConError + " carpetas de Drive no se pudieron abrir"}.` : "")
+    + (j.scriptViejo && viewer.role === "Admin total" ? " Para leer las demás ofertas, actualizá el script de Google Drive (Configuración → Integraciones)." : "") : j.error || "No se pudo actualizar.");
 }
 async function comExcel(f){
   const rows = sh => [COM_COLS.map(c => c[0]), ...sh.items.map(i => COM_COLS.map(c => c[1](i)))];
@@ -9646,10 +9701,10 @@ async function comExcel(f){
   try {
     if (!window.XLSX) await new Promise((ok, ko) => { const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"; s.onload = ok; s.onerror = ko; document.head.appendChild(s); setTimeout(ko, 15000); });
     const wb = XLSX.utils.book_new();
-    (f.sheets || []).forEach((sh, k) => { const ws = XLSX.utils.aoa_to_sheet(rows(sh)); ws["!cols"] = COM_COLS.map((c, n) => ({ wch:n === 1 ? 44 : n === 0 ? 30 : 14 })); XLSX.utils.book_append_sheet(wb, ws, comSheetName(sh, k).slice(0, 31)); });
+    (f.sheets || []).forEach((sh, k) => { const ws = XLSX.utils.aoa_to_sheet(rows(sh)); ws["!cols"] = COM_COLS.map((c, n) => ({ wch:n === 1 ? 44 : n === 0 ? 30 : 14 })); XLSX.utils.book_append_sheet(wb, ws, comSheetName(sh, k, f).slice(0, 31)); });
     XLSX.writeFile(wb, name + ".xlsx");
   } catch {
-    const csv = (f.sheets || []).flatMap((sh, k) => [[comSheetName(sh, k)], ...rows(sh), []]).map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
+    const csv = (f.sheets || []).flatMap((sh, k) => [[comSheetName(sh, k, f)], ...rows(sh), []]).map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
     const a = Object.assign(document.createElement("a"), { href:URL.createObjectURL(new Blob(["﻿" + csv], { type:"text/csv;charset=utf-8" })), download:name + ".csv" });
     document.body.appendChild(a); a.click(); a.remove();
   }
@@ -9658,7 +9713,7 @@ function comPdf(f){
   const w = window.open("", "_blank"); if (!w) return toast("El navegador bloqueó la ventana: permití ventanas emergentes para este sitio.");
   const td = v => `<td>${esc(String(v ?? ""))}</td>`;
   const body = (f.sheets || []).map((sh, k) => { const groups = []; sh.items.forEach(i => { const s = comSec(i.sec || i.sector); let g = groups.find(x => x[0] === s); if (!g) groups.push(g = [s, []]); g[1].push(i); });
-    return `${(f.sheets || []).length > 1 ? `<h2>${esc(comSheetName(sh, k))}</h2>` : ""}${groups.map(([s, items]) => `<h3>${esc(s)}</h3><table><thead><tr><th>Producto</th><th class="r">Precio normal</th><th class="r">Oferta</th><th class="r">Desc.</th><th>Destacado</th><th>Código</th></tr></thead><tbody>
+    return `${(f.sheets || []).length > 1 ? `<h2>${esc(comSheetName(sh, k, f))}</h2>` : ""}${groups.map(([s, items]) => `<h3>${esc(s)}</h3><table><thead><tr><th>Producto</th><th class="r">Precio normal</th><th class="r">Oferta</th><th class="r">Desc.</th><th>Destacado</th><th>Código</th></tr></thead><tbody>
       ${items.map(i => `<tr><td>${esc(comNice(i.desc))}</td><td class="r">${typeof i.pvp === "number" ? gs(i.pvp) : ""}</td><td class="r"><b>${esc(comOfTxt(i))}</b></td><td class="r">${esc(comPct(i))}</td>${td(COM_FLAG_TXT[i.flag] || "")}${td(i.cod)}</tr>`).join("")}</tbody></table>`).join("")}`; }).join("");
   w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(comFileName(f))}</title><style>
     body{font:700 12.5px/1.45 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#000;margin:24px}h1{font-size:20px;font-weight:800;margin:0}p{margin:2px 0 14px;color:#222}
@@ -9709,9 +9764,10 @@ function pComercial(){
   const per = comPeriods();
   if (!comUI.auto && !window.RMH?.previewing){ comUI.auto = true; if (!COMERCIAL.syncedAt || Date.now() - Date.parse(COMERCIAL.syncedAt) > 3 * 3600e3) setTimeout(() => comSync(false), 0); }
   const f0 = per.find(x => x.id === comUI.id) || per[0];
-  const head = `<div class="comhero">${COM_ART}<div class="grow"><h1>Ofertas de Comercial</h1><p>Lo que sale en el folleto de cada quincena, listo para diseñar. Tocá el producto, el precio o el descuento para copiarlo.</p></div>
-    <div class="comacts">${f0 ? `<button class="btn" type="button" data-comxls>${icon("download")} Excel</button><button class="btn" type="button" data-compdf>${icon("file-text")} PDF</button>` : ""}<a class="btn" href="https://drive.google.com/drive/folders/1ciqZuhAtcIa-_OYYutd-8Zq8CTPZS-5N" target="_blank" rel="noopener" title="Abre la carpeta original de Drive donde Comercial envía las ofertas">${icon("folder-open")} Carpeta de Comercial (Drive)</a><button class="btn" type="button" data-comsync ${comUI.busy ? "disabled" : ""}>${icon("refresh-cw")} ${comUI.busy ? "Revisando…" : "Actualizar"}</button></div></div>`;
-  if (!per.length) return head + `<div class="panel"><div class="empty">${comUI.busy ? "Leyendo las ofertas del Drive…" : comAll().length ? `${icon("calendar-x")} No hay ofertas de Comercial en ${monthName(MONTH)}.` : `Todavía no se leyeron las ofertas. Tocá <b>Actualizar</b>.${viewer.role === "Admin total" ? " Si avisa que falta el script, actualizalo en Configuración → Integraciones." : ""}`}</div></div>`;
+  const [cb, cc] = comUI.cat.split("|");
+  const head = `<div class="comhero">${COM_ART}<div class="grow"><h1>Ofertas de Comercial</h1><p>Todas las ofertas de Superseis, Stock y Delimarket en un solo lugar.</p></div>
+    <div class="comacts">${f0 ? `<button class="btn" type="button" data-comxls>${icon("download")} Excel</button><button class="btn" type="button" data-compdf>${icon("file-text")} PDF</button>` : ""}<a class="btn" href="${comFolderUrl()}" target="_blank" rel="noopener" title="Abre la carpeta original de Drive de ${esc(comCatName(cb, cc))}${cc === "express" ? "" : " de " + cb}">${icon("folder-open")} Carpeta de Comercial (Drive)</a><button class="btn" type="button" data-comsync ${comUI.busy ? "disabled" : ""}>${icon("refresh-cw")} ${comUI.busy ? "Revisando…" : "Actualizar"}</button></div></div>` + comHub();
+  if (!per.length) return head + `<div class="panel"><div class="empty comempty">${comEmptyMsg(comUI.cat)}</div>${comPending(comUI.cat)}</div>`;
   const f = f0; comUI.id = f.id;
   const chips = per.slice(0, 4), older = per.slice(4);
   const sheets = f.sheets || [], sh = sheets[Math.min(comUI.sheet, sheets.length - 1)] || { items:[] };
@@ -9732,18 +9788,18 @@ function pComercial(){
       <span class="cofd2" data-l="${pc ? "Descuento" : ""}">${pc ? comFc(i, `<span class="cpct sm">−${esc(pc)}</span>`) : ""}</span></div>${comCopyBtn(id)}</div>
       ${open ? `<dl class="cofd">${[["Código", i.cod], ["Material", i.mat], ["Sector", comSent(i.sector)], ["Temática", comSent(i.tem)], ["Reconocimiento", typeof i.rec === "number" ? gs(i.rec) : i.rec], ["Oferta negociada", i.neg], ["Proveedor", comNice(i.prov) + (i.nprov ? " · N.° " + i.nprov : "")], ["Subcategoría", comSent(i.sub)], ["Página del folleto", comSec(i.sec)], ["Destacado", COM_FLAG_TXT[i.flag] || i.flag]].filter(([, v]) => v && String(v).trim()).map(([l, v]) => `<dt>${l}</dt><dd>${esc(String(v))}</dd>`).join("")}</dl>` : ""}</div>`; };
   const bySec = []; list.forEach(i => { const k = comSec(i.sec || i.sector); let g = bySec.find(x => x[0] === k); if (!g) bySec.push(g = [k, []]); g[1].push(i); });
-  return head + `<div class="comper" role="group" aria-label="Quincena">${chips.map(x => { const st = comState(x); return `<button type="button" class="comchip s-${st} ${x.id === f.id ? "on" : ""}" data-comper="${x.id}" aria-pressed="${x.id === f.id}"><small>${icon(st === "vig" ? "circle-check" : st === "prox" ? "calendar-clock" : "history")}${COM_ST[st]}</small><b>${comRange(x)}</b></button>`; }).join("")}
-      ${older.length ? `<select class="base sm" data-comold aria-label="Quincenas anteriores"><option value="">Quincenas anteriores…</option>${older.map(x => `<option value="${x.id}" ${x.id === f.id ? "selected" : ""}>${comRange(x)} ${x.from.slice(0, 4)}</option>`).join("")}</select>` : ""}</div>
-    <section class="comhead"><h2>${esc(comBrand(f))}</h2>
-      <p class="comdate">${icon("calendar-range")}<span>Ofertas del <b>${comRange(f)}</b> · ${COM_ST[comState(f)].toLowerCase()}</span></p>
+  return head + `<div class="comper" role="group" aria-label="Quincena">${chips.map(x => { const st = comState(x); return `<button type="button" class="comchip s-${st} ${x.id === f.id ? "on" : ""}" data-comper="${x.id}" aria-pressed="${x.id === f.id}"><small>${icon(st === "vig" ? "circle-check" : st === "prox" ? "calendar-clock" : "history")}${comStName(st, x)}</small><b>${comRange(x)}</b></button>`; }).join("")}
+      ${older.length ? `<select class="base sm" data-comold aria-label="Ofertas anteriores"><option value="">${comUI.cat.endsWith("|quincenal") ? "Quincenas anteriores…" : "Ofertas anteriores…"}</option>${older.map(x => `<option value="${x.id}" ${x.id === f.id ? "selected" : ""}>${comRange(x)} ${x.from.slice(0, 4)}</option>`).join("")}</select>` : ""}</div>
+    <section class="comhead" style="--c:${BRANDS[comBrand(f)] || "#60a5fa"}"><h2>${esc(comBrand(f))} <span class="comcatt">${esc(COM_CAT[f.cat || "quincenal"][0])}</span></h2>
+      <p class="comdate">${icon("calendar-range")}<span>Ofertas del <b>${comRange(f)}</b> · ${comStName(comState(f), f).toLowerCase()}</span></p>
       ${newN ? `<div class="comalert" role="status">${icon("sparkles")}<div><b>${newN === 1 ? "Se sumó 1 producto más" : `Se sumaron ${newN} productos más`}</b> en la última actualización <span class="note">· ${esc(comAddedAt(f))}</span></div><button type="button" class="btn sm" data-comnewonly-btn>${comUI.onlyNew ? "Ver todos" : "Ver solo los nuevos"}</button></div>` : ""}
       <div class="comk"><span>${icon("package")}<b>${all.length}</b> productos${newN ? `<em class="comnew" title="Se sumaron en la última actualización (${esc(comAddedAt(f))})">+${newN} más</em>` : ""}</span>${groupsTop.map(g => `<span class="k-${g[2]}">${icon(g[1])}<b>${g[3].length}</b> ${g[3].length === 1 && g[0] === "Destacados" ? "destacado" : g[0].toLowerCase()}</span>`).join("")}${best ? `<span class="k-pct">${icon("badge-percent")}hasta <b>${best}%</b> de descuento</span>` : ""}</div>
-      <div class="comsrc">${f.inDrive === false ? `<span class="comgone">${icon("file-x")} Ya no se encuentra el archivo original en Drive (los datos quedan guardados acá)</span>` : /^[\w-]{10,}$/.test(f.id) ? `<a class="btn sm" href="https://drive.google.com/file/d/${encodeURIComponent(f.id)}/view" target="_blank" rel="noopener">${icon("file-spreadsheet")} Ver Excel original</a>` : ""}<a class="btn sm" href="https://drive.google.com/drive/folders/1ciqZuhAtcIa-_OYYutd-8Zq8CTPZS-5N" target="_blank" rel="noopener" title="Abre la carpeta de Drive con los Excel de las ofertas">${icon("folder-open")} Abrir carpeta en Drive</a>${f.backup?.url ? `<a class="btn sm" href="${esc(f.backup.url)}" target="_blank" rel="noopener">${icon("hard-drive")} Respaldo en Drive</a>` : ""}<span class="note">${icon("refresh-cw")} Revisado ${COMERCIAL.syncedAt ? inboxAge(COMERCIAL.syncedAt) : "—"}</span></div>
-      ${COMERCIAL.backupScript === false && viewer.role === "Admin total" ? `<p class="note comwarn">${icon("info")} Para que el respaldo se guarde solo en Drive, actualizá el script de Google Drive en Configuración → Integraciones.</p>` : ""}</section>
+      <div class="comsrc">${f.inDrive === false ? `<span class="comgone">${icon("file-x")} Ya no se encuentra el archivo original en Drive (los datos quedan guardados acá)</span>` : /^[\w-]{10,}$/.test(f.id) ? `<a class="btn sm" href="https://drive.google.com/file/d/${encodeURIComponent(f.id)}/view" target="_blank" rel="noopener">${icon("file-spreadsheet")} Ver Excel original</a>` : ""}<a class="btn sm" href="${comFolderUrl(comKeyOf(f))}" target="_blank" rel="noopener" title="Abre la carpeta de Drive con los Excel de las ofertas">${icon("folder-open")} Abrir carpeta en Drive</a>${f.backup?.url ? `<a class="btn sm" href="${esc(f.backup.url)}" target="_blank" rel="noopener">${icon("hard-drive")} Respaldo en Drive</a>` : ""}<span class="note">${icon("refresh-cw")} Revisado ${COMERCIAL.syncedAt ? inboxAge(COMERCIAL.syncedAt) : "—"}</span></div>
+      ${COMERCIAL.backupScript === false && viewer.role === "Admin total" ? `<p class="note comwarn">${icon("info")} Para que el respaldo se guarde solo en Drive, actualizá el script de Google Drive en Configuración → Integraciones.</p>` : ""}${comPending(comUI.cat)}</section>
     ${groupsTop.map(([t, ic, cls, items]) => `<section class="comgrp g-${cls}"><h3 class="comgh">${icon(ic)}<span>${t}</span><small>${items.length}</small></h3>${comGuide(cls)}${cls === "tapa" && dupTapa.length ? `<p class="comdup">${icon("triangle-alert")}<span><b>Revisar:</b> ${dupTapa.length === 1 ? "este producto de tapa también aparece" : "estos productos de tapa también aparecen"} adentro del folleto: ${dupTapa.map(i => `${esc(comNice(i.desc))} (${esc(comSec(i.sec || i.sector))})`).join(" · ")}.</span></p>` : ""}<div class="comtop">${items.slice(0, 24).map(i => { const si = sheets.findIndex(x => x.items.includes(i)); return comCard(i, si < 0 ? "" : f.id + ":" + si + ":" + sheets[si].items.indexOf(i)); }).join("")}</div></section>`).join("")}
     <section class="comlist">
-      <h3 class="comgh">${icon("list")}<span>Todas las ofertas</span><small>${all.length}</small>${list.length ? `<button type="button" class="btn sm comcpall" data-comcopyall title="Copia producto, precio de antes, oferta y descuento de lo que se ve (con el filtro), para pegar en Excel o en un texto">${icon("copy")} Copiar lista</button>` : ""}</h3>
-      ${sheets.length > 1 ? `<div class="comtabs" role="tablist">${sheets.map((x, k) => `<button type="button" role="tab" class="${x === sh ? "on" : ""}" aria-selected="${x === sh}" data-comsheet="${k}">${esc(comSheetName(x, k))} <span>${x.items.length}</span></button>`).join("")}</div>` : ""}
+      <h3 class="comgh" title="Tocá el producto, el precio o el descuento para copiarlo">${icon("list")}<span>Todas las ofertas</span><small>${all.length}</small>${list.length ? `<button type="button" class="btn sm comcpall" data-comcopyall title="Copia producto, precio de antes, oferta y descuento de lo que se ve (con el filtro), para pegar en Excel o en un texto">${icon("copy")} Copiar lista</button>` : ""}</h3>
+      ${sheets.length > 1 ? `<div class="comtabs" role="tablist">${sheets.map((x, k) => `<button type="button" role="tab" class="${x === sh ? "on" : ""}" aria-selected="${x === sh}" data-comsheet="${k}">${esc(comSheetName(x, k, f))} <span>${x.items.length}</span></button>`).join("")}</div>` : ""}
       <div class="comfil"><input class="base" id="comQ" placeholder="Buscar producto, proveedor o código" value="${esc(comUI.q)}" autocomplete="off">
         <select class="base" data-comsec aria-label="Página"><option value="Todas">Todas las páginas</option>${secs.map(x => `<option ${x === comUI.sec ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>
         <label class="comchk"><input type="checkbox" data-comtop ${comUI.top ? "checked" : ""}> Solo tapa, redes y destacados</label>${newN ? `<label class="comchk"><input type="checkbox" data-comnewonly ${comUI.onlyNew ? "checked" : ""}> Solo los nuevos (${newN})</label>` : ""}</div>
@@ -9754,6 +9810,7 @@ function pComercial(){
 }
 document.addEventListener("click", e => {
   if (e.target.closest("[data-comsync]")){ comSync(true); return; }
+  const cc = e.target.closest("[data-comcat]"); if (cc){ comUI = { ...comUI, cat:cc.dataset.comcat, id:null, sheet:0, sec:"Todas", open:null, onlyNew:false }; render(); return; }
   const cur = () => comPeriods().find(x => x.id === comUI.id);
   if (e.target.closest("[data-comxls]")){ const f = cur(); if (f) comExcel(f); return; }
   if (e.target.closest("[data-compdf]")){ const f = cur(); if (f) comPdf(f); return; }

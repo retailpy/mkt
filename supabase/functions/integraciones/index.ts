@@ -11,7 +11,7 @@
 //   tendencias {area:"dg"|"cm"|"ideas", force?}                      → campañas, piezas y contenidos con foto, en español (force: solo Admin total)
 //   noticias {force?}                                                → lo que sale en los medios de Paraguay sobre Retail S.A. y sus marcas (3 meses)
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { parseOfertas, periodo, marcaDe, PARSE_V, nombreOfertas, excelOfertas } from "./comercial.ts";
+import { parseOfertas, periodo, PARSE_V, nombreOfertas, excelOfertas, FUENTES, clasificar } from "./comercial.ts";
 import { armar } from "./tendencias.ts";
 import { buscarNoticias, juntarNoticias } from "./noticias.ts";
 
@@ -36,7 +36,7 @@ const MAX_BYTES = 400 * 1024;
 const CHAT_MAX = 4 * 1024 * 1024; // la app achica las fotos antes de subirlas (suelen quedar en 200-600 KB)
 const BOCETO_MAX = 10 * 1024 * 1024; // boceto liviano para ver cómo va (el original va en los links del pedido)
 const TYPES = ["image/png", "image/webp", "image/gif", "image/jpeg"];
-const SCRIPT_V = 6; // versión del script de Drive que necesita la app (2: fotos del chat por mes · 3: bocetos · 4: Comercial y videos de CM · 5: respaldo de las ofertas · 6: documentos del chat)
+const SCRIPT_V = 7; // versión del script de Drive que necesita la app (2: fotos del chat por mes · 3: bocetos · 4: Comercial y videos de CM · 5: respaldo de las ofertas · 6: documentos del chat · 7: ofertas de Superseis, Stock y Delimarket en varias carpetas)
 const SCRIPT_RE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]{20,}\/exec$/;
 const thumb = (id: string) => `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w320`;
 
@@ -47,7 +47,8 @@ const scriptText = (secret: string) => `// Retail MKT Hub · stickers, fotos del
 //   Stickers → carpeta "Stickers Retail MKT".
 //   Fotos del chat → carpeta "Fotos Retail MKT", con una carpeta por mes adentro (ej.: "2026-10 Octubre").
 //   Bocetos de los pedidos → su carpeta, también con una carpeta por mes.
-//   Comercial → lee (sin cambiar nada) los Excel "PUBLICADAS" de la carpeta de ofertas.
+//   Comercial → lee (sin cambiar nada) los Excel de las carpetas de ofertas (Superseis, Stock y Delimarket: quincenales,
+//   fin de semana, Express e Imbatibles), con sus subcarpetas.
 //   Videos editados de CM → su carpeta, con una carpeta por mes y año; el video se sube directo a Drive.
 //   Respaldo de las ofertas → el Excel de cada quincena, el día que empieza, en la carpeta del mes y año de la oferta.
 //   Documentos del chat (PDF, fotos en alta, videos, Word, Excel…) → "Documentos Retail MKT", una carpeta por mes; se suben directo a Drive, en su formato original.
@@ -60,6 +61,7 @@ const FOLDER_ID = "${FOLDER_ID}";
 const CHAT_FOLDER_ID = "${CHAT_FOLDER_ID}";
 const BOCETO_FOLDER_ID = "${BOCETO_FOLDER_ID}";
 const COMERCIAL_FOLDER_ID = "${COMERCIAL_FOLDER_ID}";
+const COMERCIAL_FOLDERS = ${JSON.stringify(FUENTES.map((f) => f.id))};
 const VIDEO_FOLDER_ID = "${VIDEO_FOLDER_ID}";
 const BACKUP_FOLDER_ID = "${BACKUP_FOLDER_ID}";
 const DOCS_FOLDER_ID = "${DOCS_FOLDER_ID}";
@@ -98,7 +100,7 @@ function doPost(e){
   if (b.k !== SECRET) return out({ ok: false, error: "no autorizado" });
   if (b.kind === "trash") return trash(b);
   if (b.kind === "boceto") return boceto(b);
-  if (b.kind === "comercial_list") return comercialList();
+  if (b.kind === "comercial_list") return comercialList(b);
   if (b.kind === "comercial_file") return comercialFile(b);
   if (b.kind === "video_folder") return out({ ok: true, folder: monthFolder(VIDEO_FOLDER_ID).getUrl() });
   if (b.kind === "video_session") return videoSession(b);
@@ -129,18 +131,39 @@ function boceto(b){
   return out({ ok: true, file: { id: f.getId(), name: f.getName(), mime: f.getMimeType(), size: f.getSize() } });
 }
 
-// Comercial: los archivos de la carpeta de ofertas (solo se leen; no se cambia nada).
-function comercialList(){
-  const files = DriveApp.getFolderById(COMERCIAL_FOLDER_ID).getFiles(), list = [];
-  while (files.hasNext()){ const f = files.next(); list.push({ id: f.getId(), name: f.getName(), modified: f.getLastUpdated().toISOString(), created: f.getDateCreated().toISOString(), size: f.getSize() }); }
-  return out({ ok: true, files: list });
+// Comercial: los archivos de una carpeta de ofertas y de sus subcarpetas (hasta 2 niveles). Solo se leen; no se cambia nada.
+function comercialList(b){
+  const id = b.folder ? String(b.folder) : COMERCIAL_FOLDER_ID;
+  if (COMERCIAL_FOLDERS.indexOf(id) < 0) return out({ ok: false, error: "no es una carpeta de ofertas" });
+  let root; try { root = DriveApp.getFolderById(id); root.getName(); } catch (err){ return out({ ok: false, error: "No se puede abrir la carpeta (" + (err.message || err) + ")" }); }
+  const list = [];
+  const walk = (folder, path, depth) => {
+    for (const files = folder.getFiles(); files.hasNext() && list.length < 800;){ const f = files.next();
+      list.push({ id: f.getId(), name: f.getName(), modified: f.getLastUpdated().toISOString(), created: f.getDateCreated().toISOString(), size: f.getSize(), mime: f.getMimeType(), path: path }); }
+    if (depth < 2) for (const subs = folder.getFolders(); subs.hasNext();){ const s = subs.next(); walk(s, path ? path + " / " + s.getName() : s.getName(), depth + 1); }
+  };
+  try { walk(root, "", 0); } catch (err){ return out({ ok: false, error: "No se pudo leer la carpeta (" + (err.message || err) + ")" }); }
+  return out({ ok: true, folder: root.getName(), files: list });
+}
+// El archivo está en una carpeta de ofertas o en una subcarpeta (hasta 2 niveles más abajo).
+function enOfertas(f){
+  let nivel = [f];
+  for (let d = 0; d < 3 && nivel.length; d++){
+    const sig = [];
+    for (const x of nivel) for (const ps = x.getParents(); ps.hasNext();){ const p = ps.next(); if (COMERCIAL_FOLDERS.indexOf(p.getId()) >= 0) return true; sig.push(p); }
+    nivel = sig;
+  }
+  return false;
 }
 function comercialFile(b){
   let f; try { f = DriveApp.getFileById(String(b.id || "")); } catch (err){ return out({ ok: false, error: "no existe" }); }
-  let inFolder = false; for (const ps = f.getParents(); ps.hasNext();) if (ps.next().getId() === COMERCIAL_FOLDER_ID) inFolder = true;
-  if (!inFolder) return out({ ok: false, error: "no es de la carpeta de ofertas" });
+  if (!enOfertas(f)) return out({ ok: false, error: "no es de las carpetas de ofertas" });
   if (f.getSize() > 15 * 1024 * 1024) return out({ ok: false, error: "archivo muy grande" });
-  return out({ ok: true, name: f.getName(), modified: f.getLastUpdated().toISOString(), b64: Utilities.base64Encode(f.getBlob().getBytes()) });
+  // Planilla de Google: se baja como Excel.
+  const blob = f.getMimeType() === MimeType.GOOGLE_SHEETS
+    ? UrlFetchApp.fetch("https://docs.google.com/spreadsheets/d/" + f.getId() + "/export?format=xlsx", { headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() }, muteHttpExceptions: true }).getBlob()
+    : f.getBlob();
+  return out({ ok: true, name: f.getName(), modified: f.getLastUpdated().toISOString(), b64: Utilities.base64Encode(blob.getBytes()) });
 }
 
 // Video editado de CM: se abre una subida directa a Drive (carpeta del mes) y el navegador manda el video ahí.
@@ -195,8 +218,7 @@ function docDone(b){
 // del mes y año de la oferta. Si ya hay uno con ese nombre, no lo repite.
 function backupCopy(b){
   let f; try { f = DriveApp.getFileById(String(b.id || "")); } catch (err){ return out({ ok: false, error: "no existe" }); }
-  let inFolder = false; for (const ps = f.getParents(); ps.hasNext();) if (ps.next().getId() === COMERCIAL_FOLDER_ID) inFolder = true;
-  if (!inFolder) return out({ ok: false, error: "no es de la carpeta de ofertas" });
+  if (!enOfertas(f)) return out({ ok: false, error: "no es de las carpetas de ofertas" });
   const folder = monthFolder(BACKUP_FOLDER_ID, b.ym), name = String(b.name || f.getName()).slice(0, 160), it = folder.getFilesByName(name);
   const c = it.hasNext() ? it.next() : f.makeCopy(name, folder);
   return out({ ok: true, id: c.getId(), url: c.getUrl() });
@@ -292,9 +314,11 @@ async function noticias(force: boolean){
   return data;
 }
 
-// ---------- Comercial: las ofertas publicadas de cada quincena (Excel "PUBLICADAS" de la carpeta de ofertas) ----------
-// Se guarda en app_state (s:COMERCIAL), una entrada por archivo. Los que después se borran de Drive quedan en la app
-// (memoria del mes); de las quincenas de hace más de 4 meses quedan solo los productos destacados.
+// ---------- Comercial: las ofertas de Superseis, Stock y Delimarket (Excel de las carpetas de ofertas en Drive) ----------
+// Cada carpeta (FUENTES en comercial.ts) es una categoría: quincenales, fin de semana, Express e Imbatibles; Express e Imbatibles
+// son compartidas entre Superseis y Stock y la marca sale del nombre. Se guarda en app_state (s:COMERCIAL), una entrada por archivo
+// con su marca y categoría. Las quincenas quedan aunque después se borren de Drive (memoria del mes); de las otras categorías se
+// guardan los últimos 4 meses. Lo que parece de una categoría pero no se puede asegurar queda en “pendientes de revisión”.
 // Productos que aparecen de más cuando se vuelve a leer un Excel que ya estaba (mismo código + nombre, contando repetidos).
 const claveProducto = (i: any) => `${i.cod || ""}|${i.desc || ""}`;
 function productosNuevos(antes: any[] = [], despues: any[] = []){
@@ -304,57 +328,92 @@ function productosNuevos(antes: any[] = [], despues: any[] = []){
   for (const sh of despues) for (const i of sh.items || []){ const k = claveProducto(i), n = cont.get(k) || 0; if (n > 0) cont.set(k, n - 1); else keys.push(k); }
   return keys;
 }
+const COM_LEER = 12; // archivos que se leen por vez (el resto, en la próxima revisión): así “Actualizar” no tarda demasiado
+const COM_DIAS = 120; // no se leen ofertas que terminaron hace más de esto (las carpetas guardan años de historia)
+const esPlanilla = (f: any) => /\.xlsx?$|\.xlsm$/i.test(f.name) || f.mime === "application/vnd.google-apps.spreadsheet";
 
 async function comercialSync(c: any, minAge: number){
   if (!c?.sticker_url) return { ok: false, nokey: true, error: "Falta conectar Google Drive (Configuración → Integraciones)." };
-  if (await scriptVersion(c.sticker_url, c.sticker_secret) < 4) return { ok: false, old: true, error: "Falta actualizar el script de Google Drive para leer las ofertas: Admin total lo hace en Configuración → Integraciones." };
+  const sv = await scriptVersion(c.sticker_url, c.sticker_secret);
+  if (sv < 4) return { ok: false, old: true, error: "Falta actualizar el script de Google Drive para leer las ofertas: Admin total lo hace en Configuración → Integraciones." };
+  // Con el script de antes (hasta la versión 6) solo se puede leer la carpeta de las quincenales de Superseis.
+  const fuentes = sv >= 7 ? FUENTES : FUENTES.slice(0, 1);
   for (let intento = 0; intento < 2; intento++){
     const { data: row } = await db.from("app_state").select("data, version").eq("key", "s:COMERCIAL").maybeSingle();
     const prev = row?.data || {};
     if (prev.syncedAt && Date.now() - Date.parse(prev.syncedAt) < minAge) return { ok: true, skipped: true };
-    const l = await scriptPost(c, { kind: "comercial_list" });
-    if (!l.ok) throw new Error(l.error || "No se pudo leer la carpeta de ofertas");
-    const list = (l.files || []).filter((f: any) => /PUBLICAD/i.test(f.name) && /\.xlsx?$/i.test(f.name));
-    const files: Record<string, any> = { ...(prev.files || {}) }; let nuevos = 0, errores = 0, agregados = 0;
-    for (const f of list){
-      const o = files[f.id];
-      if (o && o.modified === f.modified && o.v === PARSE_V){ o.inDrive = true; continue; }
-      const j = await scriptPost(c, { kind: "comercial_file", id: f.id });
-      if (!j.ok || !j.b64){ errores++; continue; }
-      const bin = atob(j.b64), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      let p; try { p = parseOfertas(bytes); } catch { errores++; continue; }
-      const fresh: any = { id: f.id, name: f.name, brand: marcaDe(f.name), ...periodo(f.name, new Date(f.created || f.modified)), folleto: p.folleto, title: p.title,
-        modified: f.modified, v: PARSE_V, inDrive: true, n: p.count, at: new Date().toISOString(), sheets: p.sheets };
-      // Si el Excel ya estaba y ahora trae productos de más, queda anotado cuántos y cuáles (la app avisa “Se sumaron N productos más”).
-      // Solo si se leyó con el mismo lector: si cambió el lector, la diferencia no es de productos nuevos.
-      if (o && o.v === PARSE_V){
-        const keys = productosNuevos(o.sheets, p.sheets);
-        if (keys.length){ fresh.added = { n: keys.length, at: fresh.at, keys: keys.slice(0, 300) }; agregados += keys.length; }
-        else if (o.added) fresh.added = o.added;
+    const now = new Date().toISOString(), hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date());
+    const limite = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date(Date.now() - COM_DIAS * 864e5));
+    const reciente = (f: any) => Date.parse(f.modified) > Date.now() - 60 * 864e5;
+    const files: Record<string, any> = { ...(prev.files || {}) }, src: Record<string, any> = {}, pending: any[] = [], vistos = new Set<string>();
+    // Excel que ya se intentaron leer y no se pudo: no se vuelven a bajar hasta que los cambien en Drive.
+    const malos = new Map((prev.pending || []).filter((x: any) => x.read && x.v === PARSE_V).map((x: any) => [x.id, x]));
+    let nuevos = 0, errores = 0, agregados = 0, leidos = 0, faltan = 0, n = 0;
+    for (const fu of fuentes){
+      let l: any; try { l = await scriptPost(c, sv >= 7 ? { kind: "comercial_list", folder: fu.id } : { kind: "comercial_list" }); } catch (e: any){ l = { ok: false, error: e.message }; }
+      // Si no se puede abrir una carpeta, se avisa en la app (no se toma como vacía) y lo de esa carpeta queda como estaba.
+      if (!l.ok){ src[fu.id] = { at: now, err: String(l.error || "No se pudo leer la carpeta").slice(0, 200) }; continue; }
+      const planillas = (l.files || []).filter(esPlanilla);
+      src[fu.id] = { at: now, ok: true, name: l.folder || "", n: 0 };
+      for (const f of planillas){
+        const r = clasificar(f.name, fu);
+        if (!r) continue; // otra dinámica, versión interna…
+        const per: any = periodo(f.name, new Date(f.created || f.modified));
+        const pend = (reason: string, read = false) => { if (reciente(f) || (per.to && per.to >= limite)) pending.push({ id: f.id, name: f.name, path: f.path || "", src: fu.id, cat: fu.cat, brand: fu.brand || "", reason, modified: f.modified, ...(read ? { read, v: PARSE_V } : {}) }); };
+        if ("pending" in r){ pend(r.pending); continue; }
+        if (!per.from){ pend("No tiene las fechas de la oferta en el nombre (ej.: “17 AL 19-10”)."); continue; }
+        vistos.add(f.id); src[fu.id].n++; n++;
+        const o = files[f.id], meta = { brand: r.brand, cat: r.cat, src: fu.id, path: f.path || "" };
+        if (o && o.modified === f.modified && o.v === PARSE_V){ Object.assign(o, meta, { inDrive: true }); continue; }
+        if (!o && per.to < limite) continue; // oferta vieja que nunca se leyó: no hace falta
+        const malo: any = malos.get(f.id); if (!o && malo?.modified === f.modified){ pend(malo.reason, true); continue; }
+        if (leidos >= COM_LEER){ faltan++; if (o) o.inDrive = true; continue; }
+        leidos++;
+        const j = await scriptPost(c, { kind: "comercial_file", id: f.id }).catch((e: any) => ({ ok: false, error: e.message }));
+        if (!j.ok || !j.b64){ errores++; pend(`No se pudo bajar el archivo de Drive${j.error ? ` (${j.error})` : ""}.`); continue; }
+        const bin = atob(j.b64), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        let p; try { p = parseOfertas(bytes); } catch { errores++; pend("No se pudo abrir el Excel.", true); continue; }
+        if (!p.count){ pend("No se encontraron las columnas de producto y precio de oferta en el Excel.", true); continue; }
+        const fresh: any = { id: f.id, name: f.name, ...meta, ...per, folleto: p.folleto, title: p.title,
+          modified: f.modified, v: PARSE_V, inDrive: true, n: p.count, at: now, sheets: p.sheets };
+        // Si el Excel ya estaba y ahora trae productos de más, queda anotado cuántos y cuáles (la app avisa “Se sumaron N productos más”).
+        // Solo si se leyó con el mismo lector: si cambió el lector, la diferencia no es de productos nuevos.
+        if (o && o.v === PARSE_V){
+          const keys = productosNuevos(o.sheets, p.sheets);
+          if (keys.length){ fresh.added = { n: keys.length, at: now, keys: keys.slice(0, 300) }; agregados += keys.length; }
+          else if (o.added) fresh.added = o.added;
+        }
+        if (o?.backup) fresh.backup = o.backup;
+        files[f.id] = fresh;
+        nuevos++;
       }
-      files[f.id] = fresh;
-      nuevos++;
     }
-    const ids = new Set(list.map((f: any) => f.id));
-    for (const id of Object.keys(files)) if (!ids.has(id)) files[id].inDrive = false;
-    // Las quincenas quedan completas siempre (aunque el Excel se borre de Drive).
-    for (const x of Object.values(files) as any[]) if (x.light) delete x.light;
-    // Respaldo en Drive: el día que empieza la oferta (o después, si ese día no se revisó), una sola vez por archivo.
+    // Lo que ya no está en su carpeta (solo si esa carpeta se pudo leer): queda guardado y la app avisa que el original ya no está.
+    for (const x of Object.values(files) as any[]){
+      if (!x.cat) Object.assign(x, { cat: "quincenal", brand: x.brand || "Superseis", src: FUENTES[0].id }); // las de antes: quincenales de Superseis
+      if (src[x.src]?.ok && !vistos.has(x.id)) x.inDrive = false;
+      if (x.light) delete x.light;
+    }
+    // Las quincenas quedan completas siempre; de fin de semana, Express e Imbatibles, los últimos 4 meses.
+    for (const [id, x] of Object.entries(files) as [string, any][]) if (x.cat !== "quincenal" && x.to && x.to < limite) delete files[id];
+    // Respaldo en Drive de las quincenales de Superseis (como antes): el día que empieza la oferta (o después), una sola vez por archivo.
     let respaldos = 0;
-    const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date());
-    const canBackup = await scriptVersion(c.sticker_url, c.sticker_secret) >= 5;
+    const canBackup = sv >= 5;
     if (canBackup) for (const x of Object.values(files) as any[]){
-      if (!x.from || x.from > hoy || x.backup?.url) continue;
+      if (x.cat !== "quincenal" || x.brand !== "Superseis" || !x.from || x.from > hoy || x.backup?.url) continue;
       const name = nombreOfertas(x) + ".xlsx", ym = x.from.slice(0, 7);
       try {
         const j = x.inDrive ? await scriptPost(c, { kind: "backup_copy", id: x.id, name, ym }) : await scriptPost(c, { kind: "backup_file", name, ym, data: excelOfertas(x) });
-        if (j.ok && j.url){ x.backup = { at: new Date().toISOString(), id: j.id, url: j.url }; respaldos++; }
+        if (j.ok && j.url){ x.backup = { at: now, id: j.id, url: j.url }; respaldos++; }
       } catch { /* se reintenta en la próxima revisión */ }
     }
-    const now = new Date().toISOString(), data = { v: 1, updated: nuevos || respaldos || !prev.updated ? now : prev.updated, syncedAt: now, backupScript: canBackup, files };
-    if (!row){ const { error } = await db.from("app_state").insert({ key: "s:COMERCIAL", data }); if (!error) return { ok: true, nuevos, agregados, errores, respaldos, n: list.length }; continue; }
+    // Carpetas que todavía no se leen porque falta actualizar el script de Drive.
+    for (const fu of FUENTES) if (!src[fu.id]) src[fu.id] = { at: now, old: true };
+    const data = { v: 1, updated: nuevos || respaldos || !prev.updated ? now : prev.updated, syncedAt: now, backupScript: canBackup, scriptV: sv, files, src, pending: pending.slice(0, 80) };
+    const res = { ok: true, nuevos, agregados, errores, respaldos, n, faltan, pendientes: pending.length, carpetasConError: Object.values(src).filter((x: any) => x.err).length, scriptViejo: sv < 7 };
+    if (!row){ const { error } = await db.from("app_state").insert({ key: "s:COMERCIAL", data }); if (!error) return res; continue; }
     const { data: up } = await db.from("app_state").update({ data, version: row.version + 1, updated_at: now }).eq("key", "s:COMERCIAL").eq("version", row.version).select("version");
-    if (up && up.length) return { ok: true, nuevos, agregados, errores, respaldos, n: list.length };
+    if (up && up.length) return res;
   }
   return { ok: false, error: "Se estaba actualizando al mismo tiempo: probá de nuevo." };
 }
