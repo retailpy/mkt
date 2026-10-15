@@ -2,7 +2,7 @@
 
 > Para el chat de Claude Code que va a hacer cambios **solo en Comercial**. Leé primero `CLAUDE.md` y `docs/CONTEXTO.md`
 > (cómo se trabaja: ramas, pruebas, publicar). Acá está todo lo de Comercial: qué hace, dónde está el código y qué no tocar.
-> Actualizado el **15/10/2026** (app publicada **v197**: Comercial con Superseis, Stock y Delimarket, 9 categorías, lectura con los Excel reales y bajada directa de Drive; el número de línea es aproximado: buscá por el texto indicado).
+> Actualizado el **15/10/2026** (app **v199**: Comercial con Superseis, Stock y Delimarket, 9 categorías, lectura con los Excel reales y bajada directa de Drive; Stock quincenal con el Excel **FINAL** (texto del folleto y columna Novedad); el número de línea es aproximado: buscá por el texto indicado).
 > Repositorio: `retailpy/mkt` (GitHub). Producción: `main` → https://retailmkt.vercel.app (Vercel). Base y funciones: Supabase,
 > proyecto `retail-mkt-hub`. El otro chat trabaja en su propia rama `claude/…` y publica igual: PR a `main` y merge.
 
@@ -39,13 +39,29 @@ En cada categoría:
 - Arriba: **Excel** y **PDF** (descarga de lo que se ve), **Carpeta de Comercial (Drive)** (la carpeta general «OFERTAS DIVISION», `1Tlj4ITfLdxtKZ8CuciI0e7UDn_em6rek` = `COM_ROOT`, con todas las carpetas adentro; v195) y **Actualizar** (vuelve a leer todas las carpetas).
 - En cada quincena: **Ver Excel original**, **Abrir carpeta en Drive** (la carpeta de esa categoría), **Respaldo en Drive** y "Revisado hace…".
 - Alerta "**Se sumaron N productos más**" cuando al volver a leer un Excel aparecen productos nuevos (con "Ver solo los nuevos").
+- **Excel FINAL de Stock quincenal (v199):** en la carpeta de Stock quincenal, el Excel que dice **FINAL** en el nombre
+  («FINAL QUINCENAL STOCK 26-10 AL 08-11») es el que se usa; si de las mismas fechas también está el «PUBLICADAS», se usa el FINAL
+  (el servidor borra el PUBLICADAS guardado cuando el FINAL ya está leído; la pantalla también lo esconde). Las quincenas que no tienen
+  FINAL siguen con el PUBLICADAS. En el FINAL:
+  - **Nombre del producto = columna «DESCRIPCION FOLLETO», tal cual** (“Papas fritas congeladas VIMA 1 kg.”), sin pasarlo por
+    `comNice` (`comName(i)`: `i.fol` = viene del folleto). Es lo que se copia, se busca y sale en Excel/PDF. La descripción del sistema
+    («PAPAS FRITAS VIMA CONGELADAS 1KG») queda en el detalle (`i.dsis`).
+  - **Variantes:** las filas sin texto de folleto debajo de un producto (mismo cuadro: “Salamín RANCHO 250 gr. Con/sin picante”)
+    van **juntas en un solo producto** (`i.vars`: descripción, código, material y precios). La fila dice “N variantes” (en amarillo
+    “· con otro precio” si alguna tiene otro precio) y el detalle las lista con códigos y precios. El buscador encuentra el producto
+    también por el código o la descripción de una variante. Ej. real: 141 filas → 88 productos del folleto.
+  - **Columna «Novedad»** (`i.nov`: “Nuevo” / “Se mantiene”, de la columna NOVEDAD), resumen “N nuevos · M se mantienen” y filtro
+    «Novedad: todos / Solo nuevos / Solo los que se mantienen». **Es otra cosa** que el aviso “Se sumaron N productos más” y la
+    etiqueta verde **Nuevo** (productos que se agregaron al Excel en la última actualización): los dos siguen, por separado.
+  - Las secciones salen de la columna CATEGORIA (el FINAL no tiene filas “Pag. N”). Excel descargado: suma «Novedad»,
+    «Descripción del sistema» y «Variantes» solo si el archivo las tiene (`comCols`).
 
 ### Carpetas de Drive (solo lectura; todas dentro de «OFERTAS DIVISION», dueña `ofertaspricing`)
 
 | Supermercado | Categoría | Se reconoce por el nombre | Carpeta (id) |
 |---|---|---|---|
 | Superseis | Quincenal | `PUBLICADAS` (la de siempre) | `1ciqZuhAtcIa-_OYYutd-8Zq8CTPZS-5N` «OFERTA QUINCENAL S6» (con su subcarpeta VIGENTE) |
-| Stock | Quincenal | `PUBLICADAS` («Publicadas Stock») | `1RIqkeQ7iR22JX_j3k5JqZXdMsPl0x7eP` «OFERTA QUINCENAL STOCK» |
+| Stock | Quincenal | `FINAL` (se prefiere) o `PUBLICADAS` («Publicadas Stock») | `1RIqkeQ7iR22JX_j3k5JqZXdMsPl0x7eP` «OFERTA QUINCENAL STOCK» |
 | Superseis | Fin de semana | `FDS` o «fin de semana» («FDS SG») | `16e3im1-9kYWZ7rZixRtRPUelHyDSoxxy` «SUPERSEIS» |
 | Stock | Fin de semana | `FDS` («FDS Stock») | `1iHSUvW6WbZO2WDSZ0o3VtS345p48aAdR` «STOCK» |
 | Delimarket | Fin de semana | `FDS` («FDS Deli») | `1NnZGuw3iWQaWNqz5axsE4zWlUAW-sXhA` «DELIMARKET» |
@@ -99,7 +115,9 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
     id, name, brand:"Superseis"|"Stock"|"Delimarket", cat:"quincenal"|"fds"|"express"|"imbatibles", src:<idDeCarpeta>, path,
     from:"2026-10-12", to:"2026-10-25",   // del nombre del archivo (las de antes sin cat = quincenales de Superseis)
     folleto:"19", title, modified, v:PARSE_V, inDrive:true|false, n:<productos>, at,
-    sheets:[ { name, label, items:[ { sec, sector, cod, mat, desc, pvp, of, tem, pct, rec, neg, prov, nprov, sub, flag?, fx? } ] } ],
+    final?: true,                                   // Excel “FINAL” (se usa en vez del PUBLICADAS de las mismas fechas)
+    sheets:[ { name, label, items:[ { sec, sector, cod, mat, desc, pvp, of, tem, pct, rec, neg, prov, nprov, sub, flag?, fx?,
+      fol?:1, dsis?, nov?:"Nuevo"|"Se mantiene", vars?:[ { d, cod, mat, pvp, of, pct } ] } ] } ],   // FINAL: desc = texto del folleto
     added?: { n, at, keys:["cod|desc", …] },        // productos de más en la última lectura (alerta "Se sumaron N")
     backup?: { at, id, url }                          // respaldo en Drive
   } } }
@@ -111,8 +129,8 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
 
 | Qué | Archivo y lugar |
 |---|---|
-| Pantalla de Comercial | `index.html`: buscar `// ---------- Comercial:` (≈ línea 9585; `pComercial()` ≈ 9763). Ahí están `COM_FOLDER`/`COM_BRANDS`/`COM_CAT` (las 9 categorías y sus carpetas), `comHub()`, `comCatStatus()`, `comPending()`, `comEmptyMsg()`, `comUI` (`comUI.cat` = "Marca\|categoría"), `comState`, `comPeriods`, `comRange`, `comNice`/`comSent`/`comSec` (textos legibles), `comPct`, `comCard`, `comF` (copiar un dato: `data-comcp`), `comOfVal`/`comPageItems`/`comPageTools` (orden y buscador de cada página: `data-compk`, `data-compord`, `data-compq`), `comSync`, `comExcel`, `comPdf`, `COM_GUIDE`, **`pComercial()`** y sus eventos (`data-com…`). |
-| Estilos | `index.html`, bloque CSS `/* Comercial: ofertas de Superseis, Stock y Delimarket */` (≈ líneas 555–640): clases `.comhub`, `.comb`, `.comcat`, `.compend`, `.com*`, `.cof*`, `.cpct`, `.cflag`, `.cnew`. |
+| Pantalla de Comercial | `index.html`: buscar `// ---------- Comercial:` (≈ línea 9600; `pComercial()` ≈ 9792). Ahí están `COM_FOLDER`/`COM_BRANDS`/`COM_CAT` (las 9 categorías y sus carpetas), `comHub()`, `comCatStatus()`, `comPending()`, `comEmptyMsg()`, `comUI` (`comUI.cat` = "Marca\|categoría"), `comState`, `comPeriods`, `comRange`, `comNice`/`comSent`/`comSec` (textos legibles), `comPct`, `comCard`, `comF` (copiar un dato: `data-comcp`), `comOfVal`/`comPageItems`/`comPageTools` (orden y buscador de cada página: `data-compk`, `data-compord`, `data-compq`), `comSync`, `comExcel`, `comPdf`, `COM_GUIDE`, **`pComercial()`** y sus eventos (`data-com…`). |
+| Estilos | `index.html`, bloque CSS `/* Comercial: ofertas de Superseis, Stock y Delimarket */` (≈ líneas 555–650): clases `.comhub`, `.comb`, `.comcat`, `.compend`, `.com*`, `.cof*`, `.cpct`, `.cflag`, `.cnew`. |
 | Menú y permisos | `SECTIONS` → `{ k:"comercial", virtual:true }`; `PERM_EXTRA` incluye `"comercial"`; está en `ROLE_COMMON` (CM y Diseñador lo ven). El rol **Revisor** (revisión de Meta) **no** lo ve ni puede leer `s:COMERCIAL` en la base: no lo cambies. |
 | Sincronización | `sync.js`: `SHARED.COMERCIAL` y `READONLY` (no se guarda desde la app). |
 | Servidor (lectura y guardado) | `supabase/functions/integraciones/index.ts`: `comercialSync()` (recorre `FUENTES`), `productosNuevos()`, `COM_LEER`, `COM_DIAS`, acción `comercial_sync`; arriba `COMERCIAL_FOLDER_ID`, `BACKUP_FOLDER_ID`, `SCRIPT_V`. |
@@ -153,7 +171,9 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
   20-07 AL 22-11», «OF. QUINCENAL PUBLICADAS STOCK 12 AL 25-10». Varias carpetas tienen subcarpeta «VIGENTE» (se lee) y «ANTERIORES» (no).
 - Dentro de los Excel: lo que está debajo de **«INTERNAS»/«INTERNA»** no se muestra (no se publica); el bloque **«Adicional … solo
   para destacar en redes»** sale como páginas «Adicional · …»; las filas «VIGENCIA DESDE / HASTA» repetidas se saltean; en Delimarket
-  la primera columna es el sector y «DESTACAR» ahí se toma como destacado. `PARSE_V` = 2.
-- La alerta "+N más" compara **código + descripción** (`cod|desc`) contra la lectura anterior, contando repetidos.
+  la primera columna es el sector y «DESTACAR» ahí se toma como destacado. Con «DESCRIPCION FOLLETO» (Excel FINAL) el nombre es
+  ese texto y las filas sin él son variantes del producto de arriba (misma sección y categoría); «NOVEDAD» → `nov`. `PARSE_V` = 3.
+- La alerta "+N más" compara **código + descripción** (`cod|desc`) contra la lectura anterior, contando repetidos (en el FINAL,
+  `desc` es el texto del folleto). Pasar del PUBLICADAS al FINAL no la dispara (es otro archivo); una actualización del FINAL sí.
 - Las quincenas quedan guardadas aunque borren el Excel de Drive (`inDrive:false` → "Ya no se encuentra el archivo original").
 - No mostrar ni pedir claves (Supabase, Google, Vercel). La configuración del script está en la tabla `integration_config`.
