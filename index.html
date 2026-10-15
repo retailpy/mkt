@@ -515,6 +515,12 @@ html.nomotion .picon{animation:none}
 .rtwrap{position:relative}
 .rtnoshot{display:flex;gap:8px;align-items:flex-start;margin:6px 0;padding:10px 12px;border-radius:10px;background:rgba(250,204,21,.12);border:1px solid rgba(250,204,21,.45);font-size:13.5px;line-height:1.45}
 .rtnoshot>svg{flex:none;width:18px;height:18px;margin-top:1px;color:#facc15}.rtnoshot span{flex:1}
+.cmfiles{margin-top:12px;padding:12px;border:1px solid var(--line-2);border-radius:12px;background:rgba(148,163,184,.04)}
+.cmfh{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline;margin-bottom:6px}.cmfh b{display:flex;align-items:center;gap:6px}.cmfh svg{width:16px;height:16px}
+.cmfl{display:flex;flex-direction:column;gap:6px;margin:6px 0 8px}
+.cmfi{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 8px;border-radius:10px;background:rgba(148,163,184,.06)}
+.cmfn{flex:1 1 200px;min-width:0;display:flex;flex-direction:column;text-decoration:none;color:inherit}.cmfn b{overflow-wrap:anywhere}.cmfn small{color:var(--muted)}
+.cmprog{margin:6px 0}
 .shotbox{position:fixed;inset:0;z-index:9000;background:rgba(2,6,23,.82);display:grid;place-items:center;padding:16px}
 .shotin{background:var(--panel,#0f172a);border:1px solid var(--line-3,#334155);border-radius:16px;padding:14px;max-width:min(1100px,100%);width:100%;max-height:100%;display:flex;flex-direction:column;gap:10px}
 .shoth{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}.shoth b{display:flex;align-items:center;gap:6px}.shoth svg{width:18px;height:18px}
@@ -4000,6 +4006,7 @@ const ICONS = {
 "clipboard-paste":"<path d=\"M15 2H9a1 1 0 0 0-1 1v2c0 .6.4 1 1 1h6c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1Z\"/><path d=\"M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2M16 4h2a2 2 0 0 1 2 2v2M11 14h10\"/><path d=\"m17 10 4 4-4 4\"/>",
 "play":"<polygon points=\"6 3 20 12 6 21 6 3\"/>",
 "crop":"<path d=\"M6 2v14a2 2 0 0 0 2 2h14\"/><path d=\"M18 22V8a2 2 0 0 0-2-2H2\"/>",
+"folder-up":"<path d=\"M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z\"/><path d=\"M12 10v6\"/><path d=\"m9 13 3-3 3 3\"/>",
 "paperclip":"<path d=\"m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551\"/>",
 "presentation":"<path d=\"M2 3h20\"/><path d=\"M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3\"/><path d=\"m7 21 5-5 5 5\"/>",
 "file-archive":"<path d=\"M10 12v-1\"/><path d=\"M10 18v-2\"/><path d=\"M10 7V6\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/><path d=\"M15.5 22H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v16a2 2 0 0 0 .274 1.01\"/><circle cx=\"10\" cy=\"20\" r=\"2\"/>",
@@ -5529,8 +5536,62 @@ function videoBlock(j){
     ${ed && !up ? `<div class="chips"><label class="btn ${j.videoLink ? "" : "primary"}">${icon("upload")} ${j.videoLink ? "Subir otra versión" : "Subir el video"}<input type="file" accept="video/*" data-vidfile="${j.id}" hidden></label>
       <button class="btn" type="button" data-vidfolder>${icon("folder-open")} Carpeta de ${MONTHS_ES[+TODAY.slice(5, 7) - 1]} ${TODAY.slice(0, 4)} en Drive</button></div>
       <div class="vidpaste"><input class="base" id="vidLink" placeholder="…o pegá acá el link del video (Drive, YouTube, WeTransfer)" autocomplete="off"><button class="btn" type="button" data-vidsave="${j.id}">Guardar link</button></div>` : ""}
+    ${cmFilesBlock(j, "job:" + j.id)}
   </section>`;
 }
+// ----- Archivos de CM: videos editados, fotos, PDF, Word, Excel o lo que sea, en su formato original (hasta 5 GB), a Google
+// Drive “Videos y archivos CM” (una carpeta por mes). Están en los videos de CM (Gestión de Video) y en las publicaciones de CM.
+// Los suben los CM y Admin total; los ven todos. Quitar de la lista: quien lo subió o Admin total (el archivo sigue en Drive). -----
+const cmUp = {}; // clave → { pct, name, n, i } mientras sube
+const cmFileTarget = key => key === "form" ? postUI.form?.post : key.startsWith("job:") ? jobById(key.slice(4)) : null;
+const canDelCmFile = f => !isViewOnly() && !isClosed() && (viewer.role === "Admin total" || f.by === viewer.name);
+function cmFilesBlock(it, key){
+  if (!it) return "";
+  const ed = canVideo() && (key !== "form" || canEditPost()), list = (it.cmFiles || []).filter(f => !f.del), up = cmUp[key];
+  if (!ed && !list.length) return "";
+  return `<div class="cmfiles" data-cmkey="${esc(key)}"><div class="cmfh"><b>${icon("folder-up")} Archivos de CM</b><span class="note">videos editados, fotos, PDF o lo que necesites, en su formato original · se guardan en Drive (Videos y archivos CM, carpeta del mes)</span></div>
+    ${list.length ? `<div class="cmfl">${list.map(f => { const [ic, col, lbl] = DOC_ICO[docKind(f.t)] || DOC_ICO.file; const when = f.at ? pyParts(f.at) : null;
+      return `<div class="cmfi"><span class="cdocic" style="--dc:${col}">${icon(ic)}</span><a class="cmfn" href="${esc(f.link || docView(f.id))}" target="_blank" rel="noopener"><b>${esc(f.n || "Archivo")}</b><small>${lbl}${f.s ? " · " + fileSize(f.s) : ""}${f.by ? " · " + esc(firstName(f.by)) : ""}${when ? " · " + dm(when.date) + " " + when.time : ""}</small></a>
+        <a class="btn sm" href="${esc(f.link || docView(f.id))}" target="_blank" rel="noopener">${icon("external-link")} Abrir</a><a class="btn sm ib" href="${docDown(f.id)}" target="_blank" rel="noopener" title="Descargar" aria-label="Descargar">${icon("download")}</a>${canDelCmFile(f) ? `<button type="button" class="btn sm ib" data-cmdel="${esc(key)}|${esc(f.id)}" title="Sacar de la lista (el archivo sigue en Drive)" aria-label="Sacar de la lista">${icon("x")}</button>` : ""}</div>`; }).join("")}</div>`
+      : `<p class="note" style="margin:4px 0 0">Todavía no hay archivos.</p>`}
+    ${up ? `<div class="vidprog cmprog"><span style="width:${up.pct}%"></span><b>Subiendo ${esc(up.name)}${up.n > 1 ? ` (${up.i} de ${up.n})` : ""} · ${up.pct}%</b></div>` : ""}
+    ${ed && !up ? `<div class="chips"><label class="btn sm primary">${icon("upload")} Subir archivos<input type="file" multiple data-cmfile="${esc(key)}" hidden></label><button class="btn sm" type="button" data-vidfolder>${icon("folder-open")} Carpeta del mes en Drive</button></div>` : ""}</div>`;
+}
+async function uploadCmFiles(key, files){
+  if (window.RMH?.previewing) return toast("Estás en vista previa: no se suben archivos.");
+  const list = [...files].slice(0, 10); let done = 0;
+  const draw = () => { if (key === "form" && postUI.form) readPostForm(postUI.form.post); render(); }; // no se pierde lo que se estaba escribiendo
+  for (let i = 0; i < list.length; i++){
+    const file = list[i]; if (!cmFileTarget(key)) break;
+    if (file.size > 5 * 1024 ** 3){ toast(`“${file.name}” supera 5 GB.`); continue; }
+    cmUp[key] = { pct:0, name:file.name, n:list.length, i:i + 1 }; draw();
+    const t0 = cmFileTarget(key), pre = key.startsWith("job:") ? key.slice(4) + " · " : (t0?.title ? String(t0.title).slice(0, 40) + " · " : "");
+    const s = await integ({ action:"video_session", any:true, name:pre + file.name, type:file.type || "application/octet-stream", size:file.size }).catch(() => ({}));
+    if (!s.ok || !s.url){ delete cmUp[key]; draw(); toast(`${s.error || "No se pudo abrir la subida"}. Podés subirlo en la carpeta del mes y pegar el link en Links de acceso.`); break; }
+    const res = await new Promise(ok => { const x = new XMLHttpRequest(); x.open("PUT", s.url); x.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+      x.upload.onprogress = ev => { const u = cmUp[key]; if (!ev.lengthComputable || !u) return; const pc = Math.round(ev.loaded / ev.total * 100); if (pc === u.pct) return; u.pct = pc;
+        document.querySelectorAll(`.cmfiles[data-cmkey="${CSS.escape(key)}"] .cmprog`).forEach(el => { el.querySelector("span").style.width = pc + "%"; el.querySelector("b").textContent = `Subiendo ${file.name}${list.length > 1 ? ` (${i + 1} de ${list.length})` : ""} · ${pc}%`; }); };
+      x.onload = () => { let r = null; try { r = JSON.parse(x.responseText); } catch {} ok(x.status < 300 ? r : null); };
+      x.onerror = () => ok(null); x.send(file); });
+    if (!res?.id){ delete cmUp[key]; draw(); toast(`No se pudo subir “${file.name}”. Probá de nuevo o subilo en la carpeta del mes.`); break; }
+    const d = await integ({ action:"video_done", id:res.id }).catch(() => ({}));
+    const rec = { id:res.id, n:file.name, s:file.size, t:file.type || "", link:d.link || res.webViewLink || docView(res.id), by:viewer.name, at:new Date().toISOString() };
+    // En el formulario de una publicación ya cargada, queda también en la publicación (aunque se cierre sin guardar).
+    const targets = [cmFileTarget(key)];
+    if (key === "form" && postUI.form?.mode === "edit"){ const real = postUI.form.kind === "Canal" ? canalById(postUI.form.post.id) : postById(postUI.form.post.id); if (real && real !== targets[0]) targets.push(real); }
+    targets.filter(Boolean).forEach(t => (t.cmFiles = t.cmFiles || []).push({ ...rec }));
+    done++;
+  }
+  delete cmUp[key]; draw(); window.RMH?.flushNow?.();
+  if (done) toast(done === 1 ? "Listo: el archivo quedó en Drive (Videos y archivos CM) y en la lista." : `Listo: ${done} archivos quedaron en Drive (Videos y archivos CM) y en la lista.`);
+}
+document.addEventListener("change", e => { const f = e.target.closest?.("[data-cmfile]"); if (!f) return; const fs = [...(f.files || [])]; f.value = ""; if (fs.length && canVideo()) uploadCmFiles(f.dataset.cmfile, fs); });
+document.addEventListener("click", e => { const b = e.target.closest("[data-cmdel]"); if (!b) return; const [key, id] = b.dataset.cmdel.split("|");
+  const t = cmFileTarget(key), f = t?.cmFiles?.find(x => x.id === id); if (!f || !canDelCmFile(f)) return;
+  if (key === "form" && postUI.form) readPostForm(postUI.form.post);
+  const all = [t]; if (key === "form" && postUI.form?.mode === "edit"){ const real = postUI.form.kind === "Canal" ? canalById(postUI.form.post.id) : postById(postUI.form.post.id); if (real && real !== t) all.push(real); }
+  all.forEach(x => { const g = x.cmFiles?.find(y => y.id === id); if (g) g.del = true; }); // se marca (así no vuelve al juntar los cambios de otros)
+  render(); toast("Lo sacaste de la lista. El archivo sigue en Drive, en la carpeta del mes."); });
 function setVideo(j, link, name){
   j.videoLink = link; j.videoName = name; j.videoBy = viewer.name; j.videoAt = new Date().toISOString();
   if (viewer.role !== "Admin total") notify({ to:"admin", type:"nota", job:j.id, who:viewer.name, text:"Subió el video editado." });
@@ -5581,14 +5642,14 @@ function jobFicha(){
     <div class="jp-top"><button class="btn" data-jfclose>${icon("arrow-left")} Volver</button>${jobChatBtns(j)}${at ? `<button class="btn" data-jedit="${j.id}">${icon("pencil")} Editar pedido</button>` : ""}${refreshBtn()}</div>
     <header class="jp-h"><span class="note">${j.area === "CM" ? "Gestión de Video" : "Pedido de diseño gráfico"}${j.ex ? ` <span class="exbadge sm">Ejemplo para mostrar cómo se carga</span>` : ""}</span><h1>${esc(j.title)}</h1><div class="chips">${pill(j.status, JOB_COLOR[j.status])}${urgBadge(j)}${j.rep?.days?.length ? `<span class="repbadge">${icon("repeat")} Se repite: ${esc(repText(j.rep).toLowerCase())}</span>${at ? `<button class="btn sm" type="button" data-jrepstop="${j.id}">Dejar de repetir</button>` : ""}` : j.repOf ? `<span class="repbadge">${icon("repeat")} Pedido que se repite</span>` : ""}</div></header>
     ${last ? `<div class="jfmsg"><b>${icon("pencil")} Cambios que pidió Admin total</b><p>${esc(last.text)}</p><span>${dm(last.date)} · ${last.time}</span></div>` : ""}
-    ${j.area === "CM" ? videoBlock(j) : ""}
     <section class="panel jp-sec"><h2 class="pmh">${pmIco("clipboard-list")}<i class="jpn">1</i>Qué hay que hacer</h2>
       <div class="jfgrid">${row("Marca", brandTag(j.brand))}${row("Tipo de trabajo", esc(cmPiece(j)))}${row("Trabajo solicitado", esc(j.title))}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}</div>
       ${j.notes ? `<div class="jfnotes"><span>Observaciones</span><p>${esc(j.notes)}</p></div>` : ""}</section>
     <section class="panel jp-sec"><h2 class="pmh">${pmIco("users")}<i class="jpn">2</i>Quién y para cuándo</h2>
       <div class="jfgrid"><div><span>Quién lo pidió</span><b>${esc(j.requester || "Sin indicar")}</b></div>${row("Responsable", esc(j.owner))}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", prioTag(j.priority))}${row("Complejidad", esc(j.complexity))}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}</div></section>
     ${jobBriefSection(j)}
-    ${bocetoBlock(j)}
+    ${j.area === "CM" ? videoBlock(j) : ""}
+    ${j.area !== "CM" || (j.bocetos || []).length ? bocetoBlock(j) : ""}
     <section class="panel jp-sec jp-mat"><h2 class="pmh">${pmIco("link")}Links de acceso</h2>
       ${j.finalLink ? linkRow(j.finalLink, "final") : ""}
       ${linkEditor(j, canEditJobLinks(j) ? "ficha" : "")}
@@ -5639,8 +5700,8 @@ function jobForm(){
         <p class="note" style="margin:0">Ej.: “Diseño de ofertas de los lunes” → marcá Lunes: cada lunes aparece un pedido nuevo para ese día, ya asignado.</p></div>`}
       </div></section>
       <section class="jfs"><h3><i>3</i>Texto del pedido y links</h3><div class="jfg">
-      <div style="grid-column:1/-1"><span class="jll">Links de acceso <span class="note">(pegá el link de Drive, de Canva o de otro sitio; se pueden sumar otros, por ejemplo Logo o Diseño)</span></span>${linkEditor(j, "form")}</div>
       <div style="grid-column:1/-1"><span class="jll">Texto del pedido <span class="note">(de qué se trata, el texto que va en el diseño o lo que dice el video)</span></span>${rtEditor("jBriefF", j.brief ? cleanRich(j.brief) : "", BRIEF_PH[area])}</div>
+      <div style="grid-column:1/-1"><span class="jll">Links de acceso <span class="note">(pegá el link de Drive, de Canva o de otro sitio; se pueden sumar otros, por ejemplo Logo o Diseño)</span></span>${linkEditor(j, "form")}</div>
       </div></section>
       <section class="jfs"><h3><i>4</i>Estado</h3><div class="jfg">
       <label>Estado *<select class="base" id="jStatus">${opt(statesOf(area), j.status)}</select></label>
@@ -5850,7 +5911,7 @@ function newPostOn(date, kind){
 const POST_BRIEF_PH = "Ej.: el copy de la publicación, los hashtags, lo que dice la imagen o el video y lo que hay que tener en cuenta.";
 // Quien no puede cambiar publicaciones (Diseño, Admin): la ve completa, pero sin poder editarla.
 function postReadOnly(){ const f = document.getElementById("postForm"); if (!f) return;
-  f.querySelectorAll("input,select,textarea,button[type=submit],[data-rt],.rtimgbtn,[data-lkadd],[data-shadd],[data-lkdel],[data-shdel]").forEach(x => { x.disabled = true; });
+  f.querySelectorAll("input,select,textarea,button[type=submit],[data-rt],.rtimgbtn,[data-lkadd],[data-shadd],[data-lkdel],[data-shdel],[data-cmdel]").forEach(x => { x.disabled = true; });
   f.querySelectorAll("[contenteditable]").forEach(x => x.setAttribute("contenteditable", "false"));
   f.querySelectorAll("button[type=submit]").forEach(x => x.hidden = true);
   if (!f.querySelector(".ronote")) f.insertAdjacentHTML("afterbegin", `<p class="note ronote">${icon("eye")} Solo para ver: la publicación la cambian el CM y Admin total.</p>`); if (window.lucide) lucide.createIcons(); }
@@ -5886,8 +5947,9 @@ function postForm(){
           <p class="note" style="margin:0">Ej.: “Beneficio del día con tarjetas” → marcá Lunes: cada lunes aparece ${canal ? "un contenido nuevo" : f.kind === "Historia" ? "una historia nueva" : "una publicación nueva"} en Pendiente, ya asignada a su CM.</p></div>`}
       </div></section>
       <section class="jfs"><h3><i>3</i>Texto de la publicación y links</h3><div class="jfg">
-        <div style="grid-column:1/-1"><span class="jll">Links de acceso <span class="note">(Drive, Canva u otro sitio: fotos, videos, el diseño…)</span></span>${linkEditor(p, "form")}</div>
         <div style="grid-column:1/-1"><span class="jll">Texto <span class="note">(el copy, los hashtags y lo que hay que saber)</span></span>${rtEditor("poBrief", p.brief ? cleanRich(p.brief) : "", POST_BRIEF_PH)}</div>
+        <div style="grid-column:1/-1"><span class="jll">Links de acceso <span class="note">(Drive, Canva u otro sitio: fotos, videos, el diseño…)</span></span>${linkEditor(p, "form")}</div>
+        <div style="grid-column:1/-1">${cmFilesBlock(p, "form")}</div>
       </div></section>
       <section class="jfs"><h3><i>4</i>Proceso</h3><div class="jfg">
         <div style="grid-column:1/-1"><div class="pproc" role="group" aria-label="Etapa">${stages.map((x, i) => `<button type="button" class="${i < cur ? "done" : ""}${i === cur ? " on" : ""}" style="--c:${POST_COLOR[x] === "#334155" ? "#94a3b8" : POST_COLOR[x]}" data-postep="${esc(x)}" aria-pressed="${i === cur}"><span>${i + 1}</span>${esc(x)}</button>`).join("")}</div>
@@ -5934,10 +5996,11 @@ document.addEventListener("submit", e => {
   if (e.target.id !== "postForm") return; e.preventDefault();
   if (!canEditPost()){ toast("Solo la pueden cambiar el CM y Admin total."); return; }
   if (rtUploading(document.getElementById("poBrief"))){ toast("Esperá que termine de subir la imagen."); return; }
+  if (cmUp.form){ toast("Esperá que termine de subir el archivo."); return; }
   const f = postUI.form; readPostForm(f.post); const title = $("#poTitle").value.trim(), date = $("#poDate").value;
   if (!title || !date){ toast("Completá el tema y la fecha."); return; }
   const d = f.post, common = { date, brand:$("#poBrand").value, title, cm:$("#poCm").value, status:$("#poStatus").value, notes:$("#poNotes").value.trim(), requester:d.requester || "Marketing",
-    brief:d.brief || "", canva:d.canva || "", drive:d.drive || "", canvaN:d.canvaN || "", driveN:d.driveN || "", xlinks:d.xlinks || [], links:d.links || [] };
+    brief:d.brief || "", canva:d.canva || "", drive:d.drive || "", canvaN:d.canvaN || "", driveN:d.driveN || "", xlinks:d.xlinks || [], links:d.links || [], cmFiles:d.cmFiles || [] };
   if (f.mode !== "edit" && !d.byId) common.byId = viewer.id; // quién la cargó (para el chat)
   if (!MONTHS_APP.some(x => x.v === date.slice(0,7))){ toast(`La fecha (${dm(date)}) está fuera de los meses de la app. Revisá la fecha.`); return; }
   if (isCalPage() || (brandFilter !== "Todas" && groupOf(common.brand) !== brandFilter)) brandFilter = groupOf(common.brand); // lo cargado se ve enseguida, en su marca
