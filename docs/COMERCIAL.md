@@ -2,14 +2,24 @@
 
 > Para el chat de Claude Code que va a hacer cambios **solo en Comercial**. Leé primero `CLAUDE.md` y `docs/CONTEXTO.md`
 > (cómo se trabaja: ramas, pruebas, publicar). Acá está todo lo de Comercial: qué hace, dónde está el código y qué no tocar.
-> Actualizado el **15/10/2026** (app publicada **v190**; en la rama de Comercial **v191**: ordenar y buscar en cada página; el número de línea es aproximado: buscá por el texto indicado).
+> Actualizado el **15/10/2026** (app publicada **v191**; en la rama de Comercial **v192**: Superseis, Stock y Delimarket con 9 categorías; el número de línea es aproximado: buscá por el texto indicado).
 > Repositorio: `retailpy/mkt` (GitHub). Producción: `main` → https://retailmkt.vercel.app (Vercel). Base y funciones: Supabase,
 > proyecto `retail-mkt-hub`. El otro chat trabaja en su propia rama `claude/…` y publica igual: PR a `main` y merge.
 
 ## 1. Qué es
 
-Sección **Comercial** del menú (General → Comercial). Muestra las **ofertas de cada quincena** que manda el departamento
-Comercial en Excel ("PUBLICADAS") a una carpeta de Google Drive, listas para diseñar:
+Sección **Comercial** del menú (General → Comercial): «Ofertas de Comercial» · *Todas las ofertas de Superseis, Stock y Delimarket
+en un solo lugar.* Muestra las ofertas que manda el departamento Comercial en Excel a carpetas de Google Drive, listas para diseñar.
+
+**Página principal (v192):** debajo del encabezado están los 3 supermercados con sus **9 accesos** (sin pantallas intermedias;
+`comHub()`): **Superseis** (Ofertas quincenales · Fin de semana · Superseis Express · Imbatibles), **Stock** (Ofertas quincenales ·
+Fin de semana · Stock Express · Imbatibles) y **Delimarket** (Fin de semana). Cada botón dice si hay una oferta **vigente** o la
+**próxima**, o por qué no hay (carpeta sin acceso, todavía no se leyó…). Al tocarlo se ve esa categoría **dentro de la app** con
+todo lo de las quincenales (lo de abajo); arranca en las quincenales de Superseis. Lo que el servidor no pudo identificar queda en
+**“N archivos pendientes de revisión”** (nombre, carpeta, motivo y link a Drive). Si una carpeta no se pudo abrir, lo dice con el
+error de Drive (nunca la toma como vacía).
+
+En cada categoría:
 
 - Botones de quincena (Vigente / Oferta quincenal / Terminó) con la **fecha de la oferta** (ya no "Folleto N").
 - Por quincena: marca, fecha, total de productos (`+N más` si se sumaron), destacados de **Tapa**, **Redes**, **Destacados**,
@@ -26,18 +36,34 @@ Comercial en Excel ("PUBLICADAS") a una carpeta de Google Drive, listas para dis
   el precio normal; «2 x 28.000» → 28.000; sin precio («2x1») → al final, en el orden del Excel. El título de la página dice
   «N de M ofertas» si la búsqueda deja menos. «Copiar lista» copia en el orden que se ve. El orden y la búsqueda quedan mientras la app
   está abierta (`comUI.pg`, por quincena, hoja y página); no se guardan en la base ni cambian el Excel/PDF.
-- Arriba: **Excel** y **PDF** (descarga de lo que se ve), **Carpeta de Comercial (Drive)** y **Actualizar** (vuelve a leer Drive).
+- Arriba: **Excel** y **PDF** (descarga de lo que se ve), **Carpeta de Comercial (Drive)** (la carpeta de la categoría elegida) y **Actualizar** (vuelve a leer todas las carpetas).
 - En cada quincena: **Ver Excel original**, **Abrir carpeta en Drive**, **Respaldo en Drive** y "Revisado hace…".
 - Alerta "**Se sumaron N productos más**" cuando al volver a leer un Excel aparecen productos nuevos (con "Ver solo los nuevos").
 
-Carpeta de Comercial en Drive: `https://drive.google.com/drive/folders/1ciqZuhAtcIa-_OYYutd-8Zq8CTPZS-5N` (solo lectura).
-Carpeta de respaldos: `1A_WCm2AkSN9H6GdNazCk-9L4ngoaNWfZ` (el Excel de cada quincena, en la carpeta del mes y año).
+### Carpetas de Drive (solo lectura; todas dentro de «OFERTAS DIVISION», dueña `ofertaspricing`)
+
+| Supermercado | Categoría | Se reconoce por el nombre | Carpeta (id) |
+|---|---|---|---|
+| Superseis | Quincenal | `PUBLICADAS` (la de siempre) | `1ciqZuhAtcIa-_OYYutd-8Zq8CTPZS-5N` «OFERTA QUINCENAL S6» (con su subcarpeta VIGENTE) |
+| Stock | Quincenal | `PUBLICADAS` («Publicadas Stock») | `1RIqkeQ7iR22JX_j3k5JqZXdMsPl0x7eP` «OFERTA QUINCENAL STOCK» |
+| Superseis | Fin de semana | `FDS` o «fin de semana» («FDS SG») | `16e3im1-9kYWZ7rZixRtRPUelHyDSoxxy` «SUPERSEIS» |
+| Stock | Fin de semana | `FDS` («FDS Stock») | `1iHSUvW6WbZO2WDSZ0o3VtS345p48aAdR` «STOCK» |
+| Delimarket | Fin de semana | `FDS` («FDS Deli») | `1NnZGuw3iWQaWNqz5axsE4zWlUAW-sXhA` «DELIMARKET» |
+| Superseis / Stock | Express | `EXPRESS` + `PUBLICADA(S)` + `S6` o `STOCK` | `14b8mp9dItU2SmoJUbiaCNc9g3vBI3xal` «DINAMICA EXPRESS» (compartida) |
+| Superseis / Stock | Imbatibles | `IMBATIBLE(S)` + `S6` o `STOCK` | `1wnr3i0WNIUOuOEILUg5z_LWdmHd1A79W` «LOS IMBATIBLES» (compartida) |
+
+Reglas (`clasificar()` en `comercial.ts`): solo planillas (.xlsx/.xls o Google Sheets) que dicen la categoría en el nombre; las
+**versiones internas** (`INTERNA`) nunca se usan; en una carpeta de una marca, si el nombre dice **otra** marca queda pendiente; en las
+compartidas, si no dice S6 o Stock (o dice las dos) queda pendiente; Express **sin** “publicada” queda pendiente. También queda
+pendiente si no tiene las **fechas** en el nombre o si el Excel no tiene columnas de producto y precio de oferta.
+
+Carpeta de respaldos: `1A_WCm2AkSN9H6GdNazCk-9L4ngoaNWfZ` (el Excel de cada quincena **de Superseis**, en la carpeta del mes y año; como antes).
 
 ## 2. Cómo viajan los datos
 
 ```
 Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► Supabase Edge Function "integraciones"
-   (carpeta Comercial)        comercial_list / comercial_file                acción comercial_sync: lee, compara y guarda
+ (7 carpetas de ofertas)   comercial_list {folder} / comercial_file          acción comercial_sync: lee, clasifica, compara y guarda
                                                                                        │
                                                        app_state, clave "s:COMERCIAL" (solo la escribe el servidor)
                                                                                        │
@@ -50,13 +76,23 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
     (00:15, 07:00 y 13:00 de Paraguay). La de la noche deja el **respaldo** el mismo día que empieza la oferta.
 - **Sin sesión** la función solo actualiza (no devuelve ofertas) y como mucho cada 20 min. Con sesión: cada 30 min, o 15 s con `force`.
 - La clave `s:COMERCIAL` está en `READONLY` de `sync.js`: la app **nunca** la guarda; solo la escribe la función.
+- **Script de Drive versión 7** (`SCRIPT_V`): `comercial_list` recibe la carpeta (solo las de `FUENTES`) y lista también las
+  subcarpetas (2 niveles); `comercial_file` acepta archivos de cualquiera de esas carpetas y baja las planillas de Google como Excel.
+  Con el script de antes (≤ 6) solo se lee la carpeta de las quincenales de Superseis (como siempre) y las demás categorías dicen
+  “Todavía no se leyó: falta actualizar el script”.
+- Por vez se leen hasta **12** archivos nuevos o cambiados (`COM_LEER`; el resto en la próxima revisión, el aviso dice “Quedan N”).
+  No se leen ofertas que terminaron hace más de **120 días** (`COM_DIAS`). Las quincenas quedan siempre; de fin de semana, Express e
+  Imbatibles se guardan los últimos 4 meses. Un Excel que no se pudo leer no se vuelve a bajar hasta que lo cambien en Drive.
 
 ### Forma de `s:COMERCIAL`
 
 ```js
-{ v:1, updated, syncedAt, backupScript:true|false,
+{ v:1, updated, syncedAt, backupScript:true|false, scriptV:7,
+  src: { [idDeCarpeta]: { at, ok:true, name, n } | { at, err:"motivo" } | { at, old:true } },   // cómo se leyó cada carpeta
+  pending: [ { id, name, path, src, cat, brand, reason, modified, read?, v? } ],                // pendientes de revisión
   files: { [idDelArchivoEnDrive]: {
-    id, name, brand:"Superseis"|"Stock"|"Delimarket", from:"2026-10-12", to:"2026-10-25",   // del nombre del archivo
+    id, name, brand:"Superseis"|"Stock"|"Delimarket", cat:"quincenal"|"fds"|"express"|"imbatibles", src:<idDeCarpeta>, path,
+    from:"2026-10-12", to:"2026-10-25",   // del nombre del archivo (las de antes sin cat = quincenales de Superseis)
     folleto:"19", title, modified, v:PARSE_V, inDrive:true|false, n:<productos>, at,
     sheets:[ { name, label, items:[ { sec, sector, cod, mat, desc, pvp, of, tem, pct, rec, neg, prov, nprov, sub, flag?, fx? } ] } ],
     added?: { n, at, keys:["cod|desc", …] },        // productos de más en la última lectura (alerta "Se sumaron N")
@@ -70,13 +106,13 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
 
 | Qué | Archivo y lugar |
 |---|---|
-| Pantalla de Comercial | `index.html`: buscar `// ---------- Comercial:` (≈ línea 9476; `pComercial()` ≈ 9595). Ahí están `comUI`, `comState`, `comPeriods`, `comRange`, `comNice`/`comSent`/`comSec` (textos legibles), `comPct`, `comCard`, `comF` (copiar un dato: `data-comcp`), `comOfVal`/`comPageItems`/`comPageTools` (orden y buscador de cada página: `data-compk`, `data-compord`, `data-compq`), `comSync`, `comExcel`, `comPdf`, `COM_GUIDE`, **`pComercial()`** y sus eventos (`data-com…`). |
-| Estilos | `index.html`, bloque CSS `/* Comercial: ofertas de la quincena */` (≈ líneas 555–617): clases `.com*`, `.cof*`, `.cpct`, `.cflag`, `.cnew`. |
+| Pantalla de Comercial | `index.html`: buscar `// ---------- Comercial:` (≈ línea 9490; `pComercial()` ≈ 9680). Ahí están `COM_FOLDER`/`COM_BRANDS`/`COM_CAT` (las 9 categorías y sus carpetas), `comHub()`, `comCatStatus()`, `comPending()`, `comEmptyMsg()`, `comUI` (`comUI.cat` = "Marca\|categoría"), `comState`, `comPeriods`, `comRange`, `comNice`/`comSent`/`comSec` (textos legibles), `comPct`, `comCard`, `comF` (copiar un dato: `data-comcp`), `comOfVal`/`comPageItems`/`comPageTools` (orden y buscador de cada página: `data-compk`, `data-compord`, `data-compq`), `comSync`, `comExcel`, `comPdf`, `COM_GUIDE`, **`pComercial()`** y sus eventos (`data-com…`). |
+| Estilos | `index.html`, bloque CSS `/* Comercial: ofertas de Superseis, Stock y Delimarket */` (≈ líneas 555–640): clases `.comhub`, `.comb`, `.comcat`, `.compend`, `.com*`, `.cof*`, `.cpct`, `.cflag`, `.cnew`. |
 | Menú y permisos | `SECTIONS` → `{ k:"comercial", virtual:true }`; `PERM_EXTRA` incluye `"comercial"`; está en `ROLE_COMMON` (CM y Diseñador lo ven). El rol **Revisor** (revisión de Meta) **no** lo ve ni puede leer `s:COMERCIAL` en la base: no lo cambies. |
 | Sincronización | `sync.js`: `SHARED.COMERCIAL` y `READONLY` (no se guarda desde la app). |
-| Servidor (lectura y guardado) | `supabase/functions/integraciones/index.ts`: `comercialSync()`, `productosNuevos()`, acción `comercial_sync`; arriba `COMERCIAL_FOLDER_ID`, `BACKUP_FOLDER_ID`, `SCRIPT_V`. |
-| Lector del Excel | `supabase/functions/integraciones/comercial.ts`: `parseOfertas()` (columnas y marcas), `periodo()` (fechas desde el nombre: "12 AL 25-10"), `marcaDe()` (S6/Superseis, Stock, Deli), `nombreOfertas()`, `excelOfertas()` (Excel de respaldo). `PARSE_V`: si cambiás cómo se lee, subilo en 1 y se vuelven a leer todos. |
-| Apps Script de Drive | Texto del script dentro de `index.ts` (`scriptText`): `comercialList`, `comercialFile`, `backupCopy`, `backupFile`. Si se cambia, hay que subir `SCRIPT_V` y Admin total lo copia de nuevo en **Configuración → Integraciones** (lo pega en script.google.com). |
+| Servidor (lectura y guardado) | `supabase/functions/integraciones/index.ts`: `comercialSync()` (recorre `FUENTES`), `productosNuevos()`, `COM_LEER`, `COM_DIAS`, acción `comercial_sync`; arriba `COMERCIAL_FOLDER_ID`, `BACKUP_FOLDER_ID`, `SCRIPT_V`. |
+| Lector del Excel y carpetas | `supabase/functions/integraciones/comercial.ts`: **`FUENTES`** (las 7 carpetas con su categoría y marca), **`clasificar()`** (qué es cada archivo por su nombre), `parseOfertas()` (columnas y marcas; `HEAD2` = otros nombres de columna para los Excel nuevos, solo si falta el de siempre), `periodo()` (fechas desde el nombre: "12 AL 25-10", "17 AL 19 DE OCTUBRE", o solo el mes), `nombreOfertas()`, `excelOfertas()` (Excel de respaldo). `PARSE_V`: si cambiás cómo se lee, subilo en 1 y se vuelven a leer todos. Si cambiás las carpetas, cambiá también `COM_FOLDER` en `index.html`. |
+| Apps Script de Drive | Texto del script dentro de `index.ts` (`scriptText`): `COMERCIAL_FOLDERS`, `comercialList`, `enOfertas`, `comercialFile`, `backupCopy`, `backupFile`. Si se cambia, hay que subir `SCRIPT_V` y Admin total lo copia de nuevo en **Configuración → Integraciones** (lo pega en script.google.com). |
 | Rutina diaria | `api/comercial.js` + `vercel.json` (`crons`). |
 
 ## 4. Cómo probar y publicar (igual que el resto de la app)
@@ -103,7 +139,9 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
 ## 5. Cuidado con
 
 - Los nombres de archivo de Comercial traen las fechas ("OF. QUINCENAL PUBLICADAS S6 12 AL 25-10.xlsx"). Si cambia el formato,
-  ajustar `periodo()` y `marcaDe()`.
+  ajustar `periodo()` y `clasificar()`. Lo que no se reconoce aparece en “pendientes de revisión” con el motivo: mirá ahí primero.
+- Los Excel de fin de semana, Express e Imbatibles se leen con el mismo lector que las quincenales (busca columnas de producto y de
+  precio de oferta, con otros nombres posibles en `HEAD2`). Si traen otro formato, quedan pendientes con “No se encontraron las columnas…”.
 - La alerta "+N más" compara **código + descripción** (`cod|desc`) contra la lectura anterior, contando repetidos.
 - Las quincenas quedan guardadas aunque borren el Excel de Drive (`inDrive:false` → "Ya no se encuentra el archivo original").
 - No mostrar ni pedir claves (Supabase, Google, Vercel). La configuración del script está en la tabla `integration_config`.
