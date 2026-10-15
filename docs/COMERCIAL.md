@@ -2,7 +2,7 @@
 
 > Para el chat de Claude Code que va a hacer cambios **solo en Comercial**. Leé primero `CLAUDE.md` y `docs/CONTEXTO.md`
 > (cómo se trabaja: ramas, pruebas, publicar). Acá está todo lo de Comercial: qué hace, dónde está el código y qué no tocar.
-> Actualizado el **15/10/2026** (app publicada **v194**: Comercial con Superseis, Stock y Delimarket y 9 categorías; en la rama v195: el botón de arriba abre la carpeta general; el número de línea es aproximado: buscá por el texto indicado).
+> Actualizado el **15/10/2026** (app publicada **v197**: Comercial con Superseis, Stock y Delimarket, 9 categorías, lectura con los Excel reales y bajada directa de Drive; el número de línea es aproximado: buscá por el texto indicado).
 > Repositorio: `retailpy/mkt` (GitHub). Producción: `main` → https://retailmkt.vercel.app (Vercel). Base y funciones: Supabase,
 > proyecto `retail-mkt-hub`. El otro chat trabaja en su propia rama `claude/…` y publica igual: PR a `main` y merge.
 
@@ -80,9 +80,14 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
   subcarpetas (2 niveles); `comercial_file` acepta archivos de cualquiera de esas carpetas y baja las planillas de Google como Excel.
   Con el script de antes (≤ 6) solo se lee la carpeta de las quincenales de Superseis (como siempre) y las demás categorías dicen
   “Todavía no se leyó: falta actualizar el script”.
-- Por vez se leen hasta **12** archivos nuevos o cambiados (`COM_LEER`; el resto en la próxima revisión, el aviso dice “Quedan N”).
-  No se leen ofertas que terminaron hace más de **120 días** (`COM_DIAS`). Las quincenas quedan siempre; de fin de semana, Express e
-  Imbatibles se guardan los últimos 4 meses. Un Excel que no se pudo leer no se vuelve a bajar hasta que lo cambien en Drive.
+- **Rápido (v197):** las 7 carpetas se listan a la vez y los Excel se bajan **directo de Drive** (`bajarOfertas`: las carpetas se
+  comparten con el link) de a 6 por vez; si Drive no lo entrega, se pide al script (`comercial_file`) como antes. Por vez se leen
+  hasta **40** archivos (`COM_LEER`; el resto en la próxima revisión, el aviso dice “Quedan N”). No se leen las subcarpetas de
+  ofertas viejas (`ARCHIVADAS`: «ANTERIORES», «HISTÓRICO»…). En la pantalla, los buscadores dibujan la lista una sola vez cuando se
+  deja de tipear (`comLater`), no con cada letra.
+  No se leen ofertas que terminaron hace más de **120 días** las quincenas y **60 días** las demás (`COM_DIAS`). Las quincenas quedan
+  siempre; de fin de semana, Express e Imbatibles se guardan los últimos 2 meses. Si hay más de 40 para leer, primero lo vigente y lo
+  próximo, después lo que ya terminó. Si una carpeta no responde, se reintenta sola una vez. Un Excel que no se pudo leer no se vuelve a bajar hasta que lo cambien en Drive.
 
 ### Forma de `s:COMERCIAL`
 
@@ -106,7 +111,7 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
 
 | Qué | Archivo y lugar |
 |---|---|
-| Pantalla de Comercial | `index.html`: buscar `// ---------- Comercial:` (≈ línea 9586; `pComercial()` ≈ 9764). Ahí están `COM_FOLDER`/`COM_BRANDS`/`COM_CAT` (las 9 categorías y sus carpetas), `comHub()`, `comCatStatus()`, `comPending()`, `comEmptyMsg()`, `comUI` (`comUI.cat` = "Marca\|categoría"), `comState`, `comPeriods`, `comRange`, `comNice`/`comSent`/`comSec` (textos legibles), `comPct`, `comCard`, `comF` (copiar un dato: `data-comcp`), `comOfVal`/`comPageItems`/`comPageTools` (orden y buscador de cada página: `data-compk`, `data-compord`, `data-compq`), `comSync`, `comExcel`, `comPdf`, `COM_GUIDE`, **`pComercial()`** y sus eventos (`data-com…`). |
+| Pantalla de Comercial | `index.html`: buscar `// ---------- Comercial:` (≈ línea 9585; `pComercial()` ≈ 9763). Ahí están `COM_FOLDER`/`COM_BRANDS`/`COM_CAT` (las 9 categorías y sus carpetas), `comHub()`, `comCatStatus()`, `comPending()`, `comEmptyMsg()`, `comUI` (`comUI.cat` = "Marca\|categoría"), `comState`, `comPeriods`, `comRange`, `comNice`/`comSent`/`comSec` (textos legibles), `comPct`, `comCard`, `comF` (copiar un dato: `data-comcp`), `comOfVal`/`comPageItems`/`comPageTools` (orden y buscador de cada página: `data-compk`, `data-compord`, `data-compq`), `comSync`, `comExcel`, `comPdf`, `COM_GUIDE`, **`pComercial()`** y sus eventos (`data-com…`). |
 | Estilos | `index.html`, bloque CSS `/* Comercial: ofertas de Superseis, Stock y Delimarket */` (≈ líneas 555–640): clases `.comhub`, `.comb`, `.comcat`, `.compend`, `.com*`, `.cof*`, `.cpct`, `.cflag`, `.cnew`. |
 | Menú y permisos | `SECTIONS` → `{ k:"comercial", virtual:true }`; `PERM_EXTRA` incluye `"comercial"`; está en `ROLE_COMMON` (CM y Diseñador lo ven). El rol **Revisor** (revisión de Meta) **no** lo ve ni puede leer `s:COMERCIAL` en la base: no lo cambies. |
 | Sincronización | `sync.js`: `SHARED.COMERCIAL` y `READONLY` (no se guarda desde la app). |
@@ -141,7 +146,14 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
 - Los nombres de archivo de Comercial traen las fechas ("OF. QUINCENAL PUBLICADAS S6 12 AL 25-10.xlsx"). Si cambia el formato,
   ajustar `periodo()` y `clasificar()`. Lo que no se reconoce aparece en “pendientes de revisión” con el motivo: mirá ahí primero.
 - Los Excel de fin de semana, Express e Imbatibles se leen con el mismo lector que las quincenales (busca columnas de producto y de
-  precio de oferta, con otros nombres posibles en `HEAD2`). Si traen otro formato, quedan pendientes con “No se encontraron las columnas…”.
+  precio de oferta, con otros nombres posibles en `HEAD2`: «PVP OFERTA(S)», «Código Articulo», «Material SAP»…). Si traen otro
+  formato, quedan pendientes con “No se encontraron las columnas…”.
+- Nombres reales (15/10/2026): «FDS S6 02_10_2026 AL 04_10_2026», «FDS STOCK 16_10_26 al 18_10_26», «FDS DELI 09_10_26 AL 11_10_2026»
+  (fechas con guion bajo y año: `periodo()` las entiende), «DINAMICA S6/STOCK EXPRESS PUBLICADAS 12 Al 25-10», «_S6 - LOS IMBATIBLES
+  20-07 AL 22-11», «OF. QUINCENAL PUBLICADAS STOCK 12 AL 25-10». Varias carpetas tienen subcarpeta «VIGENTE» (se lee) y «ANTERIORES» (no).
+- Dentro de los Excel: lo que está debajo de **«INTERNAS»/«INTERNA»** no se muestra (no se publica); el bloque **«Adicional … solo
+  para destacar en redes»** sale como páginas «Adicional · …»; las filas «VIGENCIA DESDE / HASTA» repetidas se saltean; en Delimarket
+  la primera columna es el sector y «DESTACAR» ahí se toma como destacado. `PARSE_V` = 2.
 - La alerta "+N más" compara **código + descripción** (`cod|desc`) contra la lectura anterior, contando repetidos.
 - Las quincenas quedan guardadas aunque borren el Excel de Drive (`inDrive:false` → "Ya no se encuentra el archivo original").
 - No mostrar ni pedir claves (Supabase, Google, Vercel). La configuración del script está en la tabla `integration_config`.
