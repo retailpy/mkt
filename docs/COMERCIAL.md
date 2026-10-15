@@ -85,8 +85,9 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
   hasta **40** archivos (`COM_LEER`; el resto en la próxima revisión, el aviso dice “Quedan N”). No se leen las subcarpetas de
   ofertas viejas (`ARCHIVADAS`: «ANTERIORES», «HISTÓRICO»…). En la pantalla, los buscadores dibujan la lista una sola vez cuando se
   deja de tipear (`comLater`), no con cada letra.
-  No se leen ofertas que terminaron hace más de **120 días** (`COM_DIAS`). Las quincenas quedan siempre; de fin de semana, Express e
-  Imbatibles se guardan los últimos 4 meses. Un Excel que no se pudo leer no se vuelve a bajar hasta que lo cambien en Drive.
+  No se leen ofertas que terminaron hace más de **120 días** las quincenas y **60 días** las demás (`COM_DIAS`). Las quincenas quedan
+  siempre; de fin de semana, Express e Imbatibles se guardan los últimos 2 meses. Si hay más de 40 para leer, primero lo vigente y lo
+  próximo, después lo que ya terminó. Si una carpeta no responde, se reintenta sola una vez. Un Excel que no se pudo leer no se vuelve a bajar hasta que lo cambien en Drive.
 
 ### Forma de `s:COMERCIAL`
 
