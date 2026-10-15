@@ -62,14 +62,15 @@ Deno.serve(async (req) => {
     const gid = key.slice(5);
     const g = ((await state("s:CHAT_GROUPS")) || []).find((x: any) => x.id === gid);
     if (!g || g.archived) return json({ ok: true, skipped: "grupo" });
-    to = (members || []).filter((x) => g.all || (g.members || []).includes(x.person_id) || (g.roles || []).includes(x.role)).map((x) => x.person_id);
+    to = (members || []).filter((x) => x.role !== "Revisor" && (g.all || (g.members || []).includes(x.person_id) || (g.roles || []).includes(x.role))).map((x) => x.person_id);
     title = g.name;
     open = "g:" + gid;
   }
   const now = Date.now();
   to = [...new Set(to)].filter((id) => id !== m.from)
     .filter((id) => !(presence[id]?.st === "dnd" && presence[id]?.until && new Date(presence[id].until).getTime() > now)) // No molestar: sin avisos
-    .filter((id) => !(mutes[id] || []).includes(open)); // conversación silenciada: sin avisos (el contador de la app sigue)
+    .filter((id) => !(mutes[id] || []).includes(open)) // conversación silenciada: sin avisos (el contador de la app sigue)
+    .filter((id) => !people.find((p) => p.id === id)?.noChat); // sin Chat Retail MKT (Usuarios y permisos): sin avisos
   if (!to.length) return json({ ok: true, sent: 0 });
 
   const { data: subs } = await db.from("push_subs").select("endpoint, sub, person_id").in("person_id", to);

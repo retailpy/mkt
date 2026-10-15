@@ -716,6 +716,7 @@ tr.tot td{border-top:1px solid var(--line-3)}
   .ibxcard.sel{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(34,211,238,.35)}}
 @media (min-width:1180px){.ibxcard{cursor:default}.ibxcard:hover{border-color:var(--line-2)}}
 /* Hoja de permisos (Usuarios y permisos) */
+.uchat{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12.5px;color:var(--muted);white-space:nowrap}
 .pxcard{border:1px solid var(--line-2);border-radius:20px;background:var(--panel);overflow:hidden}
 .pxcard>header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;padding:14px 18px;border-bottom:1px solid var(--line-2)}
 .pxhead{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.pxsum{font-size:12.5px;font-weight:700;padding:3px 10px;border-radius:999px;background:rgba(34,211,238,.12);color:var(--cyan)}.pxsum.basic{background:rgba(148,163,184,.14);color:var(--muted)}
@@ -2842,6 +2843,7 @@ const ROLE_DEFAULTS = {
   "Admin": SECTIONS.map(s => s.k).filter(k => !["usuarios","config"].includes(k)),
   "CM": ROLE_CM,
   "Diseñador": ROLE_DESIGN,
+  "Revisor": ["inbox"],
 };
 const PEOPLE = [
   { id:"alyssa", username:"Alesme", workPhone:"+595 21 618 1001", phone:"+595 981 111 222", mainBrand:"Varias", skills:["Planificación estratégica","Gestión de equipos","Análisis de datos"], birthday:"11-08", brandsHandled:["Superseis","Stock","Delimarket"], quote:"Mi idea es cambiar las cosas", name:"Alyssa Lesme", cargo:"Jefa de Marketing", email:"alyssa.lesme@empresa.com.py", role:"Admin total", brands:null, last:"hoy 08:12" },
@@ -2864,12 +2866,18 @@ function upgradePerms(p){ const v = p.permsV || 1; if (v >= 9) return;
   if (p.role === "Admin") p.perms.add("inicio");
   p.permsV = 9; }
 let DESIGNERS = [];
-const ROLES = ["Admin total","Admin","Diseñador","CM"];
+const ROLES = ["Admin total","Admin","Diseñador","CM","Revisor"];
+// Revisor: el usuario de la revisión de Meta. Solo Mensajes de las cuentas (DM, comentarios y menciones, y contestar),
+// su cuenta y la guía. Sin chat, sin pedidos, sin datos del equipo: la base tampoco le deja leer otra cosa.
+const isRevisor = () => viewer?.role === "Revisor";
+const REVISOR_SEE = ["inbox","perfil","config","guia"];
+const sinChat = pp => !!pp && (!!pp.noChat || pp.role === "Revisor");
 const ROLE_INFO = {
   "Admin total":"Configura y controla todo: usuarios, permisos, marcas y cierres de mes.",
   "Admin":"Ve todo el sitio para control, descarga informes. No modifica ni configura.",
   "Diseñador":"Ve todo menos Vista TV, los historiales, Pauta Meta Ads, el Informe mensual y Usuarios (esas son solo para Admin). Admin total puede sacarle o darle secciones. No ve los mensajes de las cuentas ni los reclamos.",
   "CM":"Ve todo menos Vista TV, los historiales, Pauta Meta Ads, el Informe mensual y Usuarios (esas son solo para Admin). Admin total puede sacarle o darle secciones.",
+  "Revisor":"Para la revisión de Meta: solo Mensajes de las cuentas (mensajes, comentarios y menciones de Instagram y Facebook) y contestarlos. No ve el chat, los pedidos ni los datos del equipo.",
 };
 let resetRequests = [];
 let userUI = { newOpen:false, confirm:null, lastPass:null };
@@ -2878,7 +2886,8 @@ const ROLE_SVG = {
   "Diseñador":'<circle cx="13.5" cy="6.5" r=".6" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".6" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".6" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".6" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.6-.7 1.6-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1a1.6 1.6 0 0 1 1.7-1.7h2c3 0 5.5-2.5 5.5-5.5C22 6 17.5 2 12 2z"/>',
   "Admin total":'<path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/>',
   "Admin":'<path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/>',
-  "CM":'<path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>' };
+  "CM":'<path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
+  "Revisor":'<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>' };
 const avatarHTML = (pp, cls = "", style = "") => pp.photo ? `<img class="avatar ${cls}" src="${pp.photo}" alt="Foto de ${esc(pp.name)}" style="object-fit:cover;padding:0;${style}">` : ROLE_SVG[pp.role] ? `<div class="avatar roleav ${cls}" style="${style}" title="${esc(pp.name)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ROLE_SVG[pp.role]}</svg></div>` : `<div class="avatar ${cls}" style="${style}">${initials(pp.name)}</div>`;
 const initials = n => n.split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
 function genPass(){ const a = "abcdefghjkmnpqrstuvwxyz", A = "ABCDEFGHJKMNPQRSTUVWXYZ", r = n => { const u = new Uint32Array(1); crypto.getRandomValues(u); return u[0] % n; };
@@ -4188,7 +4197,7 @@ const MEMBER_ALWAYS = ["bienvenida","perfil","config","guia"]; // la bienvenida 
 const canMember = key => ONLY_AT.includes(key) || ONLY_ADMINS.includes(key) ? false : MEMBER_ALWAYS.includes(key) ? true
   : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan")
   : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : viewer.perms.has(key);
-const can = key => isAdminAny() ? canAdmin(key) : canMember(key);
+const can = key => isRevisor() ? REVISOR_SEE.includes(key) : key === "mensajes" && viewer?.noChat ? false : isAdminAny() ? canAdmin(key) : canMember(key); // noChat: sin Chat Retail MKT (Usuarios y permisos)
 const myGroups = () => viewer.brands || GROUPS;
 const seesBrand = b => myGroups().includes(groupOf(b));
 const myBrands = () => Object.keys(BRANDS).filter(seesBrand);
@@ -5517,8 +5526,8 @@ document.addEventListener("click", async e => { const b = e.target.closest("[dat
   toast(`Actualizado ${new Date().toTimeString().slice(0, 5)}: ya ves lo último que cargaron los demás.${keep.length ? " Lo que estabas escribiendo sigue ahí (acordate de guardar)." : ""}`); });
 // Chat del pedido: quien lo cargó habla con el responsable, y el responsable con quien lo cargó (o con Admin total).
 function jobChatBtns(j, about = "el pedido"){
-  if (!viewer || isViewOnly() || window.RMH?.previewing) return "";
-  const act = pp => pp && pp.active !== false && pp.id !== viewer.id;
+  if (!viewer || sinChat(viewer) || isViewOnly() || window.RMH?.previewing) return "";
+  const act = pp => pp && pp.active !== false && !sinChat(pp) && pp.id !== viewer.id;
   const owner = PEOPLE.find(pp => pp.name === j.owner), by = PEOPLE.find(pp => pp.id === j.byId);
   const to = j.owner === viewer.name ? [by && act(by) ? by : null, ...PEOPLE.filter(pp => pp.role === "Admin total")].filter(act) : [owner].filter(act);
   return [...new Map(to.map(pp => [pp.id, pp])).values()].slice(0, 2).map(pp => `<button type="button" class="btn primary jchatbtn" data-chatwith="${esc(pp.id)}" data-chatabout="${esc(j.title)}" data-chatpre="${esc(about)}">${icon("message-circle")} Chatear con ${esc(nickOf(pp))}</button>`).join("");
@@ -6920,7 +6929,7 @@ const PERM_EXTRA = ["comercial","inbox","reclamos","ideas"]; // secciones “vir
 const permSections = () => SECTIONS.filter(sc => (!sc.virtual || PERM_EXTRA.includes(sc.k)) && !ONLY_AT.includes(sc.k) && !ONLY_ADMINS.includes(sc.k));
 function permSheet(){
   const secs = permSections(), groups = [...new Set(secs.map(sc => sc.g))];
-  const members = PEOPLE.filter(pp => pp.active && pp.role !== "Admin total" && pp.role !== "Admin"), admins = PEOPLE.filter(pp => pp.active && (pp.role === "Admin total" || pp.role === "Admin"));
+  const members = PEOPLE.filter(pp => pp.active && !["Admin total","Admin","Revisor"].includes(pp.role)), admins = PEOPLE.filter(pp => pp.active && (pp.role === "Admin total" || pp.role === "Admin"));
   const card = pp => { const on = secs.filter(sc => pp.perms.has(sc.k)).length, basic = ROLE_BASIC.length === on && ROLE_BASIC.every(k => pp.perms.has(k));
     return `<section class="pxcard"><header><div class="person">${avatarHTML(pp)}<div><b>${esc(pp.name)}</b><span>${esc(pp.role)}${pp.cargo ? " · " + esc(pp.cargo) : ""}</span></div></div>
       <div class="pxhead"><span class="pxsum${basic ? " basic" : ""}">${basic ? "Ve solo lo básico" : `Ve ${on} de ${secs.length}`}</span><button type="button" class="btn sm" data-pxpreset="${pp.id}|basic">Dejar solo lo básico</button><button type="button" class="btn sm" data-pxpreset="${pp.id}|all">Activar todo</button></div></header>
@@ -6963,7 +6972,7 @@ function pUsuarios(){
       : me ? `<span class="note">Sos vos · cambiá tu contraseña en “Mi perfil”</span>`
       : `${pp.active ? `<button class="btn" data-ureset="${pp.id}">${icon("key-round")} Restablecer contraseña</button>` : ""}<button class="btn" data-utoggle="${pp.id}">${pp.active ? "Desactivar" : "Reactivar"}</button><button class="btn danger" data-uconfirm="${pp.id}">Quitar</button>`;
     return `<tr class="${pp.active ? "" : "off"}"><td><div class="person">${avatarHTML(pp, pp.active ? "" : "off")}<div><b>${esc(pp.name)}${me ? " (vos)" : ""}</b><span>${pp.username ? `Usuario: ${esc(pp.username)}${mainEmail(pp) ? " · " : ""}` : ""}${esc(mainEmail(pp))}</span></div></div></td>
-      <td>${me ? `<b style="color:#fff">${pp.role}</b>` : `<select class="base" data-urole="${pp.id}" aria-label="Rol de ${esc(pp.name)}">${ROLES.map(r => `<option ${r === pp.role ? "selected" : ""}>${r}</option>`).join("")}</select>`}<div class="note" style="margin-top:4px">${esc(pp.cargo || "")}</div></td>
+      <td>${me ? `<b style="color:#fff">${pp.role}</b>` : `<select class="base" data-urole="${pp.id}" aria-label="Rol de ${esc(pp.name)}">${ROLES.map(r => `<option ${r === pp.role ? "selected" : ""}>${r}</option>`).join("")}</select>`}<div class="note" style="margin-top:4px">${esc(pp.cargo || "")}</div>${at && !me && pp.role !== "Revisor" ? `<label class="uchat" title="Si se apaga, no ve ni recibe nada del Chat Retail MKT (los demás tampoco lo ven en el chat)"><input type="checkbox" data-unochat="${pp.id}" ${pp.noChat ? "" : "checked"}> Chat Retail MKT</label>` : sinChat(pp) ? `<div class="note">Sin chat</div>` : ""}</td>
       <td>${estado}</td><td class="num note">${pp.active ? esc(pp.last || "nunca") : "—"}</td><td><div class="acts">${acts}</div></td></tr>`;
   }).join("");
   const roleCards = `<div class="grid kpis">${ROLES.map(r => `<div class="panel kpi"><div class="l">${r}</div><div class="n">${PEOPLE.filter(pp => pp.active && pp.role === r).length}</div><div class="d">${ROLE_INFO[r]}</div></div>`).join("")}</div>`;
@@ -6975,6 +6984,11 @@ function pUsuarios(){
   ${permSheet()}
   <p class="note">Admin total y Admin siempre ven todo. En la app real, crear personas y restablecer contraseñas lo hace una función segura del servidor que primero verifica que quien lo pide sea admin; las contraseñas se guardan cifradas y nadie puede verlas.</p>`;
 }
+// Chat Retail MKT por persona: Admin total lo apaga o lo prende (noChat). Sin chat no lo ve, no recibe avisos y la base no le deja leer los mensajes.
+document.addEventListener("change", e => { const c = e.target.closest?.("[data-unochat]"); if (!c || viewer?.role !== "Admin total") return;
+  const p = PEOPLE.find(x => x.id === c.dataset.unochat); if (!p || p.id === viewer.id) return;
+  if (c.checked) delete p.noChat; else p.noChat = true;
+  render(); window.RMH?.flushNow?.(); toast(c.checked ? `${nickOf(p)} vuelve a tener el Chat Retail MKT.` : `${nickOf(p)} ya no tiene acceso al Chat Retail MKT.`); });
 document.addEventListener("click", e => { const t = e.target.closest("[data-pxpreset]"); if (!t) return;
   const [pid, mode] = t.dataset.pxpreset.split("|"), p = PEOPLE.find(x => x.id === pid); if (!p || p.role === "Admin total" || p.role === "Admin") return;
   p.perms = new Set(mode === "all" ? permSections().map(sc => sc.k) : ROLE_BASIC); toast(mode === "all" ? `${p.name}: ve todo.` : `${p.name}: ve solo lo básico.`); render(); });
@@ -7093,7 +7107,7 @@ function toggleMute(key){ const l = CHAT_MUTES[viewer.id] || []; CHAT_MUTES[view
   render(); toast(isMuted(key) ? "Silenciado: no te llegan avisos, pero vas a ver cuántos mensajes nuevos hay." : "Avisos activados de nuevo."); }
 let PRESENCE = {};  // persona → { st:"away"|"dnd"|"vac", until, from, to }
 let ONLINE = {};    // persona → desde cuándo está conectada (lo llena la presencia en vivo)
-const chatMember = (g, pp) => !!pp && !!g && (g.all || (g.members || []).includes(pp.id) || (g.roles || []).includes(pp.role));
+const chatMember = (g, pp) => !!pp && !!g && !sinChat(pp) && (g.all || (g.members || []).includes(pp.id) || (g.roles || []).includes(pp.role));
 const chatGroupsMine = () => CHAT_GROUPS.filter(g => chatMember(g, viewer) && (!g.archived || viewer.role === "Admin total"));
 const msgTs = m => m.ts || `${m.date}T${m.time || "00:00"}:00`;
 const newMsgId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -7248,7 +7262,7 @@ document.addEventListener("click", async e => {
     if (pic){ delete IMG_LOCAL[pic]; integ({ action:"chat_image_delete", id:pic }).catch(() => {}); }
     return; }
   if (a === "fwd"){ chatUI.fwd = { text:m.text, gif:m.gif, stk:m.stk, img:m.img, doc:m.doc?.id ? m.doc : null }; if (m.img) m.img.fw = true; render(); // una foto reenviada ya no se borra de Drive
-    const groups = CHAT_GROUPS.filter(g => !g.archived && chatMember(g, viewer)), people = PEOPLE.filter(pp => pp.active && pp.id !== viewer.id), meP = personById(viewer.id);
+    const groups = CHAT_GROUPS.filter(g => !g.archived && chatMember(g, viewer)), people = PEOPLE.filter(pp => pp.active && !sinChat(pp) && pp.id !== viewer.id), meP = personById(viewer.id);
     const w = document.createElement("div"); w.id = "fwpop"; w.className = "fixpop";
     w.innerHTML = `<div class="fixbox fwbox" role="dialog" aria-modal="true" aria-labelledby="fwh"><h2 id="fwh">Reenviar a…</h2><div class="fwlist">${[...groups.map(g => ["g:" + g.id, g.name, grpAvatar(g)]), ...(meP ? [["p:" + meP.id, "Vos (mensajes para vos)", `<span class="cavw">${avatarHTML(meP)}</span>`]] : []), ...people.map(pp => ["p:" + pp.id, chatName(pp), `<span class="cavw">${avatarHTML(pp)}</span>`])].map(([k, n, av]) => `<button type="button" class="fwit" data-fwto="${esc(k)}" data-fwname="${esc(n)}">${av}<b>${esc(n)}</b></button>`).join("")}</div>
       <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fwclose>Cancelar</button></div></div>`;
@@ -7487,7 +7501,7 @@ function pMensajes(){
   const when = m => m ? (msgDay(m) === pyToday() ? msgTime(m) : dm(msgDay(m))) : "";
   const groups = chatGroupsMine().filter(g => fits(g.name)).map(g => ({ g, last:lastOf(grpMsgs(g.id)), n:grpUnread(g.id) }));
   const meP = personById(viewer.id), self = meP && (fits(chatName(meP)) || fits("vos")) ? lastOf(dmMsgs(meP.id)) || 0 : null;
-  const people = PEOPLE.filter(pp => pp.active && pp.id !== viewer.id && (fits(pp.name) || fits(pp.nick || ""))).map(pp => ({ pp, last:lastOf(dmMsgs(pp.id)), n:dmUnread(pp.id) }))
+  const people = PEOPLE.filter(pp => pp.active && !sinChat(pp) && pp.id !== viewer.id && (fits(pp.name) || fits(pp.nick || ""))).map(pp => ({ pp, last:lastOf(dmMsgs(pp.id)), n:dmUnread(pp.id) }))
     .sort((a, b) => (b.last ? msgTs(b.last) : "").localeCompare(a.last ? msgTs(a.last) : "") || a.pp.name.localeCompare(b.pp.name));
   const item = (key, av, name, last, n, extra = "") => `<button type="button" class="citem ${chatUI.open === key ? "on" : ""} ${n ? "unread" : ""}" data-copen="${esc(key)}">${av}<span class="cimain"><span class="cirow"><b>${esc(name)}${isMuted(key) ? ` <span class="cmuted" title="Silenciado">${icon("bell-off")}</span>` : ""}</b><small>${when(last)}</small></span><span class="cirow"><span class="ciprev">${esc(extra || prev(last) || "Sin mensajes")}</span>${n ? `<span class="cbadge">+${n}</span>` : ""}</span></span></button>`;
   const at = viewer.role === "Admin total";
@@ -7720,7 +7734,7 @@ document.addEventListener("input", e => { if (e.target.id === "chSearch"){ chatU
 // El contador siempre se anima al instante (también en conversaciones silenciadas); el aviso, solo si no está silenciada.
 let chatLastTotal = null, chatLastLoud = null;
 function chatNotify(){
-  if (!viewer) return; markDelivered(); const n = chatUnreadTotal(), loud = chatUnreadLoud();
+  if (!viewer || sinChat(viewer)) return; markDelivered(); const n = chatUnreadTotal(), loud = chatUnreadLoud();
   if (chatLastTotal !== null && n > chatLastTotal) setTimeout(bumpChatBadges, 0);
   if (chatLastLoud !== null && loud > chatLastLoud && !isDnd()){
     localNotify(loud);
@@ -7781,7 +7795,7 @@ document.addEventListener("submit", async e => {
   chatUI.grpForm = null; chatUI.open = "g:" + g.id; render(); toast(`Grupo “${g.name}” guardado.`);
 });
 // Desde Staff: abre el chat privado con esa persona.
-document.addEventListener("click", e => { const b = e.target.closest("[data-chatwith]"); if (!b) return; e.stopPropagation(); jobUI.ficha = null; postUI.form = null;
+document.addEventListener("click", e => { const b = e.target.closest("[data-chatwith]"); if (!b) return; e.stopPropagation(); if (sinChat(viewer)) return; jobUI.ficha = null; postUI.form = null;
   if (b.dataset.chatabout) setTimeout(() => { const ci = document.getElementById("chatInput"); if (ci && !ci.value) { ci.value = `Sobre ${b.dataset.chatpre || "el pedido"} “${b.dataset.chatabout}”: `; ci.focus(); } }, 60); // el mensaje arranca diciendo de qué pedido se habla
   chatUI.open = "p:" + b.dataset.chatwith; chatUI.mob = true; chatUI.keepBottom = true; page = "mensajes"; location.hash = page; render(); window.scrollTo(0, 0); if (!touchUI()) document.getElementById("chatInput")?.focus(); });
 // ---------- Planificación del mes: objetivos (medibles), campañas en destaque y lo que se viene ----------
@@ -9116,7 +9130,7 @@ document.addEventListener("click", async e => {
     try { await navigator.clipboard.writeText(j.script); toast("Script copiado: pegalo en script.google.com."); } catch { toast("Seleccioná todo el texto del cuadro y copialo."); document.getElementById("iScript")?.select(); } }
 });
 // Tocar la notificación abre esa conversación.
-const openChatFrom = open => { if (!open || !viewer) return; chatUI.open = open; chatUI.mob = true; chatUI.keepBottom = true; page = "mensajes"; location.hash = page; render(); };
+const openChatFrom = open => { if (!open || !viewer || sinChat(viewer)) return; chatUI.open = open; chatUI.mob = true; chatUI.keepBottom = true; page = "mensajes"; location.hash = page; render(); };
 navigator.serviceWorker?.addEventListener("message", e => { if (e.data?.type === "openChat") openChatFrom(e.data.open); });
 // Aviso local (sin push): solo cuando la app está abierta pero no a la vista.
 function localNotify(n){
@@ -9131,7 +9145,7 @@ function pConfig(){
     <p class="note">Las personas que todavía no eligieron su contraseña. Desaparece cuando la cambian. Para dar una nueva, andá a Usuarios y permisos → Restablecer contraseña.</p>
     ${pend.length ? `<div class="list">${pend.map(pp => `<div class="row"><div class="person" style="min-width:0">${avatarHTML(pp)}<div><b>${esc(pp.name)}</b><span>${esc(pp.cargo || pp.role)}</span></div></div><span class="grow"></span><code style="font-family:var(--mono);color:#a5f3fc;font-size:15px">${esc(pp.tempPass)}</code></div>`).join("")}</div>` : `<div class="empty">Todos ya eligieron su contraseña.</div>`}</section>` : "";
   // Mi Perfil se edita solo acá; Instalar la app también está solo acá.
-  const tabs = [["perfil","Mi Perfil","user"],["apariencia","Apariencia","palette"],["notif","Notificaciones","bell"],["instalar","Instalar la app","download"],["guia","Guía de uso","book-open"], ...(v.role === "Admin total" ? [["integ","Integraciones","plug"]] : [])];
+  const tabs = [["perfil","Mi Perfil","user"],["apariencia","Apariencia","palette"], ...(sinChat(v) ? [] : [["notif","Notificaciones","bell"]]),["instalar","Instalar la app","download"],["guia","Guía de uso","book-open"], ...(v.role === "Admin total" ? [["integ","Integraciones","plug"]] : [])]; // las notificaciones son del chat
   const perfil = pPerfil().replace(/^<div><h1>Mi perfil<\/h1>.*?<\/div>/s, "");
   const inst = `<section class="panel cfgsec"><h2 class="pmh">${pmIco("smartphone")}Instalar la app</h2><p class="note">Tenela con su ícono en el celular, la tablet o la computadora: abre a pantalla completa, como cualquier app.</p>
     ${isInstalledApp() ? `<p class="pfid">${icon("check")} Ya la estás usando instalada.</p>` : ""}
@@ -9169,7 +9183,7 @@ const TB_ICO = { "messages-square":'<path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 
 const tbIcon = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TB_ICO[n]}</svg>`;
 function renderTabbar(){
   const tb = document.getElementById("tabbar"); if (!tb) return;
-  const work = isDesigner() ? ["paneldg","Trabajo","layout-grid"] : viewer.role === "CM" ? ["panelcm","Trabajo","layout-grid"] : ["dashboard","Dashboard","layout-dashboard"];
+  const work = isRevisor() ? ["inbox","Mensajes","messages-square"] : isDesigner() ? ["paneldg","Trabajo","layout-grid"] : viewer.role === "CM" ? ["panelcm","Trabajo","layout-grid"] : ["dashboard","Dashboard","layout-dashboard"];
   const tabs = [["inicio","Inicio","house"],work,["mensajes","Chat","messages-square"]].filter(([k]) => can(k));
   const cnt = k => { const w = k === "paneldg" || k === "panelcm", n = k === "inicio" ? alerts().length : k === "mensajes" ? chatUnreadTotal() : workPend(k);
     return n ? `<span class="tbc"${w ? ` title="${k === "paneldg" ? `${n} pedido${n === 1 ? "" : "s"} sin terminar` : `${n} pedido${n === 1 ? "" : "s"} sin abrir`}"` : ""}>${w ? "+" : ""}${n > 99 ? "99+" : n}</span>` : ""; };
@@ -9214,9 +9228,9 @@ function renderNav(){
   const mc = document.getElementById("msgCount"), nm = chatUnreadTotal(); if (mc){ mc.hidden = !nm; mc.textContent = nm; }
   const groups = [...new Set(SECTIONS.map(s => s.g))];
   $("#nav").innerHTML = groups.map(g => {
-    const items = SECTIONS.filter(s => s.g === g && can(s.k) && !s.hide);
+    const items = SECTIONS.filter(s => s.g === g && can(s.k) && (!s.hide || (isRevisor() && s.k === "inbox")));
     if (!items.length) return "";
-    const shut = navClosed.has(g);
+    const shut = !isRevisor() && navClosed.has(g); // el Revisor tiene una sola sección: siempre a la vista
     return `<div class="nav-group${shut ? " closed" : ""}"><button type="button" class="nav-label navtog" data-navtog="${esc(g)}" aria-expanded="${!shut}">${g}${shut ? items.map(x => navBadge(x.k)).join("") : ""}${icon("chevron-down")}</button>${items.map(s => `<a href="#${s.k}" data-page="${s.k}" title="${esc(s.n || s.l)}" class="${page===s.k || (s.k === "paneldg" && PANEL_DG_KEYS.includes(page)) || (s.k === "panelcm" && PANEL_CM_KEYS.includes(page)) ?"on":""}">${icon(s.i)}<span>${s.n || s.l}</span>${s.k==="mensajes" && chatUnreadTotal() ? `<span class="count msgc">${chatUnreadTotal()}</span>` : ""}${s.k==="alertas" && alerts().length ? `<span class="count">${alerts().length}</span>` : ""}${navBadge(s.k)}</a>`).join("")}</div>`;
   }).join("");
   document.querySelectorAll('.nav a[data-page="paneldg"], .nav a[data-page="panelcm"]').forEach(a => a.classList.toggle("wknew", workNew(a.dataset.page) > 0));
@@ -9297,7 +9311,7 @@ function bumpWorkBadges(){
 }
 const pendBadge = () => { const n = inboxPend(); return n ? `<span class="count ibc" title="${n} mensajes sin contestar">+${n > 99 ? 99 : n}</span>` : ""; };
 // “Actualizar”: le pide a las funciones de Meta (en Vercel) que traigan lo último ahora, con la sesión de la persona.
-const canMetaRefresh = () => ["Admin total","Admin","CM"].includes(viewer.role) && !window.RMH?.previewing;
+const canMetaRefresh = () => ["Admin total","Admin","CM","Revisor"].includes(viewer.role) && !window.RMH?.previewing;
 const metaBusy = {};
 async function metaRefresh(what, label, okMsg){
   if (metaBusy[what]) return; metaBusy[what] = true; render();
@@ -9864,7 +9878,7 @@ const canInboxMark = () => can("inbox") && !isViewOnly();
 // Contestar un mensaje de Instagram o de Facebook desde la app (/api/responder): solo Admin total y CM, en conversaciones
 // con el id de la persona. Sale desde la cuenta de la marca; Meta deja contestar hasta 24 h después de su último mensaje.
 const ibReply = { drafts:{}, busy:null };
-const ibCanReply = c => (c.net === "IG" || c.net === "FB") && !!c.uid && ["Admin total", "CM"].includes(viewer.role) && !window.RMH?.previewing;
+const ibCanReply = c => (c.net === "IG" || c.net === "FB") && !!c.uid && ["Admin total", "CM", "Revisor"].includes(viewer.role) && !window.RMH?.previewing;
 const ibReplyBox = c => { if (!ibCanReply(c)) return ""; const k = [c.b, c.uid, c.net, c.id].join("|"), busy = ibReply.busy === k;
   return `<form class="ibreply" data-ibreply="${esc(k)}"><textarea class="base" name="t" rows="2" maxlength="1000" placeholder="Escribí la respuesta…" aria-label="Respuesta" ${busy ? "disabled" : ""}>${esc(ibReply.drafts[k] || "")}</textarea><button class="btn sm primary" type="submit" ${busy ? "disabled" : ""}>${icon("send")} ${busy ? "Enviando…" : "Enviar"}</button></form>
     <p class="note ibrnote">Sale desde la cuenta de ${esc(c.b)} en ${c.net === "FB" ? "Facebook" : "Instagram"}. Meta deja contestar hasta 24 horas después del último mensaje de la persona.</p>`; };
@@ -10145,6 +10159,7 @@ function pTend(ar){
 let navHist = [];
 const pageName = k => k === "inicio" ? "Inicio" : k === "config" ? "Configuración" : k === "mensajes" ? "Chat" : (SECTIONS.find(s => s.k === k) || {}).l || k;
 function backTo(){
+  if (isRevisor()) return null; // el Revisor solo tiene Mensajes de las cuentas
   const home = can("inicio") ? "inicio" : "dashboard", pk = panelOf(page);
   if (page === home) return null;
   // Secciones principales del menú (Panel de Trabajo, Planificación, Carga, Tendencias, Dashboard…): Volver = Inicio.
@@ -10184,7 +10199,7 @@ function render(){
   if (render.prevPage && page !== render.prevPage){ if (!render.goingBack){ navHist.push(render.prevPage); if (navHist.length > 30) navHist.shift(); } if (jobUI.ficha && jobUI.ficha === render.prevFicha) jobUI.ficha = null; if (jobUI.form && jobUI.form === render.prevForm) jobUI.form = null; }
   render.goingBack = false; render.prevPage = page; render.prevFicha = jobUI.ficha; render.prevForm = jobUI.form;
   if (page === "perfil"){ page = "config"; cfgTab = "perfil"; } // Mi Perfil se edita solo en Configuración // y el de redes, dentro de Diseño para Redes
-  if (!can(page)) page = can("dashboard") ? "dashboard" : "inicio";
+  if (!can(page)) page = can("dashboard") ? "dashboard" : can("inicio") ? "inicio" : can("inbox") ? "inbox" : "perfil";
   if (isCalPage() && (brandFilter === "Todas" || brandFilter === "Materiales")) brandFilter = myGroups()[0]; // calendarios: una marca a la vez
   if (brandFilter === "Materiales") brandFilter = "Todas"; // Cartelería ahora es su propia sección
   if (brandFilter !== "Todas" && brandFilter !== "Materiales" && !seesBrand(brandFilter)) brandFilter = "Todas";

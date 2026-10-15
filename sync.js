@@ -165,7 +165,9 @@ const RMH = (() => {
   // Pendiente de guardar: cambió desde lo último del servidor, o todavía no existe en la base (v 0: se crea).
   // De solo lectura: las escriben las funciones de Meta; la app las lee pero nunca las guarda.
   const READONLY = new Set(["s:META_FOLLOWERS", "s:META_DEMO", "s:META_POSTS", "s:META_CREATIVES", "s:META_INBOX", "s:META_REFS", "s:COMERCIAL", "s:META_DM", "s:META_DM_LOG", "s:META_IG_ACT"]);
-  const noSave = k => READONLY.has(k) || (ADMIN_WRITE.has(k) && !isAT());
+  // El Revisor (usuario de la revisión de Meta) solo guarda “contestado” y su presencia: la base tampoco le deja otra cosa.
+  const REVISOR_SAVE = new Set(["s:INBOX_DONE", "s:PRESENCE"]);
+  const noSave = k => READONLY.has(k) || (ADMIN_WRITE.has(k) && !isAT()) || (member?.role === "Revisor" && !REVISOR_SAVE.has(k));
   function dirtyKeys(){ return localKeys().filter(k => { if (noSave(k) || getLocal(k) === undefined) return false; const b = base.get(k); return !b || b.v === 0 || C(enc(getLocal(k))) !== b.json; }); }
   async function saveKey(key){
     if (noSave(key)) return;
