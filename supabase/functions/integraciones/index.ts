@@ -318,7 +318,7 @@ async function noticias(force: boolean){
 // Cada carpeta (FUENTES en comercial.ts) es una categoría: quincenales, fin de semana, Express e Imbatibles; Express e Imbatibles
 // son compartidas entre Superseis y Stock y la marca sale del nombre. Se guarda en app_state (s:COMERCIAL), una entrada por archivo
 // con su marca y categoría. Las quincenas quedan aunque después se borren de Drive (memoria del mes); de las otras categorías se
-// guardan los últimos 4 meses. Lo que parece de una categoría pero no se puede asegurar queda en “pendientes de revisión”.
+// guardan los últimos 2 meses. Lo que parece de una categoría pero no se puede asegurar queda en “pendientes de revisión”.
 // Productos que aparecen de más cuando se vuelve a leer un Excel que ya estaba (mismo código + nombre, contando repetidos).
 const claveProducto = (i: any) => `${i.cod || ""}|${i.desc || ""}`;
 function productosNuevos(antes: any[] = [], despues: any[] = []){
@@ -329,7 +329,7 @@ function productosNuevos(antes: any[] = [], despues: any[] = []){
   return keys;
 }
 const COM_LEER = 40; // archivos que se leen por vez (el resto, en la próxima revisión)
-const COM_DIAS = 120; // no se leen ofertas que terminaron hace más de esto (las carpetas guardan años de historia)
+const COM_DIAS: Record<string, number> = { quincenal: 120, otras: 60 }; // no se leen ofertas que terminaron hace más de esto (las carpetas guardan años de historia)
 const esPlanilla = (f: any) => /\.xlsx?$|\.xlsm$/i.test(f.name) || f.mime === "application/vnd.google-apps.spreadsheet";
 const ARCHIVADAS = /ANTERIOR|HISTORIC|VIEJ|ARCHIV/i; // subcarpetas con ofertas viejas: no se leen
 // Baja el Excel directo de Drive (las carpetas de ofertas se comparten con el link): es mucho más rápido que pasar por el script.
@@ -361,15 +361,19 @@ async function comercialSync(c: any, minAge: number){
     const prev = row?.data || {};
     if (prev.syncedAt && Date.now() - Date.parse(prev.syncedAt) < minAge) return { ok: true, skipped: true };
     const now = new Date().toISOString(), hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date());
-    const limite = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date(Date.now() - COM_DIAS * 864e5));
+    const dia = (dias: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date(Date.now() - dias * 864e5));
+    const limites: Record<string, string> = { quincenal: dia(COM_DIAS.quincenal), otras: dia(COM_DIAS.otras) }, limiteDe = (cat: string) => limites[cat] || limites.otras;
     const reciente = (f: any) => Date.parse(f.modified) > Date.now() - 60 * 864e5;
     const files: Record<string, any> = { ...(prev.files || {}) }, src: Record<string, any> = {}, pending: any[] = [], vistos = new Set<string>();
     // Excel que ya se intentaron leer y no se pudo: no se vuelven a bajar hasta que los cambien en Drive.
     const malos = new Map((prev.pending || []).filter((x: any) => x.read && x.v === PARSE_V).map((x: any) => [x.id, x]));
     let nuevos = 0, errores = 0, agregados = 0, faltan = 0, n = 0;
     // Las carpetas se leen todas a la vez.
-    const listas = await Promise.all(fuentes.map((fu) => scriptPost(c, sv >= 7 ? { kind: "comercial_list", folder: fu.id } : { kind: "comercial_list" }).catch((e: any) => ({ ok: false, error: e.message }))));
-    const aLeer: any[] = [];
+    const listar = (fu: any) => scriptPost(c, sv >= 7 ? { kind: "comercial_list", folder: fu.id } : { kind: "comercial_list" }).catch((e: any) => ({ ok: false, error: e.message }));
+    const listas: any[] = await Promise.all(fuentes.map(listar));
+    // La que falló se prueba otra vez, sola (el script de Google a veces no responde bien cuando le llegan varios pedidos juntos).
+    for (let k = 0; k < fuentes.length; k++) if (!listas[k].ok) listas[k] = await listar(fuentes[k]);
+    const cands: any[] = [];
     fuentes.forEach((fu, k) => {
       const l: any = listas[k];
       // Si no se puede abrir una carpeta, se avisa en la app (no se toma como vacía) y lo de esa carpeta queda como estaba.
@@ -380,6 +384,7 @@ async function comercialSync(c: any, minAge: number){
         const r = clasificar(f.name, fu);
         if (!r) continue; // otra dinámica, versión interna…
         const per: any = periodo(f.name, new Date(f.created || f.modified));
+        const limite = limiteDe(r && !("pending" in r) ? r.cat : fu.cat);
         const pend = (reason: string, read = false) => { if (reciente(f) || (per.to && per.to >= limite)) pending.push({ id: f.id, name: f.name, path: f.path || "", src: fu.id, cat: fu.cat, brand: fu.brand || "", reason, modified: f.modified, ...(read ? { read, v: PARSE_V } : {}) }); };
         if ("pending" in r){ pend(r.pending); continue; }
         if (!per.from){ pend("No tiene las fechas de la oferta en el nombre (ej.: “17 AL 19-10”)."); continue; }
@@ -388,10 +393,14 @@ async function comercialSync(c: any, minAge: number){
         if (o && o.modified === f.modified && o.v === PARSE_V){ Object.assign(o, meta, { inDrive: true }); continue; }
         if (!o && per.to < limite) continue; // oferta vieja que nunca se leyó: no hace falta
         const malo: any = malos.get(f.id); if (!o && malo?.modified === f.modified){ pend(malo.reason, true); continue; }
-        if (aLeer.length >= COM_LEER){ faltan++; if (o) o.inDrive = true; continue; }
-        aLeer.push({ f, o, meta, per, pend });
+        cands.push({ f, o, meta, per, pend });
       }
     });
+    // Primero lo vigente y lo que viene (por fecha de inicio), después lo que ya terminó (lo más reciente primero).
+    const vale = (x: any) => x.per.to >= hoy;
+    cands.sort((a, b) => (vale(b) ? 1 : 0) - (vale(a) ? 1 : 0) || (vale(a) ? a.per.from.localeCompare(b.per.from) : b.per.to.localeCompare(a.per.to)));
+    const aLeer = cands.slice(0, COM_LEER);
+    for (const x of cands.slice(COM_LEER)){ faltan++; if (x.o) x.o.inDrive = true; }
     // Los Excel se bajan y se leen de a 6 por vez.
     await deAVarios(aLeer, 6, async ({ f, o, meta, per, pend }) => {
       const bytes = await bajarOfertas(c, f);
@@ -417,8 +426,8 @@ async function comercialSync(c: any, minAge: number){
       if (src[x.src]?.ok && !vistos.has(x.id)) x.inDrive = false;
       if (x.light) delete x.light;
     }
-    // Las quincenas quedan completas siempre; de fin de semana, Express e Imbatibles, los últimos 4 meses.
-    for (const [id, x] of Object.entries(files) as [string, any][]) if (x.cat !== "quincenal" && x.to && x.to < limite) delete files[id];
+    // Las quincenas quedan completas siempre; de fin de semana, Express e Imbatibles, los últimos 2 meses.
+    for (const [id, x] of Object.entries(files) as [string, any][]) if (x.cat !== "quincenal" && x.to && x.to < limiteDe(x.cat)) delete files[id];
     // Respaldo en Drive de las quincenales de Superseis (como antes): el día que empieza la oferta (o después), una sola vez por archivo.
     let respaldos = 0;
     const canBackup = sv >= 5;
