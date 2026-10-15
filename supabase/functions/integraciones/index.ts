@@ -485,7 +485,7 @@ Deno.serve(async (req) => {
       // Comercial: "Actualizar" (cualquiera del equipo) o al abrir la página si hace rato que no se revisa.
       case "comercial_sync":
         return json(await comercialSync(c, b.force ? 15e3 : 30 * 60e3));
-      // Videos editados de CM: carpeta del mes en Drive, subida directa y link para compartir.
+      // Videos editados y archivos de CM: carpeta del mes en Drive ("Videos y archivos CM"), subida directa y link para compartir.
       case "video_folder": case "video_session": case "video_done": {
         if (!admin && m.role !== "CM") return json({ ok: false, error: "Solo CM o Admin total" }, 403);
         if (!c.sticker_url) return json({ ok: false, nokey: true, error: "Falta conectar Google Drive (Configuración → Integraciones)." });
@@ -495,9 +495,11 @@ Deno.serve(async (req) => {
           if (!/^[\w-]{10,100}$/.test(String(b.id || ""))) return json({ ok: false, error: "Video inválido" });
           return json(await scriptPost(c, { kind: "video_done", id: String(b.id) }));
         }
-        const size = Number(b.size) || 0, type = String(b.type || "");
-        if (!/^video\//.test(type)) return json({ ok: false, error: "Elegí un archivo de video" });
-        if (!size || size > 5 * 1024 ** 3) return json({ ok: false, error: "El video supera 5 GB" });
+        // any: “Archivos de CM” (videos editados, fotos, PDF, Word… en su formato original), a la misma carpeta del mes.
+        const size = Number(b.size) || 0, type = String(b.type || (b.any ? "application/octet-stream" : "")).slice(0, 120);
+        if (!b.any && !/^video\//.test(type)) return json({ ok: false, error: "Elegí un archivo de video" });
+        if (!/^[\w.+-]+\/[\w.+-]+$/.test(type)) return json({ ok: false, error: "Tipo de archivo inválido" });
+        if (!size || size > 5 * 1024 ** 3) return json({ ok: false, error: b.any ? "El archivo supera 5 GB" : "El video supera 5 GB" });
         const name = String(b.name || "video").replace(/[\\/:*?"<>|#%]+/g, "_").slice(-140);
         return json(await scriptPost(c, { kind: "video_session", name, type, size, origin: req.headers.get("origin") || "", by: m.person_id }));
       }
