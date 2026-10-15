@@ -2956,20 +2956,19 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-nact
 const reviewStage = j => j.area === "CM" ? "Revisión" : "Boceto finalizado";
 const fixStage = j => j.area === "CM" ? "Corrección" : "En corrección"; // cuando Admin total pide cambios
 const jobDone = j => j.area === "CM" ? "trabajo" : "diseño";
-// Aprobar un diseño: Admin total elige a qué CM avisarle para que lo sume a su grilla de contenido.
+// Aprobar un diseño: solo se aprueba (sin pedir links); Admin total puede elegir a qué CM avisarle para su grilla.
 function openApproveModal(j){
   if (j.area === "CM") return approveJob(j);
   document.getElementById("fixpop")?.remove();
   const p = j.post && postById(j.post), cms = CM_NAMES(), pre = p?.cm || "";
   const w = document.createElement("div"); w.id = "fixpop"; w.className = "fixpop";
   w.innerHTML = `<div class="fixbox" role="dialog" aria-modal="true" aria-labelledby="okh"><h2 id="okh">Aprobar diseño</h2><p class="note">${esc(j.title)} · ${esc(j.owner)}</p>
-    <label>Link del resultado final<input class="base" id="okLink" value="${esc(j.finalLink || j.designLink || "")}" placeholder="Drive, Canva…"></label>
     <label>¿A qué CM le avisamos para que lo sume a su grilla?<select class="base" id="okCm"><option value="">No avisar a nadie</option>${cms.map(n => `<option ${n === pre ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label>
     <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-oksend="${j.id}">✓ Aprobar</button></div></div>`;
   document.body.appendChild(w);
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-oksend]"); if (!b) return;
-  const j = jobById(b.dataset.oksend), cm = document.getElementById("okCm")?.value || "", fl = document.getElementById("okLink")?.value.trim() || ""; document.getElementById("fixpop")?.remove(); if (j){ if (fl) j.finalLink = fl; approveJob(j, cm); } });
+  const j = jobById(b.dataset.oksend), cm = document.getElementById("okCm")?.value || ""; document.getElementById("fixpop")?.remove(); if (j) approveJob(j, cm); }); // aprobar no pide ningún link (pedido de Admin total)
 function approveJob(j, cm = ""){
   j.status = j.area === "CM" ? "Programado" : "Aprobado"; if (!j.approved) j.approved = TODAY; // en Diseño, Aprobado es el final del pedido; en CM, aprobado pasa a Programado
   if (j.area !== "CM"){ if (!j.delivered) j.delivered = TODAY; const p = j.post && postById(j.post); if (p && p.status === "Pendiente") p.status = "En proceso"; }
