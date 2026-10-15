@@ -3205,7 +3205,7 @@ const cmPiece = j => j.area === "CM" && VID_TOPICS[j.piece] ? [j.piece, j.piece 
 function vidDefaults(j){ if (j.area !== "CM" || !VID_TOPICS[j.piece]) return j;
   if (j.piece === "Video para redes"){ if (!VID_FORMATS.includes(j.vfmt)) j.vfmt = VID_FORMATS[0]; } else delete j.vfmt;
   if (!VID_TOPICS[j.piece].includes(j.vtopic)) j.vtopic = VID_TOPICS[j.piece][0]; return j; }
-// Categorías y tipos de trabajo de Diseño gráfico para los pedidos nuevos (v195, pedido de Admin total). Los pedidos
+// Categorías y tipos de trabajo de Diseño gráfico para los pedidos nuevos (v196, pedido de Admin total). Los pedidos
 // cargados antes conservan su tipo (DESIGN_TYPES) y se siguen trabajando igual.
 const DG_CATS = {
   "Diseño digital":["Post RRSS","Historia","Carrusel","Banner web/app","Pieza para WhatsApp/Mailing","KV de campaña","Plantilla editable","Folleto de ofertas digital","Catálogo/revista digital"],
@@ -5739,7 +5739,7 @@ function jobForm(){
   if (!f.repDays) f.repDays = [...(f.job.rep?.days || [])];
   const j = f.job, area = j.area;
   // Redes Sociales y Cartelería tienen cada una sus tipos de pieza.
-  // Diseño: categoría y tipo de trabajo (v195). Un pedido de antes con un tipo que ya no está conserva su tipo.
+  // Diseño: categoría y tipo de trabajo (v196). Un pedido de antes con un tipo que ya no está conserva su tipo.
   const sec = jobSection(j), dgCat = area === "CM" ? null : dgCatOf(j);
   const types = area === "CM" ? [...new Set([...CM_TYPES, j.piece].filter(Boolean))] : dgCat ? [...new Set([...DG_CATS[dgCat], j.piece].filter(Boolean))] : [j.piece].filter(Boolean);
   const opt = (list, v) => list.map(x => `<option ${x === v ? "selected" : ""}>${x}</option>`).join("");
@@ -9595,6 +9595,7 @@ const comState = f => TODAY < f.from ? "prox" : TODAY > f.to ? "fin" : "vig";
 const COM_FOLDER = { quincenal:{ Superseis:"1ciqZuhAtcIa-_OYYutd-8Zq8CTPZS-5N", Stock:"1RIqkeQ7iR22JX_j3k5JqZXdMsPl0x7eP" },
   fds:{ Superseis:"16e3im1-9kYWZ7rZixRtRPUelHyDSoxxy", Stock:"1iHSUvW6WbZO2WDSZ0o3VtS345p48aAdR", Delimarket:"1NnZGuw3iWQaWNqz5axsE4zWlUAW-sXhA" },
   express:{ Superseis:"14b8mp9dItU2SmoJUbiaCNc9g3vBI3xal", Stock:"14b8mp9dItU2SmoJUbiaCNc9g3vBI3xal" }, imbatibles:{ Superseis:"1wnr3i0WNIUOuOEILUg5z_LWdmHd1A79W", Stock:"1wnr3i0WNIUOuOEILUg5z_LWdmHd1A79W" } };
+const COM_ROOT = "1Tlj4ITfLdxtKZ8CuciI0e7UDn_em6rek"; // «OFERTAS DIVISION»: la carpeta general con todas las carpetas de ofertas (botón de arriba)
 const COM_BRANDS = [["Superseis", ["quincenal", "fds", "express", "imbatibles"]], ["Stock", ["quincenal", "fds", "express", "imbatibles"]], ["Delimarket", ["fds"]]];
 const COM_CAT = { quincenal:["Ofertas quincenales", "calendar-range"], fds:["Fin de semana", "sun"], express:["Express", "zap"], imbatibles:["Imbatibles", "trophy"] };
 const comCatName = (b, c) => c === "express" ? `${b} Express` : COM_CAT[c][0];
@@ -9764,9 +9765,8 @@ function pComercial(){
   const per = comPeriods();
   if (!comUI.auto && !window.RMH?.previewing){ comUI.auto = true; if (!COMERCIAL.syncedAt || Date.now() - Date.parse(COMERCIAL.syncedAt) > 3 * 3600e3) setTimeout(() => comSync(false), 0); }
   const f0 = per.find(x => x.id === comUI.id) || per[0];
-  const [cb, cc] = comUI.cat.split("|");
   const head = `<div class="comhero">${COM_ART}<div class="grow"><h1>Ofertas de Comercial</h1><p>Todas las ofertas de Superseis, Stock y Delimarket en un solo lugar.</p></div>
-    <div class="comacts">${f0 ? `<button class="btn" type="button" data-comxls>${icon("download")} Excel</button><button class="btn" type="button" data-compdf>${icon("file-text")} PDF</button>` : ""}<a class="btn" href="${comFolderUrl()}" target="_blank" rel="noopener" title="Abre la carpeta original de Drive de ${esc(comCatName(cb, cc))}${cc === "express" ? "" : " de " + cb}">${icon("folder-open")} Carpeta de Comercial (Drive)</a><button class="btn" type="button" data-comsync ${comUI.busy ? "disabled" : ""}>${icon("refresh-cw")} ${comUI.busy ? "Revisando…" : "Actualizar"}</button></div></div>` + comHub();
+    <div class="comacts">${f0 ? `<button class="btn" type="button" data-comxls>${icon("download")} Excel</button><button class="btn" type="button" data-compdf>${icon("file-text")} PDF</button>` : ""}<a class="btn" href="https://drive.google.com/drive/folders/${COM_ROOT}" target="_blank" rel="noopener" title="Abre la carpeta general de Drive («OFERTAS DIVISION») con las carpetas de todas las ofertas">${icon("folder-open")} Carpeta de Comercial (Drive)</a><button class="btn" type="button" data-comsync ${comUI.busy ? "disabled" : ""}>${icon("refresh-cw")} ${comUI.busy ? "Revisando…" : "Actualizar"}</button></div></div>` + comHub();
   if (!per.length) return head + `<div class="panel"><div class="empty comempty">${comEmptyMsg(comUI.cat)}</div>${comPending(comUI.cat)}</div>`;
   const f = f0; comUI.id = f.id;
   const chips = per.slice(0, 4), older = per.slice(4);
