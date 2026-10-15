@@ -373,7 +373,7 @@ async function comercialSync(c: any, minAge: number){
     const listas: any[] = await Promise.all(fuentes.map(listar));
     // La que falló se prueba otra vez, sola (el script de Google a veces no responde bien cuando le llegan varios pedidos juntos).
     for (let k = 0; k < fuentes.length; k++) if (!listas[k].ok) listas[k] = await listar(fuentes[k]);
-    const cands: any[] = [];
+    const cands: any[] = [], recon: any[] = [];
     fuentes.forEach((fu, k) => {
       const l: any = listas[k];
       // Si no se puede abrir una carpeta, se avisa en la app (no se toma como vacía) y lo de esa carpeta queda como estaba.
@@ -388,14 +388,25 @@ async function comercialSync(c: any, minAge: number){
         const pend = (reason: string, read = false) => { if (reciente(f) || (per.to && per.to >= limite)) pending.push({ id: f.id, name: f.name, path: f.path || "", src: fu.id, cat: fu.cat, brand: fu.brand || "", reason, modified: f.modified, ...(read ? { read, v: PARSE_V } : {}) }); };
         if ("pending" in r){ pend(r.pending); continue; }
         if (!per.from){ pend("No tiene las fechas de la oferta en el nombre (ej.: “17 AL 19-10”)."); continue; }
-        vistos.add(f.id); src[fu.id].n++; n++;
-        const o = files[f.id], meta = { brand: r.brand, cat: r.cat, src: fu.id, path: f.path || "" };
-        if (o && o.modified === f.modified && o.v === PARSE_V){ Object.assign(o, meta, { inDrive: true }); continue; }
-        if (!o && per.to < limite) continue; // oferta vieja que nunca se leyó: no hace falta
-        const malo: any = malos.get(f.id); if (!o && malo?.modified === f.modified){ pend(malo.reason, true); continue; }
-        cands.push({ f, o, meta, per, pend });
+        recon.push({ f, fu, r, per, limite, pend });
       }
     });
+    // Quincena con Excel “FINAL” (Stock): se usa ese y no el de “PUBLICADAS” de las mismas fechas. El PUBLICADAS se deja de leer
+    // y se borra cuando la FINAL ya está leída (si la FINAL no se pudo leer, queda el PUBLICADAS, para no quedar sin ofertas).
+    const quincena = (b: string, cat: string, p: any) => `${b}|${cat}|${p.from}|${p.to}`;
+    const conFinal = new Set(recon.filter((x) => x.r.final).map((x) => quincena(x.r.brand, x.r.cat, x.per)));
+    const finalLeida = (q: string) => (Object.values(files) as any[]).some((x) => x.final && x.v === PARSE_V && quincena(x.brand, x.cat, x) === q);
+    const reemplazados = new Map<string, string>();
+    for (const { f, fu, r, per, limite, pend } of recon){
+      vistos.add(f.id); src[fu.id].n++; n++;
+      const o = files[f.id], meta = { brand: r.brand, cat: r.cat, src: fu.id, path: f.path || "", ...(r.final ? { final: true } : {}) };
+      const q = quincena(r.brand, r.cat, per);
+      if (!r.final && conFinal.has(q)){ reemplazados.set(f.id, q); if (finalLeida(q)){ if (o) Object.assign(o, meta, { inDrive: true }); continue; } }
+      if (o && o.modified === f.modified && o.v === PARSE_V){ Object.assign(o, meta, { inDrive: true }); continue; }
+      if (!o && per.to < limite) continue; // oferta vieja que nunca se leyó: no hace falta
+      const malo: any = malos.get(f.id); if (!o && malo?.modified === f.modified){ pend(malo.reason, true); continue; }
+      cands.push({ f, o, meta, per, pend });
+    }
     // Primero lo vigente y lo que viene (por fecha de inicio), después lo que ya terminó (lo más reciente primero).
     const vale = (x: any) => x.per.to >= hoy;
     cands.sort((a, b) => (vale(b) ? 1 : 0) - (vale(a) ? 1 : 0) || (vale(a) ? a.per.from.localeCompare(b.per.from) : b.per.to.localeCompare(a.per.to)));
@@ -426,6 +437,7 @@ async function comercialSync(c: any, minAge: number){
       if (src[x.src]?.ok && !vistos.has(x.id)) x.inDrive = false;
       if (x.light) delete x.light;
     }
+    for (const [id, q] of reemplazados) if (finalLeida(q)) delete files[id];
     // Las quincenas quedan completas siempre; de fin de semana, Express e Imbatibles, los últimos 2 meses.
     for (const [id, x] of Object.entries(files) as [string, any][]) if (x.cat !== "quincenal" && x.to && x.to < limiteDe(x.cat)) delete files[id];
     // Respaldo en Drive de las quincenales de Superseis (como antes): el día que empieza la oferta (o después), una sola vez por archivo.

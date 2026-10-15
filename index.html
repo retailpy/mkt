@@ -632,6 +632,14 @@ b.comf{display:block}.comfw{white-space:nowrap}b.comf svg{display:inline;vertica
 .cofm{display:flex;flex-direction:column;align-items:flex-start;min-width:0}.cofm b{font-size:14.5px;font-weight:600;color:var(--ink);overflow-wrap:anywhere}
 .cofn,.cofo,.cofd2{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.cofn{font-size:14px;color:#cbd5e1}.cofo{font-size:16px;font-weight:800;color:#fbbf24}
 .cofd{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:2px 4px 8px;font-size:13px}.cofd dt{color:var(--muted)}.cofd dd{margin:0}
+/* Novedad del Excel FINAL (nuevo en el folleto / se mantiene) y variantes del mismo cuadro del folleto */
+.cofh.nv,.cofb.nv{grid-template-columns:minmax(0,1fr) 112px 120px 120px 90px}
+.cofv{white-space:nowrap}.cnov{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;border:1px solid}.cnov small{display:none;font-weight:400}
+.cnov.n-nuevo{color:#67e8f9;border-color:rgba(103,232,249,.5);background:rgba(103,232,249,.08)}.cnov.n-mant{color:#cbd5e1;border-color:rgba(148,163,184,.45)}.cnov.n-x{color:var(--muted);border-color:var(--line)}
+.cvars{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--muted);margin-top:4px}.cvars svg{width:13px;height:13px}.cvars.dif{color:#fbbf24}
+.cofvar{margin:0 4px 10px;font-size:13px}.cofvar b{font-weight:700}.cofvar ul{margin:4px 0 0;padding:0;list-style:none;display:grid;gap:3px}.cofvar li{display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}.cofvar li small{color:var(--muted)}.cofvar li em{font-style:normal;font-weight:700;color:#fbbf24}
+.k-nov b{color:#67e8f9}
+@media (max-width:640px){.cofb.nv{grid-template-columns:1fr 1fr 1fr}.cofv{grid-column:1/-1}.cofv::before{display:none!important}.cnov small{display:inline}}
 .cof.open{background:rgba(148,163,184,.05)}.cof .chips{margin:0 4px 10px}
 @media (max-width:640px){.cst b{font-size:17px}.csi{width:40px;height:40px}.csi svg{width:22px;height:22px}.cofh{display:none}.cofr{align-items:flex-start;position:relative}.cofcp{margin-top:8px}.cofr>.cofcp{position:absolute;top:4px;right:0;margin:0}.cofm{padding-right:38px}.cofb{grid-template-columns:1fr 1fr 1fr;gap:4px 10px}.cofm{grid-column:1/-1}.comart{display:none}.comgrp,.comlist{padding:10px}
   .cofn,.cofo,.cofd2{text-align:left}.cofn::before,.cofo::before,.cofd2::before{content:attr(data-l);display:block;font-size:10.5px;font-weight:400;color:var(--muted)}}
@@ -1898,7 +1906,7 @@ html.light .gname{background-image:linear-gradient(90deg,#0891b2,#2563eb)}
 .noanim .lbar{animation:none}
 .lname{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;max-width:100%}
 .lname .avatar{width:30px;height:30px;border-radius:10px;font-size:11px}
-.lname b{color:#fff;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.lname b{color:#fff;font-size:13.5px;line-height:1.15;overflow-wrap:anywhere;max-width:100%} /* nombre completo: si no entra, en 2 renglones (sin cortarlo) */
 .lname span{font-size:10.5px;font-weight:700;white-space:nowrap}
 .lglabel{text-align:center;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#67e8f9;margin-top:8px;padding-top:6px;border-top:1px solid var(--line-2)}
 .llegend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--faint)}
@@ -3150,7 +3158,7 @@ function bdayParty(){
   const cols = ["#f43f5e","#f59e0b","#22d3ee","#a78bfa","#34d399","#f472b6","#facc15","#60a5fa"];
   const conf = Array.from({ length:38 }, (_, i) => `<i style="--x:${(i * 37 + 11) % 100}%;--d:${((i * 53) % 30) / 10}s;--t:${(3.2 + ((i * 17) % 18) / 10).toFixed(1)}s;--c:${cols[i % cols.length]};--r:${(i * 47) % 360}deg;--w:${6 + (i % 3) * 2}px"></i>`).join("");
   const mine = hoy.some(pp => pp.id === viewer.id), names = hoy.map(pp => esc(pp.name));
-  const title = mine ? `¡Feliz cumpleaños, ${esc(nickOf(viewer))}! 🎂` : `¡Hoy ${hoy.length > 1 ? "cumplen" : "cumple"} años ${names.length > 1 ? names.slice(0, -1).join(", ") + " y " + names[names.length - 1] : names[0]}! 🎉`;
+  const title = mine ? `¡Feliz cumpleaños, ${esc(apodoOf(viewer))}! 🎂` : `¡Hoy ${hoy.length > 1 ? "cumplen" : "cumple"} años ${names.length > 1 ? names.slice(0, -1).join(", ") + " y " + names[names.length - 1] : names[0]}! 🎉`;
   const sub = mine ? "Todo el equipo de Retail MKT te desea un día increíble." : `${hoy.length === 1 ? esc(hoy[0].cargo || hoy[0].role) + " · " : ""}${bdayLabel(hoy[0].birthday)} · ¡No te olvides de saludar!`;
   return `<div class="panel bdparty" role="status" aria-label="Cumpleaños de hoy"><div class="bdconf" aria-hidden="true">${conf}</div><div class="bdhorn" aria-hidden="true">${icon("party-popper")}</div><div class="bdtxt"><b>${title}</b><span>${sub}</span></div></div>`;
 }
@@ -3745,7 +3753,7 @@ function postsAuto(){
 }
 // Bienvenida (provisoria): pantalla limpia con una mano que saluda y el porqué de la app. Edición beta.
 function pBienvenida(){
-  const n = viewer && viewer.name ? firstName(viewer.name) : "";
+  const n = viewer && viewer.name ? apodoOf(viewer) : "";
   return `<section class="welcome">
     <svg class="wv-hand" viewBox="0 0 160 160" role="img" aria-label="Una mano que saluda">
       <circle cx="80" cy="84" r="62" class="wv-halo"/>
@@ -3821,7 +3829,7 @@ function staffDrawer(){
     <div class="drawer-h"><div><h2 style="margin:0">Editar datos</h2><div class="note">${esc(pp.name)} · ${pp.role}</div></div><button class="btn ib" data-staffclose aria-label="Cerrar">${icon("x")}</button></div>
     <form id="staffForm" class="pform drawer-b" style="grid-template-columns:1fr 1fr">
       <label style="grid-column:1/-1">Nombre completo *<input class="base" id="sfName" required maxlength="80" value="${esc(pp.name)}"></label>
-      <label>¿Cómo le dicen?<input class="base" id="sfNick" maxlength="30" value="${esc(pp.nick || "")}" placeholder="Ej.: ${esc(pp.name.split(" ")[0])}"><span class="note">Así la saluda la app (“Buen día, …”) y así aparece en tableros y calendarios. Vacío = primer nombre.</span></label>
+      <label>¿Cómo le dicen?<input class="base" id="sfNick" maxlength="30" value="${esc(pp.nick || "")}" placeholder="Ej.: ${esc(pp.name.split(" ")[0])}"><span class="note">Solo para saludarla cuando entra (“Buen día, …”). En tableros, carga de trabajo, informes y calendarios se ve su nombre completo. Vacío = primer nombre.</span></label>
       <label>Puesto<input class="base" id="sfCargo" maxlength="60" value="${esc(pp.cargo || "")}" placeholder="Ej.: Diseñador gráfico"></label>
       <label>Usuario de ingreso<input class="base" id="sfUser" maxlength="30" value="${esc(pp.username || "")}" placeholder="Ej.: Alesme" autocapitalize="none" autocorrect="off" spellcheck="false"><span class="note">Con este usuario entra a la app (no importan las mayúsculas).</span></label>
       <label>Teléfono corporativo<input class="base" id="sfWork" value="${esc(pp.workPhone || "")}" placeholder="(021) 000 000 o 0981 000 000"></label>
@@ -3969,9 +3977,9 @@ let page = "dashboard";
 const START_PAGE = decodeURIComponent(location.hash.slice(1)); // la sección que estaba abierta antes de actualizar
 // Saludo según la hora de quien se conecta: 05–11 buen día, 12–19 buenas tardes, 20–04 buenas noches.
 const greeting = () => { const h = +new Intl.DateTimeFormat("en-US", { timeZone:"America/Asuncion", hour:"numeric", hour12:false }).format(new Date()) % 24; /* hora de Paraguay */ return h >= 5 && h < 12 ? "Buen día" : h >= 12 && h < 20 ? "Buenas tardes" : "Buenas noches"; };
-const hello = () => `${greeting()}, ${nickOf(viewer)}`;
+const hello = () => `${greeting()}, ${apodoOf(viewer)}`;
 const gname = n => `<span class="gname">${esc(n)}</span>`;
-const helloHTML = () => `${greeting()}, ${gname(nickOf(viewer))}`;
+const helloHTML = () => `${greeting()}, ${gname(apodoOf(viewer))}`;
 let brandFilter = "Todas";
 let redesBrand = "Superseis";
 
@@ -3989,8 +3997,12 @@ const postPill = p => isClosed() && !isDone(p) ? pill("No cumplido", "#ef4444") 
 // Cómo quiere que la llamen: lo elige cada persona en Mi perfil; si no eligió, el primer nombre.
 // Con tener un email alcanza: el de la empresa o, si no tiene, el personal.
 const mainEmail = pp => pp.email || pp.personalEmail || "";
-const nickOf = pp => pp ? (pp.nick || pp.name.split(" ")[0]) : "";
-const firstName = n => { const pp = PEOPLE.find(x => x.name === n); return pp ? nickOf(pp) : String(n || "").split(" ")[0]; };
+// El apodo es solo para saludar a quien entra (“Buen día, Fabián”, la frase del día, su cumpleaños). En todo lo demás
+// (tableros, carga de trabajo, informes, calendarios, chat, avisos) va el nombre completo: “Fabián Olmedo”.
+// nickOf y firstName quedan con su nombre de antes, pero ahora devuelven el nombre completo.
+const apodoOf = pp => pp ? (pp.nick || pp.name.split(" ")[0]) : "";
+const nickOf = pp => pp ? pp.name : "";
+const firstName = n => { const pp = PEOPLE.find(x => x.name === n); return pp ? pp.name : String(n || ""); };
 const pill = (txt, c) => `<span class="pill" style="--c:${c};--t:${["#334155","#3b82f6","#ef4444","#64748b","#475569"].includes(c) ? "#f1f5f9" : "#020617"}">${esc(txt)}</span>`;
 const brandTag = b => `<span class="brand" style="--c:${BRANDS[b]}">${esc(b)}</span>`;
 // “Varias marcas”: la persona trabaja para todas las marcas, según la necesidad de cada momento.
@@ -4476,7 +4488,7 @@ function dailyPhrase(){
   const list = z ? PHRASES_LOAD[z] : PHRASES[viewer.role === "Diseñador" ? "Diseñador" : viewer.role === "CM" ? "CM" : "Admin"];
   const key = viewer.id + "|" + render.visit + "|" + z;
   if (phraseNow.key !== key){ let t; do { t = list[Math.floor(Math.random() * list.length)]; } while (list.length > 1 && t === phraseNow.text); phraseNow = { key, text:t }; }
-  return phraseNow.text.replace("{n}", nickOf(viewer));
+  return phraseNow.text.replace("{n}", apodoOf(viewer));
 }
 // ---------- Hora y clima actual de Asunción, Paraguay ----------
 // Siempre Asunción (no la ubicación de cada persona) y siempre la hora oficial de Paraguay (zona America/Asuncion),
@@ -4598,7 +4610,7 @@ let panelDoneAll = false;
 document.addEventListener("click", e => { if (e.target.closest("[data-paneldone]")){ panelDoneAll = !panelDoneAll; render(); } });
 document.addEventListener("click", e => { if (e.target.closest("[data-panelall]")){ panelAll = !panelAll; render(); } });
 function pInicio(){
-  const first = nickOf(viewer);
+  const first = apodoOf(viewer);
   if (isDesigner()){
     const mine = jobs.filter(j => j.owner === viewer.name && !isFin(j)).sort((a,b) => a.due.localeCompare(b.due));
     const late = mine.filter(j => daysTo(j.due) < 0).length;
@@ -7023,14 +7035,14 @@ document.addEventListener("click", async e => {
     for (const pp of tg){
       const pass = genPass(), email = mainEmail(pp).toLowerCase();
       const r = await RMH.admin({ action:"set_password", person_id:pp.id, email, role:pp.role, password:pass, username:pp.username || undefined });
-      if (r && r.ok){ pp.mustChange = true; pp.tempPass = pass; out.push({ id:pp.id, name:pp.name, nick:nickOf(pp), email, user:pp.username || "", pass, wa:waPhone(pp), ok:true }); }
+      if (r && r.ok){ pp.mustChange = true; pp.tempPass = pass; out.push({ id:pp.id, name:pp.name, nick:apodoOf(pp), email, user:pp.username || "", pass, wa:waPhone(pp), ok:true }); }
       else out.push({ id:pp.id, name:pp.name, email, user:pp.username || "", ok:false, err:"No se pudo crear: revisá el usuario de ingreso en Team MKT" });
     }
     userUI.accBusy = false; userUI.access = out; resetRequests = resetRequests.filter(id => !out.some(x => x.ok && x.id === id));
     refreshPeople(); render(); accessRefresh();
     toast(`Listo: ${out.filter(x => x.ok).length} contraseñas provisorias generadas.`); return; }
   const m = e.target.closest("[data-accmsg]"); if (m){ const x = (userUI.access || []).find(y => y.id === m.dataset.accmsg); if (!x) return;
-    try { await navigator.clipboard.writeText(accessMsg(x)); toast(`Mensaje para ${x.nick} copiado: pegalo en WhatsApp.`); } catch { toast("No se pudo copiar."); } return; }
+    try { await navigator.clipboard.writeText(accessMsg(x)); toast(`Mensaje para ${x.name} copiado: pegalo en WhatsApp.`); } catch { toast("No se pudo copiar."); } return; }
   if (e.target.closest("[data-accdone]")){ userUI.access = null; render(); }
 });
 // Hoja de permisos: una tarjeta por persona con lo que ve, agrupado por sección. Un toque prende o apaga cada cosa.
@@ -7600,7 +7612,7 @@ function markDelivered(){
     if (last && (ch.got?.[viewer.id] || "") < last) ch.got = { ...(ch.got || {}), [viewer.id]:last }; });
 }
 // En el chat cada persona aparece con el nombre que eligió en su perfil (“¿Cómo querés que te llamen?”); si no eligió, el nombre completo.
-const chatName = pp => (pp?.nick || "").trim() || pp?.name || "";
+const chatName = pp => pp?.name || "";
 function findMsg(c, mid){ return c.msgs.find((m, i) => (m.id || `${c.kind}${i}`) === mid); }
 function pMensajes(){
   const c = chatUI.open ? chatConv() : null; // se elige la conversación: así lo no leído queda marcado hasta abrirla
@@ -9045,7 +9057,7 @@ function pPerfil(){
       <p class="note" style="margin:8px 0 0">Se recorta cuadrada y se achica sola. JPG, PNG o WebP.</p>
       <h2 style="margin-top:18px" class="pmh">${pmIco("id-card")}Tus datos para Team MKT</h2>
       <form id="meForm" class="pform" style="grid-template-columns:1fr">
-        <label>¿Cómo querés que te llamen?<input class="base" id="meNick" maxlength="30" value="${esc(v.nick || "")}" placeholder="Ej.: ${esc(v.name.split(" ")[0])}${v.name.split(" ").length > 1 ? ", " + esc(v.name.split(" ")[1]) : ""} o un apodo"><span class="note">Así te saluda la app y así aparecés en tableros, calendarios y la Vista TV. Si lo dejás vacío, usamos tu primer nombre.</span></label>
+        <label>¿Cómo querés que te llamen?<input class="base" id="meNick" maxlength="30" value="${esc(v.nick || "")}" placeholder="Ej.: ${esc(v.name.split(" ")[0])}${v.name.split(" ").length > 1 ? ", " + esc(v.name.split(" ")[1]) : ""} o un apodo"><span class="note">Solo para saludarte cuando entrás (“Buen día, …”). En tableros, carga de trabajo, informes y calendarios se ve tu nombre completo. Si lo dejás vacío, te saludamos con tu primer nombre.</span></label>
         <label>Email de la empresa<input class="base" type="email" id="meMail" value="${esc(v.email || "")}" placeholder="Ej.: nombre@retail.com.py" autocomplete="email"><span class="note">Es el de contacto. Para entrar a la app seguís usando tu usuario de ingreso${v.username ? ` (${esc(v.username)})` : ""}.</span></label>
         <label>Cargo<input class="base" id="meCargo" maxlength="60" value="${esc(v.cargo || "")}" placeholder="Ej.: Diseñadora gráfica"></label>
         <label>Teléfono corporativo<input class="base" id="meWork" value="${esc(v.workPhone || "")}" placeholder="(021) 000 000 o 0981 000 000"></label>
@@ -9586,7 +9598,7 @@ const newsTag = b => `<span class="ntag" style="--c:${BRANDS[b] || "#94a3b8"}">$
 // ---------- Comercial: las ofertas de Superseis, Stock y Delimarket (quincenales, fin de semana, Express e Imbatibles) ----------
 // El servidor lee los Excel "PUBLICADAS" de la carpeta de Comercial en Drive (Actualizar, al abrir y en la rutina diaria).
 // Cada quincena queda guardada aunque después borren el archivo (memoria del mes).
-let comUI = { cat:"Superseis|quincenal", id:null, q:"", sec:"Todas", top:false, sheet:0, open:null, busy:false, auto:false, onlyNew:false, pg:{} }; // cat: supermercado|categoría elegidos // pg: orden y búsqueda de cada página ({ o:"desc"|"asc", q })
+let comUI = { cat:"Superseis|quincenal", id:null, q:"", sec:"Todas", top:false, sheet:0, open:null, busy:false, auto:false, onlyNew:false, nov:"", pg:{} }; // cat: supermercado|categoría elegidos // pg: orden y búsqueda de cada página ({ o:"desc"|"asc", q })
 const comState = f => TODAY < f.from ? "prox" : TODAY > f.to ? "fin" : "vig";
 // Orden: primero la quincena vigente, después la que sigue, y así; al final las que ya terminaron (la más reciente primero).
 // Cada mes muestra sus quincenas (las que caen en el mes elegido arriba; la que cruza de un mes al otro sale en los dos).
@@ -9601,7 +9613,9 @@ const COM_CAT = { quincenal:["Ofertas quincenales", "calendar-range"], fds:["Fin
 const comCatName = (b, c) => c === "express" ? `${b} Express` : COM_CAT[c][0];
 const comKeyOf = f => (f.brand || "Superseis") + "|" + (f.cat || "quincenal"); // las de antes no tienen categoría: son las quincenales de Superseis
 const comFolderUrl = (key = comUI.cat) => { const [b, c] = key.split("|"); return "https://drive.google.com/drive/folders/" + (COM_FOLDER[c]?.[b] || COM_FOLDER.quincenal.Superseis); };
-const comAllOf = key => Object.values(COMERCIAL.files || {}).filter(f => f.from && f.to && comKeyOf(f) === key);
+// Si de una quincena está la versión “FINAL” del Excel (Stock), se muestra esa y no la de “PUBLICADAS” de las mismas fechas.
+const comAllOf = key => { const l = Object.values(COMERCIAL.files || {}).filter(f => f.from && f.to && comKeyOf(f) === key), fin = new Set(l.filter(f => f.final).map(f => f.from + "|" + f.to));
+  return l.filter(f => f.final || !fin.has(f.from + "|" + f.to)); };
 const comAll = () => comAllOf(comUI.cat);
 const comPeriods = () => { const r = { vig:0, prox:1, fin:2 }; return comAll().filter(f => f.from.slice(0, 7) <= MONTH && f.to.slice(0, 7) >= MONTH)
   .sort((a, b) => r[comState(a)] - r[comState(b)] || (comState(a) === "fin" ? b.from.localeCompare(a.from) : a.from.localeCompare(b.from))); };
@@ -9633,7 +9647,7 @@ const comPre = s => String(s || "").toLowerCase().replace(/\s+/g, " ").replace(/
 const comNice = s => comPre(s).split(" ").map(comFix).map((w, i) => COM_UP.has(w) ? w.toUpperCase() : i && COM_LOW.has(w) ? w : w.replace(/^(\p{L})/u, c => c.toUpperCase())).join(" ")
   .replace(/(\d)\s?(kg|gr|g|ml|lt|l|cc|cm|mm|m|un|u)\b/gi, (m, n, u) => n + u.toLowerCase());
 const comSent = s => { const y = comPre(s).split(" ").map(comFix).join(" ").replace(/\bfyv\b/g, "frutas y verduras"); return y.charAt(0).toUpperCase() + y.slice(1); };
-const comSec = s => { const t = String(s || "").trim(); if (!t) return "Otras ofertas"; const m = t.match(/^p[aá]g(?:ina)?\.?\s*(\d+)\s*[:.\-]?\s*(.*)$/i);
+const comSec = s => { const t = String(s || "").trim(); if (!t) return "Otras ofertas"; if (/^[A-Z]{1,2}$/.test(t)) return t; /* siglas: “NT” */ const m = t.match(/^p[aá]g(?:ina)?\.?\s*(\d+)\s*[:.\-]?\s*(.*)$/i);
   return m ? `Página ${m[1]}${m[2] ? " · " + comSent(m[2]) : ""}` : comSent(t); };
 // Ícono de cada página o sector del folleto (íconos de la app, simples).
 const COM_ICO = [[/rotiser|confiter|panader|pan\b/, "croissant"], [/carne|carnic|vacun|cerdo|pollo|parrill/, "beef"], [/fruta|verdura|fyv|hortal/, "apple"], [/queso|fiambre|embutid|lacte|leche|yogur/, "milk"],
@@ -9642,6 +9656,15 @@ const COM_ICO = [[/rotiser|confiter|panader|pan\b/, "croissant"], [/carne|carnic
   [/halloween|fiesta|oktober|navidad/, "party-popper"], [/tapa/, "star"]];
 const comIco = s => { const t = rclFold(s); return (COM_ICO.find(([re]) => re.test(t)) || [0, "tag"])[1]; };
 const comOfTxt = it => typeof it.of === "number" ? gs(it.of) : comNice(it.of || "");
+// Nombre del producto: el texto del folleto tal cual (columna “DESCRIPCION FOLLETO” del Excel FINAL) o la descripción del sistema, prolija.
+const comName = i => i.fol ? String(i.desc || "").replace(/\s+/g, " ").trim() : comNice(i.desc);
+// Novedad (Excel FINAL): “Nuevo” en el folleto o “Se mantiene” de la quincena anterior. No es lo mismo que el aviso de productos recién cargados.
+const comHasNov = f => (f?.sheets || []).some(s => s.items.some(i => i.nov));
+const comNov = i => i.nov ? `<span class="cnov n-${i.nov === "Nuevo" ? "nuevo" : i.nov === "Se mantiene" ? "mant" : "x"}"><small>Novedad: </small>${esc(i.nov)}</span>` : "";
+// Variantes (filas del Excel sin texto de folleto, que van en el mismo cuadro): ¿alguna tiene otro precio?
+const comVarDif = i => (i.vars || []).some(v => v.of !== i.of || v.pvp !== i.pvp);
+const comVarOf = v => typeof v.of === "number" ? gs(v.of) : comNice(v.of || "");
+const comFind = i => [comName(i), i.desc, i.dsis, i.sector, i.prov, i.cod, i.mat, i.sub, i.nov, ...(i.vars || []).flatMap(v => [v.d, v.cod, v.mat])].join(" ");
 const comSheetName = (x, k, f) => /^PUBLICADAS$/i.test(x.name) || (k === 0 && (f?.cat || "quincenal") === "quincenal") ? "Folleto" : comNice(x.name);
 const comBrand = f => f.brand || "Superseis";
 const comLabel = f => { const b = comBrand(f); return { fds:`fin de semana ${b}`, express:`${b} Express`, imbatibles:`Imbatibles ${b}` }[f.cat] || b; };
@@ -9675,9 +9698,12 @@ function comEmptyMsg(key){
 }
 const COM_FLAG_TXT = { "Tapa":"Tapa", "Destacar":"Destacado", "Zócalo redes":"Redes", "Publicada":"Publicada", "Confirmado":"Confirmado" };
 const comFlag = it => it.flag ? `<span class="cflag f-${rclFold(COM_FLAG_TXT[it.flag] || "x").replace(/\W/g, "")}">${esc(COM_FLAG_TXT[it.flag] || comNice(it.flag))}</span>` : "";
-const COM_COLS = [["Página / sección", i => comSec(i.sec || i.sector)], ["Producto", i => comNice(i.desc)], ["Precio normal", i => typeof i.pvp === "number" ? i.pvp : ""], ["Precio oferta", i => typeof i.of === "number" ? i.of : comNice(i.of)],
+const COM_COLS = [["Página / sección", i => comSec(i.sec || i.sector)], ["Producto", i => comName(i)], ["Novedad", i => i.nov || "", i => i.nov], ["Precio normal", i => typeof i.pvp === "number" ? i.pvp : ""], ["Precio oferta", i => typeof i.of === "number" ? i.of : comNice(i.of)],
   ["Descuento", i => comPct(i)], ["Destacado", i => COM_FLAG_TXT[i.flag] || i.flag || ""], ["Sector", i => comSent(i.sector)], ["Código", i => i.cod || ""], ["Material", i => i.mat || ""], ["Temática", i => comSent(i.tem)],
-  ["Reconocimiento", i => i.rec ?? ""], ["Oferta negociada", i => i.neg || ""], ["Proveedor", i => comNice(i.prov)], ["N.° proveedor", i => i.nprov || ""], ["Subcategoría", i => comSent(i.sub)]];
+  ["Reconocimiento", i => i.rec ?? ""], ["Oferta negociada", i => i.neg || ""], ["Proveedor", i => comNice(i.prov)], ["N.° proveedor", i => i.nprov || ""], ["Subcategoría", i => comSent(i.sub)],
+  ["Descripción del sistema", i => i.dsis ? comNice(i.dsis) : "", i => i.dsis], ["Variantes", i => (i.vars || []).map(v => `${comNice(v.d)}${v.cod ? " (" + v.cod + ")" : ""}${v.of !== i.of || v.pvp !== i.pvp ? " · " + (typeof v.pvp === "number" ? gs(v.pvp) + " → " : "") + comVarOf(v) : ""}`).join(" | "), i => i.vars?.length]];
+// Columnas que van en el Excel: las de siempre y las del Excel FINAL solo si ese archivo las tiene.
+const comCols = f => COM_COLS.filter(c => !c[2] || (f.sheets || []).some(s => s.items.some(c[2])));
 // Ilustración de la cabecera: una etiqueta de oferta con el carrito (azul de la app y amarillo de oferta).
 const COM_ART = `<svg class="comart" viewBox="0 0 120 84" aria-hidden="true"><rect x="6" y="10" width="108" height="64" rx="16" fill="rgba(37,99,235,.14)"/>
   <path d="M30 24h8l7 28h28l6-20H42" fill="none" stroke="#60a5fa" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="49" cy="60" r="4" fill="#60a5fa"/><circle cx="70" cy="60" r="4" fill="#60a5fa"/>
@@ -9697,12 +9723,12 @@ async function comSync(force){
     + (j.scriptViejo && viewer.role === "Admin total" ? " Para leer las demás ofertas, actualizá el script de Google Drive (Configuración → Integraciones)." : "") : j.error || "No se pudo actualizar.");
 }
 async function comExcel(f){
-  const rows = sh => [COM_COLS.map(c => c[0]), ...sh.items.map(i => COM_COLS.map(c => c[1](i)))];
+  const cols = comCols(f), rows = sh => [cols.map(c => c[0]), ...sh.items.map(i => cols.map(c => c[1](i)))];
   const name = comFileName(f);
   try {
     if (!window.XLSX) await new Promise((ok, ko) => { const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"; s.onload = ok; s.onerror = ko; document.head.appendChild(s); setTimeout(ko, 15000); });
     const wb = XLSX.utils.book_new();
-    (f.sheets || []).forEach((sh, k) => { const ws = XLSX.utils.aoa_to_sheet(rows(sh)); ws["!cols"] = COM_COLS.map((c, n) => ({ wch:n === 1 ? 44 : n === 0 ? 30 : 14 })); XLSX.utils.book_append_sheet(wb, ws, comSheetName(sh, k, f).slice(0, 31)); });
+    (f.sheets || []).forEach((sh, k) => { const ws = XLSX.utils.aoa_to_sheet(rows(sh)); ws["!cols"] = cols.map((c, n) => ({ wch:n === 1 ? 44 : n === 0 ? 30 : 14 })); XLSX.utils.book_append_sheet(wb, ws, comSheetName(sh, k, f).slice(0, 31)); });
     XLSX.writeFile(wb, name + ".xlsx");
   } catch {
     const csv = (f.sheets || []).flatMap((sh, k) => [[comSheetName(sh, k, f)], ...rows(sh), []]).map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
@@ -9712,10 +9738,10 @@ async function comExcel(f){
 }
 function comPdf(f){
   const w = window.open("", "_blank"); if (!w) return toast("El navegador bloqueó la ventana: permití ventanas emergentes para este sitio.");
-  const td = v => `<td>${esc(String(v ?? ""))}</td>`;
+  const td = v => `<td>${esc(String(v ?? ""))}</td>`, nv = comHasNov(f);
   const body = (f.sheets || []).map((sh, k) => { const groups = []; sh.items.forEach(i => { const s = comSec(i.sec || i.sector); let g = groups.find(x => x[0] === s); if (!g) groups.push(g = [s, []]); g[1].push(i); });
-    return `${(f.sheets || []).length > 1 ? `<h2>${esc(comSheetName(sh, k, f))}</h2>` : ""}${groups.map(([s, items]) => `<h3>${esc(s)}</h3><table><thead><tr><th>Producto</th><th class="r">Precio normal</th><th class="r">Oferta</th><th class="r">Desc.</th><th>Destacado</th><th>Código</th></tr></thead><tbody>
-      ${items.map(i => `<tr><td>${esc(comNice(i.desc))}</td><td class="r">${typeof i.pvp === "number" ? gs(i.pvp) : ""}</td><td class="r"><b>${esc(comOfTxt(i))}</b></td><td class="r">${esc(comPct(i))}</td>${td(COM_FLAG_TXT[i.flag] || "")}${td(i.cod)}</tr>`).join("")}</tbody></table>`).join("")}`; }).join("");
+    return `${(f.sheets || []).length > 1 ? `<h2>${esc(comSheetName(sh, k, f))}</h2>` : ""}${groups.map(([s, items]) => `<h3>${esc(s)}</h3><table><thead><tr><th>Producto</th>${nv ? "<th>Novedad</th>" : ""}<th class="r">Precio normal</th><th class="r">Oferta</th><th class="r">Desc.</th><th>Destacado</th><th>Código</th></tr></thead><tbody>
+      ${items.map(i => `<tr><td>${esc(comName(i))}</td>${nv ? td(i.nov) : ""}<td class="r">${typeof i.pvp === "number" ? gs(i.pvp) : ""}</td><td class="r"><b>${esc(comOfTxt(i))}</b></td><td class="r">${esc(comPct(i))}</td>${td(COM_FLAG_TXT[i.flag] || "")}${td(i.cod)}</tr>`).join("")}</tbody></table>`).join("")}`; }).join("");
   w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(comFileName(f))}</title><style>
     body{font:700 12.5px/1.45 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#000;margin:24px}h1{font-size:20px;font-weight:800;margin:0}p{margin:2px 0 14px;color:#222}
     h2{font-size:16px;font-weight:800;margin:22px 0 4px}h3{font-size:14px;font-weight:800;margin:18px 0 4px;color:#1d4ed8}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:5px 6px;border-bottom:1px solid #bbb;font-weight:700}
@@ -9734,13 +9760,13 @@ const comGuide = k => COM_GUIDE[k] ? `<p class="comguide">${icon("info")}<span><
 // Tarjeta de un destacado: precio de oferta grande en amarillo, el precio de antes y el % bien visibles.
 // Producto, precios y descuento en texto, para pegar donde haga falta (un producto: una línea por dato; la lista: columnas).
 const comPcTxt = i => { const pc = comPct(i); return pc && !/x/i.test(pc) ? pc : ""; };
-const comCopyTxt = i => [comNice(i.desc), typeof i.pvp === "number" && i.of !== i.pvp ? `Antes: ${gs(i.pvp)}` : "", `Oferta: ${comOfTxt(i)}`, comPcTxt(i) ? `Descuento: ${comPcTxt(i)}` : ""].filter(Boolean).join("\n");
+const comCopyTxt = i => [comName(i), typeof i.pvp === "number" && i.of !== i.pvp ? `Antes: ${gs(i.pvp)}` : "", `Oferta: ${comOfTxt(i)}`, comPcTxt(i) ? `Descuento: ${comPcTxt(i)}` : ""].filter(Boolean).join("\n");
 const comCopyBtn = id => `<button type="button" class="cofcp" data-comcopy="${esc(id)}" title="Copiar todo: producto y precios" aria-label="Copiar todo: producto y precios">${icon("copy")}</button>`;
 // Cada dato por separado (producto, oferta, precio de antes y descuento): se toca y queda copiado tal como se ve, para pegarlo en la pieza.
 const comF = (txt, what, html, tag = "span") => { if (!txt) return tag === "span" ? html : `<${tag}>${html}</${tag}>`;
   const k = tag === "b" ? html.lastIndexOf(" ") + 1 : 0; // en el nombre, el ícono va pegado a la última palabra (no queda solo en otra línea)
   return `<${tag} class="comf" role="button" tabindex="0" data-comcp="${esc(txt)}" title="Copiar ${what}" aria-label="Copiar ${what}: ${esc(txt)}">${k ? html.slice(0, k) + `<span class="comfw">${html.slice(k)}${icon("copy")}</span>` : html + icon("copy")}</${tag}>`; };
-const comFd = i => comF(comNice(i.desc), "el producto", esc(comNice(i.desc)), "b");
+const comFd = i => comF(comName(i), "el producto", esc(comName(i)), "b");
 const comFo = (i, html) => comF(comOfTxt(i), "el precio de oferta", html);
 const comFp = (i, html) => comF(typeof i.pvp === "number" ? gs(i.pvp) : "", "el precio de antes", html);
 const comFc = (i, html) => comF(comPcTxt(i) ? "-" + comPcTxt(i) : "", "el descuento", html);
@@ -9748,7 +9774,7 @@ const comFc = (i, html) => comF(comPcTxt(i) ? "-" + comPcTxt(i) : "", "el descue
 // Precio para ordenar: el de la oferta; “Precio normal” → el precio normal; “2 x 28.000” → 28.000. Sin precio (2x1) → al final, como en el Excel.
 const comOfVal = i => typeof i.of === "number" ? i.of : /precio normal/i.test(i.of || "") ? (typeof i.pvp === "number" ? i.pvp : null) : (m => m ? +m[0].replace(/\./g, "") : null)(String(i.of || "").match(/\d{1,3}(?:\.\d{3})+|\d{4,}/));
 const comPageItems = (items, ps) => { const w = rclFold(ps.q).split(/\s+/).filter(Boolean); // todas las palabras, sin importar acentos ni mayúsculas
-  const r = w.length ? items.filter(i => { const t = rclFold([comNice(i.desc), i.desc, i.cod, i.mat, comNice(i.prov), i.sub, i.sector].join(" ")); return w.every(x => t.includes(x)); }) : items;
+  const r = w.length ? items.filter(i => { const t = rclFold(comFind(i) + " " + comNice(i.prov)); return w.every(x => t.includes(x)); }) : items;
   if (!ps.o) return r;
   return r.map((i, n) => [i, comOfVal(i), n]).sort((a, b) => (a[1] == null) - (b[1] == null) || (a[1] == null ? 0 : ps.o === "asc" ? a[1] - b[1] : b[1] - a[1]) || a[2] - b[2]).map(x => x[0]); };
 const comPageTools = (pk, k, ps) => `<div class="comptool" data-compk="${esc(pk)}"><label class="compq">${icon("search")}<input type="search" class="base" data-compq placeholder="Buscar en esta página" value="${esc(ps.q || "")}" autocomplete="off" aria-label="Buscar en ${esc(k)}"></label>
@@ -9774,43 +9800,45 @@ function pComercial(){
   const all = sheets.flatMap(x => x.items), q = comUI.q.trim().toLowerCase();
   const newKeys = comAddedSet(f), newN = f.added?.n || 0, isNew = i => newKeys.has(comKey(i)); // lo que se sumó en la última actualización
   const secs = [...new Set(sh.items.map(i => comSec(i.sec || i.sector)))];
-  const list = sh.items.filter(i => (!comUI.top || i.flag) && (!comUI.onlyNew || isNew(i)) && (comUI.sec === "Todas" || comSec(i.sec || i.sector) === comUI.sec) && (!q || [comNice(i.desc), i.desc, i.sector, i.prov, i.cod, i.mat, i.sub].join(" ").toLowerCase().includes(q)));
+  const nv = comHasNov(f), novN = k => all.filter(i => i.nov === k).length, varN = all.reduce((n, i) => n + (i.vars?.length || 0), 0);
+  const list = sh.items.filter(i => (!comUI.top || i.flag) && (!comUI.onlyNew || isNew(i)) && (!nv || !comUI.nov || i.nov === comUI.nov) && (comUI.sec === "Todas" || comSec(i.sec || i.sector) === comUI.sec) && (!q || comFind(i).toLowerCase().includes(q)));
   const best = all.reduce((m, i) => Math.max(m, parseInt(comPct(i)) || 0), 0);
   // Productos de tapa que también están en una página de adentro (mismo código): el Excel pide que no se repitan.
   const tapaCods = new Set(all.filter(i => i.flag === "Tapa" && i.cod).map(i => i.cod));
   const dupTapa = all.filter(i => i.flag !== "Tapa" && i.cod && tapaCods.has(i.cod) && !/tapa/i.test(i.sec || ""));
   const groupsTop = [["Tapa", "star", "tapa", all.filter(i => i.flag === "Tapa")], ["Redes", "smartphone", "redes", all.filter(i => i.flag === "Zócalo redes")], ["Destacados", "sparkles", "dest", all.filter(i => i.flag === "Destacar")]].filter(g => g[3].length);
   const row = (i, k) => { const id = f.id + ":" + sheets.indexOf(sh) + ":" + k, open = comUI.open === id, pc = comPct(i);
-    return `<div class="cof${open ? " open" : ""}"><div class="cofr"><div class="cofb" data-comopen="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">
-      <span class="cofm">${comFd(i)}${isNew(i) ? `<span class="cnew">Nuevo</span>` : ""}${i.flag ? comFlag(i) : ""}</span>
+    return `<div class="cof${open ? " open" : ""}"><div class="cofr"><div class="cofb${nv ? " nv" : ""}" data-comopen="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">
+      <span class="cofm">${comFd(i)}${isNew(i) ? `<span class="cnew" title="Se sumó al Excel en la última actualización">Nuevo</span>` : ""}${i.flag ? comFlag(i) : ""}${i.vars?.length ? `<span class="cvars${comVarDif(i) ? " dif" : ""}">${icon("layers")}${i.vars.length + 1} variantes${comVarDif(i) ? " · con otro precio" : ""}</span>` : ""}</span>${nv ? `<span class="cofv" data-l="Novedad">${comNov(i)}</span>` : ""}
       <span class="cofn" data-l="Antes">${typeof i.pvp === "number" ? comFp(i, gs(i.pvp)) : "—"}</span>
       <span class="cofo" data-l="Oferta">${comFo(i, esc(comOfTxt(i)))}</span>
       <span class="cofd2" data-l="${pc ? "Descuento" : ""}">${pc ? comFc(i, `<span class="cpct sm">−${esc(pc)}</span>`) : ""}</span></div>${comCopyBtn(id)}</div>
-      ${open ? `<dl class="cofd">${[["Código", i.cod], ["Material", i.mat], ["Sector", comSent(i.sector)], ["Temática", comSent(i.tem)], ["Reconocimiento", typeof i.rec === "number" ? gs(i.rec) : i.rec], ["Oferta negociada", i.neg], ["Proveedor", comNice(i.prov) + (i.nprov ? " · N.° " + i.nprov : "")], ["Subcategoría", comSent(i.sub)], ["Página del folleto", comSec(i.sec)], ["Destacado", COM_FLAG_TXT[i.flag] || i.flag]].filter(([, v]) => v && String(v).trim()).map(([l, v]) => `<dt>${l}</dt><dd>${esc(String(v))}</dd>`).join("")}</dl>` : ""}</div>`; };
+      ${open ? `<dl class="cofd">${[["Código", i.cod], ["Material", i.mat], ["Sector", comSent(i.sector)], ["Temática", comSent(i.tem)], ["Reconocimiento", typeof i.rec === "number" ? gs(i.rec) : i.rec], ["Oferta negociada", i.neg], ["Proveedor", comNice(i.prov) + (i.nprov ? " · N.° " + i.nprov : "")], ["Subcategoría", comSent(i.sub)], ["Página del folleto", i.sec ? comSec(i.sec) : ""], ["Destacado", COM_FLAG_TXT[i.flag] || i.flag], ["Novedad", i.nov], ["Descripción del sistema", i.dsis ? comNice(i.dsis) : ""]].filter(([, v]) => v && String(v).trim()).map(([l, v]) => `<dt>${l}</dt><dd>${esc(String(v))}</dd>`).join("")}</dl>${i.vars?.length ? `<div class="cofvar"><b>Mismo cuadro del folleto: ${i.vars.length + 1} variantes</b><ul>${[{ d:i.dsis || i.desc, cod:i.cod, mat:i.mat, pvp:i.pvp, of:i.of }, ...i.vars].map(v => `<li><span>${esc(comNice(v.d))}</span><small>${[v.cod && "Cód. " + v.cod, v.mat && "Mat. " + v.mat].filter(Boolean).map(esc).join(" · ")}</small>${comVarDif(i) ? `<small>${typeof v.pvp === "number" ? "Antes " + gs(v.pvp) + " · " : ""}</small><em>${esc(comVarOf(v))}</em>` : ""}</li>`).join("")}</ul></div>` : ""}` : ""}</div>`; };
   const bySec = []; list.forEach(i => { const k = comSec(i.sec || i.sector); let g = bySec.find(x => x[0] === k); if (!g) bySec.push(g = [k, []]); g[1].push(i); });
   return head + `<div class="comper" role="group" aria-label="Quincena">${chips.map(x => { const st = comState(x); return `<button type="button" class="comchip s-${st} ${x.id === f.id ? "on" : ""}" data-comper="${x.id}" aria-pressed="${x.id === f.id}"><small>${icon(st === "vig" ? "circle-check" : st === "prox" ? "calendar-clock" : "history")}${comStName(st, x)}</small><b>${comRange(x)}</b></button>`; }).join("")}
       ${older.length ? `<select class="base sm" data-comold aria-label="Ofertas anteriores"><option value="">${comUI.cat.endsWith("|quincenal") ? "Quincenas anteriores…" : "Ofertas anteriores…"}</option>${older.map(x => `<option value="${x.id}" ${x.id === f.id ? "selected" : ""}>${comRange(x)} ${x.from.slice(0, 4)}</option>`).join("")}</select>` : ""}</div>
     <section class="comhead" style="--c:${BRANDS[comBrand(f)] || "#60a5fa"}"><h2>${esc(comBrand(f))} <span class="comcatt">${esc(COM_CAT[f.cat || "quincenal"][0])}</span></h2>
       <p class="comdate">${icon("calendar-range")}<span>Ofertas del <b>${comRange(f)}</b> · ${comStName(comState(f), f).toLowerCase()}</span></p>
       ${newN ? `<div class="comalert" role="status">${icon("sparkles")}<div><b>${newN === 1 ? "Se sumó 1 producto más" : `Se sumaron ${newN} productos más`}</b> en la última actualización <span class="note">· ${esc(comAddedAt(f))}</span></div><button type="button" class="btn sm" data-comnewonly-btn>${comUI.onlyNew ? "Ver todos" : "Ver solo los nuevos"}</button></div>` : ""}
-      <div class="comk"><span>${icon("package")}<b>${all.length}</b> productos${newN ? `<em class="comnew" title="Se sumaron en la última actualización (${esc(comAddedAt(f))})">+${newN} más</em>` : ""}</span>${groupsTop.map(g => `<span class="k-${g[2]}">${icon(g[1])}<b>${g[3].length}</b> ${g[3].length === 1 && g[0] === "Destacados" ? "destacado" : g[0].toLowerCase()}</span>`).join("")}${best ? `<span class="k-pct">${icon("badge-percent")}hasta <b>${best}%</b> de descuento</span>` : ""}</div>
+      <div class="comk"><span${varN ? ` title="${all.length + varN} filas del Excel: ${varN} son variantes que van en el mismo cuadro del folleto"` : ""}>${icon("package")}<b>${all.length}</b> productos${newN ? `<em class="comnew" title="Se sumaron en la última actualización (${esc(comAddedAt(f))})">+${newN} más</em>` : ""}</span>${groupsTop.map(g => `<span class="k-${g[2]}">${icon(g[1])}<b>${g[3].length}</b> ${g[3].length === 1 && g[0] === "Destacados" ? "destacado" : g[0].toLowerCase()}</span>`).join("")}${best ? `<span class="k-pct">${icon("badge-percent")}hasta <b>${best}%</b> de descuento</span>` : ""}${nv ? `<span class="k-nov">${icon("badge-check")}<b>${novN("Nuevo")}</b> nuevos · <b>${novN("Se mantiene")}</b> se mantienen</span>` : ""}</div>
       <div class="comsrc">${f.inDrive === false ? `<span class="comgone">${icon("file-x")} Ya no se encuentra el archivo original en Drive (los datos quedan guardados acá)</span>` : /^[\w-]{10,}$/.test(f.id) ? `<a class="btn sm" href="https://drive.google.com/file/d/${encodeURIComponent(f.id)}/view" target="_blank" rel="noopener">${icon("file-spreadsheet")} Ver Excel original</a>` : ""}<a class="btn sm" href="${comFolderUrl(comKeyOf(f))}" target="_blank" rel="noopener" title="Abre la carpeta de Drive con los Excel de las ofertas">${icon("folder-open")} Abrir carpeta en Drive</a>${f.backup?.url ? `<a class="btn sm" href="${esc(f.backup.url)}" target="_blank" rel="noopener">${icon("hard-drive")} Respaldo en Drive</a>` : ""}<span class="note">${icon("refresh-cw")} Revisado ${COMERCIAL.syncedAt ? inboxAge(COMERCIAL.syncedAt) : "—"}</span></div>
       ${COMERCIAL.backupScript === false && viewer.role === "Admin total" ? `<p class="note comwarn">${icon("info")} Para que el respaldo se guarde solo en Drive, actualizá el script de Google Drive en Configuración → Integraciones.</p>` : ""}${comPending(comUI.cat)}</section>
-    ${groupsTop.map(([t, ic, cls, items]) => `<section class="comgrp g-${cls}"><h3 class="comgh">${icon(ic)}<span>${t}</span><small>${items.length}</small></h3>${comGuide(cls)}${cls === "tapa" && dupTapa.length ? `<p class="comdup">${icon("triangle-alert")}<span><b>Revisar:</b> ${dupTapa.length === 1 ? "este producto de tapa también aparece" : "estos productos de tapa también aparecen"} adentro del folleto: ${dupTapa.map(i => `${esc(comNice(i.desc))} (${esc(comSec(i.sec || i.sector))})`).join(" · ")}.</span></p>` : ""}<div class="comtop">${items.slice(0, 24).map(i => { const si = sheets.findIndex(x => x.items.includes(i)); return comCard(i, si < 0 ? "" : f.id + ":" + si + ":" + sheets[si].items.indexOf(i)); }).join("")}</div></section>`).join("")}
+    ${groupsTop.map(([t, ic, cls, items]) => `<section class="comgrp g-${cls}"><h3 class="comgh">${icon(ic)}<span>${t}</span><small>${items.length}</small></h3>${comGuide(cls)}${cls === "tapa" && dupTapa.length ? `<p class="comdup">${icon("triangle-alert")}<span><b>Revisar:</b> ${dupTapa.length === 1 ? "este producto de tapa también aparece" : "estos productos de tapa también aparecen"} adentro del folleto: ${dupTapa.map(i => `${esc(comName(i))} (${esc(comSec(i.sec || i.sector))})`).join(" · ")}.</span></p>` : ""}<div class="comtop">${items.slice(0, 24).map(i => { const si = sheets.findIndex(x => x.items.includes(i)); return comCard(i, si < 0 ? "" : f.id + ":" + si + ":" + sheets[si].items.indexOf(i)); }).join("")}</div></section>`).join("")}
     <section class="comlist">
       <h3 class="comgh" title="Tocá el producto, el precio o el descuento para copiarlo">${icon("list")}<span>Todas las ofertas</span><small>${all.length}</small>${list.length ? `<button type="button" class="btn sm comcpall" data-comcopyall title="Copia producto, precio de antes, oferta y descuento de lo que se ve (con el filtro), para pegar en Excel o en un texto">${icon("copy")} Copiar lista</button>` : ""}</h3>
       ${sheets.length > 1 ? `<div class="comtabs" role="tablist">${sheets.map((x, k) => `<button type="button" role="tab" class="${x === sh ? "on" : ""}" aria-selected="${x === sh}" data-comsheet="${k}">${esc(comSheetName(x, k, f))} <span>${x.items.length}</span></button>`).join("")}</div>` : ""}
       <div class="comfil"><input class="base" id="comQ" placeholder="Buscar producto, proveedor o código" value="${esc(comUI.q)}" autocomplete="off">
         <select class="base" data-comsec aria-label="Página"><option value="Todas">Todas las páginas</option>${secs.map(x => `<option ${x === comUI.sec ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>
+        ${nv ? `<select class="base" data-comnov aria-label="Novedad"><option value="">Novedad: todos</option>${["Nuevo", "Se mantiene"].map(k => `<option value="${k}" ${comUI.nov === k ? "selected" : ""}>${k === "Nuevo" ? "Solo nuevos" : "Solo los que se mantienen"} (${novN(k)})</option>`).join("")}</select>` : ""}
         <label class="comchk"><input type="checkbox" data-comtop ${comUI.top ? "checked" : ""}> Solo tapa, redes y destacados</label>${newN ? `<label class="comchk"><input type="checkbox" data-comnewonly ${comUI.onlyNew ? "checked" : ""}> Solo los nuevos (${newN})</label>` : ""}</div>
       ${bySec.map(([k, items]) => { const m = k.match(/^Página (\d+)(?: · (.*))?$/), pk = f.id + "|" + sheets.indexOf(sh) + "|" + k, ps = comUI.pg[pk] || {}, shown = comPageItems(items, ps);
         return `<h4 class="comsec"><span class="csi">${icon(comIco(k))}</span><span class="cst">${m ? `<small>Página ${m[1]}</small><b>${esc(m[2] || "Página " + m[1])}</b>` : `<b>${esc(k)}</b>`}</span><span class="csn">${shown.length !== items.length ? shown.length + " de " : ""}${items.length} ${items.length === 1 ? "oferta" : "ofertas"}</span></h4>
-        ${items.length > 1 ? comPageTools(pk, k, ps) : ""}${shown.length ? `<div class="cofh" aria-hidden="true"><span>Producto</span><span>Antes</span><span>Oferta</span><span>Descuento</span></div>${shown.map(i => row(i, sh.items.indexOf(i))).join("")}` : `<p class="compnone">No hay productos con “${esc(ps.q)}” en esta página.</p>`}`; }).join("") || `<div class="empty">No hay ofertas con ese filtro.</div>`}
+        ${items.length > 1 ? comPageTools(pk, k, ps) : ""}${shown.length ? `<div class="cofh${nv ? " nv" : ""}" aria-hidden="true"><span>Producto</span>${nv ? "<span>Novedad</span>" : ""}<span>Antes</span><span>Oferta</span><span>Descuento</span></div>${shown.map(i => row(i, sh.items.indexOf(i))).join("")}` : `<p class="compnone">No hay productos con “${esc(ps.q)}” en esta página.</p>`}`; }).join("") || `<div class="empty">No hay ofertas con ese filtro.</div>`}
     </section>`;
 }
 document.addEventListener("click", e => {
   if (e.target.closest("[data-comsync]")){ comSync(true); return; }
-  const cc = e.target.closest("[data-comcat]"); if (cc){ comUI = { ...comUI, cat:cc.dataset.comcat, id:null, sheet:0, sec:"Todas", open:null, onlyNew:false }; render(); return; }
+  const cc = e.target.closest("[data-comcat]"); if (cc){ comUI = { ...comUI, cat:cc.dataset.comcat, id:null, sheet:0, sec:"Todas", open:null, onlyNew:false, nov:"" }; render(); return; }
   const cur = () => comPeriods().find(x => x.id === comUI.id);
   if (e.target.closest("[data-comxls]")){ const f = cur(); if (f) comExcel(f); return; }
   if (e.target.closest("[data-compdf]")){ const f = cur(); if (f) comPdf(f); return; }
@@ -9824,15 +9852,17 @@ document.addEventListener("click", e => {
   const o = e.target.closest("[data-comopen]"); if (o){ const sel = getSelection(); if (sel && !sel.isCollapsed && o.contains(sel.anchorNode)) return; // está seleccionando texto para copiar
     comUI.open = comUI.open === o.dataset.comopen ? null : o.dataset.comopen; render(); return; }
   const cp = e.target.closest("[data-comcopy]"); if (cp){ const [si, k] = cp.dataset.comcopy.split(":").slice(-2), fid = cp.dataset.comcopy.split(":").slice(0, -2).join(":"), i = COMERCIAL.files?.[fid]?.sheets?.[+si]?.items?.[+k]; if (!i) return;
-    comClip(comCopyTxt(i), `Copiado: ${comNice(i.desc)}`); return; }
+    comClip(comCopyTxt(i), `Copiado: ${comName(i)}`); return; }
   if (e.target.closest("[data-comcopyall]")){ const rows = [...document.querySelectorAll(".comlist [data-comcopy]")].map(b => { const [si, k] = b.dataset.comcopy.split(":").slice(-2), fid = b.dataset.comcopy.split(":").slice(0, -2).join(":"); return COMERCIAL.files?.[fid]?.sheets?.[+si]?.items?.[+k]; }).filter(Boolean);
     const cell = v => String(v ?? "").replace(/[\t\r\n]+/g, " ").trim();
-    const txt = [["Página", "Producto", "Antes", "Oferta", "Descuento"], ...rows.map(i => [comSec(i.sec || i.sector), comNice(i.desc), typeof i.pvp === "number" && i.of !== i.pvp ? gs(i.pvp) : "", comOfTxt(i), comPcTxt(i)])].map(r => r.map(cell).join("\t")).join("\n");
+    const nv = rows.some(i => i.nov);
+    const txt = [["Página", "Producto", ...(nv ? ["Novedad"] : []), "Antes", "Oferta", "Descuento"], ...rows.map(i => [comSec(i.sec || i.sector), comName(i), ...(nv ? [i.nov || ""] : []), typeof i.pvp === "number" && i.of !== i.pvp ? gs(i.pvp) : "", comOfTxt(i), comPcTxt(i)])].map(r => r.map(cell).join("\t")).join("\n");
     comClip(txt, `Lista copiada: ${rows.length} ${rows.length === 1 ? "producto" : "productos"}. Pegala en Excel o en un texto.`); return; }
 });
 document.addEventListener("change", e => {
   if (e.target.matches?.("[data-comold]") && e.target.value){ comUI = { ...comUI, id:e.target.value, sheet:0, sec:"Todas", open:null }; render(); }
   if (e.target.matches?.("[data-comsec]")){ comUI.sec = e.target.value; comUI.open = null; render(); }
+  if (e.target.matches?.("[data-comnov]")){ comUI.nov = e.target.value; comUI.open = null; render(); }
 });
 document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.(".comf[data-comcp]")){ e.preventDefault(); e.target.click(); } });
 // Buscadores: se guarda lo escrito al instante y la lista se dibuja una sola vez cuando se deja de tipear (con 300 productos, en el celular, se nota).

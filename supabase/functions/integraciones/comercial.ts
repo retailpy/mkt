@@ -2,7 +2,7 @@
 // Lee el Excel tal cual (hojas, páginas del folleto, códigos y precios) y arma una lista liviana para la app.
 import * as XLSX from "npm:xlsx@0.18.5";
 
-export const PARSE_V = 2; // si cambia la forma de leer, se vuelven a leer todos los archivos (2: sin “INTERNAS”, bloque “Adicional”, Excel de fin de semana e Imbatibles)
+export const PARSE_V = 3; // si cambia la forma de leer, se vuelven a leer todos los archivos (2: sin “INTERNAS”, bloque “Adicional”, Excel de fin de semana e Imbatibles · 3: “DESCRIPCION FOLLETO” y “NOVEDAD”)
 
 const norm = (v: unknown) => String(v ?? "").replace(/\s+/g, " ").trim();
 const key = (v: unknown) => norm(v).toUpperCase().normalize("NFD").replace(/\p{M}/gu, "").replace(/[^A-Z%]/g, "");
@@ -18,10 +18,15 @@ const HEAD2: Record<string, string> = {
   PVPOFERTA: "of", PVPOFERTAS: "of", PRECIOOFERTAS: "of", CODIGOARTICULO: "cod", MATERIALSAP: "mat", OFERTANEGOCIADA: "neg", NPROVEEDOR: "nprov", "VAR%PRECIO": "pct",
   PRECIONORMAL: "pvp", PRECIOREGULAR: "pvp", PRECIOACTUAL: "pvp", PRECIO: "pvp", PRECIOANTES: "pvp", PVPACTUAL: "pvp",
   "%": "pct", "%DESCUENTO": "pct", DESCUENTO: "pct", DESC: "pct", COD: "cod", CODIGOSAP: "cod", SKU: "cod", EAN: "cod", SECCION: "sector", CATEGORIA: "sector",
+  // Excel “FINAL” (Stock): el texto del folleto es el nombre del producto y la novedad dice si es nuevo o se mantiene de la quincena anterior.
+  DESCRIPCIONFOLLETO: "dfol", DESCFOLLETO: "dfol", DESCRIPCIONDEFOLLETO: "dfol", DESCRIPCIONPARAFOLLETO: "dfol", TEXTOFOLLETO: "dfol", NOMBREFOLLETO: "dfol",
+  NOVEDAD: "nov", NOVEDADES: "nov",
 };
 const esDesc = (k: string) => HEAD[k] === "desc" || HEAD2[k] === "desc", esOferta = (k: string) => HEAD[k] === "of" || HEAD2[k] === "of";
 const num = (v: unknown) => typeof v === "number" ? v : null;
 const clean = (v: unknown) => { const s = norm(v); return /^\W?#(N\/A|REF!|VALUE!|DIV\/0!|NAME\?)$/i.test(s) ? "" : s; }; // celdas con error de Excel
+// Novedad: “NUEVO” → “Nuevo”, “SE MANTIENE” → “Se mantiene”.
+const novedad = (v: unknown) => { const k = key(v); if (!k) return ""; if (/^NUEV/.test(k)) return "Nuevo"; if (/MANTIEN/.test(k)) return "Se mantiene"; const s = norm(v).toLowerCase(); return s.charAt(0).toUpperCase() + s.slice(1); };
 const txtNum = (v: unknown) => typeof v === "number" ? (Number.isInteger(v) ? String(v) : String(Math.round(v))) : norm(v);
 // % de descuento: 0.06 → "6%", "-35%" → "35%", "2 X 14.000" queda como está
 function pct(v: unknown){
@@ -75,12 +80,21 @@ export function parseOfertas(bytes: Uint8Array){
         continue;
       }
       if (interna || /^VIGENCIA\b/i.test(desc)) continue; // ofertas internas y la fila “VIGENCIA DESDE / HASTA” repetida
-      const of = g("of");
+      const of = g("of"), ofv = typeof of === "number" ? of : norm(of), dfol = clean(g("dfol"));
       let f = flagCol >= 0 ? flag(r[flagCol]) : null, sector = norm(g("sector"));
       if (!f && /^DESTAC/i.test(sector)){ f = { t: "Destacar", x: sector }; sector = ""; } // Delimarket marca “DESTACAR” en la columna del sector
+      // Con “DESCRIPCION FOLLETO”: las filas sin ese texto son variantes del producto de arriba (mismo cuadro del folleto:
+      // “Salamín RANCHO 250 gr. Con/sin picante”). Van juntas en un solo producto, con sus códigos y precios.
+      const prev = items[items.length - 1], s0 = blk ? (sec ? `${blk} · ${sec}` : blk) : sec;
+      if (col!.dfol !== undefined && !dfol && prev?.fol && prev.sec === s0 && prev.sector === sector){
+        (prev.vars ||= []).push({ d: desc, cod: txtNum(g("cod")), mat: txtNum(g("mat")), pvp: num(g("pvp")), of: ofv, pct: pct(g("pct")) });
+        if (f && !prev.flag) Object.assign(prev, { flag: f.t, fx: f.x });
+        continue;
+      }
+      const nov = novedad(g("nov"));
       items.push({
-        sec: blk ? (sec ? `${blk} · ${sec}` : blk) : sec, sector, cod: txtNum(g("cod")), mat: txtNum(g("mat")), desc,
-        pvp: num(g("pvp")), of: typeof of === "number" ? of : norm(of), tem: norm(g("tem")), pct: pct(g("pct")),
+        sec: s0, sector, cod: txtNum(g("cod")), mat: txtNum(g("mat")), desc: dfol || desc, ...(dfol ? { fol: 1, dsis: desc } : {}), ...(nov ? { nov } : {}),
+        pvp: num(g("pvp")), of: ofv, tem: norm(g("tem")), pct: pct(g("pct")),
         rec: typeof g("rec") === "number" ? g("rec") : norm(g("rec")), neg: norm(g("neg")), prov: norm(g("prov")),
         nprov: txtNum(g("nprov")), sub: typeof g("sub") === "string" ? clean(g("sub")) : "", ...(f ? { flag: f.t, fx: f.x } : {}),
       });
@@ -129,10 +143,11 @@ export const FUENTES: { id: string; cat: string; brand?: string }[] = [
 // Nombre del archivo en mayúsculas, sin acentos y con espacios alrededor de cada palabra: " FDS SG 17 AL 19 10 XLSX ".
 const palabras = (name: string) => ` ${name.toUpperCase().normalize("NFD").replace(/\p{M}/gu, "").replace(/\.XLSX?$|\.XLSM$/, "").replace(/[^A-Z0-9%]+/g, " ").trim()} `;
 const MARCA_RE: Record<string, RegExp> = { Superseis: / S6 | SUPERSEIS | SUPER SEIS | SG /, Stock: / STOCK /, Delimarket: / DELI | DELIMARKET /, };
-const CAT_RE: Record<string, RegExp> = { quincenal: / PUBLICAD/, fds: / FDS | FIN DE SEMANA /, express: / EXPRESS /, imbatibles: / IMBATIBLE/ };
+// Quincenal: las “PUBLICADAS” o la versión “FINAL” (Stock); si de una quincena están las dos, se usa la FINAL (ver comercialSync).
+const CAT_RE: Record<string, RegExp> = { quincenal: / PUBLICAD| FINAL /, fds: / FDS | FIN DE SEMANA /, express: / EXPRESS /, imbatibles: / IMBATIBLE/ };
 // Qué es un archivo de una carpeta: { brand, cat } si se reconoce · { pending: motivo } si parece de la categoría pero no se puede
 // asegurar (queda “pendiente de revisión”) · null si no es de la categoría (otra dinámica, versión interna…: no se usa).
-export function clasificar(name: string, fu: { cat: string; brand?: string }): { brand: string; cat: string } | { pending: string } | null {
+export function clasificar(name: string, fu: { cat: string; brand?: string }): { brand: string; cat: string; final?: boolean } | { pending: string } | null {
   const w = palabras(name);
   if (!CAT_RE[fu.cat].test(w)) return null;
   if (/ INTERN/.test(w)) return null; // versiones internas: nunca (sobre todo en Express)
@@ -140,7 +155,7 @@ export function clasificar(name: string, fu: { cat: string; brand?: string }): {
   const marcas = Object.keys(MARCA_RE).filter((b) => MARCA_RE[b].test(w));
   if (fu.brand){ // carpeta de una sola marca: si el nombre dice otra marca, no se mezcla
     if (marcas.length && !marcas.includes(fu.brand)) return { pending: `El nombre dice ${marcas.join(" y ")}, pero está en la carpeta de ${fu.brand}.` };
-    return { brand: fu.brand, cat: fu.cat };
+    return { brand: fu.brand, cat: fu.cat, ...(fu.cat === "quincenal" && / FINAL /.test(w) ? { final: true } : {}) };
   }
   const b = marcas.filter((x) => x !== "Delimarket"); // carpeta compartida: Superseis o Stock, según el nombre
   if (b.length !== 1) return { pending: b.length ? "El nombre dice Superseis y Stock a la vez." : "El nombre no dice si es de Superseis (S6) o de Stock." };
