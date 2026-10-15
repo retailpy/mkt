@@ -318,7 +318,7 @@ async function noticias(force: boolean){
 // Cada carpeta (FUENTES en comercial.ts) es una categoría: quincenales, fin de semana, Express e Imbatibles; Express e Imbatibles
 // son compartidas entre Superseis y Stock y la marca sale del nombre. Se guarda en app_state (s:COMERCIAL), una entrada por archivo
 // con su marca y categoría. Las quincenas quedan aunque después se borren de Drive (memoria del mes); de las otras categorías se
-// guardan los últimos 4 meses. Lo que parece de una categoría pero no se puede asegurar queda en “pendientes de revisión”.
+// guardan los últimos 2 meses. Lo que parece de una categoría pero no se puede asegurar queda en “pendientes de revisión”.
 // Productos que aparecen de más cuando se vuelve a leer un Excel que ya estaba (mismo código + nombre, contando repetidos).
 const claveProducto = (i: any) => `${i.cod || ""}|${i.desc || ""}`;
 function productosNuevos(antes: any[] = [], despues: any[] = []){
