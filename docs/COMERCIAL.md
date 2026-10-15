@@ -2,7 +2,7 @@
 
 > Para el chat de Claude Code que va a hacer cambios **solo en Comercial**. Leé primero `CLAUDE.md` y `docs/CONTEXTO.md`
 > (cómo se trabaja: ramas, pruebas, publicar). Acá está todo lo de Comercial: qué hace, dónde está el código y qué no tocar.
-> Actualizado el **15/10/2026** (app **v198**: Comercial con Superseis, Stock y Delimarket, 9 categorías, lectura con los Excel reales y bajada directa de Drive; Stock quincenal con el Excel **FINAL** (texto del folleto y columna Novedad); el número de línea es aproximado: buscá por el texto indicado).
+> Actualizado el **15/10/2026** (app **v199**: Comercial con Superseis, Stock y Delimarket, 9 categorías, lectura con los Excel reales y bajada directa de Drive; Stock quincenal con el Excel **FINAL** (texto del folleto y columna Novedad); el número de línea es aproximado: buscá por el texto indicado).
 > Repositorio: `retailpy/mkt` (GitHub). Producción: `main` → https://retailmkt.vercel.app (Vercel). Base y funciones: Supabase,
 > proyecto `retail-mkt-hub`. El otro chat trabaja en su propia rama `claude/…` y publica igual: PR a `main` y merge.
 
@@ -39,7 +39,7 @@ En cada categoría:
 - Arriba: **Excel** y **PDF** (descarga de lo que se ve), **Carpeta de Comercial (Drive)** (la carpeta general «OFERTAS DIVISION», `1Tlj4ITfLdxtKZ8CuciI0e7UDn_em6rek` = `COM_ROOT`, con todas las carpetas adentro; v195) y **Actualizar** (vuelve a leer todas las carpetas).
 - En cada quincena: **Ver Excel original**, **Abrir carpeta en Drive** (la carpeta de esa categoría), **Respaldo en Drive** y "Revisado hace…".
 - Alerta "**Se sumaron N productos más**" cuando al volver a leer un Excel aparecen productos nuevos (con "Ver solo los nuevos").
-- **Excel FINAL de Stock quincenal (v198):** en la carpeta de Stock quincenal, el Excel que dice **FINAL** en el nombre
+- **Excel FINAL de Stock quincenal (v199):** en la carpeta de Stock quincenal, el Excel que dice **FINAL** en el nombre
   («FINAL QUINCENAL STOCK 26-10 AL 08-11») es el que se usa; si de las mismas fechas también está el «PUBLICADAS», se usa el FINAL
   (el servidor borra el PUBLICADAS guardado cuando el FINAL ya está leído; la pantalla también lo esconde). Las quincenas que no tienen
   FINAL siguen con el PUBLICADAS. En el FINAL:
@@ -129,8 +129,8 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
 
 | Qué | Archivo y lugar |
 |---|---|
-| Pantalla de Comercial | `index.html`: buscar `// ---------- Comercial:` (≈ línea 9586; `pComercial()` ≈ 9764). Ahí están `COM_FOLDER`/`COM_BRANDS`/`COM_CAT` (las 9 categorías y sus carpetas), `comHub()`, `comCatStatus()`, `comPending()`, `comEmptyMsg()`, `comUI` (`comUI.cat` = "Marca\|categoría"), `comState`, `comPeriods`, `comRange`, `comNice`/`comSent`/`comSec` (textos legibles), `comPct`, `comCard`, `comF` (copiar un dato: `data-comcp`), `comOfVal`/`comPageItems`/`comPageTools` (orden y buscador de cada página: `data-compk`, `data-compord`, `data-compq`), `comSync`, `comExcel`, `comPdf`, `COM_GUIDE`, **`pComercial()`** y sus eventos (`data-com…`). |
-| Estilos | `index.html`, bloque CSS `/* Comercial: ofertas de Superseis, Stock y Delimarket */` (≈ líneas 555–640): clases `.comhub`, `.comb`, `.comcat`, `.compend`, `.com*`, `.cof*`, `.cpct`, `.cflag`, `.cnew`. |
+| Pantalla de Comercial | `index.html`: buscar `// ---------- Comercial:` (≈ línea 9600; `pComercial()` ≈ 9792). Ahí están `COM_FOLDER`/`COM_BRANDS`/`COM_CAT` (las 9 categorías y sus carpetas), `comHub()`, `comCatStatus()`, `comPending()`, `comEmptyMsg()`, `comUI` (`comUI.cat` = "Marca\|categoría"), `comState`, `comPeriods`, `comRange`, `comNice`/`comSent`/`comSec` (textos legibles), `comPct`, `comCard`, `comF` (copiar un dato: `data-comcp`), `comOfVal`/`comPageItems`/`comPageTools` (orden y buscador de cada página: `data-compk`, `data-compord`, `data-compq`), `comSync`, `comExcel`, `comPdf`, `COM_GUIDE`, **`pComercial()`** y sus eventos (`data-com…`). |
+| Estilos | `index.html`, bloque CSS `/* Comercial: ofertas de Superseis, Stock y Delimarket */` (≈ líneas 555–650): clases `.comhub`, `.comb`, `.comcat`, `.compend`, `.com*`, `.cof*`, `.cpct`, `.cflag`, `.cnew`. |
 | Menú y permisos | `SECTIONS` → `{ k:"comercial", virtual:true }`; `PERM_EXTRA` incluye `"comercial"`; está en `ROLE_COMMON` (CM y Diseñador lo ven). El rol **Revisor** (revisión de Meta) **no** lo ve ni puede leer `s:COMERCIAL` en la base: no lo cambies. |
 | Sincronización | `sync.js`: `SHARED.COMERCIAL` y `READONLY` (no se guarda desde la app). |
 | Servidor (lectura y guardado) | `supabase/functions/integraciones/index.ts`: `comercialSync()` (recorre `FUENTES`), `productosNuevos()`, `COM_LEER`, `COM_DIAS`, acción `comercial_sync`; arriba `COMERCIAL_FOLDER_ID`, `BACKUP_FOLDER_ID`, `SCRIPT_V`. |
