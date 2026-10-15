@@ -2,7 +2,7 @@
 
 > Para el chat de Claude Code que va a hacer cambios **solo en Comercial**. Leé primero `CLAUDE.md` y `docs/CONTEXTO.md`
 > (cómo se trabaja: ramas, pruebas, publicar). Acá está todo lo de Comercial: qué hace, dónde está el código y qué no tocar.
-> Actualizado el **15/10/2026** (app publicada **v194**: Comercial con Superseis, Stock y Delimarket y 9 categorías; el número de línea es aproximado: buscá por el texto indicado).
+> Actualizado el **15/10/2026** (app publicada **v194**: Comercial con Superseis, Stock y Delimarket y 9 categorías; en la rama v195: el botón de arriba abre la carpeta general; el número de línea es aproximado: buscá por el texto indicado).
 > Repositorio: `retailpy/mkt` (GitHub). Producción: `main` → https://retailmkt.vercel.app (Vercel). Base y funciones: Supabase,
 > proyecto `retail-mkt-hub`. El otro chat trabaja en su propia rama `claude/…` y publica igual: PR a `main` y merge.
 
@@ -36,8 +36,8 @@ En cada categoría:
   el precio normal; «2 x 28.000» → 28.000; sin precio («2x1») → al final, en el orden del Excel. El título de la página dice
   «N de M ofertas» si la búsqueda deja menos. «Copiar lista» copia en el orden que se ve. El orden y la búsqueda quedan mientras la app
   está abierta (`comUI.pg`, por quincena, hoja y página); no se guardan en la base ni cambian el Excel/PDF.
-- Arriba: **Excel** y **PDF** (descarga de lo que se ve), **Carpeta de Comercial (Drive)** (la carpeta de la categoría elegida) y **Actualizar** (vuelve a leer todas las carpetas).
-- En cada quincena: **Ver Excel original**, **Abrir carpeta en Drive**, **Respaldo en Drive** y "Revisado hace…".
+- Arriba: **Excel** y **PDF** (descarga de lo que se ve), **Carpeta de Comercial (Drive)** (la carpeta general «OFERTAS DIVISION», `1Tlj4ITfLdxtKZ8CuciI0e7UDn_em6rek` = `COM_ROOT`, con todas las carpetas adentro; v195) y **Actualizar** (vuelve a leer todas las carpetas).
+- En cada quincena: **Ver Excel original**, **Abrir carpeta en Drive** (la carpeta de esa categoría), **Respaldo en Drive** y "Revisado hace…".
 - Alerta "**Se sumaron N productos más**" cuando al volver a leer un Excel aparecen productos nuevos (con "Ver solo los nuevos").
 
 ### Carpetas de Drive (solo lectura; todas dentro de «OFERTAS DIVISION», dueña `ofertaspricing`)
