@@ -2,6 +2,9 @@
 
 > Para el chat de Claude Code que va a hacer cambios **solo en Comercial**. Leé primero `CLAUDE.md` y `docs/CONTEXTO.md`
 > (cómo se trabaja: ramas, pruebas, publicar). Acá está todo lo de Comercial: qué hace, dónde está el código y qué no tocar.
+> Actualizado el **15/10/2026** (app publicada **v189**; en la rama de Comercial **v190**: copiar cada dato por separado; el número de línea es aproximado: buscá por el texto indicado).
+> Repositorio: `retailpy/mkt` (GitHub). Producción: `main` → https://retailmkt.vercel.app (Vercel). Base y funciones: Supabase,
+> proyecto `retail-mkt-hub`. El otro chat trabaja en su propia rama `claude/…` y publica igual: PR a `main` y merge.
 
 ## 1. Qué es
 
@@ -11,6 +14,11 @@ Comercial en Excel ("PUBLICADAS") a una carpeta de Google Drive, listas para dis
 - Botones de quincena (Vigente / Oferta quincenal / Terminó) con la **fecha de la oferta** (ya no "Folleto N").
 - Por quincena: marca, fecha, total de productos (`+N más` si se sumaron), destacados de **Tapa**, **Redes**, **Destacados**,
   la lista completa con buscador, filtro por página/sección, pestañas por hoja del Excel, copiar un producto o la lista.
+- **Copiar cada dato por separado (v190):** en las tarjetas (Tapa, Redes, Destacados) y en cada fila de la lista, el **nombre**,
+  el **precio de oferta**, el **precio de antes** y el **descuento** tienen un ícono chico de copiar: tocando el dato (o el ícono)
+  se copia **solo ese dato, tal como se ve** (“Gs. 6.000”, “2 x 28.000”, “-20%”; el de antes sin la palabra “Antes”) y avisa
+  “Copiado: …”. El ícono grande (arriba a la derecha) sigue copiando **todo** el producto. En la lista, la fila se abre tocando
+  fuera de los datos (o con Enter). También con el teclado: Tab hasta el dato y Enter. En el celular el ícono grande va arriba a la derecha de la fila.
 - Arriba: **Excel** y **PDF** (descarga de lo que se ve), **Carpeta de Comercial (Drive)** y **Actualizar** (vuelve a leer Drive).
 - En cada quincena: **Ver Excel original**, **Abrir carpeta en Drive**, **Respaldo en Drive** y "Revisado hace…".
 - Alerta "**Se sumaron N productos más**" cuando al volver a leer un Excel aparecen productos nuevos (con "Ver solo los nuevos").
@@ -55,9 +63,9 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
 
 | Qué | Archivo y lugar |
 |---|---|
-| Pantalla de Comercial | `index.html`: buscar `// ---------- Comercial:` (≈ línea 9097). Ahí están `comUI`, `comState`, `comPeriods`, `comRange`, `comNice`/`comSent`/`comSec` (textos legibles), `comPct`, `comCard`, `comSync`, `comExcel`, `comPdf`, `COM_GUIDE`, **`pComercial()`** y sus eventos (`data-com…`). |
-| Estilos | `index.html`, bloque CSS `/* Comercial: ofertas de la quincena */` (≈ líneas 526–582): clases `.com*`, `.cof*`, `.cpct`, `.cflag`, `.cnew`. |
-| Menú y permisos | `SECTIONS` → `{ k:"comercial", virtual:true }`; `PERM_EXTRA` incluye `"comercial"`; está en `ROLE_COMMON` (CM y Diseñador lo ven). |
+| Pantalla de Comercial | `index.html`: buscar `// ---------- Comercial:` (≈ línea 9476; `pComercial()` ≈ 9595). Ahí están `comUI`, `comState`, `comPeriods`, `comRange`, `comNice`/`comSent`/`comSec` (textos legibles), `comPct`, `comCard`, `comF` (copiar un dato: `data-comcp`), `comSync`, `comExcel`, `comPdf`, `COM_GUIDE`, **`pComercial()`** y sus eventos (`data-com…`). |
+| Estilos | `index.html`, bloque CSS `/* Comercial: ofertas de la quincena */` (≈ líneas 555–617): clases `.com*`, `.cof*`, `.cpct`, `.cflag`, `.cnew`. |
+| Menú y permisos | `SECTIONS` → `{ k:"comercial", virtual:true }`; `PERM_EXTRA` incluye `"comercial"`; está en `ROLE_COMMON` (CM y Diseñador lo ven). El rol **Revisor** (revisión de Meta) **no** lo ve ni puede leer `s:COMERCIAL` en la base: no lo cambies. |
 | Sincronización | `sync.js`: `SHARED.COMERCIAL` y `READONLY` (no se guarda desde la app). |
 | Servidor (lectura y guardado) | `supabase/functions/integraciones/index.ts`: `comercialSync()`, `productosNuevos()`, acción `comercial_sync`; arriba `COMERCIAL_FOLDER_ID`, `BACKUP_FOLDER_ID`, `SCRIPT_V`. |
 | Lector del Excel | `supabase/functions/integraciones/comercial.ts`: `parseOfertas()` (columnas y marcas), `periodo()` (fechas desde el nombre: "12 AL 25-10"), `marcaDe()` (S6/Superseis, Stock, Deli), `nombreOfertas()`, `excelOfertas()` (Excel de respaldo). `PARSE_V`: si cambiás cómo se lee, subilo en 1 y se vuelven a leer todos. |
@@ -82,6 +90,8 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
    body := '{"action":"status"}'::jsonb)` y en `net._http_response` tiene que responder 401 “Iniciá sesión en la app”.
    Sin este paso, el servidor sigue con la versión vieja.
 6. Antes de empezar, traé lo último de `main` (`git fetch origin main` y mezclalo): el otro chat también publica.
+   Si al mezclar choca `sw.js` (`mkthub-vNNN`), quedate con el número más alto y sumale 1. Anotá tu cambio en `docs/CONTEXTO.md`
+   (sección de versiones) para que el otro chat lo sepa.
 
 ## 5. Cuidado con
 
