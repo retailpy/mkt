@@ -73,7 +73,7 @@ si no está, el token de verificación del webhook es `retail-mkt-hub`, que no e
 |---|---|---|
 | `seguidores.js`, `demograficos.js` | seguidores y público | `s:META_FOLLOWERS`, `s:META_DEMO` |
 | `publicaciones.js` | publicaciones de Instagram (1 archivo por mes) | `s:META_POSTS` |
-| `anuncios.js` | anuncios de Meta Ads | `s:META_CREATIVES` |
+| `anuncios.js` | pautas de Meta Ads del mes actual y del mes pasado (imagen, campaña, inicio → fin, estado real, gasto, alcance, clics, conversaciones) | `s:META_CREATIVES` (v 2) |
 | `mensajes.js` | lista de conversaciones IG/FB (a Instagram Meta la corta por tiempo) | `s:META_INBOX` |
 | `referentes.js` | supermercados de referencia | `s:META_REFS` |
 | `comercial.js` | ofertas de los Excel de Drive | `s:COMERCIAL` |
@@ -83,6 +83,11 @@ si no está, el token de verificación del webhook es `retail-mkt-hub`, que no e
 
 Crons (UTC): seguidores 9:00/15:00/2:40 · demográficos 9:10/15:10/2:50 · publicaciones 9:20/15:20 ·
 anuncios 9:30/15:30 · mensajes 9:40/15:40 · referentes 9:50/15:50 · **interacciones 9:55/15:55** · comercial 3:15/10:00/16:00.
+
+**Campañas de Meta Ads (`s:CAMPAIGNS`) y Biblioteca de anuncios (`s:META_ADS`)** no las carga código del repo: las escribe la
+**tarea programada “Informe diario Retail MKT”** (claude.ai, 7:00 y 13:00 de Paraguay) con el conector de Meta Ads y SQL
+(campañas con gasto del mes y del mes pasado: nombre, objetivo, inicio, fin, gasto, alcance, resultados y unidad). Si el
+Informe de Pauta muestra campañas viejas, revisar que esa tarea siga corriendo.
 
 ---
 
@@ -193,6 +198,7 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 - **v153:** Comercial: al tocar “Actualizar”, al lado del total de productos sale “+N nuevos” (lo agregado en esa actualización, por quincena; queda hasta la próxima novedad y se guarda en el dispositivo).
 - **v154:** en el Panel de CM, el ícono de Mensajes cuenta los sin contestar por separado (“2 Facebook · 3 Instagram sin contestar”).
 - **v155:** Mensajes rediseñado: Facebook e Instagram **lado a lado**, cada uno con su tarjeta (sin contestar y % contestado) y su columna (Inbox/DM y Comentarios). Estado y marca se eligen con botones (sin desplegables). En pantallas chicas se ve una red a la vez: se elige tocando su tarjeta.
+- **v192 · Pauta Meta Ads arreglada:** el Informe mostraba como “corriendo” 236 anuncios (Stock 80 de 2025…) porque Meta deja en **ACTIVE** los anuncios de conjuntos que ya terminaron; solo 15 tenían gasto. Ahora `api/anuncios.js` decide “en el aire” por las **fechas del conjunto** (activo, ya empezado y sin terminar) y guarda por mes solo las pautas con impresiones (más las que están en el aire o programadas), con campaña, objetivo, **inicio → fin**, estado (`ACTIVE` en el aire, `SCHEDULED` programada, `PAUSED`, `ENDED`), gasto, alcance, impresiones, clics (`link` = clics al enlace), conversaciones nuevas (`convs`), visitas a la web (`lpv`) e interacciones (`eng`); también el **mes pasado** (cierra sus números y renueva las imágenes). Pantalla: el **Informe Meta Ads** tiene “Corriendo ahora” (solo el mes actual, con hasta cuándo y la barra de inicio a fin), KPIs (invertido, alcance, clics, conversaciones, pautas), **“Pautas del mes”** (tarjetas con imagen, campaña, fechas, estado y números; filtros Todas / En el aire / Programadas / Terminadas; al tocar se ve en grande) y **Campañas** con inicio → fin. El **Plan de pauta** es solo lo interno (ya no muestra los anuncios de Meta). Con datos viejos (sin `v`) la app solo muestra los anuncios con gasto. Además (`sync.js`): si otra persona guarda mientras escribís un formulario y al tocar Guardar falta un dato, ya no se redibuja la pantalla (antes se borraba lo escrito, ej. Campañas del mes sin marca). Prueba: `test-pauta.js` (y `test-lote35.js`, `test-lote41.js`).
 - **v191 · Comercial: ordenar y buscar en cada página:** debajo del título de cada página del folleto hay un buscador («Buscar en esta página», todas las palabras, sin acentos) y el orden por precio de oferta («Como el Excel», «Mayor a menor», «Menor a mayor»); cada página por su cuenta; sin precio (2x1) va al final. Solo cambió Comercial (`index.html`: `comOfVal`, `comPageItems`, `comPageTools`, estilos `.comptool`; ver `docs/COMERCIAL.md`).
 - **v190 · Comercial: copiar cada dato por separado:** en las tarjetas de Tapa/Redes/Destacados y en cada fila de la lista, el nombre, el precio de oferta, el precio de antes y el descuento tienen su ícono chico de copiar; al tocar el dato se copia solo ese texto, tal como se ve (“Gs. 6.000”, “2 x 28.000”, “-20%”). El ícono grande sigue copiando todo el producto. Solo cambió Comercial (`index.html`: `comF`, `comCard`, filas de `pComercial`, estilos `.comf`; ver `docs/COMERCIAL.md`).
 - **v189 · rol “Revisor” y chat por persona:** rol nuevo **Revisor** (para la revisión de Meta): solo ve **Mensajes de las cuentas** (DM, comentarios y menciones, y contestar), su cuenta y la guía; entra directo ahí. Sin chat, pedidos, equipo, notas, encuestas ni material. La base lo limita (`private.is_revisor()`: lee solo PEOPLE, APP_FLAGS, PRESENCE, INBOX_DONE y META_INBOX/DM/DM_LOG/IG_ACT/POSTS; guarda solo INBOX_DONE y PRESENCE; no ve el bucket “material”), `integraciones` le responde 403, `chat-push` no le avisa, `api/responder.js` y `api/_lib/meta.js` lo dejan contestar y actualizar. Además, **chat por persona**: casilla “Chat Retail MKT” en Usuarios y permisos (`PEOPLE[].noChat`; la base tampoco le deja leer las charlas: `private.no_chat()`). Migración `20261015120000_rol_revisor_y_chat_por_persona.sql`. Pruebas: `test-revisor.js`, `test-nochat.js`.

@@ -315,7 +315,11 @@ const RMH = (() => {
   // cargando algo (una ventana abierta o un formulario a medio escribir): así no se pierde lo que escribió.
   let typingForm = null;
   document.addEventListener("input", e => { const fm = e.target.closest && e.target.closest("#content form"); if (fm) typingForm = fm; });
-  document.addEventListener("submit", () => { typingForm = null; setTimeout(() => { if (rerenderPending) scheduleRender(); }, 0); }, true);
+  // Si al tocar Guardar faltaba un dato, el formulario sigue abierto con lo escrito: no se redibuja (si no, se borraba).
+  const hasText = f => [...f.querySelectorAll("input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=submit]):not([type=button]), textarea")].some(x => x.value.trim());
+  document.addEventListener("submit", e => { const fm = e.target; typingForm = null; setTimeout(() => {
+    if (fm && fm.closest && fm.closest("#content") && document.body.contains(fm) && hasText(fm)){ typingForm = fm; return; }
+    if (rerenderPending) scheduleRender(); }, 0); }, true);
   function busy(){
     const f = document.activeElement;
     if (f && f.id === "chatInput" && !document.querySelector("#content aside.drawer")) return false; // el chat se actualiza en vivo; render conserva lo que se está escribiendo

@@ -2,7 +2,7 @@
 
 > Para el chat de Claude Code que va a hacer cambios **solo en Comercial**. Leé primero `CLAUDE.md` y `docs/CONTEXTO.md`
 > (cómo se trabaja: ramas, pruebas, publicar). Acá está todo lo de Comercial: qué hace, dónde está el código y qué no tocar.
-> Actualizado el **15/10/2026** (app publicada **v190**; en la rama de Comercial **v191**: ordenar y buscar en cada página; el número de línea es aproximado: buscá por el texto indicado).
+> Actualizado el **15/10/2026** (app publicada **v192**: v190 y v191 de Comercial y v192 de Pauta Meta Ads; el número de línea es aproximado: buscá por el texto indicado).
 > Repositorio: `retailpy/mkt` (GitHub). Producción: `main` → https://retailmkt.vercel.app (Vercel). Base y funciones: Supabase,
 > proyecto `retail-mkt-hub`. El otro chat trabaja en su propia rama `claude/…` y publica igual: PR a `main` y merge.
 
@@ -70,8 +70,8 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
 
 | Qué | Archivo y lugar |
 |---|---|
-| Pantalla de Comercial | `index.html`: buscar `// ---------- Comercial:` (≈ línea 9476; `pComercial()` ≈ 9595). Ahí están `comUI`, `comState`, `comPeriods`, `comRange`, `comNice`/`comSent`/`comSec` (textos legibles), `comPct`, `comCard`, `comF` (copiar un dato: `data-comcp`), `comOfVal`/`comPageItems`/`comPageTools` (orden y buscador de cada página: `data-compk`, `data-compord`, `data-compq`), `comSync`, `comExcel`, `comPdf`, `COM_GUIDE`, **`pComercial()`** y sus eventos (`data-com…`). |
-| Estilos | `index.html`, bloque CSS `/* Comercial: ofertas de la quincena */` (≈ líneas 555–617): clases `.com*`, `.cof*`, `.cpct`, `.cflag`, `.cnew`. |
+| Pantalla de Comercial | `index.html`: buscar `// ---------- Comercial:` (≈ línea 9539; `pComercial()` ≈ 9675). Ahí están `comUI`, `comState`, `comPeriods`, `comRange`, `comNice`/`comSent`/`comSec` (textos legibles), `comPct`, `comCard`, `comF` (copiar un dato: `data-comcp`), `comOfVal`/`comPageItems`/`comPageTools` (orden y buscador de cada página: `data-compk`, `data-compord`, `data-compq`), `comSync`, `comExcel`, `comPdf`, `COM_GUIDE`, **`pComercial()`** y sus eventos (`data-com…`). |
+| Estilos | `index.html`, bloque CSS `/* Comercial: ofertas de la quincena */` (≈ líneas 555–621): clases `.com*`, `.cof*`, `.cpct`, `.cflag`, `.cnew`. |
 | Menú y permisos | `SECTIONS` → `{ k:"comercial", virtual:true }`; `PERM_EXTRA` incluye `"comercial"`; está en `ROLE_COMMON` (CM y Diseñador lo ven). El rol **Revisor** (revisión de Meta) **no** lo ve ni puede leer `s:COMERCIAL` en la base: no lo cambies. |
 | Sincronización | `sync.js`: `SHARED.COMERCIAL` y `READONLY` (no se guarda desde la app). |
 | Servidor (lectura y guardado) | `supabase/functions/integraciones/index.ts`: `comercialSync()`, `productosNuevos()`, acción `comercial_sync`; arriba `COMERCIAL_FOLDER_ID`, `BACKUP_FOLDER_ID`, `SCRIPT_V`. |
