@@ -2,7 +2,7 @@
 
 > Para el chat de Claude Code que va a hacer cambios **solo en Comercial**. Leé primero `CLAUDE.md` y `docs/CONTEXTO.md`
 > (cómo se trabaja: ramas, pruebas, publicar). Acá está todo lo de Comercial: qué hace, dónde está el código y qué no tocar.
-> Actualizado el **15/10/2026** (app publicada **v191**; en la rama de Comercial **v192**: Superseis, Stock y Delimarket con 9 categorías; el número de línea es aproximado: buscá por el texto indicado).
+> Actualizado el **15/10/2026** (app publicada **v194**: Comercial con Superseis, Stock y Delimarket y 9 categorías; el número de línea es aproximado: buscá por el texto indicado).
 > Repositorio: `retailpy/mkt` (GitHub). Producción: `main` → https://retailmkt.vercel.app (Vercel). Base y funciones: Supabase,
 > proyecto `retail-mkt-hub`. El otro chat trabaja en su propia rama `claude/…` y publica igual: PR a `main` y merge.
 
@@ -11,7 +11,7 @@
 Sección **Comercial** del menú (General → Comercial): «Ofertas de Comercial» · *Todas las ofertas de Superseis, Stock y Delimarket
 en un solo lugar.* Muestra las ofertas que manda el departamento Comercial en Excel a carpetas de Google Drive, listas para diseñar.
 
-**Página principal (v192):** debajo del encabezado están los 3 supermercados con sus **9 accesos** (sin pantallas intermedias;
+**Página principal (v194):** debajo del encabezado están los 3 supermercados con sus **9 accesos** (sin pantallas intermedias;
 `comHub()`): **Superseis** (Ofertas quincenales · Fin de semana · Superseis Express · Imbatibles), **Stock** (Ofertas quincenales ·
 Fin de semana · Stock Express · Imbatibles) y **Delimarket** (Fin de semana). Cada botón dice si hay una oferta **vigente** o la
 **próxima**, o por qué no hay (carpeta sin acceso, todavía no se leyó…). Al tocarlo se ve esa categoría **dentro de la app** con
@@ -106,7 +106,7 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
 
 | Qué | Archivo y lugar |
 |---|---|
-| Pantalla de Comercial | `index.html`: buscar `// ---------- Comercial:` (≈ línea 9490; `pComercial()` ≈ 9680). Ahí están `COM_FOLDER`/`COM_BRANDS`/`COM_CAT` (las 9 categorías y sus carpetas), `comHub()`, `comCatStatus()`, `comPending()`, `comEmptyMsg()`, `comUI` (`comUI.cat` = "Marca\|categoría"), `comState`, `comPeriods`, `comRange`, `comNice`/`comSent`/`comSec` (textos legibles), `comPct`, `comCard`, `comF` (copiar un dato: `data-comcp`), `comOfVal`/`comPageItems`/`comPageTools` (orden y buscador de cada página: `data-compk`, `data-compord`, `data-compq`), `comSync`, `comExcel`, `comPdf`, `COM_GUIDE`, **`pComercial()`** y sus eventos (`data-com…`). |
+| Pantalla de Comercial | `index.html`: buscar `// ---------- Comercial:` (≈ línea 9553; `pComercial()` ≈ 9730). Ahí están `COM_FOLDER`/`COM_BRANDS`/`COM_CAT` (las 9 categorías y sus carpetas), `comHub()`, `comCatStatus()`, `comPending()`, `comEmptyMsg()`, `comUI` (`comUI.cat` = "Marca\|categoría"), `comState`, `comPeriods`, `comRange`, `comNice`/`comSent`/`comSec` (textos legibles), `comPct`, `comCard`, `comF` (copiar un dato: `data-comcp`), `comOfVal`/`comPageItems`/`comPageTools` (orden y buscador de cada página: `data-compk`, `data-compord`, `data-compq`), `comSync`, `comExcel`, `comPdf`, `COM_GUIDE`, **`pComercial()`** y sus eventos (`data-com…`). |
 | Estilos | `index.html`, bloque CSS `/* Comercial: ofertas de Superseis, Stock y Delimarket */` (≈ líneas 555–640): clases `.comhub`, `.comb`, `.comcat`, `.compend`, `.com*`, `.cof*`, `.cpct`, `.cflag`, `.cnew`. |
 | Menú y permisos | `SECTIONS` → `{ k:"comercial", virtual:true }`; `PERM_EXTRA` incluye `"comercial"`; está en `ROLE_COMMON` (CM y Diseñador lo ven). El rol **Revisor** (revisión de Meta) **no** lo ve ni puede leer `s:COMERCIAL` en la base: no lo cambies. |
 | Sincronización | `sync.js`: `SHARED.COMERCIAL` y `READONLY` (no se guarda desde la app). |

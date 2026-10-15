@@ -875,6 +875,19 @@ html.nomotion .nav a.wknew .ibc,html.nomotion .tabbar a.wknew .tbc,html.nomotion
 .livedot::before{content:"";width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.3)}
 .livebody{padding:10px;display:flex;flex-direction:column;gap:4px;min-width:0}
 .livebody .adcopy{-webkit-line-clamp:3}
+.livedot.off::before{background:var(--dc,#94a3b8);box-shadow:none}
+.livecard .adrun{margin-top:2px}
+.admfilter{margin:0 0 12px}
+.admgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr));gap:12px}
+.admcard{border:1px solid var(--line-2);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;cursor:pointer;background:var(--panel);transition:border-color .15s,transform .15s}
+.admcard:hover{border-color:var(--cyan);transform:translateY(-2px)}.admcard:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.admcard .liveimg{aspect-ratio:4/3}
+.admcard .livebody{gap:6px}.admcard .livebody b{font-size:14px;line-height:1.3}
+.adcamp{font-size:12px;line-height:1.3}
+.addates{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:12.5px;color:var(--muted)}.addates svg{width:14px;height:14px;flex:none}
+.adrun{height:5px;border-radius:99px;background:var(--line-2,#1e293b);overflow:hidden}.adrun i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#22d3ee,#34d399)}
+.adnums{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;margin-top:4px;padding-top:8px;border-top:1px solid var(--line-2)}
+.adnums span{display:flex;flex-direction:column;gap:1px;font-size:11px;color:var(--faint);line-height:1.25;min-width:0}.adnums b{font-size:14.5px;color:#fff;font-variant-numeric:tabular-nums}
 .rclacts{display:flex;flex-wrap:wrap;gap:6px}
 .rclkpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}
 .rclkpis>div{border:1px solid var(--line-2);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -6397,8 +6410,8 @@ let PAUTA_PLAN = [
 ];
 let pautaUI = { tab:"informe" }; // arranca en el Informe de Meta Ads
 const canEditPauta = () => !isViewOnly() && !isDesigner() && !isClosed();
-const pautaTabs = () => `<div class="head"><div><h1>Pauta Meta Ads</h1><p class="sub">El <b>informe</b> es lo que se invirtió en Meta Ads. El <b>plan</b> es lo que se quiere invertir, con el límite de cada marca.</p></div>
-  <div class="chips"><button class="chip ${pautaUI.tab === "informe" ? "on" : ""}" data-ptab="informe">Informe Meta Ads</button><button class="chip ${pautaUI.tab === "plan" ? "on" : ""}" data-ptab="plan">Plan de pauta</button></div></div>${adsLiveNow()}`;
+const pautaTabs = () => `<div class="head"><div><h1>Pauta Meta Ads</h1><p class="sub">El <b>informe</b> es lo que corrió en Meta Ads: cada pauta con su imagen, de inicio a fin, con lo invertido y sus resultados. El <b>plan</b> es lo que se organiza internamente, con el límite del mes.</p></div>
+  <div class="chips"><button class="chip ${pautaUI.tab === "informe" ? "on" : ""}" data-ptab="informe">Informe Meta Ads</button><button class="chip ${pautaUI.tab === "plan" ? "on" : ""}" data-ptab="plan">Plan de pauta</button></div></div>`;
 // Color de la barra (igual que en Plan Contenidos): celeste < 50 % · naranja 50-89 % · verde 90-100 % · rojo si se pasa del límite.
 const pautaColor = pct => pct > 100 ? "#ef4444" : pct >= 90 ? "#10b981" : pct >= 50 ? "#f97316" : "#22d3ee";
 function pPauta(){ return pautaUI.tab === "informe" ? pPautaInforme() : pPautaPlan(); }
@@ -6469,67 +6482,107 @@ document.addEventListener("submit", e => {
   render(); window.RMH?.flushNow?.();
   toast(`Pauta agregada a ${brand}: ${usd(amount)}. Quedan ${usd(left - amount)} para ${monthName(MONTH)}.`);
 });
-// Informe simple: lo que está corriendo ahora (con imagen), total del mes, cuánto invirtió cada marca y la lista de campañas.
-function pPautaInforme(){
-  const list = CAMPAIGNS.filter(c => c.month === MONTH && seesBrand(c.brand) && inFilter(c.brand)).sort((a, c) => c.spend - a.spend);
-  const tot = list.reduce((a, c) => a + c.spend, 0), reach = list.reduce((a, c) => a + (c.reach || 0), 0);
-  const byBrand = [...new Set(list.map(c => c.brand))].map(b => [b, list.filter(c => c.brand === b).reduce((a, c) => a + c.spend, 0)]).sort((a, c) => c[1] - a[1]);
-  const st = c => daysTo(c.end) < 0 ? `<span class="note">Finalizada</span>` : `<span style="color:#34d399">Activa</span>`;
-  const nAds = META_ADS.ads.filter(a => { const b = META_PAGE_BRAND[a.page]; return !b || (seesBrand(b) && inFilter(b)); }).length;
-  return `${pautaTabs()}<div class="head"><div><h2 style="margin:0">Inversión en Meta Ads · ${monthLabel(MONTH)}</h2><p class="sub">En dólares, tal cual figura en Meta. Actualizado ${metaWhen(META_ADS.updated)}.</p></div>${brandChips()}</div>
-  ${META_ADS.updated && !META_ADS.spendAccess ? `<div class="panel metawarn">${icon("info")}<div><b>Falta el acceso a las cuentas publicitarias de las marcas.</b></div></div>` : ""}
-  <div class="grid kpis">
-    <div class="panel kpi"><div class="l">Invertido en el mes</div><div class="n">${usd(tot)}</div></div>
-    <div class="panel kpi"><div class="l">Alcance</div><div class="n">${dots(reach)}</div><div class="d">suma de las campañas</div></div>
-    <div class="panel kpi"><div class="l">Campañas</div><div class="n">${list.length}</div></div>
-  </div>
-  ${list.length ? `<div class="panel"><h2 class="pmh" style="margin:0 0 10px">Por marca</h2><div class="list">${byBrand.map(([b, v]) => `<div class="row"><div class="grow">${brandTag(b)}</div><b style="color:#fff">${usd(v)}</b></div>`).join("")}</div></div>
-  <div class="tw"><table><thead><tr><th>Marca</th><th>Campaña</th><th class="r">Invertido</th><th class="r">Alcance</th><th class="r">Resultados</th><th>Estado</th></tr></thead><tbody>
-  ${list.map(c => `<tr><td>${brandTag(c.brand)}</td><td>${esc(c.name)}</td><td class="r num">${usd(c.spend)}</td><td class="r num">${dots(c.reach)}</td><td class="r num">${dots(c.results)} <span class="note">${esc(c.unit || "")}</span></td><td>${st(c)}</td></tr>`).join("")}
-  </tbody></table></div>` : `<div class="panel"><div class="empty">${META_ADS.spendAccess ? `No hubo inversión en Meta Ads en ${monthName(MONTH)}.` : "Sin datos de inversión todavía."}</div></div>`}
-  ${adsOfMonthPanel()}
-  <details class="panel metafold"><summary>Anuncios activos ahora (${nAds})</summary>${metaAdsPanel(true)}</details>`;
+// Informe Meta Ads: arriba las campañas del mes (pedido de Admin total), después lo que está en el aire ahora, los números
+// del mes y cada pauta del mes de inicio a fin (con su imagen, inversión, alcance, clics y conversaciones). El Plan de pauta es aparte (lo que se organiza internamente).
+// Anuncios de un mes (s:META_CREATIVES) de las marcas que se ven, primero los que están en el aire. Con datos de antes de
+// v192 (sin "v") solo cuentan los que tuvieron gasto o impresiones: Meta deja “activos” anuncios de conjuntos ya terminados.
+const AD_ST = { ACTIVE:["En el aire", "#22c55e"], SCHEDULED:["Programada", "#fbbf24"], PAUSED:["Pausada", "#94a3b8"], ENDED:["Terminada", "#94a3b8"] };
+function monthAds(m){
+  const v2 = (Number(META_CREATIVES.v) || 0) >= 2, src = META_CREATIVES[m] || {}, out = [];
+  Object.keys(src).filter(b => seesBrand(b) && inFilter(b)).forEach(b => (src[b] || []).forEach(a => {
+    if (v2) out.push({ ...a, b });
+    else if (a.impressions > 0 || a.spend > 0) out.push({ ...a, b, status:a.status === "ACTIVE" && m === CURRENT_MONTH ? "ACTIVE" : "ENDED" });
+  }));
+  const rank = s => s === "ACTIVE" ? 2 : s === "SCHEDULED" ? 1 : 0;
+  return out.sort((a, c) => rank(c.status) - rank(a.status) || (c.spend || 0) - (a.spend || 0));
 }
-// La publicidad que está corriendo ahora, con su imagen (anuncios activos de este mes en s:META_CREATIVES).
-// Si todavía no hay imágenes, muestra los anuncios activos de la Biblioteca de Meta con su enlace.
+const adName = a => a.title || a.name || "Anuncio";
+const adClicks = a => a.link || a.clicks || 0;
+const adDates = a => a.start ? `${dm(a.start)} → ${a.end ? dm(a.end) : "sin fecha de fin"}` : "";
+// Cuánto del tiempo de la pauta ya pasó (barra de inicio a fin).
+const adRun = a => { if (!a.start || !a.end) return ""; const tot = Math.max(1, daysTo(a.end) - daysTo(a.start)), done = Math.min(tot, Math.max(0, -daysTo(a.start)));
+  return `<div class="adrun" title="Día ${done} de ${tot}"><i style="width:${Math.round(done / tot * 100)}%"></i></div>`; };
+const adImg = (a, big) => { const src = big ? a.big || a.img : a.img, alt = esc(adName(a)), ph = `this.replaceWith(Object.assign(document.createElement('span'),{className:'ph',textContent:'Sin imagen'}))`;
+  return src ? `<img src="${esc(src)}" alt="${alt}"${big ? "" : ` loading="lazy"`} referrerpolicy="no-referrer"${big && a.big && a.img ? ` data-t="${esc(a.img)}" onerror="if(this.dataset.t){this.src=this.dataset.t;this.removeAttribute('data-t')}else{${ph}}"` : ` onerror="${ph}"`}>` : `<span class="ph">Sin imagen</span>`; };
+const adBadge = a => { const [l, c] = AD_ST[a.status] || []; return l ? `<span class="livedot${a.status === "ACTIVE" ? "" : " off"}" style="--dc:${c}">${l}</span>` : ""; };
+// Los números de cada pauta: invertido, alcance, clics y, si hubo, conversaciones nuevas o visitas a la web.
+const adNums = a => [[usd(a.spend || 0), "invertido"], [dots(a.reach || 0), "alcance"], [dots(adClicks(a)), "clics"],
+  a.convs ? [dots(a.convs), "conversaciones nuevas"] : a.lpv ? [dots(a.lpv), "visitas a la web"] : a.eng ? [dots(a.eng), "interacciones"] : [dots(a.impressions || 0), "impresiones"]];
+function pPautaInforme(){
+  const cur = MONTH === CURRENT_MONTH, ads = monthAds(MONTH);
+  const list = CAMPAIGNS.filter(c => c.month === MONTH && seesBrand(c.brand) && inFilter(c.brand)).sort((a, c) => c.spend - a.spend);
+  const sum = (l, f) => l.reduce((a, x) => a + (Number(typeof f === "function" ? f(x) : x[f]) || 0), 0);
+  const tot = list.length ? sum(list, "spend") : sum(ads, "spend"), reach = list.length ? sum(list, "reach") : sum(ads, "reach");
+  const clicks = sum(ads, adClicks), convs = sum(ads, "convs"), onAir = ads.filter(a => a.status === "ACTIVE").length;
+  const byBrand = [...new Set(list.map(c => c.brand))].map(b => [b, sum(list.filter(c => c.brand === b), "spend")]).sort((a, c) => c[1] - a[1]);
+  const st = c => daysTo(c.end) < 0 ? `<span class="note">Terminada</span>` : daysTo(c.start) > 0 ? `<span style="color:#fbbf24">Programada</span>` : `<span style="color:#34d399">En el aire</span>`;
+  const nAds = META_ADS.ads.filter(a => { const b = META_PAGE_BRAND[a.page]; return !b || (seesBrand(b) && inFilter(b)); }).length;
+  return `${pautaTabs()}<div class="head"><div><h2 style="margin:0">Informe Meta Ads · ${monthLabel(MONTH)}</h2><p class="sub">En dólares, tal cual figura en Meta. Actualizado ${metaWhen(META_CREATIVES.updated || META_ADS.updated)}.</p></div>${brandChips()}</div>
+  ${META_ADS.updated && !META_ADS.spendAccess ? `<div class="panel metawarn">${icon("info")}<div><b>Falta el acceso a las cuentas publicitarias de las marcas.</b></div></div>` : ""}
+  ${list.length ? `<div class="panel campsmonth"><h2 class="pmh" style="margin:0 0 10px">${pmIco("megaphone")}Campañas de ${monthName(MONTH)}</h2><div class="tw"><table><thead><tr><th>Marca</th><th>Campaña</th><th>Inicio → fin</th><th class="r">Invertido</th><th class="r">Alcance</th><th class="r">Resultados</th><th>Estado</th></tr></thead><tbody>
+  ${list.map(c => `<tr><td>${brandTag(c.brand)}</td><td>${esc(c.name)}${c.obj ? ` <span class="note">· ${esc(c.obj)}</span>` : ""}</td><td class="num">${c.start ? `${dm(c.start)} → ${c.end ? dm(c.end) : "—"}` : "—"}</td><td class="r num">${usd(c.spend)}</td><td class="r num">${dots(c.reach || 0)}</td><td class="r num">${dots(c.results || 0)} <span class="note">${esc(c.unit || "")}</span></td><td>${c.end ? st(c) : ""}</td></tr>`).join("")}
+  </tbody></table></div>
+  <div class="list" style="margin-top:12px">${byBrand.map(([b, v]) => `<div class="row"><div class="grow">${brandTag(b)}</div><b style="color:#fff">${usd(v)}</b></div>`).join("")}</div></div>`
+  : `<div class="panel"><div class="empty">${META_ADS.spendAccess ? `No hubo inversión en Meta Ads en ${monthName(MONTH)}${brandFilter !== "Todas" ? " para esta marca" : ""}.` : "Sin datos de inversión todavía."}</div></div>`}
+  ${cur ? adsLiveNow() : ""}
+  <div class="grid kpis">
+    <div class="panel kpi"><div class="l">Invertido en el mes</div><div class="n">${usd(tot)}</div><div class="d">${list.length} ${list.length === 1 ? "campaña" : "campañas"}</div></div>
+    <div class="panel kpi"><div class="l">Alcance</div><div class="n">${dots(reach)}</div><div class="d">suma de las ${list.length ? "campañas" : "pautas"}</div></div>
+    <div class="panel kpi"><div class="l">Clics</div><div class="n">${dots(clicks)}</div><div class="d">de las pautas del mes</div></div>
+    <div class="panel kpi"><div class="l">Conversaciones nuevas</div><div class="n">${dots(convs)}</div><div class="d">mensajes que empezaron por la pauta</div></div>
+    <div class="panel kpi"><div class="l">Pautas del mes</div><div class="n">${ads.length}</div><div class="d">${cur ? `${onAir} en el aire ahora` : "con impresiones en el mes"}</div></div>
+  </div>
+  ${adsOfMonthPanel(ads)}
+  <details class="panel metafold"><summary>Anuncios activos en la Biblioteca de Meta (${nAds})</summary>${metaAdsPanel(true)}</details>`;
+}
+// Lo que está en el aire ahora, con su imagen (s:META_CREATIVES del mes actual, estado ACTIVE = conjunto activo y sin terminar).
+// Si todavía no llegaron los anuncios del mes, muestra los activos de la Biblioteca de Meta con su enlace.
 function adsLiveNow(){
-  const m = META_CREATIVES[TODAY.slice(0, 7)] || {}, live = [], bad = Object.entries(META_CREATIVES.errors || {}).filter(([b]) => seesBrand(b) && inFilter(b));
-  Object.keys(m).filter(b => seesBrand(b) && inFilter(b)).forEach(b => (m[b] || []).filter(a => a.status === "ACTIVE").forEach(a => live.push({ ...a, b })));
-  live.sort((a, c) => (c.spend || 0) - (a.spend || 0));
-  const lib = META_ADS.ads.filter(a => { const b = META_PAGE_BRAND[a.page]; return !b || (seesBrand(b) && inFilter(b)); });
-  const head = n => `<div class="head"><h2 class="pmh" style="margin:0">${pmIco("radio")}Corriendo ahora <span class="note">${n} ${n === 1 ? "anuncio" : "anuncios"}</span></h2><div class="tag-row"><span class="tag">Fuente: Meta Ads</span>${updTag(live.length ? META_CREATIVES.updated : META_ADS.updated)}${metaBtn("anuncios", "Anuncios", "Anuncios actualizados con lo último de Meta.")}</div></div>`;
+  const mk = TODAY.slice(0, 7), has = !!META_CREATIVES[mk], live = has ? monthAds(mk).filter(a => a.status === "ACTIVE") : [];
+  const bad = Object.entries(META_CREATIVES.errors || {}).filter(([b]) => seesBrand(b) && inFilter(b));
+  const lib = has ? [] : META_ADS.ads.filter(a => { const b = META_PAGE_BRAND[a.page]; return !b || (seesBrand(b) && inFilter(b)); });
+  const head = n => `<div class="head"><h2 class="pmh" style="margin:0">${pmIco("radio")}Corriendo ahora <span class="note">${n} ${n === 1 ? "pauta" : "pautas"}</span></h2><div class="tag-row"><span class="tag">Fuente: Meta Ads</span>${updTag(has ? META_CREATIVES.updated : META_ADS.updated)}${metaBtn("anuncios", "Anuncios", "Anuncios actualizados con lo último de Meta.")}</div></div>`;
   const warn = bad.length && canMetaRefresh() ? `<p class="note adwarn">${icon("info")} No se pudieron leer los anuncios de ${bad.map(([b]) => esc(b)).join(", ")}${bad.length === 1 ? ": " + esc(String(bad[0][1]).slice(0, 160)) : ""}.</p>` : "";
-  if (live.length) return `<div class="panel adlive">${head(live.length)}${warn}<div class="livegrid">${live.map(a => `<article class="livecard" data-adview="${esc(a.id)}" role="button" tabindex="0" title="${esc(a.title || a.name || "Anuncio")}">
-    <div class="liveimg">${a.img ? `<img src="${esc(a.img)}" alt="${esc(a.title || a.name || "Anuncio")}" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'ph',textContent:'Sin imagen'}))">` : `<span class="ph">Sin imagen</span>`}<span class="livedot">En el aire</span></div>
-    <div class="livebody">${brandTag(a.b)}<b>${esc(a.title || a.name || "Anuncio")}</b><div class="admeta"><span>${usd(a.spend || 0)} en el mes</span></div></div></article>`).join("")}</div></div>`;
+  if (live.length) return `<div class="panel adlive">${head(live.length)}${warn}<div class="livegrid">${live.map(a => `<article class="livecard" data-adview="${esc(a.id)}" role="button" tabindex="0" title="${esc(adName(a))}">
+    <div class="liveimg">${adImg(a)}<span class="livedot">En el aire</span></div>
+    <div class="livebody">${brandTag(a.b)}<b>${esc(adName(a))}</b>${a.end ? `<span class="note">hasta ${dm(a.end)}</span>${adRun(a)}` : ""}<div class="admeta"><span>${usd(a.spend || 0)} en el mes</span></div></div></article>`).join("")}</div></div>`;
   if (lib.length) return `<div class="panel adlive">${head(lib.length)}${warn}<p class="note" style="margin:0 0 8px">Las imágenes aparecen cuando Meta manda los datos del día de las cuentas publicitarias${canMetaRefresh() ? " (tocá “Actualizar”)" : ""}.</p><div class="list">${lib.map(a => { const b = META_PAGE_BRAND[a.page]; return `<div class="row"><div class="grow"><div class="t">${esc(a.title || "Anuncio sin título")}</div><div class="m">${b ? brandTag(b) : esc(a.page)} · desde ${dm(a.start)}</div></div><a class="btn sm" href="${esc(a.url)}" target="_blank" rel="noopener">${icon("external-link")} Ver anuncio</a></div>`; }).join("")}</div></div>`;
   return `<div class="panel adlive">${head(0)}${warn}<div class="empty">${META_CREATIVES.updated || META_ADS.updated ? "No hay publicidad corriendo en este momento." : "Todavía no llegaron los anuncios desde Meta."}</div></div>`;
 }
-// Ver un anuncio en grande: imagen, texto y números (se abre al tocar su miniatura).
+// Ver una pauta en grande: imagen, texto, campaña, fechas y números (se abre al tocar su tarjeta).
 let adView = null;
-function adFind(id){ for (const [mk, bs] of Object.entries(META_CREATIVES)){ if (!/^\d{4}-\d{2}$/.test(mk)) continue; for (const [b, list] of Object.entries(bs || {})){ const a = (list || []).find(x => x.id === id); if (a) return { ...a, b }; } } return null; }
+function adFind(id){ for (const [mk, bs] of Object.entries(META_CREATIVES)){ if (!/^\d{4}-\d{2}$/.test(mk)) continue; for (const [b, list] of Object.entries(bs || {})){ const a = (list || []).find(x => x.id === id); if (a) return { ...a, b, mk }; } } return null; }
 function adModal(){
-  const a = adView && adFind(adView); if (!a) return "";
-  return `<div class="admodal" data-adclose role="dialog" aria-modal="true" aria-label="Anuncio"><div class="adbox"><button type="button" class="btn ib adx" data-adclose aria-label="Cerrar">${icon("x")}</button>
-    <div class="adbigimg">${a.img ? `<img src="${esc(a.img)}" alt="${esc(a.title || a.name || "Anuncio")}" referrerpolicy="no-referrer">` : `<span class="ph">Sin imagen</span>`}</div>
-    <div class="adinfo">${brandTag(a.b)}<h3>${esc(a.title || a.name || "Anuncio")}</h3>${a.title && a.name && a.title !== a.name ? `<span class="note">${esc(a.name)}</span>` : ""}
+  const f = adView && adFind(adView); if (!f) return "";
+  const a = monthAds(f.mk).find(x => x.id === f.id) || { ...f, status:(Number(META_CREATIVES.v) || 0) >= 2 ? f.status : f.status === "ACTIVE" ? "ACTIVE" : "ENDED" };
+  const [sl, sc] = AD_ST[a.status] || ["", ""];
+  const nums = [[usd(a.spend || 0), "invertido en " + monthName(f.mk)], [dots(a.reach || 0), "alcance"], [dots(a.impressions || 0), "impresiones"], [dots(adClicks(a)), "clics"],
+    ...(a.convs ? [[dots(a.convs), "conversaciones nuevas"]] : []), ...(a.lpv ? [[dots(a.lpv), "visitas a la web"]] : []), ...(a.eng ? [[dots(a.eng), "interacciones"]] : [])];
+  return `<div class="admodal" data-adclose role="dialog" aria-modal="true" aria-label="Pauta"><div class="adbox"><button type="button" class="btn ib adx" data-adclose aria-label="Cerrar">${icon("x")}</button>
+    <div class="adbigimg">${adImg(a, true)}</div>
+    <div class="adinfo">${brandTag(a.b)}<h3>${esc(adName(a))}</h3>${a.title && a.name && a.title !== a.name ? `<span class="note">${esc(a.name)}</span>` : ""}
+      ${a.camp ? `<p class="note" style="margin:0">Campaña: <b style="color:#e2e8f0">${esc(a.camp)}</b>${a.obj ? ` · ${esc(a.obj)}` : ""}</p>` : ""}
+      ${a.start || sl ? `<div class="addates">${a.start ? `${icon("calendar")} ${adDates(a)}` : ""}${sl ? `<span style="color:${sc};font-weight:700">${sl}</span>` : ""}</div>${a.status === "ACTIVE" ? adRun(a) : ""}` : ""}
       ${a.body ? `<p class="adcopy full">${esc(a.body)}</p>` : `<p class="note">Sin texto cargado en Meta (anuncio dinámico o solo imagen).</p>`}
-      <div class="admeta big"><span><b>${usd(a.spend || 0)}</b> en el mes</span><span><b>${dots(a.reach || 0)}</b> alcance</span><span><b>${dots(a.clicks || 0)}</b> clics</span>${a.status === "ACTIVE" ? `<span style="color:#34d399">En el aire</span>` : `<span class="note">Terminado</span>`}</div></div></div></div>`;
+      <div class="admeta big">${nums.map(([n, l]) => `<span><b>${n}</b> ${l}</span>`).join("")}</div></div></div></div>`;
 }
 document.addEventListener("click", e => { const o = e.target.closest("[data-adview]"); if (o && !e.target.closest("a")){ adView = o.dataset.adview; render(); return; }
+  const fl = e.target.closest("[data-adf]"); if (fl){ pautaUI.adf = fl.dataset.adf; render(); return; }
   if (adView && (e.target.closest(".adx") || (e.target.classList.contains("admodal")))){ adView = null; render(); } });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && adView){ adView = null; render(); } else if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("[data-adview]")){ e.preventDefault(); adView = e.target.dataset.adview; render(); } });
-// Los anuncios que se pautan o se pautaron en el mes: imagen reducida y copy (s:META_CREATIVES, función diaria /api/anuncios).
-function adsOfMonthPanel(){
-  const m = META_CREATIVES[MONTH] || {}, bs = Object.keys(m).filter(b => seesBrand(b) && inFilter(b) && (m[b] || []).length);
-  const n = bs.reduce((a, b) => a + m[b].length, 0);
-  return `<div class="panel"><div class="head"><h2 class="pmh" style="margin:0">${pmIco("image")}Anuncios pautados en ${monthName(MONTH)} <span class="note">${n}</span></h2><div class="tag-row"><span class="tag">Fuente: Meta Ads</span>${updTag(META_CREATIVES.updated)}</div></div>
-    ${bs.length ? bs.map(b => `<div class="adsb"><div class="lph">${brandTag(b)}<span class="note">${m[b].length} ${m[b].length === 1 ? "anuncio" : "anuncios"}</span></div><div class="adgrid">${m[b].map(a => `<article class="adcard">
-      ${a.img ? `<img class="adimg" src="${esc(a.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'adimg ph',textContent:'Sin imagen'}))">` : `<span class="adimg ph">Sin imagen</span>`}
-      <div class="adbody"><b>${esc(a.title || a.name || "Anuncio")}</b>${a.title && a.name && a.title !== a.name ? `<span class="note">${esc(a.name)}</span>` : ""}
-        ${a.body ? `<p class="adcopy">${esc(a.body)}</p>` : `<p class="note" style="margin:4px 0">Sin copy cargado en Meta (anuncio dinámico o solo imagen).</p>`}
-        <div class="admeta"><span>${dots(a.reach || 0)} alcance</span><span>${dots(a.clicks || 0)} clics</span><span>${usd(a.spend || 0)}</span>${a.status === "ACTIVE" ? `<span style="color:#34d399">Activo</span>` : `<span class="note">Terminado</span>`}</div></div></article>`).join("")}</div></div>`).join("")
-      : `<div class="empty">${META_CREATIVES.updated ? `No hay anuncios pautados en ${monthName(MONTH)}${brandFilter !== "Todas" ? " para esta marca" : ""}.` : "Todavía no llegaron los anuncios desde Meta."}</div>`}</div>`;
+// Las pautas del mes de inicio a fin: imagen, campaña, fechas, estado y números (s:META_CREATIVES, función /api/anuncios).
+function adsOfMonthPanel(ads = monthAds(MONTH)){
+  const grp = { aire:a => a.status === "ACTIVE", prog:a => a.status === "SCHEDULED", fin:a => a.status === "ENDED" || a.status === "PAUSED" };
+  const n = k => ads.filter(grp[k]).length, f = grp[pautaUI.adf] && n(pautaUI.adf) ? pautaUI.adf : "todas", shown = f === "todas" ? ads : ads.filter(grp[f]);
+  const chip = (k, l, c) => c ? `<button type="button" class="chip ${f === k ? "on" : ""}" data-adf="${k}">${l} <span class="note">${c}</span></button>` : "";
+  return `<div class="panel adsmonth"><div class="head"><h2 class="pmh" style="margin:0">${pmIco("image")}Pautas de ${monthName(MONTH)} <span class="note">${ads.length}</span></h2><div class="tag-row"><span class="tag">Fuente: Meta Ads</span>${updTag(META_CREATIVES.updated)}${MONTH === CURRENT_MONTH ? "" : metaBtn("anuncios", "Anuncios", "Anuncios actualizados con lo último de Meta.")}</div></div>
+    ${ads.length ? `<div class="chips admfilter">${chip("todas", "Todas", ads.length)}${chip("aire", "En el aire", n("aire"))}${chip("prog", "Programadas", n("prog"))}${chip("fin", "Terminadas", n("fin"))}</div>
+    <div class="admgrid">${shown.map(a => `<article class="admcard" data-adview="${esc(a.id)}" role="button" tabindex="0" title="Ver la pauta en grande">
+      <div class="liveimg">${adImg(a)}${adBadge(a)}</div>
+      <div class="livebody">${brandTag(a.b)}<b>${esc(adName(a))}</b>${a.camp ? `<span class="note adcamp">${esc(a.camp)}</span>` : ""}
+        ${a.start ? `<span class="addates">${icon("calendar")} ${adDates(a)}</span>${a.status === "ACTIVE" ? adRun(a) : ""}` : ""}
+        <div class="adnums">${adNums(a).map(([v, l]) => `<span><b>${v}</b>${l}</span>`).join("")}</div></div></article>`).join("")}</div>`
+      : `<div class="empty">${META_CREATIVES.updated ? `No hubo pautas en ${monthName(MONTH)}${brandFilter !== "Todas" ? " para esta marca" : ""}.` : "Todavía no llegaron los anuncios desde Meta."}</div>`}</div>`;
 }
 const FCOLORS = ["#22d3ee","#f472b6","#a78bfa","#fbbf24","#34d399","#fb923c","#60a5fa","#f87171"];
 const FCOL = (b, i) => BRAND_GRAD[b] || BRANDS[b] || FCOLORS[i % FCOLORS.length]; // cada marca con su color
