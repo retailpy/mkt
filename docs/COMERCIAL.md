@@ -2,7 +2,7 @@
 
 > Para el chat de Claude Code que va a hacer cambios **solo en Comercial**. Leé primero `CLAUDE.md` y `docs/CONTEXTO.md`
 > (cómo se trabaja: ramas, pruebas, publicar). Acá está todo lo de Comercial: qué hace, dónde está el código y qué no tocar.
-> Actualizado el **15/10/2026** (app publicada **v194**: Comercial con Superseis, Stock y Delimarket y 9 categorías; v195: el botón de arriba abre la carpeta general; en la rama v196: lectura arreglada con los nombres y Excel reales y bajada directa; el número de línea es aproximado: buscá por el texto indicado).
+> Actualizado el **15/10/2026** (app publicada **v197**: Comercial con Superseis, Stock y Delimarket, 9 categorías, lectura con los Excel reales y bajada directa de Drive; el número de línea es aproximado: buscá por el texto indicado).
 > Repositorio: `retailpy/mkt` (GitHub). Producción: `main` → https://retailmkt.vercel.app (Vercel). Base y funciones: Supabase,
 > proyecto `retail-mkt-hub`. El otro chat trabaja en su propia rama `claude/…` y publica igual: PR a `main` y merge.
 
@@ -80,7 +80,7 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
   subcarpetas (2 niveles); `comercial_file` acepta archivos de cualquiera de esas carpetas y baja las planillas de Google como Excel.
   Con el script de antes (≤ 6) solo se lee la carpeta de las quincenales de Superseis (como siempre) y las demás categorías dicen
   “Todavía no se leyó: falta actualizar el script”.
-- **Rápido (v196):** las 7 carpetas se listan a la vez y los Excel se bajan **directo de Drive** (`bajarOfertas`: las carpetas se
+- **Rápido (v197):** las 7 carpetas se listan a la vez y los Excel se bajan **directo de Drive** (`bajarOfertas`: las carpetas se
   comparten con el link) de a 6 por vez; si Drive no lo entrega, se pide al script (`comercial_file`) como antes. Por vez se leen
   hasta **40** archivos (`COM_LEER`; el resto en la próxima revisión, el aviso dice “Quedan N”). No se leen las subcarpetas de
   ofertas viejas (`ARCHIVADAS`: «ANTERIORES», «HISTÓRICO»…). En la pantalla, los buscadores dibujan la lista una sola vez cuando se
@@ -110,7 +110,7 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
 
 | Qué | Archivo y lugar |
 |---|---|
-| Pantalla de Comercial | `index.html`: buscar `// ---------- Comercial:` (≈ línea 9553; `pComercial()` ≈ 9730). Ahí están `COM_FOLDER`/`COM_BRANDS`/`COM_CAT` (las 9 categorías y sus carpetas), `comHub()`, `comCatStatus()`, `comPending()`, `comEmptyMsg()`, `comUI` (`comUI.cat` = "Marca\|categoría"), `comState`, `comPeriods`, `comRange`, `comNice`/`comSent`/`comSec` (textos legibles), `comPct`, `comCard`, `comF` (copiar un dato: `data-comcp`), `comOfVal`/`comPageItems`/`comPageTools` (orden y buscador de cada página: `data-compk`, `data-compord`, `data-compq`), `comSync`, `comExcel`, `comPdf`, `COM_GUIDE`, **`pComercial()`** y sus eventos (`data-com…`). |
+| Pantalla de Comercial | `index.html`: buscar `// ---------- Comercial:` (≈ línea 9586; `pComercial()` ≈ 9764). Ahí están `COM_FOLDER`/`COM_BRANDS`/`COM_CAT` (las 9 categorías y sus carpetas), `comHub()`, `comCatStatus()`, `comPending()`, `comEmptyMsg()`, `comUI` (`comUI.cat` = "Marca\|categoría"), `comState`, `comPeriods`, `comRange`, `comNice`/`comSent`/`comSec` (textos legibles), `comPct`, `comCard`, `comF` (copiar un dato: `data-comcp`), `comOfVal`/`comPageItems`/`comPageTools` (orden y buscador de cada página: `data-compk`, `data-compord`, `data-compq`), `comSync`, `comExcel`, `comPdf`, `COM_GUIDE`, **`pComercial()`** y sus eventos (`data-com…`). |
 | Estilos | `index.html`, bloque CSS `/* Comercial: ofertas de Superseis, Stock y Delimarket */` (≈ líneas 555–640): clases `.comhub`, `.comb`, `.comcat`, `.compend`, `.com*`, `.cof*`, `.cpct`, `.cflag`, `.cnew`. |
 | Menú y permisos | `SECTIONS` → `{ k:"comercial", virtual:true }`; `PERM_EXTRA` incluye `"comercial"`; está en `ROLE_COMMON` (CM y Diseñador lo ven). El rol **Revisor** (revisión de Meta) **no** lo ve ni puede leer `s:COMERCIAL` en la base: no lo cambies. |
 | Sincronización | `sync.js`: `SHARED.COMERCIAL` y `READONLY` (no se guarda desde la app). |
