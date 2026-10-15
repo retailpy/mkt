@@ -3191,6 +3191,22 @@ const cmPiece = j => j.area === "CM" && VID_TOPICS[j.piece] ? [j.piece, j.piece 
 function vidDefaults(j){ if (j.area !== "CM" || !VID_TOPICS[j.piece]) return j;
   if (j.piece === "Video para redes"){ if (!VID_FORMATS.includes(j.vfmt)) j.vfmt = VID_FORMATS[0]; } else delete j.vfmt;
   if (!VID_TOPICS[j.piece].includes(j.vtopic)) j.vtopic = VID_TOPICS[j.piece][0]; return j; }
+// Categorías y tipos de trabajo de Diseño gráfico para los pedidos nuevos (v194, pedido de Admin total). Los pedidos
+// cargados antes conservan su tipo (DESIGN_TYPES) y se siguen trabajando igual.
+const DG_CATS = {
+  "Diseño digital":["Post RRSS","Historia","Carrusel","Banner web/app","Pieza para WhatsApp/Mailing","KV de campaña","Plantilla editable","Folleto de ofertas digital","Catálogo/revista digital"],
+  "Folletos y catálogos":["Folleto de ofertas digital","Catálogo/revista digital","Portada","Página interior"],
+  "Campañas e identidad":["KV de campaña","Logo","Identidad visual"],
+  "Impresos y punto de venta":["Afiche/cartel","Aviso para Periódico","Material POP","Señalética","Tarjeta/etiqueta","Gigantografía/banner","Packaging/merchandising","Catálogo/revista","Folleto de ofertas"],
+  "Audiovisual y fotografía":["Reel/video","Animación","Edición/retoque","Video para pantallas"],
+};
+const DG_CAT_NAMES = Object.keys(DG_CATS);
+// Categoría de un pedido de diseño: la elegida o la primera que tiene su tipo (null = tipo anterior, sin categoría).
+const dgCatOf = j => DG_CATS[j.cat]?.includes(j.piece) ? j.cat : DG_CAT_NAMES.find(c => DG_CATS[c].includes(j.piece)) || null;
+// Lo que se propone al cargar un pedido nuevo, según la sección donde se carga.
+const DG_DEFAULT = { pedidos:["Diseño digital","Post RRSS"], cartel:["Impresos y punto de venta","Afiche/cartel"], web:["Diseño digital","Banner web/app"], pantallas:["Audiovisual y fotografía","Video para pantallas"] };
+const dgDefault = sec => { const [cat, piece] = DG_DEFAULT[sec] || DG_DEFAULT.pedidos; return { cat, piece }; };
+const dgPageSec = () => isCartelPage() ? (SEC_PIECES[page] ? page : "cartel") : "pedidos";
 const DESIGN_TYPES = ["Post RRSS","Carrusel","Historia","Reel","Banner web","PDF de ofertas de la semana","Flyer impreso","Cartelería","Vía pública","Catálogo digital","Empaque o etiqueta","Pantalla","Video para pantallas","Pantalla LED","Menú digital","Email marketing","Otro"];
 const SOLICITANTES = ["Marketing","Trade Marketing","E-commerce","Visual Merchandising","Gerencia Comercial","Gerencia General","RRSS","Emanuel Goia","Comercial","Patricia Chapp","Enrique Ortiz","Omnicanalidad","Otro"];
 const PRIORIDADES = ["Baja","Media","Alta","Urgente"];
@@ -3289,8 +3305,8 @@ let posts = [
 
 // Materiales: piezas que no son un posteo de redes (se ven en su propio calendario, por fecha de entrega).
 // Diseño gráfico en tres partes: Redes, Cartelería (impresos y tienda) y Web (banners y el PDF de ofertas de la semana que se sube a la web).
-const CARTEL_PIECES = ["Cartelería","Flyer impreso","Vía pública","Empaque o etiqueta"];
-const WEB_PIECES = ["Banner web","PDF de ofertas de la semana","Catálogo digital","Email marketing"];
+const CARTEL_PIECES = ["Cartelería","Flyer impreso","Vía pública","Empaque o etiqueta", ...DG_CATS["Impresos y punto de venta"]];
+const WEB_PIECES = ["Banner web","PDF de ofertas de la semana","Catálogo digital","Email marketing","Banner web/app","Pieza para WhatsApp/Mailing","Folleto de ofertas digital","Catálogo/revista digital","Portada","Página interior"];
 const SCREEN_PIECES = ["Pantalla","Video para pantallas","Pantalla LED","Menú digital"];
 const MATERIAL_PIECES = [...CARTEL_PIECES, ...WEB_PIECES, ...SCREEN_PIECES];
 // Secciones de diseño que no son de redes, con sus tipos de pieza.
@@ -3305,7 +3321,10 @@ const jobSection = j => j.area === "CM" ? "gestioncm" : matSecOf(j) || "pedidos"
 const secPieces = sec => SEC_PIECES[sec] || SOCIAL_TYPES;
 const inMatPage = j => matSecOf(j) === (SEC_PIECES[page] ? page : "cartel");
 const SOCIAL_TYPES = DESIGN_TYPES.filter(t => !MATERIAL_PIECES.includes(t));
-const PIECE_ICO = { "Post RRSS":"image", "Carrusel":"gallery-horizontal", "Historia":"smartphone", "Reel":"clapperboard", "Banner web":"monitor", "PDF de ofertas de la semana":"file-down", "Flyer impreso":"file-text", "Cartelería":"signpost", "Vía pública":"map", "Catálogo digital":"book-open", "Empaque o etiqueta":"package", "Pantalla":"tv", "Video para pantallas":"monitor-play", "Pantalla LED":"tv", "Menú digital":"list", "Email marketing":"mail", "Otro":"shapes" };
+const PIECE_ICO = { "Post RRSS":"image", "Carrusel":"gallery-horizontal", "Historia":"smartphone", "Reel":"clapperboard", "Banner web":"monitor", "PDF de ofertas de la semana":"file-down", "Flyer impreso":"file-text", "Cartelería":"signpost", "Vía pública":"map", "Catálogo digital":"book-open", "Empaque o etiqueta":"package", "Pantalla":"tv", "Video para pantallas":"monitor-play", "Pantalla LED":"tv", "Menú digital":"list", "Email marketing":"mail", "Otro":"shapes",
+  "Banner web/app":"monitor", "Pieza para WhatsApp/Mailing":"mail", "KV de campaña":"sparkles", "Plantilla editable":"layout-grid", "Folleto de ofertas digital":"file-down", "Catálogo/revista digital":"book-open",
+  "Portada":"book-open", "Página interior":"file-text", "Logo":"gem", "Identidad visual":"palette", "Afiche/cartel":"presentation", "Aviso para Periódico":"newspaper", "Material POP":"store", "Señalética":"signpost",
+  "Tarjeta/etiqueta":"tag", "Gigantografía/banner":"flag", "Packaging/merchandising":"package", "Catálogo/revista":"book-open", "Folleto de ofertas":"file-text", "Reel/video":"clapperboard", "Animación":"wand-sparkles", "Edición/retoque":"crop" };
 const pieceTag = pc => `<span class="ptag">${icon(PIECE_ICO[pc] || "shapes")}${esc(pc)}</span>`;
 const isCartelPage = () => page === "calcartel" || MAT_SECS.includes(page);
 const CM_BY_BRAND = { Superseis:"Aníbal Iván Martinez", Stock:"Aníbal Iván Martinez", Delimarket:"Miguel Sebastián Kunzle Insfrán", "Retail Institucional":"Miguel Sebastián Kunzle Insfrán", Bianca:"Miguel Sebastián Kunzle Insfrán", Dayo:"Miguel Sebastián Kunzle Insfrán", PediWOW:"Miguel Sebastián Kunzle Insfrán", Clasipar:"Miguel Sebastián Kunzle Insfrán" };
@@ -4905,7 +4924,7 @@ document.addEventListener("click", e => {
 });
 const CM_CAL_KIND = { calendario:"Feed", calhistoria:"Historia", calcanales:"Canal" };
 const newCmJobOn = (due, area) => { const brand = MAIN_BRANDS.includes(brandFilter) && myBrands().includes(brandFilter) ? brandFilter : myBrands()[0];
-  jobUI.form = { mode:"new", job:{ id:nextJobId(area), area, requestDate:TODAY, requester:"Marketing", brand, piece:(area === "CM" ? CM_TYPES : SOCIAL_TYPES)[0], title:"", owner:"Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due, link:"", notes:"", post:null } }; render(); };
+  jobUI.form = { mode:"new", job:{ id:nextJobId(area), area, requestDate:TODAY, requester:"Marketing", brand, ...(area === "CM" ? { piece:CM_TYPES[0] } : dgDefault("pedidos")), title:"", owner:"Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due, link:"", notes:"", post:null } }; render(); };
 // En las secciones de CM solo se cargan cosas de CM: los pedidos de diseño gráfico se cargan en Diseño gráfico (Admin total).
 const jobDayOpts = () => canCreateJobs() && can("gestioncm") ? [["Video","clapperboard","Gestión de Video"]] : [];
 document.addEventListener("click", e => {
@@ -5675,7 +5694,7 @@ function jobFicha(){
     <header class="jp-h"><span class="note">${j.area === "CM" ? "Gestión de Video" : "Pedido de diseño gráfico"}${j.ex ? ` <span class="exbadge sm">Ejemplo para mostrar cómo se carga</span>` : ""}</span><h1>${esc(j.title)}</h1><div class="chips">${pill(j.status, JOB_COLOR[j.status])}${urgBadge(j)}${j.rep?.days?.length ? `<span class="repbadge">${icon("repeat")} Se repite: ${esc(repText(j.rep).toLowerCase())}</span>${at ? `<button class="btn sm" type="button" data-jrepstop="${j.id}">Dejar de repetir</button>` : ""}` : j.repOf ? `<span class="repbadge">${icon("repeat")} Pedido que se repite</span>` : ""}</div></header>
     ${last ? `<div class="jfmsg"><b>${icon("pencil")} Cambios que pidió Admin total</b><p>${esc(last.text)}</p><span>${dm(last.date)} · ${last.time}</span></div>` : ""}
     <section class="panel jp-sec"><h2 class="pmh">${pmIco("clipboard-list")}<i class="jpn">1</i>Qué hay que hacer</h2>
-      <div class="jfgrid">${row("Marca", brandTag(j.brand))}${row("Tipo de trabajo", esc(cmPiece(j)))}${row("Trabajo solicitado", esc(j.title))}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}</div>
+      <div class="jfgrid">${row("Marca", brandTag(j.brand))}${row("Tipo de trabajo", esc((j.area === "Diseño" && dgCatOf(j) ? dgCatOf(j) + " · " : "") + cmPiece(j)))}${row("Trabajo solicitado", esc(j.title))}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}</div>
       ${j.notes ? `<div class="jfnotes"><span>Observaciones</span><p>${esc(j.notes)}</p></div>` : ""}</section>
     <section class="panel jp-sec"><h2 class="pmh">${pmIco("users")}<i class="jpn">2</i>Quién y para cuándo</h2>
       <div class="jfgrid"><div><span>Quién lo pidió</span><b>${esc(j.requester || "Sin indicar")}</b></div>${row("Responsable", esc(j.owner))}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", prioTag(j.priority))}${row("Complejidad", esc(j.complexity))}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}</div></section>
@@ -5706,7 +5725,9 @@ function jobForm(){
   if (!f.repDays) f.repDays = [...(f.job.rep?.days || [])];
   const j = f.job, area = j.area;
   // Redes Sociales y Cartelería tienen cada una sus tipos de pieza.
-  const sec = jobSection(j), types = area === "CM" ? [...new Set([...CM_TYPES, j.piece].filter(Boolean))] : page === "caldg" ? [...new Set([...DESIGN_TYPES, j.piece].filter(Boolean))] : secPieces(sec); // en el Calendario de Diseño se elige cualquier tipo de pieza
+  // Diseño: categoría y tipo de trabajo (v194). Un pedido de antes con un tipo que ya no está conserva su tipo.
+  const sec = jobSection(j), dgCat = area === "CM" ? null : dgCatOf(j);
+  const types = area === "CM" ? [...new Set([...CM_TYPES, j.piece].filter(Boolean))] : dgCat ? [...new Set([...DG_CATS[dgCat], j.piece].filter(Boolean))] : [j.piece].filter(Boolean);
   const opt = (list, v) => list.map(x => `<option ${x === v ? "selected" : ""}>${x}</option>`).join("");
   return `<div class="jpage jformpage" aria-label="Formulario de trabajo">
     <div class="jp-top"><button class="btn" type="button" data-jclose>${icon("arrow-left")} Volver</button></div>
@@ -5714,8 +5735,9 @@ function jobForm(){
     <form id="jobForm" class="jform panel">
       ${f.mode === "edit" ? jobReviewBox(jobById(j.id)) : ""}
       <section class="jfs"><h3><i>1</i>Qué hay que hacer</h3><div class="jfg">
-      ${area === "CM" ? `<label>Área *<select class="base" id="jArea" disabled>${Object.keys(AREAS).map(a => `<option value="${a}" ${a === area ? "selected" : ""}>${AREAS[a].icon} ${areaName(a)}</option>`).join("")}</select></label>` : `<label>¿Para dónde es? *<select class="base" id="jSec"${j.post ? " disabled" : ""}>${DESIGN_SECS.map(([k, l]) => `<option value="${k}" ${k === sec ? "selected" : ""}>${l}</option>`).join("")}</select></label>`}
+      ${area === "CM" ? `<label>Área *<select class="base" id="jArea" disabled>${Object.keys(AREAS).map(a => `<option value="${a}" ${a === area ? "selected" : ""}>${AREAS[a].icon} ${areaName(a)}</option>`).join("")}</select></label>` : `<label>Categoría *<select class="base" id="jCat"${j.post ? " disabled" : ""}>${dgCat ? "" : `<option value="" selected>Tipo anterior (sin categoría)</option>`}${DG_CAT_NAMES.map(c => `<option ${c === dgCat ? "selected" : ""}>${c}</option>`).join("")}</select></label>`}
       <label>Tipo de trabajo *<select class="base" id="jPiece">${opt(types, j.piece)}</select></label>
+      ${area === "CM" ? "" : `<p class="note jsecnote" style="grid-column:1/-1;margin:-4px 0 0">${icon(PIECE_ICO[j.piece] || "shapes")} Se ve en <b>${esc((DESIGN_SECS.find(x => x[0] === sec) || DESIGN_SECS[0])[1])}</b>${dgCat ? "" : " · tipo anterior: se puede seguir trabajando igual"}.</p>`}
       ${area === "CM" && VID_TOPICS[j.piece] ? (vidDefaults(j), `${j.piece === "Video para redes" ? `<label>Formato *<select class="base" id="jVfmt">${opt(VID_FORMATS, j.vfmt)}</select></label>` : ""}<label>Tema del video *<select class="base" id="jVtopic">${opt(VID_TOPICS[j.piece], j.vtopic)}</select></label>`) : ""}
       <label>Marca *<select class="base" id="jBrand">${opt(myBrands(), j.brand)}</select></label>
       <label class="wide" style="grid-column:1/-1">Trabajo solicitado *<input class="base" id="jTitle" value="${esc(j.title)}" placeholder="${area === "CM" ? "Ej.: Reel receta navideña: clericó en 1 minuto" : "Ej.: Post de Navidad: canasta navideña 20% OFF"}" required></label>
@@ -5765,7 +5787,7 @@ function spawnRepeats(){
       const d = addDays(TODAY, k), wd = (new Date(d + "T12:00").getDay() + 6) % 7;
       if (d <= t.due || !t.rep.days.includes(wd) || (t.rep.until && d > t.rep.until) || !MONTHS_APP.some(m => m.v === d.slice(0,7))) continue;
       const id = `${t.id}-R${d.slice(2).replace(/-/g, "")}`; if (jobs.some(x => x.id === id)) continue;
-      jobs.push({ id, area:t.area, title:t.title, brand:t.brand, piece:t.piece, owner:t.owner, requester:t.requester, requestDate:TODAY, due:d, status:"Pendiente", priority:t.priority, complexity:t.complexity,
+      jobs.push({ id, area:t.area, title:t.title, brand:t.brand, piece:t.piece, ...(t.cat ? { cat:t.cat } : {}), owner:t.owner, requester:t.requester, requestDate:TODAY, due:d, status:"Pendiente", priority:t.priority, complexity:t.complexity,
         brief:t.brief, share:t.share || "", shares:shareList(t).map(x => ({ ...x })), drive:t.drive || "", canva:t.canva || "", links:jobLinks(t).slice(), xlinks:(t.xlinks || []).map(x => ({ ...x })), designLink:"", link:t.link || "", notes:t.notes || "", post:null, repOf:t.id });
       if (t.owner && t.owner !== "Sin asignar" && t.owner !== viewer.name) notify({ to:t.owner, type:"nuevo", job:id });
       n++;
@@ -5779,7 +5801,7 @@ function readJobForm(j){ const v = id => document.getElementById(id)?.value;
   const bf = document.getElementById("jBriefF"); if (bf && bf.dataset.dirty){ j.brief = cleanRich(bf.innerHTML); j.briefBy = viewer.name; j.briefAt = new Date().toISOString(); }
   if (document.querySelector("#jobForm .lked")) readLinkEditor(document.querySelector("#jobForm .lked"), j);
   // (los links se leen del editor de links de acceso, arriba)
-  Object.assign(j, { requestDate:v("jReq") ?? j.requestDate, requester:v("jRequester") ?? j.requester, brand:v("jBrand") ?? j.brand, piece:v("jPiece") ?? j.piece, ...(v("jVfmt") ? { vfmt:v("jVfmt") } : {}), ...(v("jVtopic") ? { vtopic:v("jVtopic") } : {}), title:(v("jTitle") ?? j.title).trim(), owner:v("jOwner") ?? j.owner, status:v("jStatus") ?? j.status, priority:v("jPrio") ?? j.priority, complexity:v("jComp") ?? j.complexity, due:v("jDue") ?? j.due, link:(v("jLink") ?? j.link).trim(), notes:(v("jNotes") ?? j.notes).trim() }); }
+  Object.assign(j, { requestDate:v("jReq") ?? j.requestDate, requester:v("jRequester") ?? j.requester, brand:v("jBrand") ?? j.brand, piece:v("jPiece") ?? j.piece, ...(v("jCat") ? { cat:v("jCat") } : {}), ...(v("jVfmt") ? { vfmt:v("jVfmt") } : {}), ...(v("jVtopic") ? { vtopic:v("jVtopic") } : {}), title:(v("jTitle") ?? j.title).trim(), owner:v("jOwner") ?? j.owner, status:v("jStatus") ?? j.status, priority:v("jPrio") ?? j.priority, complexity:v("jComp") ?? j.complexity, due:v("jDue") ?? j.due, link:(v("jLink") ?? j.link).trim(), notes:(v("jNotes") ?? j.notes).trim() }); }
 // Cuadraditos del proceso: uno por etapa; se toca el cuadradito de la etapa en la que está el trabajo.
 function stagePicker(j, editable){
   const st = stagesOf(j), cur = st.indexOf(j.status);
@@ -5889,19 +5911,30 @@ function pedPage(A, title, ico, sub, newHint, extra = ""){
   ${jobForm()}`;
 }
 // Calendario de Diseño gráfico: todas las entregas (Redes, Cartelería, Web y Pantallas) en su fecha límite. Mis trabajos o todo el equipo.
+// Planificación de Diseño gráfico: arriba el resumen del mes por etapa (como en CM), para controlar qué se está haciendo,
+// qué está en revisión y qué ya se aprobó. Tocar una etapa muestra solo esos trabajos en el calendario (otra vez: todos).
+let dgPlanUI = { st:"Todos" };
 function pCalDG(){
-  const list = jobs.filter(j => j.area === "Diseño" && seesBrand(j.brand) && j.status !== "Cancelado" && (!pedMine() || j.owner === viewer.name || j.ex)).sort((a, b) => a.due.localeCompare(b.due));
+  const base = jobs.filter(j => j.area === "Diseño" && seesBrand(j.brand) && j.status !== "Cancelado" && (!pedMine() || j.owner === viewer.name || j.ex));
+  const list = base.filter(j => dgPlanUI.st === "Todos" || j.status === dgPlanUI.st).sort((a, b) => a.due.localeCompare(b.due));
   const n = list.filter(j => j.due.slice(0, 7) === MONTH).length;
+  const mes = base.filter(j => j.due.slice(0, 7) === MONTH), cnt = st => mes.filter(j => j.status === st).length, done = mes.filter(isFin).length;
+  const sts = [...JOB_STAGES, ...new Set(mes.map(j => j.status).filter(st => !JOB_STAGES.includes(st)))]; // las de antes (ej. Entregado), solo si hay
+  const summary = `<div class="pubsum dgsum">${sts.map(st => `<button type="button" class="pubst ${dgPlanUI.st === st ? "on" : ""}" data-dgst="${esc(st)}" aria-pressed="${dgPlanUI.st === st}" style="--c:${st === "Pendiente" ? "#ef4444" : JOB_COLOR[st] || "#94a3b8"}"><b class="num">${cnt(st)}</b><span>${esc(st)}</span></button>`).join("")}
+    <div class="pubpct"><b class="num">${mes.length ? Math.round(done / mes.length * 100) : 0}%</b><span>del mes ya aprobado (${done} de ${mes.length})</span></div></div>
+    ${dgPlanUI.st !== "Todos" ? `<p class="note dgstnote" style="margin:-6px 0 0">${icon("info")} Mostrando solo <b>${esc(dgPlanUI.st)}</b>. <button type="button" class="linkish" data-dgst="Todos">Ver todas las etapas</button></p>` : ""}`;
   return `<div class="head"><div><h1 class="pmh">${pmIco("calendar-days")}Planificación de entregas</h1><p class="sub">${monthLabel(MONTH)} · cada trabajo de Diseño gráfico (redes, cartelería, web y pantallas) en su fecha de entrega.</p></div></div>
   ${canCreateJobs() ? `<button class="panel cmnew" data-jnew><span class="cmplus">${icon("plus")}</span><span><b>Cargar pedido</b><small>Qué pieza, para qué marca, quién la hace y para cuándo. También podés tocar un día del calendario.</small></span></button>` : ""}
+  ${summary}
   ${ownsJobs() ? `<div class="chips pedscope"><button type="button" class="chip ${pedMine() ? "on" : ""}" data-pedscope="mine">${icon("user-round")} Mis trabajos</button><button type="button" class="chip ${pedMine() ? "" : "on"}" data-pedscope="team">${icon("users")} Todo el equipo</button></div>` : ""}
-  ${jobDeliveryCal(list, "Diseño")}${n ? "" : `<p class="note">No hay entregas en ${monthName(MONTH)}${pedMine() ? " a tu nombre" : ""}.</p>`}
+  ${jobDeliveryCal(list, "Diseño")}${n ? "" : `<p class="note">No hay entregas en ${monthName(MONTH)}${dgPlanUI.st !== "Todos" ? ` en ${esc(dgPlanUI.st)}` : ""}${pedMine() ? " a tu nombre" : ""}.</p>`}
   ${jobForm()}`;
 }
+document.addEventListener("click", e => { const b = e.target.closest("[data-dgst]"); if (!b) return; const st = b.dataset.dgst; dgPlanUI.st = st === "Todos" || dgPlanUI.st === st ? "Todos" : st; render(); });
 function pPedidos(){
   const cart = MAT_SECS.includes(page), web = page === "web", scr = page === "pantallas";
   return pedPage("Diseño", web ? "Diseño para Web" : scr ? "Diseño para Pantallas" : cart ? "Diseño para Cartelería" : "Diseño para Redes", web ? "monitor" : scr ? "tv" : cart ? "signpost" : "image",
-    `${web ? "Banners para los sitios web, el PDF con los precios de oferta de la semana, catálogos digitales y e-mails." : scr ? "Piezas y videos para las pantallas de las tiendas, pantallas LED y menús digitales." : cart ? "Cartelería, flyers, vía pública y empaques." : "Posts, carruseles, historias y reels para las redes."}${ownsJobs() ? " Cambiá el estado de tus pedidos desde la tabla o desde Procesos." : ""}`,
+    `${web ? "Banners web/app, piezas para WhatsApp y mailing, folletos de ofertas y catálogos digitales (portadas y páginas interiores)." : scr ? "Videos y piezas para las pantallas de las tiendas." : cart ? "Impresos y punto de venta: afiches, avisos, material POP, señalética, etiquetas, gigantografías, packaging, catálogos y folletos." : "Posts, historias, carruseles, KV de campaña, plantillas, logos e identidad visual, reels, animaciones y retoques."}${ownsJobs() ? " Cambiá el estado de tus pedidos desde la tabla o desde Procesos." : ""}`,
     web ? "Qué banner o PDF, para qué marca, quién lo hace y para cuándo." : scr ? "Qué pieza para pantalla, para qué marca, quién la hace y para cuándo." : cart ? "Qué pieza, para qué marca, quién la hace y para cuándo." : "Qué se necesita para redes, para qué marca, quién lo hace y para cuándo.");
 }
 /* ---------- Gestión CM: publicaciones (fecha de publicación y estado) + tareas de CM ---------- */
@@ -6091,7 +6124,7 @@ document.addEventListener("click", e => {
 function newJobOn(due){
   const area = page === "gestioncm" ? "CM" : "Diseño", mat = isCartelPage();
   const brand = MAIN_BRANDS.includes(brandFilter) && myBrands().includes(brandFilter) ? brandFilter : myBrands()[0];
-  jobUI.form = { mode:"new", job:{ id:nextJobId(area), area, requestDate:TODAY, requester:"Marketing", brand, piece:mat ? matPieces()[0] : (area === "CM" ? CM_TYPES : SOCIAL_TYPES)[0], title:"", owner:"Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due, link:"", notes:"", post:null } };
+  jobUI.form = { mode:"new", job:{ id:nextJobId(area), area, requestDate:TODAY, requester:"Marketing", brand, ...(area === "CM" ? { piece:CM_TYPES[0] } : dgDefault(mat ? dgPageSec() : "pedidos")), title:"", owner:"Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due, link:"", notes:"", post:null } };
   render();
 }
 document.addEventListener("click", e => {
@@ -10377,7 +10410,7 @@ document.addEventListener("click", e => {
   if (jt){ const d = jt.dataset, find = id => jobs.find(x => x.id === id);
     if (d.jarea){ jobUI.area = d.jarea; jobUI.owner = "Todos"; }
     else if (d.jview) jobUI.view = d.jview;
-    else if (d.jnew !== undefined){ const area = jobArea(); jobUI.form = { mode:"new", job:{ id:nextJobId(area), area, requestDate:TODAY, requester:"Marketing", brand:myBrands()[0], piece:(area === "CM" ? CM_TYPES : isCartelPage() ? matPieces() : SOCIAL_TYPES)[0], title:"", owner:"Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due:"", link:"", notes:"", post:null } }; }
+    else if (d.jnew !== undefined){ const area = jobArea(); jobUI.form = { mode:"new", job:{ id:nextJobId(area), area, requestDate:TODAY, requester:"Marketing", brand:myBrands()[0], ...(area === "CM" ? { piece:CM_TYPES[0] } : dgDefault(dgPageSec())), title:"", owner:"Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due:"", link:"", notes:"", post:null } }; }
     else if (d.jedit){ jobUI.ficha = null; jobUI.form = { mode:"edit", job:{ ...find(d.jedit) } }; }
     else if (d.jdup){ const o = find(d.jdup); jobUI.form = { mode:"dup", job:{ ...o, id:nextJobId(o.area), requestDate:TODAY, status:"Pendiente", delivered:null, approved:null, post:null } }; }
     else if (d.jdel){ if (!confirmTap(jt, "job:" + d.jdel, "¿Seguro? Tocá de nuevo")) return;
@@ -10430,7 +10463,8 @@ document.addEventListener("change", e => {
   const jf = e.target.closest("[data-jf]"); if (jf){ jobUI[jf.dataset.jf] = jf.value; render(); return; }
   if (e.target.id === "jSearch"){ jobUI.q = e.target.value; render(); return; }
   if (e.target.id === "jPiece" && jobUI.form && jobUI.form.job.area === "CM"){ const j = jobUI.form.job; readJobForm(j); vidDefaults(j); render(); return; }
-  if (e.target.id === "jSec" && jobUI.form){ const j = jobUI.form.job; readJobForm(j); j.piece = secPieces(e.target.value)[0]; render(); return; }
+  if (e.target.id === "jCat" && jobUI.form){ const j = jobUI.form.job; readJobForm(j); if (DG_CATS[e.target.value]){ j.cat = e.target.value; j.piece = DG_CATS[j.cat][0]; } render(); return; }
+  if (e.target.id === "jPiece" && jobUI.form && jobUI.form.job.area === "Diseño"){ readJobForm(jobUI.form.job); render(); return; } // muestra en qué sección se ve
   if (e.target.id === "jArea" && jobUI.form){ const a = e.target.value; Object.assign(jobUI.form.job, { area:a, id:nextJobId(a), piece:(a === "CM" ? CM_TYPES : DESIGN_TYPES)[0], owner:"Sin asignar", title:$("#jTitle").value }); render(); return; }
   const s2 = e.target.closest("[data-urole]"); if (!s2) return;
   const pp = PEOPLE.find(x => x.id === s2.dataset.urole), nr = s2.value;
