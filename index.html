@@ -577,7 +577,7 @@ tr.tot td{border-top:1px solid var(--line-3)}
 .comdup{display:flex;gap:8px;align-items:flex-start;margin:0 0 12px;padding:8px 10px;border-radius:10px;background:rgba(239,68,68,.12);color:#fecaca;font-size:13px}.comdup svg{width:16px;height:16px;flex:none;color:#ef4444;margin-top:2px}
 .comgh{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:16px;font-weight:800;color:var(--ink)}.comgh svg{width:18px;height:18px}.comgh small{font-size:13px;font-weight:500;color:var(--muted)}
 .g-tapa .comgh svg{color:#ef4444}.g-redes .comgh svg{color:#60a5fa}.g-dest .comgh svg{color:#fbbf24}.comlist .comgh svg{color:#60a5fa}
-.comtop{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.comtop{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
 .ctc{display:flex;flex-direction:column;gap:6px;padding:14px;border-radius:14px;background:var(--inner);border:1px solid var(--line)}
 .ctc>b{font-size:15px;font-weight:700;line-height:1.3;color:var(--ink)}.ctc small{font-size:11.5px;color:var(--muted)}
 .ctp{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ctp em{font-style:normal;font-size:24px;font-weight:800;color:#fbbf24;line-height:1.1}
@@ -604,12 +604,15 @@ tr.tot td{border-top:1px solid var(--line-3)}
 .cofcp:hover{background:rgba(148,163,184,.12);color:var(--ink)}.cofcp:focus-visible{outline:2px solid var(--cyan)}
 .ctc{position:relative}.ctc>.cofcp{position:absolute;top:8px;right:8px}.ctc>.cofcp+b{padding-right:30px}
 .comgh .comcpall{margin-left:auto}
+.comf{display:inline-flex;align-items:center;gap:5px;cursor:copy;border-radius:7px;padding:1px 4px;margin:-1px -4px}.comf svg{width:13px;height:13px;flex:none;color:var(--muted);opacity:.55}
+b.comf{display:block}.comfw{white-space:nowrap}b.comf svg{display:inline;vertical-align:-2px;margin-left:5px}.cofb .comf{margin-right:0}
+.comf:hover{background:rgba(148,163,184,.14)}.comf:hover svg,.comf:focus-visible svg{opacity:1;color:var(--ink)}.comf:focus-visible{outline:2px solid var(--cyan)}
 .cofb:hover{background:rgba(148,163,184,.06)}.cofb:focus-visible{outline:2px solid var(--cyan)}
 .cofm{display:flex;flex-direction:column;align-items:flex-start;min-width:0}.cofm b{font-size:14.5px;font-weight:600;color:var(--ink);overflow-wrap:anywhere}
 .cofn,.cofo,.cofd2{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.cofn{font-size:14px;color:#cbd5e1}.cofo{font-size:16px;font-weight:800;color:#fbbf24}
 .cofd{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:2px 4px 8px;font-size:13px}.cofd dt{color:var(--muted)}.cofd dd{margin:0}
 .cof.open{background:rgba(148,163,184,.05)}.cof .chips{margin:0 4px 10px}
-@media (max-width:640px){.cst b{font-size:17px}.csi{width:40px;height:40px}.csi svg{width:22px;height:22px}.cofh{display:none}.cofr{align-items:flex-start}.cofcp{margin-top:8px}.cofb{grid-template-columns:1fr 1fr 1fr;gap:4px 10px}.cofm{grid-column:1/-1}.comart{display:none}.comgrp,.comlist{padding:10px}
+@media (max-width:640px){.cst b{font-size:17px}.csi{width:40px;height:40px}.csi svg{width:22px;height:22px}.cofh{display:none}.cofr{align-items:flex-start;position:relative}.cofcp{margin-top:8px}.cofr>.cofcp{position:absolute;top:4px;right:0;margin:0}.cofm{padding-right:38px}.cofb{grid-template-columns:1fr 1fr 1fr;gap:4px 10px}.cofm{grid-column:1/-1}.comart{display:none}.comgrp,.comlist{padding:10px}
   .cofn,.cofo,.cofd2{text-align:left}.cofn::before,.cofo::before,.cofd2::before{content:attr(data-l);display:block;font-size:10.5px;font-weight:400;color:var(--muted)}}
 .rthint{display:flex;gap:6px;align-items:flex-start;margin:6px 0 0;font-size:12.5px}.rthint svg{width:14px;height:14px;flex:none;margin-top:2px}
 .jpnow .chips,.jp-top{flex-wrap:wrap}
@@ -9583,7 +9586,15 @@ const comGuide = k => COM_GUIDE[k] ? `<p class="comguide">${icon("info")}<span><
 // Producto, precios y descuento en texto, para pegar donde haga falta (un producto: una línea por dato; la lista: columnas).
 const comPcTxt = i => { const pc = comPct(i); return pc && !/x/i.test(pc) ? pc : ""; };
 const comCopyTxt = i => [comNice(i.desc), typeof i.pvp === "number" && i.of !== i.pvp ? `Antes: ${gs(i.pvp)}` : "", `Oferta: ${comOfTxt(i)}`, comPcTxt(i) ? `Descuento: ${comPcTxt(i)}` : ""].filter(Boolean).join("\n");
-const comCopyBtn = id => `<button type="button" class="cofcp" data-comcopy="${esc(id)}" title="Copiar producto y precios" aria-label="Copiar producto y precios">${icon("copy")}</button>`;
+const comCopyBtn = id => `<button type="button" class="cofcp" data-comcopy="${esc(id)}" title="Copiar todo: producto y precios" aria-label="Copiar todo: producto y precios">${icon("copy")}</button>`;
+// Cada dato por separado (producto, oferta, precio de antes y descuento): se toca y queda copiado tal como se ve, para pegarlo en la pieza.
+const comF = (txt, what, html, tag = "span") => { if (!txt) return tag === "span" ? html : `<${tag}>${html}</${tag}>`;
+  const k = tag === "b" ? html.lastIndexOf(" ") + 1 : 0; // en el nombre, el ícono va pegado a la última palabra (no queda solo en otra línea)
+  return `<${tag} class="comf" role="button" tabindex="0" data-comcp="${esc(txt)}" title="Copiar ${what}" aria-label="Copiar ${what}: ${esc(txt)}">${k ? html.slice(0, k) + `<span class="comfw">${html.slice(k)}${icon("copy")}</span>` : html + icon("copy")}</${tag}>`; };
+const comFd = i => comF(comNice(i.desc), "el producto", esc(comNice(i.desc)), "b");
+const comFo = (i, html) => comF(comOfTxt(i), "el precio de oferta", html);
+const comFp = (i, html) => comF(typeof i.pvp === "number" ? gs(i.pvp) : "", "el precio de antes", html);
+const comFc = (i, html) => comF(comPcTxt(i) ? "-" + comPcTxt(i) : "", "el descuento", html);
 async function comClip(txt, msg){
   try { await navigator.clipboard.writeText(txt); toast(msg); return; } catch {}
   const t = document.createElement("textarea"); t.value = txt; t.setAttribute("readonly", ""); t.style.cssText = "position:fixed;top:0;left:0;opacity:0";
@@ -9591,12 +9602,12 @@ async function comClip(txt, msg){
   toast(ok ? msg : "No se pudo copiar: seleccioná el texto y copialo.");
 }
 const comCard = (i, id) => { const pc = comPct(i), was = typeof i.pvp === "number" && i.of !== i.pvp;
-  return `<div class="ctc">${id ? comCopyBtn(id) : ""}<b>${esc(comNice(i.desc))}</b><div class="ctp"><em>${esc(comOfTxt(i))}</em>${pc && !/x/i.test(pc) ? `<span class="cpct">−${esc(pc)}</span>` : ""}</div>${was ? `<span class="cwas">Antes ${gs(i.pvp)}</span>` : ""}<small>${esc(comSec(i.sec || i.sector))}</small></div>`; };
+  return `<div class="ctc">${id ? comCopyBtn(id) : ""}${comFd(i)}<div class="ctp">${comFo(i, `<em>${esc(comOfTxt(i))}</em>`)}${pc && !/x/i.test(pc) ? comFc(i, `<span class="cpct">−${esc(pc)}</span>`) : ""}</div>${was ? `<span class="cwas">Antes ${comFp(i, gs(i.pvp))}</span>` : ""}<small>${esc(comSec(i.sec || i.sector))}</small></div>`; };
 function pComercial(){
   const per = comPeriods();
   if (!comUI.auto && !window.RMH?.previewing){ comUI.auto = true; if (!COMERCIAL.syncedAt || Date.now() - Date.parse(COMERCIAL.syncedAt) > 3 * 3600e3) setTimeout(() => comSync(false), 0); }
   const f0 = per.find(x => x.id === comUI.id) || per[0];
-  const head = `<div class="comhero">${COM_ART}<div class="grow"><h1>Ofertas de Comercial</h1><p>Lo que sale en el folleto de cada quincena, listo para diseñar.</p></div>
+  const head = `<div class="comhero">${COM_ART}<div class="grow"><h1>Ofertas de Comercial</h1><p>Lo que sale en el folleto de cada quincena, listo para diseñar. Tocá el producto, el precio o el descuento para copiarlo.</p></div>
     <div class="comacts">${f0 ? `<button class="btn" type="button" data-comxls>${icon("download")} Excel</button><button class="btn" type="button" data-compdf>${icon("file-text")} PDF</button>` : ""}<a class="btn" href="https://drive.google.com/drive/folders/1ciqZuhAtcIa-_OYYutd-8Zq8CTPZS-5N" target="_blank" rel="noopener" title="Abre la carpeta original de Drive donde Comercial envía las ofertas">${icon("folder-open")} Carpeta de Comercial (Drive)</a><button class="btn" type="button" data-comsync ${comUI.busy ? "disabled" : ""}>${icon("refresh-cw")} ${comUI.busy ? "Revisando…" : "Actualizar"}</button></div></div>`;
   if (!per.length) return head + `<div class="panel"><div class="empty">${comUI.busy ? "Leyendo las ofertas del Drive…" : comAll().length ? `${icon("calendar-x")} No hay ofertas de Comercial en ${monthName(MONTH)}.` : `Todavía no se leyeron las ofertas. Tocá <b>Actualizar</b>.${viewer.role === "Admin total" ? " Si avisa que falta el script, actualizalo en Configuración → Integraciones." : ""}`}</div></div>`;
   const f = f0; comUI.id = f.id;
@@ -9613,10 +9624,10 @@ function pComercial(){
   const groupsTop = [["Tapa", "star", "tapa", all.filter(i => i.flag === "Tapa")], ["Redes", "smartphone", "redes", all.filter(i => i.flag === "Zócalo redes")], ["Destacados", "sparkles", "dest", all.filter(i => i.flag === "Destacar")]].filter(g => g[3].length);
   const row = (i, k) => { const id = f.id + ":" + sheets.indexOf(sh) + ":" + k, open = comUI.open === id, pc = comPct(i);
     return `<div class="cof${open ? " open" : ""}"><div class="cofr"><div class="cofb" data-comopen="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">
-      <span class="cofm"><b>${esc(comNice(i.desc))}</b>${isNew(i) ? `<span class="cnew">Nuevo</span>` : ""}${i.flag ? comFlag(i) : ""}</span>
-      <span class="cofn" data-l="Antes">${typeof i.pvp === "number" ? gs(i.pvp) : "—"}</span>
-      <span class="cofo" data-l="Oferta">${esc(comOfTxt(i))}</span>
-      <span class="cofd2" data-l="${pc ? "Descuento" : ""}">${pc ? `<span class="cpct sm">−${esc(pc)}</span>` : ""}</span></div>${comCopyBtn(id)}</div>
+      <span class="cofm">${comFd(i)}${isNew(i) ? `<span class="cnew">Nuevo</span>` : ""}${i.flag ? comFlag(i) : ""}</span>
+      <span class="cofn" data-l="Antes">${typeof i.pvp === "number" ? comFp(i, gs(i.pvp)) : "—"}</span>
+      <span class="cofo" data-l="Oferta">${comFo(i, esc(comOfTxt(i)))}</span>
+      <span class="cofd2" data-l="${pc ? "Descuento" : ""}">${pc ? comFc(i, `<span class="cpct sm">−${esc(pc)}</span>`) : ""}</span></div>${comCopyBtn(id)}</div>
       ${open ? `<dl class="cofd">${[["Código", i.cod], ["Material", i.mat], ["Sector", comSent(i.sector)], ["Temática", comSent(i.tem)], ["Reconocimiento", typeof i.rec === "number" ? gs(i.rec) : i.rec], ["Oferta negociada", i.neg], ["Proveedor", comNice(i.prov) + (i.nprov ? " · N.° " + i.nprov : "")], ["Subcategoría", comSent(i.sub)], ["Página del folleto", comSec(i.sec)], ["Destacado", COM_FLAG_TXT[i.flag] || i.flag]].filter(([, v]) => v && String(v).trim()).map(([l, v]) => `<dt>${l}</dt><dd>${esc(String(v))}</dd>`).join("")}</dl>` : ""}</div>`; };
   const bySec = []; list.forEach(i => { const k = comSec(i.sec || i.sector); let g = bySec.find(x => x[0] === k); if (!g) bySec.push(g = [k, []]); g[1].push(i); });
   return head + `<div class="comper" role="group" aria-label="Quincena">${chips.map(x => { const st = comState(x); return `<button type="button" class="comchip s-${st} ${x.id === f.id ? "on" : ""}" data-comper="${x.id}" aria-pressed="${x.id === f.id}"><small>${icon(st === "vig" ? "circle-check" : st === "prox" ? "calendar-clock" : "history")}${COM_ST[st]}</small><b>${comRange(x)}</b></button>`; }).join("")}
@@ -9647,6 +9658,8 @@ document.addEventListener("click", e => {
   const sh = e.target.closest("[data-comsheet]"); if (sh){ comUI.sheet = +sh.dataset.comsheet; comUI.sec = "Todas"; comUI.open = null; render(); return; }
   if (e.target.closest("[data-comtop]")){ comUI.top = !comUI.top; render(); return; }
   if (e.target.closest("[data-comnewonly], [data-comnewonly-btn]")){ comUI.onlyNew = !comUI.onlyNew; render(); return; }
+  const cf = e.target.closest("[data-comcp]"); if (cf){ const sel = getSelection(); if (sel && !sel.isCollapsed && cf.contains(sel.anchorNode)) return; // está seleccionando texto con el mouse
+    comClip(cf.dataset.comcp, `Copiado: ${cf.dataset.comcp}`); return; }
   const o = e.target.closest("[data-comopen]"); if (o){ const sel = getSelection(); if (sel && !sel.isCollapsed && o.contains(sel.anchorNode)) return; // está seleccionando texto para copiar
     comUI.open = comUI.open === o.dataset.comopen ? null : o.dataset.comopen; render(); return; }
   const cp = e.target.closest("[data-comcopy]"); if (cp){ const [si, k] = cp.dataset.comcopy.split(":").slice(-2), fid = cp.dataset.comcopy.split(":").slice(0, -2).join(":"), i = COMERCIAL.files?.[fid]?.sheets?.[+si]?.items?.[+k]; if (!i) return;
@@ -9660,6 +9673,7 @@ document.addEventListener("change", e => {
   if (e.target.matches?.("[data-comold]") && e.target.value){ comUI = { ...comUI, id:e.target.value, sheet:0, sec:"Todas", open:null }; render(); }
   if (e.target.matches?.("[data-comsec]")){ comUI.sec = e.target.value; comUI.open = null; render(); }
 });
+document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.(".comf[data-comcp]")){ e.preventDefault(); e.target.click(); } });
 document.addEventListener("input", e => { if (e.target.id !== "comQ") return; comUI.q = e.target.value; comUI.open = null; render(); const i = document.getElementById("comQ"); if (i){ i.focus(); i.selectionStart = i.selectionEnd = i.value.length; } });
 function pNoticias(){
   const c = newsGet(), all = (c?.items || []).filter(n => safeUrl(n.u) && n.d);
