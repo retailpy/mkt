@@ -328,9 +328,27 @@ function productosNuevos(antes: any[] = [], despues: any[] = []){
   for (const sh of despues) for (const i of sh.items || []){ const k = claveProducto(i), n = cont.get(k) || 0; if (n > 0) cont.set(k, n - 1); else keys.push(k); }
   return keys;
 }
-const COM_LEER = 12; // archivos que se leen por vez (el resto, en la próxima revisión): así “Actualizar” no tarda demasiado
+const COM_LEER = 40; // archivos que se leen por vez (el resto, en la próxima revisión)
 const COM_DIAS = 120; // no se leen ofertas que terminaron hace más de esto (las carpetas guardan años de historia)
 const esPlanilla = (f: any) => /\.xlsx?$|\.xlsm$/i.test(f.name) || f.mime === "application/vnd.google-apps.spreadsheet";
+const ARCHIVADAS = /ANTERIOR|HISTORIC|VIEJ|ARCHIV/i; // subcarpetas con ofertas viejas: no se leen
+// Baja el Excel directo de Drive (las carpetas de ofertas se comparten con el link): es mucho más rápido que pasar por el script.
+// Si Drive no lo entrega (permisos, planilla de Google…), se pide al script de Drive como antes.
+async function bajarOfertas(c: any, f: any): Promise<Uint8Array | { error: string }> {
+  try {
+    const u = f.mime === "application/vnd.google-apps.spreadsheet" ? `https://docs.google.com/spreadsheets/d/${encodeURIComponent(f.id)}/export?format=xlsx` : `https://drive.google.com/uc?export=download&id=${encodeURIComponent(f.id)}`;
+    const r = await fetch(u, { redirect: "follow", signal: AbortSignal.timeout(20000) });
+    if (r.ok){ const b = new Uint8Array(await r.arrayBuffer()); if (b.length > 4 && ((b[0] === 0x50 && b[1] === 0x4B) || (b[0] === 0xD0 && b[1] === 0xCF))) return b; } // Excel (zip) o Excel viejo
+  } catch { /* se prueba con el script */ }
+  const j = await scriptPost(c, { kind: "comercial_file", id: f.id }).catch((e: any) => ({ ok: false, error: e.message }));
+  if (!j.ok || !j.b64) return { error: j.error || "sin respuesta" };
+  const bin = atob(j.b64), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+// Corre las tareas de a varias por vez.
+async function deAVarios<T>(items: T[], n: number, fn: (x: T) => Promise<void>){
+  let i = 0; await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) await fn(items[i++]); }));
+}
 
 async function comercialSync(c: any, minAge: number){
   if (!c?.sticker_url) return { ok: false, nokey: true, error: "Falta conectar Google Drive (Configuración → Integraciones)." };
@@ -348,14 +366,17 @@ async function comercialSync(c: any, minAge: number){
     const files: Record<string, any> = { ...(prev.files || {}) }, src: Record<string, any> = {}, pending: any[] = [], vistos = new Set<string>();
     // Excel que ya se intentaron leer y no se pudo: no se vuelven a bajar hasta que los cambien en Drive.
     const malos = new Map((prev.pending || []).filter((x: any) => x.read && x.v === PARSE_V).map((x: any) => [x.id, x]));
-    let nuevos = 0, errores = 0, agregados = 0, leidos = 0, faltan = 0, n = 0;
-    for (const fu of fuentes){
-      let l: any; try { l = await scriptPost(c, sv >= 7 ? { kind: "comercial_list", folder: fu.id } : { kind: "comercial_list" }); } catch (e: any){ l = { ok: false, error: e.message }; }
+    let nuevos = 0, errores = 0, agregados = 0, faltan = 0, n = 0;
+    // Las carpetas se leen todas a la vez.
+    const listas = await Promise.all(fuentes.map((fu) => scriptPost(c, sv >= 7 ? { kind: "comercial_list", folder: fu.id } : { kind: "comercial_list" }).catch((e: any) => ({ ok: false, error: e.message }))));
+    const aLeer: any[] = [];
+    fuentes.forEach((fu, k) => {
+      const l: any = listas[k];
       // Si no se puede abrir una carpeta, se avisa en la app (no se toma como vacía) y lo de esa carpeta queda como estaba.
-      if (!l.ok){ src[fu.id] = { at: now, err: String(l.error || "No se pudo leer la carpeta").slice(0, 200) }; continue; }
-      const planillas = (l.files || []).filter(esPlanilla);
+      if (!l.ok){ src[fu.id] = { at: now, err: String(l.error || "No se pudo leer la carpeta").slice(0, 200) }; return; }
       src[fu.id] = { at: now, ok: true, name: l.folder || "", n: 0 };
-      for (const f of planillas){
+      for (const f of (l.files || []).filter(esPlanilla)){
+        if (ARCHIVADAS.test(f.path || "")) continue;
         const r = clasificar(f.name, fu);
         if (!r) continue; // otra dinámica, versión interna…
         const per: any = periodo(f.name, new Date(f.created || f.modified));
@@ -367,27 +388,29 @@ async function comercialSync(c: any, minAge: number){
         if (o && o.modified === f.modified && o.v === PARSE_V){ Object.assign(o, meta, { inDrive: true }); continue; }
         if (!o && per.to < limite) continue; // oferta vieja que nunca se leyó: no hace falta
         const malo: any = malos.get(f.id); if (!o && malo?.modified === f.modified){ pend(malo.reason, true); continue; }
-        if (leidos >= COM_LEER){ faltan++; if (o) o.inDrive = true; continue; }
-        leidos++;
-        const j = await scriptPost(c, { kind: "comercial_file", id: f.id }).catch((e: any) => ({ ok: false, error: e.message }));
-        if (!j.ok || !j.b64){ errores++; pend(`No se pudo bajar el archivo de Drive${j.error ? ` (${j.error})` : ""}.`); continue; }
-        const bin = atob(j.b64), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        let p; try { p = parseOfertas(bytes); } catch { errores++; pend("No se pudo abrir el Excel.", true); continue; }
-        if (!p.count){ pend("No se encontraron las columnas de producto y precio de oferta en el Excel.", true); continue; }
-        const fresh: any = { id: f.id, name: f.name, ...meta, ...per, folleto: p.folleto, title: p.title,
-          modified: f.modified, v: PARSE_V, inDrive: true, n: p.count, at: now, sheets: p.sheets };
-        // Si el Excel ya estaba y ahora trae productos de más, queda anotado cuántos y cuáles (la app avisa “Se sumaron N productos más”).
-        // Solo si se leyó con el mismo lector: si cambió el lector, la diferencia no es de productos nuevos.
-        if (o && o.v === PARSE_V){
-          const keys = productosNuevos(o.sheets, p.sheets);
-          if (keys.length){ fresh.added = { n: keys.length, at: now, keys: keys.slice(0, 300) }; agregados += keys.length; }
-          else if (o.added) fresh.added = o.added;
-        }
-        if (o?.backup) fresh.backup = o.backup;
-        files[f.id] = fresh;
-        nuevos++;
+        if (aLeer.length >= COM_LEER){ faltan++; if (o) o.inDrive = true; continue; }
+        aLeer.push({ f, o, meta, per, pend });
       }
-    }
+    });
+    // Los Excel se bajan y se leen de a 6 por vez.
+    await deAVarios(aLeer, 6, async ({ f, o, meta, per, pend }) => {
+      const bytes = await bajarOfertas(c, f);
+      if (!(bytes instanceof Uint8Array)){ errores++; pend(`No se pudo bajar el archivo de Drive (${bytes.error}).`); if (o) o.inDrive = true; return; }
+      let p; try { p = parseOfertas(bytes); } catch { errores++; pend("No se pudo abrir el Excel.", true); return; }
+      if (!p.count){ pend("No se encontraron las columnas de producto y precio de oferta en el Excel.", true); return; }
+      const fresh: any = { id: f.id, name: f.name, ...meta, ...per, folleto: p.folleto, title: p.title,
+        modified: f.modified, v: PARSE_V, inDrive: true, n: p.count, at: now, sheets: p.sheets };
+      // Si el Excel ya estaba y ahora trae productos de más, queda anotado cuántos y cuáles (la app avisa “Se sumaron N productos más”).
+      // Solo si se leyó con el mismo lector: si cambió el lector, la diferencia no es de productos nuevos (queda el aviso de antes).
+      if (o && o.v === PARSE_V){
+        const keys = productosNuevos(o.sheets, p.sheets);
+        if (keys.length){ fresh.added = { n: keys.length, at: now, keys: keys.slice(0, 300) }; agregados += keys.length; }
+        else if (o.added) fresh.added = o.added;
+      } else if (o?.added) fresh.added = o.added;
+      if (o?.backup) fresh.backup = o.backup;
+      files[f.id] = fresh;
+      nuevos++;
+    });
     // Lo que ya no está en su carpeta (solo si esa carpeta se pudo leer): queda guardado y la app avisa que el original ya no está.
     for (const x of Object.values(files) as any[]){
       if (!x.cat) Object.assign(x, { cat: "quincenal", brand: x.brand || "Superseis", src: FUENTES[0].id }); // las de antes: quincenales de Superseis
