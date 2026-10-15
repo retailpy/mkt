@@ -2,7 +2,7 @@
 
 > Para el chat de Claude Code que va a hacer cambios **solo en Comercial**. Leé primero `CLAUDE.md` y `docs/CONTEXTO.md`
 > (cómo se trabaja: ramas, pruebas, publicar). Acá está todo lo de Comercial: qué hace, dónde está el código y qué no tocar.
-> Actualizado el **15/10/2026** (app publicada **v190**; el número de línea es aproximado: buscá por el texto indicado).
+> Actualizado el **15/10/2026** (app publicada **v192**: v190 y v191 de Comercial y v192 de Pauta Meta Ads; el número de línea es aproximado: buscá por el texto indicado).
 > Repositorio: `retailpy/mkt` (GitHub). Producción: `main` → https://retailmkt.vercel.app (Vercel). Base y funciones: Supabase,
 > proyecto `retail-mkt-hub`. El otro chat trabaja en su propia rama `claude/…` y publica igual: PR a `main` y merge.
 
@@ -14,6 +14,18 @@ Comercial en Excel ("PUBLICADAS") a una carpeta de Google Drive, listas para dis
 - Botones de quincena (Vigente / Oferta quincenal / Terminó) con la **fecha de la oferta** (ya no "Folleto N").
 - Por quincena: marca, fecha, total de productos (`+N más` si se sumaron), destacados de **Tapa**, **Redes**, **Destacados**,
   la lista completa con buscador, filtro por página/sección, pestañas por hoja del Excel, copiar un producto o la lista.
+- **Copiar cada dato por separado (v190):** en las tarjetas (Tapa, Redes, Destacados) y en cada fila de la lista, el **nombre**,
+  el **precio de oferta**, el **precio de antes** y el **descuento** tienen un ícono chico de copiar: tocando el dato (o el ícono)
+  se copia **solo ese dato, tal como se ve** (“Gs. 6.000”, “2 x 28.000”, “-20%”; el de antes sin la palabra “Antes”) y avisa
+  “Copiado: …”. El ícono grande (arriba a la derecha) sigue copiando **todo** el producto. En la lista, la fila se abre tocando
+  fuera de los datos (o con Enter). También con el teclado: Tab hasta el dato y Enter. En el celular el ícono grande va arriba a la derecha de la fila.
+- **Ordenar y buscar en cada página (v191):** debajo del título de cada página del folleto (si tiene más de un producto) hay
+  un **buscador** («Buscar en esta página»: busca en nombre, código, material, proveedor, subcategoría y sector; todas las palabras
+  escritas, sin importar acentos ni mayúsculas) y el **orden por precio de oferta**: «Como el Excel» (el de siempre), «Mayor a menor»
+  y «Menor a mayor». Cada página se ordena por su cuenta. Precio para ordenar (`comOfVal`): el número de la oferta; «Precio normal» →
+  el precio normal; «2 x 28.000» → 28.000; sin precio («2x1») → al final, en el orden del Excel. El título de la página dice
+  «N de M ofertas» si la búsqueda deja menos. «Copiar lista» copia en el orden que se ve. El orden y la búsqueda quedan mientras la app
+  está abierta (`comUI.pg`, por quincena, hoja y página); no se guardan en la base ni cambian el Excel/PDF.
 - Arriba: **Excel** y **PDF** (descarga de lo que se ve), **Carpeta de Comercial (Drive)** y **Actualizar** (vuelve a leer Drive).
 - En cada quincena: **Ver Excel original**, **Abrir carpeta en Drive**, **Respaldo en Drive** y "Revisado hace…".
 - Alerta "**Se sumaron N productos más**" cuando al volver a leer un Excel aparecen productos nuevos (con "Ver solo los nuevos").
@@ -58,8 +70,8 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
 
 | Qué | Archivo y lugar |
 |---|---|
-| Pantalla de Comercial | `index.html`: buscar `// ---------- Comercial:` (≈ línea 9529; `pComercial()` ≈ 9648). Ahí están `comUI`, `comState`, `comPeriods`, `comRange`, `comNice`/`comSent`/`comSec` (textos legibles), `comPct`, `comCard`, `comSync`, `comExcel`, `comPdf`, `COM_GUIDE`, **`pComercial()`** y sus eventos (`data-com…`). |
-| Estilos | `index.html`, bloque CSS `/* Comercial: ofertas de la quincena */` (≈ líneas 555–617): clases `.com*`, `.cof*`, `.cpct`, `.cflag`, `.cnew`. |
+| Pantalla de Comercial | `index.html`: buscar `// ---------- Comercial:` (≈ línea 9539; `pComercial()` ≈ 9675). Ahí están `comUI`, `comState`, `comPeriods`, `comRange`, `comNice`/`comSent`/`comSec` (textos legibles), `comPct`, `comCard`, `comF` (copiar un dato: `data-comcp`), `comOfVal`/`comPageItems`/`comPageTools` (orden y buscador de cada página: `data-compk`, `data-compord`, `data-compq`), `comSync`, `comExcel`, `comPdf`, `COM_GUIDE`, **`pComercial()`** y sus eventos (`data-com…`). |
+| Estilos | `index.html`, bloque CSS `/* Comercial: ofertas de la quincena */` (≈ líneas 555–621): clases `.com*`, `.cof*`, `.cpct`, `.cflag`, `.cnew`. |
 | Menú y permisos | `SECTIONS` → `{ k:"comercial", virtual:true }`; `PERM_EXTRA` incluye `"comercial"`; está en `ROLE_COMMON` (CM y Diseñador lo ven). El rol **Revisor** (revisión de Meta) **no** lo ve ni puede leer `s:COMERCIAL` en la base: no lo cambies. |
 | Sincronización | `sync.js`: `SHARED.COMERCIAL` y `READONLY` (no se guarda desde la app). |
 | Servidor (lectura y guardado) | `supabase/functions/integraciones/index.ts`: `comercialSync()`, `productosNuevos()`, acción `comercial_sync`; arriba `COMERCIAL_FOLDER_ID`, `BACKUP_FOLDER_ID`, `SCRIPT_V`. |
