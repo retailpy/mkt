@@ -6468,8 +6468,8 @@ document.addEventListener("submit", e => {
   render(); window.RMH?.flushNow?.();
   toast(`Pauta agregada a ${brand}: ${usd(amount)}. Quedan ${usd(left - amount)} para ${monthName(MONTH)}.`);
 });
-// Informe Meta Ads: lo que está en el aire ahora, los números del mes, cada pauta del mes de inicio a fin (con su imagen,
-// inversión, alcance, clics y conversaciones) y las campañas. El Plan de pauta es aparte (lo que se organiza internamente).
+// Informe Meta Ads: arriba las campañas del mes (pedido de Admin total), después lo que está en el aire ahora, los números
+// del mes y cada pauta del mes de inicio a fin (con su imagen, inversión, alcance, clics y conversaciones). El Plan de pauta es aparte (lo que se organiza internamente).
 // Anuncios de un mes (s:META_CREATIVES) de las marcas que se ven, primero los que están en el aire. Con datos de antes de
 // v192 (sin "v") solo cuentan los que tuvieron gasto o impresiones: Meta deja “activos” anuncios de conjuntos ya terminados.
 const AD_ST = { ACTIVE:["En el aire", "#22c55e"], SCHEDULED:["Programada", "#fbbf24"], PAUSED:["Pausada", "#94a3b8"], ENDED:["Terminada", "#94a3b8"] };
@@ -6505,6 +6505,11 @@ function pPautaInforme(){
   const nAds = META_ADS.ads.filter(a => { const b = META_PAGE_BRAND[a.page]; return !b || (seesBrand(b) && inFilter(b)); }).length;
   return `${pautaTabs()}<div class="head"><div><h2 style="margin:0">Informe Meta Ads · ${monthLabel(MONTH)}</h2><p class="sub">En dólares, tal cual figura en Meta. Actualizado ${metaWhen(META_CREATIVES.updated || META_ADS.updated)}.</p></div>${brandChips()}</div>
   ${META_ADS.updated && !META_ADS.spendAccess ? `<div class="panel metawarn">${icon("info")}<div><b>Falta el acceso a las cuentas publicitarias de las marcas.</b></div></div>` : ""}
+  ${list.length ? `<div class="panel campsmonth"><h2 class="pmh" style="margin:0 0 10px">${pmIco("megaphone")}Campañas de ${monthName(MONTH)}</h2><div class="tw"><table><thead><tr><th>Marca</th><th>Campaña</th><th>Inicio → fin</th><th class="r">Invertido</th><th class="r">Alcance</th><th class="r">Resultados</th><th>Estado</th></tr></thead><tbody>
+  ${list.map(c => `<tr><td>${brandTag(c.brand)}</td><td>${esc(c.name)}${c.obj ? ` <span class="note">· ${esc(c.obj)}</span>` : ""}</td><td class="num">${c.start ? `${dm(c.start)} → ${c.end ? dm(c.end) : "—"}` : "—"}</td><td class="r num">${usd(c.spend)}</td><td class="r num">${dots(c.reach || 0)}</td><td class="r num">${dots(c.results || 0)} <span class="note">${esc(c.unit || "")}</span></td><td>${c.end ? st(c) : ""}</td></tr>`).join("")}
+  </tbody></table></div>
+  <div class="list" style="margin-top:12px">${byBrand.map(([b, v]) => `<div class="row"><div class="grow">${brandTag(b)}</div><b style="color:#fff">${usd(v)}</b></div>`).join("")}</div></div>`
+  : `<div class="panel"><div class="empty">${META_ADS.spendAccess ? `No hubo inversión en Meta Ads en ${monthName(MONTH)}${brandFilter !== "Todas" ? " para esta marca" : ""}.` : "Sin datos de inversión todavía."}</div></div>`}
   ${cur ? adsLiveNow() : ""}
   <div class="grid kpis">
     <div class="panel kpi"><div class="l">Invertido en el mes</div><div class="n">${usd(tot)}</div><div class="d">${list.length} ${list.length === 1 ? "campaña" : "campañas"}</div></div>
@@ -6514,11 +6519,6 @@ function pPautaInforme(){
     <div class="panel kpi"><div class="l">Pautas del mes</div><div class="n">${ads.length}</div><div class="d">${cur ? `${onAir} en el aire ahora` : "con impresiones en el mes"}</div></div>
   </div>
   ${adsOfMonthPanel(ads)}
-  ${list.length ? `<div class="panel"><h2 class="pmh" style="margin:0 0 10px">${pmIco("megaphone")}Campañas de ${monthName(MONTH)}</h2><div class="tw"><table><thead><tr><th>Marca</th><th>Campaña</th><th>Inicio → fin</th><th class="r">Invertido</th><th class="r">Alcance</th><th class="r">Resultados</th><th>Estado</th></tr></thead><tbody>
-  ${list.map(c => `<tr><td>${brandTag(c.brand)}</td><td>${esc(c.name)}${c.obj ? ` <span class="note">· ${esc(c.obj)}</span>` : ""}</td><td class="num">${c.start ? `${dm(c.start)} → ${c.end ? dm(c.end) : "—"}` : "—"}</td><td class="r num">${usd(c.spend)}</td><td class="r num">${dots(c.reach || 0)}</td><td class="r num">${dots(c.results || 0)} <span class="note">${esc(c.unit || "")}</span></td><td>${c.end ? st(c) : ""}</td></tr>`).join("")}
-  </tbody></table></div>
-  <div class="list" style="margin-top:12px">${byBrand.map(([b, v]) => `<div class="row"><div class="grow">${brandTag(b)}</div><b style="color:#fff">${usd(v)}</b></div>`).join("")}</div></div>`
-  : `<div class="panel"><div class="empty">${META_ADS.spendAccess ? `No hubo inversión en Meta Ads en ${monthName(MONTH)}${brandFilter !== "Todas" ? " para esta marca" : ""}.` : "Sin datos de inversión todavía."}</div></div>`}
   <details class="panel metafold"><summary>Anuncios activos en la Biblioteca de Meta (${nAds})</summary>${metaAdsPanel(true)}</details>`;
 }
 // Lo que está en el aire ahora, con su imagen (s:META_CREATIVES del mes actual, estado ACTIVE = conjunto activo y sin terminar).
