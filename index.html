@@ -9835,10 +9835,14 @@ document.addEventListener("change", e => {
   if (e.target.matches?.("[data-comsec]")){ comUI.sec = e.target.value; comUI.open = null; render(); }
 });
 document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.(".comf[data-comcp]")){ e.preventDefault(); e.target.click(); } });
+// Buscadores: se guarda lo escrito al instante y la lista se dibuja una sola vez cuando se deja de tipear (con 300 productos, en el celular, se nota).
+let comTyping = null;
+const comLater = fn => { clearTimeout(comTyping); comTyping = setTimeout(() => { if (page === "comercial") fn(); }, 160); };
 document.addEventListener("input", e => { if (!e.target.matches?.("[data-compq]")) return; const pk = e.target.closest("[data-compk]").dataset.compk, pos = e.target.selectionStart;
-  comUI.pg[pk] = { ...comUI.pg[pk], q:e.target.value }; comUI.open = null; render();
-  const i = [...document.querySelectorAll("[data-compk]")].find(x => x.dataset.compk === pk)?.querySelector("[data-compq]"); if (i){ i.focus(); i.selectionStart = i.selectionEnd = pos; } });
-document.addEventListener("input", e => { if (e.target.id !== "comQ") return; comUI.q = e.target.value; comUI.open = null; render(); const i = document.getElementById("comQ"); if (i){ i.focus(); i.selectionStart = i.selectionEnd = i.value.length; } });
+  comUI.pg[pk] = { ...comUI.pg[pk], q:e.target.value }; comUI.open = null;
+  comLater(() => { render(); const i = [...document.querySelectorAll("[data-compk]")].find(x => x.dataset.compk === pk)?.querySelector("[data-compq]"); if (i){ i.focus(); i.selectionStart = i.selectionEnd = Math.min(pos, i.value.length); } }); });
+document.addEventListener("input", e => { if (e.target.id !== "comQ") return; comUI.q = e.target.value; comUI.open = null;
+  comLater(() => { render(); const i = document.getElementById("comQ"); if (i){ i.focus(); i.selectionStart = i.selectionEnd = i.value.length; } }); });
 function pNoticias(){
   const c = newsGet(), all = (c?.items || []).filter(n => safeUrl(n.u) && n.d);
   const list = newsUI.b === "Todas" ? all : all.filter(n => (n.brands || []).includes(newsUI.b));

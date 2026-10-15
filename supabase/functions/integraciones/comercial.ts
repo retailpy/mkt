@@ -2,7 +2,7 @@
 // Lee el Excel tal cual (hojas, páginas del folleto, códigos y precios) y arma una lista liviana para la app.
 import * as XLSX from "npm:xlsx@0.18.5";
 
-export const PARSE_V = 1; // si cambia la forma de leer, se vuelven a leer todos los archivos
+export const PARSE_V = 2; // si cambia la forma de leer, se vuelven a leer todos los archivos (2: sin “INTERNAS”, bloque “Adicional”, Excel de fin de semana e Imbatibles)
 
 const norm = (v: unknown) => String(v ?? "").replace(/\s+/g, " ").trim();
 const key = (v: unknown) => norm(v).toUpperCase().normalize("NFD").replace(/\p{M}/gu, "").replace(/[^A-Z%]/g, "");
@@ -15,6 +15,7 @@ const HEAD: Record<string, string> = {
 const HEAD2: Record<string, string> = {
   PRODUCTO: "desc", ARTICULO: "desc", DESCRIPCIONDELPRODUCTO: "desc", DESCRIPCIONARTICULO: "desc", NOMBRE: "desc",
   PRECIOOFERTA: "of", PRECIODEOFERTA: "of", PRECIOPROMO: "of", PRECIOPROMOCION: "of", PRECIOPROMOCIONAL: "of", PROMO: "of", OFERTAGS: "of",
+  PVPOFERTA: "of", PVPOFERTAS: "of", PRECIOOFERTAS: "of", CODIGOARTICULO: "cod", MATERIALSAP: "mat", OFERTANEGOCIADA: "neg", NPROVEEDOR: "nprov", "VAR%PRECIO": "pct",
   PRECIONORMAL: "pvp", PRECIOREGULAR: "pvp", PRECIOACTUAL: "pvp", PRECIO: "pvp", PRECIOANTES: "pvp", PVPACTUAL: "pvp",
   "%": "pct", "%DESCUENTO": "pct", DESCUENTO: "pct", DESC: "pct", COD: "cod", CODIGOSAP: "cod", SKU: "cod", EAN: "cod", SECCION: "sector", CATEGORIA: "sector",
 };
@@ -43,7 +44,8 @@ export function parseOfertas(bytes: Uint8Array){
   const sheets: any[] = []; let title = "", folleto = "";
   for (const name of wb.SheetNames){
     const rows: unknown[][] = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: "" });
-    let col: Record<string, number> | null = null, sec = "", label = "", flagCol = -1;
+    // interna: filas debajo de “INTERNAS” (no se publican: no van) · blk: bloque “Adicional… solo para destacar en redes”
+    let col: Record<string, number> | null = null, sec = "", label = "", flagCol = -1, interna = false, blk = "";
     const items: any[] = [];
     for (const r of rows){
       const ks = r.map(key);
@@ -53,7 +55,7 @@ export function parseOfertas(bytes: Uint8Array){
         ks.forEach((k, i) => { if (HEAD2[k] && col![HEAD2[k]] === undefined && !Object.values(col!).includes(i)) col![HEAD2[k]] = i; });
         const usada = (i: number) => Object.values(col!).includes(i); // la columna de la marca (Tapa, Destacar…) no es una de las de arriba
         flagCol = ks.findIndex((k, i) => i < (col!.sector ?? 1) && !HEAD[k] && !usada(i)); if (flagCol < 0) flagCol = usada(0) ? -1 : 0;
-        sec = ""; continue;
+        sec = ""; interna = false; continue;
       }
       const line = norm(r.find((x) => norm(x)) ?? "");
       if (!col){ // arriba del encabezado: título de la hoja ("OFERTAS QUINCENAL … FOLLETO 19", "HALLOWEEN OKTOBER FEST")
@@ -67,12 +69,17 @@ export function parseOfertas(bytes: Uint8Array){
         // Fila de sección: "Pag. 5 Almacén", "TAPA PRODUCTO 1", "CARNES/FYV"… (o un título nuevo arriba de otro encabezado)
         const s = norm(g("sector")) || (/OFERTA|FOLLETO/i.test(line) ? "" : line);
         if (/OFERTAS QUINCENAL|FOLLETO/i.test(line)){ if (!label) label = line; continue; }
-        if (s && !/^SE.ALAR PRODUCTOS/i.test(s)) sec = s.replace(/\s*\/\s*/g, " / ");
+        if (/^ADICIONAL\b/i.test(s || line)){ blk = "Adicional"; sec = ""; interna = false; continue; }
+        if (/^INTERNAS?$/i.test(line)){ interna = true; continue; }
+        if (s && !/^SE.ALAR PRODUCTOS/i.test(s)){ sec = s.replace(/\s*\/\s*/g, " / "); interna = false; }
         continue;
       }
-      const of = g("of"), f = flagCol >= 0 ? flag(r[flagCol]) : null;
+      if (interna || /^VIGENCIA\b/i.test(desc)) continue; // ofertas internas y la fila “VIGENCIA DESDE / HASTA” repetida
+      const of = g("of");
+      let f = flagCol >= 0 ? flag(r[flagCol]) : null, sector = norm(g("sector"));
+      if (!f && /^DESTAC/i.test(sector)){ f = { t: "Destacar", x: sector }; sector = ""; } // Delimarket marca “DESTACAR” en la columna del sector
       items.push({
-        sec, sector: norm(g("sector")), cod: txtNum(g("cod")), mat: txtNum(g("mat")), desc,
+        sec: blk ? (sec ? `${blk} · ${sec}` : blk) : sec, sector, cod: txtNum(g("cod")), mat: txtNum(g("mat")), desc,
         pvp: num(g("pvp")), of: typeof of === "number" ? of : norm(of), tem: norm(g("tem")), pct: pct(g("pct")),
         rec: typeof g("rec") === "number" ? g("rec") : norm(g("rec")), neg: norm(g("neg")), prov: norm(g("prov")),
         nprov: txtNum(g("nprov")), sub: typeof g("sub") === "string" ? clean(g("sub")) : "", ...(f ? { flag: f.t, fx: f.x } : {}),
@@ -92,14 +99,18 @@ const MES_RE = "ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|SET
 const mesN = (t: string) => { const i = MES_RE.split("|").indexOf(t.toUpperCase()); return i < 0 ? 0 : i < 9 ? i + 1 : i; }; // SETIEMBRE = SEPTIEMBRE
 export function periodo(name: string, ref: Date){
   const up = name.toUpperCase().normalize("NFD").replace(/\p{M}/gu, "");
-  let m = up.match(/(\d{1,2})(?:[-\/.](\d{1,2}))?\s*AL\s*(\d{1,2})[-\/.](\d{1,2})/);
-  if (!m){ const t = up.match(new RegExp(`(\\d{1,2})(?:\\s*DE\\s*(${MES_RE}))?\\s*AL\\s*(\\d{1,2})\\s*(?:DE\\s*)?(${MES_RE})`)); if (t) m = [t[0], t[1], t[2] ? String(mesN(t[2])) : "", t[3], String(mesN(t[4]))] as any; }
+  // También con guion bajo y año: "02_10_2026 AL 04_10_2026", "16_10_26 al 18_10_26".
+  let m: any = up.match(/(\d{1,2})(?:[-\/._](\d{1,2})(?:[-\/._](\d{4}|\d{2})(?!\d))?)?\s*AL\s*(\d{1,2})[-\/._](\d{1,2})(?:[-\/._](\d{4}|\d{2})(?!\d))?/);
+  const anio = (t?: string) => t ? (t.length === 2 ? 2000 + +t : +t) : 0;
+  if (m){ const ya = anio(m[3]), yb = anio(m[6]); m = [m[0], m[1], m[2] || "", m[4], m[5], ya, yb]; }
+  if (!m){ const t = up.match(new RegExp(`(\\d{1,2})(?:\\s*DE\\s*(${MES_RE}))?\\s*AL\\s*(\\d{1,2})\\s*(?:DE\\s*)?(${MES_RE})`)); if (t) m = [t[0], t[1], t[2] ? String(mesN(t[2])) : "", t[3], String(mesN(t[4])), 0, 0]; }
   if (!m){ const t = up.match(new RegExp(`(?:^|[^A-Z])(${MES_RE})(?:[^A-Z]|$)`)); if (!t) return {};
     const mm = mesN(t[1]); let y = ref.getUTCFullYear(); if (mm - (ref.getUTCMonth() + 1) < -6) y++;
     const p = (n: number) => String(n).padStart(2, "0"); return { from: `${y}-${p(mm)}-01`, to: `${y}-${p(mm)}-${p(new Date(Date.UTC(y, mm, 0)).getUTCDate())}` }; }
   const d1 = +m[1], d2 = +m[3], m2 = +m[4], m1 = m[2] ? +m[2] : (d1 <= d2 ? m2 : (m2 === 1 ? 12 : m2 - 1));
   let y1 = ref.getUTCFullYear(); if (m1 - (ref.getUTCMonth() + 1) < -6) y1++; // archivo de diciembre para enero
-  const y2 = m2 < m1 ? y1 + 1 : y1, p = (n: number) => String(n).padStart(2, "0");
+  let y2 = m2 < m1 ? y1 + 1 : y1; const p = (n: number) => String(n).padStart(2, "0");
+  if (m[6]){ y2 = m[6]; y1 = m[5] || (m2 < m1 ? y2 - 1 : y2); } else if (m[5]){ y1 = m[5]; y2 = m2 < m1 ? y1 + 1 : y1; } // el año escrito en el nombre manda
   return { from: `${y1}-${p(m1)}-${p(d1)}`, to: `${y2}-${p(m2)}-${p(d2)}` };
 }
 export const marcaDe = (name: string) => /\bS6\b|SUPERSEIS/i.test(name) ? "Superseis" : /STOCK/i.test(name) ? "Stock" : /DELI/i.test(name) ? "Delimarket" : "";
