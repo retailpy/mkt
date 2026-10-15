@@ -372,6 +372,7 @@ Deno.serve(async (req) => {
   }
   if (!u?.user) return json({ ok: false, error: "Iniciá sesión en la app" }, 401);
   if (!m || !m.active) return json({ ok: false, error: "Sin acceso" }, 403);
+  if (m.role === "Revisor") return json({ ok: false, error: "El usuario de revisión no tiene acceso a esto." }, 403); // solo Mensajes de las cuentas
   const admin = m.role === "Admin total";
   const c = await cfg();
   try {

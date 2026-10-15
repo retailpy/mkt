@@ -43,7 +43,7 @@ async function allowedUser(req){
   const u = await fetch(`${url}/auth/v1/user`, { headers: { apikey, Authorization: `Bearer ${tok}` } }).then(r => r.ok ? r.json() : null).catch(() => null);
   if (!u?.id) return false;
   const rows = await fetch(`${url}/rest/v1/members?select=role,active&user_id=eq.${encodeURIComponent(u.id)}`, { headers: { apikey, Authorization: `Bearer ${tok}` } }).then(r => r.ok ? r.json() : []).catch(() => []);
-  return Array.isArray(rows) && rows.some(m => m.active && ["Admin total", "Admin", "CM"].includes(m.role));
+  return Array.isArray(rows) && rows.some(m => m.active && ["Admin total", "Admin", "CM", "Revisor"].includes(m.role)); // Revisor: usuario de la revisión de Meta
 }
 // Cualquier persona activa del equipo (para cosas livianas como la vista previa de links del chat).
 async function memberUser(req){
