@@ -2,7 +2,7 @@
 
 > Pegá o adjuntá este archivo al empezar una conversación nueva. Resume qué es la app, cómo está armada,
 > cómo se trabaja y en qué punto quedó todo, con el detalle de Instagram (mensajes, menciones y la
-> revisión de Meta). Última actualización: **9 de octubre de 2026** (versión publicada **v149**; en la rama de trabajo hasta **v160**, ver sección 5).
+> revisión de Meta). Última actualización de este encabezado: **16 de octubre de 2026** (versión publicada **v199**; lo último de cada versión está en la sección 5, la más nueva arriba).
 > **Acá no hay contraseñas, tokens ni claves**: esas están solo en Vercel/Supabase/Meta.
 
 ---
@@ -14,10 +14,10 @@ solo lugar el trabajo de **Diseño gráfico**, **Community Manager (CM)**, redes
 equipo. Es una **PWA** (se instala en celular, tablet y compu).
 
 - **Dirección:** https://retailmkt.vercel.app (antes era mkt-two.vercel.app)
-- **Repositorio:** GitHub `retailpy/mkt` · rama de trabajo `claude/retail-mkt-hub-integration-pg2wpy` · se publica `main`
+- **Repositorio:** GitHub `retailpy/mkt` · cada chat trabaja en su propia rama `claude/…` · se publica `main`
 - **Marcas** (en este orden): Superseis, Stock, Delimarket, Bianca, Clasipar, Dayo, PediWOW
   (`api/_lib/meta.js` → `NOMBRES` y `ORDEN`).
-- **Roles:** Admin total (todo) · Admin (control: ve todo, no modifica) · CM · Diseñador.
+- **Roles:** Admin total (todo) · Admin (control: ve todo, no modifica) · CM · Diseñador · Revisor (solo para la revisión de Meta: ve solo Mensajes de las cuentas).
 
 ### Secciones del menú
 - **General:** Dashboard, Inicio, Planificación del mes, Alertas, Avisos, Chat Retail MKT, Comercial, Bloc de notas.
@@ -96,10 +96,10 @@ Informe de Pauta muestra campañas viejas, revisar que esa tarea siga corriendo.
 1. Hacer el cambio.
 2. Correr **todas las pruebas** automáticas (Playwright; ver sección 6).
 3. Subir la versión del caché en `sw.js` (`mkthub-vNNN`).
-4. Commit en la rama `claude/retail-mkt-hub-integration-pg2wpy` y push.
-5. Crear el PR a `main` (repo `retailpy/mkt`), hacer merge (método *merge*, con el sha completo).
+4. Commit en la rama del chat (`claude/…`) y push.
+5. **Hay más de un chat trabajando a la vez** (por ejemplo, uno de Comercial). Antes de publicar: traer `main`, combinarlo con la rama y usar como versión **la siguiente a la que tenga `sw.js` en `main`**. Dejar juntas las notas de los dos chats en la sección 5. Después, crear el PR a `main` (repo `retailpy/mkt`) y hacer merge (método *merge*, con el sha completo).
 6. Adelantar la rama a `main` y push.
-7. Verificar que Vercel publicó (estado del commit en GitHub = "Deployment has completed").
+7. Verificar que Vercel publicó (deployment de producción del commit en estado READY).
 8. Avisar al usuario **en español** (Paraguay/rioplatense: "vos", "tocá"), con **pasos numerados** si tiene que hacer algo en Meta, Vercel, Supabase o Google.
 
 **Reglas que pidió el usuario (y están en `CLAUDE.md`):**
