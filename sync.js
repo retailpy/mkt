@@ -335,7 +335,7 @@ const RMH = (() => {
   }
   function scheduleRender(news){ // news: las claves con datos nuevos de otra persona (no solo quién está conectado)
     if (!ready) return;
-    if (busy()){ rerenderPending = true; try { renderNav(); chatNotify(); if (news) document.dispatchEvent(new CustomEvent("rmh-pending", { detail:{ keys:news } })); } catch (e) {} return; } // el aviso de chat nuevo llega igual, aunque estés escribiendo; el botón Actualizar se destaca
+    if (busy()){ rerenderPending = true; try { renderNav(); chatNotify(); window.jobPopCheck?.(); if (news) document.dispatchEvent(new CustomEvent("rmh-pending", { detail:{ keys:news } })); } catch (e) {} return; } // el aviso de chat nuevo (y el de trabajo nuevo o corrección) llega igual, aunque estés escribiendo; el botón Actualizar se destaca
     rerenderPending = false; render();
   }
   document.addEventListener("focusout", () => setTimeout(() => { if (rerenderPending) scheduleRender(); }, 150));

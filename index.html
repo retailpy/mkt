@@ -955,6 +955,34 @@ html.nomotion .nav a.wknew .ibc,html.nomotion .tabbar a.wknew .tbc,html.nomotion
 .escmeta{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;margin-top:8px;font-size:13px}.escmeta>span{display:inline-flex;gap:6px;align-items:center}.escmeta svg{width:14px;height:14px}
 .escrow mark{background:rgba(250,204,21,.28);color:inherit;border-radius:4px;padding:0 2px}
 .escwords{margin-top:8px;max-height:150px;overflow:auto}
+/* Aviso fuerte de trabajo nuevo y de corrección: ventana emergente abajo a la derecha (arriba en el celular) */
+.jobpop{position:fixed;right:22px;bottom:22px;z-index:9000;width:min(380px,calc(100vw - 32px));animation:jpIn .55s cubic-bezier(.2,1.3,.4,1) both}
+.jobpop.out{animation:jpOut .25s ease-in both}
+.jobpop.shake .jpcard{animation:jpNudge .9s .55s ease-in-out 2}
+.jpcard{position:relative;background:#0f172a;color:var(--ink);border:1px solid color-mix(in srgb,var(--c) 55%,transparent);border-radius:18px;padding:14px 14px 12px;box-shadow:0 18px 50px rgba(0,0,0,.45),0 0 0 4px color-mix(in srgb,var(--c) 18%,transparent)}
+.jpring{position:absolute;inset:-2px;border-radius:19px;pointer-events:none;box-shadow:0 0 0 0 color-mix(in srgb,var(--c) 60%,transparent);animation:jpPulse 1.6s ease-out 3}
+.jphead{display:flex;gap:10px;align-items:center}
+.jphead b{display:block;font-size:16px;line-height:1.2}.jphead small{color:var(--muted);font-size:12px}
+.jpico{flex:none;display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:color-mix(in srgb,var(--c) 22%,transparent);color:var(--c);animation:jpBell 1s .5s ease-in-out 2}
+.jpico svg{width:22px;height:22px}
+.jpx{flex:none;background:none;border:0;color:var(--muted);padding:6px;border-radius:8px;cursor:pointer}.jpx:hover{background:rgba(148,163,184,.15)}.jpx svg{width:18px;height:18px}
+.jplist{display:grid;gap:8px;margin-top:10px;max-height:min(52vh,420px);overflow:auto}
+.jpitem{display:grid;gap:4px;justify-items:start;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--c) 9%,transparent);border-left:3px solid var(--c)}
+.jpk{display:inline-flex;gap:5px;align-items:center;font-size:12px;font-weight:700;color:var(--c)}.jpk svg{width:13px;height:13px}
+.jpt{font-size:15px;line-height:1.3}.jpm{font-size:13px;color:var(--muted);line-height:1.35}
+.jpitem .btn{margin-top:4px}
+.jpacts{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+@keyframes jpIn{0%{opacity:0;transform:translateY(40px) scale(.9)}100%{opacity:1;transform:none}}
+@keyframes jpOut{to{opacity:0;transform:translateY(24px) scale(.96)}}
+@keyframes jpPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--c) 55%,transparent)}100%{box-shadow:0 0 0 18px transparent}}
+@keyframes jpBell{0%,100%{transform:rotate(0)}20%{transform:rotate(-14deg)}40%{transform:rotate(12deg)}60%{transform:rotate(-8deg)}80%{transform:rotate(5deg)}}
+@keyframes jpNudge{0%,100%{transform:none}15%{transform:translateX(-5px)}30%{transform:translateX(5px)}45%{transform:translateX(-3px)}60%{transform:translateX(3px)}}
+@media (max-width:700px){.jobpop{right:16px;left:16px;width:auto;bottom:auto;top:calc(env(safe-area-inset-top,0px) + 12px)}@keyframes jpIn{0%{opacity:0;transform:translateY(-40px) scale(.94)}100%{opacity:1;transform:none}}}
+@media (prefers-reduced-motion:reduce){.jobpop,.jobpop .jpcard,.jpring,.jpico{animation:none!important}}
+/* Pedidos: varias marcas */
+.chip.jbr i{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--bc);margin-right:6px;vertical-align:middle}
+.chip.jbr.on{border-color:var(--bc);box-shadow:inset 0 0 0 1px var(--bc)}
+.jbrands .chips{justify-content:flex-start;margin-top:6px}
 /* Prompts: fondo de Stock (se elige siempre) */
 .ptonos.need{border-color:rgba(250,204,21,.55)}
 .ptonogrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:10px;margin-top:10px}
@@ -3065,8 +3093,9 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-okse
   if (cm && !MONTHS_APP.some(m => m.v === date.slice(0, 7))) return err(`La fecha (${dm(date)}) está fuera de los meses de la app.`);
   document.getElementById("fixpop")?.remove(); approveJob(j, { by, cm, date, fmt, net }); }); // aprobar no pide ningún link (pedido de Admin total)
 // En la ficha del pedido: la publicación que salió al aprobarlo (CM, fecha, formato) con un botón para abrirla.
-function pubInfo(j){ const x = pubOf(j); if (!x) return "";
-  return `<div class="jpub">${icon("calendar-days")}<div class="grow"><b>Publicación en redes: ${esc(x.cm)}</b><small>${x.channel ? "Canal de WhatsApp" : `${esc(x.net)} · ${esc(x.format)}`} · ${dm(x.date)} · ${esc(x.status)}</small></div>${can(x.channel ? "calcanales" : x.format === "Historia" ? "calhistoria" : "calendario") ? `<button type="button" class="btn sm" data-pubopen="${x.channel ? "canal" : "post"}:${esc(x.id)}">${icon("arrow-up-right")} Ver publicación</button>` : ""}</div>`; }
+function pubInfo(j){ return (j.pubs || (j.pub ? [j.pub] : [])).map(r => r.canal ? canalById(r.id) : postById(r.id)).filter(Boolean).map(x => pubInfoOne(x)).join(""); }
+function pubInfoOne(x){
+  return `<div class="jpub">${icon("calendar-days")}<div class="grow"><b>Publicación en redes: ${esc(x.cm)}</b> ${brandTag(x.brand)}<small>${x.channel ? "Canal de WhatsApp" : `${esc(x.net)} · ${esc(x.format)}`} · ${dm(x.date)} · ${esc(x.status)}</small></div>${can(x.channel ? "calcanales" : x.format === "Historia" ? "calhistoria" : "calendario") ? `<button type="button" class="btn sm" data-pubopen="${x.channel ? "canal" : "post"}:${esc(x.id)}">${icon("arrow-up-right")} Ver publicación</button>` : ""}</div>`; }
 document.addEventListener("click", e => { const b = e.target.closest("[data-pubopen]"); if (!b) return; e.stopPropagation(); openPub(b.dataset.pubopen); });
 // Abre la publicación del CM (desde el aviso o la ficha del pedido): va a su calendario, en su mes, con la hoja abierta.
 function openPub(ref){
@@ -3089,18 +3118,24 @@ function pubAlert(n){
 // La publicación que salió de un pedido aprobado (en el calendario del CM).
 const pubOf = j => !j?.pub ? null : j.pub.canal ? canalById(j.pub.id) : postById(j.pub.id);
 // Crea (o actualiza) la publicación del CM con lo del pedido: nombre, texto, ruta de la compartida y archivos.
+// Un pedido con varias marcas deja una publicación por marca (cada una en la cuenta de su marca).
 function makePub(j, o){
-  const canal = o.fmt === "Canal", old = pubOf(j) || (j.post && postById(j.post)), same = old && !!old.channel === canal;
-  const base = { date:o.date, brand:j.brand, title:j.title, cm:o.cm, requester:j.requester || "Marketing", fromJob:j.id, approvedBy:o.by,
+  const prev = (j.pubs || (j.pub ? [j.pub] : [])).map(r => r.canal ? canalById(r.id) : postById(r.id)).filter(Boolean);
+  const out = jobBrands(j).map((b, i) => makePubOne(j, o, b, prev.find(x => x.brand === b) || (i === 0 ? prev[0] || (j.post && postById(j.post)) : null)));
+  j.pubs = out.map(x => ({ id:x.id, canal:!!x.channel })); j.pub = j.pubs[0]; return out;
+}
+function makePubOne(j, o, brand, old){
+  const canal = o.fmt === "Canal", same = old && !!old.channel === canal;
+  const base = { date:o.date, brand, title:j.title, cm:o.cm, requester:j.requester || "Marketing", fromJob:j.id, approvedBy:o.by,
     shares:shareList(j).map(s => ({ ...s })), share:j.share || shareList(j).find(s => s.p)?.p || "" };
   if (same){ Object.assign(old, { date:o.date, cm:o.cm, fromJob:j.id, approvedBy:o.by }, canal ? {} : { format:o.fmt, net:o.net || old.net });
     if (!shareList(old).some(s => s.p)) Object.assign(old, { shares:base.shares, share:base.share });
     if (!old.brief && j.brief) old.brief = j.brief; if (old.seenBy) delete old.seenBy[PEOPLE.find(pp => pp.name === o.cm)?.id];
-    j.pub = { id:old.id, canal }; return old; }
+    return old; }
   const extra = { status:"Pendiente", notes:j.notes || "", brief:j.brief || "", canva:"", drive:"", xlinks:[], links:[], byId:viewer.id };
   const x = canal ? { id:"K" + (Math.max(0, ...CHANNEL_POSTS.map(k => +(String(k.id).match(/^K?(\d+)$/) || [])[1] || 0)) + 1), channel:CANALES[0], ...base, ...extra }
     : { id:nextPostId(), net:o.net || "IG", format:o.fmt || "Post", carried:null, ...base, ...extra };
-  (canal ? CHANNEL_POSTS : posts).push(x); j.pub = { id:x.id, canal }; return x;
+  (canal ? CHANNEL_POSTS : posts).push(x); return x;
 }
 function approveJob(j, opts = {}){
   const cm = typeof opts === "string" ? opts : opts.cm || "", by = opts.by || "";
@@ -3111,10 +3146,11 @@ function approveJob(j, opts = {}){
   NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
   notify({ to:j.owner, type:"approved", job:j.id }); jobUI.form = null;
   let x = null;
-  if (cm && j.area !== "CM" && opts.date){ x = makePub(j, { ...opts, cm }); j.cmNotified = cm; notify({ to:cm, type:"pub", job:j.id, post:x.id, canal:!!x.channel }); }
+  let xs = [];
+  if (cm && j.area !== "CM" && opts.date){ xs = makePub(j, { ...opts, cm }); x = xs[0]; j.cmNotified = cm; xs.forEach(p => notify({ to:cm, type:"pub", job:j.id, post:p.id, canal:!!p.channel })); }
   else if (cm){ notify({ to:cm, type:"listo", job:j.id }); j.cmNotified = cm; }
   render(); window.RMH?.flushNow?.();
-  toast(`Aprobado${j.area === "CM" ? ": pasó a Programado" : ""}${by ? ` por ${firstName(by)}` : ""}. Le avisamos a ${firstName(j.owner)}${x ? `${cm === j.owner ? "" : ` y a ${firstName(cm)} (CM)`}: “${x.title}” quedó en su calendario el ${dm(x.date)}` : cm ? ` y a ${firstName(cm)} (CM)` : ""}.`);
+  toast(`Aprobado${j.area === "CM" ? ": pasó a Programado" : ""}${by ? ` por ${firstName(by)}` : ""}. Le avisamos a ${firstName(j.owner)}${x ? `${cm === j.owner ? "" : ` y a ${firstName(cm)} (CM)`}: “${x.title}” quedó en su calendario el ${dm(x.date)}${xs.length > 1 ? ` (${xs.length} publicaciones: ${xs.map(p => p.brand).join(", ")})` : ""}` : cm ? ` y a ${firstName(cm)} (CM)` : ""}.`);
 }
 const jobRounds = j => (j.changes || []).filter(c => !c.ok && !c.kind).length; // cuántas veces se pidieron cambios
 function sendJobChanges(j, text, req = ""){
@@ -3342,6 +3378,10 @@ const OTRO = "Otro";
 const jobGroup = j => ((j && j.area) || j) === "Diseño" ? "Diseño" : "CM"; // Contenidos y Videos son del equipo de CM
 const designLike = j => !!j && j.area !== "CM"; // Diseño gráfico y Gestión de Contenidos: mismo proceso, bocetos y aprobación
 const designsJob = j => !!j && (isDesigner() || (viewer.role === "CM" && j.area === "Contenidos")); // quien arma la pieza (diseñador, o CM en Contenidos)
+// Marcas de un pedido: se pueden elegir varias (j.brands); la primera es la principal (j.brand: color, informes por marca).
+const jobBrands = j => Array.isArray(j?.brands) && j.brands.length ? j.brands : j?.brand ? [j.brand] : [];
+const seesJob = j => jobBrands(j).some(seesBrand); // lo ve quien maneja cualquiera de sus marcas
+const jobBrandTags = j => jobBrands(j).map(brandTag).join("");
 const jobKindLabel = j => j.area === "CM" ? "Gestión de Video" : j.area === "Contenidos" ? "Gestión de Contenidos" : "Pedido de diseño gráfico";
 const CM_TYPES = ["Video para redes","Video para pantallas"]; // Gestión de Video: solo trabajos de video
 const VID_FORMATS = ["Reel","TikTok","Reel + TikTok"]; // en un video para redes
@@ -4534,8 +4574,8 @@ function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = true
 
 function visiblePosts(){ return posts.filter(p => p.date.slice(0,7) === MONTH && seesBrand(p.brand) && inFilter(p.brand)); }
 function visibleJobs(){
-  let list = jobs.filter(j => seesBrand(j.brand) && jobMonth(j) === MONTH);
-  list = list.filter(j => inFilter(j.brand));
+  let list = jobs.filter(j => seesJob(j) && jobMonth(j) === MONTH);
+  list = list.filter(j => jobBrands(j).some(inFilter));
   return list;
 }
 function brandChips(){
@@ -4581,7 +4621,8 @@ function advanceJob(jobId){
 // Avisos: llegan a Admin total cuando entra una sugerencia o cuando un diseñador termina su etapa;
 // y al diseñador cuando Admin total aprueba o pide correcciones.
 let NOTIFS = [], notifSeq = 0;
-function notify(n){ NOTIFS.push({ id:++notifSeq, date:TODAY, time:new Date().toTimeString().slice(0,5), read:false, ...n }); }
+function notify(n){ const x = { id:++notifSeq, date:TODAY, time:new Date().toTimeString().slice(0,5), read:false, ...n }; NOTIFS.push(x); notify.here.add(x); }
+notify.here = new WeakSet(); // avisos creados en este dispositivo (no le saltan a quien los mandó)
 const jobById = id => jobs.find(j => j.id === id);
 // Un aviso de revisión sigue activo mientras el trabajo esté “En revisión”.
 const adminNotifs = () => NOTIFS.filter(n => n.to === "admin" && !n.read && (n.type !== "review" || REVIEW_WAIT.includes(jobById(n.job)?.status)));
@@ -4607,7 +4648,7 @@ function alerts(){
       if (u) out.push({ d:p.date, go:p.format === "Historia" ? "calhistoria" : "calendario", ic:u.late ? "alarm-clock" : "calendar-clock", sev:u.c, rank: u.late ? 0 : daysTo(p.date) + 1, t:`Post: ${u.t.toLowerCase()}: ${p.title}`, m:`${p.brand} · ${p.cm} · publicación ${dm(p.date)} · está en ${p.status}` });
     });
   }
-  jobs.filter(j => seesBrand(j.brand) && !isFin(j) && (j.owner === viewer.name || (j.owner === "Sin asignar" && canCreateJobs()))).forEach(j => { // alertas personales: lo tuyo (y, para quien asigna, lo que falta asignar)
+  jobs.filter(j => seesJob(j) && !isFin(j) && (j.owner === viewer.name || (j.owner === "Sin asignar" && canCreateJobs()))).forEach(j => { // alertas personales: lo tuyo (y, para quien asigna, lo que falta asignar)
     const u = urgency(j);
     if (u && j.owner === viewer.name) out.push({ go:"job:" + j.id, ic:u.late ? "alarm-clock" : "clock", sev:u.c, rank: u.late ? 0 : daysTo(j.due) + 1, t:`${u.t}: ${j.title}`, m:`${j.brand} · ${j.owner} · entrega el ${dm(j.due)}` });
     if (j.owner === "Sin asignar") out.push({ go:"job:" + j.id, ic:"user-round-x", sev:"var(--warn)", t:`Pedido sin asignar: ${j.title}`, m:`${j.brand} · falta elegir diseñador` });
@@ -4636,13 +4677,17 @@ function dismissAlert(key){
 document.addEventListener("click", e => {
   const x = e.target.closest("[data-adis]"); if (x){ e.stopPropagation(); dismissAlert(x.dataset.adis); return; }
   const r = e.target.closest(".arow[data-ago]"); if (!r || e.target.closest("button,a,select,input")) return;
-  const go = r.dataset.ago;
-  if (go.startsWith("job:")){ const j = jobById(go.slice(4)); if (!j) return; jobUI.form = null; jobUI.ficha = j.id; page = jobSection(j); if (!can(page)) page = "inicio"; }
+  goAlert(r.dataset.ago);
+});
+// Ir a donde está un aviso (job:ID, pub:post:ID, una página…). Lo usan la lista de avisos, la ventana emergente y la notificación del sistema.
+function goAlert(go){
+  go = String(go || "");
+  if (go.startsWith("job:")){ const j = jobById(go.slice(4)); if (!j) return toast("No se encontró el pedido (quizás lo borraron)."); postUI.form = null; jobUI.form = null; jobUI.ficha = j.id; page = jobSection(j); if (!can(page)) page = "inicio"; }
   else if (go.startsWith("pub:")) return openPub(go.slice(4));
   else if (go.startsWith("sug")) page = "sugerencias";
   else if (can(go)) page = go;
   location.hash = page; render(); window.scrollTo({ top:0, behavior:"smooth" });
-});
+}
 const alertList = list => list.length ? `<div class="list alist">${list.map((a, i) => `<div class="row arow${a.go ? " ago" : ""}" style="--i:${Math.min(i, 12) * 60}ms"${a.go ? ` data-ago="${a.go}" role="button" tabindex="0" title="Ir a donde está"` : ""}><span class="aico" style="--c:${a.sev}">${icon(a.ic || "bell")}</span><div class="grow"><div class="t">${esc(a.t)}</div><div class="m">${esc(a.m)}</div></div>${a.acts ? `<div class="aacts">${a.acts}</div>` : ""}<button type="button" class="adis" data-adis="${esc(a.key || "t:" + a.t)}" title="Quitar alerta" aria-label="Quitar alerta">${icon("x")}</button></div>`).join("")}</div>` : `<div class="empty">Todo al día.</div>`;
 
 /* ---------- pages ---------- */
@@ -4821,7 +4866,7 @@ let panelAll = false;
 // Lo que esta persona tiene que terminar: sus pedidos sin finalizar (y, en CM, sus publicaciones del mes sin programar), por fecha.
 function panelMine(ar){
   const cm = ar === "cm", me = viewer.name, gone = alertsGone(), out = [];
-  jobs.filter(j => j.owner === me && jobGroup(j) === (cm ? "CM" : "Diseño") && seesBrand(j.brand) && !isFin(j) && j.status !== "Cancelado" && !repLater(j)).sort((a, b) => a.due.localeCompare(b.due)).forEach(j => {
+  jobs.filter(j => j.owner === me && jobGroup(j) === (cm ? "CM" : "Diseño") && seesJob(j) && !isFin(j) && j.status !== "Cancelado" && !repLater(j)).sort((a, b) => a.due.localeCompare(b.due)).forEach(j => {
     const u = urgency(j), fix = j.status === fixStage(j);
     out.push({ d:j.due, go:"job:" + j.id, key:"pm:" + j.id + ":" + j.status, ic:fix ? "pencil" : u?.late ? "alarm-clock" : "clock", sev:u ? u.c : fix ? "#f97316" : "#94a3b8", t:`${fix ? "Cambios pendientes" : u?.late ? "Atrasado" : "Por terminar"}: ${j.title}`, m:`${j.brand} · ${j.piece} · entrega el ${dm(j.due)} · ${j.status}` }); });
   if (cm) visiblePosts().filter(p => p.cm === me && !["Programado","Publicado","Pautado"].includes(p.status) && !repLater(p)).sort((a, b) => a.date.localeCompare(b.date)).forEach(p => {
@@ -4831,7 +4876,7 @@ function panelMine(ar){
 }
 // Panel de Trabajo: íconos grandes de un solo color, con qué trabajos hay en cada categoría y, debajo, lo que tengo que terminar.
 function panelStats(){
-  const pj = jobs.filter(j => seesBrand(j.brand) && !isClosedJob(j) && j.status !== "Cancelado" && (!ownsJobs() || j.owner === viewer.name));
+  const pj = jobs.filter(j => seesJob(j) && !isClosedJob(j) && j.status !== "Cancelado" && (!ownsJobs() || j.owner === viewer.name));
   const jm = list => { const n = list.length, l = list.filter(j => urgency(j)?.late).length; return n ? `${n} ${n === 1 ? "activo" : "activos"}${l ? ` · <em>${l} ${l === 1 ? "atrasado" : "atrasados"}</em>` : ""}` : "Sin pedidos activos"; };
   const vp = visiblePosts(), pm = list => { const n = list.length, d = list.filter(isDone).length; return n ? `${d} de ${n} publicados` : "Nada cargado este mes"; };
   const canales = typeof visibleCanales === "function" ? visibleCanales().filter(k => String(k.date || "").slice(0, 7) === MONTH) : [];
@@ -4852,10 +4897,10 @@ function pPanel(ar){
       return `<button type="button" class="picon" data-page="${x.k}" style="--i:${i}" aria-label="Abrir ${esc(x.t)}${open.length ? ` (${open.length} pedido${open.length === 1 ? "" : "s"} a tu nombre sin terminar)` : ""}"><span class="pring" aria-hidden="true">${icon(x.i)}${badge}</span><b>${x.t}</b><small>${x.d}</small><span class="pmeta">${st[x.k] || ""}</span></button>`; }).join("");
   const al = panelMine(ar), shown = panelAll ? al : al.slice(0, 5);
   const area = dg ? "Diseño" : "CM", mineOnly = ownsJobs();
-  const scope = jobs.filter(j => jobGroup(j) === area && seesBrand(j.brand) && (!mineOnly || j.owner === viewer.name));
+  const scope = jobs.filter(j => jobGroup(j) === area && seesJob(j) && (!mineOnly || j.owner === viewer.name));
   const done = scope.filter(j => isFin(j) && jobMonth(j) === MONTH && !j.ex).sort((a, b) => String(b.delivered || b.approved || b.due).localeCompare(String(a.delivered || a.approved || a.due)));
   const doneShown = panelDoneAll ? done : done.slice(0, 5);
-  const doneList = done.length ? `<div class="list">${doneShown.map(j => `<div class="row arow ago" data-ago="job:${j.id}" role="button" tabindex="0"><span class="aico" style="--c:#10b981">${icon("circle-check")}</span><div class="grow"><div class="t">${esc(j.title)}</div><div class="m">${esc(j.brand)} · ${esc(j.piece)} · terminado el ${dm(j.delivered || j.approved || j.due)}${mineOnly ? "" : ` · ${esc(firstName(j.owner))}`}</div></div>${pill(j.status, JOB_COLOR[j.status])}</div>`).join("")}</div>` : `<div class="empty">Todavía no hay trabajos terminados en ${monthName(MONTH)}.</div>`;
+  const doneList = done.length ? `<div class="list">${doneShown.map(j => `<div class="row arow ago" data-ago="job:${j.id}" role="button" tabindex="0"><span class="aico" style="--c:#10b981">${icon("circle-check")}</span><div class="grow"><div class="t">${esc(j.title)}</div><div class="m">${esc(jobBrands(j).join(" + "))} · ${esc(j.piece)} · terminado el ${dm(j.delivered || j.approved || j.due)}${mineOnly ? "" : ` · ${esc(firstName(j.owner))}`}</div></div>${pill(j.status, JOB_COLOR[j.status])}</div>`).join("")}</div>` : `<div class="empty">Todavía no hay trabajos terminados en ${monthName(MONTH)}.</div>`;
   return `<div class="phero"><h1>Panel de Trabajo</h1><p class="sub">${dg ? "Elegí qué tipo de pieza vas a trabajar: cada categoría tiene sus pedidos, su tabla y sus procesos." : "Elegí qué vas a gestionar: el plan del mes, cada red y los pedidos de video."}</p></div>
   ${kpiRow(progStats(scope))}
   <nav class="picons" aria-label="Categorías">${icons || `<div class="empty">No tenés categorías habilitadas.</div>`}</nav>
@@ -4884,7 +4929,7 @@ function pInicio(){
   const vp = posts.filter(p => seesBrand(p.brand) && p.date.slice(0,7) === MONTH);
   const counts = POST_STAGES.map(s => vp.filter(p => p.status === s).length);
   const done = vp.filter(p => ["Publicado","Pautado"].includes(p.status)).length;
-  const activeJobs = jobs.filter(j => seesBrand(j.brand) && !isFin(j) && jobMonth(j) === MONTH);
+  const activeJobs = jobs.filter(j => seesJob(j) && !isFin(j) && jobMonth(j) === MONTH);
   const spend = CAMPAIGNS.filter(c => seesBrand(c.brand) && c.month === MONTH).reduce((a,c) => a + c.spend, 0);
   const week = MONTH === CURRENT_MONTH ? vp.filter(p => { const d = daysTo(p.date); return (d >= 0 && d <= 7) || postUrgency(p)?.late; }).sort((a,b) => a.date.localeCompare(b.date))
     : isClosed() ? vp.filter(p => !isDone(p)) : vp.slice().sort((a,b) => a.date.localeCompare(b.date)).slice(0,6);
@@ -5013,7 +5058,7 @@ function jobRow(j){
   const due = d < 0 ? `<span class="down">venció ${dm(j.due)}</span>` : d === 0 ? `<span class="warn">vence hoy</span>` : `vence ${dm(j.due)}`;
   const p = j.post && postById(j.post);
   const next = stagesOf(j)[stagesOf(j).indexOf(j.status)+1];
-  return `<div class="row iopen${urgStyle(j)}" data-jficha="${esc(j.id)}" role="button" tabindex="0" title="Tocá para ver el pedido completo"><div class="grow"><div class="t">${esc(j.title)}</div><div class="m">${icon(j.area === "CM" ? "clapperboard" : j.area === "Contenidos" ? "shapes" : "palette")} ${brandTag(j.brand)} · ${esc(cmPiece(j))} · fecha límite ${dm(j.due)}${p ? ` · para el post del ${dm(p.date)}` : ""}</div></div>${urgBadge(j)}${pill(j.status, JOB_COLOR[j.status])}${designsJob(j) ? designerAction(j) : next ? `<button class="btn" data-adv-job="${j.id}">Pasar a ${next}</button>` : ""}</div>`;
+  return `<div class="row iopen${urgStyle(j)}" data-jficha="${esc(j.id)}" role="button" tabindex="0" title="Tocá para ver el pedido completo"><div class="grow"><div class="t">${esc(j.title)}</div><div class="m">${icon(j.area === "CM" ? "clapperboard" : j.area === "Contenidos" ? "shapes" : "palette")} ${jobBrandTags(j)} · ${esc(cmPiece(j))} · fecha límite ${dm(j.due)}${p ? ` · para el post del ${dm(p.date)}` : ""}</div></div>${urgBadge(j)}${pill(j.status, JOB_COLOR[j.status])}${designsJob(j) ? designerAction(j) : next ? `<button class="btn" data-adv-job="${j.id}">Pasar a ${next}</button>` : ""}</div>`;
 }
 // Alertas y avisos, dentro de Inicio: tocar una alerta lleva a donde está la info; la ✕ la quita.
 // De dónde viene cada alerta: así Inicio las muestra separadas por sección.
@@ -5986,7 +6031,7 @@ function jobFicha(){
     <header class="jp-h"><span class="note">${jobKindLabel(j)}${j.ex ? ` <span class="exbadge sm">Ejemplo para mostrar cómo se carga</span>` : ""}</span><h1>${esc(j.title)}</h1><div class="chips">${pill(j.status, JOB_COLOR[j.status])}${urgBadge(j)}${j.rep?.days?.length ? `<span class="repbadge">${icon("repeat")} Se repite: ${esc(repText(j.rep).toLowerCase())}</span>${at ? `<button class="btn sm" type="button" data-jrepstop="${j.id}">Dejar de repetir</button>` : ""}` : j.repOf ? `<span class="repbadge">${icon("repeat")} Pedido que se repite</span>` : ""}</div></header>
     ${last ? `<div class="jfmsg"><b>${icon("pencil")} Cambios que pidió Admin total</b><p>${esc(last.text)}</p><span>${dm(last.date)} · ${last.time}</span></div>` : ""}
     <section class="panel jp-sec"><h2 class="pmh">${pmIco("clipboard-list")}<i class="jpn">1</i>Qué hay que hacer</h2>
-      <div class="jfgrid">${row("Marca", brandTag(j.brand))}${row("Tipo de trabajo", esc((j.area === "Diseño" && dgCatOf(j) ? dgCatOf(j) + " · " : "") + cmPiece(j)))}${row("Trabajo solicitado", esc(j.title))}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}${j.piece === OTRO && j.otro ? `<div style="grid-column:1/-1"><span>Actividades</span><b>${esc(j.otro)}</b></div>` : ""}</div>
+      <div class="jfgrid">${row(jobBrands(j).length > 1 ? "Marcas" : "Marca", jobBrandTags(j))}${row("Tipo de trabajo", esc((j.area === "Diseño" && dgCatOf(j) ? dgCatOf(j) + " · " : "") + cmPiece(j)))}${row("Trabajo solicitado", esc(j.title))}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}${j.piece === OTRO && j.otro ? `<div style="grid-column:1/-1"><span>Actividades</span><b>${esc(j.otro)}</b></div>` : ""}</div>
       ${j.notes ? `<div class="jfnotes"><span>Observaciones</span><p>${esc(j.notes)}</p></div>` : ""}</section>
     <section class="panel jp-sec"><h2 class="pmh">${pmIco("users")}<i class="jpn">2</i>Quién y para cuándo</h2>
       <div class="jfgrid"><div><span>Quién lo pidió</span><b>${esc(j.requester || "Sin indicar")}</b></div>${row("Responsable", esc(j.owner))}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", prioTag(j.priority))}${row("Complejidad", esc(j.complexity))}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}${j.approvedBy ? row("Aprobó", `${icon("badge-check")} ${esc(j.approvedBy)}${j.approved ? " · " + dm(j.approved) : ""}`) : ""}</div>${pubInfo(j)}</section>
@@ -6035,7 +6080,7 @@ function jobForm(){
       ${area !== "Diseño" ? "" : `<p class="note jsecnote" style="grid-column:1/-1;margin:-4px 0 0">${icon(PIECE_ICO[j.piece] || "shapes")} Se ve en <b>${esc((DESIGN_SECS.find(x => x[0] === sec) || DESIGN_SECS[0])[1])}</b>${dgCat ? "" : " · tipo anterior: se puede seguir trabajando igual"}.</p>`}
       ${area === "CM" ? `<label>Visita / lugar de grabación <span class="note">(opcional)</span><input class="base" id="jVisita" maxlength="80" value="${esc(j.visita || "")}" placeholder="Ej.: Superseis España, 20/10"></label><label>Traslado ida y vuelta <span class="note">(minutos, si hay que ir)</span><input class="base" type="number" min="0" step="5" id="jTraslado" value="${esc(j.traslado ?? "")}" placeholder="Ej.: 40"></label>` : ""}
       ${area === "CM" && VID_TOPICS[j.piece] ? (vidDefaults(j), `${j.piece === "Video para redes" ? `<label>Formato *<select class="base" id="jVfmt">${opt(VID_FORMATS, j.vfmt)}</select></label>` : ""}<label>Tema del video *<select class="base" id="jVtopic">${opt(VID_TOPICS[j.piece], j.vtopic)}</select></label>`) : ""}
-      <label>Marca *<select class="base" id="jBrand">${opt(myBrands(), j.brand)}</select></label>
+      <div class="jbrands" style="grid-column:1/-1"><span class="jll">Marcas * <span class="note">(podés elegir varias, por ejemplo Superseis y Stock)</span></span><div class="chips" role="group" aria-label="Marcas">${myBrands().map(b => { const on = jobBrands(j).includes(b); return `<button type="button" class="chip jbr${on ? " on" : ""}" data-jbrand="${esc(b)}" aria-pressed="${on}" style="--bc:${BRANDS[b] || "#94a3b8"}"><i></i>${esc(b)}</button>`; }).join("")}</div></div>
       <label class="wide" style="grid-column:1/-1">Trabajo solicitado *<input class="base" id="jTitle" value="${esc(j.title)}" placeholder="${area === "CM" ? "Ej.: Reel receta navideña: clericó en 1 minuto" : area === "Contenidos" ? "Ej.: Historia ofertas del finde de Stock" : "Ej.: Post de Navidad: canasta navideña 20% OFF"}" required></label>
       <label style="grid-column:1/-1">Observaciones <span class="note">(opcional, algo corto)</span><textarea class="base" id="jNotes" rows="2" placeholder="Ej.: Usar el logo nuevo y los colores de la campaña. Imprimir 40 unidades.">${esc(j.notes)}</textarea></label>
       </div></section>
@@ -6070,6 +6115,11 @@ document.addEventListener("click", e => { const a = e.target.closest("[data-jlad
   j.link = j.links.find(Boolean) || ""; render(); if (a.dataset.jldel === undefined) [...document.querySelectorAll("#jobForm [data-jl]")].pop()?.focus(); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-jrepstop]"); if (!b || viewer.role !== "Admin total") return; const j = jobById(b.dataset.jrepstop); if (!j?.rep) return;
   if (!confirmTap(b, "rep:" + j.id, "¿Seguro? Tocá de nuevo")) return; delete j.rep; render(); toast(`“${j.title}” ya no se repite. Los que ya estaban cargados quedan.`); });
+// Marcas del pedido: se marcan y desmarcan sin volver a dibujar el formulario (no se pierde lo escrito).
+document.addEventListener("click", e => { const b = e.target.closest("[data-jbrand]"); if (!b || !jobUI.form) return; const j = jobUI.form.job, k = b.dataset.jbrand;
+  const cur = jobBrands(j), next = cur.includes(k) ? cur.filter(x => x !== k) : [...cur, k];
+  j.brands = myBrands().filter(x => next.includes(x)).concat(next.filter(x => !myBrands().includes(x))); j.brand = j.brands[0] || "";
+  b.classList.toggle("on", next.includes(k)); b.setAttribute("aria-pressed", next.includes(k)); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-jrepday]"); if (!b || !jobUI.form) return; const i = +b.dataset.jrepday, f = jobUI.form;
   f.repDays = (f.repDays || []).includes(i) ? f.repDays.filter(x => x !== i) : [...(f.repDays || []), i].sort(); b.classList.toggle("on"); b.setAttribute("aria-pressed", b.classList.contains("on")); });
 // Pedidos que se repiten: el pedido original guarda los días (rep.days, 0 = lunes) y, cada día, se cargan solos los de los próximos 7 días
@@ -6085,7 +6135,7 @@ function spawnRepeats(){
       const d = addDays(TODAY, k), wd = (new Date(d + "T12:00").getDay() + 6) % 7;
       if (d <= t.due || !t.rep.days.includes(wd) || (t.rep.until && d > t.rep.until) || !MONTHS_APP.some(m => m.v === d.slice(0,7))) continue;
       const id = `${t.id}-R${d.slice(2).replace(/-/g, "")}`; if (jobs.some(x => x.id === id)) continue;
-      jobs.push({ id, area:t.area, title:t.title, brand:t.brand, piece:t.piece, ...(t.cat ? { cat:t.cat } : {}), owner:t.owner, requester:t.requester, requestDate:TODAY, due:d, status:"Pendiente", priority:t.priority, complexity:t.complexity,
+      jobs.push({ id, area:t.area, title:t.title, brand:t.brand, ...(Array.isArray(t.brands) ? { brands:[...t.brands] } : {}), piece:t.piece, ...(t.cat ? { cat:t.cat } : {}), owner:t.owner, requester:t.requester, requestDate:TODAY, due:d, status:"Pendiente", priority:t.priority, complexity:t.complexity,
         brief:t.brief, share:t.share || "", shares:shareList(t).map(x => ({ ...x })), drive:t.drive || "", canva:t.canva || "", links:jobLinks(t).slice(), xlinks:(t.xlinks || []).map(x => ({ ...x })), designLink:"", link:t.link || "", notes:t.notes || "", post:null, repOf:t.id });
       if (t.owner && t.owner !== "Sin asignar" && t.owner !== viewer.name) notify({ to:t.owner, type:"nuevo", job:id });
       n++;
@@ -6099,7 +6149,7 @@ function readJobForm(j){ const v = id => document.getElementById(id)?.value;
   const bf = document.getElementById("jBriefF"); if (bf && bf.dataset.dirty){ j.brief = cleanRich(bf.innerHTML); j.briefBy = viewer.name; j.briefAt = new Date().toISOString(); }
   if (document.querySelector("#jobForm .lked")) readLinkEditor(document.querySelector("#jobForm .lked"), j);
   // (los links se leen del editor de links de acceso, arriba)
-  Object.assign(j, { requestDate:v("jReq") ?? j.requestDate, requester:v("jRequester") ?? j.requester, brand:v("jBrand") ?? j.brand, piece:v("jPiece") ?? j.piece, ...(v("jCat") ? { cat:v("jCat") } : {}), ...(v("jVfmt") ? { vfmt:v("jVfmt") } : {}), ...(v("jVtopic") ? { vtopic:v("jVtopic") } : {}), ...(v("jOtro") !== undefined ? { otro:v("jOtro").trim().slice(0, 300) } : {}), ...(v("jVisita") !== undefined ? { visita:v("jVisita").trim().slice(0, 80), traslado:v("jTraslado") === "" ? "" : Math.max(0, +v("jTraslado") || 0) } : {}), title:(v("jTitle") ?? j.title).trim(), owner:v("jOwner") ?? j.owner, status:v("jStatus") ?? j.status, priority:v("jPrio") ?? j.priority, complexity:v("jComp") ?? j.complexity, due:v("jDue") ?? j.due, link:String(v("jLink") ?? j.link ?? "").trim(), notes:(v("jNotes") ?? j.notes).trim() }); }
+  Object.assign(j, { requestDate:v("jReq") ?? j.requestDate, requester:v("jRequester") ?? j.requester, piece:v("jPiece") ?? j.piece, ...(v("jCat") ? { cat:v("jCat") } : {}), ...(v("jVfmt") ? { vfmt:v("jVfmt") } : {}), ...(v("jVtopic") ? { vtopic:v("jVtopic") } : {}), ...(v("jOtro") !== undefined ? { otro:v("jOtro").trim().slice(0, 300) } : {}), ...(v("jVisita") !== undefined ? { visita:v("jVisita").trim().slice(0, 80), traslado:v("jTraslado") === "" ? "" : Math.max(0, +v("jTraslado") || 0) } : {}), title:(v("jTitle") ?? j.title).trim(), owner:v("jOwner") ?? j.owner, status:v("jStatus") ?? j.status, priority:v("jPrio") ?? j.priority, complexity:v("jComp") ?? j.complexity, due:v("jDue") ?? j.due, link:String(v("jLink") ?? j.link ?? "").trim(), notes:(v("jNotes") ?? j.notes).trim() }); }
 // Cuadraditos del proceso: uno por etapa; se toca el cuadradito de la etapa en la que está el trabajo.
 function stagePicker(j, editable){
   const st = stagesOf(j), cur = st.indexOf(j.status);
@@ -6114,7 +6164,7 @@ function jobTable(list){
   const at = canCreateJobs(), showOwner = !pedMine(), showReq = viewer.role === "Admin total";
   const cols = 7 + (showOwner ? 1 : 0) + (showReq ? 1 : 0) + (at ? 1 : 0);
   return `<div class="tw"><table><thead><tr><th>Trabajo solicitado</th><th>Marca</th><th>Tipo</th><th>Fecha límite</th><th>Estado</th><th>Prioridad</th><th>Solicitante</th>${showOwner ? "<th>Responsable</th>" : ""}${showReq ? "<th>Solicitud</th>" : ""}${at ? "<th></th>" : ""}</tr></thead><tbody>
-    ${list.map(j => `<tr><td>${j.ex ? `<span class="exbadge sm">Ejemplo</span> ` : ""}<button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button>${j.link ? ` <a class="link-post" href="${esc(j.link)}" target="_blank" rel="noopener">${icon("link")} brief</a>` : ""}</td><td>${brandTag(j.brand)}</td><td>${jobPieceTag(j)}</td><td><div class="chips" style="flex-wrap:nowrap"><span class="num">${dm(j.due)}</span>${urgBadge(j)}</div></td><td>${jobStatusCell(j)}</td><td>${prioTag(j.priority)}</td><td>${esc(j.requester)}</td>${showOwner ? `<td>${esc(j.owner)}</td>` : ""}${showReq ? `<td class="num">${dm(j.requestDate)}</td>` : ""}${at ? `<td>${jobActions(j)}</td>` : ""}</tr>`).join("") || `<tr><td colspan="${cols}" class="empty">No hay pedidos.</td></tr>`}
+    ${list.map(j => `<tr><td>${j.ex ? `<span class="exbadge sm">Ejemplo</span> ` : ""}<button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button>${j.link ? ` <a class="link-post" href="${esc(j.link)}" target="_blank" rel="noopener">${icon("link")} brief</a>` : ""}</td><td>${jobBrandTags(j)}</td><td>${jobPieceTag(j)}</td><td><div class="chips" style="flex-wrap:nowrap"><span class="num">${dm(j.due)}</span>${urgBadge(j)}</div></td><td>${jobStatusCell(j)}</td><td>${prioTag(j.priority)}</td><td>${esc(j.requester)}</td>${showOwner ? `<td>${esc(j.owner)}</td>` : ""}${showReq ? `<td class="num">${dm(j.requestDate)}</td>` : ""}${at ? `<td>${jobActions(j)}</td>` : ""}</tr>`).join("") || `<tr><td colspan="${cols}" class="empty">No hay pedidos.</td></tr>`}
   </tbody></table></div>`;
 }
 function jobBoard(list, A){
@@ -6125,7 +6175,7 @@ function jobBoard(list, A){
       const p = j.post && postById(j.post);
       const tap = stageOptions("job", j).length;
       return `<div class="card${tap ? " tapstage" : ""}${urgStyle(j)}--c:${BRANDS[j.brand]}"${tap ? ` draggable="true" data-drag="job:${j.id}"` : ""}${canCreateJobs() ? (tap ? ` data-stagemenu="job:${j.id}" role="button" tabindex="0" title="Tocá para cambiar la etapa"` : "") : ` data-jficha="${j.id}" role="button" tabindex="0" title="Tocá para ver el pedido completo"`}><div class="bar-top"></div><div class="in">${urgBadge(j) ? `<div>${urgBadge(j)}</div>` : ""}${j.ex ? `<span class="exbadge sm">Ejemplo</span>` : ""}<div class="t">${esc(j.title)}</div>
-        <div class="m">${brandTag(j.brand)}${jobPieceTag(j)}<span>${isFin({ status:st, area:A }) ? "finalizado " + dm(j.delivered || j.due) : "límite " + dm(j.due)}</span></div>
+        <div class="m">${jobBrandTags(j)}${jobPieceTag(j)}<span>${isFin({ status:st, area:A }) ? "finalizado " + dm(j.delivered || j.due) : "límite " + dm(j.due)}</span></div>
         ${p ? `<div class="link-post">↳ Post del ${dm(p.date)} · ${p.net}</div>` : ""}
         <div class="foot"><span>${esc(j.owner)} · ${prioTag(j.priority)}</span>${canCreateJobs() ? `<button class="btn sm ib" data-jedit="${j.id}" title="Editar pedido" aria-label="Editar pedido">${icon("pencil")}</button>` : ""}</div>${designsJob(j) && !tap ? `<div class="dact"><span class="spl" style="color:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}">${j.status}</span>${designerAction(j)}</div>` : A === "CM" || A === "Diseño" || A === "Contenidos" ? `<div class="dact"><span class="spl" style="color:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}">● ${j.status}${tap ? " ▾" : ""}</span></div>` : stagePicker(j, canSetAnyStatus(j))}</div></div>`;
     }).join("") || `<div class="empty" style="padding:6px">Vacío</div>`}</div>`; }).join("")}</div>`;
@@ -6301,7 +6351,7 @@ let pedView = "tabla";
 document.addEventListener("click", e => { const b = e.target.closest("[data-pedview]"); if (b){ pedView = b.dataset.pedview; render(); } });
 function pedList(A){
   const cart = MAT_SECS.includes(page), soc = page === "pedidos";
-  return jobs.filter(j => j.area === A && (seesBrand(j.brand) || j.ex) && jobMonth(j) === MONTH && j.status !== "Cancelado" && (!cart || inMatPage(j)) && (!soc || !isMaterial(j)) && (!pedMine() || j.owner === viewer.name || j.ex))
+  return jobs.filter(j => j.area === A && (seesJob(j) || j.ex) && jobMonth(j) === MONTH && j.status !== "Cancelado" && (!cart || inMatPage(j)) && (!soc || !isMaterial(j)) && (!pedMine() || j.owner === viewer.name || j.ex))
     .sort((a, b) => !!b.ex - !!a.ex || a.due.localeCompare(b.due)); // el ejemplo, primero
 }
 const pedScopeChips = A => ownsJobs() ? `<div class="chips pedscope"><button type="button" class="chip ${pedMine() ? "on" : ""}" data-pedscope="mine">${icon("user-round")} Mis pedidos</button><button type="button" class="chip ${pedMine() ? "" : "on"}" data-pedscope="team">${icon("users")} Todo el equipo de ${A === "Diseño" ? "Diseño gráfico" : "CM"}</button></div>` : "";
@@ -6349,7 +6399,7 @@ function pedPage(A, title, ico, sub, newHint, extra = ""){
 // qué está en revisión y qué ya se aprobó. Tocar una etapa muestra solo esos trabajos en el calendario (otra vez: todos).
 let dgPlanUI = { st:"Todos" };
 function pCalDG(){
-  const base = jobs.filter(j => j.area === "Diseño" && seesBrand(j.brand) && j.status !== "Cancelado" && (!pedMine() || j.owner === viewer.name || j.ex));
+  const base = jobs.filter(j => j.area === "Diseño" && seesJob(j) && j.status !== "Cancelado" && (!pedMine() || j.owner === viewer.name || j.ex));
   const list = base.filter(j => dgPlanUI.st === "Todos" || j.status === dgPlanUI.st).sort((a, b) => a.due.localeCompare(b.due));
   const n = list.filter(j => j.due.slice(0, 7) === MONTH).length;
   const mes = base.filter(j => j.due.slice(0, 7) === MONTH), cnt = st => mes.filter(j => j.status === st).length, done = mes.filter(isFin).length;
@@ -6681,7 +6731,7 @@ function pGestionCM(){
     ${recurringList()}${recDrawer()}`;
   // Igual que Gestión Redes, Historia y Canal: Calendario (predeterminado), Tablero y Tabla, con el proceso de los videos.
   const view = gView(), calName = brandFilter === "Todas" ? "Todas las marcas" : brandFilter === "Otros" ? "Otras marcas" : brandFilter;
-  const list = jobs.filter(j => j.area === "CM" && (seesBrand(j.brand) || j.ex) && inFilter(j.brand) && jobMonth(j) === MONTH && j.status !== "Cancelado" && (!pedMine() || j.owner === viewer.name || j.ex)).sort((a, b) => !!b.ex - !!a.ex || a.due.localeCompare(b.due));
+  const list = jobs.filter(j => j.area === "CM" && (seesJob(j) || j.ex) && jobBrands(j).some(inFilter) && jobMonth(j) === MONTH && j.status !== "Cancelado" && (!pedMine() || j.owner === viewer.name || j.ex)).sort((a, b) => !!b.ex - !!a.ex || a.due.localeCompare(b.due));
   const head = gHead(`Gestión de Video${view === "calendario" ? " · " + calName : ""}`, `${monthLabel(MONTH)} · los videos de cada día, para redes y para pantallas, con su proceso hasta que se publican y se pautan.`, "clapperboard");
   const adds = canCreateJobs() ? calAdds([['data-jnew', "clapperboard", "Cargar gestión de video", "Qué video, para qué marca, quién lo hace y para cuándo."], ['data-cmtv="repetitivos"', "repeat", "Repetitivos", "Lo que se repite ciertos días de la semana."]]) : "";
   const proc = `<div class="legend">${CM_STAGES.map(st => `<span><span class="sw" style="background:${SEM[semLvl(st)]}"></span>${st}</span>`).join("")}</div>`;
@@ -6769,13 +6819,13 @@ function histTable(list, emptyMsg){
   const nCh = j => (j.changes || []).filter(c => c.text && !c.kind).length;
   return `<div class="tw"><table class="htable"><thead><tr><th>Qué hay que hacer</th><th>Marca</th><th>Tipo</th><th>Quién lo pidió</th><th>Responsable</th><th>Fecha límite</th><th>Terminado</th><th>Estado</th><th class="r">Cambios</th></tr></thead><tbody>
   ${list.map(j => { const end = j.delivered || j.due, late = end > j.due, c = nCh(j);
-    return `<tr><td><button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button></td><td>${brandTag(j.brand)}</td><td>${jobPieceTag(j)}</td><td>${esc(j.requester || "—")}</td><td>${esc(j.owner)}</td><td class="num">${dm(j.due)}</td><td class="num" style="white-space:nowrap">${dm(end)} ${late ? `<span class="down">(atrasado)</span>` : `<span class="up">a tiempo</span>`}</td><td>${pill(j.status, JOB_COLOR[j.status])}</td><td class="r num">${c ? c : `<span class="note">—</span>`}</td></tr>`; }).join("") || `<tr><td colspan="9" class="empty">${emptyMsg}</td></tr>`}
+    return `<tr><td><button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button></td><td>${jobBrandTags(j)}</td><td>${jobPieceTag(j)}</td><td>${esc(j.requester || "—")}</td><td>${esc(j.owner)}</td><td class="num">${dm(j.due)}</td><td class="num" style="white-space:nowrap">${dm(end)} ${late ? `<span class="down">(atrasado)</span>` : `<span class="up">a tiempo</span>`}</td><td>${pill(j.status, JOB_COLOR[j.status])}</td><td class="r num">${c ? c : `<span class="note">—</span>`}</td></tr>`; }).join("") || `<tr><td colspan="9" class="empty">${emptyMsg}</td></tr>`}
   </tbody></table></div>`;
 }
 function pHistorial(){
-  const all = jobs.filter(j => !j.ex && j.area === "Diseño" && isFin(j) && jobMonth(j) === MONTH && seesBrand(j.brand) && (!isDesigner() || j.owner === viewer.name));
+  const all = jobs.filter(j => !j.ex && j.area === "Diseño" && isFin(j) && jobMonth(j) === MONTH && seesJob(j) && (!isDesigner() || j.owner === viewer.name));
   const q = histUI.q.trim().toLowerCase();
-  const list = all.filter(j => (histUI.owner === "Todos" || j.owner === histUI.owner) && (histUI.brand === "Todas" || j.brand === histUI.brand) && (histUI.piece === "Todos" || j.piece === histUI.piece)
+  const list = all.filter(j => (histUI.owner === "Todos" || j.owner === histUI.owner) && (histUI.brand === "Todas" || jobBrands(j).includes(histUI.brand)) && (histUI.piece === "Todos" || j.piece === histUI.piece)
     && (!q || [j.title, j.brand, j.owner, j.piece, j.requester].join(" ").toLowerCase().includes(q))).sort((a, b) => (a.delivered || a.due).localeCompare(b.delivered || b.due));
   const uniq = f => [...new Set(all.map(f))].filter(Boolean).sort((a, b) => a.localeCompare(b, "es"));
   const sel = (k, all0, opts) => `<select class="base" data-hf="${k}"><option value="${all0}">${{ owner:"Persona", brand:"Marca", piece:"Tipo" }[k]}: ${all0 === "Todas" ? "todas" : "todos"}</option>${opts.map(o => `<option ${histUI[k] === o ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
@@ -6783,7 +6833,7 @@ function pHistorial(){
   return `<div><h1>Historial Diseño gráfico</h1><p class="sub">Trabajos de diseño entregados en ${monthName(MONTH)}${isDesigner()?" por vos":""}. Filtrá por persona, marca o tipo de pieza.</p></div>
   <div class="panel" style="padding:14px"><div class="jfilters">
     <input class="base" id="hSearch" placeholder="Buscar por trabajo, persona o quién lo pidió…" value="${esc(histUI.q)}">
-    ${isDesigner() ? "" : sel("owner", "Todos", uniq(j => j.owner))}${sel("brand", "Todas", uniq(j => j.brand))}${sel("piece", "Todos", uniq(j => j.piece))}
+    ${isDesigner() ? "" : sel("owner", "Todos", uniq(j => j.owner))}${sel("brand", "Todas", [...new Set(all.flatMap(j => jobBrands(j)))].sort((a, b) => a.localeCompare(b, "es")))}${sel("piece", "Todos", uniq(j => j.piece))}
     ${histUI.owner !== "Todos" || histUI.brand !== "Todas" || histUI.piece !== "Todos" || q ? `<button class="btn" data-hclear>Limpiar filtros</button>` : ""}
   </div></div>
   <div class="head"><span class="note">${list.length} de ${all.length} ${all.length === 1 ? "entrega" : "entregas"}${late ? ` · ${late} con atraso` : ""}</span></div>
@@ -6794,7 +6844,7 @@ document.addEventListener("input", e => { if (e.target.id !== "hSearch") return;
 document.addEventListener("click", e => { if (e.target.closest("[data-hclear]")){ histUI = { owner:"Todos", brand:"Todas", piece:"Todos", q:"" }; render(); } });
 function pHistorialCM(){
   const pubs = posts.filter(p => p.date.slice(0,7) === MONTH && seesBrand(p.brand) && ["Publicado","Pautado"].includes(p.status) && (viewer.role !== "CM" || p.cm === viewer.name)).sort((a, b) => a.date.localeCompare(b.date));
-  const tasks = jobs.filter(j => !j.ex && j.area === "CM" && isFin(j) && jobMonth(j) === MONTH && seesBrand(j.brand) && (viewer.role !== "CM" || j.owner === viewer.name));
+  const tasks = jobs.filter(j => !j.ex && j.area === "CM" && isFin(j) && jobMonth(j) === MONTH && seesJob(j) && (viewer.role !== "CM" || j.owner === viewer.name));
   const mine = viewer.role === "CM" ? " tuyas" : "";
   return `<div><h1>Historial CM</h1><p class="sub">Lo que ya salió en ${monthName(MONTH)}: publicaciones${mine} publicadas o pautadas y tareas de CM terminadas.</p></div>
   <div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("megaphone")}Publicaciones${mine} (${pubs.length})</h2></div><div class="tw" style="border:0;border-radius:0"><table><thead><tr><th>Publicación</th><th>Marca</th><th>CM</th><th>Red · formato</th><th>Tema</th><th>Estado</th></tr></thead><tbody>
@@ -7108,7 +7158,7 @@ function cmpTxt(now, before, fmt = dots){
   return `<div class="cmp ${d >= 0 ? "up" : "down"}">${d >= 0 ? "▲" : "▼"} ${Math.abs(d).toFixed(0)}% vs. ${monthName(prevMonth(MONTH))} (${fmt(before)})</div>`;
 }
 function repDiseno(){
-  const mj = m => jobs.filter(j => !j.ex && j.area === "Diseño" && j.status !== "Cancelado" && seesBrand(j.brand) && jobMonth(j) === m);
+  const mj = m => jobs.filter(j => !j.ex && j.area === "Diseño" && j.status !== "Cancelado" && seesJob(j) && jobMonth(j) === m);
   const cur = mj(MONTH), prev = mj(prevMonth(MONTH));
   const del = cur.filter(j => isFin(j)), onTime = del.filter(j => j.delivered <= j.due);
   const pct = del.length ? Math.round(onTime.length / del.length * 100) : 0;
@@ -7150,7 +7200,7 @@ function repCM(){
       const pj = jobs.filter(j => j.post && c.some(p => p.id === j.post)).length;
       return `<tr><td><b style="color:#fff">${n}</b></td><td>${[...new Set(c.map(p => p.brand))].map(brandTag).join(" ")}</td><td class="r num">${c.length}</td><td class="r num">${d.length}</td><td class="r num">${pa.length}</td><td class="r num">${pj}</td><td class="r num ${c.length - d.length ? "warn" : ""}">${c.length - d.length}</td><td style="min-width:160px"><div class="bar" style="grid-template-columns:1fr 44px"><div class="tr"><div class="fl" style="width:${pc}%"></div></div><span class="v">${pc}%</span></div></td></tr>`; }).join("")}
   </tbody></table></div>
-  ${(() => { const cj = jobs.filter(j => !j.ex && j.area === "CM" && j.status !== "Cancelado" && seesBrand(j.brand) && jobMonth(j) === MONTH);
+  ${(() => { const cj = jobs.filter(j => !j.ex && j.area === "CM" && j.status !== "Cancelado" && seesJob(j) && jobMonth(j) === MONTH);
     const people = CM_NAMES().filter(n => cj.some(j => j.owner === n));
     return `<div class="tw"><table><thead><tr><th>Trabajos de CM (videos, copys, pauta…)</th><th class="r">A cargo</th><th class="r">Finalizados</th><th class="r">A tiempo</th><th class="r">Atrasados</th><th class="r">En curso</th></tr></thead><tbody>
     ${people.map(n => { const d = cj.filter(j => j.owner === n), e = d.filter(j => isFin(j)), t = e.filter(j => j.delivered <= j.due), late = d.filter(j => urgency(j)?.late).length;
@@ -7261,7 +7311,7 @@ function monthData(){
   // ---- El equipo ----
   const t = [], dg = [], cmP = [];
   if (can("pedidos")){
-    const mj = m => jobs.filter(j => !j.ex && j.area === "Diseño" && j.status !== "Cancelado" && seesBrand(j.brand) && jobMonth(j) === m);
+    const mj = m => jobs.filter(j => !j.ex && j.area === "Diseño" && j.status !== "Cancelado" && seesJob(j) && jobMonth(j) === m);
     const cur = mj(MONTH), prev = mj(P), fin = cur.filter(isFin), ok = fin.filter(j => j.delivered <= j.due), late = cur.filter(j => urgency(j)?.late), open = cur.length - fin.length;
     if (cur.length){
       const pct = pc(ok.length, fin.length);
@@ -7276,7 +7326,7 @@ function monthData(){
       if (late.length){
         const who = Object.entries(late.reduce((a, j) => (a[firstName(j.owner)] = (a[firstName(j.owner)] || 0) + 1, a), {})).map(([k, v]) => `${esc(k)} ${v}`);
         dg.push(`${late.length === 1 ? "Hay un pedido atrasado" : `Hay <b>${late.length}</b> pedidos atrasados`} (${y(who)}).`);
-        late.sort((a, b) => a.due.localeCompare(b.due)).slice(0, 2).forEach(j => tips.push(`1|Destrabar “${esc(j.title)}” de ${esc(j.brand)} (${esc(firstName(j.owner))}, ${urgency(j).t.toLowerCase()}).`));
+        late.sort((a, b) => a.due.localeCompare(b.due)).slice(0, 2).forEach(j => tips.push(`1|Destrabar “${esc(j.title)}” de ${esc(jobBrands(j).join(" + "))} (${esc(firstName(j.owner))}, ${urgency(j).t.toLowerCase()}).`));
         bad.push(late.length === 1 ? "hay un pedido de diseño atrasado" : `hay ${late.length} pedidos de diseño atrasados`);
       } else if (open && live) dg.push(`${open === 1 ? "El pedido abierto está" : `Los ${dots(open)} pedidos abiertos están`} dentro de fecha.`);
       const ch = fin.filter(j => (j.changes || []).length);
@@ -7298,7 +7348,7 @@ function monthData(){
       }
       if (due.length >= 3) (pct >= 90 ? good : bad).push(pct >= 90 ? "el plan de posteo está al día" : `el plan de posteo va al ${pct}%`);
     }
-    const cj = jobs.filter(j => !j.ex && j.area === "CM" && j.status !== "Cancelado" && seesBrand(j.brand) && jobMonth(j) === MONTH);
+    const cj = jobs.filter(j => !j.ex && j.area === "CM" && j.status !== "Cancelado" && seesJob(j) && jobMonth(j) === MONTH);
     if (cj.length){ const lj = cj.filter(j => urgency(j)?.late).length;
       cmP.push(`Además ${live ? "tiene" : "tuvo"} ${n(cj.length, "trabajo")} de videos, copys o pauta: ${dots(cj.filter(isFin).length)} ${cj.filter(isFin).length === 1 ? "terminado" : "terminados"}${lj ? ` y ${lj} ${lj === 1 ? "atrasado" : "atrasados"}` : ""}.`); }
   }
@@ -9606,8 +9656,8 @@ function notifCfg(){
   const state = perm === "unsupported" ? `${icon("circle-alert")} Este navegador no permite notificaciones${/iphone|ipad/i.test(navigator.userAgent) ? ": en iPhone primero hay que instalar la app (pestaña “Instalar la app”)" : ""}.`
     : perm === "denied" ? `${icon("bell-off")} Están bloqueadas: habilitalas para esta app en los ajustes del navegador o del celular y volvé acá.`
     : on ? `${icon("bell-ring")} Activadas en este dispositivo${pushActive ? ": te llegan aunque la app esté cerrada" : ""}.` : `${icon("bell-off")} Apagadas en este dispositivo.`;
-  return `<section class="panel cfgsec"><h2 class="pmh">${pmIco("bell")}Notificaciones del chat</h2>
-    <p class="note">Cuando alguien te escribe en el Chat Retail MKT (privado o en un grupo tuyo), te llega un aviso en el celular o en la compu. Se activa en cada dispositivo por separado. Con “No molestar” no llegan avisos.</p>
+  return `<section class="panel cfgsec"><h2 class="pmh">${pmIco("bell")}${sinChat(viewer) ? "Notificaciones" : "Notificaciones del chat y de trabajos"}</h2>
+    <p class="note">${sinChat(viewer) ? "Cuando te llega un trabajo nuevo o te piden una corrección" : "Cuando alguien te escribe en el Chat Retail MKT (privado o en un grupo tuyo), o te llega un trabajo nuevo o una corrección"}, te llega un aviso en el celular o en la compu, aunque la app esté cerrada. Se activa en cada dispositivo por separado. Con “No molestar” no llegan avisos.</p>
     <p class="pfid">${state}</p>
     <div class="chips">${on ? `<button class="btn" type="button" data-notifoff>${icon("bell-off")} Apagar en este dispositivo</button>` : perm === "unsupported" || perm === "denied" ? "" : `<button class="btn primary" type="button" data-notifon ${notifBusy ? "disabled" : ""}>${icon("bell-ring")} ${notifBusy ? "Activando…" : "Activar en este dispositivo"}</button>`}</div></section>`;
 }
@@ -9715,6 +9765,119 @@ function localNotify(n){
   if (pushActive || !notifOn() || !notifSupported() || Notification.permission !== "granted" || document.visibilityState === "visible") return;
   navigator.serviceWorker.ready.then(r => r.showNotification("Chat Retail MKT", { body:`Tenés ${n} ${n === 1 ? "mensaje nuevo" : "mensajes nuevos"}.`, tag:"rmh-chat", icon:"./icon-192.png", badge:"./icon-192.png", data:{ open:"" } })).catch(() => {});
 }
+// ----- Aviso fuerte de trabajo nuevo y de corrección (Diseño, CM y Contenidos) -----
+// Cuando a la persona le llega un trabajo nuevo, una publicación para hacer o un pedido de corrección: sale una ventana
+// emergente animada (como la de WhatsApp Web), suena un sonido (uno para lo nuevo y otro para la corrección) y, si la app
+// está abierta pero en otra pestaña o ventana, llega el aviso de la compu o del celular. Con la app cerrada, el aviso llega
+// por push (chat-push). Cada dispositivo recuerda qué avisos ya mostró (rmh-jobpop-<persona>) para no repetirlos.
+const JOBPOP = { nuevo:{ k:"new", t:"Nuevo trabajo para vos", ic:"inbox", c:"#22d3ee" }, pub:{ k:"new", t:"Nueva publicación para vos", ic:"calendar-days", c:"#10b981" },
+  listo:{ k:"new", t:"Diseño listo para tu grilla", ic:"badge-check", c:"#10b981" }, fix:{ k:"fix", t:"Te pidieron una corrección", ic:"pencil", c:"#f97316" } };
+const JOBSOUND_KEY = "rmh-jobsound";
+const jobSoundOn = () => { try { return localStorage.getItem(JOBSOUND_KEY) !== "off"; } catch { return true; } };
+const jobPopKey = () => "rmh-jobpop-" + viewer.id;
+const jobPopId = n => [n.id, n.type, n.job || "", n.post || ""].join("|");
+const jobPopRead = () => { try { const v = localStorage.getItem(jobPopKey()); return v === null ? null : JSON.parse(v) || []; } catch { return []; } };
+const jobPopSave = ids => { try { localStorage.setItem(jobPopKey(), JSON.stringify(ids.slice(-400))); } catch {} };
+let jobPop = { items:[] };
+function jobPopCheck(){
+  if (!viewer || !enterApp.done || !$("#login").hidden || window.RMH?.previewing) return;
+  const mine = myNotifs().filter(n => JOBPOP[n.type] && (n.type !== "pub" || pubAlert(n)) && (!n.job || jobById(n.job)));
+  let seen = jobPopRead(); const first = seen === null; seen = seen || [];
+  const fresh = mine.filter(n => !seen.includes(jobPopId(n)) && !notify.here.has(n) && (!first || n.date === TODAY)); // la primera vez en este dispositivo: solo lo de hoy
+  const ids = mine.map(jobPopId);
+  if (first || fresh.length || ids.some(id => !seen.includes(id))) jobPopSave([...seen.filter(id => !ids.includes(id)), ...ids]); // los que siguen sin leer, al final (no se recortan)
+  if (!fresh.length) return;
+  jobPop.items = [...jobPop.items.filter(n => !fresh.includes(n)), ...fresh].slice(-4);
+  jobPopShow();
+  const last = fresh[fresh.length - 1], quiet = isDnd();
+  if (!quiet) jobSound(JOBPOP[last.type].k);
+  if (!quiet) jobLocalNotify(fresh);
+  jobTitleBlink(fresh.length);
+}
+// Texto de cada aviso (el mismo en la ventana, en la notificación del sistema y en el push).
+function jobPopInfo(n){
+  const P = JOBPOP[n.type], j = n.job ? jobById(n.job) : null;
+  if (n.demo) return { ...P, go:"", title:n.type === "fix" ? "Ejemplo: Post Día de la Madre" : "Ejemplo: Historia ofertas del finde", m:n.type === "fix" ? "“Cambiar la foto principal y agrandar el precio”" : "Superseis · Historia · fecha límite " + dm(addDays(TODAY, 2)) };
+  if (n.type === "pub"){ const a = pubAlert(n); return { ...P, go:a?.go || "", title:a ? a.t.replace(/^Nueva publicación para vos: /, "") : "", m:a ? a.m.replace(/ · tocá para verla$/, "") : "" }; }
+  const brands = j ? jobBrands(j).join(" + ") : "";
+  return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "",
+    m:n.type === "fix" ? (n.text ? `“${rclShort(String(n.text), 160)}”` : `${brands} · ${j ? cmPiece(j) : ""}`)
+      : n.type === "listo" ? `${brands} · ${j ? cmPiece(j) : ""} · sumalo a tu calendario`
+      : `${brands} · ${j ? cmPiece(j) : ""}${j?.due ? " · fecha límite " + dm(j.due) : ""}${j?.requester ? " · pidió " + j.requester : ""}` };
+}
+function jobPopShow(){
+  let el = document.getElementById("jobpop");
+  if (!jobPop.items.length){ if (el && !el.classList.contains("out")){ el.classList.add("out"); setTimeout(() => { if (!jobPop.items.length) el.remove(); }, 260); } return; }
+  if (!el){ el = document.createElement("div"); el.id = "jobpop"; el.setAttribute("role", "alertdialog"); el.setAttribute("aria-live", "assertive"); document.body.appendChild(el); }
+  const L = jobPop.items.map(n => ({ n, x:jobPopInfo(n) })), top = L[L.length - 1].x, many = L.length > 1;
+  el.className = "jobpop " + (top.k === "fix" ? "fix" : "new"); el.style.setProperty("--c", top.c);
+  el.setAttribute("aria-label", many ? `Tenés ${L.length} avisos nuevos` : top.t);
+  el.innerHTML = `<div class="jpcard"><span class="jpring" aria-hidden="true"></span><div class="jphead"><span class="jpico">${icon(top.ic)}</span><div class="grow"><b>${many ? `Tenés ${L.length} avisos nuevos` : esc(top.t)}</b><small>Retail MKT Hub · recién</small></div><button type="button" class="jpx" data-jpclose aria-label="Cerrar">${icon("x")}</button></div>
+    <div class="jplist">${L.slice().reverse().map(({ n, x }) => `<div class="jpitem" style="--c:${x.c}">${many ? `<span class="jpk">${icon(x.ic)} ${esc(x.t)}</span>` : ""}<b class="jpt">${esc(x.title)}</b>${x.m ? `<span class="jpm">${esc(x.m)}</span>` : ""}${x.go ? `<button type="button" class="btn ${many ? "sm" : "primary"}" data-jpgo="${esc(x.go)}" data-jpid="${esc(String(n.id))}">${icon(n.type === "pub" ? "arrow-up-right" : "eye")} ${n.type === "pub" ? "Ver publicación" : n.type === "fix" ? "Ver la corrección" : "Ver pedido"}</button>` : ""}</div>`).join("")}</div>
+    <div class="jpacts"><button type="button" class="btn" data-jpclose>Después</button></div></div>`;
+  if (window.lucide) lucide.createIcons();
+  el.classList.remove("out"); el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake");
+}
+document.addEventListener("click", e => {
+  const g = e.target.closest("[data-jpgo]");
+  if (g){ const go = g.dataset.jpgo; jobPop.items = jobPop.items.filter(n => String(n.id) !== g.dataset.jpid); jobPopShow(); goAlert(go); return; }
+  if (e.target.closest("[data-jpclose]")){ jobPop.items = []; jobPopShow(); }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && jobPop.items.length && !document.querySelector(".imodal,#fixpop")){ jobPop.items = []; jobPopShow(); } });
+// Sonidos (hechos con el navegador, sin archivos): trabajo nuevo = tres notas que suben, suaves, tipo campanita;
+// corrección = dos notas que bajan, repetidas una vez más bajito. El navegador los deja sonar después del primer toque en la app.
+const jobSound = (() => {
+  let ctx = null;
+  const ac = () => { try { if (!ctx){ const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; ctx = new A(); } if (ctx.state === "suspended") ctx.resume().catch(() => {}); } catch { ctx = null; } return ctx; };
+  ["pointerdown", "keydown", "touchend"].forEach(ev => document.addEventListener(ev, () => { if (!ctx || ctx.state !== "running") ac(); }, { capture:true, passive:true }));
+  const bell = (c, out, f, t, d, v) => { // campanita: la nota y un armónico suave que se apaga antes
+    [[f, v, "sine", d], [f * 2.01, v * 0.22, "sine", d * 0.55], [f * 3, v * 0.06, "triangle", d * 0.3]].forEach(([fr, vol, type, dur]) => {
+      const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.setValueAtTime(fr, t);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(out); o.start(t); o.stop(t + dur + 0.05); });
+  };
+  let last = 0;
+  return (kind, force) => {
+    if (!force && (!jobSoundOn() || Date.now() - last < 2500)) return false; last = Date.now();
+    const c = ac(); if (!c || c.state !== "running") return false;
+    const out = c.createGain(), lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 5200; out.gain.value = 0.32; out.connect(lp); lp.connect(c.destination);
+    const t = c.currentTime + 0.03;
+    if (kind === "fix") [[880, 0, 0.5, 0.5], [659.25, 0.17, 0.75, 0.45], [880, 0.62, 0.45, 0.28], [659.25, 0.79, 0.8, 0.26]].forEach(([f, at, d, v]) => bell(c, out, f, t + at, d, v));
+    else [[783.99, 0, 0.7, 0.42], [1046.5, 0.13, 0.75, 0.4], [1318.51, 0.26, 1.1, 0.36]].forEach(([f, at, d, v]) => bell(c, out, f, t + at, d, v));
+    jobSound.played = (jobSound.played || 0) + 1; jobSound.lastKind = kind; return true;
+  };
+})();
+// Aviso de la compu o del celular cuando la app está abierta pero no a la vista (con push activo, lo manda el servidor).
+function jobLocalNotify(list){
+  if (pushActive || !notifOn() || !notifSupported() || Notification.permission !== "granted" || (document.visibilityState === "visible" && document.hasFocus())) return;
+  list.slice(-3).forEach(n => { const x = jobPopInfo(n); navigator.serviceWorker.ready.then(r => r.showNotification(x.t, { body:[x.title, x.m].filter(Boolean).join("\n"), tag:"rmh-job-" + n.id, renotify:true, icon:"./icon-192.png", badge:"./icon-192.png", data:{ open:"", go:x.go } })).catch(() => {}); });
+}
+// Mientras la pestaña no está a la vista, el título titila (como WhatsApp Web) hasta que se vuelve a la app.
+function jobTitleBlink(n){
+  if (document.visibilityState === "visible" && document.hasFocus()) return;
+  clearInterval(jobTitleBlink.t); const base = jobTitleBlink.base || document.title; jobTitleBlink.base = base; let on = false;
+  jobTitleBlink.t = setInterval(() => { on = !on; document.title = on ? `(${n}) ${n === 1 ? "Aviso nuevo" : "Avisos nuevos"} · Retail MKT Hub` : base; }, 1100);
+}
+const jobTitleStop = () => { if (!jobTitleBlink.t) return; clearInterval(jobTitleBlink.t); jobTitleBlink.t = null; if (jobTitleBlink.base) document.title = jobTitleBlink.base; };
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") jobTitleStop(); });
+window.addEventListener("focus", jobTitleStop);
+// Tocar la notificación del sistema abre el pedido o la publicación.
+navigator.serviceWorker?.addEventListener("message", e => { if (e.data?.type === "openGo" && viewer && enterApp.done){ jobPop.items = []; jobPopShow(); goAlert(e.data.go); } });
+// Configuración → Notificaciones: sonido sí o no, y probar cómo se ve y cómo suena.
+function jobPopCfg(){
+  const on = jobSoundOn();
+  return `<section class="panel cfgsec"><h2 class="pmh">${pmIco("bell-ring")}Avisos de trabajo nuevo y de corrección</h2>
+    <p class="note">Cuando te llega un trabajo nuevo (para hacer o para publicar) o te piden una corrección, sale una ventana en la pantalla con un sonido: uno para lo nuevo y otro para la corrección. Si la app está abierta en otra pestaña o ventana, también llega el aviso de la compu o del celular (si las notificaciones están activadas en este dispositivo). Con “No molestar” sale la ventana, pero sin sonido.</p>
+    <div class="cfgopts"><button type="button" class="cfgopt ${on ? "on" : ""}" data-jobsound="on"><b>Con sonido</b><span>Suena cuando llega algo para vos.</span></button><button type="button" class="cfgopt ${on ? "" : "on"}" data-jobsound="off"><b>Sin sonido</b><span>Solo la ventana, en silencio.</span></button></div>
+    <div class="chips" style="margin-top:12px"><button type="button" class="btn" data-jobtest="new">${icon("volume-2")} Probar: trabajo nuevo</button><button type="button" class="btn" data-jobtest="fix">${icon("volume-2")} Probar: corrección</button></div></section>`;
+}
+document.addEventListener("click", e => {
+  const s = e.target.closest("[data-jobsound]"); if (s){ try { localStorage.setItem(JOBSOUND_KEY, s.dataset.jobsound); } catch {} render(); toast(s.dataset.jobsound === "off" ? "Listo: los avisos de trabajo salen sin sonido en este dispositivo." : "Listo: los avisos de trabajo suenan en este dispositivo."); return; }
+  const t = e.target.closest("[data-jobtest]"); if (!t) return; const k = t.dataset.jobtest;
+  jobPop.items = [{ id:"demo-" + k, type:k === "fix" ? "fix" : "nuevo", demo:true }]; jobPopShow();
+  setTimeout(() => { if (!jobSound(k, true)) toast("Tocá de nuevo para escuchar el sonido (el navegador lo habilita después de un toque)."); }, 30);
+});
+
 document.addEventListener("click", e => { const t = e.target.closest("[data-cfgtab]"); if (!t) return; cfgTab = t.dataset.cfgtab; render(); });
 function pConfig(){
   const v = viewer, opt = (key, val, title, desc, prev) => `<button type="button" class="cfgopt ${ (v[key] || (key === "theme" ? "dark" : key === "textSize" ? "normal" : "on")) === val ? "on" : ""}" data-pref="${key}|${val}">${prev || ""}<b>${title}</b><span>${desc}</span></button>`;
@@ -9723,14 +9886,14 @@ function pConfig(){
     <p class="note">Las personas que todavía no eligieron su contraseña. Desaparece cuando la cambian. Para dar una nueva, andá a Usuarios y permisos → Restablecer contraseña.</p>
     ${pend.length ? `<div class="list">${pend.map(pp => `<div class="row"><div class="person" style="min-width:0">${avatarHTML(pp)}<div><b>${esc(pp.name)}</b><span>${esc(pp.cargo || pp.role)}</span></div></div><span class="grow"></span><code style="font-family:var(--mono);color:#a5f3fc;font-size:15px">${esc(pp.tempPass)}</code></div>`).join("")}</div>` : `<div class="empty">Todos ya eligieron su contraseña.</div>`}</section>` : "";
   // Mi Perfil se edita solo acá; Instalar la app también está solo acá.
-  const tabs = [["perfil","Mi Perfil","user"],["apariencia","Apariencia","palette"], ...(sinChat(v) ? [] : [["notif","Notificaciones","bell"]]),["instalar","Instalar la app","download"],["guia","Guía de uso","book-open"], ...(v.role === "Admin total" ? [["integ","Integraciones","plug"]] : [])]; // las notificaciones son del chat
+  const tabs = [["perfil","Mi Perfil","user"],["apariencia","Apariencia","palette"], ...(isRevisor() ? [] : [["notif","Notificaciones","bell"]]),["instalar","Instalar la app","download"],["guia","Guía de uso","book-open"], ...(v.role === "Admin total" ? [["integ","Integraciones","plug"]] : [])]; // las notificaciones son del chat
   const perfil = pPerfil().replace(/^<div><h1>Mi perfil<\/h1>.*?<\/div>/s, "");
   const inst = `<section class="panel cfgsec"><h2 class="pmh">${pmIco("smartphone")}Instalar la app</h2><p class="note">Tenela con su ícono en el celular, la tablet o la computadora: abre a pantalla completa, como cualquier app.</p>
     ${isInstalledApp() ? `<p class="pfid">${icon("check")} Ya la estás usando instalada.</p>` : ""}
     <div class="chips">${installPrompt ? `<button class="btn pgen" type="button" data-installnow>${icon("download")} Instalar ahora</button>` : ""}<button class="btn primary" type="button" data-install>${icon("list-ordered")} Ver cómo instalarla</button></div></section>`;
   return `<div><h1>Configuración</h1><p class="sub">Tu perfil, cómo querés ver la app e instalarla. Se guarda para vos: cada persona elige lo suyo.</p></div>
   <div class="chips cfgtabs" role="tablist">${tabs.map(([k, l, i]) => `<button type="button" role="tab" aria-selected="${cfgTab === k}" class="chip ${cfgTab === k ? "on" : ""}" data-cfgtab="${k}">${icon(i)} ${l}</button>`).join("")}</div>
-  ${cfgTab === "perfil" ? `${perfil}` : cfgTab === "instalar" ? inst : cfgTab === "guia" ? pGuia().replace(/^<div class="head"><div><h1>Guía de uso<\/h1>/, '<div class="head"><div><h2 class="pmh" style="margin:0">Guía de uso</h2>') : cfgTab === "notif" ? notifCfg() : cfgTab === "integ" && v.role === "Admin total" ? integCfg() : `<div class="cfggrid">
+  ${cfgTab === "perfil" ? `${perfil}` : cfgTab === "instalar" ? inst : cfgTab === "guia" ? pGuia().replace(/^<div class="head"><div><h1>Guía de uso<\/h1>/, '<div class="head"><div><h2 class="pmh" style="margin:0">Guía de uso</h2>') : cfgTab === "notif" ? notifCfg() + jobPopCfg() : cfgTab === "integ" && v.role === "Admin total" ? integCfg() : `<div class="cfggrid">
     <section class="panel cfgsec"><h2>Apariencia</h2><p class="note">Elegí la versión oscura o la clara.</p>
       <div class="cfgopts">${opt("theme", "dark", "Oscura", "Fondo oscuro, ideal para pantallas y poca luz.", `<span class="thprev dark"><i></i><i></i><i></i></span>`)}${opt("theme", "light", "Clara", "Fondo blanco, ideal para oficinas con mucha luz.", `<span class="thprev light"><i></i><i></i><i></i></span>`)}</div></section>
     <section class="panel cfgsec"><h2>Tamaño del texto</h2><p class="note">Para leer más cómodo.</p>
@@ -11047,7 +11210,7 @@ function render(){
   if (animate || render.calPage !== page){ render.calPage = page; document.querySelectorAll("#content .calw").forEach(w => { const t = w.querySelector(".d.today"); if (t && w.scrollWidth > w.clientWidth + 4) w.scrollLeft = Math.max(0, t.offsetLeft - 8); }); } // si el calendario no entra, arranca mostrando hoy
   else if (calSL) document.querySelectorAll("#content .calw").forEach((w, i) => { if (calSL[i] != null) w.scrollLeft = calSL[i]; });
   document.documentElement.classList.toggle("chatfull", page === "mensajes" && !!chatUI.mob && !!chatUI.open);
-  chatNotify(); chatPreviews();
+  chatNotify(); jobPopCheck(); chatPreviews();
   if (window.lucide) lucide.createIcons();
   if (page === "tendg" || page === "tencm") gcseMount();
   if (page === "tvredes"){ tvShow(animate ? 0 : tv.i); tvStart(); } else tvStop();
@@ -11088,7 +11251,8 @@ document.addEventListener("click", e => {
 function enterApp(){ try { if (localStorage.getItem("rmh-navreset") || !localStorage.getItem("rmh-navclosed2")) navResetFor(viewer.role); } catch {} setTimeout(seedExamples, 0); setTimeout(() => { const a = spawnRepeats(), b = spawnPostRepeats(); if (a || b) render(); }, 1500); loadPrefs(viewer); applyPrefs(); loadWeather(); presenceOnEnter(); viewer.last = "hoy " + new Date().toTimeString().slice(0,5);
   const want = enterApp.done ? "" : START_PAGE; enterApp.done = true; page = PAGES[want] && can(want) ? want : "dashboard"; render.lastKey = null; brandFilter = "Todas"; $("#login").hidden = true; $("#changeForm").hidden = true; $("#loginForm").hidden = false; $("#loginMsg").hidden = true; render(); toast(`${hello()}. Entraste como ${viewer.role}.`);
   if (notifOn() && notifSupported() && Notification.permission === "granted") pushSubscribe().then(ok => { if (ok && page === "config") render(); });
-  const oc = new URLSearchParams(location.search).get("chat"); if (oc){ history.replaceState(null, "", location.pathname + "#mensajes"); openChatFrom(oc); } }
+  const oc = new URLSearchParams(location.search).get("chat"); if (oc){ history.replaceState(null, "", location.pathname + "#mensajes"); openChatFrom(oc); }
+  const og = new URLSearchParams(location.search).get("go"); if (og){ history.replaceState(null, "", location.pathname); goAlert(og); } }
 // El login, el cambio de contraseña y “¿Olvidaste tu contraseña?” están en sync.js (Supabase Auth).
 
 document.addEventListener("click", e => {
@@ -11100,7 +11264,7 @@ document.addEventListener("click", e => {
     else if (d.jview) jobUI.view = d.jview;
     else if (d.jnew !== undefined){ const area = jobArea(); jobUI.form = { mode:"new", job:{ id:nextJobId(area), area, requestDate:TODAY, requester:"Marketing", brand:myBrands()[0], ...(area === "CM" ? { piece:CM_TYPES[0] } : area === "Contenidos" ? { piece:CONT_TYPES[0] } : dgDefault(dgPageSec())), title:"", owner:"Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due:"", link:"", notes:"", post:null } }; }
     else if (d.jedit){ jobUI.ficha = null; jobUI.form = { mode:"edit", job:{ ...find(d.jedit) } }; }
-    else if (d.jdup){ const o = find(d.jdup); jobUI.form = { mode:"dup", job:{ ...o, id:nextJobId(o.area), requestDate:TODAY, status:"Pendiente", delivered:null, approved:null, post:null } }; }
+    else if (d.jdup){ const o = find(d.jdup); jobUI.form = { mode:"dup", job:{ ...o, id:nextJobId(o.area), requestDate:TODAY, status:"Pendiente", delivered:null, approved:null, post:null, pub:null, pubs:null } }; }
     else if (d.jdel){ if (!confirmTap(jt, "job:" + d.jdel, "¿Seguro? Tocá de nuevo")) return;
       const o = find(d.jdel); if (!o) return; jobs.splice(jobs.indexOf(o), 1); if (jobUI.form?.job?.id === o.id) jobUI.form = null; toast(`Pedido “${o.title}” borrado.`); }
     else if (d.jclose !== undefined) jobUI.form = null;
@@ -11230,6 +11394,7 @@ document.addEventListener("submit", e => {
     if (rtUploading(document.getElementById("jBriefF"))){ toast("Esperá que termine de subir la imagen."); return; }
     const f = jobUI.form, j = f.job, title = $("#jTitle").value.trim(), due = $("#jDue").value;
     if (!title || !due){ toast("Completá el trabajo solicitado y la fecha límite."); return; }
+    if (!jobBrands(jobUI.form.job).length){ toast("Elegí al menos una marca."); return; }
     if ($("#jPiece")?.value === OTRO && !($("#jOtro")?.value || "").trim()){ toast("Contá en “Actividades” de qué se trata el trabajo."); document.getElementById("jOtro")?.focus(); return; }
     const m = due.slice(0,7);
     if (!MONTHS_APP.some(x => x.v === m)){ toast(`La fecha límite (${dm(due)}) está fuera de los meses de la app. Revisá la fecha.`); return; }
