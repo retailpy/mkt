@@ -954,7 +954,16 @@ html.nomotion .nav a.wknew .ibc,html.nomotion .tabbar a.wknew .tbc,html.nomotion
 .escnet{display:inline-flex;gap:4px;align-items:center;font-size:12px;font-weight:700;color:var(--muted)}.escnet svg{width:15px;height:15px}
 .escmeta{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;margin-top:8px;font-size:13px}.escmeta>span{display:inline-flex;gap:6px;align-items:center}.escmeta svg{width:14px;height:14px}
 .escrow mark{background:rgba(250,204,21,.28);color:inherit;border-radius:4px;padding:0 2px}
-.escwords{margin-top:8px;max-height:150px;overflow:auto}.escgo{margin-top:10px}
+.escwords{margin-top:8px;max-height:150px;overflow:auto}
+/* Prompts: fondo de Stock (se elige siempre) */
+.ptonos.need{border-color:rgba(250,204,21,.55)}
+.ptonogrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:10px;margin-top:10px}
+.ptono{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;padding:12px;border:1px solid var(--line-2);border-radius:14px;background:transparent;color:inherit;cursor:pointer;font:inherit}
+.ptono small{color:var(--muted);font-size:12px;line-height:1.35}.ptono.on{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(34,211,238,.18);background:rgba(34,211,238,.06)}
+.ptsw{width:100%;height:22px;border-radius:8px;border:1px solid var(--line-2)}
+.ptsw-azul{background:linear-gradient(90deg,#1A428A,#3CB4E5,#cfe9f7)}.ptsw-amarillo{background:linear-gradient(90deg,#FFD600,#ffe97a,#fff6cc)}
+.ptsw-claros{background:linear-gradient(90deg,#ffffff,#eceff3,#f6efe1,#e8e1f3)}.ptsw-libre{background:conic-gradient(from 90deg,#f59e0b,#ef4444,#a855f7,#22c55e,#f59e0b)}
+.phist .row .btn.ib{flex:none}.escgo{margin-top:10px}
 .escpage{display:flex;flex-direction:column;gap:14px}.escpage .rclkpis{margin:0}.escgo a,.escrow a.btn{text-decoration:none}
 .escform .jfg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}.escform label{display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--muted)}.escform{display:flex;flex-direction:column;gap:12px}
 .escsecs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.escsecs div{border:1px solid var(--line-2);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column}.escsecs b{font-size:20px}.escsecs span{font-size:12.5px;color:var(--muted)}
@@ -9020,14 +9029,20 @@ const STOCK_TONOS = {
     palette:"a bright, clean high-key look built on shades of yellow: the background and the color accents of the scene go in Stock yellow #FFD600, soft light yellow and warm cream tints, with bright white #FFFFFF; no blue anywhere in the background or the accents; never a blue-and-yellow combination",
     lock:"background and accents in shades of yellow (Stock yellow #FFD600, soft light yellow, cream tints) with bright white, no blue",
     avoid:["blue and yellow combination","blue background","blue accents"] },
-  libre:{ l:"Fondo libre", es:"El color del fondo lo elegís vos: escribilo en “Fondo” (ej.: verde agua liso, madera clara, rosa pastel).",
-    bg:"",
-    palette:"a bright, clean high-key look; the background color is exactly the one described in the Background line, and the scene colors follow it; do not add the Stock blue and yellow colors on their own, and never a blue-and-yellow combination",
-    lock:"background color exactly as described in the Background line, no added blue-and-yellow combination",
+  claros:{ l:"Colores claros", es:"Fondo claro y suave: blanco, gris claro, crema o pasteles. Sin azul ni amarillo fuertes.",
+    bg:"light and soft: white, light grey, cream or soft pastel tints",
+    palette:"a bright, clean high-key look on a light, soft background (white, light grey, cream or soft pastel tints); the scene colors stay light and soft; no strong blue and no strong yellow; never a blue-and-yellow combination",
+    lock:"light soft background (white, light grey, cream or pastel tints), no strong blue or yellow",
+    avoid:["blue and yellow combination","saturated blue background","saturated yellow background"] },
+  libre:{ l:"Libre según el producto", es:"El fondo acompaña al producto: colores que combinan con el producto y su envase. Si querés uno en particular, escribilo en “Fondo”.",
+    bg:"chosen to suit the product: colors that harmonize with the product and its packaging",
+    palette:"a bright, clean high-key look; the background and scene colors are chosen to harmonize with the product and its packaging (or exactly as described in the Background line); do not add the Stock blue and yellow colors on their own, and never a blue-and-yellow combination",
+    lock:"background colors chosen to suit the product (or exactly as described in the Background line), no added blue-and-yellow combination",
     avoid:["blue and yellow combination"] } };
-const stockTono = f => STOCK_TONOS[f.stockTono] || STOCK_TONOS.azul;
+// En Stock el fondo se elige siempre (no viene uno marcado): gamas de azul, de amarillo, colores claros o libre según el producto.
+const stockTono = f => STOCK_TONOS[f.stockTono] || null;
 // Estilo de la marca para este prompt: igual al de PM_BRANDS, salvo los colores de Stock, que salen del tono de fondo elegido.
-function pmBrandFor(f){ const B = PM_BRANDS[f.brand]; if (!B || f.brand !== "Stock") return B; const T = stockTono(f);
+function pmBrandFor(f){ const B = PM_BRANDS[f.brand]; if (!B || f.brand !== "Stock") return B; const T = stockTono(f) || STOCK_TONOS.claros; // fondo pleno: sin elegir
   return { ...B, palette:T.palette, style:B.style.replace(/bright white base with Stock blue.*$/, T.lock),
     fest:B.fest.replace("while Stock blue #1A428A and yellow #FFD600 remain the predominant accents, with sky blue #3CB4E5 as secondary", "while the chosen background colors (" + T.lock + ") stay predominant"), avoid:[...B.avoid, ...T.avoid] }; }
 // Valores de un botón de Escenario para una marca.
@@ -9057,7 +9072,7 @@ function pmSize(f){ const w = +f.pxW, h = +f.pxH, g = (a, b) => b ? g(b, a % b) 
 const pmFmtLabel = f => f.formato === "px" ? `${+f.pxW}×${+f.pxH} px` : pmv("formato", f.formato, 1);
 const pmv = (list, k, i = 2) => (PM[list].find(x => x[0] === k) || PM[list][0])[i];
 const PM_MODEL = () => ({ edad:"", genero:"f", peinado:"long", expresion:"smile", ropa:"", pose:"" });
-const PM_EMPTY = () => ({ brand:"", libreMarca:"", fiestaOn:"no", fiesta:"", fiestaOtro:"", pickup:"no", stockTono:"azul", refProd:"no", refFondo:"no", fondoTipo:"super", modTipo:"ia", rostro:"si",
+const PM_EMPTY = () => ({ brand:"", libreMarca:"", fiestaOn:"no", fiesta:"", fiestaOtro:"", pickup:"no", stockTono:"", refProd:"no", refFondo:"no", fondoTipo:"super", modTipo:"ia", rostro:"si",
   producto:"", productos:"", material:"", colores:"", marca:"", ambiente:"", fondo:"", detalles:"", disposicion:"hero", interaccion:"hold",
   superficie:"", escena:"cart", superProds:"", locacion:"", tipoFondo:"white", fondoHex:"", sombra:"soft", libreQue:"", elemento:"", conPersonas:"no",
   nModelos:1, modelos:[PM_MODEL(), PM_MODEL(), PM_MODEL(), PM_MODEL()],
@@ -9091,7 +9106,7 @@ function validatePrompt(m, f){
   if (m === 4 && !SUPER_SCENES.includes(f.escena) && !f.locacion.trim() && !pmFondoAdj(f)) return "Describí la locación.";
   if (m === 5 && f.tipoFondo === "solid" && !pmFondoAdj(f) && !f.fondoHex.trim()) return "Poné el color del fondo en hex.";
   if (m === 6 && !f.libreQue.trim()) return "Contá qué querés en la foto.";
-  if (f.brand === "Stock" && f.stockTono === "libre" && m !== 5 && !pmFondoAdj(f) && !f.fondo.trim()) return "Escribí en “Fondo” el color o el fondo que querés.";
+  if (f.brand === "Stock" && m !== 5 && !stockTono(f)) return "Elegí el fondo de Stock: gamas de azul, gamas de amarillo, colores claros o libre según el producto.";
   if (f.formato === "px" && ![f.pxW, f.pxH].every(v => /^\d+$/.test(String(v).trim()) && +v >= 100 && +v <= 10000)) return "Poné el ancho y el largo en píxeles (entre 100 y 10000).";
   return "";
 }
@@ -9148,7 +9163,7 @@ function buildPrompt(m, f){
       if (m === 4){ const loc = f.locacion.trim() || (SUPER_SCENES.includes(f.escena) ? (B?.store || "a bright, clean, modern supermarket with well-stocked, neatly organized shelves") : ""); if (loc) E.push(`Location: ${loc}.`); }
       else if (f.ambiente.trim()) E.push(`Setting: ${f.ambiente.trim()}.`);
       if ([1,2,6].includes(m) && f.superficie) E.push(`Surface: ${pmv("superficie", f.superficie)}.`);
-      const tono = f.brand === "Stock" ? stockTono(f).bg : ""; // Stock: el fondo en la gama elegida (en “libre”, como lo escribió la persona)
+      const tono = f.brand === "Stock" && !(f.stockTono === "libre" && f.fondo.trim()) ? stockTono(f)?.bg || "" : ""; // Stock: el fondo en la gama elegida (en “libre”, el que escribió la persona o uno que combine con el producto)
       if (f.fondo.trim() || tono) E.push(`Background: ${[f.fondo.trim(), tono].filter(Boolean).join(", ")}${B?.sharp ? ", in focus" : ", softly out of focus"}.`);
       if (E.length) L.push(E.join(" "));
     }
@@ -9210,7 +9225,7 @@ function pPrompts(){
   const prodBlock = (required, label = "Producto", ph = "botella de aceite de oliva extra virgen de 1 litro, vidrio verde oscuro, etiqueta crema") => `${T("producto", label, ph, required, true)}${matSel()}${T("marca", "Marca o texto visible", "OLIVAR")}`;
   const B = PM_BRANDS[f.brand], libre = f.brand === PM_LIBRE, realP = pmRealPeople(m, f), noFace = pmNoFace(m, f);
   const sw = (list, big) => list.map(([hex, n]) => `<i class="pbdot${big ? " big" : ""}" style="--sw:${hex}" title="${esc(n)} ${hex}"></i>`).join("");
-  const histBlock = hist.length ? `<section class="panel phist"><h3 style="margin-top:0">Tus últimos prompts</h3><div class="list">${hist.map((h, i) => `<div class="row"><i class="pbdot" style="--sw:${pmHistColor(h)}"></i><div class="grow"><div class="t">${esc(h.title || "Sin nombre")}</div><div class="m"><b class="phb">${esc(pmHistBrand(h))}</b> · ${esc(h.mode || "")}${h.fiesta ? ` · ${esc(h.fiesta)}` : ""} · ${esc(h.fmt || "")} · ${esc(pmWhen(h))}</div></div><button class="btn" data-phist="${i}">${icon("copy")} Copiar</button></div>`).join("")}</div></section>` : "";
+  const histBlock = hist.length ? `<section class="panel phist"><div class="head" style="margin-bottom:8px"><h3 style="margin:0">Tus últimos prompts</h3><button type="button" class="btn sm" data-phclear>${icon("trash-2")} Borrar todos</button></div><div class="list">${hist.map((h, i) => `<div class="row"><i class="pbdot" style="--sw:${pmHistColor(h)}"></i><div class="grow"><div class="t">${esc(h.title || "Sin nombre")}</div><div class="m"><b class="phb">${esc(pmHistBrand(h))}</b> · ${esc(h.mode || "")}${h.fiesta ? ` · ${esc(h.fiesta)}` : ""} · ${esc(h.fmt || "")} · ${esc(pmWhen(h))}</div></div><button class="btn" data-phist="${i}">${icon("copy")} Copiar</button><button class="btn ib" data-phdel="${i}" title="Borrar este prompt" aria-label="Borrar este prompt">${icon("trash-2")}</button></div>`).join("")}</div></section>` : "";
   const brandPick = `<section class="panel pbrandpick"><h2 class="pmh" style="margin:0">${pmIco("palette")}¿Para qué marca es la foto?</h2><p class="sub" style="margin:4px 0 14px">Cada marca tiene su estilo de fotos. Elegila primero: su estilo se carga solo y el prompt lo respeta siempre, aunque cambies el escenario. Después podés elegir si es para un evento festivo (Navidad, Halloween, Día de la Madre…).</p>
     <div class="pbrands">${PM_BRAND_LIST.map(b => { const x = PM_BRANDS[b]; return `<button type="button" class="pbrand" data-pbrand="${b}" style="--bc:${x.ui}"><span class="pbsw">${sw(x.swatches.slice(0, 4))}</span><b>${b}</b><span class="pbtag">${x.tag}</span><small>${x.resumen}</small></button>`; }).join("")}
       <button type="button" class="pbrand libre" data-pbrand="${PM_LIBRE}" style="--bc:var(--muted)"><span class="pbsw">${icon("pencil-line")}</span><b>Otra marca (libre)</b><span class="pbtag">Estilo a elección</span><small>Para otra marca u otro uso: elegís vos el estilo y la luz</small></button></div></section>`;
@@ -9240,12 +9255,13 @@ function pPrompts(){
     ${pmAttached(m, f) ? `<p class="pfid">${icon("shield-check")} Todo lo que adjuntes se respeta al 100%: el prompt le pide a la IA que no deforme productos, logos, letras ni personas.</p>` : ""}</section>`;
   // 3 · Desarrollo
   const sup4 = m === 4 && SUPER_SCENES.includes(f.escena), escOk = !fondoAdj && m !== 5 && !sup4;
-  const tonoRow = f.brand === "Stock" && m !== 5 ? `<div class="pyn ptono"><div><b>Color del fondo (Stock)</b><span>${esc(stockTono(f).es)}</span></div><div class="pynbtns" role="group" aria-label="Color del fondo de Stock">${Object.entries(STOCK_TONOS).map(([k, x]) => `<button type="button" class="${stockTono(f) === x ? "on" : ""}" data-pyn="stockTono|${k}">${x.l}</button>`).join("")}</div></div>` : "";
-  const sceneGroup = m === 5 ? "" : fondoAdj ? `<div class="w3 pgroup"><h3>Escenario</h3><p class="note" style="margin:0">El lugar sale de tu foto del fondo${B ? `; ${f.brand} le aplica su luz, su color y su emoción` : ""}.</p>${tonoRow}</div>`
-    : `<div class="w3 pgroup"><h3>Escenario</h3>${tonoRow}
+  const tonoBlock = f.brand === "Stock" && m !== 5 ? `<section class="panel ptonos${stockTono(f) ? "" : " need"}"><h2 class="pstep"><i>${icon("palette")}</i>¿Qué fondo querés para Stock? *</h2><p class="note pfsub">Elegí una opción: el prompt nunca combina azul y amarillo en el fondo.</p>
+    <div class="ptonogrid" role="group" aria-label="Fondo de Stock">${Object.entries(STOCK_TONOS).map(([k, x]) => `<button type="button" class="ptono${f.stockTono === k ? " on" : ""}" data-pyn="stockTono|${k}" aria-pressed="${f.stockTono === k}"><span class="ptsw ptsw-${k}"></span><b>${x.l}</b><small>${esc(x.es)}</small></button>`).join("")}</div></section>` : "";
+  const sceneGroup = m === 5 ? "" : fondoAdj ? `<div class="w3 pgroup"><h3>Escenario</h3><p class="note" style="margin:0">El lugar sale de tu foto del fondo${B ? `; ${f.brand} le aplica su luz, su color y su emoción` : ""}.</p></div>`
+    : `<div class="w3 pgroup"><h3>Escenario</h3>
       ${escOk ? `<div class="pbmodes">${PM_ESC.map(([k, l]) => `<button type="button" class="chip ${f.esc === k ? "on" : ""}" data-pbesc="${k}">${l}</button>`).join("")}</div>` : ""}
       ${escOk && B ? `<div class="pbmodes"><span class="note">Escenas típicas de ${f.brand}:</span>${B.modos.map((x, i) => `<button type="button" class="chip" data-pbmode="${i}">${x.l}</button>`).join("")}</div>` : ""}
-      <div class="pgrid4">${[m === 4 ? T("locacion", "Locación", sup4 ? "si queda vacío: un súper luminoso y moderno" : "parque con árboles al atardecer", !sup4) : T("ambiente", "Lugar / ambiente", "cocina, sala, súper, jardín…"), T("fondo", "Fondo", f.brand === "Stock" && f.stockTono === "libre" ? "verde agua liso, madera clara, rosa pastel…" : m === 4 ? "desenfocado, cálido" : "pared de azulejos blancos", f.brand === "Stock" && f.stockTono === "libre")].map(x => x.replace('<label class="">', '<label class="w2">')).join("")}</div>
+      <div class="pgrid4">${[m === 4 ? T("locacion", "Locación", sup4 ? "si queda vacío: un súper luminoso y moderno" : "parque con árboles al atardecer", !sup4) : T("ambiente", "Lugar / ambiente", "cocina, sala, súper, jardín…"), T("fondo", "Fondo", f.brand === "Stock" && f.stockTono === "libre" ? "opcional: verde agua liso, madera clara… (vacío: la IA elige según el producto)" : m === 4 ? "desenfocado, cálido" : "pared de azulejos blancos")].map(x => x.replace('<label class="">', '<label class="w2">')).join("")}</div>
       ${B ? `<p class="note" style="margin:0">Cambiá el lugar cuando quieras: la luz, la colorimetría y la emoción de ${f.brand} se mantienen en todos.</p>` : ""}</div>`;
   const models = people ? `<div class="w3 pgroup"><h3>${realP ? "Modelos reales" : "Modelos con IA"}</h3>
       <div class="pgrid4"><label>Cantidad<select class="base" data-pf="nModelos" data-rr>${[1,2,3,4].map(n => `<option value="${n}" ${+f.nModelos === n ? "selected" : ""}>${n}</option>`).join("")}</select></label></div>
@@ -9276,6 +9292,7 @@ function pPrompts(){
     ${m === 5 ? `<p class="note" style="margin:0">En fondo pleno o transparente la luz es de estudio (el producto va recortado); de la marca se respetan el color y el acabado.</p>` : ""}</details>` : "";
   return `<div class="pm2"><div class="head"><div><button type="button" class="btn sm pback" data-pbrand="">${icon("arrow-left")} Volver</button><h1>Prompts de imágenes</h1><p class="sub">Para ChatGPT, Gemini o Nano Banana. Seguí los pasos, tocá <b>Generar prompt</b> y copiá el texto.</p></div></div>
   ${brandBar}
+  ${tonoBlock}
   <section class="pstepw">${step(1, "¿Qué foto vas a hacer?")}<div class="pmtabs2" role="tablist">${PM_MODES.map(x => `<button type="button" role="tab" aria-selected="${m === x.n}" class="${m === x.n ? "on" : ""}" data-pmmode="${x.n}">${icon(x.i)}<span>${x.l}</span></button>`).join("")}</div></section>
   ${fiestaBlock}
   ${useBlock}
@@ -9331,6 +9348,8 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-poutclear]")){ promptUI.out = ""; promptUI.err = ""; render(); document.getElementById("promptForm")?.scrollIntoView({ behavior:"smooth", block:"start" }); toast("Prompt borrado. Lo que cargaste quedó: corregí lo que quieras y tocá “Generar prompt”."); return; }
   if (e.target.closest("[data-pclear]")){ const o = promptUI.f, b = o.brand, lm = o.libreMarca, keep = { fiestaOn:o.fiestaOn, fiesta:o.fiesta, fiestaOtro:o.fiestaOtro };
     promptUI.f = { ...PM_EMPTY(), ...keep }; if (b){ pmApplyBrand(b); promptUI.f.libreMarca = lm; } promptUI.out = ""; promptUI.err = ""; render(); return; }
+  const hd = e.target.closest("[data-phdel]"); if (hd){ const l = PROMPT_HISTORY[viewer.id] || []; l.splice(+hd.dataset.phdel, 1); render(); window.RMH?.flushNow?.(); toast("Prompt borrado de tu lista."); return; }
+  const hc = e.target.closest("[data-phclear]"); if (hc){ if (!confirmTap(hc, "phclear", "¿Seguro? Tocá de nuevo")) return; PROMPT_HISTORY[viewer.id] = []; render(); window.RMH?.flushNow?.(); toast("Lista de prompts vacía."); return; }
   const cp = e.target.closest("[data-pcopy],[data-phist]"); if (cp){ const txt = cp.dataset.phist !== undefined ? PROMPT_HISTORY[viewer.id][+cp.dataset.phist].text : $("#promptText").value;
     navigator.clipboard?.writeText(txt).then(() => toast("Prompt copiado. Pegalo en la IA."), () => { const ta = $("#promptText"); if (ta) ta.select(); toast("No se pudo copiar solo: quedó seleccionado, copialo a mano."); }); }
 });
