@@ -1,6 +1,7 @@
-// Retail MKT Hub · notificaciones push del Chat Retail MKT.
+// Retail MKT Hub · notificaciones push del Chat Retail MKT y de trabajos.
 //   GET  → devuelve la clave pública VAPID (la crea la primera vez; la privada nunca sale del servidor).
-//   POST → la llama la base de datos (trigger chat_push) cuando llega un mensaje nuevo; requiere x-push-secret.
+//   POST → la llama la base de datos (trigger chat_push) cuando llega un mensaje nuevo o un aviso de trabajo
+//          (trabajo nuevo, publicación para hacer o corrección: s:NOTIFS); requiere x-push-secret.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
@@ -28,6 +29,51 @@ async function config() {
 }
 const state = async (key: string) => (await db.from("app_state").select("data").eq("key", key).maybeSingle()).data?.data;
 const short = (t: string, n = 120) => (t.length > n ? t.slice(0, n - 1) + "…" : t);
+const dm = (d: string) => (/^\d{4}-\d{2}-\d{2}/.test(d || "") ? `${d.slice(8, 10)}/${d.slice(5, 7)}` : "");
+const isDnd = (pr: any, now: number) => pr?.st === "dnd" && pr?.until && new Date(pr.until).getTime() > now;
+
+async function send(cfg: any, to: string[], payloadFor: (id: string) => string) {
+  if (!to.length) return 0;
+  const { data: subs } = await db.from("push_subs").select("endpoint, sub, person_id").in("person_id", to);
+  webpush.setVapidDetails("https://idcdfmeeggmtkudkkzmu.supabase.co", cfg.vapid_public, cfg.vapid_private);
+  let sent = 0;
+  await Promise.all((subs || []).map(async (s) => {
+    try { await webpush.sendNotification(s.sub, payloadFor(s.person_id), { TTL: 3600 }); sent++; }
+    catch (e: any) { if (e?.statusCode === 404 || e?.statusCode === 410) await db.from("push_subs").delete().eq("endpoint", s.endpoint); }
+  }));
+  return sent;
+}
+
+// Avisos de trabajo: a quien le llegó (n.to es su nombre completo, como en la app). Con “No molestar”, sin aviso.
+const JOB_T: Record<string, string> = { nuevo: "Nuevo trabajo para vos", pub: "Nueva publicación para vos", listo: "Diseño listo para tu grilla", fix: "Te pidieron una corrección" };
+async function jobPush(cfg: any, items: any[]) {
+  const list = (Array.isArray(items) ? items : []).filter((n) => n && JOB_T[n.type] && n.to && n.to !== "admin" && !n.read).slice(0, 20);
+  if (!list.length) return json({ ok: true, skipped: "sin avisos" });
+  const people: any[] = (await state("s:PEOPLE")) || [];
+  const presence: Record<string, any> = (await state("s:PRESENCE")) || {};
+  const jobs: any[] = (await state("s:jobs")) || [];
+  const needPosts = list.some((n) => n.type === "pub");
+  const posts: any[] = needPosts ? (await state("s:posts")) || [] : [];
+  const canal: any[] = needPosts ? (await state("s:CHANNEL_POSTS")) || [] : [];
+  const now = Date.now();
+  let sent = 0;
+  for (const n of list) {
+    const p = people.find((x) => x.name === n.to && x.active !== false);
+    if (!p || isDnd(presence[p.id], now)) continue;
+    const j = jobs.find((x) => x.id === n.job);
+    const brands = j ? (Array.isArray(j.brands) && j.brands.length ? j.brands : [j.brand]).filter(Boolean).join(" + ") : "";
+    let title = j?.title || "", body = "", go = j ? "job:" + j.id : "";
+    if (n.type === "pub") {
+      const x = (n.canal ? canal : posts).find((y) => y.id === n.post);
+      if (x) { title = x.title || title; body = `${x.brand || ""} · ${x.channel ? "Canal de WhatsApp" : `${x.net || ""} ${x.format || ""}`} · publicar el ${dm(x.date)}`; go = `pub:${n.canal ? "canal" : "post"}:${x.id}`; }
+    } else if (n.type === "fix") body = n.text ? `“${short(String(n.text), 140)}”` : brands;
+    else if (j) body = [brands, j.piece, j.due ? "fecha límite " + dm(j.due) : ""].filter(Boolean).join(" · ");
+    if (!title && !body) continue;
+    const payload = JSON.stringify({ title: JOB_T[n.type], body: short([title, body].filter(Boolean).join("\n"), 220), tag: "rmh-job-" + n.id, open: "", go });
+    sent += await send(cfg, [p.id], () => payload);
+  }
+  return json({ ok: true, sent });
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -37,9 +83,10 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Método no permitido" }, 405);
   if (req.headers.get("x-push-secret") !== cfg.secret) return json({ error: "No autorizado" }, 401);
 
-  let body: { key?: string; from?: number };
+  let body: { key?: string; from?: number; items?: any[] };
   try { body = await req.json(); } catch { return json({ error: "Pedido inválido" }, 400); }
   const key = String(body.key || "");
+  if (key === "s:NOTIFS") return jobPush(cfg, body.items || []);
   if (!/^(thread|chat):/.test(key)) return json({ ok: true, skipped: "clave" });
   const row = await state(key);
   const msgs: any[] = Array.isArray(row?.msgs) ? row.msgs : [];
