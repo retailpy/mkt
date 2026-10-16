@@ -3373,7 +3373,7 @@ const CX_W = { Baja:1, Media:2, Alta:3 };
 const LOAD_FULL = 10; // puntos que se consideran “carga completa” (ajustable en Configuración)
 const POST_PENDING = ["Pendiente","En proceso"];
 function loadOf(name){ const cp = PEOPLE.find(x => x.name === name && x.role === "CM");
-  if (cp){ const c = cmLoad(cp); return { n:c.n, cm:true, min:c.min, avail:c.avail, pct:c.pct, missing:c.missing, pts:null }; } // CM: en %, sin puntos
+  if (cp){ const c = cmLoad(cp); return { n:c.n, cm:true, min:c.min, avail:c.avail, pct:c.pct, missing:c.missing, next:c.week.next, pts:null }; } // CM: en %, sin puntos
   const open = jobs.filter(j => j.owner === name && !isClosedJob(j)); const pp = posts.filter(p => p.cm === name && p.date.slice(0,7) === CURRENT_MONTH && POST_PENDING.includes(p.status)); const pts = open.reduce((a, j) => a + (CX_W[j.complexity] || 2), 0) + pp.length; return { n:open.length + pp.length, pts, pct:Math.round(pts / LOAD_FULL * 100) }; }
 // Zonas (sobre la capacidad): 0-49 % verde = zona ideal · 50-79 % amarillo · 80-99 % naranja · 100 % o más rojo.
 const loadLevel = pct => pct >= 100 ? { c:"#ef4444", t:"Sobrecargado", k:"red" } : pct >= 80 ? { c:"#f97316", t:"Al límite", k:"orange" } : pct >= 50 ? { c:"#eab308", t:"Carga alta", k:"yellow" } : { c:"#10b981", t:"Zona ideal", k:"green" };
@@ -3389,23 +3389,23 @@ const areaNames = area => PEOPLE.filter(pp => pp.active && (area === "Diseño" ?
 const ltrack = L => { const lv = lvOf(L), pc = L.pct ?? 0; return `<div class="ptrack ztrack" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.min(pc, 100)}" aria-label="Carga de trabajo ${L.pct === null || L.pct === undefined ? "sin datos" : pc + "%"}"><div class="pfill ld-${lv.k}" style="width:${Math.max(Math.min(pc, 100), L.pct !== null && L.pct !== undefined && (L.pts || L.min) ? 2 : 0)}%"></div><i class="zmark" style="left:50%"></i><i class="zmark" style="left:80%"></i></div>`; };
 function loadBar(title, L, big = false){
   const lv = lvOf(L);
-  const meta = L.cm ? `<span>≈ <i>${fmtMin(L.min)}</i> estimadas pendientes (semana)</span><span>${L.avail === null ? "falta configurar el horario" : `<i>${fmtMin(L.avail)}</i> disponibles hasta el domingo`}${L.missing && L.avail !== null ? ` · ${L.missing} sin horario` : ""}</span>`
+  const meta = L.cm ? `<span><i>${L.n}</i> ${L.n === 1 ? "tarea pendiente" : "tareas pendientes"} ${L.next ? "la semana que viene" : "esta semana"}</span><span>100 % = capacidad completa</span>`
     : L.mixed ? `<span><i>${L.n}</i> trabajos y publicaciones sin terminar</span><span>promedio del % de cada persona${L.missing ? ` · ${L.missing} sin horario` : ""}</span>`
     : `<span><i>${L.n}</i> ${L.n === 1 ? "trabajo" : "trabajos"} sin finalizar</span><span><i>${L.pts}</i> de ${L.cap} puntos de capacidad</span>`;
   return `<div class="prog lprog ${big ? "big" : ""}"><div class="ph"><div><b>${title}</b></div><span class="pc" style="color:${lv.c}">${pctHTML(L)} <small style="color:${lv.c}">${lv.t}</small></span></div>
     ${ltrack(L)}
     <div class="pmeta">${meta}</div></div>`;
 }
-const LOAD_LEGEND_CM = `<div class="llegend"><span>Carga CM = tiempo estimado de lo que le falta esta semana ÷ sus horas disponibles hasta el domingo × 100. 100 % = capacidad completa; más de 100 %, sobrecarga. Las horas son estimadas.</span><span><i style="background:#10b981"></i>Zona ideal (menos de 50 %)</span><span><i style="background:#eab308"></i>Carga alta</span><span><i style="background:#f97316"></i>Al límite</span><span><i style="background:#ef4444"></i>Sobrecargado</span></div>`;
+const LOAD_LEGEND_CM = `<div class="llegend"><span>Carga CM = tiempo estimado de lo que le falta de esta semana (lunes a domingo) ÷ sus horas disponibles de la semana × 100. 100 % = capacidad completa; más de 100 %, sobrecarga. Las horas son estimadas.</span><span><i style="background:#10b981"></i>Zona ideal (menos de 50 %)</span><span><i style="background:#eab308"></i>Carga alta</span><span><i style="background:#f97316"></i>Al límite</span><span><i style="background:#ef4444"></i>Sobrecargado</span></div>`;
 const LOAD_LEGEND = `<div class="llegend"><span>Diseño gráfico: trabajos sin finalizar según complejidad (Baja 1 · Media 2 · Alta 3) sobre ${LOAD_FULL} puntos por persona. CM: tiempo estimado de lo que le falta esta semana sobre sus horas disponibles (100 % = capacidad completa). Lo ideal es la zona verde.</span><span><i style="background:#10b981"></i>Zona ideal (menos de 50 %)</span><span><i style="background:#eab308"></i>Carga alta</span><span><i style="background:#f97316"></i>Al límite</span><span><i style="background:#ef4444"></i>Sobrecargado</span></div>`;
 function loadChart(groups, cls = ""){
   const all = groups.flatMap(g => g.people.map(pp => ({ pp, ...loadOf(pp.name) })));
   const max = Math.max(100, ...all.map(x => Math.min(x.pct ?? 0, 200)));
   let k = 0;
   const col = x => { const lv = lvOf(x), pc = Math.min(x.pct ?? 0, 200), h = Math.max(pc / max * 100, pc ? 4 : 1.5);
-    const tip = x.cm ? `${x.pp.name}: ${x.pct === null ? "falta configurar su horario" : `${x.pct >= 999 ? "sin horas disponibles" : x.pct + "%"} · ≈ ${fmtMin(x.min)} estimadas de ${fmtMin(x.avail)} disponibles`} · ${lv.t}` : `${x.pp.name}: ${x.n} ${x.n === 1 ? "trabajo" : "trabajos"} sin finalizar (${x.pts} puntos) · ${lv.t}`;
+    const tip = x.cm ? `${x.pp.name}: ${x.pct === null ? "falta configurar su horario" : x.pct >= 999 ? "sin horas disponibles" : x.pct + "%"} · ${x.n} ${x.n === 1 ? "tarea" : "tareas"} ${x.next ? "la semana que viene" : "esta semana"} · ${lv.t}` : `${x.pp.name}: ${x.n} ${x.n === 1 ? "trabajo" : "trabajos"} sin finalizar (${x.pts} puntos) · ${lv.t}`;
     return `<div class="lcol" title="${esc(tip)}">
-      <div class="lval">${x.cm ? `<b style="color:${lv.c}">${x.pct === null ? "—" : x.pct >= 999 ? "+100%" : x.pct + "%"}</b><span>${x.pct === null ? "sin horario" : "≈ " + fmtMin(x.min)}</span>` : `<b style="color:${lv.c}">${x.n}</b><span>${x.pts} pts</span>`}</div>
+      <div class="lval">${x.cm ? `<b style="color:${lv.c}">${x.pct === null ? "—" : x.pct >= 999 ? "+100%" : x.pct + "%"}</b><span>${x.next ? "semana que viene" : "esta semana"}</span>` : `<b style="color:${lv.c}">${x.n}</b><span>${x.pts} pts</span>`}</div>
       <div class="ltrack" style="--lim:${100 / max * 100}%;--ideal:${50 / max * 100}%"><div class="lbar" style="height:${h}%;--c:${lv.c};animation-delay:${(k++) * 80}ms"></div></div>
       <div class="lname">${avatarHTML(x.pp)}<b>${esc(nickOf(x.pp))}</b><span style="color:${lv.c}">${lv.t}</span></div></div>`; };
   return `<div class="loadchart ${cls}"><div class="lgroups">${groups.filter(g => g.people.length).map(g => `<div class="lgroup" style="flex:${g.people.length}"><div class="lcols">${g.people.map(pp => col(all.find(x => x.pp === pp))).join("")}</div><div class="lglabel">${g.label}</div></div>`).join("")}</div>
@@ -3418,7 +3418,7 @@ const loadGroups = area => [
 // ---------- Carga de trabajo CM (en %): tiempo estimado pendiente de lo que resta de la semana ÷ horas disponibles restantes × 100 ----------
 // 100 % = capacidad completa; más de 100 %, sobrecarga. Los tiempos son estimados (referencias provisorias, se editan en Configurar).
 // Ya incluyen los 5 minutos adicionales por trabajo: no se vuelven a sumar.
-const CM_TIMES_DEF = { post:15, carrusel:20, reel:15, historia:10, canal:10, contenido:50, video:365, mensajes:20 };
+const CM_TIMES_DEF = { post:15, carrusel:20, reel:15, historia:10, canal:10, contenido:50, video:240, mensajes:20 }; // video: 4 h (antes 6 h 5 min, para nivelar mejor)
 const CM_TIME_ROWS = [["post","Redes Sociales","Cargar/programar un post preparado"], ["carrusel","Redes Sociales","Cargar/programar un carrusel preparado"], ["reel","Redes Sociales","Cargar/programar un reel terminado"],
   ["historia","Historias","Cargar una historia preparada"], ["canal","Canal de WhatsApp","Realizar una publicación preparada"], ["contenido","Gestión de Contenidos","Realizar una pieza simple"],
   ["video","Gestión de Videos","Preparar, grabar, editar y publicar un video completo"], ["mensajes","Mensajes","Atención diaria de las cuentas de una persona (por día)"]];
@@ -3455,48 +3455,55 @@ function cmOffMin(pp, d, dayMin){ let m = 0;
     if (d === TODAY && st !== null){ const end = st + dur, now = nowMin(); if (end <= now) return; m += Math.max(0, end - Math.max(st, now)); return; }
     m += dur; });
   return Math.min(dayMin, m); }
-// Minutos disponibles que le quedan esta semana (hoy, lo que falta del día).
-function cmAvailLeft(pp){
-  let tot = 0; const end = weekEnd();
-  for (let d = TODAY; d <= end; d = addDays(d, 1)){ const day = cmDay(pp, wdOf(d)); if (!day.min) continue;
+// Minutos disponibles entre dos fechas (hoy, lo que falta del día), ya descontadas ausencias y reuniones.
+function cmAvailRange(pp, from, end){
+  let tot = 0;
+  for (let d = from; d <= end; d = addDays(d, 1)){ const day = cmDay(pp, wdOf(d)); if (!day.min) continue;
     let left = day.min;
     if (d === TODAY){ const now = nowMin(); left = now <= day.from ? day.min : now >= day.to ? 0 : Math.round((day.to - now) * day.min / (day.to - day.from)); }
     tot += Math.max(0, left - cmOffMin(pp, d, left)); }
   return tot; }
-// Días que trabaja de acá al domingo (para la atención diaria de Mensajes).
-const cmWorkDaysLeft = pp => { const out = [], end = weekEnd(); for (let d = TODAY; d <= end; d = addDays(d, 1)){ const day = cmDay(pp, wdOf(d)); if (day && day.min && !(CM_LOAD.off || []).some(o => o.who === pp.id && o.date === d && o.allDay)) out.push(d); } return out; };
+// La carga es de UNA semana (lunes a domingo): solo cuenta lo de esa semana, no lo atrasado del mes. Si ya no le quedan
+// horas esta semana (sábado, domingo o viernes después de hora), se muestra la semana que viene.
+function cmWeek(pp){
+  const mon = addDays(TODAY, -wdOf(TODAY)), sun = addDays(mon, 6), left = cmAvailRange(pp, TODAY, sun);
+  if (left > 0) return { from:mon, to:sun, avail:left, next:false };
+  const m2 = addDays(mon, 7), s2 = addDays(m2, 6); return { from:m2, to:s2, avail:cmAvailRange(pp, m2, s2), next:true }; }
+const cmAvailLeft = pp => cmWeek(pp).avail;
+// Días que trabaja en lo que queda de esa semana (para la atención diaria de Mensajes).
+const cmWorkDaysLeft = (pp, wk = cmWeek(pp)) => { const out = [], end = wk.to; for (let d = wk.from > TODAY ? wk.from : TODAY; d <= end; d = addDays(d, 1)){ const day = cmDay(pp, wdOf(d)); if (day && day.min && !(CM_LOAD.off || []).some(o => o.who === pp.id && o.date === d && o.allDay)) out.push(d); } return out; };
 const dutyOf = (pp, d) => MSG_DUTY[pp.id + "|" + d];
 // Lo que le falta hacer esta semana a un CM, por función, con su tiempo estimado (en minutos).
 function cmPending(pp){
-  const name = pp.name, end = weekEnd(), from = addDays(TODAY, -30), items = [], add = (fn, t, x) => items.push({ fn, t, ...x });
+  const name = pp.name, wk = cmWeek(pp), end = wk.to, from = wk.from, items = [], add = (fn, t, x) => items.push({ fn, t, ...x }); // solo lo de esa semana
   const vidJobs = jobs.filter(j => j.area === "CM" && !j.ex);
   const inVideo = id => vidJobs.some(j => j.post === id || j.pub?.id === id); // la publicación de un video ya está en su tiempo
   posts.filter(p => p.cm === name && !p.ex && p.date >= from && p.date <= end && !DONE_PUB.includes(p.status) && !inVideo(p.id)).forEach(p => {
     const k = POST_TIME_KEY(p); add(p.format === "Historia" ? "historias" : "redes", cmTime(k), { title:p.title, brand:p.brand, date:p.date, st:p.status, what:p.format }); });
   CHANNEL_POSTS.filter(k => k.cm === name && k.date >= from && k.date <= end && !DONE_PUB.includes(k.status)).forEach(k => add("canal", cmTime("canal"), { title:k.title, brand:k.brand, date:k.date, st:k.status, what:"Canal" }));
   // Repetitivos de la semana (desde el lunes) que todavía no están hechos
-  const mon = addDays(TODAY, -wdOf(TODAY));
+  const mon = from;
   RECURRING.filter(r => r.owner === name).forEach(r => { for (let d = mon; d <= end; d = addDays(d, 1)){ if (!recOn(r, d)) continue; const st = recSt(r, d); if (DONE_PUB.includes(st)) continue;
     if (r.kind === "Grabación"){ const v = cmTime("video"); add("videos", v === null ? null : v * vidLeft(st), { title:r.title, brand:r.brand, date:d, st, what:"Grabación repetitiva" }); }
     else add(r.kind === "Historia" ? "historias" : r.kind === "Canal" ? "canal" : "redes", cmTime(r.kind === "Historia" ? "historia" : r.kind === "Canal" ? "canal" : "post"), { title:r.title, brand:r.brand, date:d, st, what:"Repetitivo" }); } });
-  jobs.filter(j => j.area === "Contenidos" && !j.ex && j.owner === name && !isClosedJob(j) && j.due <= end && !repLater(j)).forEach(j => { const c = cmTime("contenido");
+  jobs.filter(j => j.area === "Contenidos" && !j.ex && j.owner === name && !isClosedJob(j) && j.due >= from && j.due <= end).forEach(j => { const c = cmTime("contenido");
     add("contenidos", c === null ? null : c * (CONT_LEFT[j.status] ?? 100) / 100, { title:j.title, brand:j.brand, date:j.due, st:j.status, what:cmPiece(j) }); });
   // Videos: lo que falta según la etapa, más el traslado (una sola vez por visita compartida)
   const visits = new Set();
-  vidJobs.filter(j => j.owner === name && j.status !== "Cancelado" && j.due <= end && vidLeft(j.status) > 0 && !repLater(j)).forEach(j => { const v = cmTime("video");
+  vidJobs.filter(j => j.owner === name && j.status !== "Cancelado" && j.due >= from && j.due <= end && vidLeft(j.status) > 0).forEach(j => { const v = cmTime("video"); // los videos de esa semana
     add("videos", v === null ? null : v * vidLeft(j.status), { title:j.title, brand:j.brand, date:j.due, st:j.status, what:cmPiece(j) });
     if (["Pendiente","Grabación"].includes(j.status) && (j.traslado || j.visita)){ const key = (j.visita || "").trim().toLowerCase() || "j:" + j.id; if (visits.has(key)) return; visits.add(key);
       add("videos", j.traslado === "" || j.traslado === undefined ? null : +j.traslado, { title:`Traslado${j.visita ? ": " + j.visita : ""}`, brand:j.brand, date:j.due, st:"", what:"Traslado", trip:true }); } });
   // Mensajes: una responsabilidad por día de trabajo, con sus cuentas (no una tarea por mensaje)
   const acc = cmAccounts(pp);
-  if (acc.length) cmWorkDaysLeft(pp).filter(d => !dutyOf(pp, d)).forEach(d => add("mensajes", cmTime("mensajes"), { title:`Atención de ${acc.join(", ")}`, brand:acc[0], date:d, st:"Pendiente", what:"Mensajes del día" }));
+  if (acc.length) cmWorkDaysLeft(pp, wk).filter(d => !dutyOf(pp, d)).forEach(d => add("mensajes", cmTime("mensajes"), { title:`Atención de ${acc.join(", ")}`, brand:acc[0], date:d, st:"Pendiente", what:"Mensajes del día" }));
   return items; }
 // Carga de un CM: % y desglose. Si falta el horario o algún tiempo, lo dice (no se toma como cero).
 function cmLoad(pp){
-  const items = cmPending(pp), unknown = items.filter(x => x.t === null), min = items.reduce((a, x) => a + (x.t || 0), 0), avail = cmAvailLeft(pp);
+  const wk = cmWeek(pp), items = cmPending(pp), unknown = items.filter(x => x.t === null), min = items.reduce((a, x) => a + (x.t || 0), 0), avail = wk.avail;
   const by = Object.fromEntries(CM_FUNCS.map(([k]) => [k, { n:0, min:0, unk:0 }])); items.forEach(x => { const b = by[x.fn]; b.n++; if (x.t === null) b.unk++; else b.min += x.t; });
   const pct = avail === null ? null : avail > 0 ? Math.round(min / avail * 100) : min > 0 ? 999 : 0;
-  return { items, n:items.length, min, avail, pct, by, unknown:unknown.length, defAvail:!cmHasAvail(pp), missing:unknown.length ? "estimación" : "" }; }
+  return { items, n:items.length, min, avail, pct, by, unknown:unknown.length, defAvail:!cmHasAvail(pp), week:wk, missing:unknown.length ? "estimación" : "" }; }
 // Color y texto de la carga (también cuando falta el horario: no se toma como cero).
 const lvOf = L => L.pct === null || L.pct === undefined ? { c:"#94a3b8", t:L.cm ? "Falta el horario" : "Sin datos", k:"none" } : L.cm && L.avail === 0 && L.min > 0 ? { c:"#ef4444", t:"Sin horas disponibles", k:"red" } : loadLevel(L.pct);
 const pctHTML = L => L.pct === null || L.pct === undefined ? "—" : L.pct >= 999 ? "+100%" : `<span data-count="${L.pct}">${L.pct}</span>%`;
@@ -5690,7 +5697,7 @@ function bocetoBlock(j){
       : `<p class="note" style="margin:0">Todavía no hay boceto.</p>`}
     ${list.length > 1 ? `<div class="bkold"><span class="note">Versiones anteriores</span><div class="bkthumbs">${list.slice(1).map(b => view(b)).join("")}</div></div>` : ""}
     ${ed ? `<div class="bkup"><label class="btn sm primary${bkBusy[j.id] ? " disabled" : ""}">${icon("upload")} ${bkBusy[j.id] ? "Subiendo…" : last ? "Subir otra versión" : "Subir boceto"}<input type="file" data-bkup="${esc(j.id)}" hidden ${bkBusy[j.id] ? "disabled" : ""}></label>
-      <span class="note">Liviano, para ver cómo va: imagen, PDF o logo de hasta 10 MB (con 1–2 MB alcanza). Las fotos pesadas se achican solas. El archivo original va en Links de acceso.</span></div>` : ""}</section>`;
+      <span class="note">Liviano, para ver cómo va: imagen, PDF o logo de hasta 10 MB (con 1–2 MB alcanza). Las fotos pesadas se achican solas. El archivo original va en la carpeta de la Ruta de la compartida.</span></div>` : ""}</section>`;
 }
 document.addEventListener("change", async e => {
   const inp = e.target.closest?.("[data-bkup]"); if (!inp) return;
@@ -5743,7 +5750,7 @@ const LK_EJ = ["Logo de Superseis", "Fotos del producto", "Post de Navidad", "Te
 function linkEditor(j, mode, legacy = false){ // mode: "form" (formulario), "ficha" (se guarda al pegar) o "" (solo ver)
   // Diseño gráfico y Gestión de Contenidos: solo la Ruta de la compartida (bien destacada). Los links que ya tenía un pedido
   // de antes (Canva, Drive, otros) se siguen viendo abajo, solo para ver.
-  if (designLike(j) && j.area && !legacy){ const old = linkEditor({ ...j, shares:[], share:"" }, "", true);
+  if (!legacy){ const old = linkEditor({ ...j, shares:[], share:"" }, "", true); // v202: también en CM (publicaciones, Canal y videos)
     return `<div class="lkonly">${linkEditor({ ...j, canva:"", drive:"", xlinks:[], links:[], link:"", designLink:"" }, mode, true).replace('class="lked"', 'class="lked only"').replace(/<button type="button" class="btn sm lkadd" data-lkadd>[\s\S]*?<\/button>/, "")}${/lkrow/.test(old) ? `<details class="lkold"><summary>${icon("link")} Links que tenía este pedido</summary>${old}</details>` : ""}</div>`; }
   const ed = !!mode, LK = { canva:[LK_LOGO.canva,"Canva","Pegar link de Canva (diseño o plantilla)"], drive:[LK_LOGO.drive,"Google Drive","Pegar link de Google Drive (carpeta o archivo)"], designLink:["eye","Diseño para revisar","Pegar link del diseño para revisar"] };
   const ico = ic => ic.startsWith("<svg") ? ic : icon(ic);
@@ -5756,14 +5763,14 @@ function linkEditor(j, mode, legacy = false){ // mode: "form" (formulario), "fic
       ${ed && !fx ? `<button type="button" class="btn ib sm" data-lkdel="${i}" aria-label="Quitar este link">${icon("x")}</button>` : ""}
       <div class="lkstate">${u ? `${icon("check")} Link guardado` : "Sin link guardado."}</div></div>`; };
   const shareRow = (x, i) => { const v = shareClean(x.p); if (!ed && !v) return "";
-    return `<div class="lkrow share" data-shi="${i}"><div class="lkname"><span class="lkic">${icon(designLike(j) && j.area ? "folder-symlink" : "server")}</span>${ed ? `<span class="lkn-w"><small>Ruta de la compartida · ¿qué es?</small><input class="base lkn" data-shn value="${esc(x.n || "")}" maxlength="80" placeholder="Ej.: Tortas de Halloween" aria-label="Ruta de la compartida: qué es"></span>` : `<span class="lkn-w"><b>Ruta de la compartida</b>${x.n ? `<small>${esc(x.n)}</small>` : ""}</span>`}</div>
+    return `<div class="lkrow share" data-shi="${i}"><div class="lkname"><span class="lkic">${icon("folder-symlink")}</span>${ed ? `<span class="lkn-w"><small>Ruta de la compartida · ¿qué es?</small><input class="base lkn" data-shn value="${esc(x.n || "")}" maxlength="80" placeholder="Ej.: Tortas de Halloween" aria-label="Ruta de la compartida: qué es"></span>` : `<span class="lkn-w"><b>Ruta de la compartida</b>${x.n ? `<small>${esc(x.n)}</small>` : ""}</span>`}</div>
       ${ed ? `<input class="base lkin" data-shp type="text" spellcheck="false" autocomplete="off" value="${esc(v)}" placeholder="Pegar la ruta, ej.: \\\\retsvrfs01\\Marketing\\DELIMARKET\\2026\\Temporada Halloween\\tortas" aria-label="Ruta de la compartida">` : `<span class="lkurl">${esc(v)}</span>`}
       <button type="button" class="btn lkbtn" data-shcopy="${esc(v)}" ${v ? "" : "disabled"}>${icon("copy")} Copiar link</button>
       <button type="button" class="btn lkbtn" data-shopen="${esc(v)}" ${v ? "" : "disabled"}>${icon("arrow-up-right")} Abrir</button>
       ${ed && i > 0 ? `<button type="button" class="btn ib sm" data-shdel="${i}" aria-label="Quitar esta ruta">${icon("x")}</button>` : "<span></span>"}
       <div class="lkstate">${shHintTxt(v)}</div><div class="shhow" hidden></div></div>`; };
   const shares = shareList(j).length ? shareList(j) : ed ? [{ n:"", p:"" }] : [];
-  if (legacy && !ed && !mode && !shareList(j).length && designLike(j) && j.area && !["canva","drive"].some(k => j[k]) && !otherLinks(j).some(l => l.u) && !j.designLink) return "";
+  if (legacy && !ed && !mode && !shareList(j).length && !["canva","drive"].some(k => j[k]) && !otherLinks(j).some(l => l.u) && !j.designLink) return "";
   const shareRows = shares.map(shareRow).join("") + (ed ? `<button type="button" class="btn sm lkadd" data-shadd>${icon("plus")} Agregar otra ruta de la compartida <span class="note">(otra carpeta del servidor)</span></button>` : "");
   // Orden: 1) Ruta de la compartida, 2) Canva, 3) Google Drive, 4) otros links con su nombre (siempre hay uno para completar), y el diseño para revisar (Diseño).
   const others = otherLinks(j).length ? otherLinks(j) : ed && !legacy ? [{ n:"", u:"" }] : [];
@@ -5894,7 +5901,7 @@ async function uploadCmFiles(key, files){
     cmUp[key] = { pct:0, name:file.name, n:list.length, i:i + 1 }; draw();
     const t0 = cmFileTarget(key), pre = key.startsWith("job:") ? key.slice(4) + " · " : (t0?.title ? String(t0.title).slice(0, 40) + " · " : "");
     const s = await integ({ action:"video_session", any:true, name:pre + file.name, type:file.type || "application/octet-stream", size:file.size }).catch(() => ({}));
-    if (!s.ok || !s.url){ delete cmUp[key]; draw(); toast(`${s.error || "No se pudo abrir la subida"}. Podés subirlo en la carpeta del mes y pegar el link en Links de acceso.`); break; }
+    if (!s.ok || !s.url){ delete cmUp[key]; draw(); toast(`${s.error || "No se pudo abrir la subida"}. Probá de nuevo en un rato o subilo a la carpeta del mes en Drive.`); break; }
     const res = await new Promise(ok => { const x = new XMLHttpRequest(); x.open("PUT", s.url); x.setRequestHeader("Content-Type", file.type || "application/octet-stream");
       x.upload.onprogress = ev => { const u = cmUp[key]; if (!ev.lengthComputable || !u) return; const pc = Math.round(ev.loaded / ev.total * 100); if (pc === u.pct) return; u.pct = pc;
         document.querySelectorAll(`.cmfiles[data-cmkey="${CSS.escape(key)}"] .cmprog`).forEach(el => { el.querySelector("span").style.width = pc + "%"; el.querySelector("b").textContent = `Subiendo ${file.name}${list.length > 1 ? ` (${i + 1} de ${list.length})` : ""} · ${pc}%`; }); };
@@ -5977,7 +5984,7 @@ function jobFicha(){
     ${jobBriefSection(j)}
     ${j.area === "CM" ? videoBlock(j) : ""}
     ${j.area !== "CM" || (j.bocetos || []).length ? bocetoBlock(j) : ""}
-    <section class="panel jp-sec jp-mat${designLike(j) ? " onlyshare" : ""}"><h2 class="pmh">${designLike(j) ? `${pmIco("folder-symlink")}Ruta de la compartida` : `${pmIco("link")}Links de acceso`}</h2>${designLike(j) ? `<p class="note shnote">${icon("server")} Es la carpeta del disco del servidor de la empresa (no es una página web): tocá <b>Abrir</b> o <b>Copiar link</b> y pegala en el Explorador de archivos.</p>` : ""}
+    <section class="panel jp-sec jp-mat onlyshare"><h2 class="pmh">${pmIco("folder-symlink")}Ruta de la compartida</h2><p class="note shnote">${icon("server")} Es la carpeta del disco del servidor de la empresa (no es una página web): tocá <b>Abrir</b> o <b>Copiar link</b> y pegala en el Explorador de archivos.</p>
       ${j.finalLink ? linkRow(j.finalLink, "final") : ""}
       ${linkEditor(j, canEditJobLinks(j) ? "ficha" : "")}
       ${(j.files || []).length ? filesBlock(j, false) : ""}</section>
@@ -6033,9 +6040,9 @@ function jobForm(){
         <label class="jrepu">Hasta <span class="note">(vacío = siempre)</span><input class="base" type="date" id="jRepUntil" value="${esc(j.rep?.until || "")}"></label>
         <p class="note" style="margin:0">Ej.: “Diseño de ofertas de los lunes” → marcá Lunes: cada lunes aparece un pedido nuevo para ese día, ya asignado.</p></div>`}
       </div></section>
-      <section class="jfs"><h3><i>3</i>${designLike(j) ? "Texto del pedido y ruta de la compartida" : "Texto del pedido y links"}</h3><div class="jfg">
+      <section class="jfs"><h3><i>3</i>Texto del pedido y ruta de la compartida</h3><div class="jfg">
       <div style="grid-column:1/-1"><span class="jll">Texto del pedido <span class="note">(de qué se trata, el texto que va en el diseño o lo que dice el video)</span></span>${rtEditor("jBriefF", j.brief ? cleanRich(j.brief) : "", BRIEF_PH[area])}</div>
-      <div style="grid-column:1/-1">${designLike(j) ? `<span class="jll">${icon("folder-symlink")} Ruta de la compartida <span class="note">(la carpeta del disco del servidor donde van los archivos de este trabajo; no es una página web)</span></span>` : `<span class="jll">Links de acceso <span class="note">(pegá el link de Drive, de Canva o de otro sitio; se pueden sumar otros, por ejemplo Logo o Diseño)</span></span>`}${linkEditor(j, "form")}</div>
+      <div style="grid-column:1/-1"><span class="jll">${icon("folder-symlink")} Ruta de la compartida <span class="note">(la carpeta del disco del servidor donde van los archivos de este trabajo; no es una página web)</span></span>${linkEditor(j, "form")}</div>
       </div></section>
       <section class="jfs"><h3><i>4</i>Estado</h3><div class="jfg">
       <label>Estado *<select class="base" id="jStatus">${opt(statesOf(area), j.status)}</select></label>
@@ -6135,7 +6142,7 @@ function cmLoadCard(pp){
   return `<section class="panel clcard"><header class="clh"><div class="person">${avatarHTML(pp)}<div><b>${esc(pp.name)}</b><span>${acc.length ? `Mensajes: ${esc(acc.join(", "))}` : "Sin cuentas de Mensajes asignadas"}</span></div></div>
     <div class="clpct" style="color:${lv.c}"><span>${pctHTML({ ...L, cm:true })}</span><small>${lv.t}</small></div></header>
     ${ltrack({ ...L, cm:true })}
-    <p class="note clmeta">≈ <b>${fmtMin(L.min)}</b> estimadas pendientes hasta el domingo · <b>${fmtMin(L.avail)}</b> disponibles (ya descontadas ausencias y reuniones). ${L.defAvail ? `${icon("clock")} Con el horario de oficina (lunes a viernes 8:00–17:00, 1 h de almuerzo)${canCfgLoad() ? ": cambialo en Configurar si trabaja otro horario" : ""}. ` : ""}${L.unknown ? `${icon("triangle-alert")} ${L.unknown} ${L.unknown === 1 ? "trabajo sin tiempo estimado" : "trabajos sin tiempo estimado"} (no se cuenta como cero). ` : ""}</p>
+    <p class="note clmeta">Solo lo de esta semana: ≈ <b>${fmtMin(L.min)}</b> estimadas pendientes · <b>${fmtMin(L.avail)}</b> disponibles (ya descontadas ausencias y reuniones). ${L.week.next ? `${icon("calendar-days")} Ya terminó su horario de esta semana: se muestra la que viene (del ${dm(L.week.from)} al ${dm(L.week.to)}). ` : ""}${L.defAvail ? `${icon("clock")} Con el horario de oficina (lunes a viernes 8:00–17:00, 1 h de almuerzo)${canCfgLoad() ? ": cambialo en Configurar si trabaja otro horario" : ""}. ` : ""}${L.unknown ? `${icon("triangle-alert")} ${L.unknown} ${L.unknown === 1 ? "trabajo sin tiempo estimado" : "trabajos sin tiempo estimado"} (no se cuenta como cero). ` : ""}</p>
     <div class="clfns">${CM_FUNCS.map(fnRow).join("") || `<p class="note" style="margin:0">No tiene nada pendiente esta semana.</p>`}</div>
     ${acc.length ? `<p class="note cldt">${icon("inbox")} Mensajes de hoy: ${duty ? (duty.st === "none" ? "sin consultas ✓" : `atendido ✓${duty.n ? ` · ${duty.n} conversaciones` : ""}`) : "todavía sin registrar"}</p>` : ""}
     ${items.length ? `<button type="button" class="btn sm" data-clopen="${pp.id}">${icon(open ? "chevron-up" : "chevron-down")} ${open ? "Ocultar" : "Ver"} lo pendiente (${items.length})</button>` : ""}
@@ -6202,11 +6209,11 @@ function pCargaCM(){
   // CM y Diseñador: solo la carga pintada de cada CM (el detalle, la configuración y el informe son de Admin total y Admin).
   if (!full) return `<div class="head"><div><h1>Carga de trabajo CM</h1><p class="sub">Cuánto tiene cada CM esta semana, en %: el tiempo estimado de lo que le falta hasta el domingo sobre sus horas disponibles. 100 % = capacidad completa; más de 100 %, sobrecarga.</p></div></div>
   <div class="panel loadpanel"><div class="head" style="margin-bottom:6px"><h2 style="margin:0" class="pmh">${pmIco("gauge")}Carga de trabajo de los CM</h2></div>${loadChart(loadGroups("CM"))}</div>`;
-  const head = `<div class="head"><div><h1>Carga de trabajo CM</h1><p class="sub">${tab === "informe" ? `Lo que hizo cada CM en ${monthName(MONTH)}: cantidades y detalle por función, con marca, fecha, estado, plazos y pendientes. Es producción y cumplimiento (no usa horas).` : "Cuánto tiene cada CM esta semana, en %: el tiempo estimado de lo que le falta hasta el domingo sobre sus horas disponibles (ya descontadas ausencias y reuniones). 100 % = capacidad completa; más de 100 %, sobrecarga. Las horas son estimadas."}</p></div>
+  const head = `<div class="head"><div><h1>Carga de trabajo CM</h1><p class="sub">${tab === "informe" ? `Lo que hizo cada CM en ${monthName(MONTH)}: cantidades y detalle por función, con marca, fecha, estado, plazos y pendientes. Es producción y cumplimiento (no usa horas).` : "Cuánto tiene cada CM esta semana (de lunes a domingo), en %: el tiempo estimado de lo que le falta de esa semana sobre sus horas disponibles (ya descontadas ausencias y reuniones). Lo atrasado de semanas anteriores no suma. 100 % = capacidad completa; más de 100 %, sobrecarga. Las horas son estimadas."}</p></div>
     ${viewTabs([["semana","Carga de la semana","gauge"],["informe","Informe del mes","file-bar-chart"]], tab, "data-cltab")}</div>`;
   if (tab === "informe") return `${head}<div class="clgrid">${ppl.map(cmReportCard).join("") || `<div class="empty">No hay CM activos.</div>`}</div>`;
   return `${head}
-  <div class="panel loadpanel"><div class="head" style="margin-bottom:6px"><h2 style="margin:0" class="pmh">${pmIco("gauge")}Carga de trabajo de los CM</h2><span class="note">Equipo CM: ${team.pct === null ? "falta el horario de todos" : `${team.pct >= 999 ? "+100" : team.pct}% (≈ ${fmtMin(team.min)} de ${fmtMin(team.avail)})`}${team.missing ? ` · ${team.missing} sin horario` : ""}</span></div>${loadChart(loadGroups("CM"))}</div>
+  <div class="panel loadpanel"><div class="head" style="margin-bottom:6px"><h2 style="margin:0" class="pmh">${pmIco("gauge")}Carga de trabajo de los CM</h2><span class="note">Equipo CM: ${team.pct === null ? "—" : `${team.pct >= 999 ? "+100" : team.pct}%`} · solo lo de esta semana</span></div>${loadChart(loadGroups("CM"))}</div>
   <div class="clgrid">${ppl.map(cmLoadCard).join("") || `<div class="empty">No hay CM activos.</div>`}</div>
   ${cmLoadCfg()}`;
 }
@@ -6438,9 +6445,9 @@ function postForm(){
           <label class="jrepu">Hasta <span class="note">(vacío = siempre)</span><input class="base" type="date" id="poRepUntil" value="${esc(p.rep?.until || "")}"></label>
           <p class="note" style="margin:0">Ej.: “Beneficio del día con tarjetas” → marcá Lunes: cada lunes aparece ${canal ? "un contenido nuevo" : f.kind === "Historia" ? "una historia nueva" : "una publicación nueva"} en Pendiente, ya asignada a su CM.</p></div>`}
       </div></section>
-      <section class="jfs"><h3><i>3</i>Texto de la publicación y links</h3><div class="jfg">
+      <section class="jfs"><h3><i>3</i>Texto, ruta de la compartida y archivos</h3><div class="jfg">
         <div style="grid-column:1/-1"><span class="jll">Texto <span class="note">(el copy, los hashtags y lo que hay que saber)</span></span>${rtEditor("poBrief", p.brief ? cleanRich(p.brief) : "", POST_BRIEF_PH)}</div>
-        <div style="grid-column:1/-1"><span class="jll">Links de acceso <span class="note">(Drive, Canva u otro sitio: fotos, videos, el diseño…)</span></span>${linkEditor(p, "form")}</div>
+        <div style="grid-column:1/-1"><span class="jll">${icon("folder-symlink")} Ruta de la compartida <span class="note">(la carpeta del servidor; los archivos se suben abajo, en Archivos de CM)</span></span>${linkEditor(p, "form")}</div>
         <div style="grid-column:1/-1">${cmFilesBlock(p, "form")}</div>
       </div></section>
       <section class="jfs"><h3><i>4</i>Proceso</h3><div class="jfg">
@@ -6693,7 +6700,7 @@ function tvTeamSlide(sl){
     const open = jobs.filter(j => j.owner === pp.name && !isClosedJob(j)).sort((a,b2) => a.due.localeCompare(b2.due));
     return `<div class="tvp tc" style="--k:${k}"><div class="top">${avatarHTML(pp)}<div class="who"><b>${esc(pp.name)}</b><span>${open.length} ${open.length === 1 ? "tarea abierta" : "tareas abiertas"}</span></div></div>
       <div class="pline">${ltrack(L)}<div class="pct" style="color:${lv.c}">${pctHTML(L)}</div></div>
-      <div class="lvtag" style="--c:${lv.c}">${lv.t} · ${L.cm ? (L.avail === null ? "falta el horario" : `≈ ${fmtMin(L.min)} de ${fmtMin(L.avail)}`) : `${L.pts} de ${LOAD_FULL} pts`}</div>
+      <div class="lvtag" style="--c:${lv.c}">${lv.t} · ${L.cm ? `${L.n} ${L.n === 1 ? "tarea" : "tareas"} esta semana` : `${L.pts} de ${LOAD_FULL} pts`}</div>
       <div class="cnt3"><div class="g"><i>${st.fin}</i><span>finalizadas</span></div><div class="y"><i>${st.proc}</i><span>en proceso</span></div><div class="r"><i>${st.pend}</i><span>pendientes</span></div></div>
       <div class="jl">${open.map(j => { const u = urgency(j); return `<div class="jr" style="--b:${BRANDS[j.brand]}"><b>${esc(j.title)}</b>${u ? `<span class="ub ${u.late ? "late" : ""}" style="--u:${u.c}">${u.late ? "⏰ " : ""}${u.t.replace("Faltan ","").replace("Falta ","").replace("Retraso de ","+")}</span>` : `<span class="dd">${dm(j.due)}</span>`}</div>`; }).join("") || `<div class="empty">Sin tareas abiertas 🎉</div>`}</div>
       <div class="more" hidden></div></div>`; };
