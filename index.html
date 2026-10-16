@@ -1462,6 +1462,12 @@ select.base.sm{padding:4px 8px;border-radius:10px;font-size:12.5px;border-color:
 .remform{display:grid;grid-template-columns:1fr 2fr;gap:10px;align-items:end;margin-top:14px;padding-top:14px;border-top:1px solid var(--line-2)}
 .remform>b,.remform>.chips{grid-column:1/-1}.remform label{display:grid;gap:4px;font-size:12.5px;color:var(--muted)}
 @media (max-width:700px){.remform{grid-template-columns:1fr}}
+/* v212 · Diseño: cuadros por etapa y tabla ordenable */
+.dgpan .pubst small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.dgpanhint{margin:8px 0 0}.dgpanlist{margin-top:12px}
+.dgtblbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:4px 0 10px}.dgtblbar label{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
+.thsort{all:unset;cursor:pointer;font-weight:700;white-space:nowrap}.thsort:hover,.thsort:focus-visible{text-decoration:underline}.thsort.on{color:#67e8f9}
+.dgtbl td{vertical-align:middle}
 /* v211 · Publicación de un diseño todavía sin aprobar; Diseños en camino (Planificación de CM) */
 .pfrom.pcm.wait{border-color:rgba(251,191,36,.5);background:rgba(120,53,15,.18)}.pfrom.pcm.wait .pcmh>svg{color:#fbbf24}
 .pfrom.pcm.wait .pcmshare{border-color:rgba(148,163,184,.4);background:rgba(15,23,42,.4)}
@@ -5033,6 +5039,38 @@ function panelStats(){
     inbox:(() => { const cnt = net => inboxBrands().reduce((t, b) => t + inboxConvs(b).filter(c => c.net === net && !ibOk(c)).length, 0), fb = cnt("FB"), ig = cnt("IG"); // Facebook e Instagram, por separado
       const txt = [fb ? `${fb} Facebook` : "", ig ? `${ig} Instagram` : ""].filter(Boolean).join(" · "); return Object.keys(META_INBOX).length || Object.keys(META_DM).length ? (txt ? `<em>${txt} sin contestar</em>` : "Todo contestado") : "Sin datos todavía"; })() };
 }
+// v212 · Diseño gráfico: cuadros por etapa (Panel de Trabajo) y tabla ordenable (Panel y Planificación).
+const DG_GROUPS = [["pend", "Pendientes", "#ef4444", j => j.status === "Pendiente"], ["proc", "En proceso", JOB_COLOR["En proceso"] || "#3b82f6", j => j.status === "En proceso"],
+  ["rev", "En revisión", JOB_COLOR["En revisión"] || "#eab308", j => REVIEW_WAIT.includes(j.status)], ["fix", "En corrección", JOB_COLOR["En corrección"] || "#f97316", j => j.status === "En corrección"],
+  ["ok", "Aprobados", JOB_COLOR["Aprobado"] || "#10b981", j => isFin(j)], ["all", "Total del mes", "#22d3ee", () => true]];
+const DG_SORTS = [["due", "Fecha límite"], ["req", "Fecha de pedido"], ["brand", "Marca"], ["requester", "Solicitante"], ["piece", "Tipo"], ["owner", "Responsable"], ["title", "Trabajo"]];
+let dgPanUI = { g:null }, dgTblUI = { sort:"due", dir:1 };
+const dgSortVal = (j, k) => k === "due" ? j.due || "" : k === "req" ? j.requestDate || "" : k === "brand" ? jobBrands(j).join(" + ") : k === "requester" ? j.requester || "" : k === "piece" ? cmPiece(j) : k === "owner" ? j.owner || "" : j.title || "";
+function dgTable(list){
+  const { sort, dir } = dgTblUI, isDate = sort === "due" || sort === "req";
+  const L = list.slice().sort((a, b) => dir * String(dgSortVal(a, sort)).localeCompare(String(dgSortVal(b, sort)), "es", { sensitivity:"base" }) || a.due.localeCompare(b.due));
+  const th = (k, l) => `<th><button type="button" class="thsort${sort === k ? " on" : ""}" data-dgsort="${k}" aria-label="Ordenar por ${l}">${l}${sort === k ? (dir > 0 ? " ▲" : " ▼") : ""}</button></th>`;
+  const dirTxt = isDate ? (dir > 0 ? "De la más vieja a la más nueva" : "De la más nueva a la más vieja") : dir > 0 ? "De la A a la Z" : "De la Z a la A";
+  return `<div class="dgtblbar"><label>Ordenar por <select class="base sm" data-dgsortsel>${DG_SORTS.map(([k, l]) => `<option value="${k}" ${k === sort ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+    <button type="button" class="btn sm" data-dgdir title="Dar vuelta el orden">${icon(dir > 0 ? "arrow-down-narrow-wide" : "arrow-up-wide-narrow")} ${dirTxt}</button><span class="note">${L.length} ${L.length === 1 ? "trabajo" : "trabajos"}</span></div>
+  <div class="tw"><table class="dgtbl"><thead><tr>${th("title", "Trabajo")}${th("brand", "Marca")}${th("piece", "Tipo")}<th>Sección</th>${th("requester", "Solicitante")}${th("owner", "Responsable")}${th("req", "Pedido")}${th("due", "Fecha límite")}<th>Etapa</th></tr></thead><tbody>
+    ${L.map(j => `<tr><td><button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button></td><td>${jobBrandTags(j)}</td><td>${jobPieceTag(j)}</td><td>${esc(DG_SEC[jobSection(j)] || "")}</td><td>${esc(j.requester || "—")}</td><td>${esc(j.owner)}</td><td class="num">${j.requestDate ? dm(j.requestDate) : "—"}</td><td class="num">${dm(j.due)}</td><td>${pill(j.status, JOB_COLOR[j.status] || "#94a3b8")}</td></tr>`).join("") || `<tr><td colspan="9" class="empty">No hay trabajos en esta etapa.</td></tr>`}
+  </tbody></table></div>`;
+}
+document.addEventListener("click", e => {
+  const s2 = e.target.closest("[data-dgsort]"); if (s2){ const k = s2.dataset.dgsort; dgTblUI = k === dgTblUI.sort ? { sort:k, dir:-dgTblUI.dir } : { sort:k, dir:1 }; render(); return; }
+  if (e.target.closest("[data-dgdir]")){ dgTblUI.dir = -dgTblUI.dir; render(); return; }
+  const g = e.target.closest("[data-dgpan]"); if (g){ dgPanUI.g = dgPanUI.g === g.dataset.dgpan ? null : g.dataset.dgpan; render(); if (dgPanUI.g) setTimeout(() => document.querySelector(".dgpanlist")?.scrollIntoView({ behavior:"smooth", block:"nearest" }), 60); return; }
+  const v = e.target.closest("[data-dgview]"); if (v){ dgPlanUI.view = v.dataset.dgview; render(); }
+});
+document.addEventListener("change", e => { if (e.target.matches?.("[data-dgsortsel]")){ dgTblUI = { sort:e.target.value, dir:1 }; render(); } });
+// Panel de Trabajo de Diseño: cuadros por etapa del mes; al tocar uno, abajo se ven todos esos trabajos (todas las secciones juntas).
+function dgPanelBlock(scope){
+  const mes = scope.filter(j => j.area === "Diseño" && jobMonth(j) === MONTH && j.status !== "Cancelado" && !j.ex), fin = mes.filter(isFin).length, G = DG_GROUPS.find(x => x[0] === dgPanUI.g);
+  return `<div class="pubsum dgsum dgpan">${DG_GROUPS.map(([k, l, c, f]) => `<button type="button" class="pubst ${dgPanUI.g === k ? "on" : ""}" data-dgpan="${k}" aria-pressed="${dgPanUI.g === k}" style="--c:${c}"><b class="num">${mes.filter(f).length}</b><span>${l}</span>${k === "all" ? `<small>${fin} ${fin === 1 ? "finalizado" : "finalizados"} · ${mes.length ? Math.round(fin / mes.length * 100) : 0}%</small>` : ""}</button>`).join("")}</div>
+  ${G ? `<section class="panel dgpanlist"><div class="head" style="margin-bottom:8px"><h2 class="pmh" style="margin:0">${pmIco("table-2")}${G[1]} <span class="note" style="font-weight:500">· ${monthName(MONTH)} · Redes, Cartelería, Web y Pantallas</span></h2><button type="button" class="btn sm" data-dgpan="${G[0]}">${icon("x")} Cerrar</button></div>${dgTable(mes.filter(G[3]))}</section>`
+    : `<p class="note dgpanhint">${icon("pointer")} Tocá un cuadro para ver la lista de esos trabajos (todas las secciones juntas).</p>`}`;
+}
 function pPanel(ar){
   const dg = ar === "dg", st = panelStats();
   const icons = [...(dg ? PANEL_DESIGN : PANEL_CM), ...PANEL_TOOLS.filter(x => x.a === (dg ? "Diseño" : "CM"))].filter(x => can(x.k))
@@ -5046,7 +5084,7 @@ function pPanel(ar){
   const doneShown = panelDoneAll ? done : done.slice(0, 5);
   const doneList = done.length ? `<div class="list">${doneShown.map(j => `<div class="row arow ago" data-ago="job:${j.id}" role="button" tabindex="0"><span class="aico" style="--c:#10b981">${icon("circle-check")}</span><div class="grow"><div class="t">${esc(j.title)}</div><div class="m">${esc(jobBrands(j).join(" + "))} · ${esc(j.piece)} · terminado el ${dm(j.delivered || j.approved || j.due)}${mineOnly ? "" : ` · ${esc(firstName(j.owner))}`}</div></div>${pill(j.status, JOB_COLOR[j.status])}</div>`).join("")}</div>` : `<div class="empty">Todavía no hay trabajos terminados en ${monthName(MONTH)}.</div>`;
   return `<div class="phero"><h1>Panel de Trabajo</h1><p class="sub">${dg ? "Elegí qué tipo de pieza vas a trabajar: cada categoría tiene sus pedidos, su tabla y sus procesos." : "Elegí qué vas a gestionar: el plan del mes, cada red y los pedidos de video."}</p></div>
-  ${kpiRow(progStats(scope))}
+  ${dg ? dgPanelBlock(scope) : kpiRow(progStats(scope))}
   <nav class="picons" aria-label="Categorías">${icons || `<div class="empty">No tenés categorías habilitadas.</div>`}</nav>
   <section class="panel palerts"><div class="head" style="margin-bottom:10px"><h2 style="margin:0" class="pmh">${pmIco("list-todo")}Trabajos pendientes${al.length ? ` <span class="note">${al.length}</span>` : ""}</h2>
     ${al.length > 5 ? `<button type="button" class="btn sm" data-panelall>${panelAll ? "Ver menos" : `Ver más (${al.length - 5})`}</button>` : ""}</div>
@@ -6589,7 +6627,7 @@ function pedPage(A, title, ico, sub, newHint, extra = ""){
 // Calendario de Diseño gráfico: todas las entregas (Redes, Cartelería, Web y Pantallas) en su fecha límite. Mis trabajos o todo el equipo.
 // Planificación de Diseño gráfico: arriba el resumen del mes por etapa (como en CM), para controlar qué se está haciendo,
 // qué está en revisión y qué ya se aprobó. Tocar una etapa muestra solo esos trabajos en el calendario (otra vez: todos).
-let dgPlanUI = { st:"Todos" };
+let dgPlanUI = { st:"Todos", view:"calendario" };
 function pCalDG(){
   const base = jobs.filter(j => j.area === "Diseño" && seesJob(j) && j.status !== "Cancelado" && (!pedMine() || j.owner === viewer.name || j.ex));
   const list = base.filter(j => dgPlanUI.st === "Todos" || j.status === dgPlanUI.st).sort((a, b) => a.due.localeCompare(b.due));
@@ -6603,7 +6641,8 @@ function pCalDG(){
   ${canCreateJobs() ? `<button class="panel cmnew" data-jnew><span class="cmplus">${icon("plus")}</span><span><b>Cargar pedido</b><small>Qué pieza, para qué marca, quién la hace y para cuándo. También podés tocar un día del calendario.</small></span></button>` : ""}
   ${summary}
   ${ownsJobs() ? `<div class="chips pedscope"><button type="button" class="chip ${pedMine() ? "on" : ""}" data-pedscope="mine">${icon("user-round")} Mis trabajos</button><button type="button" class="chip ${pedMine() ? "" : "on"}" data-pedscope="team">${icon("users")} Todo el equipo</button></div>` : ""}
-  ${jobDeliveryCal(list, "Diseño")}${n ? "" : `<p class="note">No hay entregas en ${monthName(MONTH)}${dgPlanUI.st !== "Todos" ? ` en ${esc(dgPlanUI.st)}` : ""}${pedMine() ? " a tu nombre" : ""}.</p>`}
+  ${viewTabs([["calendario", "Calendario", "calendar-days"], ["tabla", "Tabla", "table-2"]], dgPlanUI.view || "calendario", "data-dgview")}
+  ${dgPlanUI.view === "tabla" ? dgTable(list.filter(j => j.due.slice(0, 7) === MONTH)) : `${jobDeliveryCal(list, "Diseño")}${n ? "" : `<p class="note">No hay entregas en ${monthName(MONTH)}${dgPlanUI.st !== "Todos" ? ` en ${esc(dgPlanUI.st)}` : ""}${pedMine() ? " a tu nombre" : ""}.</p>`}`}
   ${jobForm()}`;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-dgst]"); if (!b) return; const st = b.dataset.dgst; dgPlanUI.st = st === "Todos" || dgPlanUI.st === st ? "Todos" : st; render(); });
