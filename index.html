@@ -1462,6 +1462,10 @@ select.base.sm{padding:4px 8px;border-radius:10px;font-size:12.5px;border-color:
 .remform{display:grid;grid-template-columns:1fr 2fr;gap:10px;align-items:end;margin-top:14px;padding-top:14px;border-top:1px solid var(--line-2)}
 .remform>b,.remform>.chips{grid-column:1/-1}.remform label{display:grid;gap:4px;font-size:12.5px;color:var(--muted)}
 @media (max-width:700px){.remform{grid-template-columns:1fr}}
+/* v210 · En el pedido de Diseño: qué CM lo publica (opcional) */
+.jpubcm{display:grid;gap:8px;padding:12px;border:1px dashed rgba(16,185,129,.5);border-radius:14px;background:rgba(6,78,59,.14)}
+.jpubcmg{display:grid;grid-template-columns:1fr 1fr;gap:10px}.jpubcmg label{display:grid;gap:4px}
+@media (max-width:700px){.jpubcmg{grid-template-columns:1fr}}
 /* Cumpleaños de influencers (Admin total y CM) */
 .ev.infl{cursor:pointer}.ev.infl .inflb{padding-top:0;font-size:10px;font-weight:700;color:#f0abfc}
 .plcal .pev.infl{background:color-mix(in srgb,#e879f9 14%,transparent);border:1px solid rgba(232,121,249,.45);cursor:pointer}
@@ -3102,7 +3106,7 @@ function openApproveModal(j){
   document.getElementById("fixpop")?.remove();
   const cont = j.area === "Contenidos", p = j.post && postById(j.post), x = pubOf(j) || p, cms = CM_NAMES();
   const fms = (j.pubs || []).map(r => r.canal ? "Canal" : postById(r.id)?.format).filter(Boolean), both = fms.includes("Historia") && fms.some(f => f !== "Historia" && f !== "Canal");
-  const preCm = cont ? j.owner : x?.cm || "", preDate = x?.date || (j.due >= TODAY ? j.due : TODAY), preFmt = both ? POST_HIST : x ? (x.channel ? "Canal" : x.format) : pubFmtOf(j);
+  const preCm = cont ? j.owner : x?.cm || j.pubCm || "", preDate = x?.date || j.pubDate || (j.due >= TODAY ? j.due : TODAY), preFmt = both ? POST_HIST : x ? (x.channel ? "Canal" : x.format) : pubFmtOf(j);
   const w = document.createElement("div"); w.id = "fixpop"; w.className = "fixpop";
   w.innerHTML = `<div class="fixbox okbox" role="dialog" aria-modal="true" aria-labelledby="okh"><h2 id="okh">${cont ? "Aprobar contenido" : "Aprobar diseño"}</h2><p class="note">${esc(j.title)} · ${esc(j.owner)}</p>
     <label>¿Quién aprobó? *<select class="base" id="okBy"><option value="">Elegí quién lo aprobó</option>${approverNames().map(n => `<option>${esc(n)}</option>`).join("")}</select></label>
@@ -3188,7 +3192,7 @@ function approveJob(j, opts = {}){
   notify({ to:j.owner, type:"approved", job:j.id }); jobUI.form = null;
   let x = null;
   let xs = [];
-  if (cm && j.area !== "CM" && opts.date){ xs = makePub(j, { ...opts, cm }); x = xs[0]; j.cmNotified = cm; xs.forEach(p => notify({ to:cm, type:"pub", job:j.id, post:p.id, canal:!!p.channel })); }
+  if (cm && j.area !== "CM" && opts.date){ xs = makePub(j, { ...opts, cm }); x = xs[0]; j.cmNotified = cm; j.pubCm = cm; j.pubDate = opts.date; xs.forEach(p => notify({ to:cm, type:"pub", job:j.id, post:p.id, canal:!!p.channel })); }
   else if (cm){ notify({ to:cm, type:"listo", job:j.id }); j.cmNotified = cm; }
   render(); window.RMH?.flushNow?.();
   toast(`Aprobado${j.area === "CM" ? ": pasó a Programado" : ""}${by ? ` por ${firstName(by)}` : ""}. Le avisamos a ${firstName(j.owner)}${x ? `${cm === j.owner ? "" : ` y a ${firstName(cm)} (CM)`}: “${x.title}” quedó en su calendario el ${dm(x.date)}${xs.length > 1 ? ` (${xs.length} publicaciones: ${xs.map(p => `${p.brand} ${p.channel ? "Canal" : p.format}`).join(", ")})` : ""}` : cm ? ` y a ${firstName(cm)} (CM)` : ""}.`);
@@ -6131,7 +6135,7 @@ function jobFicha(){
     <header class="jp-h"><span class="note">${jobKindLabel(j)}${j.ex ? ` <span class="exbadge sm">Ejemplo para mostrar cómo se carga</span>` : ""}</span><h1>${esc(j.title)}</h1><div class="chips">${pill(j.status, JOB_COLOR[j.status])}${urgBadge(j)}${j.rep?.days?.length ? `<span class="repbadge">${icon("repeat")} Se repite: ${esc(repText(j.rep).toLowerCase())}</span>${at ? `<button class="btn sm" type="button" data-jrepstop="${j.id}">Dejar de repetir</button>` : ""}` : j.repOf ? `<span class="repbadge">${icon("repeat")} Pedido que se repite</span>` : ""}</div></header>
     ${last ? `<div class="jfmsg"><b>${icon("pencil")} Cambios que pidió Admin total</b><p>${esc(last.text)}</p><span>${dm(last.date)} · ${last.time}</span></div>` : ""}
     <section class="panel jp-sec"><h2 class="pmh">${pmIco("clipboard-list")}<i class="jpn">1</i>Qué hay que hacer</h2>
-      <div class="jfgrid">${row(jobBrands(j).length > 1 ? "Marcas" : "Marca", jobBrandTags(j))}${row("Tipo de trabajo", esc((j.area === "Diseño" && dgCatOf(j) ? dgCatOf(j) + " · " : "") + cmPiece(j)))}${row("Trabajo solicitado", esc(j.title))}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}${j.piece === OTRO && j.otro ? `<div style="grid-column:1/-1"><span>Actividades</span><b>${esc(j.otro)}</b></div>` : ""}</div>
+      <div class="jfgrid">${row(jobBrands(j).length > 1 ? "Marcas" : "Marca", jobBrandTags(j))}${j.area === "Diseño" && j.pubCm && !jobPubsOf(j).length ? row("Lo publica", `${esc(j.pubCm)}${j.pubDate ? ` · el ${dm(j.pubDate)}` : ""} <span class="note">(se le carga al aprobar el diseño)</span>`) : ""}${row("Tipo de trabajo", esc((j.area === "Diseño" && dgCatOf(j) ? dgCatOf(j) + " · " : "") + cmPiece(j)))}${row("Trabajo solicitado", esc(j.title))}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}${j.piece === OTRO && j.otro ? `<div style="grid-column:1/-1"><span>Actividades</span><b>${esc(j.otro)}</b></div>` : ""}</div>
       ${j.notes ? `<div class="jfnotes"><span>Observaciones</span><p>${esc(j.notes)}</p></div>` : ""}</section>
     <section class="panel jp-sec"><h2 class="pmh">${pmIco("users")}<i class="jpn">2</i>Quién y para cuándo</h2>
       <div class="jfgrid"><div><span>Quién lo pidió</span><b>${esc(j.requester || "Sin indicar")}</b></div>${row("Responsable", esc(j.owner))}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", prioTag(j.priority))}${row("Complejidad", esc(j.complexity))}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}${j.approvedBy ? row("Aprobó", `${icon("badge-check")} ${esc(j.approvedBy)}${j.approved ? " · " + dm(j.approved) : ""}`) : ""}</div>${pubInfo(j)}</section>
@@ -6157,6 +6161,17 @@ document.addEventListener("click", e => {
   e.preventDefault(); closeStageMenu(); jobUI.form = null; if (fo.closest(".jformpage")) postUI.form = null; // desde la hoja de la publicación: se abre el pedido de diseño
   jobUI.ficha = fo.dataset.jficha; render(); window.scrollTo(0, 0);
 });
+// v210 · En el pedido de Diseño, Admin total puede dejar anotado (opcional) qué CM lo va a publicar y cuándo. La CM no ve
+// nada hasta que se aprueba el diseño: ahí se le carga en su calendario con la ruta de la compartida. Se puede cambiar
+// cuando quiera (y al aprobar). Si ya está aprobado, cambiar la CM acá pasa sus publicaciones a la nueva CM.
+const jobPubsOf = j => (j?.pubs || (j?.pub ? [j.pub] : [])).map(r => r.canal ? canalById(r.id) : postById(r.id)).filter(Boolean);
+function jobPubCmBox(j){
+  const live = jobById(j.id), done = jobPubsOf(live).length > 0, cur = j.pubCm ?? (done ? jobPubsOf(live)[0].cm : "");
+  return `<div class="jpubcm" style="grid-column:1/-1"><span class="jll">${icon("calendar-days")} ¿Qué CM lo publica? <span class="note">(opcional)</span></span>
+    <div class="jpubcmg"><label>CM que lo publica<select class="base" id="jPubCm"><option value="">Todavía no</option>${[...new Set([...CM_NAMES(), cur].filter(Boolean))].map(n => `<option ${n === cur ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label>
+    <label>Fecha de publicación<input class="base" type="date" id="jPubDate" value="${esc(j.pubDate || (done ? jobPubsOf(live)[0].date : ""))}"></label></div>
+    <p class="note" style="margin:0">${done ? `${icon("badge-check")} Ya está aprobado y en el calendario de ${esc(jobPubsOf(live)[0].cm)}. Si cambiás la CM, sus publicaciones pasan a la nueva CM y le llega el aviso.` : `Queda anotado en el pedido. La CM no ve nada hasta que se apruebe el diseño: recién ahí se le carga en su calendario con la ruta de la compartida. Lo podés cambiar cuando quieras (también al aprobar).`}</p></div>`;
+}
 function jobForm(){
   const f = jobUI.form; if (!f) return "";
   if (f.mode === "edit") markSeen(jobById(f.job.id));
@@ -6189,6 +6204,7 @@ function jobForm(){
       <label>Responsable (de cualquier marca) *<select class="base" id="jOwner">${opt([...new Set(["Sin asignar", ...areaPeople(area), j.owner])], j.owner)}</select></label>
       <label>Fecha de solicitud *<input class="base" type="date" id="jReq" value="${j.requestDate}" required></label>
       <label >Fecha límite *<input class="base" type="date" id="jDue" value="${j.due}" required></label>
+      ${area === "Diseño" ? jobPubCmBox(j) : ""}
       ${j.repOf ? `<p class="note" style="grid-column:1/-1;margin:0">${icon("repeat")} Este pedido se cargó solo porque se repite (lo repite el pedido ${esc(j.repOf)}).</p>` : `<div class="jrep" style="grid-column:1/-1"><span class="jll">${icon("repeat")} ¿Se repite? <span class="note">(opcional: elegí los días y el pedido se carga solo cada semana, con la fecha límite de ese día)</span></span>
         <div class="chips">${WEEKDAYS.map((w, i) => `<button type="button" class="chip ${(f.repDays || []).includes(i) ? "on" : ""}" data-jrepday="${i}" aria-pressed="${(f.repDays || []).includes(i)}">${w}</button>`).join("")}</div>
         <label class="jrepu">Hasta <span class="note">(vacío = siempre)</span><input class="base" type="date" id="jRepUntil" value="${esc(j.rep?.until || "")}"></label>
@@ -6246,6 +6262,7 @@ function spawnRepeats(){
 // Links de un pedido (antes había uno solo, en j.link).
 const jobLinks = j => Array.isArray(j.links) ? j.links : j.link ? [j.link] : [];
 function readJobForm(j){ const v = id => document.getElementById(id)?.value;
+  if (v("jPubCm") !== undefined){ j.pubCm = v("jPubCm") || ""; j.pubDate = v("jPubDate") || ""; }
   const bf = document.getElementById("jBriefF"); if (bf && bf.dataset.dirty){ j.brief = cleanRich(bf.innerHTML); j.briefBy = viewer.name; j.briefAt = new Date().toISOString(); }
   if (document.querySelector("#jobForm .lked")) readLinkEditor(document.querySelector("#jobForm .lked"), j);
   // (los links se leen del editor de links de acceso, arriba)
@@ -11575,6 +11592,7 @@ document.addEventListener("submit", e => {
     if (!j.repOf){ const ru = document.getElementById("jRepUntil")?.value || ""; if (f.repDays?.length) j.rep = { days:[...f.repDays], until:ru }; else delete j.rep; }
     if (isFin(j) && !j.delivered) j.delivered = TODAY;
     const prevOwner = f.mode === "edit" ? jobById(j.id)?.owner : null;
+    if (f.mode === "edit" && j.pubCm){ jobPubsOf(jobById(j.id)).filter(x => x.cm !== j.pubCm && !["Publicado", "Pautado"].includes(x.status)).forEach(x => { x.cm = j.pubCm; if (x.seenBy) x.seenBy = {}; notify({ to:j.pubCm, type:"pub", job:j.id, post:x.id, canal:!!x.channel }); }); j.cmNotified = j.pubCm; }
     if (f.mode === "edit"){ Object.assign(jobs.find(x => x.id === j.id), j); } else { if (!j.byId) j.byId = viewer.id; jobs.push(j); } // byId: quién lo cargó (para el chat del pedido)
     if (j.owner && j.owner !== "Sin asignar" && j.owner !== prevOwner && j.owner !== viewer.name) notify({ to:j.owner, type:"nuevo", job:j.id }); // le llega el aviso a quien lo tiene que hacer
     // Lo que se carga se ve enseguida: va a su sección, su mes y su marca (y sin filtros que lo escondan).
