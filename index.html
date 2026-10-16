@@ -1445,6 +1445,13 @@ select.base.sm{padding:4px 8px;border-radius:10px;font-size:12.5px;border-color:
 .bday span{color:#cbd5e1;font-size:13.5px}
 .ev.bd{background:color-mix(in srgb,#e879f9 16%,#0f172a);border-color:rgba(232,121,249,.5)}
 .ev.bd::before{background:linear-gradient(to right,#e879f9,#22d3ee)}
+/* Cumpleaños de influencers (Admin total y CM) */
+.ev.infl{cursor:pointer}.ev.infl .inflb{padding-top:0;font-size:10px;font-weight:700;color:#f0abfc}
+.plcal .pev.infl{background:color-mix(in srgb,#e879f9 14%,transparent);border:1px solid rgba(232,121,249,.45);cursor:pointer}
+.inflp{margin-top:16px}.inflic{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:color-mix(in srgb,var(--c) 22%,transparent);font-size:17px;flex:none}
+.inflform{display:grid;grid-template-columns:2fr .7fr 1.2fr 1.2fr;gap:10px;align-items:end;margin-top:14px;padding-top:14px;border-top:1px solid var(--line-2)}
+.inflform>b{grid-column:1/-1}.inflform label{display:grid;gap:4px;font-size:12.5px;color:var(--muted)}.inflform .chips{grid-column:1/-1}
+@media (max-width:700px){.inflform{grid-template-columns:1fr 1fr}.inflform label:first-of-type{grid-column:1/-1}}
 .bsel{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
 /* usuarios */
 .avatar{width:34px;height:34px;border-radius:12px;display:grid;place-items:center;font-weight:700;font-size:12px;color:#fff;background:linear-gradient(to bottom right,#22d3ee,#2563eb);flex:none}
@@ -3338,6 +3345,20 @@ function bdayParty(){
 function bdayAlerts(){
   return PEOPLE.map(pp => ({ pp, d:bdayIn(pp) })).filter(x => x.d !== null && x.d <= 3).sort((a,b) => a.d - b.d);
 }
+// ---------- Cumpleaños de influencers de las marcas (Superseis, Delimarket…): solo los ven Admin total y CM ----------
+// Para saludarlos desde la cuenta de la marca. INFLUENCERS: [{ id, name, bday:"MM-DD", brand }] en s:INFLUENCERS
+// (la base solo deja leerla y guardarla a Admin total y CM). Salen en Cumpleaños, en Planificación y Gestión Redes de CM,
+// y como alerta 3 días antes, con la aclaración “Influencer de [marca]”.
+let INFLUENCERS = [];
+const seesInfl = () => ["Admin total", "CM"].includes(viewer?.role);
+const inflList = () => seesInfl() ? INFLUENCERS.filter(x => x && x.name && /^\d\d-\d\d$/.test(x.bday || "")) : [];
+const inflIn = x => bdayIn({ birthday:x.bday, active:true });
+const inflOn = c => inflList().filter(x => x.bday === c.slice(5) && inFilter(x.brand)).sort((a, b) => a.name.localeCompare(b.name, "es"));
+const inflTag = x => `Influencer de ${x.brand}`;
+const inflEv = x => `<div class="ev bd infl" data-page="cumples" role="button" tabindex="0" title="Cumpleaños de ${esc(x.name)} · ${esc(inflTag(x))} · ${bdayLabel(x.bday)}"><span>🎂 ${esc(x.name)}</span><span class="inflb">${esc(inflTag(x))}</span></div>`;
+const inflPev = x => `<div class="pev infl" data-page="cumples" role="button" tabindex="0" title="Cumpleaños de ${esc(x.name)} · ${esc(inflTag(x))}"><i style="background:${BRANDS[x.brand] || "#e879f9"}"></i><span>🎂 Cumple de ${esc(x.name)} · ${esc(inflTag(x))}</span></div>`;
+const inflAlerts = () => inflList().map(x => ({ x, d:inflIn(x) })).filter(o => o.d !== null && o.d <= 3).sort((a, b) => a.d - b.d);
+let inflUI = { edit:null };
 
 // Publicaciones de CM (feed, historias y Canal de WhatsApp): Pendiente → En proceso → Programado → Publicado → Pautado.
 const POST_STAGES = ["Pendiente","En proceso","Programado","Publicado","Pautado"];
@@ -4671,6 +4692,8 @@ function alerts(){
   if (viewer.role === "Admin total") resetRequests.forEach(id => { const pp = PEOPLE.find(x => x.id === id); if (pp) out.push({ go:"usuarios", sev:"#22d3ee", rank:-1, ic:"key-round", t:`${pp.name} pidió restablecer su contraseña`, m:"Andá a Usuarios y permisos → Restablecer contraseña" }); });
   if (satPeople().includes(viewer) && !isViewOnly()){ const n = satList(SAT_TURN[CURRENT_MONTH] || {}, viewer.id).length;
     if (n < SATS_PER) out.push({ go:"sabados", key:`sat:${CURRENT_MONTH}:${n}`, sev:"#f97316", rank:-2, ic:"calendar-clock", t:n ? "Te falta elegir 1 sábado de turno" : "Elegí tus sábados de turno", m:`${monthLabel(CURRENT_MONTH)} · tenés que elegir ${SATS_PER} sábados para venir a la oficina` }); }
+  inflAlerts().forEach(({ x, d }) => out.push({ go:"cumples", key:`infl:${x.id}:${addDays(TODAY, d)}`, sev:d === 0 ? "#ef4444" : "#e879f9", rank:-2, ic:"cake",
+    t:`${d === 0 ? "Hoy" : d === 1 ? "Mañana" : `En ${d} días`} cumple años ${x.name} · ${inflTag(x)}`, m:`${bdayLabel(x.bday)} · para saludar desde la cuenta de ${x.brand}` }));
   const na = notifAskAlert(); if (na) out.push(na);
   const gone = alertsGone();
   return out.map(a => ({ ...a, key:a.key || "t:" + a.t })).filter(a => !gone.has(a.key)).sort((a,b) => (a.rank ?? 0) - (b.rank ?? 0));
@@ -5177,7 +5200,7 @@ function pCalCM(kind){
   if (view !== "calendario") return `${head}${adds}${gFilters(view === "tablero" ? "Tocá una tarjeta para cambiar su etapa · el lápiz para editar" : "Tocá el tema para editarlo")}${view === "tablero" ? postBoard(vp, kind) : postTable(vp, kind)}${postForm()}${jobForm()}${recDrawer()}`;
   return `${head}${adds}${gFilters("")}
   <div class="legend">${POST_STAGES.map(st => `<span><span class="sw" style="background:${SEM[semLvl(st)]}"></span>${st}</span>`).join("")}<span><span class="sw" style="background:${REC_KINDS[kind].c}"></span>${icon("repeat")} ${kind} repetitiva</span>${hist ? "" : `<span><span class="sw" style="background:${REC_KINDS["Grabación"].c}"></span>${icon("repeat")} Grabación repetitiva</span>`}</div>${calHint()}
-  ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("")
+  ${calGrid(c => inflOn(c).map(inflEv).join("") + rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("")
     + vp.filter(p => p.date === c).map(p => `<div class="ev${sepCls(p.brand)}"${calDrag("post", p.id)}${canEditPost() ? ` data-open="post:${p.id}"` : ""} style="--c:${BRANDS[p.brand]};--s:${SEM[semLvl(p.status)]}" data-sem="${semLvl(p.status)}" title="${esc(p.title)} · ${p.net} ${p.format} · ${p.status} · ${esc(p.cm || "")}"><span>${postUrgency(p)?.late ? icon("alarm-clock") + " " : ""}${p.brand} · ${esc(p.title)}</span>${evStage("post", p, `${p.status} · ${p.net}${hist ? "" : " " + p.format} · ${esc(firstName(p.cm || ""))}`, SEM[semLvl(p.status)])}</div>`).join(""), false)}
   <p class="note">${icon("repeat")} = repetitivo: se carga una sola vez y aparece solo en cada fecha. Tocá su etapa para cambiarla: sigue el mismo proceso (${hist ? "historias" : "feed"}: Pendiente → En proceso → Programado → Publicado → Pautado${hist ? "" : "; grabaciones: Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado"}).</p>
   ${postForm()}${jobForm()}${recDrawer()}`;
@@ -5308,7 +5331,7 @@ function planBoard(items){
         <div class="dact"><span class="spl" style="color:${st === "Pendiente" ? "#94a3b8" : SEM[semLvl(st)]}">● ${st}${tap ? " ▾" : ""}</span></div></div></div>`; }).join("") || `<div class="empty" style="padding:6px">Vacío</div>`}</div>`; }).join("")}</div>`;
 }
 function planCal(items){
-  return `<div class="plcal">${calGrid(c => items.filter(x => x.date === c).map(x => { const st = x.status, lv = semLvl(st), col = SEM[lv];
+  return `<div class="plcal">${calGrid(c => inflOn(c).map(inflPev).join("") + items.filter(x => x.date === c).map(x => { const st = x.status, lv = semLvl(st), col = SEM[lv];
     const act = x.rec ? (canCreateJobs() ? ` data-recedit="${x.r.id}" data-recat="${x.date}" role="button" tabindex="0"${recDrag(x.r, x.date)}` : "") : x.vid ? ` data-jficha="${x.id}" role="button" tabindex="0"` : canEditPost() ? ` data-pedit="${x.canal ? "canal" : "post"}:${x.id}" role="button" tabindex="0"` : "";
     const sk = x.rec ? "rec" : x.vid ? "job" : x.canal ? "canal" : "post", sid = x.rec ? x.sid : x.id, it = x.rec ? recItem(x.sid) : x.vid ? x.job : x.canal ? canalById(x.id) : postById(x.id), can2 = stageOptions(sk, it).length;
     return `<div class="pev" data-sem="${lv}" style="--sem:${col}"${x.rec ? "" : calDrag(sk, x.id)}${act} title="${PLAN_SEC(x)}: ${esc(x.title)} · ${x.brand} · ${x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${st} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} <b class="evk">${PLAN_SEC(x)}:</b> ${esc(x.title)}</span>${can2 ? `<button type="button" class="pst" data-stagemenu="${sk}:${sid}" style="--c:${col}" title="Cambiar la etapa">${st} ▾</button>` : `<em style="--c:${col}">${st}</em>`}</div>`; }).join(""), canEditPost())}</div>
@@ -7598,12 +7621,44 @@ document.addEventListener("change", e => { const c = e.target.closest?.("[data-u
 document.addEventListener("click", e => { const t = e.target.closest("[data-pxpreset]"); if (!t) return;
   const [pid, mode] = t.dataset.pxpreset.split("|"), p = PEOPLE.find(x => x.id === pid); if (!p || p.role === "Admin total" || p.role === "Admin") return;
   p.perms = new Set(mode === "all" ? permSections().map(sc => sc.k) : ROLE_BASIC); toast(mode === "all" ? `${p.name}: ve todo.` : `${p.name}: ve solo lo básico.`); render(); });
+// Lista de influencers en Cumpleaños (Admin total y CM): próximos, y cargar, editar o borrar.
+function inflPanel(){
+  if (!seesInfl()) return "";
+  const L = inflList().map(x => ({ x, d:inflIn(x) })).sort((a, b) => a.d - b.d), e = inflUI.edit ? INFLUENCERS.find(x => x.id === inflUI.edit) : null;
+  const when = d => d === 0 ? "¡hoy!" : d === 1 ? "mañana" : `en ${d} días`;
+  return `<div class="panel inflp"><div class="head" style="margin:0 0 8px"><h2 class="pmh" style="margin:0">${pmIco("sparkles")}Cumpleaños de influencers</h2><span class="note">Solo lo ven Admin total y CM · ${L.length} ${L.length === 1 ? "influencer" : "influencers"}</span></div>
+    ${L.length ? `<div class="list">${L.map(({ x, d }) => `<div class="row${d <= 3 ? " u" : ""}" style="${d <= 3 ? `--u:${d === 0 ? "#ef4444" : "#e879f9"}` : ""}"><span class="inflic" style="--c:${BRANDS[x.brand] || "#e879f9"}">🎂</span><div class="grow"><div class="t">${esc(x.name)}</div><div class="m">${esc(inflTag(x))} · ${bdayLabel(x.bday)} · ${when(d)}</div></div>
+      <button type="button" class="btn sm ib" data-infledit="${esc(x.id)}" aria-label="Editar">${icon("pencil")}</button><button type="button" class="btn danger sm ib" data-infldel="${esc(x.id)}" aria-label="Borrar">${icon("trash-2")}</button></div>`).join("")}</div>` : `<div class="empty">Todavía no hay influencers cargados.</div>`}
+    <form id="inflForm" class="inflform"><b>${e ? `Editar a ${esc(e.name)}` : "Agregar influencer"}</b>
+      <label>Nombre *<input class="base" id="inflName" maxlength="80" value="${esc(e?.name || "")}" placeholder="Nombre y apellido"></label>
+      <label>Día *<input class="base" id="inflDay" type="number" min="1" max="31" value="${e ? +e.bday.slice(3) : ""}"></label>
+      <label>Mes *<select class="base" id="inflMonth"><option value="">Elegí</option>${MONTHS_ES.map((m, i) => `<option value="${String(i + 1).padStart(2, "0")}" ${e && e.bday.slice(0, 2) === String(i + 1).padStart(2, "0") ? "selected" : ""}>${m}</option>`).join("")}</select></label>
+      <label>Marca *<select class="base" id="inflBrand">${["Superseis", "Delimarket", ...Object.keys(BRANDS).filter(b => !["Superseis", "Delimarket"].includes(b))].map(b => `<option ${(e?.brand || "Superseis") === b ? "selected" : ""}>${esc(b)}</option>`).join("")}</select></label>
+      <div class="chips"><button class="btn primary" type="submit">${icon("check")} ${e ? "Guardar cambios" : "Agregar"}</button>${e ? `<button class="btn" type="button" data-inflcancel>Cancelar</button>` : ""}</div></form></div>`;
+}
+document.addEventListener("click", e => {
+  const ed = e.target.closest("[data-infledit]"); if (ed && seesInfl()){ inflUI.edit = ed.dataset.infledit; render(); document.getElementById("inflName")?.focus(); return; }
+  if (e.target.closest("[data-inflcancel]")){ inflUI.edit = null; render(); return; }
+  const del = e.target.closest("[data-infldel]"); if (!del || !seesInfl()) return; const x = INFLUENCERS.find(y => y.id === del.dataset.infldel); if (!x) return;
+  if (!confirmTap(del, "infl:" + x.id, "¿Borrar?")) return;
+  INFLUENCERS = INFLUENCERS.filter(y => y.id !== x.id); if (inflUI.edit === x.id) inflUI.edit = null; render(); window.RMH?.flushNow?.(); toast(`Borramos a ${x.name} de los cumpleaños de influencers.`);
+});
+document.addEventListener("submit", e => {
+  if (e.target.id !== "inflForm" || !seesInfl()) return; e.preventDefault();
+  const name = $("#inflName").value.trim().replace(/\s+/g, " "), day = Math.round(+$("#inflDay").value), mm = $("#inflMonth").value, brand = $("#inflBrand").value;
+  const max = mm ? new Date(2024, +mm, 0).getDate() : 31; // 2024: bisiesto (deja el 29 de febrero)
+  if (!name || !mm || !(day >= 1 && day <= max)) return toast("Completá el nombre, el día y el mes del cumpleaños.");
+  const bday = mm + "-" + String(day).padStart(2, "0"), old = inflUI.edit && INFLUENCERS.find(x => x.id === inflUI.edit);
+  INFLUENCERS = old ? INFLUENCERS.map(x => x.id === old.id ? { ...x, name, bday, brand } : x) : [...INFLUENCERS, { id:"i" + Date.now().toString(36), name, bday, brand }];
+  inflUI.edit = null; render(); window.RMH?.flushNow?.(); toast(`${old ? "Guardado" : "Agregado"}: ${name}, Influencer de ${brand}, cumple el ${bdayLabel(bday)}.`);
+});
 function pCumples(){
   const list = PEOPLE.filter(pp => pp.active && pp.birthday);
   const missing = PEOPLE.filter(pp => pp.active && !pp.birthday);
   const next = list.map(pp => ({ pp, d:bdayIn(pp) })).sort((a,b) => a.d - b.d).slice(0,6);
-  return `<div><h1 class="pmh">${pmIco("cake")}Cumpleaños</h1><p class="sub">${monthLabel(MONTH)} · los cumpleaños que cada persona cargó en su perfil (solo día y mes).</p></div>
-  ${calGrid(c => list.filter(pp => pp.birthday === c.slice(5)).map(pp => `<div class="ev bd" title="${esc(pp.name)} · ${bdayLabel(pp.birthday)}"><span>🎂 ${esc(pp.name)}</span></div>`).join(""))}
+  return `<div><h1 class="pmh">${pmIco("cake")}Cumpleaños</h1><p class="sub">${monthLabel(MONTH)} · los cumpleaños que cada persona cargó en su perfil (solo día y mes)${seesInfl() ? " y los de los influencers de las marcas" : ""}.</p></div>
+  ${calGrid(c => list.filter(pp => pp.birthday === c.slice(5)).map(pp => `<div class="ev bd" title="${esc(pp.name)} · ${bdayLabel(pp.birthday)}"><span>🎂 ${esc(pp.name)}</span></div>`).join("") + inflOn(c).map(inflEv).join(""))}
+  ${inflPanel()}
   <div class="grid two">
     <div class="panel"><h2>Próximos cumpleaños</h2><div class="list">${next.map(({ pp, d }) => `<div class="row${d <= 3 ? " u" : ""}" style="${d <= 3 ? `--u:${d === 0 ? "#ef4444" : "#f97316"}` : ""}">${avatarHTML(pp)}<div class="grow"><div class="t">${esc(pp.name)}</div><div class="m">${esc(pp.cargo || pp.role)} · ${bdayLabel(pp.birthday)}</div></div>${d === 0 ? `<span class="urg late" style="--u:#ef4444">${CAKE_SVG}¡Hoy!</span>` : d <= 3 ? `<span class="urg" style="--u:#f97316">${CAKE_SVG}En ${d} ${d === 1 ? "día" : "días"}</span>` : d === 7 ? `<span class="urg" style="--u:#eab308">${CAKE_SVG}En una semana</span>` : `<span class="note">en ${d} días</span>`}</div>`).join("") || `<div class="empty">Nadie cargó su cumpleaños todavía.</div>`}</div></div>
     <div class="panel"><h2>En los próximos meses</h2><div class="bdmonths">${[1, 2, 3].map(k => { const mIdx = (+MONTH.slice(5) - 1 + k) % 12, mm = String(mIdx + 1).padStart(2, "0");
