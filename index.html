@@ -1445,6 +1445,23 @@ select.base.sm{padding:4px 8px;border-radius:10px;font-size:12.5px;border-color:
 .bday span{color:#cbd5e1;font-size:13.5px}
 .ev.bd{background:color-mix(in srgb,#e879f9 16%,#0f172a);border-color:rgba(232,121,249,.5)}
 .ev.bd::before{background:linear-gradient(to right,#e879f9,#22d3ee)}
+/* v209 · Publicación de un diseño aprobado: lo justo para publicar, con la ruta de la compartida destacada */
+.pfrom.pcm{display:block;padding:14px 16px}
+.pcmh{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.pcmh>svg{color:#34d399;width:22px;height:22px}.pcmh b{flex:1;min-width:180px;font-size:15px}
+.pcmg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
+.pcmg>div{background:rgba(2,6,23,.35);border:1px solid var(--line-2);border-radius:12px;padding:8px 10px;min-width:0}
+.pcmg span{display:block;font-size:11.5px;color:var(--muted)}.pcmg b{display:block;font-size:14px;overflow-wrap:anywhere}
+.pcmg .pcmd b{color:#fbbf24}
+.pcmshare{margin-top:12px;padding:12px;border-radius:14px;border:2px solid #22d3ee;background:rgba(8,145,178,.14)}
+.pcmshare .jll{display:flex;gap:6px;align-items:center;font-weight:800;color:#67e8f9;margin-bottom:8px}.pcmshare .lkurl{font-size:14px;font-weight:700;color:#fff}
+@media (max-width:700px){.pcmg{grid-template-columns:1fr 1fr}}
+/* v209 · Recordatorios fijos del calendario de CM */
+.ev.rem{border-style:dotted;background:rgba(251,191,36,.08);--s:#fbbf24;--c:#fbbf24}.ev.rem span{color:#fde68a}
+.plcal .pev.rem{background:rgba(251,191,36,.12);border:1px dotted rgba(251,191,36,.6)}.plcal .pev.rem i{background:#fbbf24}.plcal .pev.rem span{color:#fde68a}
+.rempanel{margin-top:16px}.remic{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:rgba(251,191,36,.18);font-size:16px;flex:none}
+.remform{display:grid;grid-template-columns:1fr 2fr;gap:10px;align-items:end;margin-top:14px;padding-top:14px;border-top:1px solid var(--line-2)}
+.remform>b,.remform>.chips{grid-column:1/-1}.remform label{display:grid;gap:4px;font-size:12.5px;color:var(--muted)}
+@media (max-width:700px){.remform{grid-template-columns:1fr}}
 /* Cumpleaños de influencers (Admin total y CM) */
 .ev.infl{cursor:pointer}.ev.infl .inflb{padding-top:0;font-size:10px;font-weight:700;color:#f0abfc}
 .plcal .pev.infl{background:color-mix(in srgb,#e879f9 14%,transparent);border:1px solid rgba(232,121,249,.45);cursor:pointer}
@@ -2848,6 +2865,7 @@ button,.btn,.chip,.nav a,.tabbar a,.tabbar button{-webkit-user-select:none;user-
 .evk{font-weight:800;color:#fff}
 .plcal .pev{font-size:12px}
 .plcal .pev em{grid-column:2;font-style:normal;font-size:10px;color:var(--c)}
+.plcal .pev .pwho{grid-column:2;display:flex;gap:3px;align-items:center;font-size:10px;font-weight:600;color:#cbd5e1;overflow-wrap:anywhere}.plcal .pev .pwho svg{width:10px;height:10px;flex:none} /* quién la hace (v209) */
 .plcal .pev:hover{background:rgba(148,163,184,.08)}
 .plcal .pev[role=button]{cursor:pointer}
 .plcal .pev span svg{width:11px;height:11px;vertical-align:-1px;color:var(--muted)}
@@ -3073,15 +3091,18 @@ const jobDone = j => j.area === "CM" ? "trabajo" : j.area === "Contenidos" ? "co
 // Quiénes pueden figurar como “aprobó”: Admin total y Admin (ej.: Alyssa, Patricia, Emanuel). Queda registrado en el pedido.
 const approverNames = () => PEOPLE.filter(pp => pp.active && ["Admin total","Admin"].includes(pp.role)).map(pp => pp.name);
 // Dónde se publica lo aprobado (formato de la publicación del CM); se propone según el tipo de pieza.
-const PUB_FMTS = [["Post","Post (feed)"],["Carrusel","Carrusel"],["Reel","Reel"],["Historia","Historia"],["Canal","Canal de WhatsApp"]];
-const pubFmtOf = j => /histori/i.test(j.piece) ? "Historia" : /carrusel/i.test(j.piece) ? "Carrusel" : /reel|video|animaci/i.test(j.piece) ? "Reel" : /whatsapp/i.test(j.piece) ? "Canal" : "Post";
+// “Post + Historia” (v209): al aprobar, se cargan las dos para el CM (un post en el feed y una historia), por cada marca.
+const POST_HIST = "Post + Historia";
+const PUB_FMTS = [["Post","Post (feed)"],["Carrusel","Carrusel"],["Reel","Reel"],["Historia","Historia"],[POST_HIST,"Post + Historia"],["Canal","Canal de WhatsApp"]];
+const pubFmtOf = j => /post \+ historia/i.test(j.piece) ? POST_HIST : /histori/i.test(j.piece) ? "Historia" : /carrusel/i.test(j.piece) ? "Carrusel" : /reel|video|animaci/i.test(j.piece) ? "Reel" : /whatsapp/i.test(j.piece) ? "Canal" : "Post";
 // Aprobar (Diseño gráfico y Gestión de Contenidos): quién aprobó (obligatorio) y la publicación para el CM: qué CM la sube
 // (en Contenidos, el mismo CM que la armó), qué día, en qué formato y red. Se carga sola en su calendario y le llega el aviso.
 function openApproveModal(j){
   if (j.area === "CM") return approveJob(j);
   document.getElementById("fixpop")?.remove();
   const cont = j.area === "Contenidos", p = j.post && postById(j.post), x = pubOf(j) || p, cms = CM_NAMES();
-  const preCm = cont ? j.owner : x?.cm || "", preDate = x?.date || (j.due >= TODAY ? j.due : TODAY), preFmt = x ? (x.channel ? "Canal" : x.format) : pubFmtOf(j);
+  const fms = (j.pubs || []).map(r => r.canal ? "Canal" : postById(r.id)?.format).filter(Boolean), both = fms.includes("Historia") && fms.some(f => f !== "Historia" && f !== "Canal");
+  const preCm = cont ? j.owner : x?.cm || "", preDate = x?.date || (j.due >= TODAY ? j.due : TODAY), preFmt = both ? POST_HIST : x ? (x.channel ? "Canal" : x.format) : pubFmtOf(j);
   const w = document.createElement("div"); w.id = "fixpop"; w.className = "fixpop";
   w.innerHTML = `<div class="fixbox okbox" role="dialog" aria-modal="true" aria-labelledby="okh"><h2 id="okh">${cont ? "Aprobar contenido" : "Aprobar diseño"}</h2><p class="note">${esc(j.title)} · ${esc(j.owner)}</p>
     <label>¿Quién aprobó? *<select class="base" id="okBy"><option value="">Elegí quién lo aprobó</option>${approverNames().map(n => `<option>${esc(n)}</option>`).join("")}</select></label>
@@ -3091,7 +3112,7 @@ function openApproveModal(j){
       <div class="okgrid"><label>Fecha de publicación *<input class="base" type="date" id="okDate" value="${esc(preDate)}"></label>
       <label>¿Dónde se publica? *<select class="base" id="okFmt">${PUB_FMTS.map(([v, l]) => `<option value="${v}" ${v === preFmt ? "selected" : ""}>${l}</option>`).join("")}</select></label>
       <label class="oknet"${preFmt === "Canal" ? " hidden" : ""}>Red *<select class="base" id="okNet">${POST_NETS.map(n => `<option ${n === (x?.net || "IG") ? "selected" : ""}>${n}</option>`).join("")}</select></label></div>
-      <p class="note" style="margin:0">${icon("calendar-days")} Se carga sola en el calendario del CM con el nombre, el texto y la ruta de la compartida del pedido, y le llega el aviso (+1).</p></div>
+      <p class="note" style="margin:0">${icon("calendar-days")} Se carga sola en el calendario del CM con lo justo para publicar (título, tipo de gráfica, dónde se publica, fecha y la ruta de la compartida), y le llega el aviso (+1). Con “Post + Historia” se cargan las dos.</p></div>
     <p class="perr" id="okErr" hidden></p>
     <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-oksend="${j.id}">✓ Aprobar</button></div></div>`;
   document.body.appendChild(w);
@@ -3127,27 +3148,32 @@ function pubAlert(n){
   const x = n.canal ? canalById(n.post) : postById(n.post), j = jobById(n.job); if (!x) return null;
   const own = j && j.owner === x.cm;
   return { go:"pub:" + (n.canal ? "canal:" : "post:") + x.id, key:"n:" + n.id, sev:"#10b981", rank:-6, ic:"calendar-days", t:`Nueva publicación para vos: ${x.title}`,
-    m:`${x.brand} · ${x.channel ? "Canal de WhatsApp" : `${x.net} ${x.format}`} · publicar el ${dm(x.date)}${j ? ` · ${own ? "tu contenido" : `diseño de ${firstName(j.owner)}`} aprobado${j.approvedBy ? ` por ${firstName(j.approvedBy)}` : ""}` : ""}${shareList(x).some(s => s.p) ? " · con la ruta de la compartida" : ""} · tocá para verla`,
+    m:`${x.brand} · ${x.channel ? "Canal de WhatsApp" : `${x.net} ${x.format}`} · publicar el ${dm(x.date)}${x.dgPiece || j ? ` · ${x.dgPiece || cmPiece(j)}` : ""}${shareList(x).some(s => s.p) ? " · con la ruta de la compartida" : ""} · tocá para verla`,
     acts:`<button class="btn primary" data-pubopen="${n.canal ? "canal" : "post"}:${esc(x.id)}">${icon("arrow-up-right")} Ver publicación</button>` };
 }
 // La publicación que salió de un pedido aprobado (en el calendario del CM).
 const pubOf = j => !j?.pub ? null : j.pub.canal ? canalById(j.pub.id) : postById(j.pub.id);
 // Crea (o actualiza) la publicación del CM con lo del pedido: nombre, texto, ruta de la compartida y archivos.
 // Un pedido con varias marcas deja una publicación por marca (cada una en la cuenta de su marca).
+// Con “Post + Historia”, por cada marca se cargan las dos (un post y una historia). Al volver a aprobar se actualizan las mismas.
 function makePub(j, o){
   const prev = (j.pubs || (j.pub ? [j.pub] : [])).map(r => r.canal ? canalById(r.id) : postById(r.id)).filter(Boolean);
-  const out = jobBrands(j).map((b, i) => makePubOne(j, o, b, prev.find(x => x.brand === b) || (i === 0 ? prev[0] || (j.post && postById(j.post)) : null)));
+  const fmts = o.fmt === POST_HIST ? ["Post", "Historia"] : [o.fmt], used = new Set(), out = [];
+  const pick = (b, f) => { const c = prev.filter(x => !used.has(x) && x.brand === b), y = c.find(x => (x.channel ? "Canal" : x.format) === f) || (fmts.length === 1 ? c[0] : c.find(x => f === "Historia" ? x.format === "Historia" : !x.channel && x.format !== "Historia")); if (y) used.add(y); return y; };
+  jobBrands(j).forEach((b, i) => fmts.forEach((f, k) => { let old = pick(b, f);
+    if (!old && i === 0 && k === 0){ const y = prev.find(x => !used.has(x)) || (j.post && postById(j.post)); if (y && !used.has(y)){ old = y; used.add(y); } }
+    out.push(makePubOne(j, { ...o, fmt:f }, b, old)); }));
   j.pubs = out.map(x => ({ id:x.id, canal:!!x.channel })); j.pub = j.pubs[0]; return out;
 }
 function makePubOne(j, o, brand, old){
   const canal = o.fmt === "Canal", same = old && !!old.channel === canal;
-  const base = { date:o.date, brand, title:j.title, cm:o.cm, requester:j.requester || "Marketing", fromJob:j.id, approvedBy:o.by,
+  const base = { date:o.date, brand, title:j.title, cm:o.cm, requester:j.requester || "Marketing", fromJob:j.id, approvedBy:o.by, dgPiece:cmPiece(j),
     shares:shareList(j).map(s => ({ ...s })), share:j.share || shareList(j).find(s => s.p)?.p || "" };
   if (same){ Object.assign(old, { date:o.date, cm:o.cm, fromJob:j.id, approvedBy:o.by }, canal ? {} : { format:o.fmt, net:o.net || old.net });
     if (!shareList(old).some(s => s.p)) Object.assign(old, { shares:base.shares, share:base.share });
-    if (!old.brief && j.brief) old.brief = j.brief; if (old.seenBy) delete old.seenBy[PEOPLE.find(pp => pp.name === o.cm)?.id];
+    if (!old.dgPiece) old.dgPiece = base.dgPiece; if (old.seenBy) delete old.seenBy[PEOPLE.find(pp => pp.name === o.cm)?.id];
     return old; }
-  const extra = { status:"Pendiente", notes:j.notes || "", brief:j.brief || "", canva:"", drive:"", xlinks:[], links:[], byId:viewer.id };
+  const extra = { status:"Pendiente", notes:"", brief:"", canva:"", drive:"", xlinks:[], links:[], byId:viewer.id }; // v209: al CM, sin el brief ni las notas de Diseño (solo lo de publicar)
   const x = canal ? { id:"K" + (Math.max(0, ...CHANNEL_POSTS.map(k => +(String(k.id).match(/^K?(\d+)$/) || [])[1] || 0)) + 1), channel:CANALES[0], ...base, ...extra }
     : { id:nextPostId(), net:o.net || "IG", format:o.fmt || "Post", carried:null, ...base, ...extra };
   (canal ? CHANNEL_POSTS : posts).push(x); return x;
@@ -3165,7 +3191,7 @@ function approveJob(j, opts = {}){
   if (cm && j.area !== "CM" && opts.date){ xs = makePub(j, { ...opts, cm }); x = xs[0]; j.cmNotified = cm; xs.forEach(p => notify({ to:cm, type:"pub", job:j.id, post:p.id, canal:!!p.channel })); }
   else if (cm){ notify({ to:cm, type:"listo", job:j.id }); j.cmNotified = cm; }
   render(); window.RMH?.flushNow?.();
-  toast(`Aprobado${j.area === "CM" ? ": pasó a Programado" : ""}${by ? ` por ${firstName(by)}` : ""}. Le avisamos a ${firstName(j.owner)}${x ? `${cm === j.owner ? "" : ` y a ${firstName(cm)} (CM)`}: “${x.title}” quedó en su calendario el ${dm(x.date)}${xs.length > 1 ? ` (${xs.length} publicaciones: ${xs.map(p => p.brand).join(", ")})` : ""}` : cm ? ` y a ${firstName(cm)} (CM)` : ""}.`);
+  toast(`Aprobado${j.area === "CM" ? ": pasó a Programado" : ""}${by ? ` por ${firstName(by)}` : ""}. Le avisamos a ${firstName(j.owner)}${x ? `${cm === j.owner ? "" : ` y a ${firstName(cm)} (CM)`}: “${x.title}” quedó en su calendario el ${dm(x.date)}${xs.length > 1 ? ` (${xs.length} publicaciones: ${xs.map(p => `${p.brand} ${p.channel ? "Canal" : p.format}`).join(", ")})` : ""}` : cm ? ` y a ${firstName(cm)} (CM)` : ""}.`);
 }
 const jobRounds = j => (j.changes || []).filter(c => !c.ok && !c.kind).length; // cuántas veces se pidieron cambios
 function sendJobChanges(j, text, req = ""){
@@ -3359,6 +3385,46 @@ const inflEv = x => `<div class="ev bd infl" data-page="cumples" role="button" t
 const inflPev = x => `<div class="pev infl" data-page="cumples" role="button" tabindex="0" title="Cumpleaños de ${esc(x.name)} · ${esc(inflTag(x))}"><i style="background:${BRANDS[x.brand] || "#e879f9"}"></i><span>🎂 Cumple de ${esc(x.name)} · ${esc(inflTag(x))}</span></div>`;
 const inflAlerts = () => inflList().map(x => ({ x, d:inflIn(x) })).filter(o => o.d !== null && o.d <= 3).sort((a, b) => a.d - b.d);
 let inflUI = { edit:null };
+// ---------- Recordatorios fijos del calendario de CM (v209) ----------
+// Se ven cada semana, en los días elegidos, en Planificación y en Gestión Redes/Historia. El primero: los viernes, a la
+// tarde se suben las Ofertas de fin de semana. Admin total y CM los agregan, cambian o borran (abajo de Planificación).
+const CM_REM_DEF = [{ id:"rem-ofertas-finde", when:"A la tarde", text:"Se suben las Ofertas de fin de semana", days:[4] }];
+let CM_REMINDERS = CM_REM_DEF.map(r => ({ ...r, days:[...r.days] }));
+const remList = () => (Array.isArray(CM_REMINDERS) ? CM_REMINDERS : []).filter(r => r && r.text && Array.isArray(r.days));
+const remOn = c => remList().filter(r => r.days.includes(wdOf(c)));
+const remTxt = r => `${r.when ? r.when + ": " : ""}${r.text}`;
+const REM_PL = ["lunes","martes","miércoles","jueves","viernes","sábados","domingos"];
+const remDays = r => r.days.length === 7 ? "todos los días" : "los " + r.days.slice().sort().map(d => REM_PL[d]).join(", ").replace(/, ([^,]*)$/, " y $1");
+const remEv = r => `<div class="ev rem" title="Recordatorio: ${esc(remTxt(r))} (${remDays(r)})"><span>${icon("alarm-clock")} ${esc(remTxt(r))}</span></div>`;
+const remPev = r => `<div class="pev rem" title="Recordatorio: ${esc(remTxt(r))} (${remDays(r)})"><i></i><span>⏰ ${esc(remTxt(r))}</span></div>`;
+const canRem = () => ["Admin total", "CM"].includes(viewer?.role) && !isClosed();
+let remUI = { edit:null, days:null };
+function remPanel(){
+  const L = remList(), e = remUI.edit ? L.find(r => r.id === remUI.edit) : null, days = remUI.days || e?.days || [4];
+  return `<div class="panel rempanel"><h2 class="pmh" style="margin:0 0 6px">${pmIco("alarm-clock")}Recordatorios del calendario</h2><p class="note" style="margin:0 0 10px">Se ven todas las semanas, en esos días, en el calendario de CM.</p>
+    ${L.length ? `<div class="list">${L.map(r => `<div class="row"><span class="remic">⏰</span><div class="grow"><div class="t">${esc(remTxt(r))}</div><div class="m">${remDays(r)}</div></div>${canRem() ? `<button type="button" class="btn sm ib" data-remedit="${esc(r.id)}" aria-label="Editar">${icon("pencil")}</button><button type="button" class="btn danger sm ib" data-remdel="${esc(r.id)}" aria-label="Borrar">${icon("trash-2")}</button>` : ""}</div>`).join("")}</div>` : `<div class="empty">No hay recordatorios.</div>`}
+    ${canRem() ? `<form id="remForm" class="remform"><b>${e ? "Editar recordatorio" : "Agregar recordatorio"}</b>
+      <label>Cuándo <span class="note">(opcional)</span><input class="base" id="remWhen" maxlength="40" value="${esc(e ? e.when || "" : "A la tarde")}" placeholder="Ej.: A la tarde"></label>
+      <label>Qué *<input class="base" id="remText" maxlength="120" value="${esc(e?.text || "")}" placeholder="Ej.: Se suben las Ofertas de fin de semana"></label>
+      <div class="chips" role="group" aria-label="Días">${WEEKDAYS.map((w, i) => `<button type="button" class="chip ${days.includes(i) ? "on" : ""}" data-remday="${i}" aria-pressed="${days.includes(i)}">${w}</button>`).join("")}</div>
+      <div class="chips"><button class="btn primary" type="submit">${icon("check")} ${e ? "Guardar cambios" : "Agregar"}</button>${e ? `<button class="btn" type="button" data-remcancel>Cancelar</button>` : ""}</div></form>` : ""}</div>`;
+}
+document.addEventListener("click", e => {
+  const d = e.target.closest("[data-remday]"); if (d && document.getElementById("remForm")){ const i = +d.dataset.remday, cur = remUI.days || (remUI.edit && remList().find(r => r.id === remUI.edit)?.days) || [4];
+    remUI.days = cur.includes(i) ? cur.filter(x => x !== i) : [...cur, i].sort(); d.classList.toggle("on"); d.setAttribute("aria-pressed", d.classList.contains("on")); return; }
+  const ed = e.target.closest("[data-remedit]"); if (ed && canRem()){ remUI = { edit:ed.dataset.remedit, days:null }; render(); document.getElementById("remText")?.focus(); return; }
+  if (e.target.closest("[data-remcancel]")){ remUI = { edit:null, days:null }; render(); return; }
+  const del = e.target.closest("[data-remdel]"); if (!del || !canRem()) return; const r = remList().find(x => x.id === del.dataset.remdel); if (!r) return;
+  if (!confirmTap(del, "rem:" + r.id, "¿Borrar?")) return;
+  CM_REMINDERS = remList().filter(x => x.id !== r.id); remUI = { edit:null, days:null }; render(); window.RMH?.flushNow?.(); toast("Recordatorio borrado.");
+});
+document.addEventListener("submit", e => {
+  if (e.target.id !== "remForm" || !canRem()) return; e.preventDefault();
+  const text = $("#remText").value.trim(), when = $("#remWhen").value.trim(), old = remUI.edit && remList().find(r => r.id === remUI.edit), days = remUI.days || old?.days || [4];
+  if (!text || !days.length) return toast("Escribí el recordatorio y elegí al menos un día.");
+  CM_REMINDERS = old ? remList().map(r => r.id === old.id ? { ...r, text, when, days:[...days] } : r) : [...remList(), { id:"rem" + Date.now().toString(36), text, when, days:[...days] }];
+  remUI = { edit:null, days:null }; render(); window.RMH?.flushNow?.(); toast(old ? "Recordatorio guardado." : "Recordatorio agregado al calendario de CM.");
+});
 
 // Publicaciones de CM (feed, historias y Canal de WhatsApp): Pendiente → En proceso → Programado → Publicado → Pautado.
 const POST_STAGES = ["Pendiente","En proceso","Programado","Publicado","Pautado"];
@@ -3401,7 +3467,7 @@ const AREAS = { "Diseño":{ icon:"🎨", prefix:"DI" }, "CM":{ icon:"🎬", pref
 // Gestión de Contenidos (CM): piezas simples para redes que arma el mismo CM. Sigue el proceso de Diseño gráfico
 // (Pendiente → En proceso → Boceto finalizado → En revisión → En corrección → Aprobado); al aprobarla, la publicación
 // queda sola en el calendario de ese mismo CM (no se elige otro CM).
-const CONT_TYPES = ["Post RRSS","Historia","Carrusel","Flyer digital","Pieza para WhatsApp","Portada o banner de redes","Plantilla editable"];
+const CONT_TYPES = ["Post RRSS","Historia","Post + Historia","Carrusel","Flyer digital","Pieza para WhatsApp","Portada o banner de redes","Plantilla editable"];
 // “Otro”: un trabajo que no está en la lista; Admin total lo explica en “Actividades” (j.otro).
 const OTRO = "Otro";
 const jobGroup = j => ((j && j.area) || j) === "Diseño" ? "Diseño" : "CM"; // Contenidos y Videos son del equipo de CM
@@ -3424,7 +3490,7 @@ function vidDefaults(j){ if (j.area !== "CM" || !VID_TOPICS[j.piece]) return j;
 // Categorías y tipos de trabajo de Diseño gráfico para los pedidos nuevos (v196, pedido de Admin total). Los pedidos
 // cargados antes conservan su tipo (DESIGN_TYPES) y se siguen trabajando igual.
 const DG_CATS = {
-  "Diseño digital":["Post RRSS","Historia","Carrusel","Banner web/app","Pieza para WhatsApp/Mailing","KV de campaña","Plantilla editable","Folleto de ofertas digital","Catálogo/revista digital"],
+  "Diseño digital":["Post RRSS","Historia","Post + Historia","Carrusel","Banner web/app","Pieza para WhatsApp/Mailing","KV de campaña","Plantilla editable","Folleto de ofertas digital","Catálogo/revista digital"],
   "Folletos y catálogos":["Folleto de ofertas digital","Catálogo/revista digital","Portada","Página interior"],
   "Campañas e identidad":["KV de campaña","Logo","Identidad visual"],
   "Impresos y punto de venta":["Afiche/cartel","Aviso para Periódico","Material POP","Señalética","Tarjeta/etiqueta","Gigantografía/banner","Packaging/merchandising","Catálogo/revista","Folleto de ofertas"],
@@ -3659,7 +3725,7 @@ const jobSection = j => j.area === "CM" ? "gestioncm" : j.area === "Contenidos" 
 const secPieces = sec => SEC_PIECES[sec] || SOCIAL_TYPES;
 const inMatPage = j => matSecOf(j) === (SEC_PIECES[page] ? page : "cartel");
 const SOCIAL_TYPES = DESIGN_TYPES.filter(t => !MATERIAL_PIECES.includes(t));
-const PIECE_ICO = { "Post RRSS":"image", "Carrusel":"gallery-horizontal", "Historia":"smartphone", "Reel":"clapperboard", "Banner web":"monitor", "PDF de ofertas de la semana":"file-down", "Flyer impreso":"file-text", "Cartelería":"signpost", "Vía pública":"map", "Catálogo digital":"book-open", "Empaque o etiqueta":"package", "Pantalla":"tv", "Video para pantallas":"monitor-play", "Pantalla LED":"tv", "Menú digital":"list", "Email marketing":"mail", "Otro":"shapes",
+const PIECE_ICO = { "Post RRSS":"image", "Carrusel":"gallery-horizontal", "Historia":"smartphone", "Post + Historia":"images", "Reel":"clapperboard", "Banner web":"monitor", "PDF de ofertas de la semana":"file-down", "Flyer impreso":"file-text", "Cartelería":"signpost", "Vía pública":"map", "Catálogo digital":"book-open", "Empaque o etiqueta":"package", "Pantalla":"tv", "Video para pantallas":"monitor-play", "Pantalla LED":"tv", "Menú digital":"list", "Email marketing":"mail", "Otro":"shapes",
   "Banner web/app":"monitor", "Pieza para WhatsApp/Mailing":"mail", "KV de campaña":"sparkles", "Plantilla editable":"layout-grid", "Folleto de ofertas digital":"file-down", "Catálogo/revista digital":"book-open",
   "Portada":"book-open", "Página interior":"file-text", "Logo":"gem", "Identidad visual":"palette", "Afiche/cartel":"presentation", "Aviso para Periódico":"newspaper", "Material POP":"store", "Señalética":"signpost",
   "Tarjeta/etiqueta":"tag", "Gigantografía/banner":"flag", "Packaging/merchandising":"package", "Catálogo/revista":"book-open", "Folleto de ofertas":"file-text", "Reel/video":"clapperboard", "Animación":"wand-sparkles", "Edición/retoque":"crop" };
@@ -5200,7 +5266,7 @@ function pCalCM(kind){
   if (view !== "calendario") return `${head}${adds}${gFilters(view === "tablero" ? "Tocá una tarjeta para cambiar su etapa · el lápiz para editar" : "Tocá el tema para editarlo")}${view === "tablero" ? postBoard(vp, kind) : postTable(vp, kind)}${postForm()}${jobForm()}${recDrawer()}`;
   return `${head}${adds}${gFilters("")}
   <div class="legend">${POST_STAGES.map(st => `<span><span class="sw" style="background:${SEM[semLvl(st)]}"></span>${st}</span>`).join("")}<span><span class="sw" style="background:${REC_KINDS[kind].c}"></span>${icon("repeat")} ${kind} repetitiva</span>${hist ? "" : `<span><span class="sw" style="background:${REC_KINDS["Grabación"].c}"></span>${icon("repeat")} Grabación repetitiva</span>`}</div>${calHint()}
-  ${calGrid(c => inflOn(c).map(inflEv).join("") + rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("")
+  ${calGrid(c => remOn(c).map(remEv).join("") + inflOn(c).map(inflEv).join("") + rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("")
     + vp.filter(p => p.date === c).map(p => `<div class="ev${sepCls(p.brand)}"${calDrag("post", p.id)}${canEditPost() ? ` data-open="post:${p.id}"` : ""} style="--c:${BRANDS[p.brand]};--s:${SEM[semLvl(p.status)]}" data-sem="${semLvl(p.status)}" title="${esc(p.title)} · ${p.net} ${p.format} · ${p.status} · ${esc(p.cm || "")}"><span>${postUrgency(p)?.late ? icon("alarm-clock") + " " : ""}${p.brand} · ${esc(p.title)}</span>${evStage("post", p, `${p.status} · ${p.net}${hist ? "" : " " + p.format} · ${esc(firstName(p.cm || ""))}`, SEM[semLvl(p.status)])}</div>`).join(""), false)}
   <p class="note">${icon("repeat")} = repetitivo: se carga una sola vez y aparece solo en cada fecha. Tocá su etapa para cambiarla: sigue el mismo proceso (${hist ? "historias" : "feed"}: Pendiente → En proceso → Programado → Publicado → Pautado${hist ? "" : "; grabaciones: Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado"}).</p>
   ${postForm()}${jobForm()}${recDrawer()}`;
@@ -5269,6 +5335,7 @@ function pPlan(){
   <div class="tw"><table><thead><tr><th>Fecha</th><th>Marca</th><th>CM</th><th>Qué es</th><th>Tema</th><th>Diseño gráfico</th><th>Estado</th><th>Siguiente paso</th></tr></thead><tbody>
     ${items.map(row).join("") || `<tr><td colspan="8" class="empty">No hay contenidos con estos filtros.</td></tr>`}
   </tbody></table></div>`}
+  ${view === "calendario" ? remPanel() : ""}
   ${postForm()}${jobForm()}${recDrawer()}`;
 }
 // Plan de posteo en calendario: una vista general del mes, con todas las marcas juntas.
@@ -5331,11 +5398,11 @@ function planBoard(items){
         <div class="dact"><span class="spl" style="color:${st === "Pendiente" ? "#94a3b8" : SEM[semLvl(st)]}">● ${st}${tap ? " ▾" : ""}</span></div></div></div>`; }).join("") || `<div class="empty" style="padding:6px">Vacío</div>`}</div>`; }).join("")}</div>`;
 }
 function planCal(items){
-  return `<div class="plcal">${calGrid(c => inflOn(c).map(inflPev).join("") + items.filter(x => x.date === c).map(x => { const st = x.status, lv = semLvl(st), col = SEM[lv];
+  return `<div class="plcal">${calGrid(c => remOn(c).map(remPev).join("") + inflOn(c).map(inflPev).join("") + items.filter(x => x.date === c).map(x => { const st = x.status, lv = semLvl(st), col = SEM[lv];
     const act = x.rec ? (canCreateJobs() ? ` data-recedit="${x.r.id}" data-recat="${x.date}" role="button" tabindex="0"${recDrag(x.r, x.date)}` : "") : x.vid ? ` data-jficha="${x.id}" role="button" tabindex="0"` : canEditPost() ? ` data-pedit="${x.canal ? "canal" : "post"}:${x.id}" role="button" tabindex="0"` : "";
     const sk = x.rec ? "rec" : x.vid ? "job" : x.canal ? "canal" : "post", sid = x.rec ? x.sid : x.id, it = x.rec ? recItem(x.sid) : x.vid ? x.job : x.canal ? canalById(x.id) : postById(x.id), can2 = stageOptions(sk, it).length;
-    return `<div class="pev" data-sem="${lv}" style="--sem:${col}"${x.rec ? "" : calDrag(sk, x.id)}${act} title="${PLAN_SEC(x)}: ${esc(x.title)} · ${x.brand} · ${x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${st} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} <b class="evk">${PLAN_SEC(x)}:</b> ${esc(x.title)}</span>${can2 ? `<button type="button" class="pst" data-stagemenu="${sk}:${sid}" style="--c:${col}" title="Cambiar la etapa">${st} ▾</button>` : `<em style="--c:${col}">${st}</em>`}</div>`; }).join(""), canEditPost())}</div>
-  <p class="note">Todo lo de CM junto, cada uno con el punto de color de su marca, su ícono (${icon("image")} feed, ${icon("smartphone")} historia, ${icon("message-circle")} Canal de WhatsApp, ${icon("clapperboard")} video, ${icon("repeat")} repetitivo) y la etapa de su proceso (el color va de rojo, pendiente, a verde, publicado). Los repetitivos siguen el proceso de su tipo. Tocá uno para editarlo, su etapa para cambiarla (${icon("chevron-down")}), o un día vacío para cargar algo en esa fecha.</p>`;
+    return `<div class="pev" data-sem="${lv}" style="--sem:${col}"${x.rec ? "" : calDrag(sk, x.id)}${act} title="${PLAN_SEC(x)}: ${esc(x.title)} · ${x.brand} · ${x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${st} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} <b class="evk">${PLAN_SEC(x)}:</b> ${esc(x.title)}</span>${can2 ? `<button type="button" class="pst" data-stagemenu="${sk}:${sid}" style="--c:${col}" title="Cambiar la etapa">${st} ▾</button>` : `<em style="--c:${col}">${st}</em>`}${x.cm ? `<small class="pwho">${icon("user-round")} ${esc(firstName(x.cm))}</small>` : ""}</div>`; }).join(""), canEditPost())}</div>
+  <p class="note">Todo lo de CM junto, cada uno con el punto de color de su marca, quién lo hace (abajo), su ícono (${icon("image")} feed, ${icon("smartphone")} historia, ${icon("message-circle")} Canal de WhatsApp, ${icon("clapperboard")} video, ${icon("repeat")} repetitivo) y la etapa de su proceso (el color va de rojo, pendiente, a verde, publicado). Los repetitivos siguen el proceso de su tipo. Tocá uno para editarlo, su etapa para cambiarla (${icon("chevron-down")}), o un día vacío para cargar algo en esa fecha.</p>`;
 }
 let jobUI = { area:"Todos", view:"calendario", status:"Activos", owner:"Todos", prio:"Todas", q:"", form:null };
 const canCreateJobs = () => viewer.role === "Admin total" && !isClosed(); // cargar, editar y borrar pedidos: solo Admin total
@@ -6509,6 +6576,15 @@ function postReadOnly(){ const f = document.getElementById("postForm"); if (!f) 
   f.querySelectorAll("[contenteditable]").forEach(x => x.setAttribute("contenteditable", "false"));
   f.querySelectorAll("button[type=submit]").forEach(x => x.hidden = true);
   if (!f.querySelector(".ronote")) f.insertAdjacentHTML("afterbegin", `<p class="note ronote">${icon("eye")} Solo para ver: la publicación la cambian el CM y Admin total.</p>`); if (window.lucide) lucide.createIcons(); }
+// Publicación que sale de un diseño aprobado: arriba, solo lo que necesita el CM para publicar — título, tipo de gráfica,
+// dónde se publica, fecha y la ruta de la compartida bien destacada (con Copiar y Abrir). El resto de Diseño no se muestra.
+function pubForCm(p, dj, canal){
+  const shares = shareList(p).filter(s => s.p), where = canal || p.channel ? "Canal de WhatsApp" : `${p.net || "IG"} · ${p.format || "Post"}`;
+  const cell = (k, v, cls = "") => `<div class="${cls}"><span>${k}</span><b>${v}</b></div>`;
+  return `<div class="pfrom pcm"><div class="pcmh">${icon("badge-check")}<b>${dj.area === "Contenidos" ? "Contenido aprobado" : "Diseño aprobado"} · listo para publicar</b>${canCreateJobs() ? `<button type="button" class="btn sm" data-jficha="${esc(dj.id)}">${icon("eye")} Ver pedido</button>` : ""}</div>
+    <div class="pcmg">${cell("Título", esc(p.title || dj.title))}${cell("Tipo de gráfica", esc(p.dgPiece || cmPiece(dj)))}${cell("Dónde se publica", esc(where))}${cell("Fecha de publicación", `${WEEKDAYS[wdOf(p.date)]} ${dm(p.date)}`, "pcmd")}</div>
+    <div class="pcmshare"><span class="jll">${icon("folder-symlink")} Ruta de la compartida</span>${shares.length ? linkEditor({ id:p.id, shares, share:shares[0].p }, "", true) : `<p class="note" style="margin:0">Todavía no tiene la ruta de la compartida: pedísela a ${esc(firstName(dj.owner))}.</p>`}</div></div>`;
+}
 function postForm(){
   const f = postUI.form; if (!f) return "";
   if (!f.repDays) f.repDays = [...(f.post.rep?.days || [])];
@@ -6524,7 +6600,7 @@ function postForm(){
   const dj = p.fromJob && jobById(p.fromJob);
   if (real && real.fromJob && real.cm === viewer.name && !real.seenBy?.[viewer.id] && !window.RMH?.previewing){ real.seenBy = { ...(real.seenBy || {}), [viewer.id]:1 };
     NOTIFS.forEach(n => { if (n.type === "pub" && n.post === real.id && n.to === viewer.name) n.read = true; }); setTimeout(renderNav, 0); }
-  const fromDesign = dj ? `<div class="pfrom">${icon("badge-check")}<div class="grow"><b>${dj.area === "Contenidos" ? "Tu contenido aprobado" : `Diseño aprobado de ${esc(dj.owner)}`}${dj.approvedBy ? ` · aprobó ${esc(dj.approvedBy)}` : ""}</b><small>${esc(cmPiece(dj))} · aprobado el ${dm(dj.approved || TODAY)}. Abajo están el texto y la ruta de la compartida para subirlo.</small></div><button type="button" class="btn sm" data-jficha="${esc(dj.id)}">${icon("eye")} Ver pedido</button></div>` : "";
+  const fromDesign = dj ? pubForCm(p, dj, canal) : ""; // v209: lo justo para publicar (el resto de Diseño no hace falta)
   return `<div class="jpage jformpage" aria-label="Ficha del posteo">
     <div class="jp-top"><button class="btn" type="button" data-pclose>${icon("arrow-left")} Volver</button>${chat ? `<div class="jp-chat">${chat}</div>` : ""}</div>
     <div class="jp-h"><span class="note">${canal ? "Canal de WhatsApp · Community Manager" : f.kind === "Historia" ? "Historia · Community Manager" : "Publicación · Community Manager"}</span><h1 style="margin:4px 0 0">${f.mode === "edit" ? "Editar " + what : (canal ? "Nuevo " : "Nueva ") + what}</h1>${j && !dj ? `<div class="note" style="margin-top:4px">${icon("palette")} Pedido de diseño: ${esc(j.status)}</div>` : ""}</div>${fromDesign}
