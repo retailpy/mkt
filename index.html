@@ -4663,6 +4663,7 @@ function alerts(){
   if (viewer.role === "Admin total") resetRequests.forEach(id => { const pp = PEOPLE.find(x => x.id === id); if (pp) out.push({ go:"usuarios", sev:"#22d3ee", rank:-1, ic:"key-round", t:`${pp.name} pidió restablecer su contraseña`, m:"Andá a Usuarios y permisos → Restablecer contraseña" }); });
   if (satPeople().includes(viewer) && !isViewOnly()){ const n = satList(SAT_TURN[CURRENT_MONTH] || {}, viewer.id).length;
     if (n < SATS_PER) out.push({ go:"sabados", key:`sat:${CURRENT_MONTH}:${n}`, sev:"#f97316", rank:-2, ic:"calendar-clock", t:n ? "Te falta elegir 1 sábado de turno" : "Elegí tus sábados de turno", m:`${monthLabel(CURRENT_MONTH)} · tenés que elegir ${SATS_PER} sábados para venir a la oficina` }); }
+  const na = notifAskAlert(); if (na) out.push(na);
   const gone = alertsGone();
   return out.map(a => ({ ...a, key:a.key || "t:" + a.t })).filter(a => !gone.has(a.key)).sort((a,b) => (a.rank ?? 0) - (b.rank ?? 0));
 }
@@ -4685,6 +4686,7 @@ function goAlert(go){
   if (go.startsWith("job:")){ const j = jobById(go.slice(4)); if (!j) return toast("No se encontró el pedido (quizás lo borraron)."); postUI.form = null; jobUI.form = null; jobUI.ficha = j.id; page = jobSection(j); if (!can(page)) page = "inicio"; }
   else if (go.startsWith("pub:")) return openPub(go.slice(4));
   else if (go.startsWith("sug")) page = "sugerencias";
+  else if (go.startsWith("cfg:")){ page = "config"; cfgTab = go.slice(4); }
   else if (can(go)) page = go;
   location.hash = page; render(); window.scrollTo({ top:0, behavior:"smooth" });
 }
@@ -9616,14 +9618,29 @@ let cfgTab = "perfil";
 // Con push activado llegan aunque la app esté cerrada; se prenden y apagan por dispositivo.
 const touchUI = () => matchMedia("(pointer:coarse)").matches;
 const NOTIF_KEY = "rmh-notif";
-const notifOn = () => { try { return localStorage.getItem(NOTIF_KEY) !== "off"; } catch { return true; } }; // predeterminado: activadas (salvo que la persona las apague)
+// Predeterminado: activadas para Admin total, CM y Diseño gráfico (la app les pide el permiso sola); para el resto, apagadas
+// hasta que la persona las active en Configuración. Lo que cada uno elige en su dispositivo (on/off) siempre manda.
+const NOTIF_ROLES = ["Admin total", "CM", "Diseñador"];
+const notifDefault = () => NOTIF_ROLES.includes(viewer?.role);
+const notifOn = () => { try { const v = localStorage.getItem(NOTIF_KEY); return v === "on" || (v !== "off" && notifDefault()); } catch { return notifDefault(); } };
 // La primera vez que se toca la app en este dispositivo se pide el permiso del navegador (necesita un toque); si dice que no, no se vuelve a pedir.
 // Con el teclado abierto, el chat ocupa solo lo que queda visible (como WhatsApp): la caja de escribir queda arriba del teclado.
 if (window.visualViewport){ const vv = window.visualViewport, setVV = () => { document.documentElement.style.setProperty("--vvh", vv.height + "px"); document.documentElement.style.setProperty("--vvt", Math.max(0, vv.offsetTop) + "px"); if (document.documentElement.classList.contains("chatfull")) window.scrollTo(0, 0); };
   vv.addEventListener("resize", setVV); vv.addEventListener("scroll", setVV); setVV(); }
+// Admin total, CM y Diseño gráfico: mientras las notificaciones no estén activadas en este dispositivo, arriba de “Tus alertas”
+// sale el recordatorio con el botón para activarlas (si se quita, vuelve al día siguiente).
+function notifAskAlert(){
+  if (!viewer || !notifDefault() || !notifOn() || window.RMH?.previewing) return null;
+  const key = "notifask:" + TODAY, base = { key, sev:"#22d3ee", rank:-9, ic:"bell-ring" };
+  if (!notifSupported()) return /iphone|ipad/i.test(navigator.userAgent) && !isInstalledApp() ? { ...base, t:"Instalá la app para recibir los avisos", m:"En iPhone, los avisos de trabajos nuevos, correcciones y mensajes llegan solo con la app instalada. Después activalos desde la app.", acts:`<button class="btn primary" data-install>${icon("download")} Ver cómo instalarla</button>` } : null;
+  if (Notification.permission === "granted") return null;
+  if (Notification.permission === "denied") return { ...base, t:"Las notificaciones están bloqueadas en este dispositivo", m:"Así no te enterás al instante de los trabajos nuevos y las correcciones. Habilitalas para esta app en los ajustes del navegador o del celular (el candado al lado de la dirección, en la compu).", go:"cfg:notif" };
+  return { ...base, t:"Activá las notificaciones en este dispositivo", m:"Para enterarte al instante de los trabajos nuevos, las correcciones y los mensajes, aunque la app esté cerrada.", acts:`<button class="btn primary" data-notifon>${icon("bell-ring")} Activar notificaciones</button>` };
+}
 function askNotifOnce(){
   if (!viewer || !notifOn() || !notifSupported() || Notification.permission !== "default") return;
-  try { if (localStorage.getItem("rmh-notif-asked")) return; localStorage.setItem("rmh-notif-asked", "1"); } catch {}
+  if (window.RMH?.previewing) return;
+  try { if (sessionStorage.getItem("rmh-notif-asked")) return; sessionStorage.setItem("rmh-notif-asked", "1"); } catch {} // una vez cada vez que se abre la app, hasta que conteste
   Notification.requestPermission().then(p => { if (p === "granted") pushSubscribe().then(ok => toast(ok ? "Listo: te van a llegar los mensajes del chat en este dispositivo." : "Avisos activados mientras la app esté abierta.")); });
 }
 document.addEventListener("pointerup", () => { if (viewer && $("#login").hidden) askNotifOnce(); }, true);
@@ -9657,7 +9674,7 @@ function notifCfg(){
     : perm === "denied" ? `${icon("bell-off")} Están bloqueadas: habilitalas para esta app en los ajustes del navegador o del celular y volvé acá.`
     : on ? `${icon("bell-ring")} Activadas en este dispositivo${pushActive ? ": te llegan aunque la app esté cerrada" : ""}.` : `${icon("bell-off")} Apagadas en este dispositivo.`;
   return `<section class="panel cfgsec"><h2 class="pmh">${pmIco("bell")}${sinChat(viewer) ? "Notificaciones" : "Notificaciones del chat y de trabajos"}</h2>
-    <p class="note">${sinChat(viewer) ? "Cuando te llega un trabajo nuevo o te piden una corrección" : "Cuando alguien te escribe en el Chat Retail MKT (privado o en un grupo tuyo), o te llega un trabajo nuevo o una corrección"}, te llega un aviso en el celular o en la compu, aunque la app esté cerrada. Se activa en cada dispositivo por separado. Con “No molestar” no llegan avisos.</p>
+    <p class="note">${sinChat(viewer) ? "Cuando te llega un trabajo nuevo o te piden una corrección" : "Cuando alguien te escribe en el Chat Retail MKT (privado o en un grupo tuyo), o te llega un trabajo nuevo o una corrección"}, te llega un aviso en el celular o en la compu, aunque la app esté cerrada. Se activa en cada dispositivo por separado. Con “No molestar” no llegan avisos.${notifDefault() ? " Para Admin total, CM y Diseño gráfico vienen activadas: la app te pide el permiso al entrar." : ""}</p>
     <p class="pfid">${state}</p>
     <div class="chips">${on ? `<button class="btn" type="button" data-notifoff>${icon("bell-off")} Apagar en este dispositivo</button>` : perm === "unsupported" || perm === "denied" ? "" : `<button class="btn primary" type="button" data-notifon ${notifBusy ? "disabled" : ""}>${icon("bell-ring")} ${notifBusy ? "Activando…" : "Activar en este dispositivo"}</button>`}</div></section>`;
 }
@@ -9773,7 +9790,7 @@ function localNotify(n){
 const JOBPOP = { nuevo:{ k:"new", t:"Nuevo trabajo para vos", ic:"inbox", c:"#22d3ee" }, pub:{ k:"new", t:"Nueva publicación para vos", ic:"calendar-days", c:"#10b981" },
   listo:{ k:"new", t:"Diseño listo para tu grilla", ic:"badge-check", c:"#10b981" }, fix:{ k:"fix", t:"Te pidieron una corrección", ic:"pencil", c:"#f97316" } };
 const JOBSOUND_KEY = "rmh-jobsound";
-const jobSoundOn = () => { try { return localStorage.getItem(JOBSOUND_KEY) !== "off"; } catch { return true; } };
+const jobSoundOn = () => { try { const v = localStorage.getItem(JOBSOUND_KEY); return v === "on" || (v !== "off" && notifDefault()); } catch { return notifDefault(); } };
 const jobPopKey = () => "rmh-jobpop-" + viewer.id;
 const jobPopId = n => [n.id, n.type, n.job || "", n.post || ""].join("|");
 const jobPopRead = () => { try { const v = localStorage.getItem(jobPopKey()); return v === null ? null : JSON.parse(v) || []; } catch { return []; } };
