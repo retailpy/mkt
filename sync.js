@@ -76,6 +76,7 @@ const RMH = (() => {
     TEAM_IDEAS:[() => TEAM_IDEAS, v => { TEAM_IDEAS = Array.isArray(v) ? v : []; }],
     CM_LOAD:[() => CM_LOAD, v => { CM_LOAD = v && typeof v === "object" && !Array.isArray(v) ? v : { times:{}, vidLeft:{}, avail:{}, off:[], accounts:{} }; }], // carga de los CM: tiempos, horarios, ausencias y cuentas
     MSG_DUTY:[() => MSG_DUTY, v => { MSG_DUTY = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // Mensajes: la atención de cada día por persona
+    INFLUENCERS:[() => INFLUENCERS, v => { INFLUENCERS = Array.isArray(v) ? v : []; }], // cumpleaños de influencers de las marcas (solo Admin total y CM)
     ESCRACHES:[() => ESCRACHES, v => { ESCRACHES = Array.isArray(v) ? v : []; }], // Búsqueda de Escraches: los cargados y las marcas (solo Admin total, Admin y CM)
   };
   // Claves que solo existen para Admin total (la base no se las deja leer ni guardar al resto).
@@ -83,6 +84,9 @@ const RMH = (() => {
   // Claves que solo existen para Admin total, Admin y CM (reclamos de clientes: tienen nombres y datos personales).
   const CM_ONLY = new Set(["s:RECLAMOS", "s:ESCRACHES", "s:META_DM", "s:META_DM_LOG", "s:META_IG_ACT"]);
   const isCMish = () => ["Admin total", "Admin", "CM"].includes(member?.role);
+  // Claves que solo leen y guardan Admin total y CM (Admin, no): los cumpleaños de influencers.
+  const ATCM_ONLY = new Set(["s:INFLUENCERS"]);
+  const isATCM = () => ["Admin total", "CM"].includes(member?.role);
   // Claves que todos leen pero solo Admin total guarda. (Los grupos de chat los crea cualquiera: la base controla
   // que cada uno cambie solo los suyos.)
   const ADMIN_WRITE = new Set([]);
@@ -92,7 +96,7 @@ const RMH = (() => {
   const base = new Map(); // clave → { v: versión en el servidor, json: lo último que coincidió con el servidor }
 
   function localKeys(){
-    return [...Object.keys(SHARED).map(k => "s:" + k).filter(k => (isAT() || !ADMIN_ONLY.has(k)) && (isCMish() || !CM_ONLY.has(k))), "notes:" + me, "prompts:" + me,
+    return [...Object.keys(SHARED).map(k => "s:" + k).filter(k => (isAT() || !ADMIN_ONLY.has(k)) && (isCMish() || !CM_ONLY.has(k)) && (isATCM() || !ATCM_ONLY.has(k))), "notes:" + me, "prompts:" + me,
       ...THREADS.filter(t => t.a === me || t.b === me).map(t => "thread:" + t.id),
       ...CHAT_GROUPS.filter(g => chatMember(g, { id:me, role:member?.role })).map(g => "chat:" + g.id)]; // siempre con quien inició sesión
   }
