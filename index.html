@@ -9886,7 +9886,7 @@ function pConfig(){
     <p class="note">Las personas que todavía no eligieron su contraseña. Desaparece cuando la cambian. Para dar una nueva, andá a Usuarios y permisos → Restablecer contraseña.</p>
     ${pend.length ? `<div class="list">${pend.map(pp => `<div class="row"><div class="person" style="min-width:0">${avatarHTML(pp)}<div><b>${esc(pp.name)}</b><span>${esc(pp.cargo || pp.role)}</span></div></div><span class="grow"></span><code style="font-family:var(--mono);color:#a5f3fc;font-size:15px">${esc(pp.tempPass)}</code></div>`).join("")}</div>` : `<div class="empty">Todos ya eligieron su contraseña.</div>`}</section>` : "";
   // Mi Perfil se edita solo acá; Instalar la app también está solo acá.
-  const tabs = [["perfil","Mi Perfil","user"],["apariencia","Apariencia","palette"], ["notif","Notificaciones","bell"],["instalar","Instalar la app","download"],["guia","Guía de uso","book-open"], ...(v.role === "Admin total" ? [["integ","Integraciones","plug"]] : [])]; // las notificaciones son del chat
+  const tabs = [["perfil","Mi Perfil","user"],["apariencia","Apariencia","palette"], ...(isRevisor() ? [] : [["notif","Notificaciones","bell"]]),["instalar","Instalar la app","download"],["guia","Guía de uso","book-open"], ...(v.role === "Admin total" ? [["integ","Integraciones","plug"]] : [])]; // las notificaciones son del chat
   const perfil = pPerfil().replace(/^<div><h1>Mi perfil<\/h1>.*?<\/div>/s, "");
   const inst = `<section class="panel cfgsec"><h2 class="pmh">${pmIco("smartphone")}Instalar la app</h2><p class="note">Tenela con su ícono en el celular, la tablet o la computadora: abre a pantalla completa, como cualquier app.</p>
     ${isInstalledApp() ? `<p class="pfid">${icon("check")} Ya la estás usando instalada.</p>` : ""}
