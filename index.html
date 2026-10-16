@@ -971,6 +971,7 @@ html.nomotion .nav a.wknew .ibc,html.nomotion .tabbar a.wknew .tbc,html.nomotion
 .jpk{display:inline-flex;gap:5px;align-items:center;font-size:12px;font-weight:700;color:var(--c)}.jpk svg{width:13px;height:13px}
 .jpt{font-size:15px;line-height:1.3}.jpm{font-size:13px;color:var(--muted);line-height:1.35}
 .jpitem .btn{margin-top:4px}
+.jpbtns{display:flex;flex-wrap:wrap;gap:6px}
 .jpacts{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
 @keyframes jpIn{0%{opacity:0;transform:translateY(40px) scale(.9)}100%{opacity:1;transform:none}}
 @keyframes jpOut{to{opacity:0;transform:translateY(24px) scale(.96)}}
@@ -9788,7 +9789,8 @@ function localNotify(n){
 // está abierta pero en otra pestaña o ventana, llega el aviso de la compu o del celular. Con la app cerrada, el aviso llega
 // por push (chat-push). Cada dispositivo recuerda qué avisos ya mostró (rmh-jobpop-<persona>) para no repetirlos.
 const JOBPOP = { nuevo:{ k:"new", t:"Nuevo trabajo para vos", ic:"inbox", c:"#22d3ee" }, pub:{ k:"new", t:"Nueva publicación para vos", ic:"calendar-days", c:"#10b981" },
-  listo:{ k:"new", t:"Diseño listo para tu grilla", ic:"badge-check", c:"#10b981" }, fix:{ k:"fix", t:"Te pidieron una corrección", ic:"pencil", c:"#f97316" } };
+  listo:{ k:"new", t:"Diseño listo para tu grilla", ic:"badge-check", c:"#10b981" }, fix:{ k:"fix", t:"Te pidieron una corrección", ic:"pencil", c:"#f97316" },
+  review:{ k:"new", t:"Boceto listo para revisar", ic:"circle-check", c:"#a855f7" } }; // review: a Admin total, cuando el diseñador o la CM termina (o termina las correcciones)
 const JOBSOUND_KEY = "rmh-jobsound";
 const jobSoundOn = () => { try { const v = localStorage.getItem(JOBSOUND_KEY); return v === "on" || (v !== "off" && notifDefault()); } catch { return notifDefault(); } };
 const jobPopKey = () => "rmh-jobpop-" + viewer.id;
@@ -9798,7 +9800,8 @@ const jobPopSave = ids => { try { localStorage.setItem(jobPopKey(), JSON.stringi
 let jobPop = { items:[] };
 function jobPopCheck(){
   if (!viewer || !enterApp.done || !$("#login").hidden || window.RMH?.previewing) return;
-  const mine = myNotifs().filter(n => JOBPOP[n.type] && (n.type !== "pub" || pubAlert(n)) && (!n.job || jobById(n.job)));
+  const mine = [...myNotifs(), ...(viewer.role === "Admin total" ? adminNotifs().filter(n => n.type === "review") : [])]
+    .filter(n => JOBPOP[n.type] && (n.type !== "pub" || pubAlert(n)) && (!n.job || jobById(n.job)));
   let seen = jobPopRead(); const first = seen === null; seen = seen || [];
   const fresh = mine.filter(n => !seen.includes(jobPopId(n)) && !notify.here.has(n) && (!first || n.date === TODAY)); // la primera vez en este dispositivo: solo lo de hoy
   const ids = mine.map(jobPopId);
@@ -9817,6 +9820,8 @@ function jobPopInfo(n){
   if (n.demo) return { ...P, go:"", title:n.type === "fix" ? "Ejemplo: Post Día de la Madre" : "Ejemplo: Historia ofertas del finde", m:n.type === "fix" ? "“Cambiar la foto principal y agrandar el precio”" : "Superseis · Historia · fecha límite " + dm(addDays(TODAY, 2)) };
   if (n.type === "pub"){ const a = pubAlert(n); return { ...P, go:a?.go || "", title:a ? a.t.replace(/^Nueva publicación para vos: /, "") : "", m:a ? a.m.replace(/ · tocá para verla$/, "") : "" }; }
   const brands = j ? jobBrands(j).join(" + ") : "";
+  if (n.type === "review") return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "", t:n.fix ? "Correcciones listas para revisar" : j?.area === "CM" ? "Trabajo listo para revisar" : P.t,
+    m:`${firstName(n.who || "")} ${n.fix ? "terminó las correcciones" : j?.area === "CM" ? "terminó su trabajo" : "terminó el boceto"} · ${brands} · ${j ? cmPiece(j) : ""}${j?.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}` };
   return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "",
     m:n.type === "fix" ? (n.text ? `“${rclShort(String(n.text), 160)}”` : `${brands} · ${j ? cmPiece(j) : ""}`)
       : n.type === "listo" ? `${brands} · ${j ? cmPiece(j) : ""} · sumalo a tu calendario`
@@ -9830,7 +9835,8 @@ function jobPopShow(){
   el.className = "jobpop " + (top.k === "fix" ? "fix" : "new"); el.style.setProperty("--c", top.c);
   el.setAttribute("aria-label", many ? `Tenés ${L.length} avisos nuevos` : top.t);
   el.innerHTML = `<div class="jpcard"><span class="jpring" aria-hidden="true"></span><div class="jphead"><span class="jpico">${icon(top.ic)}</span><div class="grow"><b>${many ? `Tenés ${L.length} avisos nuevos` : esc(top.t)}</b><small>Retail MKT Hub · recién</small></div><button type="button" class="jpx" data-jpclose aria-label="Cerrar">${icon("x")}</button></div>
-    <div class="jplist">${L.slice().reverse().map(({ n, x }) => `<div class="jpitem" style="--c:${x.c}">${many ? `<span class="jpk">${icon(x.ic)} ${esc(x.t)}</span>` : ""}<b class="jpt">${esc(x.title)}</b>${x.m ? `<span class="jpm">${esc(x.m)}</span>` : ""}${x.go ? `<button type="button" class="btn ${many ? "sm" : "primary"}" data-jpgo="${esc(x.go)}" data-jpid="${esc(String(n.id))}">${icon(n.type === "pub" ? "arrow-up-right" : "eye")} ${n.type === "pub" ? "Ver publicación" : n.type === "fix" ? "Ver la corrección" : "Ver pedido"}</button>` : ""}</div>`).join("")}</div>
+    <div class="jplist">${L.slice().reverse().map(({ n, x }) => `<div class="jpitem" style="--c:${x.c}">${many ? `<span class="jpk">${icon(x.ic)} ${esc(x.t)}</span>` : ""}<b class="jpt">${esc(x.title)}</b>${x.m ? `<span class="jpm">${esc(x.m)}</span>` : ""}${n.type === "review" && x.go ? `<div class="jpbtns"><button type="button" class="btn ${many ? "sm " : ""}primary" data-nact="approve" data-nid="${n.id}" data-jpid="${esc(String(n.id))}">${icon("check")} Aprobar</button><button type="button" class="btn${many ? " sm" : ""}" data-nact="fix" data-nid="${n.id}" data-jpid="${esc(String(n.id))}">${icon("pencil")} Pedir cambios</button><button type="button" class="btn${many ? " sm" : ""}" data-jpgo="${esc(x.go)}" data-jpid="${esc(String(n.id))}">${icon("eye")} Ver</button></div>`
+      : x.go ? `<button type="button" class="btn ${many ? "sm" : "primary"}" data-jpgo="${esc(x.go)}" data-jpid="${esc(String(n.id))}">${icon(n.type === "pub" ? "arrow-up-right" : "eye")} ${n.type === "pub" ? "Ver publicación" : n.type === "fix" ? "Ver la corrección" : "Ver pedido"}</button>` : ""}</div>`).join("")}</div>
     <div class="jpacts"><button type="button" class="btn" data-jpclose>Después</button></div></div>`;
   if (window.lucide) lucide.createIcons();
   el.classList.remove("out"); el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake");
@@ -9838,6 +9844,7 @@ function jobPopShow(){
 document.addEventListener("click", e => {
   const g = e.target.closest("[data-jpgo]");
   if (g){ const go = g.dataset.jpgo; jobPop.items = jobPop.items.filter(n => String(n.id) !== g.dataset.jpid); jobPopShow(); goAlert(go); return; }
+  const na = e.target.closest("#jobpop [data-nact]"); if (na){ jobPop.items = jobPop.items.filter(n => String(n.id) !== na.dataset.jpid); jobPopShow(); return; } // Aprobar / Pedir cambios: abre su ventana (data-nact)
   if (e.target.closest("[data-jpclose]")){ jobPop.items = []; jobPopShow(); }
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && jobPop.items.length && !document.querySelector(".imodal,#fixpop")){ jobPop.items = []; jobPopShow(); } });
@@ -9884,7 +9891,7 @@ navigator.serviceWorker?.addEventListener("message", e => { if (e.data?.type ===
 function jobPopCfg(){
   const on = jobSoundOn();
   return `<section class="panel cfgsec"><h2 class="pmh">${pmIco("bell-ring")}Avisos de trabajo nuevo y de corrección</h2>
-    <p class="note">Cuando te llega un trabajo nuevo (para hacer o para publicar) o te piden una corrección, sale una ventana en la pantalla con un sonido: uno para lo nuevo y otro para la corrección. Si la app está abierta en otra pestaña o ventana, también llega el aviso de la compu o del celular (si las notificaciones están activadas en este dispositivo). Con “No molestar” sale la ventana, pero sin sonido.</p>
+    <p class="note">Cuando te llega un trabajo nuevo (para hacer o para publicar) o te piden una corrección${viewer.role === "Admin total" ? " (y, a Admin total, cuando un boceto o una corrección queda lista para revisar)" : ""}, sale una ventana en la pantalla con un sonido: uno para lo nuevo y otro para la corrección. Si la app está abierta en otra pestaña o ventana, también llega el aviso de la compu o del celular (si las notificaciones están activadas en este dispositivo). Con “No molestar” sale la ventana, pero sin sonido.</p>
     <div class="cfgopts"><button type="button" class="cfgopt ${on ? "on" : ""}" data-jobsound="on"><b>Con sonido</b><span>Suena cuando llega algo para vos.</span></button><button type="button" class="cfgopt ${on ? "" : "on"}" data-jobsound="off"><b>Sin sonido</b><span>Solo la ventana, en silencio.</span></button></div>
     <div class="chips" style="margin-top:12px"><button type="button" class="btn" data-jobtest="new">${icon("volume-2")} Probar: trabajo nuevo</button><button type="button" class="btn" data-jobtest="fix">${icon("volume-2")} Probar: corrección</button></div></section>`;
 }
