@@ -1,7 +1,7 @@
 // Retail MKT Hub · notificaciones push del Chat Retail MKT y de trabajos.
 //   GET  → devuelve la clave pública VAPID (la crea la primera vez; la privada nunca sale del servidor).
 //   POST → la llama la base de datos (trigger chat_push) cuando llega un mensaje nuevo o un aviso de trabajo
-//          (trabajo nuevo, publicación para hacer o corrección: s:NOTIFS); requiere x-push-secret.
+//          (trabajo nuevo, publicación para hacer, corrección o listo para revisar: s:NOTIFS); requiere x-push-secret.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
@@ -45,9 +45,10 @@ async function send(cfg: any, to: string[], payloadFor: (id: string) => string) 
 }
 
 // Avisos de trabajo: a quien le llegó (n.to es su nombre completo, como en la app). Con “No molestar”, sin aviso.
-const JOB_T: Record<string, string> = { nuevo: "Nuevo trabajo para vos", pub: "Nueva publicación para vos", listo: "Diseño listo para tu grilla", fix: "Te pidieron una corrección" };
+// “review” (to: "admin"): el boceto o las correcciones quedaron listos → a Admin total, para aprobar o pedir cambios.
+const JOB_T: Record<string, string> = { nuevo: "Nuevo trabajo para vos", pub: "Nueva publicación para vos", listo: "Diseño listo para tu grilla", fix: "Te pidieron una corrección", review: "Boceto listo para revisar" };
 async function jobPush(cfg: any, items: any[]) {
-  const list = (Array.isArray(items) ? items : []).filter((n) => n && JOB_T[n.type] && n.to && n.to !== "admin" && !n.read).slice(0, 20);
+  const list = (Array.isArray(items) ? items : []).filter((n) => n && JOB_T[n.type] && n.to && !n.read && (n.type === "review" ? n.to === "admin" : n.to !== "admin")).slice(0, 20);
   if (!list.length) return json({ ok: true, skipped: "sin avisos" });
   const people: any[] = (await state("s:PEOPLE")) || [];
   const presence: Record<string, any> = (await state("s:PRESENCE")) || {};
@@ -56,21 +57,34 @@ async function jobPush(cfg: any, items: any[]) {
   const posts: any[] = needPosts ? (await state("s:posts")) || [] : [];
   const canal: any[] = needPosts ? (await state("s:CHANNEL_POSTS")) || [] : [];
   const now = Date.now();
-  let sent = 0;
+  let sent = 0, admins: string[] | null = null;
   for (const n of list) {
-    const p = people.find((x) => x.name === n.to && x.active !== false);
-    if (!p || isDnd(presence[p.id], now)) continue;
+    let to: string[] = [];
+    if (n.type === "review") {
+      if (!admins) { const { data } = await db.from("members").select("person_id").eq("active", true).eq("role", "Admin total"); admins = (data || []).map((x) => x.person_id); }
+      const who = people.find((x) => x.name === n.who)?.id;
+      to = admins.filter((id) => id !== who);
+    } else {
+      const p = people.find((x) => x.name === n.to && x.active !== false);
+      if (p) to = [p.id];
+    }
+    to = to.filter((id) => !isDnd(presence[id], now));
+    if (!to.length) continue;
     const j = jobs.find((x) => x.id === n.job);
     const brands = j ? (Array.isArray(j.brands) && j.brands.length ? j.brands : [j.brand]).filter(Boolean).join(" + ") : "";
     let title = j?.title || "", body = "", go = j ? "job:" + j.id : "";
     if (n.type === "pub") {
       const x = (n.canal ? canal : posts).find((y) => y.id === n.post);
       if (x) { title = x.title || title; body = `${x.brand || ""} · ${x.channel ? "Canal de WhatsApp" : `${x.net || ""} ${x.format || ""}`} · publicar el ${dm(x.date)}`; go = `pub:${n.canal ? "canal" : "post"}:${x.id}`; }
+    } else if (n.type === "review") {
+      const w = people.find((x) => x.name === n.who), wn = w?.nick || String(n.who || "").split(" ")[0];
+      body = [`${wn} ${n.fix ? "terminó las correcciones" : j?.area === "CM" ? "terminó su trabajo" : "terminó el boceto"}`, brands, j?.piece].filter(Boolean).join(" · ");
     } else if (n.type === "fix") body = n.text ? `“${short(String(n.text), 140)}”` : brands;
     else if (j) body = [brands, j.piece, j.due ? "fecha límite " + dm(j.due) : ""].filter(Boolean).join(" · ");
     if (!title && !body) continue;
-    const payload = JSON.stringify({ title: JOB_T[n.type], body: short([title, body].filter(Boolean).join("\n"), 220), tag: "rmh-job-" + n.id, open: "", go });
-    sent += await send(cfg, [p.id], () => payload);
+    const head = n.type === "review" ? (n.fix ? "Correcciones listas para revisar" : j?.area === "CM" ? "Trabajo listo para revisar" : JOB_T.review) : JOB_T[n.type];
+    const payload = JSON.stringify({ title: head, body: short([title, body].filter(Boolean).join("\n"), 220), tag: "rmh-job-" + n.id, open: "", go });
+    sent += await send(cfg, to, () => payload);
   }
   return json({ ok: true, sent });
 }
