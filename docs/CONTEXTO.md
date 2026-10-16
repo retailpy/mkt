@@ -2,7 +2,7 @@
 
 > Pegá o adjuntá este archivo al empezar una conversación nueva. Resume qué es la app, cómo está armada,
 > cómo se trabaja y en qué punto quedó todo, con el detalle de Instagram (mensajes, menciones y la
-> revisión de Meta). Última actualización de este encabezado: **16 de octubre de 2026** (versión publicada **v199**; lo último de cada versión está en la sección 5, la más nueva arriba).
+> revisión de Meta). Última actualización de este encabezado: **16 de octubre de 2026** (versión publicada **v200**; lo último de cada versión está en la sección 5, la más nueva arriba).
 > **Acá no hay contraseñas, tokens ni claves**: esas están solo en Vercel/Supabase/Meta.
 
 ---
@@ -23,8 +23,8 @@ equipo. Es una **PWA** (se instala en celular, tablet y compu).
 - **General:** Dashboard, Inicio, Planificación del mes, Alertas, Avisos, Chat Retail MKT, Comercial, Bloc de notas.
 - **Diseño gráfico:** Panel de Trabajo, Planificación, Carga de trabajo, Tendencias, Diseño para Redes / Cartelería / Web / Pantallas, Historial.
 - **Community Manager:** Panel de Trabajo, Planificación, Carga de trabajo, Tendencias, Noticias, Plan de posteo,
-  Gestión Redes, Gestión Historia, Gestión Canal WhatsApp, Gestión de Video, Historial CM, Ideas Random,
-  **Mensajes de las cuentas** (pestañas Mensajes y Menciones), Reclamos del mes.
+  Gestión Redes, Gestión Historia, Gestión Canal WhatsApp, Gestión de Video, **Gestión de Contenidos** (v200), Historial CM, Ideas Random,
+  **Mensajes de las cuentas** (pestañas Mensajes y Menciones), **Búsqueda de Escraches** (v200), Reclamos del mes.
 - **Recursos:** Prompts de imágenes (con eventos festivos), Archivos y enlaces.
 - **Informes:** Meta Ads, Informe Redes, Informe mensual. **Vista TV:** TV Team, TV Redes, TV Impacto.
 - **Admin:** Usuarios y permisos. **Equipo:** Team MKT (antes Staff), Turnos Sábados, Cumpleaños. **Ayuda:** Guía de uso.
@@ -36,6 +36,7 @@ equipo. Es una **PWA** (se instala en celular, tablet y compu).
 - **CM publicaciones** (feed, historias, Plan de posteo): Pendiente → En proceso → Programado → Publicado → Pautado.
 - **Canal de WhatsApp:** las mismas, sin Pautado.
 - **Gestión de Video:** Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado.
+- **Gestión de Contenidos (CM, v200):** el mismo proceso de Diseño gráfico; lo avanza el CM responsable y al aprobarlo la publicación queda en su calendario.
 - Los repetitivos siguen el proceso de su tipo.
 
 ---
@@ -192,6 +193,15 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 ---
 
 ## 5. Otras cosas recientes (v137–v160)
+- **v200 · siete cambios pedidos por Admin total (16/10/2026):**
+  1. **Repetitivos avisan recién 7 días antes:** los pedidos y publicaciones que se repiten se cargan solos solo con 7 días de anticipación (`REP_AHEAD` 7; antes 14). Las copias que ya estaban cargadas más adelante no avisan ni suman al +N hasta faltar 7 días (`repLater`).
+  2. **Prompts de imágenes:** botón **Limpiar** en “Tu prompt”: borra solo el prompt generado y deja lo cargado arriba (el de abajo del formulario ahora se llama “Borrar todo”). **Stock:** “Color del fondo” con **Gamas de azul**, **Gamas de amarillo** o **Fondo libre** (se escribe en “Fondo”); nunca la combinación azul + amarillo (`STOCK_TONOS`, `pmBrandFor`).
+  3. **Diseño gráfico:** en el pedido y en su ficha queda **solo la Ruta de la compartida**, destacada (ícono de carpeta del servidor; no es una página web). Los links que ya tenía un pedido de antes se ven en “Links que tenía este pedido” y no se borran. **Aprobar** pide **quién aprobó** (Admin total y Admin: Alyssa, Patricia, Emanuel…; queda en `j.approvedBy`) y, si se elige un CM, **fecha, formato (post, carrusel, reel, historia o Canal de WhatsApp) y red**: se crea sola la publicación en el calendario del CM (`makePub`: título, texto, ruta de la compartida, `fromJob`; el pedido guarda `j.pub`) y le llega el aviso “Nueva publicación para vos” con **+1** en su Panel de Trabajo (Redes, Historias o Canal) hasta que la abre (`myNewPubs`, `seenBy`). La ficha del pedido muestra la publicación y la publicación muestra “Diseño aprobado de … · aprobó …” con “Ver pedido”.
+  4. **Tipo “Otro”** en todos los pedidos (Diseño, Video y Contenidos) con el cuadro obligatorio **Actividades** (`j.otro`). En Diseño, un “Otro” de Impresos va a Cartelería y uno de Folletos y catálogos a Web (`OTRO_SEC`).
+  5. **Gestión de Contenidos** (CM): área nueva `Contenidos` (ids `GC-…`, página `contenidos`, en el Panel de Trabajo de CM). Piezas simples para redes que arma el CM con el **mismo proceso de Diseño gráfico** (boceto, revisión y aprobación; el CM avanza como un diseñador: `designsJob`). Al aprobar no se elige CM: la publicación queda en el calendario del mismo CM. Permiso `contenidos` (quien ve Gestión de Video; `permsV` 10).
+  6. **Carga de trabajo CM en %** (sin puntos): tiempo estimado pendiente de lo que resta de la semana (hasta el domingo, más lo atrasado) ÷ horas disponibles restantes × 100. 100 % = capacidad completa; más, sobrecarga. Tiempos editables (Admin total, “Configurar la carga de los CM”): post 15, carrusel 20, reel 15, historia 10, canal 10, contenido 50, video 6 h 5 min, Mensajes 20 por día (ya incluyen los 5 min extra). Videos: se descuenta lo hecho según la etapa (`VID_LEFT_DEF`), traslado en el pedido de video (Visita + minutos; misma visita = una sola vez) y la publicación de un video no suma de nuevo. Horario por persona y día, ausencias y reuniones, y cuentas de Mensajes por CM. **Mensajes:** una responsabilidad por día (no por mensaje); el CM registra en Mensajes “Atendí” (con atendidas, resueltas y derivadas si quiere) o “Sin consultas” (`s:MSG_DUTY`). Si falta horario o un tiempo, lo dice (no lo toma como cero). Pestaña **Informe del mes**: por CM, cantidades y detalle de lo hecho (marca, fecha, estado, a tiempo / con atraso, pendientes) y Mensajes. Las publicaciones guardan `doneAt` desde esta versión (para “a tiempo”). Diseño sigue con puntos. Datos en `s:CM_LOAD`.
+  7. **Búsqueda de Escraches** (en Mensajes y en el Panel de CM, página `escraches`, solo Admin total, Admin y CM): los comentarios y menciones de Instagram que ya llegan con las palabras de la lista (vencido, mala atención, vergüenza, cobros dobles, reembolso, precio, pedido, mal olor…) aparecen solos; TikTok, X, Facebook e Instagram en general no dejan leer publicaciones ajenas sin permisos o planes pagos, así que la página arma la búsqueda del mes (marca + palabras, X y Google con fechas) para abrirla con un toque y lo que se encuentra se carga a mano. Cada caso se clasifica solo por **sector** (Basurero, Carnicería/Pollería… Verdulería; `ESC_SECTOR_RX`) y se puede cambiar. **Reclamos del mes** ahora suma DM/Inbox, comentarios de Instagram y escraches del mes, con las mismas palabras y el sector (KPI, filtro y resumen). Datos en `s:ESCRACHES` (la base lo deja solo a Admin total, Admin y CM: migración `20261016120000_escraches_solo_cm.sql`).
+  - Prueba nueva: `test-v200.js` (y `test-dgcats.js` actualizado).
 - **v150:** los reels salen también en las últimas 9 publicaciones del Dashboard e Informes (con etiqueta “Reel”); el archivo mensual de `api/publicaciones.js` los guarda.
 - **v151:** se puede contestar desde la app también los mensajes de **Facebook** (`api/responder.js` acepta `net: "FB"`, permiso `pages_messaging`); al enviar, la conversación queda como contestada.
 - **v152:** Mensajes se ordena por red: **Facebook** (Inbox · Comentarios) e **Instagram** (DM · Comentarios), cada uno con Sin contestar / Contestados / Todos. Comentarios de Instagram = solo los que arroban a la marca (lo que antes era “Menciones”). Comentarios de Facebook: todavía no llegan (falta permiso de Meta); la pantalla lo avisa.
