@@ -1465,6 +1465,16 @@ select.base.sm{padding:4px 8px;border-radius:10px;font-size:12.5px;border-color:
 /* v211 · Publicación de un diseño todavía sin aprobar; Diseños en camino (Planificación de CM) */
 .pfrom.pcm.wait{border-color:rgba(251,191,36,.5);background:rgba(120,53,15,.18)}.pfrom.pcm.wait .pcmh>svg{color:#fbbf24}
 .pfrom.pcm.wait .pcmshare{border-color:rgba(148,163,184,.4);background:rgba(15,23,42,.4)}
+.pcmwait{display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:12px 14px;border-radius:14px;border:2px solid #fbbf24;background:rgba(251,191,36,.12)}
+.pcmwait>svg{color:#fbbf24;width:24px;height:24px;flex:none}.pcmwait b{display:block;font-size:16px;color:#fde68a}.pcmwait span{display:block;font-size:13px;color:var(--ink);margin-top:2px}
+.pcmst{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}.pcmst i{font-style:normal;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.35);color:var(--muted)}
+.pcmst i.done{color:#cbd5e1;border-color:color-mix(in srgb,var(--c) 50%,transparent)}.pcmst i.on{color:#0f172a;background:var(--c);border-color:var(--c);font-weight:800}
+.pcmfull{margin-top:12px}.pcmfull summary{cursor:pointer;font-weight:700;color:#67e8f9;display:flex;gap:6px;align-items:center}.pcmfull summary svg{width:16px;height:16px}
+.pcmfg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.pcmfg>div,.pcmbrief{background:rgba(2,6,23,.35);border:1px solid var(--line-2);border-radius:12px;padding:8px 10px;min-width:0}
+.pcmfg span,.pcmbrief>span{display:block;font-size:11.5px;color:var(--muted)}.pcmfg b{display:block;font-size:13.5px;overflow-wrap:anywhere;white-space:pre-wrap}.pcmbrief{margin-top:8px}
+.plcal .pev .pwait{grid-column:2;font-size:10px;font-weight:700;color:#fbbf24}
+.dgway .dgwst{color:#fbbf24!important;font-weight:700}
+@media (max-width:700px){.pcmfg{grid-template-columns:1fr}}
 .dgway{margin-bottom:14px}.dgway .m b{color:#fbbf24}.dgway .dgwnd{color:#f87171!important}
 /* v210 · En el pedido de Diseño: qué CM lo publica (opcional) */
 .jpubcm{display:grid;gap:8px;padding:12px;border:1px dashed rgba(16,185,129,.5);border-radius:14px;background:rgba(6,78,59,.14)}
@@ -3156,11 +3166,11 @@ function pubAlert(n){
   const x = n.post ? (n.canal ? canalById(n.post) : postById(n.post)) : null, j = jobById(n.job);
   if (!x){ if (!j || !j.pubCm || n.post) return null; // asignada sin fecha todavía: lo que se sabe del pedido
     return { go:"calcm", key:"n:" + n.id, sev:"#10b981", rank:-6, ic:"calendar-days", t:`Nueva publicación para vos: ${j.title}`,
-      m:`${jobBrands(j).join(" + ")} · ${pubFmtLabel(pubFmtOf(j))} · ${j.pubDate ? `publicar el ${dm(j.pubDate)}` : "fecha de publicación sin definir"} · ${cmPiece(j)} · el diseño está en proceso: la ruta de la compartida llega cuando se apruebe`,
+      m:`${jobBrands(j).join(" + ")} · ${pubFmtLabel(pubFmtOf(j))} · ${j.pubDate ? `publicar el ${dm(j.pubDate)}` : "fecha de publicación sin definir"} · ${cmPiece(j)} · diseño gráfico en proceso: esperá la aprobación para publicar`,
       acts:`<button class="btn primary" data-page="calcm">${icon("calendar-days")} Ver en Planificación</button>` }; }
   const own = j && j.owner === x.cm, wait = j && !jobApproved(j);
   return { go:"pub:" + (n.canal ? "canal:" : "post:") + x.id, key:"n:" + n.id, sev:"#10b981", rank:-6, ic:"calendar-days", t:`Nueva publicación para vos: ${x.title}`,
-    m:`${x.brand} · ${x.channel ? "Canal de WhatsApp" : `${x.net} ${x.format}`} · publicar el ${dm(x.date)}${x.dgPiece || j ? ` · ${x.dgPiece || cmPiece(j)}` : ""}${shareList(x).some(s => s.p) ? " · con la ruta de la compartida" : wait ? " · el diseño está en proceso: la ruta llega cuando se apruebe" : ""} · tocá para verla`,
+    m:`${x.brand} · ${x.channel ? "Canal de WhatsApp" : `${x.net} ${x.format}`} · publicar el ${dm(x.date)}${x.dgPiece || j ? ` · ${x.dgPiece || cmPiece(j)}` : ""}${shareList(x).some(s => s.p) ? " · con la ruta de la compartida" : wait ? " · diseño gráfico en proceso: esperá la aprobación para publicar" : ""} · tocá para verla`,
     acts:`<button class="btn primary" data-pubopen="${n.canal ? "canal" : "post"}:${esc(x.id)}">${icon("arrow-up-right")} Ver publicación</button>` };
 }
 // Diseño aprobado de una publicación que la CM ya tenía en su calendario: ya tiene la ruta de la compartida.
@@ -3430,7 +3440,7 @@ function dgOnTheWay(){
   return `<div class="panel dgway"><h2 class="pmh" style="margin:0 0 4px">${pmIco("palette")}Diseños en camino ${viewer.role === "CM" ? "para vos" : "para las CM"} <span class="note" style="font-weight:500">· ${L.length}</span></h2>
     <p class="note" style="margin:0 0 10px">Ya están asignados: la ruta de la compartida llega cuando Admin total apruebe el diseño.</p>
     <div class="list">${L.map(j => { const ps = jobPubsOf(j); return `<div class="row"><span class="remic" style="background:rgba(16,185,129,.18)">🎨</span><div class="grow"><div class="t">${esc(j.title)}</div>
-      <div class="m">${esc(jobBrands(j).join(" + "))} · ${esc(cmPiece(j))} · ${esc(pubFmtLabel(pubFmtOf(j)))} · ${j.pubDate ? `publicar el <b>${dm(j.pubDate)}</b>` : `<b class="dgwnd">fecha sin definir</b>`}${viewer.role === "CM" ? "" : ` · ${esc(j.pubCm)}`} · diseño: ${esc(j.status)}</div></div>
+      <div class="m">${esc(jobBrands(j).join(" + "))} · ${esc(cmPiece(j))} · ${esc(pubFmtLabel(pubFmtOf(j)))} · ${j.pubDate ? `publicar el <b>${dm(j.pubDate)}</b>` : `<b class="dgwnd">fecha sin definir</b>`}${viewer.role === "CM" ? "" : ` · ${esc(j.pubCm)}`}</div><div class="m dgwst">🎨 Diseño gráfico en proceso · ${esc(j.status)}</div></div>
       ${ps[0] ? `<button type="button" class="btn sm" data-pubopen="${ps[0].channel ? "canal" : "post"}:${esc(ps[0].id)}">${icon("arrow-up-right")} Ver</button>` : ""}</div>`; }).join("")}</div></div>`;
 }
 function remPanel(){
@@ -5437,7 +5447,7 @@ function planCal(items){
   return `<div class="plcal">${calGrid(c => remOn(c).map(remPev).join("") + inflOn(c).map(inflPev).join("") + items.filter(x => x.date === c).map(x => { const st = x.status, lv = semLvl(st), col = SEM[lv];
     const act = x.rec ? (canCreateJobs() ? ` data-recedit="${x.r.id}" data-recat="${x.date}" role="button" tabindex="0"${recDrag(x.r, x.date)}` : "") : x.vid ? ` data-jficha="${x.id}" role="button" tabindex="0"` : canEditPost() ? ` data-pedit="${x.canal ? "canal" : "post"}:${x.id}" role="button" tabindex="0"` : "";
     const sk = x.rec ? "rec" : x.vid ? "job" : x.canal ? "canal" : "post", sid = x.rec ? x.sid : x.id, it = x.rec ? recItem(x.sid) : x.vid ? x.job : x.canal ? canalById(x.id) : postById(x.id), can2 = stageOptions(sk, it).length;
-    return `<div class="pev" data-sem="${lv}" style="--sem:${col}"${x.rec ? "" : calDrag(sk, x.id)}${act} title="${PLAN_SEC(x)}: ${esc(x.title)} · ${x.brand} · ${x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${st} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} <b class="evk">${PLAN_SEC(x)}:</b> ${esc(x.title)}</span>${can2 ? `<button type="button" class="pst" data-stagemenu="${sk}:${sid}" style="--c:${col}" title="Cambiar la etapa">${st} ▾</button>` : `<em style="--c:${col}">${st}</em>`}${x.cm ? `<small class="pwho">${icon("user-round")} ${esc(firstName(x.cm))}</small>` : ""}</div>`; }).join(""), canEditPost())}</div>
+    return `<div class="pev" data-sem="${lv}" style="--sem:${col}"${x.rec ? "" : calDrag(sk, x.id)}${act} title="${PLAN_SEC(x)}: ${esc(x.title)} · ${x.brand} · ${x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${st} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} <b class="evk">${PLAN_SEC(x)}:</b> ${esc(x.title)}</span>${can2 ? `<button type="button" class="pst" data-stagemenu="${sk}:${sid}" style="--c:${col}" title="Cambiar la etapa">${st} ▾</button>` : `<em style="--c:${col}">${st}</em>`}${x.cm ? `<small class="pwho">${icon("user-round")} ${esc(firstName(x.cm))}</small>` : ""}${!x.rec && !x.vid && !x.canal && it?.fromJob && !jobApproved(jobById(it.fromJob)) ? `<small class="pwait">🎨 Diseño en proceso</small>` : ""}</div>`; }).join(""), canEditPost())}</div>
   <p class="note">Todo lo de CM junto, cada uno con el punto de color de su marca, quién lo hace (abajo), su ícono (${icon("image")} feed, ${icon("smartphone")} historia, ${icon("message-circle")} Canal de WhatsApp, ${icon("clapperboard")} video, ${icon("repeat")} repetitivo) y la etapa de su proceso (el color va de rojo, pendiente, a verde, publicado). Los repetitivos siguen el proceso de su tipo. Tocá uno para editarlo, su etapa para cambiarla (${icon("chevron-down")}), o un día vacío para cargar algo en esa fecha.</p>`;
 }
 let jobUI = { area:"Todos", view:"calendario", status:"Activos", owner:"Todos", prio:"Todas", q:"", form:null };
@@ -6656,10 +6666,13 @@ function postReadOnly(){ const f = document.getElementById("postForm"); if (!f) 
 function pubForCm(p, dj, canal){
   const shares = shareList(p).filter(s => s.p), where = canal || p.channel ? "Canal de WhatsApp" : `${p.net || "IG"} · ${p.format || "Post"}`;
   const cell = (k, v, cls = "") => `<div class="${cls}"><span>${k}</span><b>${v}</b></div>`;
-  const ok = jobApproved(dj);
-  return `<div class="pfrom pcm${ok ? "" : " wait"}"><div class="pcmh">${icon(ok ? "badge-check" : "hourglass")}<b>${ok ? `${dj.area === "Contenidos" ? "Contenido aprobado" : "Diseño aprobado"} · listo para publicar` : `En diseño · todavía sin aprobar (${esc(dj.status)})`}</b>${canCreateJobs() ? `<button type="button" class="btn sm" data-jficha="${esc(dj.id)}">${icon("eye")} Ver pedido</button>` : ""}</div>
-    <div class="pcmg">${cell("Título", esc(p.title || dj.title))}${cell("Tipo de gráfica", esc(p.dgPiece || cmPiece(dj)))}${cell("Dónde se publica", esc(where))}${cell("Fecha de publicación", `${WEEKDAYS[wdOf(p.date)]} ${dm(p.date)}`, "pcmd")}</div>
-    <div class="pcmshare"><span class="jll">${icon("folder-symlink")} Ruta de la compartida</span>${!ok ? `<p class="note" style="margin:0">${icon("lock")} La ruta de la compartida aparece acá cuando Admin total apruebe el diseño (te llega el aviso).</p>` : shares.length ? linkEditor({ id:p.id, shares, share:shares[0].p }, "", true) : `<p class="note" style="margin:0">Todavía no tiene la ruta de la compartida: pedísela a ${esc(firstName(dj.owner))}.</p>`}</div></div>`;
+  const ok = jobApproved(dj), st = stagesOf(dj), cur = st.indexOf(dj.status);
+  const full = `<details class="pcmfull"><summary>${icon("file-text")} Ver el pedido completo</summary><div class="pcmfg">${[["Marcas", esc(jobBrands(dj).join(" + "))], ["Solicitante", esc(dj.requester || "—")], ["Lo diseña", esc(dj.owner)], ["Fecha límite del diseño", dj.due ? dm(dj.due) : "—"], ["Observaciones", esc(dj.notes || "—")], ...(dj.piece === OTRO && dj.otro ? [["Actividades", esc(dj.otro)]] : [])].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("")}</div>${dj.brief ? `<div class="pcmbrief"><span>Texto del pedido</span><div class="rt">${cleanRich(dj.brief)}</div></div>` : ""}</details>`;
+  const wait = ok ? "" : `<div class="pcmwait">${icon("palette")}<div><b>Diseño gráfico en proceso</b><span>Esperá que Admin total apruebe el diseño para publicar: ahí te llega el aviso con la ruta de la compartida.</span>
+    <div class="pcmst">${st.map((x, i) => `<i class="${i < cur ? "done" : ""}${i === cur ? " on" : ""}" style="--c:${JOB_COLOR[x] || "#94a3b8"}">${esc(x)}</i>`).join("")}</div></div></div>`;
+  return `<div class="pfrom pcm${ok ? "" : " wait"}"><div class="pcmh">${icon(ok ? "badge-check" : "hourglass")}<b>${ok ? `${dj.area === "Contenidos" ? "Contenido aprobado" : "Diseño aprobado"} · listo para publicar` : "Pedido para publicar · diseño gráfico en proceso"}</b>${canCreateJobs() ? `<button type="button" class="btn sm" data-jficha="${esc(dj.id)}">${icon("eye")} Ver pedido</button>` : ""}</div>
+    ${wait}<div class="pcmg">${cell("Título", esc(p.title || dj.title))}${cell("Tipo de gráfica", esc(p.dgPiece || cmPiece(dj)))}${cell("Dónde se publica", esc(where))}${cell("Fecha de publicación", `${WEEKDAYS[wdOf(p.date)]} ${dm(p.date)}`, "pcmd")}</div>
+    <div class="pcmshare"><span class="jll">${icon("folder-symlink")} Ruta de la compartida</span>${!ok ? `<p class="note" style="margin:0">${icon("lock")} La ruta de la compartida aparece acá cuando Admin total apruebe el diseño (te llega el aviso).</p>` : shares.length ? linkEditor({ id:p.id, shares, share:shares[0].p }, "", true) : `<p class="note" style="margin:0">Todavía no tiene la ruta de la compartida: pedísela a ${esc(firstName(dj.owner))}.</p>`}</div>${full}</div>`;
 }
 function postForm(){
   const f = postUI.form; if (!f) return "";
