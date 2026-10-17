@@ -5052,7 +5052,7 @@ function dgTable(list){
   const th = (k, l) => `<th><button type="button" class="thsort${sort === k ? " on" : ""}" data-dgsort="${k}" aria-label="Ordenar por ${l}">${l}${sort === k ? (dir > 0 ? " ▲" : " ▼") : ""}</button></th>`;
   const dirTxt = isDate ? (dir > 0 ? "De la más vieja a la más nueva" : "De la más nueva a la más vieja") : dir > 0 ? "De la A a la Z" : "De la Z a la A";
   return `<div class="dgtblbar"><label>Ordenar por <select class="base sm" data-dgsortsel>${DG_SORTS.map(([k, l]) => `<option value="${k}" ${k === sort ? "selected" : ""}>${l}</option>`).join("")}</select></label>
-    <button type="button" class="btn sm" data-dgdir title="Dar vuelta el orden">${icon(dir > 0 ? "arrow-down-narrow-wide" : "arrow-up-wide-narrow")} ${dirTxt}</button><span class="note">${L.length} ${L.length === 1 ? "trabajo" : "trabajos"}</span></div>
+    <button type="button" class="btn sm" data-dgdir title="Dar vuelta el orden">${icon(dir > 0 ? "chevron-down" : "chevron-up")} ${dirTxt}</button><span class="note">${L.length} ${L.length === 1 ? "trabajo" : "trabajos"}</span></div>
   <div class="tw"><table class="dgtbl"><thead><tr>${th("title", "Trabajo")}${th("brand", "Marca")}${th("piece", "Tipo")}<th>Sección</th>${th("requester", "Solicitante")}${th("owner", "Responsable")}${th("req", "Pedido")}${th("due", "Fecha límite")}<th>Etapa</th></tr></thead><tbody>
     ${L.map(j => `<tr><td><button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button></td><td>${jobBrandTags(j)}</td><td>${jobPieceTag(j)}</td><td>${esc(DG_SEC[jobSection(j)] || "")}</td><td>${esc(j.requester || "—")}</td><td>${esc(j.owner)}</td><td class="num">${j.requestDate ? dm(j.requestDate) : "—"}</td><td class="num">${dm(j.due)}</td><td>${pill(j.status, JOB_COLOR[j.status] || "#94a3b8")}</td></tr>`).join("") || `<tr><td colspan="9" class="empty">No hay trabajos en esta etapa.</td></tr>`}
   </tbody></table></div>`;
@@ -5069,7 +5069,7 @@ function dgPanelBlock(scope){
   const mes = scope.filter(j => j.area === "Diseño" && jobMonth(j) === MONTH && j.status !== "Cancelado" && !j.ex), fin = mes.filter(isFin).length, G = DG_GROUPS.find(x => x[0] === dgPanUI.g);
   return `<div class="pubsum dgsum dgpan">${DG_GROUPS.map(([k, l, c, f]) => `<button type="button" class="pubst ${dgPanUI.g === k ? "on" : ""}" data-dgpan="${k}" aria-pressed="${dgPanUI.g === k}" style="--c:${c}"><b class="num">${mes.filter(f).length}</b><span>${l}</span>${k === "all" ? `<small>${fin} ${fin === 1 ? "finalizado" : "finalizados"} · ${mes.length ? Math.round(fin / mes.length * 100) : 0}%</small>` : ""}</button>`).join("")}</div>
   ${G ? `<section class="panel dgpanlist"><div class="head" style="margin-bottom:8px"><h2 class="pmh" style="margin:0">${pmIco("table-2")}${G[1]} <span class="note" style="font-weight:500">· ${monthName(MONTH)} · Redes, Cartelería, Web y Pantallas</span></h2><button type="button" class="btn sm" data-dgpan="${G[0]}">${icon("x")} Cerrar</button></div>${dgTable(mes.filter(G[3]))}</section>`
-    : `<p class="note dgpanhint">${icon("pointer")} Tocá un cuadro para ver la lista de esos trabajos (todas las secciones juntas).</p>`}`;
+    : `<p class="note dgpanhint">${icon("info")} Tocá un cuadro para ver la lista de esos trabajos (todas las secciones juntas).</p>`}`;
 }
 function pPanel(ar){
   const dg = ar === "dg", st = panelStats();
@@ -10166,7 +10166,7 @@ function jobPopCfg(){
   return `<section class="panel cfgsec"><h2 class="pmh">${pmIco("bell-ring")}Avisos de trabajo nuevo y de corrección</h2>
     <p class="note">Cuando te llega un trabajo nuevo (para hacer o para publicar) o te piden una corrección${viewer.role === "Admin total" ? " (y, a Admin total, cuando un boceto o una corrección queda lista para revisar)" : ""}, sale una ventana en la pantalla con un sonido: uno para lo nuevo y otro para la corrección. Si la app está abierta en otra pestaña o ventana, también llega el aviso de la compu o del celular (si las notificaciones están activadas en este dispositivo). Con “No molestar” sale la ventana, pero sin sonido.</p>
     <div class="cfgopts"><button type="button" class="cfgopt ${on ? "on" : ""}" data-jobsound="on"><b>Con sonido</b><span>Suena cuando llega algo para vos.</span></button><button type="button" class="cfgopt ${on ? "" : "on"}" data-jobsound="off"><b>Sin sonido</b><span>Solo la ventana, en silencio.</span></button></div>
-    <div class="chips" style="margin-top:12px"><button type="button" class="btn" data-jobtest="new">${icon("volume-2")} Probar: trabajo nuevo</button><button type="button" class="btn" data-jobtest="fix">${icon("volume-2")} Probar: corrección</button></div></section>`;
+    <div class="chips" style="margin-top:12px"><button type="button" class="btn" data-jobtest="new">${icon("bell-ring")} Probar: trabajo nuevo</button><button type="button" class="btn" data-jobtest="fix">${icon("bell-ring")} Probar: corrección</button></div></section>`;
 }
 document.addEventListener("click", e => {
   const s = e.target.closest("[data-jobsound]"); if (s){ try { localStorage.setItem(JOBSOUND_KEY, s.dataset.jobsound); } catch {} render(); toast(s.dataset.jobsound === "off" ? "Listo: los avisos de trabajo salen sin sonido en este dispositivo." : "Listo: los avisos de trabajo suenan en este dispositivo."); return; }
