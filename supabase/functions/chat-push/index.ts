@@ -46,14 +46,14 @@ async function send(cfg: any, to: string[], payloadFor: (id: string) => string) 
 
 // Avisos de trabajo: a quien le llegó (n.to es su nombre completo, como en la app). Con “No molestar”, sin aviso.
 // “review” (to: "admin"): el boceto o las correcciones quedaron listos → a Admin total, para aprobar o pedir cambios.
-const JOB_T: Record<string, string> = { nuevo: "Nuevo trabajo para vos", pub: "Nueva publicación para vos", listo: "Diseño listo para tu grilla", fix: "Te pidieron una corrección", review: "Boceto listo para revisar" };
+const JOB_T: Record<string, string> = { nuevo: "Nuevo trabajo para vos", pub: "Nueva publicación para vos", listo: "Diseño aprobado: listo para publicar", fix: "Te pidieron una corrección", review: "Boceto listo para revisar" };
 async function jobPush(cfg: any, items: any[]) {
   const list = (Array.isArray(items) ? items : []).filter((n) => n && JOB_T[n.type] && n.to && !n.read && (n.type === "review" ? n.to === "admin" : n.to !== "admin")).slice(0, 20);
   if (!list.length) return json({ ok: true, skipped: "sin avisos" });
   const people: any[] = (await state("s:PEOPLE")) || [];
   const presence: Record<string, any> = (await state("s:PRESENCE")) || {};
   const jobs: any[] = (await state("s:jobs")) || [];
-  const needPosts = list.some((n) => n.type === "pub");
+  const needPosts = list.some((n) => n.type === "pub" || n.type === "listo");
   const posts: any[] = needPosts ? (await state("s:posts")) || [] : [];
   const canal: any[] = needPosts ? (await state("s:CHANNEL_POSTS")) || [] : [];
   const now = Date.now();
@@ -73,9 +73,11 @@ async function jobPush(cfg: any, items: any[]) {
     const j = jobs.find((x) => x.id === n.job);
     const brands = j ? (Array.isArray(j.brands) && j.brands.length ? j.brands : [j.brand]).filter(Boolean).join(" + ") : "";
     let title = j?.title || "", body = "", go = j ? "job:" + j.id : "";
-    if (n.type === "pub") {
+    if ((n.type === "pub" || n.type === "listo") && n.post) {
       const x = (n.canal ? canal : posts).find((y) => y.id === n.post);
-      if (x) { title = x.title || title; body = `${x.brand || ""} · ${x.channel ? "Canal de WhatsApp" : `${x.net || ""} ${x.format || ""}`} · publicar el ${dm(x.date)}`; go = `pub:${n.canal ? "canal" : "post"}:${x.id}`; }
+      if (x) { title = x.title || title; body = `${x.brand || ""} · ${x.channel ? "Canal de WhatsApp" : `${x.net || ""} ${x.format || ""}`} · publicar el ${dm(x.date)}${n.type === "listo" ? " · ya tenés la ruta de la compartida" : ""}`; go = `pub:${n.canal ? "canal" : "post"}:${x.id}`; }
+    } else if (n.type === "pub") { // asignada desde el pedido de Diseño, todavía sin fecha en el calendario
+      body = [brands, j?.piece, j?.pubDate ? "publicar el " + dm(j.pubDate) : "fecha de publicación sin definir"].filter(Boolean).join(" · "); go = "calcm";
     } else if (n.type === "review") {
       const w = people.find((x) => x.name === n.who), wn = w?.nick || String(n.who || "").split(" ")[0];
       body = [`${wn} ${n.fix ? "terminó las correcciones" : j?.area === "CM" ? "terminó su trabajo" : "terminó el boceto"}`, brands, j?.piece].filter(Boolean).join(" · ");
