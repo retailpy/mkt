@@ -3001,7 +3001,11 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .acard .ac-k{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--muted);min-width:0}
 .acard .ac-k svg{width:13px;height:13px;color:var(--cyan);flex:none}
 .acard .ac-k b{color:#e2e8f0;font-weight:800;letter-spacing:.05em}
-.acard .ac-k span{margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px}
+.acard{background:linear-gradient(180deg,color-mix(in srgb,var(--b) 16%,rgba(2,6,23,.85)),rgba(2,6,23,.8) 70%);border-color:color-mix(in srgb,var(--b) 45%,var(--line-3))}
+.acard .ac-br{align-self:stretch;background:var(--b);color:#04121f;font-weight:900;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;border-radius:6px;padding:2px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5}
+.acard.mini .ac-br{font-size:9px;padding:1px 5px;border-radius:4px}
+.cabrands .chip{display:inline-flex;align-items:center;gap:6px}.cabrands .cabdot{width:9px;height:9px;border-radius:50%;background:var(--bc)}
+.cabrands .chip.on[style]{border-color:var(--bc);box-shadow:inset 0 0 0 1px var(--bc)}
 .acard .ac-t{font-weight:700;font-size:12.5px;line-height:1.3;color:#fff;overflow-wrap:anywhere}
 .acard .ac-m{display:flex;align-items:center;gap:5px;font-size:11.5px;color:#cbd5e1;min-width:0}
 .acard .ac-m span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -3240,7 +3244,7 @@ function openApproveModal(j){
       <div class="okgrid"><label>Fecha de publicación *<input class="base" type="date" id="okDate" value="${esc(preDate)}"></label>
       <label>Hora de publicación *<input class="base" type="time" id="okTime" value="${esc(preTime)}"></label>
       <label>¿Dónde se publica? *<select class="base" id="okFmt">${PUB_FMTS.map(([v, l]) => `<option value="${v}" ${v === preFmt ? "selected" : ""}>${l}</option>`).join("")}</select></label>
-      <label class="oknet"${preFmt === "Canal" ? " hidden" : ""}>Red *<select class="base" id="okNet">${POST_NETS.map(n => `<option ${n === (x?.net || "IG") ? "selected" : ""}>${n}</option>`).join("")}</select></label></div>
+      <label class="oknet"${preFmt === "Canal" ? " hidden" : ""}>Red *<select class="base" id="okNet">${netOpts(j.brand, x?.net || "IG")}</select></label></div>
       ${viewer.role === "Admin total" ? (cf => `<div class="okcopy"><label class="jcext okcpon"><input type="checkbox" id="okCopyOn"${cf ? " checked" : ""}> <b>Copy confirmado</b> <span class="note">(si ya tenés el copy: lo escribís acá, queda aprobado y la CM solo lo publica)</span></label>
         <div class="okcpsheet"${cf ? "" : " hidden"}>${copySheet({ copy:cf ? x.copy : "" }, true, "okCopy")}</div></div>`)(x?.copyConf && x.copySt === "ok") : ""}
       <p class="note" style="margin:0">${icon("calendar-days")} Se carga sola en el calendario del CM con lo justo para publicar (título, tipo de gráfica, dónde se publica, día, hora y la ruta de la compartida), y le llega el aviso (+1). Si no marcás “Copy confirmado”, el CM escribe el copy y te llega para aprobarlo. Con “Post + Historia” se cargan las dos.</p></div>
@@ -3698,7 +3702,7 @@ const areaNames = area => PEOPLE.filter(pp => pp.active && (area === "Diseño" ?
 const ltrack = L => { const lv = lvOf(L), pc = L.pct ?? 0; return `<div class="ptrack ztrack" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.min(pc, 100)}" aria-label="Carga de trabajo ${L.pct === null || L.pct === undefined ? "sin datos" : pc + "%"}"><div class="pfill ld-${lv.k}" style="width:${Math.max(Math.min(pc, 100), L.pct !== null && L.pct !== undefined && (L.pts || L.min) ? 2 : 0)}%"></div><i class="zmark" style="left:50%"></i><i class="zmark" style="left:80%"></i></div>`; };
 function loadBar(title, L, big = false){
   const lv = lvOf(L);
-  const meta = L.cm ? `<span><i>${L.n}</i> ${L.n === 1 ? "tarea pendiente" : "tareas pendientes"} ${L.next ? "la semana que viene" : "esta semana"}</span><span>100 % = capacidad completa</span>`
+  const meta = L.cm ? `<span><i>${L.n}</i> ${L.n === 1 ? "tarea pendiente" : "tareas pendientes"} ${cmSpanTxt(L, true)}</span><span>100 % = capacidad completa</span>`
     : L.mixed ? `<span><i>${L.n}</i> trabajos y publicaciones sin terminar</span><span>promedio del % de cada persona${L.missing ? ` · ${L.missing} sin horario` : ""}</span>`
     : `<span><i>${L.n}</i> ${L.n === 1 ? "trabajo" : "trabajos"} sin finalizar</span><span><i>${L.pts}</i> de ${L.cap} puntos de capacidad</span>`;
   return `<div class="prog lprog ${big ? "big" : ""}"><div class="ph"><div><b>${title}</b></div><span class="pc" style="color:${lv.c}">${pctHTML(L)} <small style="color:${lv.c}">${lv.t}</small></span></div>
@@ -3712,13 +3716,13 @@ function loadChart(groups, cls = ""){
   const max = Math.max(100, ...all.map(x => Math.min(x.pct ?? 0, 200)));
   let k = 0;
   const col = x => { const lv = lvOf(x), pc = Math.min(x.pct ?? 0, 200), h = Math.max(pc / max * 100, pc ? 4 : 1.5);
-    const tip = x.cm ? `${x.pp.name}: ${x.pct === null ? "falta configurar su horario" : x.pct >= 999 ? "sin horas disponibles" : x.pct + "%"} · ${x.n} ${x.n === 1 ? "tarea" : "tareas"} ${x.next ? "la semana que viene" : "esta semana"} · ${lv.t}` : `${x.pp.name}: ${x.n} ${x.n === 1 ? "trabajo" : "trabajos"} sin finalizar (${x.pts} puntos) · ${lv.t}`;
+    const tip = x.cm ? `${x.pp.name}: ${x.pct === null ? "falta configurar su horario" : x.pct >= 999 ? "sin horas disponibles" : x.pct + "%"} · ${x.n} ${x.n === 1 ? "tarea" : "tareas"} ${cmSpanTxt(x, true)} · ${lv.t}` : `${x.pp.name}: ${x.n} ${x.n === 1 ? "trabajo" : "trabajos"} sin finalizar (${x.pts} puntos) · ${lv.t}`;
     return `<div class="lcol" title="${esc(tip)}">
-      <div class="lval">${x.cm ? `<b style="color:${lv.c}">${x.pct === null ? "—" : x.pct >= 999 ? "+100%" : x.pct + "%"}</b><span>${x.next ? "semana que viene" : "esta semana"}</span>` : `<b style="color:${lv.c}">${x.n}</b><span>${x.pts} pts</span>`}</div>
+      <div class="lval">${x.cm ? `<b style="color:${lv.c}">${x.pct === null ? "—" : x.pct >= 999 ? "+100%" : x.pct + "%"}</b><span>${cmSpanTxt(x)}</span>` : `<b style="color:${lv.c}">${x.n}</b><span>${x.pts} pts</span>`}</div>
       <div class="ltrack" style="--lim:${100 / max * 100}%;--ideal:${50 / max * 100}%"><div class="lbar" style="height:${h}%;--c:${lv.c};animation-delay:${(k++) * 80}ms"></div></div>
       <div class="lname">${avatarHTML(x.pp)}<b>${esc(nickOf(x.pp))}</b><span style="color:${lv.c}">${lv.t}</span></div></div>`; };
   return `<div class="loadchart ${cls}"><div class="lgroups">${groups.filter(g => g.people.length).map(g => `<div class="lgroup" style="flex:${g.people.length}"><div class="lcols">${g.people.map(pp => col(all.find(x => x.pp === pp))).join("")}</div><div class="lglabel">${g.label}</div></div>`).join("")}</div>
-    ${groups.every(g => g.label === "CM" || !g.people.length) ? LOAD_LEGEND_CM : LOAD_LEGEND}</div>`;
+    ${groups.every(g => g.label === "CM" || !g.people.length) ? (cmSpan === "mes" ? LOAD_LEGEND_CM.replace("de esta semana (lunes a domingo)", `de ${monthName(MONTH)} (el mes entero)`).replace("de la semana", "que le quedan en el mes") : LOAD_LEGEND_CM) : LOAD_LEGEND}</div>`;
 }
 const loadGroups = area => [
   ...(area !== "CM" ? [{ label:"Diseño gráfico", people:PEOPLE.filter(pp => pp.active && pp.role === "Diseñador") }] : []),
@@ -3775,7 +3779,12 @@ function cmAvailRange(pp, from, end){
   return tot; }
 // La carga es de UNA semana (lunes a domingo): solo cuenta lo de esa semana, no lo atrasado del mes. Si ya no le quedan
 // horas esta semana (sábado, domingo o viernes después de hora), se muestra la semana que viene.
+// En Planificación, con la vista Mes, la carga se mide sobre el mes entero (cmSpan = "mes"): lo que falta del mes ÷ las horas que le quedan en el mes.
+let cmSpan = null;
+const cmSpanTxt = (x, long) => cmSpan === "mes" ? "en " + monthName(MONTH) : x.next ? (long ? "la " : "") + "semana que viene" : "esta semana";
+function withCmSpan(span, fn){ const old = cmSpan; cmSpan = span; try { return fn(); } finally { cmSpan = old; } }
 function cmWeek(pp){
+  if (cmSpan === "mes"){ const ms = MONTH + "-01", me = monthEnd(MONTH), from = ms > TODAY ? ms : TODAY; return { from:ms, to:me, avail:me < TODAY ? 0 : cmAvailRange(pp, from, me), next:false, month:true }; }
   const mon = addDays(TODAY, -wdOf(TODAY)), sun = addDays(mon, 6), left = cmAvailRange(pp, TODAY, sun);
   if (left > 0) return { from:mon, to:sun, avail:left, next:false };
   const m2 = addDays(mon, 7), s2 = addDays(m2, 6); return { from:m2, to:s2, avail:cmAvailRange(pp, m2, s2), next:true }; }
@@ -5558,14 +5567,13 @@ function pPlan(){
   return `<div class="head"><div><h1 class="pmh">${pmIco(calOnly ? "calendar-days" : "list-checks")}${calOnly ? "Planificación · Temario" : "Plan de posteo"}</h1><p class="sub">${calOnly ? (view === "semana" ? `Semana del ${weekLabel(planWk())}` : monthLabel(MONTH)) + " · todo lo de CM junto: publicaciones, historias, WhatsApp, videos, repetitivos y actividades." : `${monthLabel(MONTH)} · todo lo de CM del mes, junto: feed (posts, carruseles y reels), historias, Canal de WhatsApp, videos y repetitivos. Cargalo desde acá o desde cada Gestión.`}</p></div>${calOnly ? `<div class="chips">${cmLoadBtn()}${viewTabs(PLAN_VIEWS, view, "data-gview")}</div>` : viewTabs([["calendario","Calendario","calendar-days"],["tabla","Tabla","table-2"],["tablero","Tablero","kanban"]], planUI.view, "data-plview")}</div>
   ${isClosed() ? `<div class="ro">${icon("lock")} ${monthLabel(MONTH)} está cerrado: se puede consultar, pero no modificar. Lo que no se cumplió pasó al mes siguiente como “arrastrado”.</div>` : ""}
   ${calOnly ? "" : calAdds(canEditPost() ? [['data-pnew="Feed"', "image", "Cargar publicación", "Post, carrusel o reel para el feed."], ['data-pnew="Historia"', "smartphone", "Cargar historia", "Una historia en su fecha."], ['data-pnew="Canal"', "message-circle", "Cargar para el Canal de WhatsApp", "Un contenido para el canal."], ...(canCreateJobs() && can("gestioncm") ? [['data-plvid', "clapperboard", "Cargar gestión de video", "Video para redes o para pantallas, con su fecha."]] : [])] : [])}
-  ${summary}${filters}${calOnly ? "" : CM_PROC_LEGEND()}
+  ${summary}${calOnly && can("cargacm") ? (view === "semana" ? loadPanel("CM", "lo que falta de esta semana") : withCmSpan("mes", () => loadPanel("CM", `lo que falta de ${monthName(MONTH)}, el mes entero`))) : ""}${filters}${calOnly ? "" : CM_PROC_LEGEND()}
   ${calOnly ? dgOnTheWay() : ""}
   ${view === "semana" ? planWeek(planWeekItems(byCm, allSt)) : view === "calendario" ? planCal(items) : view === "tablero" ? planBoard(items) : `<div class="head"><span class="note">${items.length} ${items.length === 1 ? "contenido" : "contenidos"} en ${monthName(MONTH)} · ordenados por fecha${canEditPost() ? " · cambiá el estado desde la lista" : ""}</span></div>
   <div class="tw"><table><thead><tr><th>Fecha</th><th>Marca</th><th>CM</th><th>Qué es</th><th>Tema</th><th>Diseño gráfico</th><th>Estado</th><th>Siguiente paso</th></tr></thead><tbody>
     ${items.map(row).join("") || `<tr><td colspan="8" class="empty">No hay contenidos con estos filtros.</td></tr>`}
   </tbody></table></div>`}
   ${view === "calendario" ? remPanel() : ""}
-  ${calOnly && can("cargacm") ? loadPanel("CM", "lo que falta de esta semana") : ""}
   ${postForm()}${jobForm()}${recDrawer()}`;
 }
 // Plan de posteo en calendario: una vista general del mes, con todas las marcas juntas.
@@ -5682,7 +5690,7 @@ const cmStKind = x => x.k === "job" ? "job" : x.k;
 const cmMine = x => !soloYo || x.who === viewer.name;
 // Plataformas (filas del calendario, como el Excel). X, YouTube y LinkedIn aparecen cuando hay algo cargado ahí.
 const CM_PLATS = [["igfb","Instagram / Facebook","instagram"],["tiktok","TikTok","music"],["canal","Canal de WhatsApp","message-circle"],["x","X","at-sign"],["yt","YouTube","youtube"],["in","LinkedIn","briefcase"],["otras","Otras actividades","list-todo"]];
-const CM_PLAT_FIXED = ["igfb","tiktok","canal"];
+const CM_PLAT_FIXED = ["igfb","tiktok","canal","x","yt","in"]; // v222: todas las redes de Superseis y Stock, siempre a la vista
 function cmPlats(x){
   const net = x.k === "post" ? String(x.it.net || "") : "", out = [];
   if (x.k === "post"){ if (/IG|FB/.test(net)) out.push("igfb"); if (/TikTok/.test(net)) out.push("tiktok"); if (/(^|\+ )X\b/.test(net)) out.push("x"); if (/YouTube/.test(net)) out.push("yt"); if (/LinkedIn/.test(net)) out.push("in"); return out.length ? out : ["igfb"]; }
@@ -5828,14 +5836,18 @@ document.addEventListener("click", e => {
 // ---------- Calendario de Actividades: semana de lunes a domingo, una fila por plataforma (como el Excel); mes opcional ----------
 const mondayOf = d => addDays(d, -wdOf(d));
 const APP_FIRST = () => MONTHS_APP[0].v + "-01", APP_LAST = () => { const m = MONTHS_APP[MONTHS_APP.length - 1].v; return m + "-" + String(lastDay(m)).padStart(2, "0"); };
-let calActUI = { view:"semana", wk:null, month:null };
+let calActUI = { view:"semana", wk:null, month:null, brand:"" };
+// v222: filtro por marca del Calendario de Actividades (Todas · Superseis · Stock · Delimarket · Otras marcas)
+const CA_BRANDS = ["Superseis","Stock","Delimarket"];
+const caBrandOk = x => !calActUI.brand || (calActUI.brand === "otras" ? !CA_BRANDS.includes(x.brand) : x.brand === calActUI.brand);
 const WD_SHORT = ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"];
 const weekLabel = wk => { const e = addDays(wk, 6), M = d => MONTHS_ES[+d.slice(5, 7) - 1]; return wk.slice(5, 7) === e.slice(5, 7) ? `${+wk.slice(8)} al ${+e.slice(8)} de ${M(e)}` : `${+wk.slice(8)} de ${M(wk)} al ${+e.slice(8)} de ${M(e)}`; };
 // Tarjeta: qué es (POST, STORY, REEL…), título, responsable, hora y estado (se cambia ahí mismo). Tocándola se abre el trabajo.
 function cmCard(x, mini){
   const cp = cmCopyTxt(x);
   return `<div class="acard${x.done ? " done" : ""}${cmLate(x) ? " late" : ""}${mini ? " mini" : ""}" style="--b:${BRANDS[x.brand] || "#64748b"}" data-cmopen="${x.k}:${esc(x.id)}" role="button" tabindex="0" title="${esc(cmFmt(x))}: ${esc(x.title)} · ${esc(x.brand)} · ${esc(x.who || "Sin asignar")}${x.time ? " · " + esc(x.time) + " h" : ""} · ${esc(x.status)}">
-    <div class="ac-k">${icon(cmIco(x))}<b>${esc(cmFmt(x))}</b>${mini ? "" : `<span>${esc(x.brand)}</span>`}</div>
+    ${x.brand ? `<div class="ac-br">${esc(x.brand)}</div>` : ""}
+    <div class="ac-k">${icon(cmIco(x))}<b>${esc(cmFmt(x))}</b></div>
     <div class="ac-t">${esc(x.title || "(sin título)")}</div>
     ${mini ? "" : `<div class="ac-m">${icon("user-round")}<span>${esc(x.who || "Sin asignar")}</span></div>${x.time ? `<div class="ac-m">${icon("clock")}<span>${esc(x.time)} h</span></div>` : ""}${cp ? `<div class="ac-m ac-cp">${icon("pencil-line")}<span>${esc(cp)}</span></div>` : ""}`}
     <div class="ac-s">${cmStage(x, true)}</div></div>`;
@@ -5846,22 +5858,23 @@ function calActSync(){
 }
 function pCalAct(){
   calActSync();
-  const view = calActUI.view, wk = calActUI.wk, all = cmWork().filter(cmMine);
+  const view = calActUI.view, wk = calActUI.wk, all = cmWork().filter(x => cmMine(x) && caBrandOk(x));
   const head = `<div class="head"><div><h1 class="pmh">${pmIco("calendar-range")}Calendario de Actividades</h1><p class="sub">${view === "semana" ? `Semana del ${weekLabel(wk)}` : monthLabel(calActUI.month)} · tocá una tarjeta para ver el trabajo completo, o su estado para cambiarlo.</p></div>
     <div class="chips">${refreshBtn()}${viewTabs([["semana","Semana","calendar-range"],["mes","Mes","calendar-days"]], view, "data-cavview")}</div></div>`;
   const prevOk = view === "semana" ? addDays(wk, -1) >= APP_FIRST() : MONTHS_APP.findIndex(m => m.v === calActUI.month) > 0;
   const nextOk = view === "semana" ? addDays(wk, 7) <= APP_LAST() : MONTHS_APP.findIndex(m => m.v === calActUI.month) < MONTHS_APP.length - 1;
   const isNow = view === "semana" ? wk === mondayOf(TODAY) : calActUI.month === CURRENT_MONTH;
   const bar = `<div class="gcmbar"><div class="chips pedscope"><button type="button" class="chip ${soloYo ? "on" : ""}" data-soloset="1">${icon("user-round")} Mi calendario</button><button type="button" class="chip ${soloYo ? "" : "on"}" data-soloset="0">${icon("users")} Todo el equipo</button></div>
+    <div class="chips cabrands" role="group" aria-label="Marca">${[["", "Todas"], ...CA_BRANDS.map(b => [b, b]), ["otras", "Otras marcas"]].map(([v, l]) => `<button type="button" class="chip${calActUI.brand === v ? " on" : ""}" data-cabrand="${v}" aria-pressed="${calActUI.brand === v}"${v && v !== "otras" ? ` style="--bc:${BRANDS[v]}"` : ""}>${v && v !== "otras" ? `<i class="cabdot"></i>` : ""}${l}</button>`).join("")}</div>
     <div class="chips canav"><button type="button" class="btn sm" data-canav="-1" ${prevOk ? "" : "disabled"}>‹ ${view === "semana" ? "Semana anterior" : "Mes anterior"}</button>${isNow ? "" : `<button type="button" class="btn sm" data-canav="0">${view === "semana" ? "Esta semana" : "Este mes"}</button>`}<button type="button" class="btn sm" data-canav="1" ${nextOk ? "" : "disabled"}>${view === "semana" ? "Semana siguiente" : "Mes siguiente"} ›</button></div></div>`;
   if (view === "mes"){
     const mon = calActUI.month, first = new Date(mon + "-01T12:00"), off = (first.getDay() + 6) % 7, total = Math.ceil((off + lastDay(mon)) / 7) * 7;
-    const days = Array.from({ length:total }, (_, i) => addDays(mon + "-01", i - off)), items = [...all, ...cmRecs(days).filter(cmMine)];
+    const days = Array.from({ length:total }, (_, i) => addDays(mon + "-01", i - off)), items = [...all, ...cmRecs(days).filter(x => cmMine(x) && caBrandOk(x))];
     return `${head}${bar}<div class="calw"><div class="cal camonth">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => `<div class="dh">${d}</div>`).join("")}
       ${days.map(c => { const its = items.filter(x => x.date === c).sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
         return `<div class="d ${c.slice(0, 7) !== mon ? "out" : ""} ${c === TODAY ? "today" : ""}"><span class="dn">${+c.slice(8)}</span>${its.map(x => cmCard(x, true)).join("")}</div>`; }).join("")}</div></div>${recDrawer()}`;
   }
-  const days = Array.from({ length:7 }, (_, i) => addDays(wk, i)), items = [...all.filter(x => x.date >= days[0] && x.date <= days[6]), ...cmRecs(days).filter(cmMine)];
+  const days = Array.from({ length:7 }, (_, i) => addDays(wk, i)), items = [...all.filter(x => x.date >= days[0] && x.date <= days[6]), ...cmRecs(days).filter(x => cmMine(x) && caBrandOk(x))];
   const rows = CM_PLATS.filter(([k]) => CM_PLAT_FIXED.includes(k) || items.some(x => cmPlats(x).includes(k)));
   const remRow = days.some(c => remOn(c).length || inflList().some(x => x.bday === c.slice(5)));
   const cell = (k, c) => items.filter(x => x.date === c && cmPlats(x).includes(k)).sort((a, b) => (a.time || "99").localeCompare(b.time || "99") || a.title.localeCompare(b.title)).map(x => cmCard(x)).join("");
@@ -5872,6 +5885,7 @@ function pCalAct(){
   </div></div>${recDrawer()}`;
 }
 document.addEventListener("click", e => {
+  const cb = e.target.closest("[data-cabrand]"); if (cb){ calActUI.brand = cb.dataset.cabrand; render(); return; }
   const v = e.target.closest("[data-cavview]"); if (v){ calActSync(); calActUI.view = v.dataset.cavview; if (calActUI.view === "mes") calActUI.month = addDays(calActUI.wk, 3).slice(0, 7); else if (calActUI.month !== addDays(calActUI.wk, 3).slice(0, 7)) calActUI.wk = mondayOf(calActUI.month === CURRENT_MONTH ? TODAY : calActUI.month + "-01"); render(); return; }
   const n = e.target.closest("[data-canav]"); if (!n) return; calActSync(); const k = +n.dataset.canav;
   if (calActUI.view === "semana"){ calActUI.wk = k === 0 ? mondayOf(TODAY) : addDays(calActUI.wk, 7 * k); const m = addDays(calActUI.wk, 3).slice(0, 7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m; }
@@ -6896,7 +6910,7 @@ function cmLoadCfg(){
   const avRow = pp => { const av = CM_LOAD.avail?.[pp.id];
     return `<div class="clav"><div class="clavh"><b>${esc(pp.name)}</b>${av ? `<button type="button" class="btn sm" data-clavclear="${pp.id}">Borrar horario</button>` : `<button type="button" class="btn sm primary" data-clavdef="${pp.id}">${icon("clock")} Usar horario de oficina (lun a vie 8:00–17:00, 1 h de almuerzo)</button>`}</div>
       ${av ? `<div class="clavdays">${DAY_SHORT.map((dn, i) => { const d = av[i] || { off:true }; return `<div class="clday${d.off ? " off" : ""}"><label class="cldn"><input type="checkbox" data-clday="${pp.id}|${i}" ${d.off ? "" : "checked"}> ${dn}</label>${d.off ? `<span class="note">no trabaja</span>` : `<input class="base sm" type="time" data-clav="${pp.id}|${i}|from" value="${esc(d.from || "08:00")}" aria-label="${dn} desde"><input class="base sm" type="time" data-clav="${pp.id}|${i}|to" value="${esc(d.to || "17:00")}" aria-label="${dn} hasta"><label class="clpz">pausa <input class="base sm" type="number" min="0" max="240" step="5" data-clav="${pp.id}|${i}|pause" value="${esc(d.pause ?? 60)}"> min</label>`}</div>`; }).join("")}</div>` : `<p class="note" style="margin:4px 0 0">${icon("clock")} Sin horario propio: se usa el de oficina (lunes a viernes 8:00–17:00, 1 h de almuerzo). Tocá el botón para cambiarlo día por día.</p>`}
-      <div class="clacc"><span class="note">Cuentas que atiende en Mensajes:</span>${Object.keys(BRANDS).filter(b => b !== "Retail Institucional").map(b => `<button type="button" class="chip${cmAccounts(pp).includes(b) ? " on" : ""}" data-clacc="${pp.id}|${esc(b)}" aria-pressed="${cmAccounts(pp).includes(b)}">${esc(b)}</button>`).join("")}</div></div>`; };
+      <div class="clacc"><span class="note" title="${esc(BRAND_NETS_TXT)}">Cuentas que atiende en Mensajes:</span>${Object.keys(BRANDS).filter(b => b !== "Retail Institucional").map(b => `<button type="button" class="chip${cmAccounts(pp).includes(b) ? " on" : ""}" data-clacc="${pp.id}|${esc(b)}" aria-pressed="${cmAccounts(pp).includes(b)}">${esc(b)}</button>`).join("")}</div><p class="note" style="margin:6px 0 0">${icon("share-2")} Redes de cada marca: ${BRAND_NETS_TXT}.</p></div>`; };
   const offs = (CM_LOAD.off || []).filter(o => o.date >= addDays(TODAY, -7)).sort((a, b) => a.date.localeCompare(b.date));
   return `<details class="panel clcfg"${cargaUI.cfg ? " open" : ""} data-clcfg><summary>${icon("settings")} Configurar la carga de los CM <span class="note">(solo Admin total)</span></summary>
     <h3>1 · Tiempos estimados por trabajo <span class="note">(en minutos; referencias provisorias para ajustar con el trabajo real; ya incluyen los 5 minutos adicionales)</span></h3>
@@ -7137,7 +7151,13 @@ function postStatusCell(p){
 }
 // Ficha de un posteo: se abre tocándolo en el calendario (o tocando un día vacío para cargar uno nuevo).
 // El CM responsable se elige libremente: un CM de Superseis puede hacer de CM de Stock, por ejemplo.
-const POST_NETS = ["IG","FB","IG + FB","TikTok","IG + TikTok","X","YouTube","LinkedIn"]; // IG + TikTok: estrategias de video (reels). X, YouTube y LinkedIn: filas del Calendario de Actividades (v220)
+const POST_NETS = ["IG","FB","IG + FB","TikTok","IG + TikTok","X","YouTube","LinkedIn"];
+// Redes de cada marca (v222): Superseis y Stock tienen todas; Delimarket, solo Instagram y Facebook (sin Canal de WhatsApp). Las demás marcas, todas.
+const BRAND_NETS = { Delimarket:["IG","FB","IG + FB"] };
+const BRAND_NETS_TXT = "Superseis y Stock: Instagram, Facebook, X, Canal de WhatsApp, LinkedIn, YouTube y TikTok · Delimarket: Instagram y Facebook";
+const netsFor = b => BRAND_NETS[b] || POST_NETS;
+const brandHasCanal = b => !BRAND_NETS[b];
+const netOpts = (b, v) => [...new Set([...netsFor(b), v].filter(Boolean))].map(n => `<option ${n === v ? "selected" : ""}>${esc(n)}</option>`).join(""); // IG + TikTok: estrategias de video (reels). X, YouTube y LinkedIn: filas del Calendario de Actividades (v220)
 const FEED_FORMATS = ["Post","Carrusel","Reel"];
 // Canal: el Canal de WhatsApp de cada marca, donde también se publican contenidos.
 const CANALES = ["Canal de WhatsApp"];
@@ -7260,7 +7280,7 @@ function postForm(){
   const what = canal ? "contenido del Canal de WhatsApp" : f.kind === "Historia" ? "historia" : "publicación";
   const kindFields = canal
     ? `<label>Dónde se publica<input class="base" id="poChannel" value="Canal de WhatsApp" readonly></label>`
-    : `<label>Red *<select class="base" id="poNet">${opt(POST_NETS, p.net)}</select></label>
+    : `<label>Red *<select class="base" id="poNet">${netOpts(p.brand, p.net)}</select></label>
       ${f.kind === "Historia" ? `<label>Formato<input class="base" value="Historia" readonly></label>` : `<label>Formato *<select class="base" id="poFormat">${opt(FEED_FORMATS, p.format === "Historia" ? "Post" : p.format)}</select></label>`}`;
   const chat = real ? jobChatBtns({ owner:real.cm, byId:real.byId, title:real.title }, "la publicación") : "";
   const dj = p.fromJob && jobById(p.fromJob);
@@ -7275,7 +7295,7 @@ function postForm(){
     <div class="jp-h"><span class="note">${canal ? "Canal de WhatsApp · Community Manager" : f.kind === "Historia" ? "Historia · Community Manager" : "Publicación · Community Manager"}</span><h1 style="margin:4px 0 0">${f.mode === "edit" ? "Editar " + what : (canal ? "Nuevo " : "Nueva ") + what}</h1>${j && !dj ? `<div class="note" style="margin-top:4px">${icon("palette")} Pedido de diseño: ${esc(j.status)}</div>` : ""}</div>${fromDesign}
     <form id="postForm" class="jform panel">
       <section class="jfs"><h3><i>1</i>Qué hay que hacer</h3><div class="jfg">
-        <label>Marca *<select class="base" id="poBrand">${opt(myBrands(), p.brand)}</select></label>
+        <label>Marca *<select class="base" id="poBrand">${opt(canal ? myBrands().filter(brandHasCanal) : myBrands(), p.brand)}</select></label>
         ${kindFields}
         <label class="wide" style="grid-column:1/-1">${canal ? "Qué se sube *" : "Tema *"}<input class="base" id="poTitle" value="${esc(p.title)}" placeholder="${canal ? "Ej.: Ofertas del finde para el canal" : "Ej.: Ofertas del finde"}" required></label>
         <label style="grid-column:1/-1">Observaciones <span class="note">(opcional, algo corto)</span><textarea class="base" id="poNotes" rows="2" placeholder="Ej.: Usar las fotos nuevas del local. Mencionar el horario del domingo.">${esc(p.notes || "")}</textarea></label>
@@ -7430,7 +7450,8 @@ document.addEventListener("click", e => {
     (p.changes = p.changes || []).push(ext ? { date:TODAY, time:nowTime(), text:t, by:viewer.name, req:document.getElementById("pcReq")?.value || "" } : { date:TODAY, time:nowTime(), kind:"nota", text:t, by:viewer.name });
     if (postUI.form) postUI.form.post.changes = p.changes; render(); toast(ext ? "Cambios anotados." : "Comentario enviado."); }
 });
-document.addEventListener("change", e => { if (e.target.id === "poBrand"){ const cm = CM_BY_BRAND[e.target.value], s2 = $("#poCm"); if (cm && s2 && [...s2.options].some(o => o.value === cm)) s2.value = cm; } });
+document.addEventListener("change", e => { if (e.target.id === "poBrand"){ const cm = CM_BY_BRAND[e.target.value], s2 = $("#poCm"); if (cm && s2 && [...s2.options].some(o => o.value === cm)) s2.value = cm;
+  const n = $("#poNet"); if (n){ const nets = netsFor(e.target.value), v = nets.includes(n.value) ? n.value : nets[0]; n.innerHTML = netOpts(e.target.value, v); n.value = v; } } }); // solo las redes que tiene esa marca
 document.addEventListener("submit", e => {
   if (e.target.id !== "postForm") return; e.preventDefault();
   if (!canEditPost()){ toast("Solo la pueden cambiar el CM y Admin total."); return; }
