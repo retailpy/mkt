@@ -5537,7 +5537,7 @@ function pPlan(){
   const done = all.filter(p => ["Publicado","Pautado","Hecho"].includes(p.status)).length;
   const sumSt = [...PLAN_STAGES, "Hecho"].filter(st => POST_STAGES.includes(st) || count(st) || cmUI.st === st); // las de video, solo si hay algo en esa etapa
   const summary = `<div class="pubsum">${sumSt.map(st => `<button class="pubst ${cmUI.st === st ? "on" : ""}" data-cmst="${st}" style="--c:${SEM[semLvl(st)]}"><b class="num">${count(st)}</b><span>${st}</span></button>`).join("")}
-    <div class="pubpct"><b class="num">${all.length ? Math.round(done / all.length * 100) : 0}%</b><span>del mes ya publicado (${done} de ${all.length})</span></div></div>`;
+    <div class="pubpct"><b class="num">${done}</b><span>${done === 1 ? "ya publicado" : "ya publicados"} de ${all.length} del mes</span></div></div>`; // v223: la cantidad, no el %
   const filters = `<div class="panel" style="padding:14px;display:flex;flex-direction:column;gap:10px"><div class="head"><div class="chips">${brandChips()}${calOnly ? "" : soloBtn()}</div></div>
     ${calOnly ? `<div class="chips pedscope"><button type="button" class="chip ${soloYo ? "on" : ""}" data-soloset="1">${icon("user-round")} Mi calendario</button><button type="button" class="chip ${soloYo ? "" : "on"}" data-soloset="0">${icon("users")} Todo el equipo</button></div>` : ""}
     <div class="jfilters"><select class="base" data-cmf="cm"><option value="Todos">CM: todos</option>${names.map(n => `<option ${cmUI.cm === n ? "selected" : ""}>${n}</option>`).join("")}</select>
