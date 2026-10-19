@@ -77,6 +77,7 @@ const RMH = (() => {
     CM_LOAD:[() => CM_LOAD, v => { CM_LOAD = v && typeof v === "object" && !Array.isArray(v) ? v : { times:{}, vidLeft:{}, avail:{}, off:[], accounts:{} }; }], // carga de los CM: tiempos, horarios, ausencias y cuentas
     MSG_DUTY:[() => MSG_DUTY, v => { MSG_DUTY = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // Mensajes: la atención de cada día por persona
     CM_REMINDERS:[() => CM_REMINDERS, v => { CM_REMINDERS = Array.isArray(v) ? v : CM_REM_DEF.map(r => ({ ...r, days:[...r.days] })); }], // recordatorios fijos del calendario de CM (v209)
+    CM_ACTS:[() => CM_ACTS, v => { CM_ACTS = Array.isArray(v) ? v : []; }], // actividades de CM (encuestas, fotos, DL, regalos, sorteos, vales) (v220)
     INFLUENCERS:[() => INFLUENCERS, v => { INFLUENCERS = Array.isArray(v) ? v : []; }], // cumpleaños de influencers de las marcas (solo Admin total y CM)
     ESCRACHES:[() => ESCRACHES, v => { ESCRACHES = Array.isArray(v) ? v : []; }], // Búsqueda de Escraches: los cargados y las marcas (solo Admin total, Admin y CM)
   };
