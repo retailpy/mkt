@@ -1462,6 +1462,24 @@ select.base.sm{padding:4px 8px;border-radius:10px;font-size:12.5px;border-color:
 .pcmshare{margin-top:12px;padding:12px;border-radius:14px;border:2px solid #22d3ee;background:rgba(8,145,178,.14)}
 .pcmshare .jll{display:flex;gap:6px;align-items:center;font-weight:800;color:#67e8f9;margin-bottom:8px}.pcmshare .lkurl{font-size:14px;font-weight:700;color:#fff}
 @media (max-width:700px){.pcmg{grid-template-columns:1fr 1fr}}
+/* v214 · Copy de la publicación (hoja blanca o negra, emojis) y su aprobación */
+.pcmg .pcmt{display:flex;gap:4px;align-items:center;font-style:normal;font-size:13px;color:#fde68a;margin-top:2px}.pcmg .pcmt svg{width:14px;height:14px}
+.cpst{display:flex;gap:8px;align-items:center;margin:0 0 8px;font-weight:700;padding:8px 12px;border-radius:12px;background:rgba(148,163,184,.12);color:var(--text)}
+.cpst svg{width:18px;height:18px;flex:none}.cpst.rev{background:rgba(168,85,247,.16);color:#d8b4fe}.cpst.fix{background:rgba(249,115,22,.16);color:#fdba74}.cpst.ok{background:rgba(16,185,129,.16);color:#6ee7b7}
+.cpfixmsg{margin:0 0 8px;padding:8px 12px;border-left:3px solid #f97316;background:rgba(249,115,22,.08);border-radius:0 10px 10px 0;white-space:pre-wrap}
+.cpbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px}
+.cpemo{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:4px;padding:8px;margin-bottom:8px;border:1px solid var(--line-2);border-radius:12px;background:rgba(2,6,23,.35);max-height:180px;overflow:auto}
+.cpemo button{font-size:21px;line-height:1;padding:6px 0;border:0;border-radius:8px;background:transparent;cursor:pointer}.cpemo button:hover,.cpemo button:focus-visible{background:rgba(148,163,184,.2)}
+.cpsheet{display:block;width:100%;min-height:220px;resize:vertical;padding:18px 20px;border-radius:14px;border:1px solid #cbd5e1;background:#fff;color:#1f2937;font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;white-space:pre-wrap;box-sizing:border-box}
+.cpsheet.dark{background:#000;color:#f8fafc;border-color:#334155}.cpsheet::placeholder{color:#94a3b8}.cpsheet:focus{outline:2px solid #22d3ee;outline-offset:2px}
+.cpfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px}
+.cpacts{justify-content:flex-end;margin-top:10px}
+.cplog{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:4px;font-size:13px;color:var(--muted)}.cplog b{color:var(--text)}.cplog q{color:var(--text)}.cplog span{opacity:.75;margin-left:4px}
+.cplog li.ok b{color:#6ee7b7}.cplog li.fix b{color:#fdba74}
+.cpprev{max-height:160px;overflow:auto;padding:10px 12px;border-radius:12px;background:#fff;color:#1f2937;white-space:pre-wrap;font-size:14px}.cpprev.dark{background:#000;color:#f8fafc}
+.pproc button.lock{opacity:.45}
+html.light .cpsheet,html.light .cpprev,html.light .cpemo button{filter:invert(1) hue-rotate(180deg)} /* la hoja queda blanca o negra como se eligió */
+.plcal .pev .pcopy{grid-column:2;font-size:10px;font-weight:700;color:#cbd5e1}.plcal .pev .pcopy.rev{color:#d8b4fe}.plcal .pev .pcopy.fix{color:#fdba74}.plcal .pev .pcopy.ok{color:#6ee7b7}
 /* v209 · Recordatorios fijos del calendario de CM */
 .ev.rem{border-style:dotted;background:rgba(251,191,36,.08);--s:#fbbf24;--c:#fbbf24}.ev.rem span{color:#fde68a}
 .plcal .pev.rem{background:rgba(251,191,36,.12);border:1px dotted rgba(251,191,36,.6)}.plcal .pev.rem i{background:#fbbf24}.plcal .pev.rem span{color:#fde68a}
@@ -1491,7 +1509,7 @@ select.base.sm{padding:4px 8px;border-radius:10px;font-size:12.5px;border-color:
 .dgway{margin-bottom:14px}.dgway .m b{color:#fbbf24}.dgway .dgwnd{color:#f87171!important}
 /* v210 · En el pedido de Diseño: qué CM lo publica (opcional) */
 .jpubcm{display:grid;gap:8px;padding:12px;border:1px dashed rgba(16,185,129,.5);border-radius:14px;background:rgba(6,78,59,.14)}
-.jpubcmg{display:grid;grid-template-columns:1fr 1fr;gap:10px}.jpubcmg label{display:grid;gap:4px}
+.jpubcmg{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}.jpubcmg label{display:grid;gap:4px}
 @media (max-width:700px){.jpubcmg{grid-template-columns:1fr}}
 /* Cumpleaños de influencers (Admin total y CM) */
 .ev.infl{cursor:pointer}.ev.infl .inflb{padding-top:0;font-size:10px;font-weight:700;color:#f0abfc}
@@ -3112,7 +3130,9 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-jdel
   const j = jobById(b.dataset.jdeliver); if (!j || j.owner !== viewer.name || (j.area !== "CM" && j.status !== "Aprobado")) return; if (j.area === "CM") moveJob(j, j.status === "Publicado" ? "Pautado" : "Publicado"); });
 // Admin total: aprobar o pedir correcciones desde el aviso
 document.addEventListener("click", e => { const b = e.target.closest("[data-nact]"); if (!b) return;
-  const n = NOTIFS.find(x => x.id === +b.dataset.nid), j = n && jobById(n.job); if (!j) return;
+  const n = NOTIFS.find(x => x.id === +b.dataset.nid);
+  if (n?.copy){ const p = n.canal ? canalById(n.post) : postById(n.post); if (!p) return; if (b.dataset.nact === "approve") copyApprove(p); else openCopyFixModal(p); return; }
+  const j = n && jobById(n.job); if (!j) return;
   if (b.dataset.nact === "approve"){ n.read = true; openApproveModal(j); } else openFixModal(j, n); });
 // Revisión de Admin total: aprobar, o pedir cambios con un mensaje que le llega a la persona.
 const reviewStage = j => j.area === "CM" ? "Revisión" : "Boceto finalizado";
@@ -3133,7 +3153,7 @@ function openApproveModal(j){
   document.getElementById("fixpop")?.remove();
   const cont = j.area === "Contenidos", p = j.post && postById(j.post), x = pubOf(j) || p, cms = CM_NAMES();
   const fms = (j.pubs || []).map(r => r.canal ? "Canal" : postById(r.id)?.format).filter(Boolean), both = fms.includes("Historia") && fms.some(f => f !== "Historia" && f !== "Canal");
-  const preCm = cont ? j.owner : x?.cm || j.pubCm || "", preDate = x?.date || j.pubDate || (j.due >= TODAY ? j.due : TODAY), preFmt = both ? POST_HIST : x ? (x.channel ? "Canal" : x.format) : pubFmtOf(j);
+  const preCm = cont ? j.owner : x?.cm || j.pubCm || "", preDate = x?.date || j.pubDate || (j.due >= TODAY ? j.due : TODAY), preTime = x?.time || j.pubTime || "", preFmt = both ? POST_HIST : x ? (x.channel ? "Canal" : x.format) : pubFmtOf(j);
   const w = document.createElement("div"); w.id = "fixpop"; w.className = "fixpop";
   w.innerHTML = `<div class="fixbox okbox" role="dialog" aria-modal="true" aria-labelledby="okh"><h2 id="okh">${cont ? "Aprobar contenido" : "Aprobar diseño"}</h2><p class="note">${esc(j.title)} · ${esc(j.owner)}</p>
     <label>¿Quién aprobó? *<select class="base" id="okBy"><option value="">Elegí quién lo aprobó</option>${approverNames().map(n => `<option>${esc(n)}</option>`).join("")}</select></label>
@@ -3141,9 +3161,10 @@ function openApproveModal(j){
       : `<label>¿Qué CM lo publica en redes?<select class="base" id="okCm"><option value="">Nadie (solo aprobar)</option>${cms.map(n => `<option ${n === preCm ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label>`}
     <div class="okpub"${!cont && !preCm ? " hidden" : ""}>
       <div class="okgrid"><label>Fecha de publicación *<input class="base" type="date" id="okDate" value="${esc(preDate)}"></label>
+      <label>Hora de publicación *<input class="base" type="time" id="okTime" value="${esc(preTime)}"></label>
       <label>¿Dónde se publica? *<select class="base" id="okFmt">${PUB_FMTS.map(([v, l]) => `<option value="${v}" ${v === preFmt ? "selected" : ""}>${l}</option>`).join("")}</select></label>
       <label class="oknet"${preFmt === "Canal" ? " hidden" : ""}>Red *<select class="base" id="okNet">${POST_NETS.map(n => `<option ${n === (x?.net || "IG") ? "selected" : ""}>${n}</option>`).join("")}</select></label></div>
-      <p class="note" style="margin:0">${icon("calendar-days")} Se carga sola en el calendario del CM con lo justo para publicar (título, tipo de gráfica, dónde se publica, fecha y la ruta de la compartida), y le llega el aviso (+1). Con “Post + Historia” se cargan las dos.</p></div>
+      <p class="note" style="margin:0">${icon("calendar-days")} Se carga sola en el calendario del CM con lo justo para publicar (título, tipo de gráfica, dónde se publica, día, hora y la ruta de la compartida), y le llega el aviso (+1). Después el CM escribe el copy y te llega para aprobarlo. Con “Post + Historia” se cargan las dos.</p></div>
     <p class="perr" id="okErr" hidden></p>
     <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-oksend="${j.id}">✓ Aprobar</button></div></div>`;
   document.body.appendChild(w);
@@ -3154,15 +3175,16 @@ document.addEventListener("change", e => { if (!e.target.closest?.(".okbox")) re
 document.addEventListener("click", e => { const b = e.target.closest("[data-oksend]"); if (!b) return;
   const j = jobById(b.dataset.oksend); if (!j) return;
   const v = id => document.getElementById(id)?.value || "", err = t => { const el = document.getElementById("okErr"); if (el){ el.textContent = t; el.hidden = false; } };
-  const by = v("okBy"), cm = v("okCm"), date = v("okDate"), fmt = v("okFmt"), net = v("okNet");
+  const by = v("okBy"), cm = v("okCm"), date = v("okDate"), time = v("okTime"), fmt = v("okFmt"), net = v("okNet");
   if (!by) return err("Elegí quién aprobó: queda registrado en el pedido.");
   if (cm && !date) return err("Elegí la fecha de publicación.");
+  if (cm && !time) return err("Elegí la hora de publicación.");
   if (cm && !MONTHS_APP.some(m => m.v === date.slice(0, 7))) return err(`La fecha (${dm(date)}) está fuera de los meses de la app.`);
-  document.getElementById("fixpop")?.remove(); approveJob(j, { by, cm, date, fmt, net }); }); // aprobar no pide ningún link (pedido de Admin total)
+  document.getElementById("fixpop")?.remove(); approveJob(j, { by, cm, date, time, fmt, net }); }); // aprobar no pide ningún link (pedido de Admin total)
 // En la ficha del pedido: la publicación que salió al aprobarlo (CM, fecha, formato) con un botón para abrirla.
 function pubInfo(j){ return (j.pubs || (j.pub ? [j.pub] : [])).map(r => r.canal ? canalById(r.id) : postById(r.id)).filter(Boolean).map(x => pubInfoOne(x)).join(""); }
 function pubInfoOne(x){
-  return `<div class="jpub">${icon("calendar-days")}<div class="grow"><b>Publicación en redes: ${esc(x.cm)}</b> ${brandTag(x.brand)}<small>${x.channel ? "Canal de WhatsApp" : `${esc(x.net)} · ${esc(x.format)}`} · ${dm(x.date)} · ${esc(x.status)}</small></div>${can(x.channel ? "calcanales" : x.format === "Historia" ? "calhistoria" : "calendario") ? `<button type="button" class="btn sm" data-pubopen="${x.channel ? "canal" : "post"}:${esc(x.id)}">${icon("arrow-up-right")} Ver publicación</button>` : ""}</div>`; }
+  return `<div class="jpub">${icon("calendar-days")}<div class="grow"><b>Publicación en redes: ${esc(x.cm)}</b> ${brandTag(x.brand)}<small>${x.channel ? "Canal de WhatsApp" : `${esc(x.net)} · ${esc(x.format)}`} · ${dm(x.date)}${x.time ? " " + esc(x.time) + " h" : ""} · ${esc(x.status)}${x.fromJob ? ` · copy: ${{ rev:"esperando aprobación", fix:"en corrección", ok:"aprobado" }[x.copySt] || "sin mandar"}` : ""}</small></div>${can(x.channel ? "calcanales" : x.format === "Historia" ? "calhistoria" : "calendario") ? `<button type="button" class="btn sm" data-pubopen="${x.channel ? "canal" : "post"}:${esc(x.id)}">${icon("arrow-up-right")} Ver publicación</button>` : ""}</div>`; }
 document.addEventListener("click", e => { const b = e.target.closest("[data-pubopen]"); if (!b) return; e.stopPropagation(); openPub(b.dataset.pubopen); });
 // Abre la publicación del CM (desde el aviso o la ficha del pedido): va a su calendario, en su mes, con la hoja abierta.
 function openPub(ref){
@@ -3183,14 +3205,14 @@ function pubAlert(n){
       acts:`<button class="btn primary" data-page="calcm">${icon("calendar-days")} Ver en Planificación</button>` }; }
   const own = j && j.owner === x.cm, wait = j && !jobApproved(j);
   return { go:"pub:" + (n.canal ? "canal:" : "post:") + x.id, key:"n:" + n.id, sev:"#10b981", rank:-6, ic:"calendar-days", t:`Nueva publicación para vos: ${x.title}`,
-    m:`${x.brand} · ${x.channel ? "Canal de WhatsApp" : `${x.net} ${x.format}`} · publicar el ${dm(x.date)}${x.dgPiece || j ? ` · ${x.dgPiece || cmPiece(j)}` : ""}${shareList(x).some(s => s.p) ? " · con la ruta de la compartida" : wait ? " · diseño gráfico en proceso: esperá la aprobación para publicar" : ""} · tocá para verla`,
+    m:`${x.brand} · ${x.channel ? "Canal de WhatsApp" : `${x.net} ${x.format}`} · publicar el ${dm(x.date)}${x.time ? " a las " + x.time : ""}${x.dgPiece || j ? ` · ${x.dgPiece || cmPiece(j)}` : ""}${shareList(x).some(s => s.p) ? " · con la ruta de la compartida" : wait ? " · diseño gráfico en proceso: esperá la aprobación para publicar" : ""} · tocá para verla`,
     acts:`<button class="btn primary" data-pubopen="${n.canal ? "canal" : "post"}:${esc(x.id)}">${icon("arrow-up-right")} Ver publicación</button>` };
 }
 // Diseño aprobado de una publicación que la CM ya tenía en su calendario: ya tiene la ruta de la compartida.
 function listoAlert(n){
   const x = n.canal ? canalById(n.post) : postById(n.post); if (!x) return null;
   return { go:"pub:" + (n.canal ? "canal:" : "post:") + x.id, key:"n:" + n.id, sev:"#10b981", rank:-6, ic:"badge-check", t:`Diseño aprobado, listo para publicar: ${x.title}`,
-    m:`${x.brand} · ${x.channel ? "Canal de WhatsApp" : `${x.net} ${x.format}`} · publicar el ${dm(x.date)} · ya tenés la ruta de la compartida · tocá para verla`,
+    m:`${x.brand} · ${x.channel ? "Canal de WhatsApp" : `${x.net} ${x.format}`} · publicar el ${dm(x.date)}${x.time ? " a las " + x.time : ""} · ya tenés la ruta de la compartida · escribí el copy y mandalo a aprobar · tocá para verla`,
     acts:`<button class="btn primary" data-pubopen="${n.canal ? "canal" : "post"}:${esc(x.id)}">${icon("arrow-up-right")} Ver publicación</button>` };
 }
 // La publicación que salió de un pedido aprobado (en el calendario del CM).
@@ -3209,10 +3231,10 @@ function makePub(j, o){
 }
 function makePubOne(j, o, brand, old){
   const canal = o.fmt === "Canal", same = old && !!old.channel === canal;
-  const base = { date:o.date, brand, title:j.title, cm:o.cm, requester:j.requester || "Marketing", fromJob:j.id, approvedBy:o.by, dgPiece:cmPiece(j),
+  const base = { date:o.date, time:o.time || "", brand, title:j.title, cm:o.cm, requester:j.requester || "Marketing", fromJob:j.id, approvedBy:o.by, dgPiece:cmPiece(j),
     shares:o.pre ? [] : shareList(j).map(s => ({ ...s })), share:o.pre ? "" : j.share || shareList(j).find(s => s.p)?.p || "" };
   if (same){ const moved = old.cm !== o.cm || (!o.pre && !shareList(old).some(s => s.p));
-    Object.assign(old, { date:o.date, cm:o.cm, fromJob:j.id, approvedBy:o.by, dgPiece:base.dgPiece }, canal ? {} : { format:o.fmt, net:o.net || old.net });
+    Object.assign(old, { date:o.date, time:o.time || "", cm:o.cm, fromJob:j.id, approvedBy:o.by, dgPiece:base.dgPiece }, canal ? {} : { format:o.fmt, net:o.net || old.net });
     if (!o.pre && !shareList(old).some(s => s.p)) Object.assign(old, { shares:base.shares, share:base.share });
     if (moved && old.seenBy) delete old.seenBy[PEOPLE.find(pp => pp.name === o.cm)?.id];
     return old; }
@@ -3232,7 +3254,7 @@ function approveJob(j, opts = {}){
   let x = null;
   let xs = [];
   if (cm && j.area !== "CM" && opts.date){ const had = new Map(jobPubsOf(j).map(p => [p.id, p.cm])); NOTIFS.forEach(n => { if (n.job === j.id && ((n.type === "pub" && !n.post) || ((n.type === "pub" || n.type === "listo") && n.to !== cm))) n.read = true; });
-    xs = makePub(j, { ...opts, cm }); x = xs[0]; j.cmNotified = cm; j.pubCm = cm; j.pubDate = opts.date;
+    xs = makePub(j, { ...opts, cm }); x = xs[0]; j.cmNotified = cm; j.pubCm = cm; j.pubDate = opts.date; j.pubTime = opts.time || "";
     xs.forEach(p => notify({ to:cm, type:had.get(p.id) === cm ? "listo" : "pub", job:j.id, post:p.id, canal:!!p.channel })); }
   else if (cm){ notify({ to:cm, type:"listo", job:j.id }); j.cmNotified = cm; }
   render(); window.RMH?.flushNow?.();
@@ -4777,18 +4799,20 @@ function notify(n){ const x = { id:++notifSeq, date:TODAY, time:new Date().toTim
 notify.here = new WeakSet(); // avisos creados en este dispositivo (no le saltan a quien los mandó)
 const jobById = id => jobs.find(j => j.id === id);
 // Un aviso de revisión sigue activo mientras el trabajo esté “En revisión”.
-const adminNotifs = () => NOTIFS.filter(n => n.to === "admin" && !n.read && (n.type !== "review" || REVIEW_WAIT.includes(jobById(n.job)?.status)));
+const copyWaits = n => (n.canal ? canalById(n.post) : postById(n.post))?.copySt === "rev"; // copy de la CM esperando a Admin total
+const adminNotifs = () => NOTIFS.filter(n => n.to === "admin" && !n.read && (n.type !== "review" || (n.copy ? copyWaits(n) : REVIEW_WAIT.includes(jobById(n.job)?.status))));
 const myNotifs = () => NOTIFS.filter(n => n.to === viewer.name && !n.read && !(n.job && repLater(jobById(n.job)))); // un repetitivo avisa recién 7 días antes
 function notifAlerts(){
   if (viewer.role === "Admin total") return adminNotifs().map(n => {
     if (n.type === "sug" && !can("sugerencias")) return null;
     if (n.type === "sug") { const x = SUGGESTIONS.find(y => y.id === n.sug); return { go:"sugerencias", key:"n:" + n.id, sev:"#22d3ee", rank:-4, ic:"message-square", t:`Llegó una sugerencia nueva ${x ? sugNo(x) : ""}`, m:`${x ? x.topic : ""}${x && x.anon ? " · anónima" : x ? " · de " + (PEOPLE.find(pp => pp.id === x.author)?.name || "") : ""} · ${dm(n.date)} ${n.time}`, acts:`<button class="btn" data-page="sugerencias">Ver sugerencia</button>` }; }
+    if (n.copy) return copyAlert(n);
     const j = jobById(n.job); if (!j) return null;
     if (n.type === "nota") return { go:"job:" + j.id, key:"n:" + n.id, sev:"#94a3b8", rank:-4, ic:"message-circle", t:`${n.who} comentó en: ${j.title}`, m:`“${n.text}” · ${dm(n.date)} ${n.time}` };
     return { go:"job:" + j.id, key:"n:" + n.id, sev:"#a855f7", rank:-5, ic:"circle-check", t:`${n.who} ${n.fix ? "terminó las correcciones" : j.area === "CM" ? "terminó su trabajo" : "terminó el boceto"}: ${j.title}`, m:`${j.brand} · ${j.piece} · listo para revisar · ${dm(n.date)} ${n.time}${j.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}`,
       acts:`<button class="btn primary" data-nact="approve" data-nid="${n.id}">${j.area === "CM" ? "Aprobar" : "✓ Aprobar"}</button><button class="btn" data-nact="fix" data-nid="${n.id}">Pedir cambios</button><button class="btn" data-jficha="${j.id}">Ver pedido</button>` };
   });
-  return myNotifs().map(n => n.type === "pub" ? pubAlert(n) : n.type === "nuevo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:"inbox", t:`Nuevo pedido para vos: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""} · fecha límite ${jobById(n.job) ? dm(jobById(n.job).due) : ""} · tocá para ver todo` }
+  return myNotifs().map(n => n.copy ? copyAlert(n) : n.type === "pub" ? pubAlert(n) : n.type === "nuevo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:"inbox", t:`Nuevo pedido para vos: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""} · fecha límite ${jobById(n.job) ? dm(jobById(n.job).due) : ""} · tocá para ver todo` }
     : n.type === "listo" && n.post ? listoAlert(n)
     : n.type === "listo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#10b981", rank:-6, ic:"badge-check", t:`Diseño listo para tu grilla: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""}${jobById(n.job)?.designLink ? " · tiene el link del diseño" : ""} · sumalo a tu calendario` }
     : n.type === "nota" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#94a3b8", rank:-4, ic:"message-circle", t:`Admin total comentó en: ${jobById(n.job)?.title || ""}`, m:`“${n.text}” · ${dm(n.date)} ${n.time}` } : ({ go:"job:" + n.job, key:"n:" + n.id, sev:n.type === "approved" ? "#10b981" : "#f97316", rank:-5, ic:n.type === "approved" ? "badge-check" : "pencil", t:n.type === "approved" ? `Admin total aprobó tu ${jobDone(jobById(n.job) || {})}: ${jobById(n.job)?.title}` : `Admin total pidió cambios: ${jobById(n.job)?.title}`, m:`${n.type === "fix" && n.text ? `“${n.text}” · ` : ""}${dm(n.date)} ${n.time}${n.type === "fix" ? " · cuando termines, tocá “Terminé las correcciones”" : ""}`, acts:`${n.type === "fix" ? `<button class="btn primary" data-jdone="${n.job}">✓ Terminé las correcciones</button>` : ""}<button class="btn" data-jficha="${n.job}">Ver pedido</button>` }));
@@ -5216,6 +5240,7 @@ document.addEventListener("click", e => {
   const o = e.target.closest("[data-stageset]"); if (!o) return;
   closeStageMenu();
   const [ref, to] = o.dataset.stageset.split("|"), [kind, id] = ref.split(":");
+  if ((kind === "post" || kind === "canal") && copyLock(kind === "post" ? postById(id) : canalById(id), to)) return toast(copyLockMsg);
   if (kind === "post"){ const p = postById(id); if (!p || p.status === to) return;
     p.status = to; render(); toast(`“${p.title}” pasó a ${to}.`); return; }
   if (kind === "canal"){ const k = canalById(id); if (!k || k.status === to) return; k.status = to; render(); toast(`“${k.title}” pasó a ${to}.`); return; }
@@ -5492,7 +5517,7 @@ function planCal(items){
   return `<div class="plcal">${calGrid(c => remOn(c).map(remPev).join("") + inflOn(c).map(inflPev).join("") + items.filter(x => x.date === c).map(x => { const st = x.status, lv = semLvl(st), col = SEM[lv];
     const act = x.rec ? (canCreateJobs() ? ` data-recedit="${x.r.id}" data-recat="${x.date}" role="button" tabindex="0"${recDrag(x.r, x.date)}` : "") : x.vid ? ` data-jficha="${x.id}" role="button" tabindex="0"` : canEditPost() ? ` data-pedit="${x.canal ? "canal" : "post"}:${x.id}" role="button" tabindex="0"` : "";
     const sk = x.rec ? "rec" : x.vid ? "job" : x.canal ? "canal" : "post", sid = x.rec ? x.sid : x.id, it = x.rec ? recItem(x.sid) : x.vid ? x.job : x.canal ? canalById(x.id) : postById(x.id), can2 = stageOptions(sk, it).length;
-    return `<div class="pev" data-sem="${lv}" style="--sem:${col}"${x.rec ? "" : calDrag(sk, x.id)}${act} title="${PLAN_SEC(x)}: ${esc(x.title)} · ${x.brand} · ${x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${st} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} <b class="evk">${PLAN_SEC(x)}:</b> ${esc(x.title)}</span>${can2 ? `<button type="button" class="pst" data-stagemenu="${sk}:${sid}" style="--c:${col}" title="Cambiar la etapa">${st} ▾</button>` : `<em style="--c:${col}">${st}</em>`}${x.cm ? `<small class="pwho">${icon("user-round")} ${esc(firstName(x.cm))}</small>` : ""}${!x.rec && !x.vid && !x.canal && it?.fromJob && !jobApproved(jobById(it.fromJob)) ? `<small class="pwait">🎨 Diseño en proceso</small>` : ""}</div>`; }).join(""), canEditPost())}</div>
+    return `<div class="pev" data-sem="${lv}" style="--sem:${col}"${x.rec ? "" : calDrag(sk, x.id)}${act} title="${PLAN_SEC(x)}: ${esc(x.title)} · ${x.brand} · ${x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${st} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} <b class="evk">${PLAN_SEC(x)}:</b> ${esc(x.title)}</span>${can2 ? `<button type="button" class="pst" data-stagemenu="${sk}:${sid}" style="--c:${col}" title="Cambiar la etapa">${st} ▾</button>` : `<em style="--c:${col}">${st}</em>`}${x.cm ? `<small class="pwho">${icon("user-round")} ${esc(firstName(x.cm))}</small>` : ""}${!x.rec && !x.vid && !x.canal && it?.fromJob && !jobApproved(jobById(it.fromJob)) ? `<small class="pwait">🎨 Diseño en proceso</small>` : ""}${!x.rec && !x.vid && it?.fromJob ? `<small class="pcopy ${it.copySt || "none"}">${it.time ? `🕒 ${esc(it.time)} · ` : ""}${{ rev:"✍️ Copy por aprobar", fix:"✏️ Corregir copy", ok:"✅ Copy aprobado" }[it.copySt] || "✍️ Falta el copy"}</small>` : ""}</div>`; }).join(""), canEditPost())}</div>
   <p class="note">Todo lo de CM junto, cada uno con el punto de color de su marca, quién lo hace (abajo), su ícono (${icon("image")} feed, ${icon("smartphone")} historia, ${icon("message-circle")} Canal de WhatsApp, ${icon("clapperboard")} video, ${icon("repeat")} repetitivo) y la etapa de su proceso (el color va de rojo, pendiente, a verde, publicado). Los repetitivos siguen el proceso de su tipo. Tocá uno para editarlo, su etapa para cambiarla (${icon("chevron-down")}), o un día vacío para cargar algo en esa fecha.</p>`;
 }
 let jobUI = { area:"Todos", view:"calendario", status:"Activos", owner:"Todos", prio:"Todas", q:"", form:null };
@@ -6312,7 +6337,7 @@ function syncJobPubs(live, prevCm){
   }
   const fms = prev.map(x => x.channel ? "Canal" : x.format), both = fms.includes("Historia") && fms.some(f => f !== "Historia" && f !== "Canal");
   const fmt = ok && prev.length ? (both ? POST_HIST : fms[0]) : pubFmtOf(live), before = new Map(prev.map(x => [x.id, x.cm]));
-  const out = makePub(live, { cm:live.pubCm, date:live.pubDate || prev[0]?.date, fmt, net:prev.find(x => !x.channel)?.net || "IG", by:live.approvedBy || "", pre:!ok });
+  const out = makePub(live, { cm:live.pubCm, date:live.pubDate || prev[0]?.date, time:live.pubTime ?? prev[0]?.time ?? "", fmt, net:prev.find(x => !x.channel)?.net || "IG", by:live.approvedBy || "", pre:!ok });
   out.forEach(x => { if (x.status === "Pendiente") x.title = live.title; });
   drop(prev.filter(x => !out.includes(x) && x.status === "Pendiente"));
   NOTIFS.forEach(n => { if (n.type === "pub" && n.job === live.id && !n.post) n.read = true; });
@@ -6323,8 +6348,9 @@ function jobPubCmBox(j){
   const live = jobById(j.id), done = jobPubsOf(live).length > 0, cur = j.pubCm ?? (done ? jobPubsOf(live)[0].cm : "");
   return `<div class="jpubcm" style="grid-column:1/-1"><span class="jll">${icon("calendar-days")} ¿Qué CM lo publica? <span class="note">(opcional)</span></span>
     <div class="jpubcmg"><label>CM que lo publica<select class="base" id="jPubCm"><option value="">Todavía no</option>${[...new Set([...CM_NAMES(), cur].filter(Boolean))].map(n => `<option ${n === cur ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label>
-    <label>Fecha de publicación <span class="note">(vacía = sin definir)</span><input class="base" type="date" id="jPubDate" value="${esc(j.pubDate || (done ? jobPubsOf(live)[0].date : ""))}"></label></div>
-    <p class="note" style="margin:0">${jobApproved(live) && done ? `${icon("badge-check")} Ya está aprobado y en el calendario de ${esc(jobPubsOf(live)[0].cm)}. Si cambiás la CM, sus publicaciones pasan a la nueva CM y le llega el aviso.` : `A la CM le llega enseguida (aunque el diseño esté en proceso): el nombre, el tipo, dónde se publica y la fecha de publicación (o “sin definir”). Con fecha, se le carga en su calendario. La ruta de la compartida la ve recién cuando apruebes el diseño. La fecha de publicación no la ve el diseñador. Lo podés cambiar cuando quieras.`}</p></div>`;
+    <label>Fecha de publicación <span class="note">(vacía = sin definir)</span><input class="base" type="date" id="jPubDate" value="${esc(j.pubDate || (done ? jobPubsOf(live)[0].date : ""))}"></label>
+    <label>Hora de publicación <span class="note">(vacía = sin definir)</span><input class="base" type="time" id="jPubTime" value="${esc(j.pubTime ?? (done ? jobPubsOf(live)[0].time || "" : ""))}"></label></div>
+    <p class="note" style="margin:0">${jobApproved(live) && done ? `${icon("badge-check")} Ya está aprobado y en el calendario de ${esc(jobPubsOf(live)[0].cm)}. Si cambiás la CM, sus publicaciones pasan a la nueva CM y le llega el aviso.` : `A la CM le llega enseguida (aunque el diseño esté en proceso): el nombre, el tipo, dónde se publica y el día y la hora de publicación (o “sin definir”). Con fecha, se le carga en su calendario. La ruta de la compartida la ve recién cuando apruebes el diseño. La fecha de publicación no la ve el diseñador. Lo podés cambiar cuando quieras.`}</p></div>`;
 }
 function jobForm(){
   const f = jobUI.form; if (!f) return "";
@@ -6416,7 +6442,7 @@ function spawnRepeats(){
 // Links de un pedido (antes había uno solo, en j.link).
 const jobLinks = j => Array.isArray(j.links) ? j.links : j.link ? [j.link] : [];
 function readJobForm(j){ const v = id => document.getElementById(id)?.value;
-  if (v("jPubCm") !== undefined){ j.pubCm = v("jPubCm") || ""; j.pubDate = v("jPubDate") || ""; }
+  if (v("jPubCm") !== undefined){ j.pubCm = v("jPubCm") || ""; j.pubDate = v("jPubDate") || ""; j.pubTime = v("jPubTime") || ""; }
   const bf = document.getElementById("jBriefF"); if (bf && bf.dataset.dirty){ j.brief = rtHtml(bf); j.briefBy = viewer.name; j.briefAt = new Date().toISOString(); }
   if (document.querySelector("#jobForm .lked")) readLinkEditor(document.querySelector("#jobForm .lked"), j);
   // (los links se leen del editor de links de acceso, arriba)
@@ -6749,17 +6775,78 @@ function postReadOnly(){ const f = document.getElementById("postForm"); if (!f) 
   f.querySelectorAll("button[type=submit]").forEach(x => x.hidden = true);
   if (!f.querySelector(".ronote")) f.insertAdjacentHTML("afterbegin", `<p class="note ronote">${icon("eye")} Solo para ver: la publicación la cambian el CM y Admin total.</p>`); if (window.lucide) lucide.createIcons(); }
 // Publicación que sale de un diseño aprobado: arriba, solo lo que necesita el CM para publicar — título, tipo de gráfica,
-// dónde se publica, fecha y la ruta de la compartida bien destacada (con Copiar y Abrir). El resto de Diseño no se muestra.
+// dónde se publica, día y hora, y la ruta de la compartida bien destacada (con Copiar y Abrir). El resto de Diseño no se muestra.
+const pubWhen = p => `${WEEKDAYS[wdOf(p.date)]} ${dm(p.date)}${p.time ? ` · ${p.time} h` : ""}`;
 function pubForCm(p, dj, canal){
   const shares = shareList(p).filter(s => s.p), where = canal || p.channel ? "Canal de WhatsApp" : `${p.net || "IG"} · ${p.format || "Post"}`;
   const cell = (k, v, cls = "") => `<div class="${cls}"><span>${k}</span><b>${v}</b></div>`;
   const ok = jobApproved(dj), st = stagesOf(dj), cur = st.indexOf(dj.status);
-  const full = `<details class="pcmfull"><summary>${icon("file-text")} Ver el pedido completo</summary><div class="pcmfg">${[["Marcas", esc(jobBrands(dj).join(" + "))], ["Solicitante", esc(dj.requester || "—")], ["Lo diseña", esc(dj.owner)], ["Fecha límite del diseño", dj.due ? dm(dj.due) : "—"], ["Observaciones", esc(dj.notes || "—")], ...(dj.piece === OTRO && dj.otro ? [["Actividades", esc(dj.otro)]] : [])].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("")}</div>${dj.brief ? `<div class="pcmbrief"><span>Texto del pedido</span><div class="rt">${cleanRich(dj.brief)}</div></div>` : ""}</details>`;
-  const wait = ok ? "" : `<div class="pcmwait">${icon("palette")}<div><b>Diseño gráfico en proceso</b><span>Esperá que Admin total apruebe el diseño para publicar: ahí te llega el aviso con la ruta de la compartida.</span>
+  const wait = ok ? "" : `<div class="pcmwait">${icon("palette")}<div><b>Diseño gráfico en proceso</b><span>Esperá que Admin total apruebe el diseño: ahí te llega el aviso con la ruta de la compartida. El copy lo podés ir escribiendo.</span>
     <div class="pcmst">${st.map((x, i) => `<i class="${i < cur ? "done" : ""}${i === cur ? " on" : ""}" style="--c:${JOB_COLOR[x] || "#94a3b8"}">${esc(x)}</i>`).join("")}</div></div></div>`;
   return `<div class="pfrom pcm${ok ? "" : " wait"}"><div class="pcmh">${icon(ok ? "badge-check" : "hourglass")}<b>${ok ? `${dj.area === "Contenidos" ? "Contenido aprobado" : "Diseño aprobado"} · listo para publicar` : "Pedido para publicar · diseño gráfico en proceso"}</b>${canCreateJobs() ? `<button type="button" class="btn sm" data-jficha="${esc(dj.id)}">${icon("eye")} Ver pedido</button>` : ""}</div>
-    ${wait}<div class="pcmg">${cell("Título", esc(p.title || dj.title))}${cell("Tipo de gráfica", esc(p.dgPiece || cmPiece(dj)))}${cell("Dónde se publica", esc(where))}${cell("Fecha de publicación", `${WEEKDAYS[wdOf(p.date)]} ${dm(p.date)}`, "pcmd")}</div>
-    <div class="pcmshare"><span class="jll">${icon("folder-symlink")} Ruta de la compartida</span>${!ok ? `<p class="note" style="margin:0">${icon("lock")} La ruta de la compartida aparece acá cuando Admin total apruebe el diseño (te llega el aviso).</p>` : shares.length ? linkEditor({ id:p.id, shares, share:shares[0].p }, "", true) : `<p class="note" style="margin:0">Todavía no tiene la ruta de la compartida: pedísela a ${esc(firstName(dj.owner))}.</p>`}</div>${full}</div>`;
+    ${wait}<div class="pcmg">${cell("Título", esc(p.title || dj.title))}${cell("Tipo de gráfica", esc(p.dgPiece || cmPiece(dj)))}${cell("Dónde se publica", esc(where))}${cell("Día y hora de publicación", `${WEEKDAYS[wdOf(p.date)]} ${dm(p.date)}<em class="pcmt">${icon("clock")} ${p.time ? esc(p.time) + " h" : "hora sin definir"}</em>`, "pcmd")}</div>
+    <div class="pcmshare"><span class="jll">${icon("folder-symlink")} Ruta de la compartida</span>${!ok ? `<p class="note" style="margin:0">${icon("lock")} La ruta de la compartida aparece acá cuando Admin total apruebe el diseño (te llega el aviso).</p>` : shares.length ? linkEditor({ id:p.id, shares, share:shares[0].p }, "", true) : `<p class="note" style="margin:0">Todavía no tiene la ruta de la compartida: pedísela a ${esc(firstName(dj.owner))}.</p>`}</div></div>`;
+}
+// ----- Copy de la publicación (v214): la CM lo escribe en una hoja (blanca o negra, con emojis), se lo manda a Admin total,
+// que lo aprueba o pide corrección (le llega a la CM). Recién con el copy aprobado se puede programar o publicar, en el día y la
+// hora que puso Admin total. Se guarda en la publicación: copy (texto), copyBg ("negro" o nada), copySt ("" sin mandar,
+// "rev" esperando a Admin total, "fix" con corrección pedida, "ok" aprobado), copyBy (quién aprobó) y copyLog (el historial).
+const COPY_EMOJIS = "😀 😃 😍 🥰 😋 🤩 😎 🥳 😉 🤗 🙌 👏 👍 👌 💪 🙏 👉 👇 ✅ ❗ ❤️ 🧡 💛 💚 💙 💜 🤍 🔥 ✨ ⭐ 🌟 💥 💯 🎉 🎊 🎁 🛒 🛍️ 🏷️ 💰 💳 💸 🆕 🆓 📣 📢 ⏰ 📅 📍 🚚 🛵 📲 💬 🍕 🍔 🥩 🍗 🥦 🍎 🍓 🥑 🧀 🥖 🍷 🍺 🥤 ☕ 🍰 🎂 🍫 🎄 🎅 🌞 🌸 💐 🐟 🏠 👨‍👩‍👧 🐶".split(" ");
+const COPY_MAX = 2200; // lo que deja Instagram en una publicación
+const copyLock = (p, to) => !!p?.fromJob && p.copySt !== "ok" && ["Programado","Publicado","Pautado"].includes(to);
+const copyLockMsg = "Primero Admin total tiene que aprobar el copy: recién ahí se programa o se publica.";
+const copyRef = p => (p.channel ? "canal:" : "post:") + p.id;
+const copyByRef = ref => { const [k, id] = String(ref).split(":"); return k === "canal" ? canalById(id) : postById(id); };
+const copyStText = p => ({ rev:`${icon("hourglass")} Esperando que Admin total apruebe el copy`, fix:`${icon("pencil")} Admin total pidió corregir el copy`, ok:`${icon("badge-check")} Copy aprobado${p.copyBy ? " por " + esc(firstName(p.copyBy)) : ""}: publicalo el ${pubWhen(p)}` }[p.copySt]
+  || `${icon("file-text")} ${p.cm === viewer?.name ? "Escribí el copy y mandalo a Admin total para que lo apruebe" : `${esc(firstName(p.cm || "La CM"))} todavía no mandó el copy`}`);
+function copySheet(p, edit){
+  const dark = p.copyBg === "negro", n = [...String(p.copy || "")].length;
+  return `<div class="cpwrap">${edit ? `<div class="cpbar" role="toolbar" aria-label="Hoja del copy"><div class="chips" role="group" aria-label="Color de la hoja">
+      <button type="button" class="chip${dark ? "" : " on"}" data-cpbg="" aria-pressed="${!dark}">⬜ Hoja blanca</button><button type="button" class="chip${dark ? " on" : ""}" data-cpbg="negro" aria-pressed="${dark}">⬛ Hoja negra</button></div>
+      <button type="button" class="btn sm" data-cpemo aria-expanded="false">${icon("smile")} Emojis</button></div>
+    <div class="cpemo" role="group" aria-label="Emojis" hidden>${COPY_EMOJIS.map(e => `<button type="button" data-cpe="${e}" title="Agregar ${e}">${e}</button>`).join("")}</div>` : ""}
+    <textarea class="cpsheet${dark ? " dark" : ""}" id="poCopy" rows="10" maxlength="${COPY_MAX}" aria-label="Copy de la publicación"${edit ? "" : " readonly"} placeholder="Ej.: ¡Llegó la canasta navideña con 20% OFF! 🎄🛒&#10;Válido del 1 al 24 de diciembre o hasta agotar stock.&#10;#Superseis #Navidad">${esc(p.copy || "")}</textarea>
+    <div class="cpfoot"><span class="note" id="cpCount">${n} / ${COPY_MAX}</span><button type="button" class="btn sm" data-cpcopy>${icon("copy")} Copiar el copy</button></div></div>`;
+}
+function copyLogList(p){
+  const L = p.copyLog || []; if (!L.length) return "";
+  const t = { send:"mandó el copy para aprobar", fix:"pidió corregir el copy", ok:"aprobó el copy", edit:"volvió a abrir el copy para cambiarlo" };
+  return `<ol class="cplog">${L.map(c => `<li class="${c.k}"><b>${esc(firstName(c.by || ""))}</b> ${t[c.k] || ""}${c.text ? `: <q>${esc(c.text)}</q>` : ""} <span>${dm(c.date)} ${c.time || ""}</span></li>`).join("")}</ol>`;
+}
+// Hoja de la CM para una publicación que viene de Diseño gráfico: solo el copy, el día y la hora, y la etapa.
+// (Sin “¿Se repite?”, sin el texto del pedido, sin la ruta repetida, sin prioridad ni cambios de Diseño.)
+function pubCopyForm(f, p, dj, canal, real, chat){
+  const at = viewer.role === "Admin total", mine = p.cm === viewer.name, st = p.copySt || "", stages = canal ? CANAL_STAGES : POST_STAGES, cur = stages.indexOf(p.status);
+  const edit = canEditPost() && (at || (mine && st !== "rev" && st !== "ok"));
+  const hid = (id, v) => `<input type="hidden" id="${id}" value="${esc(v ?? "")}">`;
+  const last = [...(p.copyLog || [])].reverse().find(c => c.k === "fix");
+  const acts = !real || !canEditPost() ? "" : at && st === "rev" ? `<button type="button" class="btn" data-cpfix="${esc(copyRef(real))}">${icon("pencil")} Pedir corrección</button><button type="button" class="btn primary" data-cpok="${esc(copyRef(real))}">${icon("check")} Aprobar copy</button>`
+    : mine && (st === "" || st === "fix") ? `<button type="button" class="btn primary" data-cpsend="${esc(copyRef(real))}">${icon("send")} ${st === "fix" ? "Mandar el copy corregido" : "Mandar el copy a Admin total"}</button>`
+    : mine && st === "ok" ? `<button type="button" class="btn" data-cpreopen="${esc(copyRef(real))}">${icon("pencil")} Cambiar el copy</button>` : "";
+  const what = canal ? "Canal de WhatsApp · Community Manager" : f.kind === "Historia" ? "Historia · Community Manager" : "Publicación · Community Manager";
+  return `<div class="jpage jformpage" aria-label="Ficha del posteo">
+    <div class="jp-top"><button class="btn" type="button" data-pclose>${icon("arrow-left")} Volver</button>${chat ? `<div class="jp-chat">${chat}</div>` : ""}</div>
+    <div class="jp-h"><span class="note">${what}</span><h1 style="margin:4px 0 0">${esc(p.title)}</h1></div>${pubForCm(p, dj, canal)}
+    <form id="postForm" class="jform panel pcopyform">
+      ${hid("poBrand", p.brand)}${hid("poTitle", p.title)}${hid("poCm", p.cm)}${hid("poNotes", p.notes)}${hid("poReq", p.requester || "Marketing")}${canal ? hid("poChannel", p.channel || CANALES[0]) : hid("poNet", p.net || "IG") + (f.kind === "Historia" ? "" : hid("poFormat", p.format || "Post"))}
+      <section class="jfs"><h3><i>1</i>Copy de la publicación</h3><div class="jfg">
+        <div style="grid-column:1/-1"><p class="cpst ${st || "none"}">${copyStText(p)}</p>${st === "fix" && last?.text ? `<p class="cpfixmsg">“${esc(last.text)}”</p>` : ""}
+          ${copySheet(p, edit)}
+          ${acts ? `<div class="chips cpacts">${acts}</div>` : ""}
+          ${st === "rev" && mine && !at ? `<p class="note" style="margin:6px 0 0">${icon("lock")} Mientras Admin total lo revisa no se puede cambiar. Si pide corrección, te llega el aviso.</p>` : ""}
+          ${copyLogList(p)}</div>
+      </div></section>
+      ${at ? `<section class="jfs"><h3><i>2</i>Día y hora de publicación</h3><div class="jfg">
+        <label>Fecha de publicación *<input class="base" type="date" id="poDate" value="${esc(p.date)}" required></label>
+        <label>Hora de publicación<input class="base" type="time" id="poTime" value="${esc(p.time || "")}"></label>
+        <p class="note" style="grid-column:1/-1;margin:0">La CM lo publica en este día y a esta hora, cuando el copy esté aprobado.</p></div></section>` : hid("poDate", p.date) + hid("poTime", p.time || "")}
+      <section class="jfs"><h3><i>${at ? 3 : 2}</i>Etapa</h3><div class="jfg">
+        <div style="grid-column:1/-1"><div class="pproc" role="group" aria-label="Etapa">${stages.map((x, i) => `<button type="button" class="${i < cur ? "done" : ""}${i === cur ? " on" : ""}${copyLock(p, x) && x !== p.status ? " lock" : ""}" style="--c:${POST_COLOR[x] === "#334155" ? "#94a3b8" : POST_COLOR[x]}" data-postep="${esc(x)}" aria-pressed="${i === cur}"><span>${i + 1}</span>${esc(x)}</button>`).join("")}</div>
+          <input type="hidden" id="poStatus" value="${esc(p.status)}">
+          <p class="note" style="margin:8px 0 0">${st === "ok" ? `${icon("clock")} Publicalo el ${pubWhen(p)} y marcá Publicado.` : `${icon("lock")} Programado y Publicado se habilitan cuando Admin total apruebe el copy.`}</p></div>
+      </div></section>
+      <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-pclose>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div>
+    </form></div>`;
 }
 function postForm(){
   const f = postUI.form; if (!f) return "";
@@ -6776,7 +6863,10 @@ function postForm(){
   const dj = p.fromJob && jobById(p.fromJob);
   if (real && real.fromJob && real.cm === viewer.name && !real.seenBy?.[viewer.id] && !window.RMH?.previewing){ real.seenBy = { ...(real.seenBy || {}), [viewer.id]:1 };
     NOTIFS.forEach(n => { if (n.type === "pub" && n.post === real.id && n.to === viewer.name) n.read = true; }); setTimeout(renderNav, 0); }
-  const fromDesign = dj ? pubForCm(p, dj, canal) : ""; // v209: lo justo para publicar (el resto de Diseño no hace falta)
+  if (real && real.cm === viewer.name && !window.RMH?.previewing && NOTIFS.some(n => n.copy && n.type === "listo" && n.post === real.id && n.to === viewer.name && !n.read)){
+    NOTIFS.forEach(n => { if (n.copy && n.type === "listo" && n.post === real.id && n.to === viewer.name) n.read = true; }); setTimeout(renderNav, 0); }
+  if (dj) return pubCopyForm(f, p, dj, canal, real, chat); // v214: a la CM, solo el copy, el día y la hora (y la ruta, arriba)
+  const fromDesign = "";
   return `<div class="jpage jformpage" aria-label="Ficha del posteo">
     <div class="jp-top"><button class="btn" type="button" data-pclose>${icon("arrow-left")} Volver</button>${chat ? `<div class="jp-chat">${chat}</div>` : ""}</div>
     <div class="jp-h"><span class="note">${canal ? "Canal de WhatsApp · Community Manager" : f.kind === "Historia" ? "Historia · Community Manager" : "Publicación · Community Manager"}</span><h1 style="margin:4px 0 0">${f.mode === "edit" ? "Editar " + what : (canal ? "Nuevo " : "Nueva ") + what}</h1>${j && !dj ? `<div class="note" style="margin-top:4px">${icon("palette")} Pedido de diseño: ${esc(j.status)}</div>` : ""}</div>${fromDesign}
@@ -6810,6 +6900,79 @@ function postForm(){
       <div class="chips" style="justify-content:flex-end">${f.mode === "edit" && canEditPost() ? `<button class="btn danger" type="button" data-postdel="${canal ? "canal:" : ""}${p.id}" style="margin-right:auto">${icon("trash-2")} Borrar</button>` : ""}<button class="btn" type="button" data-pclose>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div>
     </form></div>`;
 }
+// Hoja del copy: blanca o negra, emojis donde está el cursor, contador y “Copiar el copy”.
+document.addEventListener("mousedown", e => { if (e.target.closest("[data-cpe]")) e.preventDefault(); }); // el cursor sigue en la hoja
+document.addEventListener("click", e => {
+  const bg = e.target.closest("[data-cpbg]"); if (bg){ const ta = document.getElementById("poCopy"); if (!ta || ta.readOnly) return; const dark = bg.dataset.cpbg === "negro";
+    ta.classList.toggle("dark", dark); bg.parentElement.querySelectorAll("[data-cpbg]").forEach(b => { b.classList.toggle("on", b === bg); b.setAttribute("aria-pressed", b === bg); }); return; }
+  const eb = e.target.closest("[data-cpemo]"); if (eb){ const box = eb.closest(".cpwrap")?.querySelector(".cpemo"); if (!box) return; box.hidden = !box.hidden; eb.setAttribute("aria-expanded", !box.hidden); return; }
+  const em = e.target.closest("[data-cpe]"); if (em){ const ta = document.getElementById("poCopy"); if (!ta || ta.readOnly) return;
+    const a = ta.selectionStart ?? ta.value.length, b = ta.selectionEnd ?? a, t = em.dataset.cpe;
+    if ([...ta.value].length + [...t].length > COPY_MAX) return toast(`El copy no puede pasar de ${COPY_MAX} caracteres.`);
+    ta.value = ta.value.slice(0, a) + t + ta.value.slice(b); ta.focus(); ta.setSelectionRange(a + t.length, a + t.length); ta.dispatchEvent(new Event("input", { bubbles:true })); return; }
+  const cc = e.target.closest("[data-cpcopy]"); if (cc){ const v = document.getElementById("poCopy")?.value || ""; if (!v.trim()) return toast("Todavía no hay copy para copiar.");
+    navigator.clipboard?.writeText(v).then(() => toast("Copy copiado: pegalo en la publicación."), () => toast("No se pudo copiar: marcalo y copialo a mano.")); }
+});
+document.addEventListener("input", e => { if (e.target.id !== "poCopy") return; const c = document.getElementById("cpCount"); if (c) c.textContent = `${[...e.target.value].length} / ${COPY_MAX}`; });
+// Lo que está escrito en la hoja pasa a la publicación (y a la hoja abierta, sin perder lo demás que se estaba cambiando).
+function copyTake(p){
+  const f = postUI.form; if (f) readPostForm(f.post);
+  const ta = document.getElementById("poCopy"); if (ta && !ta.readOnly){ p.copy = ta.value; p.copyBg = ta.classList.contains("dark") ? "negro" : ""; }
+}
+function copySync(p){ const f = postUI.form; if (f && f.post.id === p.id) Object.assign(f.post, { copy:p.copy, copyBg:p.copyBg, copySt:p.copySt, copyBy:p.copyBy, copyLog:p.copyLog, status:p.status }); }
+const copyLogAdd = (p, k, text) => (p.copyLog = p.copyLog || []).push({ date:TODAY, time:nowTime(), by:viewer.name, k, ...(text ? { text } : {}) });
+const copyNotifsRead = (p, test) => NOTIFS.forEach(n => { if (n.copy && n.post === p.id && test(n)) n.read = true; });
+// La CM manda el copy: le llega a cada Admin total (ventana, sonido y push) para aprobar o pedir corrección.
+function copySend(p){
+  copyTake(p); if (!String(p.copy || "").trim()) return toast("Escribí el copy antes de mandarlo.");
+  const fix = p.copySt === "fix"; p.copySt = "rev"; if (p.status === "Pendiente") p.status = "En proceso"; copyLogAdd(p, "send");
+  copyNotifsRead(p, n => n.to === viewer.name || n.to === "admin");
+  notify({ to:"admin", type:"review", copy:true, fix, post:p.id, canal:!!p.channel, who:viewer.name });
+  copySync(p); render(); window.RMH?.flushNow?.(); toast("Listo: le llegó a Admin total para aprobar el copy. Te avisamos cuando lo apruebe.");
+}
+function copyApprove(p){
+  if (viewer.role !== "Admin total" || !p) return; if (document.getElementById("poCopy")) copyTake(p);
+  p.copySt = "ok"; p.copyBy = viewer.name; copyLogAdd(p, "ok"); copyNotifsRead(p, n => n.to === "admin" || (n.to === p.cm && n.type === "fix"));
+  notify({ to:p.cm, type:"listo", copy:true, post:p.id, canal:!!p.channel });
+  copySync(p); render(); window.RMH?.flushNow?.(); toast(`Copy aprobado. Le avisamos a ${firstName(p.cm)}: lo publica el ${pubWhen(p)}.`);
+}
+function copyFix(p, text){
+  if (viewer.role !== "Admin total" || !p) return; if (document.getElementById("poCopy")) copyTake(p);
+  p.copySt = "fix"; copyLogAdd(p, "fix", text); copyNotifsRead(p, n => n.to === "admin");
+  notify({ to:p.cm, type:"fix", copy:true, post:p.id, canal:!!p.channel, text });
+  copySync(p); render(); window.RMH?.flushNow?.(); toast(`Le mandamos la corrección del copy a ${firstName(p.cm)}.`);
+}
+function openCopyFixModal(p){
+  document.getElementById("fixpop")?.remove();
+  const w = document.createElement("div"); w.id = "fixpop"; w.className = "fixpop";
+  w.innerHTML = `<div class="fixbox" role="dialog" aria-modal="true" aria-labelledby="cpfh"><h2 id="cpfh">Pedir corrección del copy</h2><p class="note">${esc(p.title)} · ${esc(p.cm)}</p>
+    ${p.copy ? `<div class="cpprev${p.copyBg === "negro" ? " dark" : ""}">${esc(p.copy)}</div>` : ""}
+    <label>¿Qué hay que corregir? *<textarea class="base" id="cpFixText" rows="4" placeholder="Ej.: sacar el precio, agregar el horario del domingo, menos emojis"></textarea></label>
+    <p class="perr" id="cpFixErr" hidden>Escribí qué hay que corregir para que ${esc(firstName(p.cm))} sepa qué cambiar.</p>
+    <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-cpfixsend="${esc(copyRef(p))}">Enviar corrección</button></div></div>`;
+  document.body.appendChild(w); w.querySelector("textarea").focus();
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-cpsend],[data-cpok],[data-cpfix],[data-cpreopen],[data-cpfixsend]"); if (!b) return;
+  const d = b.dataset, p = copyByRef(d.cpsend || d.cpok || d.cpfix || d.cpreopen || d.cpfixsend); if (!p) return toast("No se encontró la publicación (quizás la borraron).");
+  if (!canEditPost()) return;
+  if (d.cpsend){ if (p.cm !== viewer.name) return; return copySend(p); }
+  if (d.cpok) return copyApprove(p);
+  if (d.cpfix) return openCopyFixModal(p);
+  if (d.cpfixsend){ const t = document.getElementById("cpFixText")?.value.trim(); if (!t){ document.getElementById("cpFixErr").hidden = false; return; } document.getElementById("fixpop")?.remove(); return copyFix(p, t); }
+  if (d.cpreopen && p.cm === viewer.name){ copyTake(p); p.copySt = ""; copyLogAdd(p, "edit"); if (["Programado"].includes(p.status)) p.status = "En proceso"; copySync(p); render(); toast("Podés cambiar el copy: cuando termines, mandalo de nuevo a Admin total."); }
+});
+// Avisos del copy (en Tus alertas y en la ventana emergente).
+function copyAlert(n){
+  const p = n.canal ? canalById(n.post) : postById(n.post); if (!p) return null;
+  const go = "pub:" + (n.canal ? "canal:" : "post:") + p.id, where = p.channel ? "Canal de WhatsApp" : `${p.net} ${p.format}`, key = "n:" + n.id;
+  if (n.type === "review") return { go, key, sev:"#a855f7", rank:-5, ic:"file-text", t:`${n.fix ? "Copy corregido" : "Copy"} listo para aprobar: ${p.title}`, m:`${firstName(n.who || p.cm)} · ${p.brand} · ${where} · publicar el ${pubWhen(p)}${p.copy ? ` · “${rclShort(p.copy, 120)}”` : ""}`,
+    acts:`<button class="btn primary" data-nact="approve" data-nid="${n.id}">✓ Aprobar copy</button><button class="btn" data-nact="fix" data-nid="${n.id}">Pedir corrección</button><button class="btn" data-pubopen="${n.canal ? "canal" : "post"}:${esc(p.id)}">Ver</button>` };
+  if (n.type === "fix") return { go, key, sev:"#f97316", rank:-5, ic:"pencil", t:`Admin total pidió corregir el copy: ${p.title}`, m:`${n.text ? `“${n.text}” · ` : ""}${dm(n.date)} ${n.time} · corregilo y mandalo de nuevo`,
+    acts:`<button class="btn primary" data-pubopen="${n.canal ? "canal" : "post"}:${esc(p.id)}">${icon("pencil")} Corregir el copy</button>` };
+  return { go, key, sev:"#10b981", rank:-6, ic:"badge-check", t:`Copy aprobado: ${p.title}`, m:`${p.brand} · ${where} · publicalo el ${pubWhen(p)}`,
+    acts:`<button class="btn primary" data-pubopen="${n.canal ? "canal" : "post"}:${esc(p.id)}">${icon("arrow-up-right")} Ver publicación</button>` };
+}
 // 5 · Cambios pedidos de una publicación: quién los pidió, qué hay que cambiar y los comentarios, en orden.
 function postChain(p, canal){
   const list = p.changes || [], who = n => { const pp = PEOPLE.find(x => x.name === n); return pp ? nickOf(pp) : n ? firstName(n) : "Admin total"; };
@@ -6830,10 +6993,15 @@ function readPostForm(d){
   Object.assign(d, { date:val("poDate") ?? d.date, brand:val("poBrand") ?? d.brand, title:val("poTitle") ?? d.title, cm:val("poCm") ?? d.cm, status:val("poStatus") ?? d.status, notes:val("poNotes") ?? d.notes, requester:val("poReq") ?? d.requester });
   if (v("poNet")) d.net = v("poNet").value; if (v("poFormat")) d.format = v("poFormat").value;
   const br = v("poBrief"); if (br && br.dataset.dirty) d.brief = rtHtml(br);
+  if (v("poTime")) d.time = v("poTime").value;
+  const cp = v("poCopy"); if (cp && !cp.readOnly){ d.copy = cp.value; d.copyBg = cp.classList.contains("dark") ? "negro" : ""; }
   const box = document.querySelector("#postForm .lked"); if (box) readLinkEditor(box, d);
 }
 document.addEventListener("click", e => {
-  const st = e.target.closest("[data-postep]"); if (st && postUI.form){ const h = document.getElementById("poStatus"); if (h) h.value = st.dataset.postep;
+  const st = e.target.closest("[data-postep]"); if (st && postUI.form){ const h = document.getElementById("poStatus");
+    const live = postUI.form.kind === "Canal" ? canalById(postUI.form.post.id) : postById(postUI.form.post.id);
+    if (copyLock(live || postUI.form.post, st.dataset.postep) && st.dataset.postep !== (live || postUI.form.post).status){ toast(copyLockMsg); return; }
+    if (h) h.value = st.dataset.postep;
     st.parentElement.querySelectorAll("button").forEach((b, i, all) => { const k = [...all].indexOf(st); b.classList.toggle("on", b === st); b.classList.toggle("done", i < k); b.setAttribute("aria-pressed", b === st); }); return; }
   const sd = e.target.closest("[data-pcsend]"); if (sd){ const key = sd.dataset.pcsend, canal = key.startsWith("canal:"), id = canal ? key.slice(6) : key, p = canal ? canalById(id) : postById(id), t = document.getElementById("pcText")?.value.trim();
     if (!p || !t) return; if (postUI.form) readPostForm(postUI.form.post); // no se pierde lo que estabas editando
@@ -6849,8 +7017,13 @@ document.addEventListener("submit", e => {
   if (cmUp.form){ toast("Esperá que termine de subir el archivo."); return; }
   const f = postUI.form; readPostForm(f.post); const title = $("#poTitle").value.trim(), date = $("#poDate").value;
   if (!title || !date){ toast("Completá el tema y la fecha."); return; }
+  const was = f.mode === "edit" ? (f.kind === "Canal" ? canalById(f.post.id) : postById(f.post.id)) : null;
+  if (copyLock(was || f.post, $("#poStatus").value) && $("#poStatus").value !== was?.status){ toast(copyLockMsg); return; }
   const d = f.post, common = { date, brand:$("#poBrand").value, title, cm:$("#poCm").value, status:$("#poStatus").value, notes:$("#poNotes").value.trim(), requester:d.requester || "Marketing",
-    brief:d.brief || "", canva:d.canva || "", drive:d.drive || "", canvaN:d.canvaN || "", driveN:d.driveN || "", xlinks:d.xlinks || [], links:d.links || [], cmFiles:d.cmFiles || [] };
+    brief:d.brief || "", canva:d.canva || "", drive:d.drive || "", canvaN:d.canvaN || "", driveN:d.driveN || "", xlinks:d.xlinks || [], links:d.links || [], cmFiles:d.cmFiles || [],
+    ...(d.time !== undefined ? { time:d.time || "" } : {}), ...(d.copy !== undefined ? { copy:d.copy, copyBg:d.copyBg || "" } : {}) };
+  const dj0 = d.fromJob && jobById(d.fromJob); // Admin total cambió el día o la hora: el pedido de Diseño queda igual (si tiene una sola publicación)
+  if (dj0 && viewer.role === "Admin total" && jobPubsOf(dj0).length === 1 && jobPubsOf(dj0)[0].id === d.id){ dj0.pubDate = date; if (d.time !== undefined) dj0.pubTime = d.time || ""; }
   if (f.mode !== "edit" && !d.byId) common.byId = viewer.id; // quién la cargó (para el chat)
   if (!MONTHS_APP.some(x => x.v === date.slice(0,7))){ toast(`La fecha (${dm(date)}) está fuera de los meses de la app. Revisá la fecha.`); return; }
   if (isCalPage() || (brandFilter !== "Todas" && groupOf(common.brand) !== brandFilter)) brandFilter = groupOf(common.brand); // lo cargado se ve enseguida, en su marca
@@ -10122,7 +10295,7 @@ let jobPop = { items:[] };
 function jobPopCheck(){
   if (!viewer || !enterApp.done || !$("#login").hidden || window.RMH?.previewing) return;
   const mine = [...myNotifs(), ...(viewer.role === "Admin total" ? adminNotifs().filter(n => n.type === "review") : [])]
-    .filter(n => JOBPOP[n.type] && (n.type !== "pub" || pubAlert(n)) && (n.type !== "listo" || !n.post || listoAlert(n)) && (!n.job || jobById(n.job)));
+    .filter(n => JOBPOP[n.type] && (n.copy ? copyAlert(n) : (n.type !== "pub" || pubAlert(n)) && (n.type !== "listo" || !n.post || listoAlert(n)) && (!n.job || jobById(n.job))));
   let seen = jobPopRead(); const first = seen === null; seen = seen || [];
   const fresh = mine.filter(n => !seen.includes(jobPopId(n)) && !notify.here.has(n) && (!first || n.date === TODAY)); // la primera vez en este dispositivo: solo lo de hoy
   const ids = mine.map(jobPopId);
@@ -10139,6 +10312,9 @@ function jobPopCheck(){
 function jobPopInfo(n){
   const P = JOBPOP[n.type], j = n.job ? jobById(n.job) : null;
   if (n.demo) return { ...P, go:"", title:n.type === "fix" ? "Ejemplo: Post Día de la Madre" : "Ejemplo: Historia ofertas del finde", m:n.type === "fix" ? "“Cambiar la foto principal y agrandar el precio”" : "Superseis · Historia · fecha límite " + dm(addDays(TODAY, 2)) };
+  if (n.copy){ const a = copyAlert(n), p = n.canal ? canalById(n.post) : postById(n.post);
+    return { ...P, go:a?.go || "", title:p?.title || "", t:n.type === "review" ? (n.fix ? "Copy corregido para aprobar" : "Copy listo para aprobar") : n.type === "fix" ? "Te pidieron corregir el copy" : "Copy aprobado: listo para publicar", ic:n.type === "review" || n.type === "fix" ? "file-text" : P.ic,
+      m:!p ? "" : n.type === "review" ? `${firstName(n.who || p.cm)} escribió el copy · ${p.brand} · publicar el ${pubWhen(p)}${p.copy ? ` · “${rclShort(p.copy, 140)}”` : ""}` : n.type === "fix" ? (n.text ? `“${rclShort(String(n.text), 160)}”` : p.brand) : `${p.brand} · publicalo el ${pubWhen(p)}` }; }
   if (n.type === "pub" || (n.type === "listo" && n.post)){ const a = n.type === "pub" ? pubAlert(n) : listoAlert(n); return { ...P, go:a?.go || "", title:a ? a.t.replace(/^(Nueva publicación para vos|Diseño aprobado, listo para publicar): /, "") : "", m:a ? a.m.replace(/ · tocá para verla$/, "") : "" }; }
   const brands = j ? jobBrands(j).join(" + ") : "";
   if (n.type === "review") return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "", t:n.fix ? "Correcciones listas para revisar" : j?.area === "CM" ? "Trabajo listo para revisar" : P.t,
@@ -10156,7 +10332,7 @@ function jobPopShow(){
   el.className = "jobpop " + (top.k === "fix" ? "fix" : "new"); el.style.setProperty("--c", top.c);
   el.setAttribute("aria-label", many ? `Tenés ${L.length} avisos nuevos` : top.t);
   el.innerHTML = `<div class="jpcard"><span class="jpring" aria-hidden="true"></span><div class="jphead"><span class="jpico">${icon(top.ic)}</span><div class="grow"><b>${many ? `Tenés ${L.length} avisos nuevos` : esc(top.t)}</b><small>Retail MKT Hub · recién</small></div><button type="button" class="jpx" data-jpclose aria-label="Cerrar">${icon("x")}</button></div>
-    <div class="jplist">${L.slice().reverse().map(({ n, x }) => `<div class="jpitem" style="--c:${x.c}">${many ? `<span class="jpk">${icon(x.ic)} ${esc(x.t)}</span>` : ""}<b class="jpt">${esc(x.title)}</b>${x.m ? `<span class="jpm">${esc(x.m)}</span>` : ""}${n.type === "review" && x.go ? `<div class="jpbtns"><button type="button" class="btn ${many ? "sm " : ""}primary" data-nact="approve" data-nid="${n.id}" data-jpid="${esc(String(n.id))}">${icon("check")} Aprobar</button><button type="button" class="btn${many ? " sm" : ""}" data-nact="fix" data-nid="${n.id}" data-jpid="${esc(String(n.id))}">${icon("pencil")} Pedir cambios</button><button type="button" class="btn${many ? " sm" : ""}" data-jpgo="${esc(x.go)}" data-jpid="${esc(String(n.id))}">${icon("eye")} Ver</button></div>`
+    <div class="jplist">${L.slice().reverse().map(({ n, x }) => `<div class="jpitem" style="--c:${x.c}">${many ? `<span class="jpk">${icon(x.ic)} ${esc(x.t)}</span>` : ""}<b class="jpt">${esc(x.title)}</b>${x.m ? `<span class="jpm">${esc(x.m)}</span>` : ""}${n.type === "review" && x.go ? `<div class="jpbtns"><button type="button" class="btn ${many ? "sm " : ""}primary" data-nact="approve" data-nid="${n.id}" data-jpid="${esc(String(n.id))}">${icon("check")} ${n.copy ? "Aprobar copy" : "Aprobar"}</button><button type="button" class="btn${many ? " sm" : ""}" data-nact="fix" data-nid="${n.id}" data-jpid="${esc(String(n.id))}">${icon("pencil")} ${n.copy ? "Pedir corrección" : "Pedir cambios"}</button><button type="button" class="btn${many ? " sm" : ""}" data-jpgo="${esc(x.go)}" data-jpid="${esc(String(n.id))}">${icon("eye")} Ver</button></div>`
       : x.go ? `<button type="button" class="btn ${many ? "sm" : "primary"}" data-jpgo="${esc(x.go)}" data-jpid="${esc(String(n.id))}">${icon(n.type === "pub" || n.post ? "arrow-up-right" : "eye")} ${x.go === "calcm" ? "Ver en Planificación" : n.type === "pub" || n.post ? "Ver publicación" : n.type === "fix" ? "Ver la corrección" : "Ver pedido"}</button>` : ""}</div>`).join("")}</div>
     <div class="jpacts"><button type="button" class="btn" data-jpclose>Después</button></div></div>`;
   if (window.lucide) lucide.createIcons();
