@@ -1467,6 +1467,9 @@ select.base.sm{padding:4px 8px;border-radius:10px;font-size:12.5px;border-color:
 .cpst{display:flex;gap:8px;align-items:center;margin:0 0 8px;font-weight:700;padding:8px 12px;border-radius:12px;background:rgba(148,163,184,.12);color:var(--text)}
 .cpst svg{width:18px;height:18px;flex:none}.cpst.rev{background:rgba(168,85,247,.16);color:#d8b4fe}.cpst.fix{background:rgba(249,115,22,.16);color:#fdba74}.cpst.ok{background:rgba(16,185,129,.16);color:#6ee7b7}
 .cpfixmsg{margin:0 0 8px;padding:8px 12px;border-left:3px solid #f97316;background:rgba(249,115,22,.08);border-radius:0 10px 10px 0;white-space:pre-wrap}
+.cphead{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 8px}.cphead .cpst{flex:1;min-width:220px;margin:0}
+.cpst.nocopy{background:rgba(148,163,184,.16);color:#cbd5e1}.chip.cpnone{display:inline-flex;gap:6px;align-items:center}.chip.cpnone svg{width:15px;height:15px}
+.rtbar .rtemobtn.on{border-color:#22d3ee;color:#67e8f9}.cpwrap .cpemo{margin:8px 0 0}
 .cpbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px}
 .cpemo{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:4px;padding:8px;margin-bottom:8px;border:1px solid var(--line-2);border-radius:12px;background:rgba(2,6,23,.35);max-height:180px;overflow:auto}
 .cpemo button{font-size:21px;line-height:1;padding:6px 0;border:0;border-radius:8px;background:transparent;cursor:pointer}.cpemo button:hover,.cpemo button:focus-visible{background:rgba(148,163,184,.2)}
@@ -1478,7 +1481,7 @@ select.base.sm{padding:4px 8px;border-radius:10px;font-size:12.5px;border-color:
 .cplog li.ok b{color:#6ee7b7}.cplog li.fix b{color:#fdba74}
 .cpprev{max-height:160px;overflow:auto;padding:10px 12px;border-radius:12px;background:#fff;color:#1f2937;white-space:pre-wrap;font-size:14px}.cpprev.dark{background:#000;color:#f8fafc}
 .pproc button.lock{opacity:.45}
-html.light .cpsheet,html.light .cpprev,html.light .cpemo button{filter:invert(1) hue-rotate(180deg)} /* la hoja queda blanca o negra como se eligió */
+html.light .cpemo button{filter:invert(1) hue-rotate(180deg)} /* la hoja queda blanca o negra como se eligió */
 .plcal .pev .pcopy{grid-column:2;font-size:10px;font-weight:700;color:#cbd5e1}.plcal .pev .pcopy.rev{color:#d8b4fe}.plcal .pev .pcopy.fix{color:#fdba74}.plcal .pev .pcopy.ok{color:#6ee7b7}
 /* v209 · Recordatorios fijos del calendario de CM */
 .ev.rem{border-style:dotted;background:rgba(251,191,36,.08);--s:#fbbf24;--c:#fbbf24}.ev.rem span{color:#fde68a}
@@ -3184,7 +3187,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-okse
 // En la ficha del pedido: la publicación que salió al aprobarlo (CM, fecha, formato) con un botón para abrirla.
 function pubInfo(j){ return (j.pubs || (j.pub ? [j.pub] : [])).map(r => r.canal ? canalById(r.id) : postById(r.id)).filter(Boolean).map(x => pubInfoOne(x)).join(""); }
 function pubInfoOne(x){
-  return `<div class="jpub">${icon("calendar-days")}<div class="grow"><b>Publicación en redes: ${esc(x.cm)}</b> ${brandTag(x.brand)}<small>${x.channel ? "Canal de WhatsApp" : `${esc(x.net)} · ${esc(x.format)}`} · ${dm(x.date)}${x.time ? " " + esc(x.time) + " h" : ""} · ${esc(x.status)}${x.fromJob ? ` · copy: ${{ rev:"esperando aprobación", fix:"en corrección", ok:"aprobado" }[x.copySt] || "sin mandar"}` : ""}</small></div>${can(x.channel ? "calcanales" : x.format === "Historia" ? "calhistoria" : "calendario") ? `<button type="button" class="btn sm" data-pubopen="${x.channel ? "canal" : "post"}:${esc(x.id)}">${icon("arrow-up-right")} Ver publicación</button>` : ""}</div>`; }
+  return `<div class="jpub">${icon("calendar-days")}<div class="grow"><b>Publicación en redes: ${esc(x.cm)}</b> ${brandTag(x.brand)}<small>${x.channel ? "Canal de WhatsApp" : `${esc(x.net)} · ${esc(x.format)}`} · ${dm(x.date)}${x.time ? " " + esc(x.time) + " h" : ""} · ${esc(x.status)}${x.fromJob ? ` · copy: ${x.noCopy ? "no lleva" : { rev:"esperando aprobación", fix:"en corrección", ok:"aprobado" }[x.copySt] || "sin mandar"}` : ""}</small></div>${can(x.channel ? "calcanales" : x.format === "Historia" ? "calhistoria" : "calendario") ? `<button type="button" class="btn sm" data-pubopen="${x.channel ? "canal" : "post"}:${esc(x.id)}">${icon("arrow-up-right")} Ver publicación</button>` : ""}</div>`; }
 document.addEventListener("click", e => { const b = e.target.closest("[data-pubopen]"); if (!b) return; e.stopPropagation(); openPub(b.dataset.pubopen); });
 // Abre la publicación del CM (desde el aviso o la ficha del pedido): va a su calendario, en su mes, con la hoja abierta.
 function openPub(ref){
@@ -5517,7 +5520,7 @@ function planCal(items){
   return `<div class="plcal">${calGrid(c => remOn(c).map(remPev).join("") + inflOn(c).map(inflPev).join("") + items.filter(x => x.date === c).map(x => { const st = x.status, lv = semLvl(st), col = SEM[lv];
     const act = x.rec ? (canCreateJobs() ? ` data-recedit="${x.r.id}" data-recat="${x.date}" role="button" tabindex="0"${recDrag(x.r, x.date)}` : "") : x.vid ? ` data-jficha="${x.id}" role="button" tabindex="0"` : canEditPost() ? ` data-pedit="${x.canal ? "canal" : "post"}:${x.id}" role="button" tabindex="0"` : "";
     const sk = x.rec ? "rec" : x.vid ? "job" : x.canal ? "canal" : "post", sid = x.rec ? x.sid : x.id, it = x.rec ? recItem(x.sid) : x.vid ? x.job : x.canal ? canalById(x.id) : postById(x.id), can2 = stageOptions(sk, it).length;
-    return `<div class="pev" data-sem="${lv}" style="--sem:${col}"${x.rec ? "" : calDrag(sk, x.id)}${act} title="${PLAN_SEC(x)}: ${esc(x.title)} · ${x.brand} · ${x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${st} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} <b class="evk">${PLAN_SEC(x)}:</b> ${esc(x.title)}</span>${can2 ? `<button type="button" class="pst" data-stagemenu="${sk}:${sid}" style="--c:${col}" title="Cambiar la etapa">${st} ▾</button>` : `<em style="--c:${col}">${st}</em>`}${x.cm ? `<small class="pwho">${icon("user-round")} ${esc(firstName(x.cm))}</small>` : ""}${!x.rec && !x.vid && !x.canal && it?.fromJob && !jobApproved(jobById(it.fromJob)) ? `<small class="pwait">🎨 Diseño en proceso</small>` : ""}${!x.rec && !x.vid && it?.fromJob ? `<small class="pcopy ${it.copySt || "none"}">${it.time ? `🕒 ${esc(it.time)} · ` : ""}${{ rev:"✍️ Copy por aprobar", fix:"✏️ Corregir copy", ok:"✅ Copy aprobado" }[it.copySt] || "✍️ Falta el copy"}</small>` : ""}</div>`; }).join(""), canEditPost())}</div>
+    return `<div class="pev" data-sem="${lv}" style="--sem:${col}"${x.rec ? "" : calDrag(sk, x.id)}${act} title="${PLAN_SEC(x)}: ${esc(x.title)} · ${x.brand} · ${x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${st} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} <b class="evk">${PLAN_SEC(x)}:</b> ${esc(x.title)}</span>${can2 ? `<button type="button" class="pst" data-stagemenu="${sk}:${sid}" style="--c:${col}" title="Cambiar la etapa">${st} ▾</button>` : `<em style="--c:${col}">${st}</em>`}${x.cm ? `<small class="pwho">${icon("user-round")} ${esc(firstName(x.cm))}</small>` : ""}${!x.rec && !x.vid && !x.canal && it?.fromJob && !jobApproved(jobById(it.fromJob)) ? `<small class="pwait">🎨 Diseño en proceso</small>` : ""}${!x.rec && !x.vid && it?.fromJob ? `<small class="pcopy ${it.copySt || "none"}">${it.time ? `🕒 ${esc(it.time)} · ` : ""}${it.noCopy ? "🚫 Sin copy" : { rev:"✍️ Copy por aprobar", fix:"✏️ Corregir copy", ok:"✅ Copy aprobado" }[it.copySt] || "✍️ Falta el copy"}</small>` : ""}</div>`; }).join(""), canEditPost())}</div>
   <p class="note">Todo lo de CM junto, cada uno con el punto de color de su marca, quién lo hace (abajo), su ícono (${icon("image")} feed, ${icon("smartphone")} historia, ${icon("message-circle")} Canal de WhatsApp, ${icon("clapperboard")} video, ${icon("repeat")} repetitivo) y la etapa de su proceso (el color va de rojo, pendiente, a verde, publicado). Los repetitivos siguen el proceso de su tipo. Tocá uno para editarlo, su etapa para cambiarla (${icon("chevron-down")}), o un día vacío para cargar algo en esa fecha.</p>`;
 }
 let jobUI = { area:"Todos", view:"calendario", status:"Activos", owner:"Todos", prio:"Todas", q:"", form:null };
@@ -6793,24 +6796,33 @@ function pubForCm(p, dj, canal){
 // "rev" esperando a Admin total, "fix" con corrección pedida, "ok" aprobado), copyBy (quién aprobó) y copyLog (el historial).
 const COPY_EMOJIS = "😀 😃 😍 🥰 😋 🤩 😎 🥳 😉 🤗 🙌 👏 👍 👌 💪 🙏 👉 👇 ✅ ❗ ❤️ 🧡 💛 💚 💙 💜 🤍 🔥 ✨ ⭐ 🌟 💥 💯 🎉 🎊 🎁 🛒 🛍️ 🏷️ 💰 💳 💸 🆕 🆓 📣 📢 ⏰ 📅 📍 🚚 🛵 📲 💬 🍕 🍔 🥩 🍗 🥦 🍎 🍓 🥑 🧀 🥖 🍷 🍺 🥤 ☕ 🍰 🎂 🍫 🎄 🎅 🌞 🌸 💐 🐟 🏠 👨‍👩‍👧 🐶".split(" ");
 const COPY_MAX = 2200; // lo que deja Instagram en una publicación
-const copyLock = (p, to) => !!p?.fromJob && p.copySt !== "ok" && ["Programado","Publicado","Pautado"].includes(to);
+const copyLock = (p, to) => !!p?.fromJob && !p.noCopy && p.copySt !== "ok" && ["Programado","Publicado","Pautado"].includes(to);
 const copyLockMsg = "Primero Admin total tiene que aprobar el copy: recién ahí se programa o se publica.";
 const copyRef = p => (p.channel ? "canal:" : "post:") + p.id;
 const copyByRef = ref => { const [k, id] = String(ref).split(":"); return k === "canal" ? canalById(id) : postById(id); };
-const copyStText = p => ({ rev:`${icon("hourglass")} Esperando que Admin total apruebe el copy`, fix:`${icon("pencil")} Admin total pidió corregir el copy`, ok:`${icon("badge-check")} Copy aprobado${p.copyBy ? " por " + esc(firstName(p.copyBy)) : ""}: publicalo el ${pubWhen(p)}` }[p.copySt]
-  || `${icon("file-text")} ${p.cm === viewer?.name ? "Escribí el copy y mandalo a Admin total para que lo apruebe" : `${esc(firstName(p.cm || "La CM"))} todavía no mandó el copy`}`);
+const copyStText = p => p.noCopy ? `${icon("ban")} No lleva copy: se publica sin copy, no hace falta la aprobación` : ({ rev:`${icon("hourglass")} Esperando que Admin total apruebe el copy`, fix:`${icon("pencil")} Admin total pidió corregir el copy`, ok:`${icon("badge-check")} Copy aprobado${p.copyBy ? " por " + esc(firstName(p.copyBy)) : ""}: publicalo el ${pubWhen(p)}` }[p.copySt]
+  || `${icon("file-text")} ${p.cm === viewer?.name ? "Escribí el copy y tocá “Copy boceto finalizado” para que Admin total lo revise" : `${esc(firstName(p.cm || "La CM"))} todavía no mandó el copy`}`);
+// v215: la hoja del copy es la misma hoja tipo Word del pedido (letra, colores, fondo, listas, imágenes) + emojis.
+// Lo que se guarda es HTML (con el fondo al principio, como el texto del pedido). Los copys de v214 eran texto plano.
+const copyIsRich = s => /<[a-z!]/i.test(String(s || ""));
+const copyHtml = p => { const s = String(p.copy || ""); if (copyIsRich(s)) return cleanRich(s); const t = esc(s).replace(/\n/g, "<br>"); return (p.copyBg === "negro" ? "<!--bg:#000000-->" : "") + t; };
+function copyPlain(p){ const s = String(p.copy || ""); if (!copyIsRich(s)) return s;
+  const d = document.createElement("div"); d.innerHTML = s.replace(/<!--[\s\S]*?-->/g, "").replace(/<br\s*\/?>/gi, "\n").replace(/<\/?(p|div|li|h\d)\b[^>]*>/gi, "\n$&");
+  return d.textContent.replace(/\n{2,}/g, "\n").trim(); }
+const COPY_PH = "Ej.: ¡Llegó la canasta navideña con 20% OFF! 🎄🛒\nVálido del 1 al 24 de diciembre o hasta agotar stock.\n#Superseis #Navidad";
 function copySheet(p, edit){
-  const dark = p.copyBg === "negro", n = [...String(p.copy || "")].length;
-  return `<div class="cpwrap">${edit ? `<div class="cpbar" role="toolbar" aria-label="Hoja del copy"><div class="chips" role="group" aria-label="Color de la hoja">
-      <button type="button" class="chip${dark ? "" : " on"}" data-cpbg="" aria-pressed="${!dark}">⬜ Hoja blanca</button><button type="button" class="chip${dark ? " on" : ""}" data-cpbg="negro" aria-pressed="${dark}">⬛ Hoja negra</button></div>
-      <button type="button" class="btn sm" data-cpemo aria-expanded="false">${icon("smile")} Emojis</button></div>
-    <div class="cpemo" role="group" aria-label="Emojis" hidden>${COPY_EMOJIS.map(e => `<button type="button" data-cpe="${e}" title="Agregar ${e}">${e}</button>`).join("")}</div>` : ""}
-    <textarea class="cpsheet${dark ? " dark" : ""}" id="poCopy" rows="10" maxlength="${COPY_MAX}" aria-label="Copy de la publicación"${edit ? "" : " readonly"} placeholder="Ej.: ¡Llegó la canasta navideña con 20% OFF! 🎄🛒&#10;Válido del 1 al 24 de diciembre o hasta agotar stock.&#10;#Superseis #Navidad">${esc(p.copy || "")}</textarea>
-    <div class="cpfoot"><span class="note" id="cpCount">${n} / ${COPY_MAX}</span><button type="button" class="btn sm" data-cpcopy>${icon("copy")} Copiar el copy</button></div></div>`;
+  const html = copyHtml(p), bg = rtBgOf(html), n = [...copyPlain(p)].length;
+  const foot = `<div class="cpfoot"><span class="note" id="cpCount">${n} / ${COPY_MAX}</span><button type="button" class="btn sm" data-cpcopy>${icon("copy")} Copiar el copy</button></div>`;
+  if (!edit) return `<div class="cpwrap"><div class="rtview${rtBgCls(bg)}" id="poCopyView"${rtBgStyle(bg)} aria-readonly="true">${html.replace(/^<!--bg:#[0-9a-f]{6}-->/i, "") || `<p class="rtempty">Todavía no hay copy.</p>`}</div>${foot}</div>`;
+  const emo = `<div class="cpemo" role="group" aria-label="Emojis" hidden>${COPY_EMOJIS.map(e => `<button type="button" data-cpe="${e}" title="Agregar ${e}">${e}</button>`).join("")}</div>`;
+  return `<div class="cpwrap">${rtEditor("poCopy", html, COPY_PH)
+    .replace('<input type="file" class="rtimgin"', `<button type="button" class="btn sm rtemobtn" data-cpemo aria-expanded="false" title="Agregar emojis al copy">${icon("smile")} Emojis</button><input type="file" class="rtimgin"`)
+    .replace('<div class="rtpal"', emo + '<div class="rtpal"')
+    .replace('aria-label="Texto del pedido"', 'aria-label="Copy de la publicación"')}${foot}</div>`;
 }
 function copyLogList(p){
   const L = p.copyLog || []; if (!L.length) return "";
-  const t = { send:"mandó el copy para aprobar", fix:"pidió corregir el copy", ok:"aprobó el copy", edit:"volvió a abrir el copy para cambiarlo" };
+  const t = { send:"terminó el boceto del copy", none:"marcó que no lleva copy", has:"marcó que sí lleva copy", fix:"pidió corregir el copy", ok:"aprobó el copy", edit:"volvió a abrir el copy para cambiarlo" };
   return `<ol class="cplog">${L.map(c => `<li class="${c.k}"><b>${esc(firstName(c.by || ""))}</b> ${t[c.k] || ""}${c.text ? `: <q>${esc(c.text)}</q>` : ""} <span>${dm(c.date)} ${c.time || ""}</span></li>`).join("")}</ol>`;
 }
 // Hoja de la CM para una publicación que viene de Diseño gráfico: solo el copy, el día y la hora, y la etapa.
@@ -6820,8 +6832,10 @@ function pubCopyForm(f, p, dj, canal, real, chat){
   const edit = canEditPost() && (at || (mine && st !== "rev" && st !== "ok"));
   const hid = (id, v) => `<input type="hidden" id="${id}" value="${esc(v ?? "")}">`;
   const last = [...(p.copyLog || [])].reverse().find(c => c.k === "fix");
-  const acts = !real || !canEditPost() ? "" : at && st === "rev" ? `<button type="button" class="btn" data-cpfix="${esc(copyRef(real))}">${icon("pencil")} Pedir corrección</button><button type="button" class="btn primary" data-cpok="${esc(copyRef(real))}">${icon("check")} Aprobar copy</button>`
-    : mine && (st === "" || st === "fix") ? `<button type="button" class="btn primary" data-cpsend="${esc(copyRef(real))}">${icon("send")} ${st === "fix" ? "Mandar el copy corregido" : "Mandar el copy a Admin total"}</button>`
+  const none = !!p.noCopy, canNone = !!real && canEditPost() && (at || mine) && st !== "ok"; // “No lleva copy” (ej.: una historia): sin hoja ni aprobación
+  const noneBtn = canNone ? `<button type="button" class="chip cpnone${none ? " on" : ""}" data-cpnone="${esc(copyRef(real))}" aria-pressed="${none}">${icon("ban")} No lleva copy</button>` : none ? "" : "";
+  const acts = none || !real || !canEditPost() ? "" : at && st === "rev" ? `<button type="button" class="btn" data-cpfix="${esc(copyRef(real))}">${icon("pencil")} Pedir corrección</button><button type="button" class="btn primary" data-cpok="${esc(copyRef(real))}">${icon("check")} Aprobar copy</button>`
+    : mine && (st === "" || st === "fix") ? `<button type="button" class="btn primary" data-cpsend="${esc(copyRef(real))}">${icon("send")} ${st === "fix" ? "Copy corregido · boceto finalizado" : "Copy boceto finalizado"}</button>`
     : mine && st === "ok" ? `<button type="button" class="btn" data-cpreopen="${esc(copyRef(real))}">${icon("pencil")} Cambiar el copy</button>` : "";
   const what = canal ? "Canal de WhatsApp · Community Manager" : f.kind === "Historia" ? "Historia · Community Manager" : "Publicación · Community Manager";
   return `<div class="jpage jformpage" aria-label="Ficha del posteo">
@@ -6830,10 +6844,10 @@ function pubCopyForm(f, p, dj, canal, real, chat){
     <form id="postForm" class="jform panel pcopyform">
       ${hid("poBrand", p.brand)}${hid("poTitle", p.title)}${hid("poCm", p.cm)}${hid("poNotes", p.notes)}${hid("poReq", p.requester || "Marketing")}${canal ? hid("poChannel", p.channel || CANALES[0]) : hid("poNet", p.net || "IG") + (f.kind === "Historia" ? "" : hid("poFormat", p.format || "Post"))}
       <section class="jfs"><h3><i>1</i>Copy de la publicación</h3><div class="jfg">
-        <div style="grid-column:1/-1"><p class="cpst ${st || "none"}">${copyStText(p)}</p>${st === "fix" && last?.text ? `<p class="cpfixmsg">“${esc(last.text)}”</p>` : ""}
-          ${copySheet(p, edit)}
+        <div style="grid-column:1/-1"><div class="cphead"><p class="cpst ${none ? "nocopy" : st || "none"}">${copyStText(p)}</p>${noneBtn}</div>${!none && st === "fix" && last?.text ? `<p class="cpfixmsg">“${esc(last.text)}”</p>` : ""}
+          ${none ? "" : copySheet(p, edit)}
           ${acts ? `<div class="chips cpacts">${acts}</div>` : ""}
-          ${st === "rev" && mine && !at ? `<p class="note" style="margin:6px 0 0">${icon("lock")} Mientras Admin total lo revisa no se puede cambiar. Si pide corrección, te llega el aviso.</p>` : ""}
+          ${!none && st === "rev" && mine && !at ? `<p class="note" style="margin:6px 0 0">${icon("lock")} Mientras Admin total lo revisa no se puede cambiar. Si pide corrección, te llega el aviso.</p>` : ""}
           ${copyLogList(p)}</div>
       </div></section>
       ${at ? `<section class="jfs"><h3><i>2</i>Día y hora de publicación</h3><div class="jfg">
@@ -6843,7 +6857,7 @@ function pubCopyForm(f, p, dj, canal, real, chat){
       <section class="jfs"><h3><i>${at ? 3 : 2}</i>Etapa</h3><div class="jfg">
         <div style="grid-column:1/-1"><div class="pproc" role="group" aria-label="Etapa">${stages.map((x, i) => `<button type="button" class="${i < cur ? "done" : ""}${i === cur ? " on" : ""}${copyLock(p, x) && x !== p.status ? " lock" : ""}" style="--c:${POST_COLOR[x] === "#334155" ? "#94a3b8" : POST_COLOR[x]}" data-postep="${esc(x)}" aria-pressed="${i === cur}"><span>${i + 1}</span>${esc(x)}</button>`).join("")}</div>
           <input type="hidden" id="poStatus" value="${esc(p.status)}">
-          <p class="note" style="margin:8px 0 0">${st === "ok" ? `${icon("clock")} Publicalo el ${pubWhen(p)} y marcá Publicado.` : `${icon("lock")} Programado y Publicado se habilitan cuando Admin total apruebe el copy.`}</p></div>
+          <p class="note" style="margin:8px 0 0">${st === "ok" || none ? `${icon("clock")} Publicalo el ${pubWhen(p)} y marcá Publicado.` : `${icon("lock")} Programado y Publicado se habilitan cuando Admin total apruebe el copy.`}</p></div>
       </div></section>
       <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-pclose>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div>
     </form></div>`;
@@ -6902,33 +6916,34 @@ function postForm(){
 }
 // Hoja del copy: blanca o negra, emojis donde está el cursor, contador y “Copiar el copy”.
 document.addEventListener("mousedown", e => { if (e.target.closest("[data-cpe]")) e.preventDefault(); }); // el cursor sigue en la hoja
+document.addEventListener("mousedown", e => { if (e.target.closest("[data-cpemo]")) e.preventDefault(); });
+const copyCount = () => { const ed = document.getElementById("poCopy"), c = document.getElementById("cpCount"); if (ed && c) c.textContent = `${[...ed.innerText.trim()].length} / ${COPY_MAX}`; };
 document.addEventListener("click", e => {
-  const bg = e.target.closest("[data-cpbg]"); if (bg){ const ta = document.getElementById("poCopy"); if (!ta || ta.readOnly) return; const dark = bg.dataset.cpbg === "negro";
-    ta.classList.toggle("dark", dark); bg.parentElement.querySelectorAll("[data-cpbg]").forEach(b => { b.classList.toggle("on", b === bg); b.setAttribute("aria-pressed", b === bg); }); return; }
-  const eb = e.target.closest("[data-cpemo]"); if (eb){ const box = eb.closest(".cpwrap")?.querySelector(".cpemo"); if (!box) return; box.hidden = !box.hidden; eb.setAttribute("aria-expanded", !box.hidden); return; }
-  const em = e.target.closest("[data-cpe]"); if (em){ const ta = document.getElementById("poCopy"); if (!ta || ta.readOnly) return;
-    const a = ta.selectionStart ?? ta.value.length, b = ta.selectionEnd ?? a, t = em.dataset.cpe;
-    if ([...ta.value].length + [...t].length > COPY_MAX) return toast(`El copy no puede pasar de ${COPY_MAX} caracteres.`);
-    ta.value = ta.value.slice(0, a) + t + ta.value.slice(b); ta.focus(); ta.setSelectionRange(a + t.length, a + t.length); ta.dispatchEvent(new Event("input", { bubbles:true })); return; }
-  const cc = e.target.closest("[data-cpcopy]"); if (cc){ const v = document.getElementById("poCopy")?.value || ""; if (!v.trim()) return toast("Todavía no hay copy para copiar.");
+  const eb = e.target.closest("[data-cpemo]"); if (eb){ const box = eb.closest(".cpwrap")?.querySelector(".cpemo"); if (!box) return; box.hidden = !box.hidden; eb.setAttribute("aria-expanded", !box.hidden); eb.classList.toggle("on", !box.hidden); return; }
+  const em = e.target.closest("[data-cpe]"); if (em){ const ed = document.getElementById("poCopy"); if (!ed || !ed.isContentEditable) return;
+    const s = getSelection(), inside = s.rangeCount && ed.contains(s.getRangeAt(0).commonAncestorContainer);
+    if (!inside){ ed.focus(); const r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); s.removeAllRanges(); s.addRange(r); } // sin cursor en la hoja: al final
+    document.execCommand("insertText", false, em.dataset.cpe); ed.dataset.dirty = "1"; copyCount(); return; }
+  const cc = e.target.closest("[data-cpcopy]"); if (cc){ const v = (document.getElementById("poCopy") || document.getElementById("poCopyView"))?.innerText.trim() || ""; if (!v) return toast("Todavía no hay copy para copiar.");
     navigator.clipboard?.writeText(v).then(() => toast("Copy copiado: pegalo en la publicación."), () => toast("No se pudo copiar: marcalo y copialo a mano.")); }
 });
-document.addEventListener("input", e => { if (e.target.id !== "poCopy") return; const c = document.getElementById("cpCount"); if (c) c.textContent = `${[...e.target.value].length} / ${COPY_MAX}`; });
+document.addEventListener("input", e => { if (e.target.id === "poCopy") copyCount(); });
 // Lo que está escrito en la hoja pasa a la publicación (y a la hoja abierta, sin perder lo demás que se estaba cambiando).
 function copyTake(p){
   const f = postUI.form; if (f) readPostForm(f.post);
-  const ta = document.getElementById("poCopy"); if (ta && !ta.readOnly){ p.copy = ta.value; p.copyBg = ta.classList.contains("dark") ? "negro" : ""; }
+  const ed = document.getElementById("poCopy"); if (ed && ed.isContentEditable){ p.copy = rtHtml(ed); p.copyBg = ""; }
 }
-function copySync(p){ const f = postUI.form; if (f && f.post.id === p.id) Object.assign(f.post, { copy:p.copy, copyBg:p.copyBg, copySt:p.copySt, copyBy:p.copyBy, copyLog:p.copyLog, status:p.status }); }
+function copySync(p){ const f = postUI.form; if (f && f.post.id === p.id) Object.assign(f.post, { copy:p.copy, copyBg:p.copyBg, noCopy:p.noCopy, copySt:p.copySt, copyBy:p.copyBy, copyLog:p.copyLog, status:p.status }); }
 const copyLogAdd = (p, k, text) => (p.copyLog = p.copyLog || []).push({ date:TODAY, time:nowTime(), by:viewer.name, k, ...(text ? { text } : {}) });
 const copyNotifsRead = (p, test) => NOTIFS.forEach(n => { if (n.copy && n.post === p.id && test(n)) n.read = true; });
 // La CM manda el copy: le llega a cada Admin total (ventana, sonido y push) para aprobar o pedir corrección.
 function copySend(p){
-  copyTake(p); if (!String(p.copy || "").trim()) return toast("Escribí el copy antes de mandarlo.");
+  if (rtUploading(document.getElementById("poCopy"))) return toast("Esperá que termine de subir la imagen.");
+  copyTake(p); if (!copyPlain(p).trim() && !/<img/i.test(p.copy || "")) return toast("Escribí el copy antes de tocar “Copy boceto finalizado”.");
   const fix = p.copySt === "fix"; p.copySt = "rev"; if (p.status === "Pendiente") p.status = "En proceso"; copyLogAdd(p, "send");
   copyNotifsRead(p, n => n.to === viewer.name || n.to === "admin");
   notify({ to:"admin", type:"review", copy:true, fix, post:p.id, canal:!!p.channel, who:viewer.name });
-  copySync(p); render(); window.RMH?.flushNow?.(); toast("Listo: le llegó a Admin total para aprobar el copy. Te avisamos cuando lo apruebe.");
+  copySync(p); render(); window.RMH?.flushNow?.(); toast("Copy boceto finalizado: le llegó a Admin total para revisarlo. Te avisamos cuando lo apruebe o pida cambios.");
 }
 function copyApprove(p){
   if (viewer.role !== "Admin total" || !p) return; if (document.getElementById("poCopy")) copyTake(p);
@@ -6946,17 +6961,20 @@ function openCopyFixModal(p){
   document.getElementById("fixpop")?.remove();
   const w = document.createElement("div"); w.id = "fixpop"; w.className = "fixpop";
   w.innerHTML = `<div class="fixbox" role="dialog" aria-modal="true" aria-labelledby="cpfh"><h2 id="cpfh">Pedir corrección del copy</h2><p class="note">${esc(p.title)} · ${esc(p.cm)}</p>
-    ${p.copy ? `<div class="cpprev${p.copyBg === "negro" ? " dark" : ""}">${esc(p.copy)}</div>` : ""}
+    ${p.copy ? (h => `<div class="rtview cpprev${rtBgCls(rtBgOf(h))}"${rtBgStyle(rtBgOf(h))}>${h.replace(/^<!--bg:#[0-9a-f]{6}-->/i, "")}</div>`)(copyHtml(p)) : ""}
     <label>¿Qué hay que corregir? *<textarea class="base" id="cpFixText" rows="4" placeholder="Ej.: sacar el precio, agregar el horario del domingo, menos emojis"></textarea></label>
     <p class="perr" id="cpFixErr" hidden>Escribí qué hay que corregir para que ${esc(firstName(p.cm))} sepa qué cambiar.</p>
     <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-cpfixsend="${esc(copyRef(p))}">Enviar corrección</button></div></div>`;
   document.body.appendChild(w); w.querySelector("textarea").focus();
 }
 document.addEventListener("click", e => {
-  const b = e.target.closest("[data-cpsend],[data-cpok],[data-cpfix],[data-cpreopen],[data-cpfixsend]"); if (!b) return;
-  const d = b.dataset, p = copyByRef(d.cpsend || d.cpok || d.cpfix || d.cpreopen || d.cpfixsend); if (!p) return toast("No se encontró la publicación (quizás la borraron).");
+  const b = e.target.closest("[data-cpsend],[data-cpok],[data-cpfix],[data-cpreopen],[data-cpfixsend],[data-cpnone]"); if (!b) return;
+  const d = b.dataset, p = copyByRef(d.cpsend || d.cpok || d.cpfix || d.cpreopen || d.cpfixsend || d.cpnone); if (!p) return toast("No se encontró la publicación (quizás la borraron).");
   if (!canEditPost()) return;
   if (d.cpsend){ if (p.cm !== viewer.name) return; return copySend(p); }
+  if (d.cpnone){ if (p.cm !== viewer.name && viewer.role !== "Admin total") return; copyTake(p); p.noCopy = !p.noCopy; copyLogAdd(p, p.noCopy ? "none" : "has");
+    if (p.noCopy){ if (p.copySt === "rev" || p.copySt === "fix") p.copySt = ""; copyNotifsRead(p, n => n.to === "admin" || n.to === p.cm); }
+    copySync(p); render(); window.RMH?.flushNow?.(); return toast(p.noCopy ? "Listo: no lleva copy. Se puede programar y publicar sin la aprobación del copy." : "Listo: lleva copy. Escribilo y tocá “Copy boceto finalizado”."); }
   if (d.cpok) return copyApprove(p);
   if (d.cpfix) return openCopyFixModal(p);
   if (d.cpfixsend){ const t = document.getElementById("cpFixText")?.value.trim(); if (!t){ document.getElementById("cpFixErr").hidden = false; return; } document.getElementById("fixpop")?.remove(); return copyFix(p, t); }
@@ -6966,7 +6984,7 @@ document.addEventListener("click", e => {
 function copyAlert(n){
   const p = n.canal ? canalById(n.post) : postById(n.post); if (!p) return null;
   const go = "pub:" + (n.canal ? "canal:" : "post:") + p.id, where = p.channel ? "Canal de WhatsApp" : `${p.net} ${p.format}`, key = "n:" + n.id;
-  if (n.type === "review") return { go, key, sev:"#a855f7", rank:-5, ic:"file-text", t:`${n.fix ? "Copy corregido" : "Copy"} listo para aprobar: ${p.title}`, m:`${firstName(n.who || p.cm)} · ${p.brand} · ${where} · publicar el ${pubWhen(p)}${p.copy ? ` · “${rclShort(p.copy, 120)}”` : ""}`,
+  if (n.type === "review") return { go, key, sev:"#a855f7", rank:-5, ic:"file-text", t:`${n.fix ? "Copy corregido" : "Copy"} listo para aprobar: ${p.title}`, m:`${firstName(n.who || p.cm)} · ${p.brand} · ${where} · publicar el ${pubWhen(p)}${p.copy ? ` · “${rclShort(copyPlain(p), 120)}”` : ""}`,
     acts:`<button class="btn primary" data-nact="approve" data-nid="${n.id}">✓ Aprobar copy</button><button class="btn" data-nact="fix" data-nid="${n.id}">Pedir corrección</button><button class="btn" data-pubopen="${n.canal ? "canal" : "post"}:${esc(p.id)}">Ver</button>` };
   if (n.type === "fix") return { go, key, sev:"#f97316", rank:-5, ic:"pencil", t:`Admin total pidió corregir el copy: ${p.title}`, m:`${n.text ? `“${n.text}” · ` : ""}${dm(n.date)} ${n.time} · corregilo y mandalo de nuevo`,
     acts:`<button class="btn primary" data-pubopen="${n.canal ? "canal" : "post"}:${esc(p.id)}">${icon("pencil")} Corregir el copy</button>` };
@@ -6994,7 +7012,7 @@ function readPostForm(d){
   if (v("poNet")) d.net = v("poNet").value; if (v("poFormat")) d.format = v("poFormat").value;
   const br = v("poBrief"); if (br && br.dataset.dirty) d.brief = rtHtml(br);
   if (v("poTime")) d.time = v("poTime").value;
-  const cp = v("poCopy"); if (cp && !cp.readOnly){ d.copy = cp.value; d.copyBg = cp.classList.contains("dark") ? "negro" : ""; }
+  const cp = v("poCopy"); if (cp && cp.isContentEditable){ d.copy = rtHtml(cp); d.copyBg = ""; }
   const box = document.querySelector("#postForm .lked"); if (box) readLinkEditor(box, d);
 }
 document.addEventListener("click", e => {
@@ -10314,7 +10332,7 @@ function jobPopInfo(n){
   if (n.demo) return { ...P, go:"", title:n.type === "fix" ? "Ejemplo: Post Día de la Madre" : "Ejemplo: Historia ofertas del finde", m:n.type === "fix" ? "“Cambiar la foto principal y agrandar el precio”" : "Superseis · Historia · fecha límite " + dm(addDays(TODAY, 2)) };
   if (n.copy){ const a = copyAlert(n), p = n.canal ? canalById(n.post) : postById(n.post);
     return { ...P, go:a?.go || "", title:p?.title || "", t:n.type === "review" ? (n.fix ? "Copy corregido para aprobar" : "Copy listo para aprobar") : n.type === "fix" ? "Te pidieron corregir el copy" : "Copy aprobado: listo para publicar", ic:n.type === "review" || n.type === "fix" ? "file-text" : P.ic,
-      m:!p ? "" : n.type === "review" ? `${firstName(n.who || p.cm)} escribió el copy · ${p.brand} · publicar el ${pubWhen(p)}${p.copy ? ` · “${rclShort(p.copy, 140)}”` : ""}` : n.type === "fix" ? (n.text ? `“${rclShort(String(n.text), 160)}”` : p.brand) : `${p.brand} · publicalo el ${pubWhen(p)}` }; }
+      m:!p ? "" : n.type === "review" ? `${firstName(n.who || p.cm)} escribió el copy · ${p.brand} · publicar el ${pubWhen(p)}${p.copy ? ` · “${rclShort(copyPlain(p), 140)}”` : ""}` : n.type === "fix" ? (n.text ? `“${rclShort(String(n.text), 160)}”` : p.brand) : `${p.brand} · publicalo el ${pubWhen(p)}` }; }
   if (n.type === "pub" || (n.type === "listo" && n.post)){ const a = n.type === "pub" ? pubAlert(n) : listoAlert(n); return { ...P, go:a?.go || "", title:a ? a.t.replace(/^(Nueva publicación para vos|Diseño aprobado, listo para publicar): /, "") : "", m:a ? a.m.replace(/ · tocá para verla$/, "") : "" }; }
   const brands = j ? jobBrands(j).join(" + ") : "";
   if (n.type === "review") return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "", t:n.fix ? "Correcciones listas para revisar" : j?.area === "CM" ? "Trabajo listo para revisar" : P.t,

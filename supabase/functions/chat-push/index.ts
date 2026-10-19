@@ -47,6 +47,9 @@ async function send(cfg: any, to: string[], payloadFor: (id: string) => string) 
 // Avisos de trabajo: a quien le llegó (n.to es su nombre completo, como en la app). Con “No molestar”, sin aviso.
 // “review” (to: "admin"): el boceto o las correcciones quedaron listos → a Admin total, para aprobar o pedir cambios.
 const JOB_T: Record<string, string> = { nuevo: "Nuevo trabajo para vos", pub: "Nueva publicación para vos", listo: "Diseño aprobado: listo para publicar", fix: "Te pidieron una corrección", review: "Boceto listo para revisar" };
+// El copy se guarda como la hoja del pedido (HTML): en el aviso va solo el texto.
+const plain = (h: string) => h.replace(/<!--[\s\S]*?-->/g, "").replace(/<br\s*\/?>|<\/?(p|div|li|h\d)\b[^>]*>/gi, " ").replace(/<[^>]+>/g, "")
+  .replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 async function jobPush(cfg: any, items: any[]) {
   const list = (Array.isArray(items) ? items : []).filter((n) => n && JOB_T[n.type] && n.to && !n.read && (n.type === "review" ? n.to === "admin" : n.to !== "admin")).slice(0, 20);
   if (!list.length) return json({ ok: true, skipped: "sin avisos" });
@@ -80,7 +83,7 @@ async function jobPush(cfg: any, items: any[]) {
       const when = `${dm(x.date)}${x.time ? " a las " + x.time : ""}`, w = people.find((y) => y.name === n.who);
       title = x.title || ""; go = `pub:${n.canal ? "canal" : "post"}:${x.id}`;
       head = n.type === "review" ? (n.fix ? "Copy corregido para aprobar" : "Copy listo para aprobar") : n.type === "fix" ? "Te pidieron corregir el copy" : "Copy aprobado: listo para publicar";
-      body = n.type === "review" ? [`${w?.nick || String(n.who || "").split(" ")[0]} escribió el copy`, x.brand, "publicar el " + when, x.copy ? `“${short(String(x.copy), 100)}”` : ""].filter(Boolean).join(" · ")
+      body = n.type === "review" ? [`${w?.nick || String(n.who || "").split(" ")[0]} escribió el copy`, x.brand, "publicar el " + when, x.copy ? `“${short(plain(String(x.copy)), 100)}”` : ""].filter(Boolean).join(" · ")
         : n.type === "fix" ? (n.text ? `“${short(String(n.text), 140)}”` : x.brand || "") : [x.brand, "publicalo el " + when].filter(Boolean).join(" · ");
     } else if ((n.type === "pub" || n.type === "listo") && n.post) {
       const x = (n.canal ? canal : posts).find((y) => y.id === n.post);
