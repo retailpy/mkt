@@ -800,7 +800,14 @@ html.nomotion .bdconf{display:none}
 .jperm{display:flex;align-items:center;gap:6px;margin:0 0 8px;font-size:12.5px;color:var(--muted)}.jperm svg{width:14px;height:14px;flex:none}
 .rtview .rtempty{color:#9ca3af !important;font-style:italic;margin:0}
 .rtedit,.rtview{background:#fff !important;color:#1f2937 !important;border:1px solid #e5e7eb !important;border-radius:6px !important;padding:28px 32px !important;font-size:15.5px;line-height:1.65;box-shadow:0 18px 40px -18px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.04)}
-.rtedit{min-height:300px !important}.rtedit b,.rtview b,.rtedit strong,.rtview strong{color:#0f172a}.rtedit a,.rtview a{color:#2563eb}
+.rtedit{min-height:300px !important}.rtedit a,.rtview a{color:#2563eb}
+/* Color de letra y fondo de la hoja (el fondo va en línea; con fondo oscuro la letra pasa a blanco) */
+.rtdark a{color:#7dd3fc}.rtdark.rtedit:empty::before{color:#cbd5e1 !important}
+.rtpal{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 6px;padding:8px 10px;background:var(--inner-2);border:1px solid var(--line-2);border-radius:10px;font-size:13px;color:var(--muted)}
+.rtpal[hidden]{display:none}.rtpal b{color:var(--ink);margin-right:4px}
+.rtsw{width:26px;height:26px;border-radius:50%;border:2px solid var(--line-3);cursor:pointer;padding:0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}.rtsw:hover,.rtsw:focus-visible{transform:scale(1.12);outline:2px solid var(--cyan);outline-offset:1px}
+.rtcustom{display:inline-flex;align-items:center;gap:6px;cursor:pointer}.rtcustom input{width:30px;height:26px;padding:0;border:0;background:none;cursor:pointer}
+.rtcbtn .rtcdot{display:inline-block;width:12px;height:12px;border-radius:3px;margin-left:4px;vertical-align:-1px;background:conic-gradient(#dc2626,#facc15,#16a34a,#2563eb,#7c3aed,#dc2626);box-shadow:inset 0 0 0 1px rgba(0,0,0,.2)}
 .rtedit:empty::before{content:attr(data-ph) !important;color:#9ca3af !important;white-space:pre-line;font-style:italic}
 .rtedit:focus{outline:3px solid rgba(34,211,238,.6) !important;outline-offset:2px}
 .rtbar{background:var(--inner-2);border:1px solid var(--line-2);border-radius:10px;padding:5px}
@@ -5539,16 +5546,37 @@ function cleanRich(html){
     if (n.nodeType !== 1) return "";
     if (RT_SKIP.test(n.tagName)) return ""; // estilos de Word/PowerPoint, scripts…: no se pegan como texto
     const tag = n.tagName, inner = walk(n);
-    if (tag === "FONT"){ const sz = +n.getAttribute("size"); return sz >= 5 ? `<span class="rt-l">${inner}</span>` : sz && sz <= 2 ? `<span class="rt-s">${inner}</span>` : inner; }
-    if (tag === "SPAN"){ const c = n.className; return c === "rt-l" || c === "rt-s" ? `<span class="${c}">${inner}</span>` : inner; }
+    if (tag === "FONT"){ const sz = +n.getAttribute("size"), col = rtColor(n.getAttribute("color") || n.style.color); const v = col ? `<span style="color:${col}">${inner}</span>` : inner;
+      return sz >= 5 ? `<span class="rt-l">${v}</span>` : sz && sz <= 2 ? `<span class="rt-s">${v}</span>` : v; }
+    if (tag === "SPAN"){ const c = n.className, col = rtColor(n.style.color); const v = col ? `<span style="color:${col}">${inner}</span>` : inner; return c === "rt-l" || c === "rt-s" ? `<span class="${c}">${v}</span>` : v; }
     // Imágenes: solo las subidas a Google Drive (se guarda el id; la imagen no ocupa lugar en la base).
     // Una que todavía se está subiendo (sin id) no se guarda.
     if (tag === "IMG"){ const id = n.getAttribute("data-drive") || "", w = Math.round(+n.getAttribute("data-w") || 0); return /^[\w-]{10,80}$/.test(id) ? rtImg(id, w >= 10 && w <= 100 ? w : 0) : ""; }
     const k = RT_TAGS[tag]; if (k === undefined) return inner;
     return k === "br" ? "<br>" : `<${k}>${inner}</${k}>`;
   }).join("");
-  return walk(t.content).slice(0, 20000);
+  const bg = rtBgOf(html);
+  return (bg ? `<!--bg:${bg}-->` : "") + walk(t.content).slice(0, 20000);
 }
+// Colores del texto: solo se guarda un color en #rrggbb (lo que venga en rgb() se pasa a ese formato).
+function rtColor(v){
+  v = String(v || "").trim().toLowerCase(); if (/^#[0-9a-f]{6}$/.test(v)) return v;
+  if (/^#[0-9a-f]{3}$/.test(v)) return "#" + [...v.slice(1)].map(x => x + x).join("");
+  const m = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(?:,\s*1\s*)?\)$/.exec(v);
+  return m && m.slice(1).every(x => +x < 256) ? "#" + m.slice(1).map(x => (+x).toString(16).padStart(2, "0")).join("") : "";
+}
+// Fondo de la hoja: va al principio del texto guardado como <!--bg:#rrggbb--> (así no hace falta otro campo).
+const rtBgOf = html => { const m = /^<!--bg:(#[0-9a-f]{6})-->/i.exec(String(html || "")); return m && m[1].toLowerCase() !== "#ffffff" ? m[1].toLowerCase() : ""; };
+const rtDark = c => { const n = parseInt(c.slice(1), 16); return (.299 * (n >> 16) + .587 * (n >> 8 & 255) + .114 * (n & 255)) < 140; };
+const rtBgStyle = bg => bg ? ` style="background:${bg} !important;color:${rtDark(bg) ? "#f8fafc" : "#1f2937"} !important"` : "";
+const rtBgCls = bg => bg && rtDark(bg) ? " rtdark" : "";
+function rtSetBg(ed, c){
+  const bg = rtColor(c) === "#ffffff" ? "" : rtColor(c); ed.dataset.bg = bg; ed.classList.toggle("rtdark", !!bg && rtDark(bg));
+  ed.style.cssText = bg ? `background:${bg} !important;color:${rtDark(bg) ? "#f8fafc" : "#1f2937"} !important` : "";
+}
+// Lo que se guarda de la hoja: el fondo elegido + el texto limpio.
+const rtHtml = ed => cleanRich((ed.dataset.bg ? `<!--bg:${ed.dataset.bg}-->` : "") + ed.innerHTML);
+const RT_COLORS = [["#000000","Negro"],["#ffffff","Blanco"],["#6b7280","Gris"],["#1f2937","Gris oscuro"],["#dc2626","Rojo"],["#ea580c","Naranja"],["#facc15","Amarillo"],["#16a34a","Verde"],["#2563eb","Azul"],["#0ea5e9","Celeste"],["#7c3aed","Violeta"],["#db2777","Rosa"]];
 const canEditBrief = j => !isViewOnly() && !isClosedJob(j) && (viewer.role === "Admin total" || j.owner === viewer.name);
 // Editor reutilizable (en la página del pedido y en el formulario de crear/editar).
 // Texto de ejemplo (en gris) que se ve en la hoja en blanco hasta que se empieza a escribir.
@@ -5556,13 +5584,18 @@ const BRIEF_PH = { "Contenidos":"Ejemplo:\nQUÉ PIEZA: historia de Stock con las
   "CM":"Ejemplo:\nOBJETIVO: inspirar con una receta fácil y mostrar los productos de la tienda.\nGUION / TEXTO:\n• Gancho (primeros 3 segundos): ¿Clericó en 1 minuto? Mirá\n• Paso a paso con los productos y su precio\n• Copy: Todo lo que necesitás está en Superseis 🎄\nFORMATO: reel vertical 1080×1920, 30 a 45 segundos, con subtítulos.\nREFERENCIAS: reels de recetas de la cuenta.\nOBSERVACIONES: música en tendencia, sin marcas de agua." };
 const RT_CAN_SHOT = !!navigator.mediaDevices?.getDisplayMedia && !/iphone|ipad|android/i.test(navigator.userAgent);
 function rtEditor(id, html, ph){
+  const bg = rtBgOf(html);
   const tb = [["bold","bold","Negrita"],["italic","italic","Cursiva"],["underline","underline","Subrayado"],["insertUnorderedList","list","Viñetas"],["insertOrderedList","list-ordered","Lista numerada"]];
   return `<div class="rtwrap"><div class="rtbar" role="toolbar" aria-label="Formato del texto">
       <button type="button" class="btn ib sm" data-rt="small" title="Letra más chica" aria-label="Letra más chica">A−</button><button type="button" class="btn ib sm" data-rt="big" title="Letra más grande" aria-label="Letra más grande">A+</button>
       ${tb.map(([c, i, l]) => `<button type="button" class="btn ib sm" data-rt="${c}" title="${l}" aria-label="${l}">${icon(i)}</button>`).join("")}
       <button type="button" class="btn ib sm" data-rt="clear" title="Quitar formato" aria-label="Quitar formato">${icon("remove-formatting")}</button>
+      <button type="button" class="btn sm rtcbtn" data-rt="pal" data-mode="fg" title="Cambiar el color de la letra (primero marcá el texto)" aria-label="Color de letra">Color letra<span class="rtcdot"></span></button>
+      <button type="button" class="btn sm rtcbtn" data-rt="pal" data-mode="bg" title="Cambiar el color de fondo de la hoja" aria-label="Color de fondo">Fondo<span class="rtcdot"></span></button>
       <button type="button" class="btn sm rtimgbtn" data-rt="img" title="Agregar una imagen de ejemplo o un boceto (se guarda en Google Drive)">${icon("image-plus")} Imagen</button><button type="button" class="btn sm rtimgbtn" data-rt="paste" title="Pegar la captura de pantalla o la imagen que copiaste">${icon("clipboard-paste")} Pegar captura</button>${RT_CAN_SHOT ? `<button type="button" class="btn sm rtimgbtn" data-rt="shot" title="Sacar una captura de la pantalla, de una ventana o de una pestaña desde acá mismo y elegir la parte">${icon("crop")} Capturar pantalla</button>` : ""}<input type="file" class="rtimgin" accept="image/*" multiple hidden></div>
-    <div class="rtedit" id="${id}" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Texto del pedido" data-ph="${esc(ph || BRIEF_PH["Diseño"])}">${html}</div>
+    <div class="rtpal" role="group" hidden><b class="rtpalt"></b>${RT_COLORS.map(([c, n]) => `<button type="button" class="rtsw" data-rt="color" data-c="${c}" style="background:${c}" title="${n}" aria-label="${n}"></button>`).join("")}
+      <label class="rtcustom" title="Elegir cualquier otro color">Otro <input type="color" class="rtcolin" value="#000000"></label></div>
+    <div class="rtedit${rtBgCls(bg)}" id="${id}" data-bg="${bg}"${rtBgStyle(bg)} contenteditable="true" role="textbox" aria-multiline="true" aria-label="Texto del pedido" data-ph="${esc(ph || BRIEF_PH["Diseño"])}">${String(html).replace(/^<!--bg:#[0-9a-f]{6}-->/i, "")}</div>
     <p class="note rthint">${icon("image")}<span>Para explicar con un ejemplo o un boceto: sacá una captura de pantalla y pegala en la hoja con Ctrl+V (en Mac ⌘V) o con el botón <b>Pegar captura</b>; en el celular mantené apretado en la hoja y tocá <b>Pegar</b>. En la compu también está <b>Capturar pantalla</b>: la saca la app y elegís la parte. Además podés arrastrar una imagen o tocar <b>Imagen</b>. Se guarda en Google Drive y la ven todos en el pedido. Tocá una imagen para agrandarla o achicarla (arrastrá la esquina) o para borrarla.</span></p></div>`;
 }
 // Quién puede cambiar el texto y los bocetos del pedido: el responsable y Admin total. Los demás lo ven (hoja blanca, solo lectura).
@@ -5580,7 +5613,7 @@ function jobBriefSection(j){
     <p class="jperm">${jobPermNote(j, "el texto")}</p>
     ${ed ? `${rtEditor("jBrief", html, BRIEF_PH[j.area] || BRIEF_PH["Diseño"])}
       <div class="chips" style="justify-content:flex-end;margin-top:8px"><button type="button" class="btn primary" data-briefsave="${j.id}">${icon("save")} Guardar texto</button></div>`
-    : `<div class="rtview" aria-readonly="true">${html || `<p class="rtempty">Todavía no hay texto en este pedido.</p>`}</div>`}</section>`;
+    : `<div class="rtview${rtBgCls(rtBgOf(html))}"${rtBgStyle(rtBgOf(html))} aria-readonly="true">${html || `<p class="rtempty">Todavía no hay texto en este pedido.</p>`}</div>`}</section>`;
 }
 document.addEventListener("mousedown", e => { if (e.target.closest("[data-rt]")) e.preventDefault(); }); // no perder la selección
 // ----- Imágenes en el texto del pedido: se achican, se suben a Google Drive (carpeta de fotos, por mes) y en el texto
@@ -5854,17 +5887,32 @@ document.addEventListener("load", e => { if (rtSelImg && e.target === rtSelImg) 
 // En la vista del pedido, tocar una imagen la abre en grande.
 document.addEventListener("click", e => { const im = e.target.closest?.(".rtview img[data-drive]"); if (im) openPhoto(im.dataset.drive); });
 document.addEventListener("input", e => { if (e.target.classList?.contains("rtedit")) e.target.dataset.dirty = "1"; });
+// Color de letra (sobre lo marcado) o de fondo de la hoja.
+function rtApplyColor(ed, mode, c){
+  c = rtColor(c); if (!ed || !c) return; ed.dataset.dirty = "1";
+  if (mode === "bg"){ rtSetBg(ed, c); return; }
+  ed.focus(); if (ed._sel){ const s = getSelection(); s.removeAllRanges(); s.addRange(ed._sel); }
+  const s = getSelection(); if (!s.rangeCount || s.isCollapsed) toast("Marcá el texto al que le querés cambiar el color (lo que escribas ahora sale de ese color).");
+  document.execCommand("styleWithCSS", false, false); document.execCommand("foreColor", false, c); rtSaveSel(ed);
+}
+document.addEventListener("mousedown", e => { if (e.target.closest?.(".rtcustom")) rtSaveSel(e.target.closest(".rtwrap")?.querySelector(".rtedit")); }); // antes de que se pierda lo marcado
+document.addEventListener("change", e => { if (!e.target.classList?.contains("rtcolin")) return; const w = e.target.closest(".rtwrap");
+  rtApplyColor(w?.querySelector(".rtedit"), w?.querySelector(".rtpal")?.dataset.mode, e.target.value); });
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-rt]"); if (b){ const ed = b.closest(".rtwrap")?.querySelector(".rtedit"); if (!ed) return; ed.dataset.dirty = "1"; ed.focus(); const c = b.dataset.rt;
     if (c === "img"){ rtSaveSel(ed); b.parentElement.querySelector(".rtimgin")?.click(); return; }
     if (c === "paste"){ rtSaveSel(ed); rtPasteBtn(ed); return; }
     if (c === "shot"){ rtSaveSel(ed); rtScreenShot(ed); return; }
+    if (c === "pal"){ const pal = b.closest(".rtwrap").querySelector(".rtpal"), m = b.dataset.mode; rtSaveSel(ed);
+      if (!pal.hidden && pal.dataset.mode === m){ pal.hidden = true; return; }
+      pal.dataset.mode = m; pal.hidden = false; pal.querySelector(".rtpalt").textContent = m === "bg" ? "Fondo de la hoja:" : "Color de la letra:"; return; }
+    if (c === "color"){ rtApplyColor(ed, b.closest(".rtpal").dataset.mode, b.dataset.c); return; }
     if (c === "big" || c === "small") document.execCommand("fontSize", false, c === "big" ? "5" : "2");
     else if (c === "clear") document.execCommand("removeFormat");
     else document.execCommand(c); return; }
   const sv = e.target.closest("[data-briefsave]"); if (sv){ const j = jobById(sv.dataset.briefsave), ed = document.getElementById("jBrief"); if (!j || !ed || !canEditBrief(j)) return;
     if (rtUploading(ed)){ toast("Esperá que termine de subir la imagen."); return; }
-    j.brief = cleanRich(ed.innerHTML); j.briefBy = viewer.name; j.briefAt = new Date().toISOString(); render(); toast("Texto del pedido guardado."); }
+    j.brief = rtHtml(ed); j.briefBy = viewer.name; j.briefAt = new Date().toISOString(); render(); toast("Texto del pedido guardado."); }
 });
 // ----- Recorrido del pedido: cada paso con su nombre, lo hecho, dónde está ahora y qué sigue. Cada entrega es una versión. -----
 const PROC_DESC = { "Pendiente":"Pedido cargado", "En proceso":"Trabajando", "Boceto finalizado":"Versión lista para revisar", "En revisión":"Esperando la revisión", "En corrección":"Haciendo los cambios",
@@ -6369,7 +6417,7 @@ function spawnRepeats(){
 const jobLinks = j => Array.isArray(j.links) ? j.links : j.link ? [j.link] : [];
 function readJobForm(j){ const v = id => document.getElementById(id)?.value;
   if (v("jPubCm") !== undefined){ j.pubCm = v("jPubCm") || ""; j.pubDate = v("jPubDate") || ""; }
-  const bf = document.getElementById("jBriefF"); if (bf && bf.dataset.dirty){ j.brief = cleanRich(bf.innerHTML); j.briefBy = viewer.name; j.briefAt = new Date().toISOString(); }
+  const bf = document.getElementById("jBriefF"); if (bf && bf.dataset.dirty){ j.brief = rtHtml(bf); j.briefBy = viewer.name; j.briefAt = new Date().toISOString(); }
   if (document.querySelector("#jobForm .lked")) readLinkEditor(document.querySelector("#jobForm .lked"), j);
   // (los links se leen del editor de links de acceso, arriba)
   Object.assign(j, { requestDate:v("jReq") ?? j.requestDate, requester:v("jRequester") ?? j.requester, piece:v("jPiece") ?? j.piece, ...(v("jCat") ? { cat:v("jCat") } : {}), ...(v("jVfmt") ? { vfmt:v("jVfmt") } : {}), ...(v("jVtopic") ? { vtopic:v("jVtopic") } : {}), ...(v("jOtro") !== undefined ? { otro:v("jOtro").trim().slice(0, 300) } : {}), ...(v("jVisita") !== undefined ? { visita:v("jVisita").trim().slice(0, 80), traslado:v("jTraslado") === "" ? "" : Math.max(0, +v("jTraslado") || 0) } : {}), title:(v("jTitle") ?? j.title).trim(), owner:v("jOwner") ?? j.owner, status:v("jStatus") ?? j.status, priority:v("jPrio") ?? j.priority, complexity:v("jComp") ?? j.complexity, due:v("jDue") ?? j.due, link:String(v("jLink") ?? j.link ?? "").trim(), notes:(v("jNotes") ?? j.notes).trim() }); }
@@ -6781,7 +6829,7 @@ function readPostForm(d){
   const val = id => v(id) ? v(id).value : undefined;
   Object.assign(d, { date:val("poDate") ?? d.date, brand:val("poBrand") ?? d.brand, title:val("poTitle") ?? d.title, cm:val("poCm") ?? d.cm, status:val("poStatus") ?? d.status, notes:val("poNotes") ?? d.notes, requester:val("poReq") ?? d.requester });
   if (v("poNet")) d.net = v("poNet").value; if (v("poFormat")) d.format = v("poFormat").value;
-  const br = v("poBrief"); if (br && br.dataset.dirty) d.brief = cleanRich(br.innerHTML);
+  const br = v("poBrief"); if (br && br.dataset.dirty) d.brief = rtHtml(br);
   const box = document.querySelector("#postForm .lked"); if (box) readLinkEditor(box, d);
 }
 document.addEventListener("click", e => {
