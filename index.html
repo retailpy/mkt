@@ -1492,6 +1492,13 @@ html.light .cpemo button{filter:invert(1) hue-rotate(180deg)} /* la hoja queda b
 @media (max-width:700px){.remform{grid-template-columns:1fr}}
 /* v212 · Diseño: cuadros por etapa y tabla ordenable */
 .dgpan .pubst small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+/* v218 · Cuadros del Panel de Diseño más limpios: sin franja arriba, el color va en el número y en el puntito */
+.pubsum.dgpan .pubst{border:1px solid var(--line-3);background:transparent;padding:14px 16px;gap:4px;box-shadow:none}
+.pubsum.dgpan .pubst:hover{border-color:color-mix(in srgb,var(--c) 55%,var(--line-3))}
+.pubsum.dgpan .pubst b{font-size:30px;font-weight:800;letter-spacing:-.02em;color:var(--c)}
+.pubsum.dgpan .pubst span{color:var(--ink);font-weight:500}
+.pubsum.dgpan .pubst span::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--c);margin-right:7px;vertical-align:1px}
+.pubsum.dgpan .pubst.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 8%,transparent);box-shadow:none}
 .dgpanhint{margin:8px 0 0}.dgpanlist{margin-top:12px}
 .dgtblbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:4px 0 10px}.dgtblbar label{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
 .thsort{all:unset;cursor:pointer;font-weight:700;white-space:nowrap}.thsort:hover,.thsort:focus-visible{text-decoration:underline}.thsort.on{color:#67e8f9}
@@ -5073,10 +5080,11 @@ function panelStats(){
     inbox:(() => { const cnt = net => inboxBrands().reduce((t, b) => t + inboxConvs(b).filter(c => c.net === net && !ibOk(c)).length, 0), fb = cnt("FB"), ig = cnt("IG"); // Facebook e Instagram, por separado
       const txt = [fb ? `${fb} Facebook` : "", ig ? `${ig} Instagram` : ""].filter(Boolean).join(" · "); return Object.keys(META_INBOX).length || Object.keys(META_DM).length ? (txt ? `<em>${txt} sin contestar</em>` : "Todo contestado") : "Sin datos todavía"; })() };
 }
-// v212 · Diseño gráfico: cuadros por etapa (Panel de Trabajo) y tabla ordenable (Panel y Planificación).
+// v212 · Diseño gráfico: cuadros por etapa (v218: se suma Bocetos finalizados, aparte de En revisión) (Panel de Trabajo) y tabla ordenable (Panel y Planificación).
 const DG_GROUPS = [["pend", "Pendientes", "#ef4444", j => j.status === "Pendiente"], ["proc", "En proceso", JOB_COLOR["En proceso"] || "#3b82f6", j => j.status === "En proceso"],
-  ["rev", "En revisión", JOB_COLOR["En revisión"] || "#eab308", j => REVIEW_WAIT.includes(j.status)], ["fix", "En corrección", JOB_COLOR["En corrección"] || "#f97316", j => j.status === "En corrección"],
-  ["ok", "Aprobados", JOB_COLOR["Aprobado"] || "#10b981", j => isFin(j)], ["all", "Total del mes", "#22d3ee", () => true]];
+  ["bof", "Bocetos finalizados", JOB_COLOR["Boceto finalizado"] || "#06b6d4", j => j.status === "Boceto finalizado"],
+  ["rev", "En revisión", JOB_COLOR["En revisión"] || "#eab308", j => REVIEW_WAIT.includes(j.status) && j.status !== "Boceto finalizado"], ["fix", "En corrección", JOB_COLOR["En corrección"] || "#f97316", j => j.status === "En corrección"],
+  ["ok", "Aprobados", JOB_COLOR["Aprobado"] || "#10b981", j => isFin(j)], ["all", "Total del mes", "var(--ink)", () => true]];
 const DG_SORTS = [["due", "Fecha límite"], ["req", "Fecha de pedido"], ["brand", "Marca"], ["requester", "Solicitante"], ["piece", "Tipo"], ["owner", "Responsable"], ["title", "Trabajo"]];
 let dgPanUI = { g:null }, dgTblUI = { sort:"due", dir:1 };
 const dgSortVal = (j, k) => k === "due" ? j.due || "" : k === "req" ? j.requestDate || "" : k === "brand" ? jobBrands(j).join(" + ") : k === "requester" ? j.requester || "" : k === "piece" ? cmPiece(j) : k === "owner" ? j.owner || "" : j.title || "";
