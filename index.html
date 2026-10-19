@@ -3273,7 +3273,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-okse
 // En la ficha del pedido: la publicación que salió al aprobarlo (CM, fecha, formato) con un botón para abrirla.
 function pubInfo(j){ return (j.pubs || (j.pub ? [j.pub] : [])).map(r => r.canal ? canalById(r.id) : postById(r.id)).filter(Boolean).map(x => pubInfoOne(x)).join(""); }
 function pubInfoOne(x){
-  return `<div class="jpub">${icon("calendar-days")}<div class="grow"><b>Publicación en redes: ${esc(x.cm)}</b> ${brandTag(x.brand)}<small>${x.channel ? "Canal de WhatsApp" : `${esc(x.net)} · ${esc(x.format)}`} · ${dm(x.date)}${x.time ? " " + esc(x.time) + " h" : ""} · ${esc(x.status)}${x.fromJob ? ` · copy: ${x.noCopy ? "no lleva" : { rev:"esperando aprobación", fix:"en corrección", ok:x.copyConf ? "confirmado por Admin total" : "aprobado" }[x.copySt] || "sin mandar"}` : ""}</small></div>${can(x.channel ? "calcanales" : x.format === "Historia" ? "calhistoria" : "calendario") ? `<button type="button" class="btn sm" data-pubopen="${x.channel ? "canal" : "post"}:${esc(x.id)}">${icon("arrow-up-right")} Ver publicación</button>` : ""}</div>`; }
+  return `<div class="jpub">${icon("calendar-days")}<div class="grow"><b>Publicación en redes: ${esc(x.cm)}</b> ${brandTag(x.brand)}<small>${x.channel ? "Canal de WhatsApp" : `${esc(x.net)} · ${esc(x.format)}`} · ${dm(x.date)}${x.time ? " " + esc(x.time) + " h" : ""} · ${esc(x.status)}${x.fromJob ? ` · copy: ${x.noCopy ? "no lleva" : { rev:"esperando aprobación", fix:"en corrección", ok:copyConfOf(x) ? "confirmado por Admin total" : "aprobado" }[copyStOf(x)] || "sin mandar"}` : ""}</small></div>${can(x.channel ? "calcanales" : x.format === "Historia" ? "calhistoria" : "calendario") ? `<button type="button" class="btn sm" data-pubopen="${x.channel ? "canal" : "post"}:${esc(x.id)}">${icon("arrow-up-right")} Ver publicación</button>` : ""}</div>`; }
 document.addEventListener("click", e => { const b = e.target.closest("[data-pubopen]"); if (!b) return; e.stopPropagation(); openPub(b.dataset.pubopen); });
 // Abre la publicación del CM (desde el aviso o la ficha del pedido): va a su calendario, en su mes, con la hoja abierta.
 function openPub(ref){
@@ -5705,7 +5705,7 @@ function cmStage(x, small){
   return n ? `<button type="button" class="semchip s${lv}${small ? " sm" : ""}" data-stagemenu="${sk}:${x.id}" title="Etapa: ${esc(x.status)} · tocá para cambiarla">${esc(x.status)} ▾</button>` : `<span class="semchip s${lv}${small ? " sm" : ""}">${esc(x.status)}</span>`;
 }
 // Copy de las publicaciones que salen de un diseño aprobado (como en Planificación).
-const cmCopyTxt = x => x.k === "post" && x.it.fromJob ? (x.it.noCopy ? "Sin copy" : { rev:"Copy por aprobar", fix:"Corregir copy", ok:x.it.copyConf ? "Copy confirmado" : "Copy aprobado" }[x.it.copySt] || "Falta el copy") : "";
+const cmCopyTxt = x => x.k === "post" && x.it.fromJob ? (x.it.noCopy ? "Sin copy" : { rev:"Copy por aprobar", fix:"Corregir copy", ok:copyConfOf(x.it) ? "Copy confirmado" : "Copy aprobado" }[copyStOf(x.it)] || "Falta el copy") : "";
 const cmLate = x => !x.done && x.date && x.date < TODAY;
 const cmNew = x => x.k === "job" ? x.it.owner === viewer.name && isUnseenJob(x.it) : (x.k === "post" || x.k === "canal") && x.it.fromJob && x.it.cm === viewer.name && !x.it.seenBy?.[viewer.id] && !["Programado","Publicado","Pautado"].includes(x.it.status);
 // Abrir el trabajo completo: la misma hoja de siempre (publicación, pedido o actividad).
@@ -7207,7 +7207,11 @@ const copyLock = (p, to) => !!p?.fromJob && !p.noCopy && p.copySt !== "ok" && ["
 const copyLockMsg = "Primero Admin total tiene que aprobar el copy: recién ahí se programa o se publica.";
 const copyRef = p => (p.channel ? "canal:" : "post:") + p.id;
 const copyByRef = ref => { const [k, id] = String(ref).split(":"); return k === "canal" ? canalById(id) : postById(id); };
-const copyStText = p => p.noCopy ? `${icon("ban")} No lleva copy: se publica sin copy, no hace falta la aprobación` : ({ rev:`${icon("hourglass")} Esperando que Admin total apruebe el copy`, fix:`${icon("pencil")} Admin total pidió corregir el copy`, ok:`${icon("badge-check")} ${p.copyConf ? "Copy confirmado por Admin total" : "Copy aprobado"}${p.copyBy ? (p.copyConf ? ` (${esc(firstName(p.copyBy))})` : " por " + esc(firstName(p.copyBy))) : ""}: publicalo el ${pubWhen(p)}` }[p.copySt]
+// v224: lo que ya estaba publicado antes del circuito del copy (sin copySt) cuenta como “Copy confirmado” (solo se muestra así; no cambia los datos).
+const copyOld = p => !!p?.fromJob && !p.copySt && !p.noCopy && ["Publicado","Pautado"].includes(p.status);
+const copyStOf = p => copyOld(p) ? "ok" : p?.copySt || "";
+const copyConfOf = p => copyOld(p) || !!p?.copyConf;
+const copyStText = p => copyOld(p) ? `${icon("badge-check")} Copy confirmado: ya está publicada` : p.noCopy ? `${icon("ban")} No lleva copy: se publica sin copy, no hace falta la aprobación` : ({ rev:`${icon("hourglass")} Esperando que Admin total apruebe el copy`, fix:`${icon("pencil")} Admin total pidió corregir el copy`, ok:`${icon("badge-check")} ${p.copyConf ? "Copy confirmado por Admin total" : "Copy aprobado"}${p.copyBy ? (p.copyConf ? ` (${esc(firstName(p.copyBy))})` : " por " + esc(firstName(p.copyBy))) : ""}: publicalo el ${pubWhen(p)}` }[p.copySt]
   || `${icon("file-text")} ${p.cm === viewer?.name ? "Escribí el copy y tocá “Copy boceto finalizado” para que Admin total lo revise" : `${esc(firstName(p.cm || "La CM"))} todavía no mandó el copy`}`);
 // v217: la hoja del copy es la misma hoja tipo Word del pedido (letra, colores, fondo, listas, imágenes) + emojis.
 // Lo que se guarda es HTML (con el fondo al principio, como el texto del pedido). Los copys de v214 eran texto plano.
@@ -7235,7 +7239,7 @@ function copyLogList(p){
 // Hoja de la CM para una publicación que viene de Diseño gráfico: solo el copy, el día y la hora, y la etapa.
 // (Sin “¿Se repite?”, sin el texto del pedido, sin la ruta repetida, sin prioridad ni cambios de Diseño.)
 function pubCopyForm(f, p, dj, canal, real, chat){
-  const at = viewer.role === "Admin total", mine = p.cm === viewer.name, st = p.copySt || "", stages = canal ? CANAL_STAGES : POST_STAGES, cur = stages.indexOf(p.status);
+  const at = viewer.role === "Admin total", mine = p.cm === viewer.name, st = copyStOf(p), stages = canal ? CANAL_STAGES : POST_STAGES, cur = stages.indexOf(p.status);
   const edit = canEditPost() && (at || (mine && st !== "rev" && st !== "ok"));
   const hid = (id, v) => `<input type="hidden" id="${id}" value="${esc(v ?? "")}">`;
   const last = [...(p.copyLog || [])].reverse().find(c => c.k === "fix");
@@ -7244,7 +7248,7 @@ function pubCopyForm(f, p, dj, canal, real, chat){
   const acts = none || !real || !canEditPost() ? "" : at && st === "rev" ? `<button type="button" class="btn" data-cpfix="${esc(copyRef(real))}">${icon("pencil")} Pedir corrección</button><button type="button" class="btn primary" data-cpok="${esc(copyRef(real))}">${icon("check")} Aprobar copy</button>`
     : at && (st === "" || st === "fix") ? `<button type="button" class="btn primary" data-cpconf="${esc(copyRef(real))}">${icon("badge-check")} Copy confirmado</button>`
     : mine && (st === "" || st === "fix") ? `<button type="button" class="btn primary" data-cpsend="${esc(copyRef(real))}">${icon("send")} ${st === "fix" ? "Copy corregido · boceto finalizado" : "Copy boceto finalizado"}</button>`
-    : mine && st === "ok" ? `<button type="button" class="btn" data-cpreopen="${esc(copyRef(real))}">${icon("pencil")} Cambiar el copy</button>` : "";
+    : mine && st === "ok" && !copyOld(p) ? `<button type="button" class="btn" data-cpreopen="${esc(copyRef(real))}">${icon("pencil")} Cambiar el copy</button>` : "";
   const what = canal ? "Canal de WhatsApp · Community Manager" : f.kind === "Historia" ? "Historia · Community Manager" : "Publicación · Community Manager";
   return `<div class="jpage jformpage" aria-label="Ficha del posteo">
     <div class="jp-top"><button class="btn" type="button" data-pclose>${icon("arrow-left")} Volver</button>${chat ? `<div class="jp-chat">${chat}</div>` : ""}</div>
