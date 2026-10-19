@@ -82,12 +82,12 @@ async function jobPush(cfg: any, items: any[]) {
       if (!x) continue;
       const when = `${dm(x.date)}${x.time ? " a las " + x.time : ""}`, w = people.find((y) => y.name === n.who);
       title = x.title || ""; go = `pub:${n.canal ? "canal" : "post"}:${x.id}`;
-      head = n.type === "review" ? (n.fix ? "Copy corregido para aprobar" : "Copy listo para aprobar") : n.type === "fix" ? "Te pidieron corregir el copy" : "Copy aprobado: listo para publicar";
+      head = n.type === "review" ? (n.fix ? "Copy corregido para aprobar" : "Copy listo para aprobar") : n.type === "fix" ? "Te pidieron corregir el copy" : n.conf ? "Copy confirmado por Admin total" : "Copy aprobado: listo para publicar";
       body = n.type === "review" ? [`${w?.nick || String(n.who || "").split(" ")[0]} escribió el copy`, x.brand, "publicar el " + when, x.copy ? `“${short(plain(String(x.copy)), 100)}”` : ""].filter(Boolean).join(" · ")
-        : n.type === "fix" ? (n.text ? `“${short(String(n.text), 140)}”` : x.brand || "") : [x.brand, "publicalo el " + when].filter(Boolean).join(" · ");
+        : n.type === "fix" ? (n.text ? `“${short(String(n.text), 140)}”` : x.brand || "") : [x.brand, "publicalo el " + when, n.conf ? "no lo tenés que escribir" : ""].filter(Boolean).join(" · ");
     } else if ((n.type === "pub" || n.type === "listo") && n.post) {
       const x = (n.canal ? canal : posts).find((y) => y.id === n.post);
-      if (x) { title = x.title || title; body = `${x.brand || ""} · ${x.channel ? "Canal de WhatsApp" : `${x.net || ""} ${x.format || ""}`} · publicar el ${dm(x.date)}${x.time ? " a las " + x.time : ""}${n.type === "listo" ? " · ya tenés la ruta de la compartida" : ""}`; go = `pub:${n.canal ? "canal" : "post"}:${x.id}`; }
+      if (x) { title = x.title || title; body = `${x.brand || ""} · ${x.channel ? "Canal de WhatsApp" : `${x.net || ""} ${x.format || ""}`} · publicar el ${dm(x.date)}${x.time ? " a las " + x.time : ""}${n.type === "listo" ? " · ya tenés la ruta de la compartida" : ""}${x.copyConf && x.copySt === "ok" ? " · con el copy confirmado" : ""}`; go = `pub:${n.canal ? "canal" : "post"}:${x.id}`; }
     } else if (n.type === "pub") { // asignada desde el pedido de Diseño, todavía sin fecha en el calendario
       body = [brands, j?.piece, j?.pubDate ? "publicar el " + dm(j.pubDate) : "fecha de publicación sin definir"].filter(Boolean).join(" · "); go = "calcm";
     } else if (n.type === "review") {
