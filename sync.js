@@ -74,12 +74,20 @@ const RMH = (() => {
     STICKER_FAVS:[() => STICKER_FAVS, v => { STICKER_FAVS = v || {}; }],
     APP_FLAGS:[() => APP_FLAGS, v => { APP_FLAGS = v || {}; }],
     TEAM_IDEAS:[() => TEAM_IDEAS, v => { TEAM_IDEAS = Array.isArray(v) ? v : []; }],
+    CM_LOAD:[() => CM_LOAD, v => { CM_LOAD = v && typeof v === "object" && !Array.isArray(v) ? v : { times:{}, vidLeft:{}, avail:{}, off:[], accounts:{} }; }], // carga de los CM: tiempos, horarios, ausencias y cuentas
+    MSG_DUTY:[() => MSG_DUTY, v => { MSG_DUTY = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // Mensajes: la atención de cada día por persona
+    CM_REMINDERS:[() => CM_REMINDERS, v => { CM_REMINDERS = Array.isArray(v) ? v : CM_REM_DEF.map(r => ({ ...r, days:[...r.days] })); }], // recordatorios fijos del calendario de CM (v209)
+    INFLUENCERS:[() => INFLUENCERS, v => { INFLUENCERS = Array.isArray(v) ? v : []; }], // cumpleaños de influencers de las marcas (solo Admin total y CM)
+    ESCRACHES:[() => ESCRACHES, v => { ESCRACHES = Array.isArray(v) ? v : []; }], // Búsqueda de Escraches: los cargados y las marcas (solo Admin total, Admin y CM)
   };
   // Claves que solo existen para Admin total (la base no se las deja leer ni guardar al resto).
   const ADMIN_ONLY = new Set(["s:SUGGESTIONS", "s:SURVEYS"]);
   // Claves que solo existen para Admin total, Admin y CM (reclamos de clientes: tienen nombres y datos personales).
-  const CM_ONLY = new Set(["s:RECLAMOS", "s:META_DM", "s:META_DM_LOG", "s:META_IG_ACT"]);
+  const CM_ONLY = new Set(["s:RECLAMOS", "s:ESCRACHES", "s:META_DM", "s:META_DM_LOG", "s:META_IG_ACT"]);
   const isCMish = () => ["Admin total", "Admin", "CM"].includes(member?.role);
+  // Claves que solo leen y guardan Admin total y CM (Admin, no): los cumpleaños de influencers.
+  const ATCM_ONLY = new Set(["s:INFLUENCERS"]);
+  const isATCM = () => ["Admin total", "CM"].includes(member?.role);
   // Claves que todos leen pero solo Admin total guarda. (Los grupos de chat los crea cualquiera: la base controla
   // que cada uno cambie solo los suyos.)
   const ADMIN_WRITE = new Set([]);
@@ -89,7 +97,7 @@ const RMH = (() => {
   const base = new Map(); // clave → { v: versión en el servidor, json: lo último que coincidió con el servidor }
 
   function localKeys(){
-    return [...Object.keys(SHARED).map(k => "s:" + k).filter(k => (isAT() || !ADMIN_ONLY.has(k)) && (isCMish() || !CM_ONLY.has(k))), "notes:" + me, "prompts:" + me,
+    return [...Object.keys(SHARED).map(k => "s:" + k).filter(k => (isAT() || !ADMIN_ONLY.has(k)) && (isCMish() || !CM_ONLY.has(k)) && (isATCM() || !ATCM_ONLY.has(k))), "notes:" + me, "prompts:" + me,
       ...THREADS.filter(t => t.a === me || t.b === me).map(t => "thread:" + t.id),
       ...CHAT_GROUPS.filter(g => chatMember(g, { id:me, role:member?.role })).map(g => "chat:" + g.id)]; // siempre con quien inició sesión
   }
@@ -165,7 +173,9 @@ const RMH = (() => {
   // Pendiente de guardar: cambió desde lo último del servidor, o todavía no existe en la base (v 0: se crea).
   // De solo lectura: las escriben las funciones de Meta; la app las lee pero nunca las guarda.
   const READONLY = new Set(["s:META_FOLLOWERS", "s:META_DEMO", "s:META_POSTS", "s:META_CREATIVES", "s:META_INBOX", "s:META_REFS", "s:COMERCIAL", "s:META_DM", "s:META_DM_LOG", "s:META_IG_ACT"]);
-  const noSave = k => READONLY.has(k) || (ADMIN_WRITE.has(k) && !isAT());
+  // El Revisor (usuario de la revisión de Meta) solo guarda “contestado” y su presencia: la base tampoco le deja otra cosa.
+  const REVISOR_SAVE = new Set(["s:INBOX_DONE", "s:PRESENCE"]);
+  const noSave = k => READONLY.has(k) || (ADMIN_WRITE.has(k) && !isAT()) || (member?.role === "Revisor" && !REVISOR_SAVE.has(k));
   function dirtyKeys(){ return localKeys().filter(k => { if (noSave(k) || getLocal(k) === undefined) return false; const b = base.get(k); return !b || b.v === 0 || C(enc(getLocal(k))) !== b.json; }); }
   async function saveKey(key){
     if (noSave(key)) return;
@@ -181,7 +191,7 @@ const RMH = (() => {
       if (!row){ base.delete(key); continue; }
       const merged = merge(b?.json ? JSON.parse(b.json) : undefined, enc(getLocal(key)), row.data, CONVO(key));
       base.set(key, { v:row.version, json:C(row.data) });
-      setLocal(key, dec(merged)); scheduleRender();
+      setLocal(key, dec(merged)); scheduleRender([key]);
     }
   }
   // Una conexión colgada no puede trabar el guardado: a los 20 s se corta y se reintenta.
@@ -313,7 +323,11 @@ const RMH = (() => {
   // cargando algo (una ventana abierta o un formulario a medio escribir): así no se pierde lo que escribió.
   let typingForm = null;
   document.addEventListener("input", e => { const fm = e.target.closest && e.target.closest("#content form"); if (fm) typingForm = fm; });
-  document.addEventListener("submit", () => { typingForm = null; setTimeout(() => { if (rerenderPending) scheduleRender(); }, 0); }, true);
+  // Si al tocar Guardar faltaba un dato, el formulario sigue abierto con lo escrito: no se redibuja (si no, se borraba).
+  const hasText = f => [...f.querySelectorAll("input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=submit]):not([type=button]), textarea")].some(x => x.value.trim());
+  document.addEventListener("submit", e => { const fm = e.target; typingForm = null; setTimeout(() => {
+    if (fm && fm.closest && fm.closest("#content") && document.body.contains(fm) && hasText(fm)){ typingForm = fm; return; }
+    if (rerenderPending) scheduleRender(); }, 0); }, true);
   function busy(){
     const f = document.activeElement;
     if (f && f.id === "chatInput" && !document.querySelector("#content aside.drawer")) return false; // el chat se actualiza en vivo; render conserva lo que se está escribiendo
@@ -324,9 +338,9 @@ const RMH = (() => {
     const sel = getSelection(); if (page !== "mensajes" && sel && !sel.isCollapsed && sel.rangeCount && document.getElementById("content")?.contains(sel.getRangeAt(0).commonAncestorContainer)) return true;
     return !!(typingForm && document.body.contains(typingForm));
   }
-  function scheduleRender(){
+  function scheduleRender(news){ // news: las claves con datos nuevos de otra persona (no solo quién está conectado)
     if (!ready) return;
-    if (busy()){ rerenderPending = true; try { renderNav(); chatNotify(); } catch (e) {} return; } // el aviso de chat nuevo llega igual, aunque estés escribiendo
+    if (busy()){ rerenderPending = true; try { renderNav(); chatNotify(); window.jobPopCheck?.(); if (news) document.dispatchEvent(new CustomEvent("rmh-pending", { detail:{ keys:news } })); } catch (e) {} return; } // el aviso de chat nuevo (y el de trabajo nuevo o corrección) llega igual, aunque estés escribiendo; el botón Actualizar se destaca
     rerenderPending = false; render();
   }
   document.addEventListener("focusout", () => setTimeout(() => { if (rerenderPending) scheduleRender(); }, 150));
@@ -354,28 +368,32 @@ const RMH = (() => {
       const key = p.new?.key; if (!key || previewing) return;
       if ((base.get(key)?.v || 0) >= (p.new.version || 0)) return;
       const { data: row } = await sb.from("app_state").select("key, data, version").eq("key", key).maybeSingle();
-      if (row && applyRow(row)) scheduleRender();
+      if (row && applyRow(row)) scheduleRender([key]);
     }).subscribe(status => { if (status === "SUBSCRIBED") catchUp(); }); // al (re)conectar se trae lo que llegó mientras tanto
   }
   // La conexión en vivo se corta (celular bloqueado, pestaña en segundo plano, wifi, sesión renovada) y lo que llega
   // durante el corte no se repite. Por eso, además, se revisa qué cambió: cada 10 s, al volver a la app y al volver internet.
-  let catching = false;
-  async function catchUp(){
-    if (!ready || previewing || catching) return; catching = true;
+  let catching = null; // si ya se está revisando, el que pide “Actualizar” espera a que termine esa revisión
+  function catchUp(){
+    if (!ready || previewing) return Promise.resolve();
+    if (catching) return catching;
+    catching = catchUpNow().finally(() => { catching = null; });
+    return catching;
+  }
+  async function catchUpNow(){
     try {
       const { data, error } = await sb.from("app_state").select("key, version");
       if (error && isAuthErr(error)) lostSession();
       if (error || !Array.isArray(data)) return;
       const stale = data.filter(r => (base.get(r.key)?.v || 0) < r.version).map(r => r.key);
       if (!stale.length) return;
-      let changed = false;
+      const changed = [];
       for (let i = 0; i < stale.length; i += 50){
         const { data: rows } = await sb.from("app_state").select("key, data, version").in("key", stale.slice(i, i + 50));
-        (rows || []).forEach(r => { if (applyRow(r)) changed = true; });
+        (rows || []).forEach(r => { if (applyRow(r)) changed.push(r.key); });
       }
-      if (changed) scheduleRender();
+      if (changed.length) scheduleRender(changed);
     } catch (e) { console.warn("catchUp", e); }
-    finally { catching = false; }
   }
   setInterval(catchUp, 10000);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") catchUp(); });
@@ -517,6 +535,8 @@ const RMH = (() => {
     async fileDel(path){ const { error } = await sb.storage.from("material").remove([path]); return !error; },
     // Sesión actual (para pedirle a las funciones de Vercel que actualicen datos, por ejemplo los mensajes de las cuentas).
     catchUp(){ return catchUp(); },
+    // El botón Actualizar ya redibujó con lo último: no queda nada pendiente para redibujar.
+    refreshed(){ rerenderPending = false; },
     async token(){ const { data } = await sb.auth.getSession(); return data?.session?.access_token || null; },
     async pushKey(){ const { data, error } = await sb.functions.invoke("chat-push", { method:"GET" }); return error ? null : data?.key || null; },
     async pushSave(sub){ if (!me || previewing) return false; const { error } = await sb.from("push_subs").upsert({ endpoint:sub.endpoint, person_id:me, sub }); return !error; },

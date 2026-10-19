@@ -11,7 +11,7 @@ const { ORDEN, brandPages } = require("./_lib/meta");
 const GRAPH = "https://graph.facebook.com/v21.0";
 const LONE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g; // mitades de emoji sueltas
 
-// Solo Admin total y CM (Admin es de control: ve pero no modifica). Devuelve el nombre para dejarlo anotado.
+// Solo Admin total, CM y Revisor (el usuario de la revisión de Meta). Admin es de control: ve pero no modifica. Devuelve el nombre para dejarlo anotado.
 async function sender(req){
   const tok = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
   const url = process.env.SUPABASE_URL, apikey = process.env.SUPABASE_KEY;
@@ -19,7 +19,7 @@ async function sender(req){
   const u = await fetch(`${url}/auth/v1/user`, { headers: { apikey, Authorization: `Bearer ${tok}` } }).then(r => r.ok ? r.json() : null).catch(() => null);
   if (!u?.id) return null;
   const rows = await fetch(`${url}/rest/v1/members?select=role,active,person_id&user_id=eq.${encodeURIComponent(u.id)}`, { headers: { apikey, Authorization: `Bearer ${tok}` } }).then(r => r.ok ? r.json() : []).catch(() => []);
-  const m = Array.isArray(rows) && rows.find(x => x.active && ["Admin total", "CM"].includes(x.role));
+  const m = Array.isArray(rows) && rows.find(x => x.active && ["Admin total", "CM", "Revisor"].includes(x.role)); // Revisor: Meta prueba contestar desde la app
   return m ? { id: m.person_id || u.id } : null;
 }
 // Lo que dice Meta, en palabras.

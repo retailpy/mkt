@@ -11,7 +11,7 @@ const cors = {
 };
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
-const ROLES = ["Admin total", "Admin", "Diseñador", "CM"];
+const ROLES = ["Admin total", "Admin", "Diseñador", "CM", "Revisor"]; // Revisor: para la revisión de Meta (solo Mensajes de las cuentas)
 const BAN_FOREVER = "876000h";
 // Usuario de ingreso: letras, números, punto o guion (sin espacios ni "_" / "%", que en ilike son comodines).
 const USER_RE = /^[A-Za-z][A-Za-z0-9.-]{2,29}$/;
