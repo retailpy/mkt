@@ -4816,6 +4816,7 @@ function notifAlerts(){
   if (viewer.role === "Admin total") return adminNotifs().map(n => {
     if (n.type === "sug" && !can("sugerencias")) return null;
     if (n.type === "sug") { const x = SUGGESTIONS.find(y => y.id === n.sug); return { go:"sugerencias", key:"n:" + n.id, sev:"#22d3ee", rank:-4, ic:"message-square", t:`Llegó una sugerencia nueva ${x ? sugNo(x) : ""}`, m:`${x ? x.topic : ""}${x && x.anon ? " · anónima" : x ? " · de " + (PEOPLE.find(pp => pp.id === x.author)?.name || "") : ""} · ${dm(n.date)} ${n.time}`, acts:`<button class="btn" data-page="sugerencias">Ver sugerencia</button>` }; }
+    if (n.type === "drive") return { go:"cfg:integ", key:"n:" + n.id, sev:"#ef4444", rank:-6, ic:"triangle-alert", t:"Google Drive: no se pudo subir un archivo", m:`${n.who ? firstName(n.who) + " · " : ""}“${n.text}” · ${dm(n.date)} ${n.time} · tocá para ver Integraciones` };
     if (n.copy) return copyAlert(n);
     const j = jobById(n.job); if (!j) return null;
     if (n.type === "nota") return { go:"job:" + j.id, key:"n:" + n.id, sev:"#94a3b8", rank:-4, ic:"message-circle", t:`${n.who} comentó en: ${j.title}`, m:`“${n.text}” · ${dm(n.date)} ${n.time}` };
@@ -8827,7 +8828,14 @@ async function uploadSticker(file){
 document.addEventListener("change", e => { if (e.target.id === "stkFile" && e.target.files?.[0]) uploadSticker(e.target.files[0]); });
 // ----- GIFs (GIPHY por la función “integraciones” de Supabase: la clave queda en el servidor) -----
 const gifCache = {};
-const integ = body => window.RMH?.integ ? RMH.integ(body) : Promise.resolve({ ok:false, error:"Sin conexión" });
+const integ = body => (window.RMH?.integ ? RMH.integ(body) : Promise.resolve({ ok:false, error:"Sin conexión" })).then(r => { if (r && !r.ok) driveFailNotify(r.error); return r; });
+// Si una subida a Drive falla porque el script de Google Drive no está conectado, actualizado o autorizado,
+// le llega un aviso a Admin total (uno por día mientras no lo lea), con el motivo y quién lo intentó.
+function driveFailNotify(err){
+  if (!viewer || window.RMH?.previewing || !/script de (Google )?Drive|conectar Google Drive/i.test(String(err || ""))) return;
+  if (NOTIFS.some(n => n.to === "admin" && n.type === "drive" && !n.read && n.date === TODAY)) return;
+  notify({ to:"admin", type:"drive", who:viewer.name, text:String(err).slice(0, 200) }); window.RMH?.flushNow?.();
+}
 function gifPanel(){ return `<div class="gifpanel" role="dialog" aria-label="GIFs"><input class="base" id="gifQ" placeholder="Buscar GIFs…" value="${esc(chatUI.gifQ || "")}" aria-label="Buscar GIFs"><div class="gifgrid" id="gifGrid">${gifGridHTML(chatUI.gifQ || "")}</div></div>`; }
 function gifGridHTML(q){
   const r = gifCache[q]; if (!r){ setTimeout(() => gifLoad(q), 0); return `<p class="note">Buscando GIFs…</p>`; }
