@@ -268,7 +268,15 @@ async function scriptVersion(url: string, secret: string){
 }
 async function scriptPost(c: any, body: Record<string, unknown>){
   const r = await fetch(c.sticker_url, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ k: c.sticker_secret, ...body }) });
-  const t = await r.text(); try { return JSON.parse(t); } catch { throw new Error("El script de Drive no respondió bien"); }
+  const t = await r.text(); try { return JSON.parse(t); } catch { throw new Error(scriptFail(t)); }
+}
+// Si el script falla, Google devuelve una página de error (en el idioma de la cuenta) en vez del JSON: se lee el motivo.
+// El caso típico: el script usa algo nuevo (ej. UrlFetchApp para subir documentos) y nadie lo autorizó todavía.
+function scriptFail(html: string){
+  const why = (html.match(/Exception:\s*([^<]{0,400})/) || [])[1]?.replace(/&quot;/g, '"').trim() || "";
+  if (why) console.error("[integraciones] script:", why);
+  if (/permiss|permis|autoriz|authoriz/i.test(why)) return "Falta autorizar el script de Google Drive: Admin total lo abre en script.google.com, toca Ejecutar una vez y da Permitir.";
+  return "El script de Drive no respondió bien";
 }
 async function scriptList(url: string, secret: string){
   const r = await fetch(`${url}?k=${encodeURIComponent(secret)}`, { redirect: "follow" });
