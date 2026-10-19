@@ -5041,7 +5041,7 @@ const PANEL_CM = [
   { k:"ideas", t:"Ideas Random", d:"Ideas para creadores de contenido: lo que es tendencia en TikTok, Instagram y Facebook, para Superseis, Stock y Delimarket.", i:"lightbulb" },
 ];
 const PANEL_TOOLS = [
-  { k:"historial", t:"Historial", a:"Diseño", i:"archive", d:"Todo lo que ya se entregó, por mes, marca y diseñador." }, { k:"historialcm", t:"Historial", a:"CM", i:"archive", d:"Lo publicado y los pedidos terminados de cada mes." },
+  { k:"historial", t:"Historial", a:"Diseño", i:"archive", d:"Los pendientes del mes, y lo aprobado aparte, por marca y diseñador." }, { k:"historialcm", t:"Historial", a:"CM", i:"archive", d:"Lo pendiente del mes, y lo publicado o terminado aparte." },
 ];
 const PANEL_DG_KEYS = [...PANEL_DESIGN, ...PANEL_TOOLS.filter(x => x.a === "Diseño")].map(x => x.k);
 const PANEL_CM_KEYS = [...PANEL_CM, ...PANEL_TOOLS.filter(x => x.a === "CM")].map(x => x.k);
@@ -6802,7 +6802,7 @@ const copyRef = p => (p.channel ? "canal:" : "post:") + p.id;
 const copyByRef = ref => { const [k, id] = String(ref).split(":"); return k === "canal" ? canalById(id) : postById(id); };
 const copyStText = p => p.noCopy ? `${icon("ban")} No lleva copy: se publica sin copy, no hace falta la aprobación` : ({ rev:`${icon("hourglass")} Esperando que Admin total apruebe el copy`, fix:`${icon("pencil")} Admin total pidió corregir el copy`, ok:`${icon("badge-check")} Copy aprobado${p.copyBy ? " por " + esc(firstName(p.copyBy)) : ""}: publicalo el ${pubWhen(p)}` }[p.copySt]
   || `${icon("file-text")} ${p.cm === viewer?.name ? "Escribí el copy y tocá “Copy boceto finalizado” para que Admin total lo revise" : `${esc(firstName(p.cm || "La CM"))} todavía no mandó el copy`}`);
-// v215: la hoja del copy es la misma hoja tipo Word del pedido (letra, colores, fondo, listas, imágenes) + emojis.
+// v217: la hoja del copy es la misma hoja tipo Word del pedido (letra, colores, fondo, listas, imágenes) + emojis.
 // Lo que se guarda es HTML (con el fondo al principio, como el texto del pedido). Los copys de v214 eran texto plano.
 const copyIsRich = s => /<[a-z!]/i.test(String(s || ""));
 const copyHtml = p => { const s = String(p.copy || ""); if (copyIsRich(s)) return cleanRich(s); const t = esc(s).replace(/\n/g, "<br>"); return (p.copyBg === "negro" ? "<!--bg:#000000-->" : "") + t; };
@@ -7295,45 +7295,59 @@ function tvTeamStart(){
   if (!tvTeam.timer) tvTeam.timer = setInterval(() => { if (page !== "tv") return; render.lastKey = null; render(); toast("Datos del equipo actualizados."); }, TV_TEAM_MIN * 60 * 1000);
 }
 function tvTeamStop(){ clearInterval(tvTeam.timer); clearInterval(tvTeam.clock); clearInterval(tvTeam.slideT); tvTeam.timer = tvTeam.clock = tvTeam.slideT = null; }
-let histUI = { owner:"Todos", brand:"Todas", piece:"Todos", q:"" };
+let histUI = { owner:"Todos", brand:"Todas", piece:"Todos", q:"", tab:"pend" }, histCmTab = "pend";
+// Historial (Diseño y CM): por defecto se ven solo los pendientes del mes; lo aprobado (terminado) va aparte, en la pestaña Aprobados.
+const histTabs = (nP, nA, cur, attr) => viewTabs([["pend", `Pendientes (${nP})`, "hourglass"], ["ok", `Aprobados (${nA})`, "badge-check"]], cur, attr);
 // Historial: cada pedido terminado con los mismos puntos de la hoja del pedido:
 // 1) qué hay que hacer (trabajo, marca y tipo), 2) quién lo pidió, quién lo hizo y para cuándo, 3) cuándo se terminó, 4) estado y 5) cuántos cambios pidieron.
 function histTable(list, emptyMsg){
   const nCh = j => (j.changes || []).filter(c => c.text && !c.kind).length;
   return `<div class="tw"><table class="htable"><thead><tr><th>Qué hay que hacer</th><th>Marca</th><th>Tipo</th><th>Quién lo pidió</th><th>Responsable</th><th>Fecha límite</th><th>Terminado</th><th>Estado</th><th class="r">Cambios</th></tr></thead><tbody>
-  ${list.map(j => { const end = j.delivered || j.due, late = end > j.due, c = nCh(j);
-    return `<tr><td><button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button></td><td>${jobBrandTags(j)}</td><td>${jobPieceTag(j)}</td><td>${esc(j.requester || "—")}</td><td>${esc(j.owner)}</td><td class="num">${dm(j.due)}</td><td class="num" style="white-space:nowrap">${dm(end)} ${late ? `<span class="down">(atrasado)</span>` : `<span class="up">a tiempo</span>`}</td><td>${pill(j.status, JOB_COLOR[j.status])}</td><td class="r num">${c ? c : `<span class="note">—</span>`}</td></tr>`; }).join("") || `<tr><td colspan="9" class="empty">${emptyMsg}</td></tr>`}
+  ${list.map(j => { const fin = isFin(j), end = j.delivered || j.due, late = fin ? end > j.due : j.due < TODAY, c = nCh(j);
+    const ended = fin ? `${dm(end)} ${late ? `<span class="down">(atrasado)</span>` : `<span class="up">a tiempo</span>`}` : late ? `<span class="down">Atrasado</span>` : `<span class="note">—</span>`;
+    return `<tr><td><button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button></td><td>${jobBrandTags(j)}</td><td>${jobPieceTag(j)}</td><td>${esc(j.requester || "—")}</td><td>${esc(j.owner)}</td><td class="num">${dm(j.due)}</td><td class="num" style="white-space:nowrap">${ended}</td><td>${pill(j.status, JOB_COLOR[j.status])}</td><td class="r num">${c ? c : `<span class="note">—</span>`}</td></tr>`; }).join("") || `<tr><td colspan="9" class="empty">${emptyMsg}</td></tr>`}
   </tbody></table></div>`;
 }
 function pHistorial(){
-  const all = jobs.filter(j => !j.ex && j.area === "Diseño" && isFin(j) && jobMonth(j) === MONTH && seesJob(j) && (!isDesigner() || j.owner === viewer.name));
+  const month = jobs.filter(j => !j.ex && j.area === "Diseño" && j.status !== "Cancelado" && jobMonth(j) === MONTH && seesJob(j) && (!isDesigner() || j.owner === viewer.name));
+  const ok = histUI.tab === "ok", nOk = month.filter(isFin).length, all = month.filter(j => isFin(j) === ok);
   const q = histUI.q.trim().toLowerCase();
   const list = all.filter(j => (histUI.owner === "Todos" || j.owner === histUI.owner) && (histUI.brand === "Todas" || jobBrands(j).includes(histUI.brand)) && (histUI.piece === "Todos" || j.piece === histUI.piece)
-    && (!q || [j.title, j.brand, j.owner, j.piece, j.requester].join(" ").toLowerCase().includes(q))).sort((a, b) => (a.delivered || a.due).localeCompare(b.delivered || b.due));
+    && (!q || [j.title, j.brand, j.owner, j.piece, j.requester].join(" ").toLowerCase().includes(q))).sort((a, b) => ok ? (a.delivered || a.due).localeCompare(b.delivered || b.due) : a.due.localeCompare(b.due));
   const uniq = f => [...new Set(all.map(f))].filter(Boolean).sort((a, b) => a.localeCompare(b, "es"));
   const sel = (k, all0, opts) => `<select class="base" data-hf="${k}"><option value="${all0}">${{ owner:"Persona", brand:"Marca", piece:"Tipo" }[k]}: ${all0 === "Todas" ? "todas" : "todos"}</option>${opts.map(o => `<option ${histUI[k] === o ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
-  const late = list.filter(j => (j.delivered || j.due) > j.due).length;
-  return `<div><h1>Historial Diseño gráfico</h1><p class="sub">Trabajos de diseño entregados en ${monthName(MONTH)}${isDesigner()?" por vos":""}. Filtrá por persona, marca o tipo de pieza.</p></div>
+  const late = list.filter(j => ok ? (j.delivered || j.due) > j.due : j.due < TODAY).length;
+  const word = n => ok ? (n === 1 ? "aprobado" : "aprobados") : (n === 1 ? "pendiente" : "pendientes");
+  return `<div><h1>Historial Diseño gráfico</h1><p class="sub">Trabajos de diseño de ${monthName(MONTH)}${isDesigner()?" tuyos":""}: arriba los pendientes, y lo ya aprobado aparte, en “Aprobados”. Filtrá por persona, marca o tipo de pieza.</p></div>
+  ${histTabs(month.length - nOk, nOk, ok ? "ok" : "pend", "data-htab")}
   <div class="panel" style="padding:14px"><div class="jfilters">
     <input class="base" id="hSearch" placeholder="Buscar por trabajo, persona o quién lo pidió…" value="${esc(histUI.q)}">
     ${isDesigner() ? "" : sel("owner", "Todos", uniq(j => j.owner))}${sel("brand", "Todas", [...new Set(all.flatMap(j => jobBrands(j)))].sort((a, b) => a.localeCompare(b, "es")))}${sel("piece", "Todos", uniq(j => j.piece))}
     ${histUI.owner !== "Todos" || histUI.brand !== "Todas" || histUI.piece !== "Todos" || q ? `<button class="btn" data-hclear>Limpiar filtros</button>` : ""}
   </div></div>
-  <div class="head"><span class="note">${list.length} de ${all.length} ${all.length === 1 ? "entrega" : "entregas"}${late ? ` · ${late} con atraso` : ""}</span></div>
-  ${histTable(list, all.length ? "Nada con estos filtros." : "Sin entregas todavía.")}`;
+  <div class="head"><span class="note">${list.length} de ${all.length} ${word(all.length)}${late ? ` · ${late} con atraso` : ""}</span></div>
+  ${histTable(list, all.length ? "Nada con estos filtros." : ok ? "Todavía no hay nada aprobado este mes." : "No hay pendientes este mes.")}`;
 }
 document.addEventListener("change", e => { const f = e.target.closest("[data-hf]"); if (f){ histUI[f.dataset.hf] = f.value; render(); } });
 document.addEventListener("input", e => { if (e.target.id !== "hSearch") return; histUI.q = e.target.value; const pos = e.target.selectionStart; render(); const el = $("#hSearch"); el.focus(); el.setSelectionRange(pos, pos); });
-document.addEventListener("click", e => { if (e.target.closest("[data-hclear]")){ histUI = { owner:"Todos", brand:"Todas", piece:"Todos", q:"" }; render(); } });
+document.addEventListener("click", e => { if (e.target.closest("[data-hclear]")){ histUI = { owner:"Todos", brand:"Todas", piece:"Todos", q:"", tab:histUI.tab }; render(); }
+  const t = e.target.closest("[data-htab]"); if (t){ histUI.tab = t.dataset.htab; render(); }
+  const c = e.target.closest("[data-hcmtab]"); if (c){ histCmTab = c.dataset.hcmtab; render(); } });
 function pHistorialCM(){
-  const pubs = posts.filter(p => p.date.slice(0,7) === MONTH && seesBrand(p.brand) && ["Publicado","Pautado"].includes(p.status) && (viewer.role !== "CM" || p.cm === viewer.name)).sort((a, b) => a.date.localeCompare(b.date));
-  const tasks = jobs.filter(j => !j.ex && j.area === "CM" && isFin(j) && jobMonth(j) === MONTH && seesJob(j) && (viewer.role !== "CM" || j.owner === viewer.name));
+  const POST_OK = ["Publicado","Pautado"], ok = histCmTab === "ok";
+  const pubsM = posts.filter(p => p.date.slice(0,7) === MONTH && seesBrand(p.brand) && p.status !== "Cancelado" && (viewer.role !== "CM" || p.cm === viewer.name));
+  const tasksM = jobs.filter(j => !j.ex && j.area === "CM" && j.status !== "Cancelado" && jobMonth(j) === MONTH && seesJob(j) && (viewer.role !== "CM" || j.owner === viewer.name));
+  const pubs = pubsM.filter(p => POST_OK.includes(p.status) === ok).sort((a, b) => a.date.localeCompare(b.date));
+  const tasks = tasksM.filter(j => isFin(j) === ok).sort((a, b) => ok ? (a.delivered || a.due).localeCompare(b.delivered || b.due) : a.due.localeCompare(b.due));
+  const nOk = pubsM.filter(p => POST_OK.includes(p.status)).length + tasksM.filter(isFin).length, nAll = pubsM.length + tasksM.length;
   const mine = viewer.role === "CM" ? " tuyas" : "";
-  return `<div><h1>Historial CM</h1><p class="sub">Lo que ya salió en ${monthName(MONTH)}: publicaciones${mine} publicadas o pautadas y tareas de CM terminadas.</p></div>
-  <div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("megaphone")}Publicaciones${mine} (${pubs.length})</h2></div><div class="tw" style="border:0;border-radius:0"><table><thead><tr><th>Publicación</th><th>Marca</th><th>CM</th><th>Red · formato</th><th>Tema</th><th>Estado</th></tr></thead><tbody>
-  ${pubs.map(p => `<tr><td class="num">${dm(p.date)}</td><td>${brandTag(p.brand)}</td><td>${esc(p.cm)}</td><td style="white-space:nowrap"><span class="net">${p.net}</span> ${p.format}</td><td>${esc(p.title)}</td><td>${pill(p.status, POST_COLOR[p.status])}</td></tr>`).join("") || `<tr><td colspan="6" class="empty">Todavía no hay publicaciones hechas este mes.</td></tr>`}
+  const pubLate = p => !ok && p.date < TODAY ? ` <span class="down">(atrasada)</span>` : "";
+  return `<div><h1>Historial CM</h1><p class="sub">Publicaciones${mine} y pedidos de CM de ${monthName(MONTH)}. Arriba lo pendiente; lo ya aprobado (publicado, pautado o terminado) va aparte, en “Aprobados”.</p></div>
+  ${histTabs(nAll - nOk, nOk, ok ? "ok" : "pend", "data-hcmtab")}
+  <div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("megaphone")}${ok ? "Publicaciones" + mine + " publicadas o pautadas" : "Publicaciones" + mine + " pendientes"} (${pubs.length})</h2></div><div class="tw" style="border:0;border-radius:0"><table><thead><tr><th>Publicación</th><th>Marca</th><th>CM</th><th>Red · formato</th><th>Tema</th><th>Estado</th></tr></thead><tbody>
+  ${pubs.map(p => `<tr><td class="num" style="white-space:nowrap">${dm(p.date)}${pubLate(p)}</td><td>${brandTag(p.brand)}</td><td>${esc(p.cm)}</td><td style="white-space:nowrap"><span class="net">${p.net}</span> ${p.format}</td><td>${esc(p.title)}</td><td>${pill(p.status, POST_COLOR[p.status])}</td></tr>`).join("") || `<tr><td colspan="6" class="empty">${ok ? "Todavía no hay publicaciones hechas este mes." : "No hay publicaciones pendientes este mes."}</td></tr>`}
   </tbody></table></div></div>
-  <div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("clapperboard")}Pedidos de CM terminados (${tasks.length})</h2></div><div style="border:0">${histTable(tasks.sort((a, b) => (a.delivered || a.due).localeCompare(b.delivered || b.due)), "Sin pedidos de CM terminados todavía.")}</div></div>`;
+  <div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("clapperboard")}${ok ? "Pedidos de CM terminados" : "Pedidos de CM pendientes"} (${tasks.length})</h2></div><div style="border:0">${histTable(tasks, ok ? "Sin pedidos de CM terminados todavía." : "No hay pedidos de CM pendientes este mes.")}</div></div>`;
 }
 // ---------- Turnos Sábados: cada persona elige los dos sábados del mes que viene a trabajar a la oficina ----------
 // SAT_TURN = { "AAAA-MM": { persona: ["AAAA-MM-DD", ...] } }. (SAT_OFF era la versión vieja, de sábados libres: ya no se usa.)
@@ -9964,7 +9978,7 @@ const GUIDE = [
     ["monitor","Diseño para Web","Igual que Cartelería, pero para la web: banners de los sitios web, el PDF con los precios de oferta de la semana, catálogos digitales y e-mails. Arranca en Calendario; también tiene Tabla y Tablero. Con “Solo yo” ves solo lo que está a tu nombre."],
     ["tv","Diseño para Pantallas","Igual que Cartelería, pero para pantallas: piezas y videos para las pantallas de las tiendas, pantallas LED y menús digitales. Arranca en Calendario; también tiene Tabla y Tablero. Con “Solo yo” ves solo lo que está a tu nombre."],
     ["gauge","Carga de trabajo Diseño gráfico","Cuánto tiene cada diseñador: los trabajos sin finalizar según su complejidad. Sirve para repartir los pedidos nuevos."],
-    ["archive","Historial Diseño gráfico","Los trabajos de diseño gráfico entregados en el mes, con su fecha y si salieron a tiempo."]]],
+    ["archive","Historial Diseño gráfico","Los trabajos de diseño gráfico del mes: primero los pendientes; los aprobados, aparte en la pestaña Aprobados, con su fecha y si salieron a tiempo."]]],
   ["Community Manager", [
     ["calendar-days","Gestión Redes","Las publicaciones del feed (posts, carruseles y reels) y sus repetitivas. Etapas: Pendiente → En proceso → Programado → Publicado → Pautado (las repetitivas también; las grabaciones repetitivas, las de Videos). Arranca en Calendario; también tiene Tablero (tocás una tarjeta para cambiar la etapa) y Tabla. Con “Solo yo” ves solo lo tuyo."],
     ["smartphone","Gestión Historia","Igual que Gestión Redes, pero solo con las historias: las del plan y las repetitivas, todas con las mismas etapas (Pendiente → En proceso → Programado → Publicado → Pautado). Calendario, Tablero y Tabla."],
@@ -9974,7 +9988,7 @@ const GUIDE = [
     ["shapes","Gestión de Contenidos","Piezas simples para redes que arma el CM (posts, historias, carruseles, flyers…), con el mismo proceso de Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección) → Aprobado. El CM responsable la avanza; Admin total la aprueba (eligiendo quién aprobó y la fecha) y la publicación queda sola en el calendario del mismo CM."],
     ["gauge","Carga de trabajo CM","En %: el tiempo estimado de lo que le falta a cada CM hasta el domingo (publicaciones, historias, Canal, contenidos, videos según su etapa, traslados y la atención diaria de Mensajes) sobre sus horas disponibles, ya descontadas ausencias y reuniones. Si no tiene horario propio se usa el de oficina (lunes a viernes 8:00–17:00) y lo dice; si falta un tiempo, también lo dice. Admin total configura tiempos, horarios, ausencias y cuentas. La pestaña “Informe del mes” muestra lo que hizo cada CM: cantidades, detalle, plazos y pendientes."],
     ["list-checks","Plan de posteo","Todo lo de CM del mes: feed, historias, Canal de WhatsApp, videos y repetitivos. Arriba, cuántos hay en cada etapa y el % ya publicado (tocá una etapa para filtrar) y los tres procesos a la vista. Cada contenido sigue el suyo: publicaciones e historias Pendiente → En proceso → Programado → Publicado → Pautado; Canal de WhatsApp igual sin Pautado; videos Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado. Cambiás la etapa ahí mismo, el CM que la hace y pedís el diseño si hace falta."],
-    ["archive","Historial CM","Lo que ya salió en el mes: publicaciones publicadas o pautadas y pedidos de CM terminados."],
+    ["archive","Historial CM","Publicaciones y pedidos de CM del mes: primero lo pendiente; lo publicado, pautado o terminado, aparte en la pestaña Aprobados."],
     ["siren","Búsqueda de Escraches","En Mensajes: lo que dicen de nuestras marcas en redes con palabras de queja (vencido, mala atención, cobros dobles…) en el mes. Los comentarios de Instagram aparecen solos; para TikTok, X, Facebook e Instagram hay botones que abren la búsqueda del mes, y lo que encontrás lo cargás. Cada caso queda con su sector (se puede cambiar) y también suma a Reclamos del mes."],
     ["inbox","Mensajes y menciones","En Panel de CM → Mensajes hay dos pestañas. Mensajes: los mensajes directos de Instagram y Facebook de cada marca; los de Instagram se pueden contestar desde la app (abrí la conversación, escribí y tocá Enviar: sale desde la cuenta de la marca, hasta 24 horas después del último mensaje de la persona). Menciones: los comentarios de Instagram que arroban a la marca (escriben @ y la cuenta), en sus publicaciones o en las de otras cuentas; los demás comentarios no aparecen. Los que son solo etiquetas a amigos (sorteos) no esperan respuesta. Cada uno dice si ya se contestó; tocalo para abrirlo en Instagram, o marcá “Contestado” si se respondió desde el celular. Llegan al momento y, además, se actualizan solos dos veces por día (o con “Actualizar”). Son los de los últimos 30 días."]]],
   ["Recursos", [
@@ -11697,6 +11711,7 @@ function stickBottom(cm){
 }
 function render(){
   stampPubDone();
+  if (page !== render.histPage){ if (page === "historial") histUI.tab = "pend"; if (page === "historialcm") histCmTab = "pend"; render.histPage = page; } // al entrar al Historial, siempre los pendientes
   for (const p of posts) if (OLD_POST_ST[p.status]) p.status = OLD_POST_ST[p.status]; // etapas de antes de las publicaciones de CM
   for (const k of CHANNEL_POSTS) if (OLD_POST_ST[k.status]) k.status = OLD_POST_ST[k.status];
   for (const j of jobs){ if (j.area === "CM"){ const n = OLD_CM_ST(j); if (n) j.status = n; } // etapas de antes de Gestión de Video
