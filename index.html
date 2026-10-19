@@ -3699,7 +3699,7 @@ const areaNames = area => PEOPLE.filter(pp => pp.active && (area === "Diseño" ?
 const ltrack = L => { const lv = lvOf(L), pc = L.pct ?? 0; return `<div class="ptrack ztrack" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.min(pc, 100)}" aria-label="Carga de trabajo ${L.pct === null || L.pct === undefined ? "sin datos" : pc + "%"}"><div class="pfill ld-${lv.k}" style="width:${Math.max(Math.min(pc, 100), L.pct !== null && L.pct !== undefined && (L.pts || L.min) ? 2 : 0)}%"></div><i class="zmark" style="left:50%"></i><i class="zmark" style="left:80%"></i></div>`; };
 function loadBar(title, L, big = false){
   const lv = lvOf(L);
-  const meta = L.cm ? `<span><i>${L.n}</i> ${L.n === 1 ? "tarea pendiente" : "tareas pendientes"} ${cmSpanTxt(L, true)}</span><span>100 % = capacidad completa</span>`
+  const meta = L.cm ? `<span><i>${L.n}</i> ${L.n === 1 ? "tarea pendiente" : "tareas pendientes"} ${L.next ? "la semana que viene" : "esta semana"}</span><span>100 % = capacidad completa</span>`
     : L.mixed ? `<span><i>${L.n}</i> trabajos y publicaciones sin terminar</span><span>promedio del % de cada persona${L.missing ? ` · ${L.missing} sin horario` : ""}</span>`
     : `<span><i>${L.n}</i> ${L.n === 1 ? "trabajo" : "trabajos"} sin finalizar</span><span><i>${L.pts}</i> de ${L.cap} puntos de capacidad</span>`;
   return `<div class="prog lprog ${big ? "big" : ""}"><div class="ph"><div><b>${title}</b></div><span class="pc" style="color:${lv.c}">${pctHTML(L)} <small style="color:${lv.c}">${lv.t}</small></span></div>
@@ -3713,13 +3713,13 @@ function loadChart(groups, cls = ""){
   const max = Math.max(100, ...all.map(x => Math.min(x.pct ?? 0, 200)));
   let k = 0;
   const col = x => { const lv = lvOf(x), pc = Math.min(x.pct ?? 0, 200), h = Math.max(pc / max * 100, pc ? 4 : 1.5);
-    const tip = x.cm ? `${x.pp.name}: ${x.pct === null ? "falta configurar su horario" : x.pct >= 999 ? "sin horas disponibles" : x.pct + "%"} · ${x.n} ${x.n === 1 ? "tarea" : "tareas"} ${cmSpanTxt(x, true)} · ${lv.t}` : `${x.pp.name}: ${x.n} ${x.n === 1 ? "trabajo" : "trabajos"} sin finalizar (${x.pts} puntos) · ${lv.t}`;
+    const tip = x.cm ? `${x.pp.name}: ${x.pct === null ? "falta configurar su horario" : x.pct >= 999 ? "sin horas disponibles" : x.pct + "%"} · ${x.n} ${x.n === 1 ? "tarea" : "tareas"} ${x.next ? "la semana que viene" : "esta semana"} · ${lv.t}` : `${x.pp.name}: ${x.n} ${x.n === 1 ? "trabajo" : "trabajos"} sin finalizar (${x.pts} puntos) · ${lv.t}`;
     return `<div class="lcol" title="${esc(tip)}">
-      <div class="lval">${x.cm ? `<b style="color:${lv.c}">${x.pct === null ? "—" : x.pct >= 999 ? "+100%" : x.pct + "%"}</b><span>${cmSpanTxt(x)}</span>` : `<b style="color:${lv.c}">${x.n}</b><span>${x.pts} pts</span>`}</div>
+      <div class="lval">${x.cm ? `<b style="color:${lv.c}">${x.pct === null ? "—" : x.pct >= 999 ? "+100%" : x.pct + "%"}</b><span>${x.next ? "semana que viene" : "esta semana"}</span>` : `<b style="color:${lv.c}">${x.n}</b><span>${x.pts} pts</span>`}</div>
       <div class="ltrack" style="--lim:${100 / max * 100}%;--ideal:${50 / max * 100}%"><div class="lbar" style="height:${h}%;--c:${lv.c};animation-delay:${(k++) * 80}ms"></div></div>
       <div class="lname">${avatarHTML(x.pp)}<b>${esc(nickOf(x.pp))}</b><span style="color:${lv.c}">${lv.t}</span></div></div>`; };
   return `<div class="loadchart ${cls}"><div class="lgroups">${groups.filter(g => g.people.length).map(g => `<div class="lgroup" style="flex:${g.people.length}"><div class="lcols">${g.people.map(pp => col(all.find(x => x.pp === pp))).join("")}</div><div class="lglabel">${g.label}</div></div>`).join("")}</div>
-    ${groups.every(g => g.label === "CM" || !g.people.length) ? (cmSpan === "mes" ? LOAD_LEGEND_CM.replace("de esta semana (lunes a domingo)", `de ${monthName(MONTH)} (el mes entero)`).replace("de la semana", "que le quedan en el mes") : LOAD_LEGEND_CM) : LOAD_LEGEND}</div>`;
+    ${groups.every(g => g.label === "CM" || !g.people.length) ? LOAD_LEGEND_CM : LOAD_LEGEND}</div>`;
 }
 const loadGroups = area => [
   ...(area !== "CM" ? [{ label:"Diseño gráfico", people:PEOPLE.filter(pp => pp.active && pp.role === "Diseñador") }] : []),
@@ -3776,12 +3776,7 @@ function cmAvailRange(pp, from, end){
   return tot; }
 // La carga es de UNA semana (lunes a domingo): solo cuenta lo de esa semana, no lo atrasado del mes. Si ya no le quedan
 // horas esta semana (sábado, domingo o viernes después de hora), se muestra la semana que viene.
-// En Planificación, con la vista Mes, la carga se mide sobre el mes entero (cmSpan = "mes"): lo que falta del mes ÷ las horas que le quedan en el mes.
-let cmSpan = null;
-const cmSpanTxt = (x, long) => cmSpan === "mes" ? "en " + monthName(MONTH) : x.next ? (long ? "la " : "") + "semana que viene" : "esta semana";
-function withCmSpan(span, fn){ const old = cmSpan; cmSpan = span; try { return fn(); } finally { cmSpan = old; } }
 function cmWeek(pp){
-  if (cmSpan === "mes"){ const ms = MONTH + "-01", me = monthEnd(MONTH), from = ms > TODAY ? ms : TODAY; return { from:ms, to:me, avail:me < TODAY ? 0 : cmAvailRange(pp, from, me), next:false, month:true }; }
   const mon = addDays(TODAY, -wdOf(TODAY)), sun = addDays(mon, 6), left = cmAvailRange(pp, TODAY, sun);
   if (left > 0) return { from:mon, to:sun, avail:left, next:false };
   const m2 = addDays(mon, 7), s2 = addDays(m2, 6); return { from:m2, to:s2, avail:cmAvailRange(pp, m2, s2), next:true }; }
@@ -5564,7 +5559,7 @@ function pPlan(){
   return `<div class="head"><div><h1 class="pmh">${pmIco(calOnly ? "calendar-days" : "list-checks")}${calOnly ? "Planificación · Temario" : "Plan de posteo"}</h1><p class="sub">${calOnly ? (view === "semana" ? `Semana del ${weekLabel(planWk())}` : monthLabel(MONTH)) + " · todo lo de CM junto: publicaciones, historias, WhatsApp, videos, repetitivos y actividades." : `${monthLabel(MONTH)} · todo lo de CM del mes, junto: feed (posts, carruseles y reels), historias, Canal de WhatsApp, videos y repetitivos. Cargalo desde acá o desde cada Gestión.`}</p></div>${calOnly ? `<div class="chips">${cmLoadBtn()}${viewTabs(PLAN_VIEWS, view, "data-gview")}</div>` : viewTabs([["calendario","Calendario","calendar-days"],["tabla","Tabla","table-2"],["tablero","Tablero","kanban"]], planUI.view, "data-plview")}</div>
   ${isClosed() ? `<div class="ro">${icon("lock")} ${monthLabel(MONTH)} está cerrado: se puede consultar, pero no modificar. Lo que no se cumplió pasó al mes siguiente como “arrastrado”.</div>` : ""}
   ${calOnly ? "" : calAdds(canEditPost() ? [['data-pnew="Feed"', "image", "Cargar publicación", "Post, carrusel o reel para el feed."], ['data-pnew="Historia"', "smartphone", "Cargar historia", "Una historia en su fecha."], ['data-pnew="Canal"', "message-circle", "Cargar para el Canal de WhatsApp", "Un contenido para el canal."], ...(canCreateJobs() && can("gestioncm") ? [['data-plvid', "clapperboard", "Cargar gestión de video", "Video para redes o para pantallas, con su fecha."]] : [])] : [])}
-  ${summary}${calOnly && can("cargacm") ? (view === "semana" ? loadPanel("CM", "lo que falta de esta semana") : withCmSpan("mes", () => loadPanel("CM", `lo que falta de ${monthName(MONTH)}, el mes entero`))) : ""}${filters}${calOnly ? "" : CM_PROC_LEGEND()}
+  ${summary}${filters}${calOnly ? "" : CM_PROC_LEGEND()}
   ${calOnly ? dgOnTheWay() : ""}
   ${view === "semana" ? planWeek(planWeekItems(byCm, allSt)) : view === "calendario" ? planCal(items) : view === "tablero" ? planBoard(items) : `<div class="head"><span class="note">${items.length} ${items.length === 1 ? "contenido" : "contenidos"} en ${monthName(MONTH)} · ordenados por fecha${canEditPost() ? " · cambiá el estado desde la lista" : ""}</span></div>
   <div class="tw"><table><thead><tr><th>Fecha</th><th>Marca</th><th>CM</th><th>Qué es</th><th>Tema</th><th>Diseño gráfico</th><th>Estado</th><th>Siguiente paso</th></tr></thead><tbody>
