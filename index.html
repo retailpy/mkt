@@ -3238,7 +3238,7 @@ function openApproveModal(j){
       <div class="okgrid"><label>Fecha de publicación *<input class="base" type="date" id="okDate" value="${esc(preDate)}"></label>
       <label>Hora de publicación *<input class="base" type="time" id="okTime" value="${esc(preTime)}"></label>
       <label>¿Dónde se publica? *<select class="base" id="okFmt">${PUB_FMTS.map(([v, l]) => `<option value="${v}" ${v === preFmt ? "selected" : ""}>${l}</option>`).join("")}</select></label>
-      <label class="oknet"${preFmt === "Canal" ? " hidden" : ""}>Red *<select class="base" id="okNet">${POST_NETS.map(n => `<option ${n === (x?.net || "IG") ? "selected" : ""}>${n}</option>`).join("")}</select></label></div>
+      <label class="oknet"${preFmt === "Canal" ? " hidden" : ""}>Red *<select class="base" id="okNet">${netOpts(j.brand, x?.net || "IG")}</select></label></div>
       <p class="note" style="margin:0">${icon("calendar-days")} Se carga sola en el calendario del CM con lo justo para publicar (título, tipo de gráfica, dónde se publica, día, hora y la ruta de la compartida), y le llega el aviso (+1). Después el CM escribe el copy y te llega para aprobarlo. Con “Post + Historia” se cargan las dos.</p></div>
     <p class="perr" id="okErr" hidden></p>
     <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-oksend="${j.id}">✓ Aprobar</button></div></div>`;
@@ -5675,7 +5675,7 @@ const cmStKind = x => x.k === "job" ? "job" : x.k;
 const cmMine = x => !soloYo || x.who === viewer.name;
 // Plataformas (filas del calendario, como el Excel). X, YouTube y LinkedIn aparecen cuando hay algo cargado ahí.
 const CM_PLATS = [["igfb","Instagram / Facebook","instagram"],["tiktok","TikTok","music"],["canal","Canal de WhatsApp","message-circle"],["x","X","at-sign"],["yt","YouTube","youtube"],["in","LinkedIn","briefcase"],["otras","Otras actividades","list-todo"]];
-const CM_PLAT_FIXED = ["igfb","tiktok","canal"];
+const CM_PLAT_FIXED = ["igfb","tiktok","canal","x","yt","in"]; // v222: todas las redes de Superseis y Stock, siempre a la vista
 function cmPlats(x){
   const net = x.k === "post" ? String(x.it.net || "") : "", out = [];
   if (x.k === "post"){ if (/IG|FB/.test(net)) out.push("igfb"); if (/TikTok/.test(net)) out.push("tiktok"); if (/(^|\+ )X\b/.test(net)) out.push("x"); if (/YouTube/.test(net)) out.push("yt"); if (/LinkedIn/.test(net)) out.push("in"); return out.length ? out : ["igfb"]; }
@@ -6889,7 +6889,7 @@ function cmLoadCfg(){
   const avRow = pp => { const av = CM_LOAD.avail?.[pp.id];
     return `<div class="clav"><div class="clavh"><b>${esc(pp.name)}</b>${av ? `<button type="button" class="btn sm" data-clavclear="${pp.id}">Borrar horario</button>` : `<button type="button" class="btn sm primary" data-clavdef="${pp.id}">${icon("clock")} Usar horario de oficina (lun a vie 8:00–17:00, 1 h de almuerzo)</button>`}</div>
       ${av ? `<div class="clavdays">${DAY_SHORT.map((dn, i) => { const d = av[i] || { off:true }; return `<div class="clday${d.off ? " off" : ""}"><label class="cldn"><input type="checkbox" data-clday="${pp.id}|${i}" ${d.off ? "" : "checked"}> ${dn}</label>${d.off ? `<span class="note">no trabaja</span>` : `<input class="base sm" type="time" data-clav="${pp.id}|${i}|from" value="${esc(d.from || "08:00")}" aria-label="${dn} desde"><input class="base sm" type="time" data-clav="${pp.id}|${i}|to" value="${esc(d.to || "17:00")}" aria-label="${dn} hasta"><label class="clpz">pausa <input class="base sm" type="number" min="0" max="240" step="5" data-clav="${pp.id}|${i}|pause" value="${esc(d.pause ?? 60)}"> min</label>`}</div>`; }).join("")}</div>` : `<p class="note" style="margin:4px 0 0">${icon("clock")} Sin horario propio: se usa el de oficina (lunes a viernes 8:00–17:00, 1 h de almuerzo). Tocá el botón para cambiarlo día por día.</p>`}
-      <div class="clacc"><span class="note">Cuentas que atiende en Mensajes:</span>${Object.keys(BRANDS).filter(b => b !== "Retail Institucional").map(b => `<button type="button" class="chip${cmAccounts(pp).includes(b) ? " on" : ""}" data-clacc="${pp.id}|${esc(b)}" aria-pressed="${cmAccounts(pp).includes(b)}">${esc(b)}</button>`).join("")}</div></div>`; };
+      <div class="clacc"><span class="note" title="${esc(BRAND_NETS_TXT)}">Cuentas que atiende en Mensajes:</span>${Object.keys(BRANDS).filter(b => b !== "Retail Institucional").map(b => `<button type="button" class="chip${cmAccounts(pp).includes(b) ? " on" : ""}" data-clacc="${pp.id}|${esc(b)}" aria-pressed="${cmAccounts(pp).includes(b)}">${esc(b)}</button>`).join("")}</div><p class="note" style="margin:6px 0 0">${icon("share-2")} Redes de cada marca: ${BRAND_NETS_TXT}.</p></div>`; };
   const offs = (CM_LOAD.off || []).filter(o => o.date >= addDays(TODAY, -7)).sort((a, b) => a.date.localeCompare(b.date));
   return `<details class="panel clcfg"${cargaUI.cfg ? " open" : ""} data-clcfg><summary>${icon("settings")} Configurar la carga de los CM <span class="note">(solo Admin total)</span></summary>
     <h3>1 · Tiempos estimados por trabajo <span class="note">(en minutos; referencias provisorias para ajustar con el trabajo real; ya incluyen los 5 minutos adicionales)</span></h3>
@@ -7130,7 +7130,13 @@ function postStatusCell(p){
 }
 // Ficha de un posteo: se abre tocándolo en el calendario (o tocando un día vacío para cargar uno nuevo).
 // El CM responsable se elige libremente: un CM de Superseis puede hacer de CM de Stock, por ejemplo.
-const POST_NETS = ["IG","FB","IG + FB","TikTok","IG + TikTok","X","YouTube","LinkedIn"]; // IG + TikTok: estrategias de video (reels). X, YouTube y LinkedIn: filas del Calendario de Actividades (v220)
+const POST_NETS = ["IG","FB","IG + FB","TikTok","IG + TikTok","X","YouTube","LinkedIn"];
+// Redes de cada marca (v222): Superseis y Stock tienen todas; Delimarket, solo Instagram y Facebook (sin Canal de WhatsApp). Las demás marcas, todas.
+const BRAND_NETS = { Delimarket:["IG","FB","IG + FB"] };
+const BRAND_NETS_TXT = "Superseis y Stock: Instagram, Facebook, X, Canal de WhatsApp, LinkedIn, YouTube y TikTok · Delimarket: Instagram y Facebook";
+const netsFor = b => BRAND_NETS[b] || POST_NETS;
+const brandHasCanal = b => !BRAND_NETS[b];
+const netOpts = (b, v) => [...new Set([...netsFor(b), v].filter(Boolean))].map(n => `<option ${n === v ? "selected" : ""}>${esc(n)}</option>`).join(""); // IG + TikTok: estrategias de video (reels). X, YouTube y LinkedIn: filas del Calendario de Actividades (v220)
 const FEED_FORMATS = ["Post","Carrusel","Reel"];
 // Canal: el Canal de WhatsApp de cada marca, donde también se publican contenidos.
 const CANALES = ["Canal de WhatsApp"];
@@ -7251,7 +7257,7 @@ function postForm(){
   const what = canal ? "contenido del Canal de WhatsApp" : f.kind === "Historia" ? "historia" : "publicación";
   const kindFields = canal
     ? `<label>Dónde se publica<input class="base" id="poChannel" value="Canal de WhatsApp" readonly></label>`
-    : `<label>Red *<select class="base" id="poNet">${opt(POST_NETS, p.net)}</select></label>
+    : `<label>Red *<select class="base" id="poNet">${netOpts(p.brand, p.net)}</select></label>
       ${f.kind === "Historia" ? `<label>Formato<input class="base" value="Historia" readonly></label>` : `<label>Formato *<select class="base" id="poFormat">${opt(FEED_FORMATS, p.format === "Historia" ? "Post" : p.format)}</select></label>`}`;
   const chat = real ? jobChatBtns({ owner:real.cm, byId:real.byId, title:real.title }, "la publicación") : "";
   const dj = p.fromJob && jobById(p.fromJob);
@@ -7266,7 +7272,7 @@ function postForm(){
     <div class="jp-h"><span class="note">${canal ? "Canal de WhatsApp · Community Manager" : f.kind === "Historia" ? "Historia · Community Manager" : "Publicación · Community Manager"}</span><h1 style="margin:4px 0 0">${f.mode === "edit" ? "Editar " + what : (canal ? "Nuevo " : "Nueva ") + what}</h1>${j && !dj ? `<div class="note" style="margin-top:4px">${icon("palette")} Pedido de diseño: ${esc(j.status)}</div>` : ""}</div>${fromDesign}
     <form id="postForm" class="jform panel">
       <section class="jfs"><h3><i>1</i>Qué hay que hacer</h3><div class="jfg">
-        <label>Marca *<select class="base" id="poBrand">${opt(myBrands(), p.brand)}</select></label>
+        <label>Marca *<select class="base" id="poBrand">${opt(canal ? myBrands().filter(brandHasCanal) : myBrands(), p.brand)}</select></label>
         ${kindFields}
         <label class="wide" style="grid-column:1/-1">${canal ? "Qué se sube *" : "Tema *"}<input class="base" id="poTitle" value="${esc(p.title)}" placeholder="${canal ? "Ej.: Ofertas del finde para el canal" : "Ej.: Ofertas del finde"}" required></label>
         <label style="grid-column:1/-1">Observaciones <span class="note">(opcional, algo corto)</span><textarea class="base" id="poNotes" rows="2" placeholder="Ej.: Usar las fotos nuevas del local. Mencionar el horario del domingo.">${esc(p.notes || "")}</textarea></label>
@@ -7408,7 +7414,8 @@ document.addEventListener("click", e => {
     (p.changes = p.changes || []).push(ext ? { date:TODAY, time:nowTime(), text:t, by:viewer.name, req:document.getElementById("pcReq")?.value || "" } : { date:TODAY, time:nowTime(), kind:"nota", text:t, by:viewer.name });
     if (postUI.form) postUI.form.post.changes = p.changes; render(); toast(ext ? "Cambios anotados." : "Comentario enviado."); }
 });
-document.addEventListener("change", e => { if (e.target.id === "poBrand"){ const cm = CM_BY_BRAND[e.target.value], s2 = $("#poCm"); if (cm && s2 && [...s2.options].some(o => o.value === cm)) s2.value = cm; } });
+document.addEventListener("change", e => { if (e.target.id === "poBrand"){ const cm = CM_BY_BRAND[e.target.value], s2 = $("#poCm"); if (cm && s2 && [...s2.options].some(o => o.value === cm)) s2.value = cm;
+  const n = $("#poNet"); if (n){ const nets = netsFor(e.target.value), v = nets.includes(n.value) ? n.value : nets[0]; n.innerHTML = netOpts(e.target.value, v); n.value = v; } } }); // solo las redes que tiene esa marca
 document.addEventListener("submit", e => {
   if (e.target.id !== "postForm") return; e.preventDefault();
   if (!canEditPost()){ toast("Solo la pueden cambiar el CM y Admin total."); return; }
