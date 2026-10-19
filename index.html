@@ -5132,10 +5132,13 @@ function pPanel(ar){
   <section class="panel palerts"><div class="head" style="margin-bottom:10px"><h2 style="margin:0" class="pmh">${pmIco("list-todo")}Trabajos pendientes${al.length ? ` <span class="note">${al.length}</span>` : ""}</h2>
     ${al.length > 5 ? `<button type="button" class="btn sm" data-panelall>${panelAll ? "Ver menos" : `Ver más (${al.length - 5})`}</button>` : ""}</div>
     ${al.length ? `<div class="agrid">${alertList(shown)}</div>` : `<div class="empty">${icon("check")} No tenés nada pendiente a tu nombre.</div>`}</section>
-  <section class="panel pdone"><div class="head" style="margin-bottom:10px"><h2 style="margin:0" class="pmh">${pmIco("circle-check")}Trabajos finalizados${done.length ? ` <span class="note">${done.length} en ${monthName(MONTH)}</span>` : ""}</h2>
-    ${done.length > 5 ? `<button type="button" class="btn sm" data-paneldone>${panelDoneAll ? "Ver menos" : `Ver más (${done.length - 5})`}</button>` : ""}</div>${doneList}</section>`;
+  ${dg ? `<section class="panel pdone"><div class="head" style="margin-bottom:${panelDoneOpen ? 10 : 0}px"><h2 style="margin:0" class="pmh">${pmIco("circle-check")}Trabajos aprobados${done.length ? ` <span class="note">${done.length} en ${monthName(MONTH)}</span>` : ""}</h2>
+    <div class="chips">${panelDoneOpen && done.length > 5 ? `<button type="button" class="btn sm" data-paneldone>${panelDoneAll ? "Ver menos" : `Ver más (${done.length - 5})`}</button>` : ""}<button type="button" class="btn sm" data-paneldoneopen aria-expanded="${panelDoneOpen}">${icon(panelDoneOpen ? "eye-off" : "eye")} ${panelDoneOpen ? "Ocultar aprobados" : `Ver aprobados (${done.length})`}</button></div></div>${panelDoneOpen ? doneList : ""}</section>`
+  : `<section class="panel pdone"><div class="head" style="margin-bottom:10px"><h2 style="margin:0" class="pmh">${pmIco("circle-check")}Trabajos finalizados${done.length ? ` <span class="note">${done.length} en ${monthName(MONTH)}</span>` : ""}</h2>
+    ${done.length > 5 ? `<button type="button" class="btn sm" data-paneldone>${panelDoneAll ? "Ver menos" : `Ver más (${done.length - 5})`}</button>` : ""}</div>${doneList}</section>`}`;
 }
-let panelDoneAll = false;
+let panelDoneAll = false, panelDoneOpen = false; // Diseño: los aprobados del Panel de Trabajo, ocultos hasta tocar “Ver aprobados”
+document.addEventListener("click", e => { if (e.target.closest("[data-paneldoneopen]")){ panelDoneOpen = !panelDoneOpen; render(); } });
 document.addEventListener("click", e => { if (e.target.closest("[data-paneldone]")){ panelDoneAll = !panelDoneAll; render(); } });
 document.addEventListener("click", e => { if (e.target.closest("[data-panelall]")){ panelAll = !panelAll; render(); } });
 function pInicio(){
@@ -6701,12 +6704,17 @@ function procExample(A){
       <span class="exdot">${fin ? icon("check") : fix ? icon("pencil") : ""}</span>
       <div><div class="exh"><b>${st}</b>${ver ? `<span class="exver">${ver}</span>` : ""}${fix ? `<span class="exround">Ronda de cambios 1</span>` : ""}<span class="exwhen">${when}</span></div><small><em>${who === AT ? "Admin total" : D}:</em> ${txt}</small></div></li>`).join("")}</ol></details>`;
 }
+// Diseño gráfico (Redes, Web, Cartelería, Pantallas): la tabla muestra por defecto solo los pendientes; los aprobados, aparte (v219).
+let pedTab = "pend";
+document.addEventListener("click", e => { const b = e.target.closest("[data-pedtab]"); if (b){ pedTab = b.dataset.pedtab; render(); } });
 function pedPage(A, title, ico, sub, newHint, extra = ""){
-  const list = pedList(A);
+  const all = pedList(A), split = A === "Diseño" && pedView !== "procesos", nOk = all.filter(j => !j.ex && isFin(j)).length;
+  const list = split ? all.filter(j => j.ex || isFin(j) === (pedTab === "ok")) : all;
   return `<div class="head"><div><h1 class="pmh">${pmIco(ico)}${title}</h1><p class="sub">${sub}</p></div><div class="chips">${extra}${refreshBtn()}</div></div>
   ${canCreateJobs() ? `<button class="panel cmnew" data-jnew><span class="cmplus">${icon("plus")}</span><span><b>Cargar pedido</b><small>${newHint}</small></span></button>` : ""}
   ${pedScopeChips(A)}
-  <div class="head"><h2 class="pmh" style="margin:0">${pmIco(pedView === "procesos" ? "kanban" : "table-2")}${pedMine() ? "Mis pedidos" : "Pedidos"} de ${monthName(MONTH)} <span class="note" style="font-weight:400">· ${list.length}</span></h2>${viewTabs([["tabla","Tabla","table-2"],["procesos","Procesos","kanban"]], pedView, "data-pedview")}</div>
+  <div class="head"><h2 class="pmh" style="margin:0">${pmIco(pedView === "procesos" ? "kanban" : "table-2")}${pedMine() ? "Mis pedidos" : "Pedidos"} de ${monthName(MONTH)} <span class="note" style="font-weight:400">· ${split ? `${list.filter(j => !j.ex).length} ${pedTab === "ok" ? (nOk === 1 ? "aprobado" : "aprobados") : "pendientes"}` : list.length}</span></h2>${viewTabs([["tabla","Tabla","table-2"],["procesos","Procesos","kanban"]], pedView, "data-pedview")}</div>
+  ${split ? histTabs(all.filter(j => !j.ex).length - nOk, nOk, pedTab === "ok" ? "ok" : "pend", "data-pedtab") : ""}
   ${pedView === "procesos" ? procExample(A) + jobBoard(list, A) : jobTable(list)}
   ${jobForm()}`;
 }
@@ -11727,7 +11735,7 @@ function stickBottom(cm){
 }
 function render(){
   stampPubDone();
-  if (page !== render.histPage){ if (page === "historial") histUI.tab = "pend"; if (page === "historialcm") histCmTab = "pend"; render.histPage = page; } // al entrar al Historial, siempre los pendientes
+  if (page !== render.histPage){ if (page === "historial") histUI.tab = "pend"; if (page === "historialcm") histCmTab = "pend"; pedTab = "pend"; panelDoneOpen = false; render.histPage = page; } // al entrar al Historial, siempre los pendientes
   for (const p of posts) if (OLD_POST_ST[p.status]) p.status = OLD_POST_ST[p.status]; // etapas de antes de las publicaciones de CM
   for (const k of CHANNEL_POSTS) if (OLD_POST_ST[k.status]) k.status = OLD_POST_ST[k.status];
   for (const j of jobs){ if (j.area === "CM"){ const n = OLD_CM_ST(j); if (n) j.status = n; } // etapas de antes de Gestión de Video
