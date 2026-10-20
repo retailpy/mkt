@@ -10792,7 +10792,7 @@ const jobPopSave = ids => { try { localStorage.setItem(jobPopKey(), JSON.stringi
 let jobPop = { items:[] };
 function jobPopCheck(){
   if (!viewer || !enterApp.done || !$("#login").hidden || window.RMH?.previewing) return;
-  const mine = [...myNotifs(), ...(viewer.role === "Admin total" ? adminNotifs().filter(n => ADMIN_POP.includes(n.type) && (n.type !== "sug" || can("sugerencias"))) : [])]
+  const mine = [...myNotifs(), ...(viewer.role === "Admin total" ? adminNotifs().filter(n => ADMIN_POP.includes(n.type) && n.who !== viewer.name && (n.type !== "sug" || can("sugerencias"))) : [])]
     .filter(n => JOBPOP[n.type] && !POP_LOCAL.includes(n.type) && (n.copy ? copyAlert(n) : (n.type !== "pub" || pubAlert(n)) && (n.type !== "listo" || !n.post || listoAlert(n)) && (!n.job || jobById(n.job))))
     .concat(avActiveFor(viewer).filter(a => !(a.seen || []).includes(viewer.id) && a.by !== viewer.id).map(a => avPopOf(a))); // avisos del equipo vigentes, sin “Entendido”
   let seen = jobPopRead(); const first = seen === null; seen = seen || [];
