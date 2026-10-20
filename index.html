@@ -1026,6 +1026,7 @@ html.nomotion .nav a.wknew .ibc,html.nomotion .tabbar a.wknew .tbc,html.nomotion
 .impwarn span{color:var(--muted)}
 .satmiss{display:inline-flex;align-items:center;gap:5px;margin-left:6px;padding:2px 8px;border-radius:999px;border:1px solid rgba(249,115,22,.55);color:#fdba74;font-size:12px;cursor:pointer}
 .satmiss svg{width:13px;height:13px}
+.satchips{gap:6px}.satchips .chip.past:not(.on){opacity:.65}
 .arow.ago:hover{background:rgba(34,211,238,.05)}
 .arow .adis{all:unset;cursor:pointer;flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;color:var(--faint)}
 .arow .adis:hover{color:var(--ink);background:rgba(148,163,184,.12)}
@@ -1492,6 +1493,12 @@ html.light .cpemo button{filter:invert(1) hue-rotate(180deg)} /* la hoja queda b
 .remform{display:grid;grid-template-columns:1fr 2fr;gap:10px;align-items:end;margin-top:14px;padding-top:14px;border-top:1px solid var(--line-2)}
 .remform>b,.remform>.chips{grid-column:1/-1}.remform label{display:grid;gap:4px;font-size:12.5px;color:var(--muted)}
 @media (max-width:700px){.remform{grid-template-columns:1fr}}
+/* v213 · Tarjetas de números y barra de avance con el mismo estilo fino de los cuadros de resumen (v225) */
+.grid.kpis .kpi,.kpi{border-radius:12px;border-color:var(--line-2);background:rgba(15,23,42,.5)}
+.kpi .l{font-size:12px;letter-spacing:.01em}.kpi .n,.kpi .n.up{font-weight:650;color:var(--ink)}.kpi .d{font-size:11.5px}
+.stprog{margin:4px 0 10px;padding:10px 13px;border:1px solid var(--line-2);border-radius:12px;background:rgba(15,23,42,.5)}
+.stprogh{display:flex;align-items:baseline;gap:8px;font-size:12.5px;color:var(--muted)}.stprogh b{color:var(--ink);font-size:15px;font-weight:650}.stprogh em{margin-left:auto;font-style:normal;color:#86efac;font-weight:650}
+.stprog>i{display:block;height:5px;margin-top:8px;border-radius:999px;background:rgba(148,163,184,.18);overflow:hidden}.stprog>i>i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#34d399,#6ee7b7)}
 /* v212 · Diseño: cuadros por etapa y tabla ordenable */
 .dgpan .pubst small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
 /* v225 · Cuadros de resumen unificados (Diseño y CM): sin franja arriba, el color va en el número y en el puntito */
@@ -4340,7 +4347,7 @@ function pDashboard(){
 function staffSat(pp){
   if (!satPeople().includes(pp)) return "";
   const l = satList(SAT_TURN[CURRENT_MONTH] || {}, pp.id);
-  return `<dt>Sábados de ${MONTHS_ES[+CURRENT_MONTH.slice(5) - 1]}</dt><dd>${l.length ? l.map(dm).join(" y ") : ""}${l.length < SATS_PER ? `<span class="satmiss" data-page="sabados" role="link" tabindex="0">${icon("triangle-alert")} ${l.length ? "Falta elegir 1 sábado" : "Todavía no eligió sus sábados"}</span>` : ""}</dd>`;
+  return `<dt>Sábados de ${MONTHS_ES[+CURRENT_MONTH.slice(5) - 1]}</dt><dd>${l.length ? l.map(dm).join(", ").replace(/, ([^,]*)$/, " y $1") : ""}${!l.length ? `<span class="satmiss" data-page="sabados" role="link" tabindex="0">${icon("triangle-alert")} Todavía no eligió sus sábados</span>` : ""}</dd>`;
 }
 const STAFF_GROUPS = [["Jefa de Marketing", pp => pp.role === "Admin total" || pp.role === "Admin"], ["Diseñador gráfico", pp => pp.role === "Diseñador"], ["Community Manager", pp => pp.role === "CM"]];
 // Cómo se nombra cada puesto en Team MKT (sin siglas ni nombres internos de permisos).
@@ -4931,7 +4938,7 @@ function alerts(){
   out.push(...notifAlerts().filter(Boolean), ...msgAlerts(), ...pendingSurveys().map(sv => ({ sev:"#a78bfa", rank:-3, ic:"clipboard-list", t:`Encuesta para responder: ${sv.title}`, m:`${sv.qs.length} preguntas · te lleva 2 minutos`, acts:`<button class="btn primary" data-svopen="${sv.id}">Responder</button>` })));
   if (viewer.role === "Admin total") resetRequests.forEach(id => { const pp = PEOPLE.find(x => x.id === id); if (pp) out.push({ go:"usuarios", sev:"#22d3ee", rank:-1, ic:"key-round", t:`${pp.name} pidió restablecer su contraseña`, m:"Andá a Usuarios y permisos → Restablecer contraseña" }); });
   if (satPeople().includes(viewer) && !isViewOnly()){ const n = satList(SAT_TURN[CURRENT_MONTH] || {}, viewer.id).length;
-    if (n < SATS_PER) out.push({ go:"sabados", key:`sat:${CURRENT_MONTH}:${n}`, sev:"#f97316", rank:-2, ic:"calendar-clock", t:n ? "Te falta elegir 1 sábado de turno" : "Elegí tus sábados de turno", m:`${monthLabel(CURRENT_MONTH)} · tenés que elegir ${SATS_PER} sábados para venir a la oficina` }); }
+    if (!n) out.push({ go:"sabados", key:`sat:${CURRENT_MONTH}:${n}`, sev:"#f97316", rank:-2, ic:"calendar-clock", t:"Elegí tus sábados de turno", m:`${monthLabel(CURRENT_MONTH)} · elegí los sábados que venís a la oficina (los que quieras)` }); }
   inflAlerts().forEach(({ x, d }) => out.push({ go:"cumples", key:`infl:${x.id}:${addDays(TODAY, d)}`, sev:d === 0 ? "#ef4444" : "#e879f9", rank:-2, ic:"cake",
     t:`${d === 0 ? "Hoy" : d === 1 ? "Mañana" : `En ${d} días`} cumple años ${x.name} · ${inflTag(x)}`, m:`${bdayLabel(x.bday)} · para saludar desde la cuenta de ${x.brand}` }));
   const na = notifAskAlert(); if (na) out.push(na);
@@ -5162,6 +5169,7 @@ function panelStats(){
       const txt = [fb ? `${fb} Facebook` : "", ig ? `${ig} Instagram` : ""].filter(Boolean).join(" · "); return Object.keys(META_INBOX).length || Object.keys(META_DM).length ? (txt ? `<em>${txt} sin contestar</em>` : "Todo contestado") : "Sin datos todavía"; })() };
 }
 // v212 · Diseño gráfico: cuadros por etapa (v218: se suma Bocetos finalizados, aparte de En revisión) (Panel de Trabajo) y tabla ordenable (Panel y Planificación).
+const dgStColor = st => st === "Pendiente" ? "#ef4444" : JOB_COLOR[st] || "#94a3b8";
 const DG_GROUPS = [["pend", "Pendientes", "#ef4444", j => j.status === "Pendiente"], ["proc", "En proceso", JOB_COLOR["En proceso"] || "#3b82f6", j => j.status === "En proceso"],
   ["bof", "Bocetos finalizados", JOB_COLOR["Boceto finalizado"] || "#06b6d4", j => j.status === "Boceto finalizado"],
   ["rev", "En revisión", JOB_COLOR["En revisión"] || "#eab308", j => REVIEW_WAIT.includes(j.status) && j.status !== "Boceto finalizado"], ["fix", "En corrección", JOB_COLOR["En corrección"] || "#f97316", j => j.status === "En corrección"],
@@ -5188,9 +5196,12 @@ document.addEventListener("click", e => {
 });
 document.addEventListener("change", e => { if (e.target.matches?.("[data-dgsortsel]")){ dgTblUI = { sort:e.target.value, dir:1 }; render(); } });
 // Panel de Trabajo de Diseño: cuadros por etapa del mes; al tocar uno, abajo se ven todos esos trabajos (todas las secciones juntas).
+// Barra fina de avance: cuántos se terminaron del total (lo primero que se mira en los tableros).
+const stProgress = (done, total, txt) => { const p = total ? Math.round(done / total * 100) : 0; return `<div class="stprog" role="img" aria-label="${done} de ${total} ${esc(txt)}"><div class="stprogh"><b>${done} de ${total}</b><span>${esc(txt)}</span><em>${p}%</em></div><i><i style="width:${p}%"></i></i></div>`; };
 function dgPanelBlock(scope){
   const mes = scope.filter(j => j.area === "Diseño" && jobMonth(j) === MONTH && j.status !== "Cancelado" && !j.ex), fin = mes.filter(isFin).length, G = DG_GROUPS.find(x => x[0] === dgPanUI.g);
-  return `<div class="pubsum dgsum dgpan">${DG_GROUPS.map(([k, l, c, f]) => `<button type="button" class="pubst ${dgPanUI.g === k ? "on" : ""}" data-dgpan="${k}" aria-pressed="${dgPanUI.g === k}" style="--c:${c}"><b class="num">${mes.filter(f).length}</b><span>${l}</span>${k === "all" ? `<small>${fin} ${fin === 1 ? "finalizado" : "finalizados"} · ${mes.length ? Math.round(fin / mes.length * 100) : 0}%</small>` : ""}</button>`).join("")}</div>
+  const pct = mes.length ? Math.round(fin / mes.length * 100) : 0;
+  return `${stProgress(fin, mes.length, "finalizados (aprobados) en " + monthName(MONTH))}<div class="pubsum dgsum dgpan">${DG_GROUPS.map(([k, l, c, f]) => `<button type="button" class="pubst ${dgPanUI.g === k ? "on" : ""}" data-dgpan="${esc(k)}" aria-pressed="${dgPanUI.g === k}" style="--c:${c}"><b class="num">${mes.filter(f).length}</b><span>${l}</span>${k === "all" ? `<small>${fin} ${fin === 1 ? "finalizado" : "finalizados"} · ${pct}%</small>` : ""}</button>`).join("")}</div>
   ${G ? `<section class="panel dgpanlist"><div class="head" style="margin-bottom:8px"><h2 class="pmh" style="margin:0">${pmIco("table-2")}${G[1]} <span class="note" style="font-weight:500">· ${monthName(MONTH)} · Redes, Cartelería, Web y Pantallas</span></h2><button type="button" class="btn sm" data-dgpan="${G[0]}">${icon("x")} Cerrar</button></div>${dgTable(mes.filter(G[3]))}</section>`
     : `<p class="note dgpanhint">${icon("info")} Tocá un cuadro para ver la lista de esos trabajos (todas las secciones juntas).</p>`}`;
 }
@@ -5208,7 +5219,7 @@ function pPanel(ar){
   const doneShown = panelDoneAll ? done : done.slice(0, 5);
   const doneList = done.length ? `<div class="list">${doneShown.map(j => `<div class="row arow ago" data-ago="job:${j.id}" role="button" tabindex="0"><span class="aico" style="--c:#10b981">${icon("circle-check")}</span><div class="grow"><div class="t">${esc(j.title)}</div><div class="m">${esc(jobBrands(j).join(" + "))} · ${esc(j.piece)} · terminado el ${dm(j.delivered || j.approved || j.due)}${mineOnly ? "" : ` · ${esc(firstName(j.owner))}`}</div></div>${pill(j.status, JOB_COLOR[j.status])}</div>`).join("")}</div>` : `<div class="empty">Todavía no hay trabajos terminados en ${monthName(MONTH)}.</div>`;
   return `<div class="phero"><h1>Panel de Trabajo</h1><p class="sub">${dg ? "Elegí qué tipo de pieza vas a trabajar: cada categoría tiene sus pedidos, su tabla y sus procesos." : "Elegí qué vas a gestionar: el plan del mes, cada red y los pedidos de video."}</p></div>
-  ${dg ? dgPanelBlock(scope) : kpiRow(progStats(scope))}
+  ${dgPanelBlock(scope)}
   <nav class="picons" aria-label="Categorías">${icons || `<div class="empty">No tenés categorías habilitadas.</div>`}</nav>
   <section class="panel palerts"><div class="head" style="margin-bottom:10px"><h2 style="margin:0" class="pmh">${pmIco("list-todo")}Trabajos pendientes${al.length ? ` <span class="note">${al.length}</span>` : ""}</h2>
     ${al.length > 5 ? `<button type="button" class="btn sm" data-panelall>${panelAll ? "Ver menos" : `Ver más (${al.length - 5})`}</button>` : ""}</div>
@@ -7104,7 +7115,7 @@ function pCalDG(){
   const n = list.filter(j => j.due.slice(0, 7) === MONTH).length;
   const mes = base.filter(j => j.due.slice(0, 7) === MONTH), cnt = st => mes.filter(j => j.status === st).length, done = mes.filter(isFin).length;
   const sts = [...JOB_STAGES, ...new Set(mes.map(j => j.status).filter(st => !JOB_STAGES.includes(st)))]; // las de antes (ej. Entregado), solo si hay
-  const summary = `<div class="pubsum dgsum">${sts.map(st => `<button type="button" class="pubst ${dgPlanUI.st === st ? "on" : ""}" data-dgst="${esc(st)}" aria-pressed="${dgPlanUI.st === st}" style="--c:${st === "Pendiente" ? "#ef4444" : JOB_COLOR[st] || "#94a3b8"}"><b class="num">${cnt(st)}</b><span>${esc(st)}</span></button>`).join("")}
+  const summary = `<div class="pubsum dgsum">${sts.map(st => `<button type="button" class="pubst ${dgPlanUI.st === st ? "on" : ""}" data-dgst="${esc(st)}" aria-pressed="${dgPlanUI.st === st}" style="--c:${dgStColor(st)}"><b class="num">${cnt(st)}</b><span>${esc(st)}</span></button>`).join("")}
     <div class="pubpct"><b class="num">${mes.length ? Math.round(done / mes.length * 100) : 0}%</b><span>del mes ya aprobado (${done} de ${mes.length})</span></div></div>
     ${dgPlanUI.st !== "Todos" ? `<p class="note dgstnote" style="margin:-6px 0 0">${icon("info")} Mostrando solo <b>${esc(dgPlanUI.st)}</b>. <button type="button" class="linkish" data-dgst="Todos">Ver todas las etapas</button></p>` : ""}`;
   return `<div class="head"><div><h1 class="pmh">${pmIco("calendar-days")}Planificación de entregas</h1><p class="sub">${monthLabel(MONTH)} · cada trabajo de Diseño gráfico (redes, cartelería, web y pantallas) en su fecha de entrega.</p></div></div>
@@ -7149,7 +7160,9 @@ const BRAND_NETS = { Delimarket:["IG","FB","IG + FB"] };
 const BRAND_NETS_TXT = "Superseis y Stock: Instagram, Facebook, X, Canal de WhatsApp, LinkedIn, YouTube y TikTok · Delimarket: Instagram y Facebook";
 const netsFor = b => BRAND_NETS[b] || POST_NETS;
 const brandHasCanal = b => !BRAND_NETS[b];
-const netOpts = (b, v) => [...new Set([...netsFor(b), v].filter(Boolean))].map(n => `<option ${n === v ? "selected" : ""}>${esc(n)}</option>`).join(""); // IG + TikTok: estrategias de video (reels). X, YouTube y LinkedIn: filas del Calendario de Actividades (v220)
+const poBrandList = canal => canal ? myBrands().filter(brandHasCanal) : myBrands();
+const netsOf = b => Array.isArray(b) ? POST_NETS.filter(n => b.some(x => netsFor(x).includes(n))) : netsFor(b); // varias marcas: las redes que tenga alguna
+const netOpts = (b, v) => [...new Set([...netsOf(b), v].filter(Boolean))].map(n => `<option ${n === v ? "selected" : ""}>${esc(n)}</option>`).join(""); // IG + TikTok: estrategias de video (reels). X, YouTube y LinkedIn: filas del Calendario de Actividades (v220)
 const FEED_FORMATS = ["Post","Carrusel","Reel"];
 // Canal: el Canal de WhatsApp de cada marca, donde también se publican contenidos.
 const CANALES = ["Canal de WhatsApp"];
@@ -7276,8 +7289,8 @@ function postForm(){
   const what = canal ? "contenido del Canal de WhatsApp" : f.kind === "Historia" ? "historia" : "publicación";
   const kindFields = canal
     ? `<label>Dónde se publica<input class="base" id="poChannel" value="Canal de WhatsApp" readonly></label>`
-    : `<label>Red *<select class="base" id="poNet">${netOpts(p.brand, p.net)}</select></label>
-      ${f.kind === "Historia" ? `<label>Formato<input class="base" value="Historia" readonly></label>` : `<label>Formato *<select class="base" id="poFormat">${opt(FEED_FORMATS, p.format === "Historia" ? "Post" : p.format)}</select></label>`}`;
+    : `<label>Red *<select class="base" id="poNet">${netOpts(f.mode === "edit" ? p.brand : f.brands?.length ? f.brands : p.brand, p.net)}</select></label>
+      ${f.kind === "Historia" ? `<label>Formato<input class="base" value="Historia" readonly></label>` : `<label>Formato *<select class="base" id="poFormat">${opt(f.mode === "edit" ? FEED_FORMATS : [...FEED_FORMATS, POST_HIST], p.format === "Historia" ? "Post" : p.format)}</select></label>`}`;
   const chat = real ? jobChatBtns({ owner:real.cm, byId:real.byId, title:real.title }, "la publicación") : "";
   const dj = p.fromJob && jobById(p.fromJob);
   if (real && real.fromJob && real.cm === viewer.name && !real.seenBy?.[viewer.id] && !window.RMH?.previewing){ real.seenBy = { ...(real.seenBy || {}), [viewer.id]:1 };
@@ -7291,7 +7304,7 @@ function postForm(){
     <div class="jp-h"><span class="note">${canal ? "Canal de WhatsApp · Community Manager" : f.kind === "Historia" ? "Historia · Community Manager" : "Publicación · Community Manager"}</span><h1 style="margin:4px 0 0">${f.mode === "edit" ? "Editar " + what : (canal ? "Nuevo " : "Nueva ") + what}</h1>${j && !dj ? `<div class="note" style="margin-top:4px">${icon("palette")} Pedido de diseño: ${esc(j.status)}</div>` : ""}</div>${fromDesign}
     <form id="postForm" class="jform panel">
       <section class="jfs"><h3><i>1</i>Qué hay que hacer</h3><div class="jfg">
-        <label>Marca *<select class="base" id="poBrand">${opt(canal ? myBrands().filter(brandHasCanal) : myBrands(), p.brand)}</select></label>
+        ${f.mode === "edit" ? `<label>Marca *<select class="base" id="poBrand">${opt(poBrandList(canal), p.brand)}</select></label>` : (f.brands = (f.brands || [p.brand]).filter(b => b && poBrandList(canal).includes(b)), `<div class="jbrands" style="grid-column:1/-1"><span class="jll">Marcas * <span class="note">(podés elegir varias: se carga una por marca)</span></span><input type="hidden" id="poBrand" value="${esc(f.brands[0] || "")}"><div class="chips" role="group" aria-label="Marcas">${poBrandList(canal).map(b => { const on = f.brands.includes(b); return `<button type="button" class="chip jbr${on ? " on" : ""}" data-pobrand="${esc(b)}" aria-pressed="${on}" style="--bc:${BRANDS[b] || "#94a3b8"}"><i></i>${esc(b)}</button>`; }).join("")}</div></div>`)}
         ${kindFields}
         <label class="wide" style="grid-column:1/-1">${canal ? "Qué se sube *" : "Tema *"}<input class="base" id="poTitle" value="${esc(p.title)}" placeholder="${canal ? "Ej.: Ofertas del finde para el canal" : "Ej.: Ofertas del finde"}" required></label>
         <label style="grid-column:1/-1">Observaciones <span class="note">(opcional, algo corto)</span><textarea class="base" id="poNotes" rows="2" placeholder="Ej.: Usar las fotos nuevas del local. Mencionar el horario del domingo.">${esc(p.notes || "")}</textarea></label>
@@ -7455,6 +7468,9 @@ document.addEventListener("submit", e => {
   if (cmUp.form){ toast("Esperá que termine de subir el archivo."); return; }
   const f = postUI.form; readPostForm(f.post); const title = $("#poTitle").value.trim(), date = $("#poDate").value;
   if (!title || !date){ toast("Completá el tema y la fecha."); return; }
+  if (f.mode !== "edit" && !(f.brands || []).length){ toast("Elegí al menos una marca."); return; }
+  const net0 = f.kind === "Canal" ? "" : $("#poNet")?.value || "", skipNet = f.mode === "edit" || !net0 ? [] : f.brands.filter(b => !netsFor(b).includes(net0));
+  if (skipNet.length){ f.brands = f.brands.filter(b => !skipNet.includes(b)); if (!f.brands.length){ toast(`${skipNet.join(", ")} no ${skipNet.length === 1 ? "tiene" : "tienen"} ${net0}. Elegí otra red.`); return; } document.getElementById("poBrand").value = f.brands[0]; }
   const was = f.mode === "edit" ? (f.kind === "Canal" ? canalById(f.post.id) : postById(f.post.id)) : null;
   if (copyLock(was || f.post, $("#poStatus").value) && $("#poStatus").value !== was?.status){ toast(copyLockMsg); return; }
   const d = f.post, common = { date, brand:$("#poBrand").value, title, cm:$("#poCm").value, status:$("#poStatus").value, notes:$("#poNotes").value.trim(), requester:d.requester || "Marketing",
@@ -7467,25 +7483,36 @@ document.addEventListener("submit", e => {
   if (isCalPage() || (brandFilter !== "Todas" && groupOf(common.brand) !== brandFilter)) brandFilter = groupOf(common.brand); // lo cargado se ve enseguida, en su marca
   const setRep = x => { if (x.repOf) return; const ru = document.getElementById("poRepUntil")?.value || ""; if (f.repDays?.length) x.rep = { days:[...f.repDays], until:ru }; else delete x.rep; };
   const repMsg = x => x.rep ? ` Se repite: ${repText(x.rep).toLowerCase()}.${(x.nRep = spawnPostRepeats()) ? ` Ya ${x.nRep === 1 ? "se cargó 1" : `se cargaron ${x.nRep}`} de los próximos 7 días.` : ""}` : "";
+  const extraBrands = f.mode === "edit" ? [] : (f.brands || []).slice(1); // v213: una publicación más por cada marca elegida
   if (f.kind === "Canal"){
     const data = { ...common, channel:$("#poChannel").value };
     let k = f.mode === "edit" ? canalById(f.post.id) : null;
     if (k) Object.assign(k, data); else { k = { ...f.post, ...data }; CHANNEL_POSTS.push(k); }
-    setRep(k); const extra = repMsg(k); delete k.nRep;
+    extraBrands.forEach(b => { const x = { ...f.post, ...data, brand:b, id:"K" + (Math.max(0, ...CHANNEL_POSTS.map(c => +(String(c.id).match(/^K?(\d+)$/) || [])[1] || 0)) + 1) }; CHANNEL_POSTS.push(x); setRep(x); });
+    setRep(k); const extra = repMsg(k) + (extraBrands.length ? ` También para ${extraBrands.join(", ")}.` : ""); delete k.nRep;
     postUI.form = null; const m = date.slice(0,7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m;
     render(); window.RMH?.flushNow?.(); toast(`${f.mode === "edit" ? "Guardado" : "Cargado"}: “${k.title}” en ${k.channel} el ${dm(k.date)}.${extra}`); return;
   }
   // Historia: siempre historia. Feed: nunca historia.
-  const data = { ...common, net:$("#poNet").value, format:f.kind === "Historia" ? "Historia" : $("#poFormat").value };
+  const fmt0 = f.kind === "Historia" ? "Historia" : $("#poFormat").value, both = f.mode !== "edit" && fmt0 === POST_HIST;
+  const data = { ...common, net:$("#poNet").value, format:both ? "Post" : fmt0 };
   let p = f.mode === "edit" ? postById(f.post.id) : null;
   if (p) Object.assign(p, data); else { p = { ...f.post, ...data }; posts.push(p); }
-  setRep(p); const extra = repMsg(p); delete p.nRep;
+  const more = [];
+  (f.mode === "edit" ? [] : f.brands || []).forEach((b, i) => (both ? ["Post", "Historia"] : [data.format]).forEach((fm, k) => { if (!i && !k) return; const x = { ...f.post, ...data, brand:b, format:fm, id:nextPostId() }; posts.push(x); setRep(x); more.push(x); }));
+  setRep(p); const extra = repMsg(p) + (more.length ? ` Se cargaron ${more.length + 1} en total (${[p, ...more].map(x => `${x.brand} ${x.format}`).join(", ")}).` : "") + (skipNet.length ? ` ${skipNet.join(", ")} no ${skipNet.length === 1 ? "tiene" : "tienen"} ${data.net}: no se ${skipNet.length === 1 ? "cargó" : "cargaron"}.` : ""); delete p.nRep;
   const ask = !!document.getElementById("poAskDesign")?.checked;
   postUI.form = null;
   const m = date.slice(0,7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m;
   if (ask && !jobs.some(x => x.post === p.id)){ pedirDiseno(p.id); window.RMH?.flushNow?.(); return; }
   render(); window.RMH?.flushNow?.(); toast(`${f.mode === "edit" ? "Guardado" : "Cargado"}: “${p.title}” el ${dm(p.date)} · CM: ${firstName(p.cm)}.${extra}`);
 });
+// Marcas de una publicación nueva: se marcan y desmarcan sin volver a dibujar (no se pierde lo escrito).
+document.addEventListener("click", e => { const b = e.target.closest("[data-pobrand]"); if (!b || !postUI.form) return; const f = postUI.form, k = b.dataset.pobrand, cur = f.brands || [];
+  const next = cur.includes(k) ? cur.filter(x => x !== k) : [...cur, k], first = cur[0]; f.brands = myBrands().filter(x => next.includes(x)); const h = document.getElementById("poBrand"); if (h) h.value = f.brands[0] || "";
+  b.classList.toggle("on", next.includes(k)); b.setAttribute("aria-pressed", next.includes(k));
+  const cm = f.brands[0] !== first && CM_BY_BRAND[f.brands[0]], s2 = $("#poCm"); if (cm && s2 && [...s2.options].some(o => o.value === cm)) s2.value = cm; // la CM de la primera marca, como con una sola
+  const n = $("#poNet"); if (n && f.brands.length){ const nets = netsOf(f.brands), v = nets.includes(n.value) ? n.value : nets[0]; n.innerHTML = netOpts(f.brands, v); n.value = v; } }); // las redes de las marcas elegidas
 document.addEventListener("click", e => { const b = e.target.closest("[data-prepday]"); if (!b || !postUI.form) return; const i = +b.dataset.prepday, f = postUI.form;
   f.repDays = (f.repDays || []).includes(i) ? f.repDays.filter(x => x !== i) : [...(f.repDays || []), i].sort(); b.classList.toggle("on"); b.setAttribute("aria-pressed", b.classList.contains("on")); });
 // Contenidos de CM que se repiten (historia, feed y Canal de WhatsApp): el original guarda los días (rep.days, 0 = lunes)
@@ -7774,53 +7801,48 @@ function pHistorialCM(){
 let SAT_OFF = {};
 let SAT_TURN = {};
 const satPeople = () => PEOPLE.filter(pp => pp.active && ["Diseñador","CM","Admin total"].includes(pp.role));
-const SATS_PER = 2; // sábados de turno por persona y por mes
-// Los sábados de una persona en el mes (antes se guardaba uno solo como texto; ahora una lista de hasta dos).
+// v213: cada persona elige los sábados que quiera (sin cantidad fija ni cupo por sábado) y se pueden corregir los que ya pasaron.
 const satList = (map, id) => { const v = map[id]; return (Array.isArray(v) ? v : v ? [v] : []).filter(Boolean).sort(); };
-const satSet = (map, id, arr) => { const a = [...new Set(arr.filter(Boolean))].sort().slice(0, SATS_PER); if (a.length) map[id] = a; else delete map[id]; };
+const satSet = (map, id, arr) => { const a = [...new Set(arr.filter(Boolean))].sort(); if (a.length) map[id] = a; else delete map[id]; };
 function saturdaysOf(m){ const out = []; for (let d = 1; d <= lastDay(m); d++){ const x = `${m}-${String(d).padStart(2, "0")}`; if (new Date(x + "T12:00").getDay() === 6) out.push(x); } return out; }
 const canSetSat = pp => !isClosed() && !isViewOnly() && (viewer.role === "Admin total" || pp.id === viewer.id);
+const satDays = l => l.map(dm).join(", ").replace(/, ([^,]*)$/, " y $1");
 function pSabados(){
   const sats = saturdaysOf(MONTH), ppl = satPeople(), map = (SAT_TURN[MONTH] = SAT_TURN[MONTH] || {});
-  const cap = Math.ceil(ppl.length * SATS_PER / Math.max(1, sats.length));
   const offOn = d => ppl.filter(pp => satList(map, pp.id).includes(d));
   const mine = satList(map, viewer.id), isP = ppl.includes(viewer);
-  const missing = ppl.filter(pp => satList(map, pp.id).length < SATS_PER);
+  const missing = ppl.filter(pp => !satList(map, pp.id).length);
   const nextMine = mine.find(d => d >= TODAY);
-  const warn = d => { const on = offOn(d), w = []; if (d < TODAY || !on.length) return w; ["Diseñador","CM"].forEach(r => { if (ppl.some(pp => pp.role === r) && !on.some(pp => pp.role === r)) w.push(`Falta ${r === "CM" ? "un CM" : "un diseñador"} de turno`); }); if (on.length > cap) w.push(`Hay más de ${cap} de turno`); return w; };
-  // Dos selectores por persona: 1.º y 2.º sábado de turno.
-  const sel = (pp, k) => { const list = satList(map, pp.id), cur = list[k] || "", other = list[1 - k];
-    const locked = viewer.role !== "Admin total" && cur && cur < TODAY;
-    if (!canSetSat(pp) || locked) return cur ? `<b style="color:#fff">Sábado ${dm(cur)}</b>` : `<span class="note">Sin elegir</span>`;
-    return `<select class="base sm" data-satset="${pp.id}" data-satk="${k}" aria-label="${k + 1}.º sábado de turno de ${esc(pp.name)}"><option value="">Sin elegir</option>${sats.filter(d => d !== other).map(d => `<option value="${d}" ${cur === d ? "selected" : ""} ${d < TODAY && cur !== d ? "disabled" : ""}>Sábado ${dm(d)}${offOn(d).length >= cap && cur !== d ? " (completo)" : ""}</option>`).join("")}</select>`; };
-  return `<div class="head"><div><h1>Turnos Sábados</h1><p class="sub">${monthLabel(MONTH)} · cada persona elige los ${SATS_PER} sábados que viene a trabajar a la oficina. Elegí los tuyos; Admin total puede organizar los de todos. Hasta ${cap} personas por sábado, para repartir los turnos y que cada sábado haya gente de Diseño y de CM.</p></div></div>
+  const warn = d => { const on = offOn(d), w = []; if (d < TODAY || !on.length) return w; ["Diseñador","CM"].forEach(r => { if (ppl.some(pp => pp.role === r) && !on.some(pp => pp.role === r)) w.push(`Falta ${r === "CM" ? "un CM" : "un diseñador"} de turno`); }); return w; };
+  return `<div class="head"><div><h1>Turnos Sábados</h1><p class="sub">${monthLabel(MONTH)} · cada persona elige los sábados que viene a trabajar a la oficina, los que quiera. Elegí los tuyos; Admin total puede organizar los de todos. También se pueden corregir los sábados que ya pasaron.</p></div></div>
   <div class="grid kpis">
-    <div class="panel kpi"><div class="l">Tus sábados de turno</div><div class="n">${isP && mine.length ? mine.map(dm).join(" y ") : "—"}</div><div class="d">${!isP ? "no participás del turno de sábados" : mine.length < SATS_PER ? (mine.length ? `te falta elegir ${SATS_PER - mine.length}` : `todavía no elegiste (son ${SATS_PER})`) : !nextMine ? "ya los trabajaste" : daysTo(nextMine) === 0 ? "hoy te toca" : `el próximo es en ${daysTo(nextMine)} días`}</div></div>
-    <div class="panel kpi"><div class="l">Ya eligieron</div><div class="n">${ppl.length - missing.length} de ${ppl.length}</div><div class="d">${missing.length ? "faltan: " + missing.map(pp => nickOf(pp)).join(", ") : "todos tienen sus dos sábados"}</div></div>
-    <div class="panel kpi"><div class="l">Sábados del mes</div><div class="n">${sats.length}</div><div class="d">hasta ${cap} personas de turno por sábado</div></div>
+    <div class="panel kpi"><div class="l">Tus sábados de turno</div><div class="n">${isP && mine.length ? satDays(mine) : "—"}</div><div class="d">${!isP ? "no participás del turno de sábados" : !mine.length ? "todavía no elegiste" : !nextMine ? "ya los trabajaste" : daysTo(nextMine) === 0 ? "hoy te toca" : `el próximo: ${dm(nextMine)}`}</div></div>
+    <div class="panel kpi"><div class="l">Ya eligieron</div><div class="n">${ppl.length - missing.length} de ${ppl.length}</div><div class="d">${missing.length ? "faltan: " + missing.map(pp => nickOf(pp)).join(", ") : "todos eligieron al menos un sábado"}</div></div>
+    <div class="panel kpi"><div class="l">Sábados del mes</div><div class="n">${sats.length}</div><div class="d">${sats.reduce((t, d) => t + offOn(d).length, 0)} turnos elegidos en total</div></div>
   </div>
   <div class="satgrid">${sats.map(d => { const off = offOn(d), w = warn(d), past = d < TODAY, has = mine.includes(d);
-    const action = !isP || !canSetSat(viewer) ? "" : has ? `<div class="chips"><span class="okchip">✓ Venís a trabajar</span>${past ? "" : `<button class="btn sm" data-satdrop="${d}">Quitar</button>`}</div>`
-      : past ? "" : mine.length >= SATS_PER ? `<span class="note">Ya elegiste tus ${SATS_PER} sábados</span>`
-      : `<button class="btn ${off.length >= cap ? "" : "primary"} sm" data-satpick="${d}" ${off.length >= cap ? "disabled" : ""}>${off.length >= cap ? "Completo" : "Vengo este sábado"}</button>`;
-    return `<article class="panel satcard ${past ? "past" : ""} ${d === TODAY ? "today" : ""}"><header><div><span class="sdw">Sábado</span><b class="sdn">${+d.slice(8)}</b><span class="note">${MONTHS_ES[+d.slice(5,7) - 1]}${past ? " · ya pasó" : ""}</span></div><span class="scap" style="--c:${off.length > cap ? "#ef4444" : off.length === cap ? "#eab308" : "#10b981"}">${off.length}/${cap}</span></header>
+    const action = !isP || !canSetSat(viewer) ? "" : has ? `<div class="chips"><span class="okchip">✓ ${past ? "Viniste" : "Venís a trabajar"}</span><button class="btn sm" data-satdrop="${d}">Quitar</button></div>`
+      : `<button class="btn ${past ? "" : "primary"} sm" data-satpick="${d}">${past ? "Vine este sábado" : "Vengo este sábado"}</button>`;
+    return `<article class="panel satcard ${past ? "past" : ""} ${d === TODAY ? "today" : ""}"><header><div><span class="sdw">Sábado</span><b class="sdn">${+d.slice(8)}</b><span class="note">${MONTHS_ES[+d.slice(5,7) - 1]}${past ? " · ya pasó" : ""}</span></div><span class="scap" style="--c:#94a3b8">${off.length} ${off.length === 1 ? "persona" : "personas"}</span></header>
       <div class="soff">${off.map(pp => `<span class="sperson">${avatarHTML(pp)}<span><b>${esc(nickOf(pp))}</b><small>${pp.role === "CM" ? "CM" : pp.role === "Diseñador" ? "Diseño gráfico" : "Admin"}</small></span></span>`).join("") || `<span class="note">Nadie de turno todavía</span>`}</div>
       ${w.map(x => `<div class="swarn">⚠ ${x}</div>`).join("")}
       ${action}
     </article>`; }).join("")}</div>
-  <div class="tw"><table><thead><tr><th>Persona</th><th>Área</th><th>1.º sábado de turno</th><th>2.º sábado de turno</th><th></th></tr></thead><tbody>
-    ${ppl.map(pp => { const n = satList(map, pp.id).length; return `<tr><td><div class="person">${avatarHTML(pp)}<b style="color:#fff">${esc(pp.name)}</b></div></td><td>${pp.role === "CM" ? "Community Manager" : pp.role === "Diseñador" ? "Diseño gráfico" : "Admin"}</td><td>${sel(pp, 0)}</td><td>${sel(pp, 1)}</td><td>${n >= SATS_PER ? `<span class="okchip">✓ Elegidos</span>` : `<span class="waitchip">${n ? "Falta 1" : "Falta elegir"}</span>`}</td></tr>`; }).join("")}
+  <div class="tw"><table class="sattbl"><thead><tr><th>Persona</th><th>Área</th><th>Sábados de turno <span class="note" style="font-weight:400">(tocá para marcar o quitar)</span></th><th class="r">Total</th></tr></thead><tbody>
+    ${ppl.map(pp => { const l = satList(map, pp.id), ed = canSetSat(pp); return `<tr><td><div class="person">${avatarHTML(pp)}<b style="color:#fff">${esc(pp.name)}</b></div></td><td>${pp.role === "CM" ? "Community Manager" : pp.role === "Diseñador" ? "Diseño gráfico" : "Admin"}</td>
+      <td><div class="chips satchips">${sats.map(d => { const on = l.includes(d); return ed ? `<button type="button" class="chip ${on ? "on" : ""}${d < TODAY ? " past" : ""}" data-sattog="${pp.id}|${d}" aria-pressed="${on}" title="${on ? "Quitar" : "Marcar"} el sábado ${dm(d)}">${dm(d)}</button>` : on ? `<span class="chip on">${dm(d)}</span>` : ""; }).join("") || `<span class="note">Sin sábados</span>`}${!ed && !l.length ? `<span class="note">Sin elegir</span>` : ""}</div></td>
+      <td class="r num">${l.length}</td></tr>`; }).join("")}
   </tbody></table></div>`;
 }
 document.addEventListener("click", e => {
+  const t = e.target.closest("[data-sattog]"); if (t){ const [pid, d] = t.dataset.sattog.split("|"), pp = PEOPLE.find(x => x.id === pid); if (!pp || !canSetSat(pp)) return;
+    const m = (SAT_TURN[MONTH] = SAT_TURN[MONTH] || {}), l = satList(m, pid), on = l.includes(d); satSet(m, pid, on ? l.filter(x => x !== d) : [...l, d]); render(); window.RMH?.flushNow?.();
+    toast(`${pp.id === viewer.id ? "Vos" : nickOf(pp)}: ${on ? `se quitó el sábado ${dm(d)}` : `de turno el sábado ${dm(d)}`}.`); return; }
   const b = e.target.closest("[data-satpick], [data-satdrop]"); if (!b) return;
   const m = (SAT_TURN[MONTH] = SAT_TURN[MONTH] || {}), list = satList(m, viewer.id);
-  if (b.dataset.satpick){ if (list.length >= SATS_PER) return toast(`Ya elegiste tus ${SATS_PER} sábados. Quitá uno para cambiarlo.`); satSet(m, viewer.id, [...list, b.dataset.satpick]); render(); const n = satList(m, viewer.id); toast(n.length >= SATS_PER ? `Listo: venís a trabajar el ${n.map(dm).join(" y el ")}.` : `Listo: venís el sábado ${dm(b.dataset.satpick)}. Te falta elegir uno más.`); }
-  else { satSet(m, viewer.id, list.filter(d => d !== b.dataset.satdrop)); render(); toast(`Quitaste el sábado ${dm(b.dataset.satdrop)}.`); }
+  if (b.dataset.satpick){ satSet(m, viewer.id, [...list, b.dataset.satpick]); render(); window.RMH?.flushNow?.(); toast(`Listo: ${b.dataset.satpick < TODAY ? "anotamos que viniste" : "venís a trabajar"} el sábado ${dm(b.dataset.satpick)}. Tus sábados: ${satDays(satList(m, viewer.id))}.`); }
+  else { satSet(m, viewer.id, list.filter(d => d !== b.dataset.satdrop)); render(); window.RMH?.flushNow?.(); toast(`Quitaste el sábado ${dm(b.dataset.satdrop)}.`); }
 });
-document.addEventListener("change", e => { const s2 = e.target.closest("[data-satset]"); if (!s2) return; const m = (SAT_TURN[MONTH] = SAT_TURN[MONTH] || {}), pp = PEOPLE.find(x => x.id === s2.dataset.satset);
-  const list = satList(m, pp.id), k = +s2.dataset.satk, prev = list[k]; const next = list.filter(d => d !== prev); if (s2.value) next.push(s2.value);
-  satSet(m, pp.id, next); render(); toast(s2.value ? `${nickOf(pp)}: de turno el sábado ${dm(s2.value)}.` : `${nickOf(pp)}: se quitó un sábado.`); });
 // ---------- Pauta: el PLAN (lo que arma el equipo, con límite por marca) y el INFORME (lo gastado, desde Meta Ads) ----------
 const AD_RATINGS = [[5,"5 Excelente"],[4,"4 Normal"],[3,"3 Más o menos"],[2,"2 Mal"],[1,"1 Pésimo"]];
 const RATE_COLOR = { 5:"#10b981", 4:"#22d3ee", 3:"#eab308", 2:"#f97316", 1:"#ef4444" };
