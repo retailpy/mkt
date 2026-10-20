@@ -47,13 +47,16 @@ async function send(cfg: any, to: string[], payloadFor: (id: string) => string) 
 // Avisos de trabajo: a quien le llegó (n.to es su nombre completo, como en la app). Con “No molestar”, sin aviso.
 // “review” (to: "admin"): el boceto o las correcciones quedaron listos → a Admin total, para aprobar o pedir cambios.
 const JOB_T: Record<string, string> = { nuevo: "Nuevo trabajo para vos", pub: "Nueva publicación para vos", listo: "Diseño aprobado: listo para publicar", fix: "Te pidieron una corrección", review: "Boceto listo para revisar" };
+// El copy se guarda como la hoja del pedido (HTML): en el aviso va solo el texto.
+const plain = (h: string) => h.replace(/<!--[\s\S]*?-->/g, "").replace(/<br\s*\/?>|<\/?(p|div|li|h\d)\b[^>]*>/gi, " ").replace(/<[^>]+>/g, "")
+  .replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 async function jobPush(cfg: any, items: any[]) {
   const list = (Array.isArray(items) ? items : []).filter((n) => n && JOB_T[n.type] && n.to && !n.read && (n.type === "review" ? n.to === "admin" : n.to !== "admin")).slice(0, 20);
   if (!list.length) return json({ ok: true, skipped: "sin avisos" });
   const people: any[] = (await state("s:PEOPLE")) || [];
   const presence: Record<string, any> = (await state("s:PRESENCE")) || {};
   const jobs: any[] = (await state("s:jobs")) || [];
-  const needPosts = list.some((n) => n.type === "pub" || n.type === "listo");
+  const needPosts = list.some((n) => n.type === "pub" || n.type === "listo" || n.copy);
   const posts: any[] = needPosts ? (await state("s:posts")) || [] : [];
   const canal: any[] = needPosts ? (await state("s:CHANNEL_POSTS")) || [] : [];
   const now = Date.now();
@@ -73,9 +76,18 @@ async function jobPush(cfg: any, items: any[]) {
     const j = jobs.find((x) => x.id === n.job);
     const brands = j ? (Array.isArray(j.brands) && j.brands.length ? j.brands : [j.brand]).filter(Boolean).join(" + ") : "";
     let title = j?.title || "", body = "", go = j ? "job:" + j.id : "";
-    if ((n.type === "pub" || n.type === "listo") && n.post) {
+    let head = "";
+    if (n.copy && n.post) { // v214: copy de la publicación (la CM lo manda → Admin total; Admin total aprueba o pide corrección → la CM)
       const x = (n.canal ? canal : posts).find((y) => y.id === n.post);
-      if (x) { title = x.title || title; body = `${x.brand || ""} · ${x.channel ? "Canal de WhatsApp" : `${x.net || ""} ${x.format || ""}`} · publicar el ${dm(x.date)}${n.type === "listo" ? " · ya tenés la ruta de la compartida" : ""}`; go = `pub:${n.canal ? "canal" : "post"}:${x.id}`; }
+      if (!x) continue;
+      const when = `${dm(x.date)}${x.time ? " a las " + x.time : ""}`, w = people.find((y) => y.name === n.who);
+      title = x.title || ""; go = `pub:${n.canal ? "canal" : "post"}:${x.id}`;
+      head = n.type === "review" ? (n.fix ? "Copy corregido para aprobar" : "Copy listo para aprobar") : n.type === "fix" ? "Te pidieron corregir el copy" : n.conf ? "Copy confirmado por Admin total" : "Copy aprobado: listo para publicar";
+      body = n.type === "review" ? [`${w?.nick || String(n.who || "").split(" ")[0]} escribió el copy`, x.brand, "publicar el " + when, x.copy ? `“${short(plain(String(x.copy)), 100)}”` : ""].filter(Boolean).join(" · ")
+        : n.type === "fix" ? (n.text ? `“${short(String(n.text), 140)}”` : x.brand || "") : [x.brand, "publicalo el " + when, n.conf ? "no lo tenés que escribir" : ""].filter(Boolean).join(" · ");
+    } else if ((n.type === "pub" || n.type === "listo") && n.post) {
+      const x = (n.canal ? canal : posts).find((y) => y.id === n.post);
+      if (x) { title = x.title || title; body = `${x.brand || ""} · ${x.channel ? "Canal de WhatsApp" : `${x.net || ""} ${x.format || ""}`} · publicar el ${dm(x.date)}${x.time ? " a las " + x.time : ""}${n.type === "listo" ? " · ya tenés la ruta de la compartida" : ""}${x.copyConf && x.copySt === "ok" ? " · con el copy confirmado" : ""}`; go = `pub:${n.canal ? "canal" : "post"}:${x.id}`; }
     } else if (n.type === "pub") { // asignada desde el pedido de Diseño, todavía sin fecha en el calendario
       body = [brands, j?.piece, j?.pubDate ? "publicar el " + dm(j.pubDate) : "fecha de publicación sin definir"].filter(Boolean).join(" · "); go = "calcm";
     } else if (n.type === "review") {
@@ -84,7 +96,7 @@ async function jobPush(cfg: any, items: any[]) {
     } else if (n.type === "fix") body = n.text ? `“${short(String(n.text), 140)}”` : brands;
     else if (j) body = [brands, j.piece, j.due ? "fecha límite " + dm(j.due) : ""].filter(Boolean).join(" · ");
     if (!title && !body) continue;
-    const head = n.type === "review" ? (n.fix ? "Correcciones listas para revisar" : j?.area === "CM" ? "Trabajo listo para revisar" : JOB_T.review) : JOB_T[n.type];
+    if (!head) head = n.type === "review" ? (n.fix ? "Correcciones listas para revisar" : j?.area === "CM" ? "Trabajo listo para revisar" : JOB_T.review) : JOB_T[n.type];
     const payload = JSON.stringify({ title: head, body: short([title, body].filter(Boolean).join("\n"), 220), tag: "rmh-job-" + n.id, open: "", go });
     sent += await send(cfg, to, () => payload);
   }
