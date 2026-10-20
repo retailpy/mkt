@@ -1,7 +1,8 @@
 // Retail MKT Hub · notificaciones push del Chat Retail MKT y de trabajos.
 //   GET  → devuelve la clave pública VAPID (la crea la primera vez; la privada nunca sale del servidor).
-//   POST → la llama la base de datos (trigger chat_push) cuando llega un mensaje nuevo o un aviso de trabajo
-//          (trabajo nuevo, publicación para hacer, corrección o listo para revisar: s:NOTIFS); requiere x-push-secret.
+//   POST → la llama la base de datos (trigger chat_push) cuando llega un mensaje nuevo, un aviso de trabajo
+//          (trabajo nuevo, publicación para hacer, corrección, listo para revisar, aprobado, comentario, sugerencia o
+//          falla de Drive: s:NOTIFS) o un aviso del equipo (s:AVISOS); requiere x-push-secret.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
@@ -46,12 +47,17 @@ async function send(cfg: any, to: string[], payloadFor: (id: string) => string) 
 
 // Avisos de trabajo: a quien le llegó (n.to es su nombre completo, como en la app). Con “No molestar”, sin aviso.
 // “review” (to: "admin"): el boceto o las correcciones quedaron listos → a Admin total, para aprobar o pedir cambios.
-const JOB_T: Record<string, string> = { nuevo: "Nuevo trabajo para vos", pub: "Nueva publicación para vos", listo: "Diseño aprobado: listo para publicar", fix: "Te pidieron una corrección", review: "Boceto listo para revisar" };
+// v228: también “approved” (Admin total aprobó tu trabajo), “nota” (comentario en un trabajo, a la persona o a Admin total),
+// “sug” (sugerencia nueva: solo a quien las ve en la app) y “drive” (falló una subida a Google Drive: a Admin total).
+const JOB_T: Record<string, string> = { nuevo: "Nuevo trabajo para vos", pub: "Nueva publicación para vos", listo: "Diseño aprobado: listo para publicar", fix: "Te pidieron una corrección", review: "Boceto listo para revisar",
+  approved: "Admin total aprobó tu trabajo", nota: "Comentario en un trabajo", sug: "Llegó una sugerencia nueva", drive: "Google Drive: no se pudo subir un archivo" };
+const TO_ADMIN = ["review", "nota", "sug", "drive"], TO_PERSON = ["nuevo", "pub", "listo", "fix", "approved", "nota"];
+const SUG_READER = "fede"; // en la app, las sugerencias las ve solo esta persona (Admin total)
 // El copy se guarda como la hoja del pedido (HTML): en el aviso va solo el texto.
 const plain = (h: string) => h.replace(/<!--[\s\S]*?-->/g, "").replace(/<br\s*\/?>|<\/?(p|div|li|h\d)\b[^>]*>/gi, " ").replace(/<[^>]+>/g, "")
   .replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 async function jobPush(cfg: any, items: any[]) {
-  const list = (Array.isArray(items) ? items : []).filter((n) => n && JOB_T[n.type] && n.to && !n.read && (n.type === "review" ? n.to === "admin" : n.to !== "admin")).slice(0, 20);
+  const list = (Array.isArray(items) ? items : []).filter((n) => n && JOB_T[n.type] && n.to && !n.read && (n.to === "admin" ? TO_ADMIN : TO_PERSON).includes(n.type)).slice(0, 20);
   if (!list.length) return json({ ok: true, skipped: "sin avisos" });
   const people: any[] = (await state("s:PEOPLE")) || [];
   const presence: Record<string, any> = (await state("s:PRESENCE")) || {};
@@ -63,10 +69,10 @@ async function jobPush(cfg: any, items: any[]) {
   let sent = 0, admins: string[] | null = null;
   for (const n of list) {
     let to: string[] = [];
-    if (n.type === "review") {
+    if (n.to === "admin") {
       if (!admins) { const { data } = await db.from("members").select("person_id").eq("active", true).eq("role", "Admin total"); admins = (data || []).map((x) => x.person_id); }
       const who = people.find((x) => x.name === n.who)?.id;
-      to = admins.filter((id) => id !== who);
+      to = admins.filter((id) => id !== who && (n.type !== "sug" || id === SUG_READER));
     } else {
       const p = people.find((x) => x.name === n.to && x.active !== false);
       if (p) to = [p.id];
@@ -94,6 +100,18 @@ async function jobPush(cfg: any, items: any[]) {
       const w = people.find((x) => x.name === n.who), wn = w?.nick || String(n.who || "").split(" ")[0];
       body = [`${wn} ${n.fix ? "terminó las correcciones" : j?.area === "CM" ? "terminó su trabajo" : "terminó el boceto"}`, brands, j?.piece].filter(Boolean).join(" · ");
     } else if (n.type === "fix") body = n.text ? `“${short(String(n.text), 140)}”` : brands;
+    else if (n.type === "nota") {
+      if (!j) continue;
+      const w = people.find((x) => x.name === n.who), wn = w?.nick || String(n.who || "").split(" ")[0];
+      head = n.to === "admin" ? `${wn || "Alguien"} comentó en un trabajo` : "Admin total comentó en tu trabajo";
+      body = n.text ? `“${short(String(n.text), 140)}”` : brands;
+    } else if (n.type === "sug") {
+      const x = ((await state("s:SUGGESTIONS")) || []).find((y: any) => y.id === n.sug);
+      title = x?.topic || ""; body = x ? (x.anon ? "Anónima" : "De " + (people.find((p) => p.id === x.author)?.name || "alguien del equipo")) : ""; go = "sugerencias";
+    } else if (n.type === "drive") {
+      const w = people.find((x) => x.name === n.who), wn = w?.nick || String(n.who || "").split(" ")[0];
+      title = ""; body = [wn, n.text ? `“${short(String(n.text), 140)}”` : ""].filter(Boolean).join(" · "); go = "cfg:integ";
+    }
     else if (j) body = [brands, j.piece, j.due ? "fecha límite " + dm(j.due) : ""].filter(Boolean).join(" · ");
     if (!title && !body) continue;
     if (!head) head = n.type === "review" ? (n.fix ? "Correcciones listas para revisar" : j?.area === "CM" ? "Trabajo listo para revisar" : JOB_T.review) : JOB_T[n.type];
@@ -101,6 +119,61 @@ async function jobPush(cfg: any, items: any[]) {
     sent += await send(cfg, to, () => payload);
   }
   return json({ ok: true, sent });
+}
+
+// Avisos del equipo (s:AVISOS, v228): cuando Admin total publica uno que ya está vigente, les llega a las personas de ese
+// grupo (todo el equipo, Diseño, CM o Admins), menos a quien lo publicó. Con “No molestar”, sin aviso.
+const AV_ICO: Record<string, string> = { Informativo: "📢", Importante: "⚠️", Urgente: "🚨" };
+async function avisoPush(cfg: any, items: any[]) {
+  const list = (Array.isArray(items) ? items : []).filter((a) => a && a.title && Array.isArray(a.to)).slice(0, 10);
+  if (!list.length) return json({ ok: true, skipped: "sin avisos" });
+  const presence: Record<string, any> = (await state("s:PRESENCE")) || {};
+  const { data: members } = await db.from("members").select("person_id, role").eq("active", true);
+  const now = Date.now();
+  let sent = 0;
+  for (const a of list) {
+    const to = (members || []).filter((m) => a.to.includes("todos") || a.to.includes(m.role) || (a.to.includes("admins") && ["Admin total", "Admin"].includes(m.role)))
+      .map((m) => m.person_id).filter((id) => id !== a.by && !isDnd(presence[id], now));
+    if (!to.length) continue;
+    const range = a.from === a.until ? `el ${dm(a.from)}` : `del ${dm(a.from)} al ${dm(a.until)}`;
+    const payload = JSON.stringify({ title: `${AV_ICO[a.level] || "📢"} Aviso ${String(a.level || "informativo").toLowerCase()}: ${short(String(a.title), 60)}`,
+      body: short(`${a.text || ""}\n${range}`, 220), tag: "rmh-av-" + a.id, open: "", go: "inicio" });
+    sent += await send(cfg, [...new Set(to)], () => payload);
+  }
+  return json({ ok: true, sent });
+}
+
+// Resumen del día (v228): todas las mañanas (pg_cron, 7:45 de Paraguay) a cada persona le llega un solo aviso con lo de
+// hoy, si hay algo: sus trabajos que vencen hoy o están atrasados, sus publicaciones para hoy, los Avisos del equipo que
+// empiezan hoy y (a Admin total y CM) los cumpleaños de influencers. Es lo mismo que la app muestra en Alertas.
+const JOB_DONE = ["Programado", "Publicado", "Pautado", "Entregado", "Cancelado"], POST_DONE = ["Programado", "Publicado", "Pautado"];
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+async function dailyPush(cfg: any, dry = false) { // dry: devuelve lo que mandaría, sin mandar (para revisar)
+  const hoy = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10); // Paraguay: UTC−3 todo el año
+  const [people, presence, jobs, posts, canal, avisos, infl] = await Promise.all(["s:PEOPLE", "s:PRESENCE", "s:jobs", "s:posts", "s:CHANNEL_POSTS", "s:AVISOS", "s:INFLUENCERS"].map(state));
+  const { data: members } = await db.from("members").select("person_id, role").eq("active", true);
+  const now = Date.now(), P: any[] = people || [], pres: Record<string, any> = presence || {};
+  const bdays = (infl || []).filter((x: any) => x && x.bday === hoy.slice(5));
+  let sent = 0; const would: any[] = [];
+  for (const m of members || []) {
+    const pp = P.find((x) => x.id === m.person_id);
+    if (!pp || pp.active === false || isDnd(pres[m.person_id], now) || pres[m.person_id]?.st === "vac") continue;
+    const mine = (jobs || []).filter((j: any) => j && j.owner === pp.name && !JOB_DONE.includes(j.status) && !(j.status === "Aprobado" && j.area !== "CM") && j.due);
+    const today = mine.filter((j: any) => j.due === hoy).length, late = mine.filter((j: any) => j.due < hoy).length;
+    const pubs = [...(posts || []), ...(canal || [])].filter((p: any) => p && p.cm === pp.name && p.date === hoy && !POST_DONE.includes(p.status)).length;
+    const avs = (avisos || []).filter((a: any) => a && a.from === hoy && a.date !== hoy && a.until >= hoy && a.by !== pp.id && Array.isArray(a.to)
+      && (a.to.includes("todos") || a.to.includes(m.role) || (a.to.includes("admins") && ["Admin total", "Admin"].includes(m.role))));
+    const cumple = ["Admin total", "CM"].includes(m.role) ? bdays : [];
+    const lines = [today ? plural(today, "trabajo vence hoy", "trabajos vencen hoy") : "", late ? plural(late, "trabajo atrasado", "trabajos atrasados") : "",
+      pubs ? plural(pubs, "publicación para hoy", "publicaciones para hoy") : "",
+      ...avs.map((a: any) => `${AV_ICO[a.level] || "📢"} Aviso: ${short(String(a.title), 60)}`),
+      ...cumple.map((x: any) => `🎂 Hoy cumple años ${x.name} (Influencer de ${x.brand})`)].filter(Boolean);
+    if (!lines.length) continue;
+    if (dry) { would.push({ person: m.person_id, lines: lines.length }); continue; }
+    const payload = JSON.stringify({ title: "☀️ Lo de hoy en Retail MKT Hub", body: short(lines.join("\n"), 220), tag: "rmh-dia-" + hoy, open: "", go: "inicio" });
+    sent += await send(cfg, [m.person_id], () => payload);
+  }
+  return json(dry ? { ok: true, dry: true, hoy, would } : { ok: true, sent });
 }
 
 Deno.serve(async (req) => {
@@ -111,10 +184,12 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Método no permitido" }, 405);
   if (req.headers.get("x-push-secret") !== cfg.secret) return json({ error: "No autorizado" }, 401);
 
-  let body: { key?: string; from?: number; items?: any[] };
+  let body: { key?: string; from?: number; items?: any[]; dry?: boolean };
   try { body = await req.json(); } catch { return json({ error: "Pedido inválido" }, 400); }
   const key = String(body.key || "");
   if (key === "s:NOTIFS") return jobPush(cfg, body.items || []);
+  if (key === "s:AVISOS") return avisoPush(cfg, body.items || []);
+  if (key === "daily") return dailyPush(cfg, body.dry === true);
   if (!/^(thread|chat):/.test(key)) return json({ ok: true, skipped: "clave" });
   const row = await state(key);
   const msgs: any[] = Array.isArray(row?.msgs) ? row.msgs : [];
