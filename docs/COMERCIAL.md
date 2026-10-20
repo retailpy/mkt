@@ -67,11 +67,19 @@ En cada categoría:
 | Delimarket | Fin de semana | `FDS` («FDS Deli») | `1NnZGuw3iWQaWNqz5axsE4zWlUAW-sXhA` «DELIMARKET» |
 | Superseis / Stock | Express | `EXPRESS` + `PUBLICADA(S)` + `S6` o `STOCK` | `14b8mp9dItU2SmoJUbiaCNc9g3vBI3xal` «DINAMICA EXPRESS» (compartida) |
 | Superseis / Stock | Imbatibles | `IMBATIBLE(S)` + `S6` o `STOCK` | `1wnr3i0WNIUOuOEILUg5z_LWdmHd1A79W` «LOS IMBATIBLES» (compartida) |
+| Superseis / Stock | Quincenal (FINAL) | `FINAL` + `S6` o `STOCK` (se prefiere a las de arriba) | `1-xZ--Tb9rvCYDpmh2zrsYQz-jy-AfDBf` «MKT - FOLLETOS» (compartida; v229, script 8) |
 
 Reglas (`clasificar()` en `comercial.ts`): solo planillas (.xlsx/.xls o Google Sheets) que dicen la categoría en el nombre; las
 **versiones internas** (`INTERNA`) nunca se usan; en una carpeta de una marca, si el nombre dice **otra** marca queda pendiente; en las
 compartidas, si no dice S6 o Stock (o dice las dos) queda pendiente; Express **sin** “publicada” queda pendiente. También queda
 pendiente si no tiene las **fechas** en el nombre o si el Excel no tiene columnas de producto y precio de oferta.
+
+**«MKT - FOLLETOS» (v229):** Comercial deja ahí los Excel **FINAL** de las quincenales de Superseis y Stock («FINAL QUINCENAL S6 26-10 AL 08-11»,
+«FINAL QUINCENAL STOCK 26-10 AL 08-11»). Se lee junto con la carpeta de cada marca: si de una quincena hay FINAL, se usa ese (el
+PUBLICADAS y un FINAL viejo que ya no está en Drive se borran cuando el nuevo está leído; la pantalla también elige uno solo:
+en Drive → de «MKT - FOLLETOS» → el más nuevo). Las quincenas sin FINAL siguen con el PUBLICADAS de la carpeta de la marca.
+Necesita el **script de Drive versión 8** (con el 7 esa carpeta queda “falta actualizar el script”). En `index.html`: `COM_FOLLETOS`,
+`comFids()` (carpetas de cada categoría) y `comSrcOf()`.
 
 Carpeta de respaldos: `1A_WCm2AkSN9H6GdNazCk-9L4ngoaNWfZ` (el Excel de cada quincena **de Superseis**, en la carpeta del mes y año; como antes).
 

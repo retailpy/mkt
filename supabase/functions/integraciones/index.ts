@@ -11,7 +11,7 @@
 //   tendencias {area:"dg"|"cm"|"ideas", force?}                      → campañas, piezas y contenidos con foto, en español (force: solo Admin total)
 //   noticias {force?}                                                → lo que sale en los medios de Paraguay sobre Retail S.A. y sus marcas (3 meses)
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { parseOfertas, periodo, PARSE_V, nombreOfertas, excelOfertas, FUENTES, clasificar } from "./comercial.ts";
+import { parseOfertas, periodo, PARSE_V, nombreOfertas, excelOfertas, FUENTES, FOLLETOS_ID, clasificar } from "./comercial.ts";
 import { armar } from "./tendencias.ts";
 import { buscarNoticias, juntarNoticias } from "./noticias.ts";
 
@@ -36,7 +36,7 @@ const MAX_BYTES = 400 * 1024;
 const CHAT_MAX = 4 * 1024 * 1024; // la app achica las fotos antes de subirlas (suelen quedar en 200-600 KB)
 const BOCETO_MAX = 10 * 1024 * 1024; // boceto liviano para ver cómo va (el original va en los links del pedido)
 const TYPES = ["image/png", "image/webp", "image/gif", "image/jpeg"];
-const SCRIPT_V = 7; // versión del script de Drive que necesita la app (2: fotos del chat por mes · 3: bocetos · 4: Comercial y videos de CM · 5: respaldo de las ofertas · 6: documentos del chat · 7: ofertas de Superseis, Stock y Delimarket en varias carpetas)
+const SCRIPT_V = 8; // versión del script de Drive que necesita la app (2: fotos del chat por mes · 3: bocetos · 4: Comercial y videos de CM · 5: respaldo de las ofertas · 6: documentos del chat · 7: ofertas de Superseis, Stock y Delimarket en varias carpetas · 8: carpeta «MKT - FOLLETOS» de las quincenales)
 const SCRIPT_RE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]{20,}\/exec$/;
 const thumb = (id: string) => `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w320`;
 
@@ -48,7 +48,7 @@ const scriptText = (secret: string) => `// Retail MKT Hub · stickers, fotos del
 //   Fotos del chat → carpeta "Fotos Retail MKT", con una carpeta por mes adentro (ej.: "2026-10 Octubre").
 //   Bocetos de los pedidos → su carpeta, también con una carpeta por mes.
 //   Comercial → lee (sin cambiar nada) los Excel de las carpetas de ofertas (Superseis, Stock y Delimarket: quincenales,
-//   fin de semana, Express e Imbatibles), con sus subcarpetas.
+//   fin de semana, Express e Imbatibles, y la carpeta «MKT - FOLLETOS» con los FINAL de las quincenales), con sus subcarpetas.
 //   Videos editados de CM → su carpeta, con una carpeta por mes y año; el video se sube directo a Drive.
 //   Respaldo de las ofertas → el Excel de cada quincena, el día que empieza, en la carpeta del mes y año de la oferta.
 //   Documentos del chat (PDF, fotos en alta, videos, Word, Excel…) → "Documentos Retail MKT", una carpeta por mes; se suben directo a Drive, en su formato original.
@@ -362,8 +362,9 @@ async function comercialSync(c: any, minAge: number){
   if (!c?.sticker_url) return { ok: false, nokey: true, error: "Falta conectar Google Drive (Configuración → Integraciones)." };
   const sv = await scriptVersion(c.sticker_url, c.sticker_secret);
   if (sv < 4) return { ok: false, old: true, error: "Falta actualizar el script de Google Drive para leer las ofertas: Admin total lo hace en Configuración → Integraciones." };
-  // Con el script de antes (hasta la versión 6) solo se puede leer la carpeta de las quincenales de Superseis.
-  const fuentes = sv >= 7 ? FUENTES : FUENTES.slice(0, 1);
+  // Con el script de antes (hasta la versión 6) solo se puede leer la carpeta de las quincenales de Superseis; con el 7, todas menos
+  // «MKT - FOLLETOS» (el script 7 no la tiene en su lista y la rechaza).
+  const fuentes = sv >= 8 ? FUENTES : sv >= 7 ? FUENTES.filter((fu) => fu.id !== FOLLETOS_ID) : FUENTES.slice(0, 1);
   for (let intento = 0; intento < 2; intento++){
     const { data: row } = await db.from("app_state").select("data, version").eq("key", "s:COMERCIAL").maybeSingle();
     const prev = row?.data || {};
@@ -446,6 +447,10 @@ async function comercialSync(c: any, minAge: number){
       if (x.light) delete x.light;
     }
     for (const [id, q] of reemplazados) if (finalLeida(q)) delete files[id];
+    // Un FINAL guardado que ya no está en Drive (ej. lo movieron a «MKT - FOLLETOS», queda con otro id) se borra cuando el FINAL
+    // de esa quincena que sí está en Drive ya se leyó: así no quedan dos versiones de la misma quincena.
+    const finalEnDrive = new Set((Object.values(files) as any[]).filter((x) => x.final && x.inDrive && x.v === PARSE_V).map((x) => quincena(x.brand, x.cat, x)));
+    for (const [id, x] of Object.entries(files) as [string, any][]) if (x.cat === "quincenal" && !x.inDrive && finalEnDrive.has(quincena(x.brand, x.cat, x))) delete files[id];
     // Las quincenas quedan completas siempre; de fin de semana, Express e Imbatibles, los últimos 2 meses.
     for (const [id, x] of Object.entries(files) as [string, any][]) if (x.cat !== "quincenal" && x.to && x.to < limiteDe(x.cat)) delete files[id];
     // Respaldo en Drive de las quincenales de Superseis (como antes): el día que empieza la oferta (o después), una sola vez por archivo.
@@ -462,7 +467,7 @@ async function comercialSync(c: any, minAge: number){
     // Carpetas que todavía no se leen porque falta actualizar el script de Drive.
     for (const fu of FUENTES) if (!src[fu.id]) src[fu.id] = { at: now, old: true };
     const data = { v: 1, updated: nuevos || respaldos || !prev.updated ? now : prev.updated, syncedAt: now, backupScript: canBackup, scriptV: sv, files, src, pending: pending.slice(0, 80) };
-    const res = { ok: true, nuevos, agregados, errores, respaldos, n, faltan, pendientes: pending.length, carpetasConError: Object.values(src).filter((x: any) => x.err).length, scriptViejo: sv < 7 };
+    const res = { ok: true, nuevos, agregados, errores, respaldos, n, faltan, pendientes: pending.length, carpetasConError: Object.values(src).filter((x: any) => x.err).length, scriptViejo: sv < SCRIPT_V };
     if (!row){ const { error } = await db.from("app_state").insert({ key: "s:COMERCIAL", data }); if (!error) return res; continue; }
     const { data: up } = await db.from("app_state").update({ data, version: row.version + 1, updated_at: now }).eq("key", "s:COMERCIAL").eq("version", row.version).select("version");
     if (up && up.length) return res;
