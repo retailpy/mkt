@@ -3270,9 +3270,10 @@ function openApproveModal(j){
       <label>Hora de publicación *<input class="base" type="time" id="okTime" value="${esc(preTime)}"></label>
       <label>¿Dónde se publica? *<select class="base" id="okFmt">${PUB_FMTS.map(([v, l]) => `<option value="${v}" ${v === preFmt ? "selected" : ""}>${l}</option>`).join("")}</select></label>
       <label class="oknet"${preFmt === "Canal" ? " hidden" : ""}>Red *<select class="base" id="okNet">${netOpts(j.brand, x?.net || "IG")}</select></label></div>
-      ${viewer.role === "Admin total" ? (cf => `<div class="okcopy"><label class="jcext okcpon"><input type="checkbox" id="okCopyOn"${cf ? " checked" : ""}> <b>Copy confirmado</b> <span class="note">(si ya tenés el copy: lo escribís acá, queda aprobado y la CM solo lo publica)</span></label>
+      ${cont ? `<div class="okcopy"><b>${icon("file-text")} Copy</b> <span class="note">(se aprueba junto con el diseño y queda en la publicación del CM)</span>${j.noCopy ? `<p class="note" style="margin:4px 0 0">No lleva copy.</p>` : jcopyHas(j) ? (h => `<div class="rtview cpprev${rtBgCls(rtBgOf(h))}"${rtBgStyle(rtBgOf(h))}>${h.replace(/^<!--bg:#[0-9a-f]{6}-->/i, "")}</div>`)(copyHtml(j)) : `<p class="perr" style="margin:4px 0 0">Todavía no tiene copy: el CM lo escribe en su publicación y te llega para aprobar.</p>`}</div>`
+      : viewer.role === "Admin total" ? (cf => `<div class="okcopy"><label class="jcext okcpon"><input type="checkbox" id="okCopyOn"${cf ? " checked" : ""}> <b>Copy confirmado</b> <span class="note">(si ya tenés el copy: lo escribís acá, queda aprobado y la CM solo lo publica)</span></label>
         <div class="okcpsheet"${cf ? "" : " hidden"}>${copySheet({ copy:cf ? x.copy : "" }, true, "okCopy")}</div></div>`)(x?.copyConf && x.copySt === "ok") : ""}
-      <p class="note" style="margin:0">${icon("calendar-days")} Se carga sola en el calendario del CM con lo justo para publicar (título, tipo de gráfica, dónde se publica, día, hora y la ruta de la compartida), y le llega el aviso (+1). Si no marcás “Copy confirmado”, el CM escribe el copy y te llega para aprobarlo. Con “Post + Historia” se cargan las dos.</p></div>
+      <p class="note" style="margin:0">${icon("calendar-days")} Se carga sola en el calendario del CM con lo justo para publicar (título, tipo de gráfica, dónde se publica, día, hora y la ruta de la compartida), y le llega el aviso (+1). ${cont ? "El copy de arriba queda aprobado en su publicación: solo la publica." : "Si no marcás “Copy confirmado”, el CM escribe el copy y te llega para aprobarlo."} Con “Post + Historia” se cargan las dos.</p></div>
     <p class="perr" id="okErr" hidden></p>
     <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-oksend="${j.id}">✓ Aprobar</button></div></div>`;
   document.body.appendChild(w);
@@ -3362,6 +3363,7 @@ function approveJob(j, opts = {}){
   j.status = j.area === "CM" ? "Programado" : "Aprobado"; if (!j.approved) j.approved = TODAY; // en Diseño, Aprobado es el final del pedido; en CM, aprobado pasa a Programado
   if (j.area !== "CM"){ if (!j.delivered) j.delivered = TODAY; const p = j.post && postById(j.post); if (p && p.status === "Pendiente") p.status = "En proceso"; }
   if (by) j.approvedBy = by; // quién aprobó (Alyssa, Patricia, Emanuel…): queda registrado
+  if (contCopy(j) && !j.noCopy && !j.copyConf && jcopyHas(j)) copyLogAdd(j, "ok");
   (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), ok:true, by:viewer.name, ...(by ? { okBy:by } : {}) });
   NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
   notify({ to:j.owner, type:"approved", job:j.id }); jobUI.form = null;
@@ -3370,6 +3372,10 @@ function approveJob(j, opts = {}){
   if (cm && j.area !== "CM" && opts.date){ const had = new Map(jobPubsOf(j).map(p => [p.id, p.cm])); NOTIFS.forEach(n => { if (n.job === j.id && ((n.type === "pub" && !n.post) || ((n.type === "pub" || n.type === "listo") && n.to !== cm))) n.read = true; });
     xs = makePub(j, { ...opts, cm }); x = xs[0]; j.cmNotified = cm; j.pubCm = cm; j.pubDate = opts.date; j.pubTime = opts.time || "";
     if (opts.copy) xs.forEach(p => copyConfSet(p, opts.copy));
+    else if (contCopy(j)) xs.forEach(p => { // v239: el copy del contenido se aprueba con el diseño
+      if (j.noCopy){ Object.assign(p, { noCopy:true }); return; }
+      if (!jcopyHas(j)) return;
+      Object.assign(p, { copy:j.copy, copyBg:"", noCopy:false, copySt:"ok", copyBy:j.copyConf ? (j.copyLog || []).filter(c => c.k === "conf").pop()?.by || viewer.name : by || viewer.name, copyConf:!!j.copyConf }); copyLogAdd(p, j.copyConf ? "conf" : "ok"); });
     xs.forEach(p => notify({ to:cm, type:had.get(p.id) === cm ? "listo" : "pub", job:j.id, post:p.id, canal:!!p.channel })); }
   else if (cm){ notify({ to:cm, type:"listo", job:j.id }); j.cmNotified = cm; }
   render(); window.RMH?.flushNow?.();
@@ -3402,10 +3408,14 @@ document.addEventListener("click", e => {
 // Cambia la etapa respetando el flujo: cuando la persona termina (boceto o trabajo de CM) le avisa a Admin total para revisar.
 function moveJob(j, to){
   if (!j || j.status === to || !stageOptions("job", j).includes(to)) return render();
+  if (contCopy(j)){ if (rtUploading(document.getElementById("jCopy"))) return toast("Esperá que termine de subir la imagen del copy."); jcopyTake(j); } // lo escrito en la hoja del copy no se pierde
   if (viewer.role === "Admin total" && to === fixStage(j)){ render(); openFixModal(j); return; } // los cambios siempre van con mensaje
   if (viewer.role === "Admin total" && (to === "Aprobado" || (j.area === "CM" && to === "Programado")) && REVIEW_WAIT.includes(j.status)){ render(); return openApproveModal(j); }
   if (viewer.role !== "Admin total" && to === reviewStage(j)){
+    if (contCopy(j) && !jcopyOk(j)){ jobUI.ficha = j.id; render(); window.scrollTo(0, 0); setTimeout(() => document.querySelector(".jp-copy")?.scrollIntoView({ block:"center" }), 50);
+      return toast("Falta el copy: escribilo en “Copy de la publicación” (o marcá “No lleva copy”) y tocá de nuevo. Se manda junto con el diseño."); }
     const fix = j.status === fixStage(j); if (fix) j.rounds = (j.rounds || 0) + 1;
+    if (contCopy(j) && !j.noCopy && !j.copyConf) copyLogAdd(j, "send");
     j.status = to; NOTIFS.forEach(n => { if (n.to === viewer.name && n.job === j.id) n.read = true; });
     (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), kind:"boceto", by:viewer.name, fix, link:j.designLink || "" });
     notify({ to:"admin", type:"review", job:j.id, who:viewer.name, fix });
@@ -4952,7 +4962,7 @@ function notifAlerts(){
     if (n.copy) return copyAlert(n);
     const j = jobById(n.job); if (!j) return null;
     if (n.type === "nota") return { go:"job:" + j.id, key:"n:" + n.id, sev:"#94a3b8", rank:-4, ic:"message-circle", t:`${n.who} comentó en: ${j.title}`, m:`“${n.text}” · ${dm(n.date)} ${n.time}` };
-    return { go:"job:" + j.id, key:"n:" + n.id, sev:"#a855f7", rank:-5, ic:"circle-check", t:`${n.who} ${n.fix ? "terminó las correcciones" : j.area === "CM" ? "terminó su trabajo" : "terminó el boceto"}: ${j.title}`, m:`${j.brand} · ${j.piece} · listo para revisar · ${dm(n.date)} ${n.time}${j.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}`,
+    return { go:"job:" + j.id, key:"n:" + n.id, sev:"#a855f7", rank:-5, ic:"circle-check", t:`${n.who} ${n.fix ? "terminó las correcciones" : j.area === "CM" ? "terminó su trabajo" : contCopy(j) ? "terminó el boceto y el copy" : "terminó el boceto"}: ${j.title}`, m:`${j.brand} · ${j.piece} · listo para revisar${contCopy(j) ? " · " + jcopyShort(j) : ""} · ${dm(n.date)} ${n.time}${j.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}`,
       acts:`<button class="btn primary" data-nact="approve" data-nid="${n.id}">${j.area === "CM" ? "Aprobar" : "✓ Aprobar"}</button><button class="btn" data-nact="fix" data-nid="${n.id}">Pedir cambios</button><button class="btn" data-jficha="${j.id}">Ver pedido</button>` };
   });
   return myNotifs().map(n => n.copy ? copyAlert(n) : n.type === "pub" ? pubAlert(n) : n.type === "nuevo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:"inbox", t:`Nuevo pedido para vos: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""} · fecha límite ${jobById(n.job) ? dm(jobById(n.job).due) : ""} · tocá para ver todo` }
@@ -5775,7 +5785,7 @@ const canLoadCm = () => canEditPost() || canCreateJobs();
 const cmLoadBtn = () => canLoadCm() ? `<button type="button" class="btn primary cmloadbtn" data-cmload>${icon("plus")} Cargar trabajo</button>` : "";
 function cmLoadMenu(btn, date){
   closeStageMenu();
-  const vid = canCreateJobs() && can("gestioncm"), gra = canCreateJobs() && can("contenidos"), at = "Lo carga Admin total";
+  const vid = canCreateJobs() && can("gestioncm"), gra = canNewJob("Contenidos") && can("contenidos"), at = "Lo carga Admin total";
   const it = (attr, ic, t, off) => `<button type="button" role="menuitem" ${off ? `disabled title="${at}"` : attr} style="--c:var(--cyan)">${icon(ic)}<span>${t}${off ? `<small>${at}</small>` : ""}</span></button>`;
   const pop = document.createElement("div"); pop.id = "stagepop"; pop.className = "cmloadpop"; pop.setAttribute("role", "menu");
   pop.innerHTML = `<div class="sp-h">Cargar trabajo${date !== TODAY ? ` · ${dm(date)}` : ""}</div>
@@ -5789,7 +5799,7 @@ function cmLoadMenu(btn, date){
   pop.style.top = (r.bottom + ph + 8 > innerHeight ? Math.max(8, innerHeight - ph - 8) : r.bottom + 4) + "px";
 }
 const newJobOf = (area, due) => { const brand = MAIN_BRANDS.includes(brandFilter) && myBrands().includes(brandFilter) ? brandFilter : myBrands()[0];
-  jobUI.form = { mode:"new", job:{ id:nextJobId(area), area, requestDate:TODAY, requester:"Marketing", brand, piece:(area === "CM" ? CM_TYPES : CONT_TYPES)[0], title:"", owner:"Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due, link:"", notes:"", post:null } }; render(); window.scrollTo(0, 0); };
+  jobUI.form = { mode:"new", job:{ id:nextJobId(area), area, requestDate:TODAY, requester:"Marketing", brand, piece:(area === "CM" ? CM_TYPES : CONT_TYPES)[0], title:"", owner:area === "Contenidos" && !canCreateJobs() ? viewer.name : "Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due, link:"", notes:"", post:null } }; render(); window.scrollTo(0, 0); };
 function actNew(type, date){
   const brand = MAIN_BRANDS.includes(brandFilter) && myBrands().includes(brandFilter) ? brandFilter : myBrands()[0];
   const owner = viewer.role === "CM" ? viewer.name : CM_BY_BRAND[brand] && CM_NAMES().includes(CM_BY_BRAND[brand]) ? CM_BY_BRAND[brand] : CM_NAMES()[0] || "";
@@ -5970,6 +5980,13 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-plwk
 let jobUI = { area:"Todos", view:"calendario", status:"Activos", owner:"Todos", prio:"Todas", q:"", form:null };
 const canCreateJobs = () => viewer.role === "Admin total" && !isClosed(); // cargar, editar y borrar pedidos: solo Admin total
 const canChangeStatus = j => !isClosed() && !isViewOnly() && (viewer.role === "Admin total" || viewer.role === "CM" || j.owner === viewer.name);
+// v239 · Contenidos gráficos: el CM carga los suyos (queda como responsable), los lleva por las etapas de Diseño gráfico
+// (le avisa a Admin total en Boceto finalizado y Corrección realizada) y, al aprobarse, los publica él mismo.
+const cmOwnCont = () => viewer?.role === "CM" && !isClosed() && !isViewOnly() && can("contenidos");
+const canNewJob = A => canCreateJobs() || (A === "Contenidos" && cmOwnCont());
+const canEditJob = j => canCreateJobs() || (!!j && j.area === "Contenidos" && cmOwnCont() && j.owner === viewer.name && !isFin(j));
+const canDelJob = j => (canCreateJobs() && viewer.role === "Admin total") || (!!j && j.area === "Contenidos" && cmOwnCont() && j.owner === viewer.name && j.byId === viewer.id && !isFin(j)); // el CM borra lo que cargó él (hasta que se aprueba)
+const CONT_NEW_ST = ["Pendiente","En proceso","Boceto finalizado"]; // el CM puede cargarlo ya terminado (Boceto finalizado) y le avisa a Admin total
 const jobArea = () => page === "gestioncm" ? "CM" : page === "contenidos" ? "Contenidos" : "Diseño";
 // En el formulario de Admin total: si el pedido espera revisión, aprobar o pedir cambios; y el historial de revisiones.
 function jobReviewBox(j){
@@ -6732,7 +6749,7 @@ function jobFicha(){
   const mine = j.owner === viewer.name && !isFin(j) && !isViewOnly() && j.area !== "CM";
   // Página completa del pedido: datos del pedido, el texto (hoja tipo Word), los links de acceso, el proceso (tocable) y al final los cambios.
   return `<div class="jpage jficha" aria-label="Pedido completo">
-    <div class="jp-top"><button class="btn" data-jfclose>${icon("arrow-left")} Volver</button>${jobChatBtns(j)}${at ? `<button class="btn" data-jedit="${j.id}">${icon("pencil")} Editar pedido</button>` : ""}${refreshBtn()}</div>
+    <div class="jp-top"><button class="btn" data-jfclose>${icon("arrow-left")} Volver</button>${jobChatBtns(j)}${canEditJob(j) ? `<button class="btn" data-jedit="${j.id}">${icon("pencil")} ${at ? "Editar pedido" : "Editar contenido"}</button>` : ""}${refreshBtn()}</div>
     <header class="jp-h"><span class="note">${jobKindLabel(j)}${j.ex ? ` <span class="exbadge sm">Ejemplo para mostrar cómo se carga</span>` : ""}</span><h1>${esc(j.title)}</h1><div class="chips">${pill(j.status, JOB_COLOR[j.status])}${urgBadge(j)}${j.rep?.days?.length ? `<span class="repbadge">${icon("repeat")} Se repite: ${esc(repText(j.rep).toLowerCase())}</span>${at ? `<button class="btn sm" type="button" data-jrepstop="${j.id}">Dejar de repetir</button>` : ""}` : j.repOf ? `<span class="repbadge">${icon("repeat")} Pedido que se repite</span>` : ""}</div></header>
     ${last ? `<div class="jfmsg"><b>${icon("pencil")} Cambios que pidió Admin total</b><p>${esc(last.text)}</p><span>${dm(last.date)} · ${last.time}</span></div>` : ""}
     <section class="panel jp-sec"><h2 class="pmh">${pmIco("clipboard-list")}<i class="jpn">1</i>Qué hay que hacer</h2>
@@ -6741,6 +6758,7 @@ function jobFicha(){
     <section class="panel jp-sec"><h2 class="pmh">${pmIco("users")}<i class="jpn">2</i>Quién y para cuándo</h2>
       <div class="jfgrid"><div><span>Quién lo pidió</span><b>${esc(j.requester || "Sin indicar")}</b></div>${row("Responsable", esc(j.owner))}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", prioTag(j.priority))}${row("Complejidad", esc(j.complexity))}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}${j.approvedBy ? row("Aprobó", `${icon("badge-check")} ${esc(j.approvedBy)}${j.approved ? " · " + dm(j.approved) : ""}`) : ""}</div>${seesPubDate() ? pubInfo(j) : ""}</section>
     ${jobBriefSection(j)}
+    ${jobCopyBlock(j)}
     ${j.area === "CM" ? videoBlock(j) : ""}
     ${j.area !== "CM" || (j.bocetos || []).length ? bocetoBlock(j) : ""}
     <section class="panel jp-sec jp-mat onlyshare"><h2 class="pmh">${pmIco("folder-symlink")}Ruta de la compartida</h2><p class="note shnote">${icon("server")} Es la carpeta del disco del servidor de la empresa (no es una página web): tocá <b>Abrir</b> o <b>Copiar link</b> y pegala en el Explorador de archivos.</p>
@@ -6804,7 +6822,7 @@ function jobForm(){
   const f = jobUI.form; if (!f) return "";
   if (f.mode === "edit") markSeen(jobById(f.job.id));
   if (!f.repDays) f.repDays = [...(f.job.rep?.days || [])];
-  const j = f.job, area = j.area;
+  const j = f.job, area = j.area, own = area === "Contenidos" && !canCreateJobs(); // el CM con su propio contenido gráfico
   // Redes Sociales y Cartelería tienen cada una sus tipos de pieza.
   // Diseño: categoría y tipo de trabajo (v196). Un pedido de antes con un tipo que ya no está conserva su tipo.
   const sec = jobSection(j), dgCat = area === "Diseño" ? dgCatOf(j) : null;
@@ -6813,7 +6831,7 @@ function jobForm(){
   const opt = (list, v) => list.map(x => `<option ${x === v ? "selected" : ""}>${x}</option>`).join("");
   return `<div class="jpage jformpage" aria-label="Formulario de trabajo">
     <div class="jp-top"><button class="btn" type="button" data-jclose>${icon("arrow-left")} Volver</button></div>
-    <div class="jp-h"><span class="note">${jobKindLabel(j)}</span><h1 style="margin:4px 0 0">${f.mode === "edit" ? (area === "CM" ? "Editar gestión de video" : area === "Contenidos" ? "Editar contenido" : "Editar pedido") : f.mode === "dup" ? "Revisar pedido duplicado" : area === "CM" ? "Nueva gestión de video" : area === "Contenidos" ? "Nuevo contenido para un CM" : "Nuevo pedido de diseño gráfico"}</h1></div>
+    <div class="jp-h"><span class="note">${jobKindLabel(j)}</span><h1 style="margin:4px 0 0">${f.mode === "edit" ? (area === "CM" ? "Editar gestión de video" : area === "Contenidos" ? "Editar contenido" : "Editar pedido") : f.mode === "dup" ? "Revisar pedido duplicado" : area === "CM" ? "Nueva gestión de video" : own ? "Nuevo contenido gráfico" : area === "Contenidos" ? "Nuevo contenido para un CM" : "Nuevo pedido de diseño gráfico"}</h1></div>
     <form id="jobForm" class="jform panel">
       ${f.mode === "edit" ? jobReviewBox(jobById(j.id)) : ""}
       <section class="jfs"><h3><i>1</i>Qué hay que hacer</h3><div class="jfg">
@@ -6829,11 +6847,11 @@ function jobForm(){
       </div></section>
       <section class="jfs"><h3><i>2</i>Quién y para cuándo</h3><div class="jfg">
       <label>Solicitante *<select class="base" id="jRequester">${opt(SOLICITANTES, j.requester)}</select></label>
-      <label>Responsable (de cualquier marca) *<select class="base" id="jOwner">${opt([...new Set(["Sin asignar", ...areaPeople(area), j.owner])], j.owner)}</select></label>
+      ${own ? `<label>Responsable *<select class="base" disabled><option>${esc(viewer.name)}</option></select></label>` : `<label>Responsable (de cualquier marca) *<select class="base" id="jOwner">${opt([...new Set(["Sin asignar", ...areaPeople(area), j.owner])], j.owner)}</select></label>`}
       <label>Fecha de solicitud *<input class="base" type="date" id="jReq" value="${j.requestDate}" required></label>
       <label >Fecha límite *<input class="base" type="date" id="jDue" value="${j.due}" required></label>
       ${area === "Diseño" ? jobPubCmBox(j) : ""}
-      ${j.repOf ? `<p class="note" style="grid-column:1/-1;margin:0">${icon("repeat")} Este pedido se cargó solo porque se repite (lo repite el pedido ${esc(j.repOf)}).</p>` : `<div class="jrep" style="grid-column:1/-1"><span class="jll">${icon("repeat")} ¿Se repite? <span class="note">(opcional: elegí los días y el pedido se carga solo cada semana, con la fecha límite de ese día)</span></span>
+      ${own ? "" : j.repOf ? `<p class="note" style="grid-column:1/-1;margin:0">${icon("repeat")} Este pedido se cargó solo porque se repite (lo repite el pedido ${esc(j.repOf)}).</p>` : `<div class="jrep" style="grid-column:1/-1"><span class="jll">${icon("repeat")} ¿Se repite? <span class="note">(opcional: elegí los días y el pedido se carga solo cada semana, con la fecha límite de ese día)</span></span>
         <div class="chips">${WEEKDAYS.map((w, i) => `<button type="button" class="chip ${(f.repDays || []).includes(i) ? "on" : ""}" data-jrepday="${i}" aria-pressed="${(f.repDays || []).includes(i)}">${w}</button>`).join("")}</div>
         <label class="jrepu">Hasta <span class="note">(vacío = siempre)</span><input class="base" type="date" id="jRepUntil" value="${esc(j.rep?.until || "")}"></label>
         <p class="note" style="margin:0">Ej.: “Diseño de ofertas de los lunes” → marcá Lunes: cada lunes aparece un pedido nuevo para ese día, ya asignado.</p></div>`}
@@ -6842,14 +6860,19 @@ function jobForm(){
       <div style="grid-column:1/-1"><span class="jll">Texto del pedido <span class="note">(de qué se trata, el texto que va en el diseño o lo que dice el video)</span></span>${rtEditor("jBriefF", j.brief ? cleanRich(j.brief) : "", BRIEF_PH[area])}</div>
       <div style="grid-column:1/-1"><span class="jll">${icon("folder-symlink")} Ruta de la compartida <span class="note">(la carpeta del disco del servidor donde van los archivos de este trabajo; no es una página web)</span></span>${linkEditor(j, "form")}</div>
       </div></section>
-      <section class="jfs"><h3><i>4</i>Estado</h3><div class="jfg">
-      <label>Estado *<select class="base" id="jStatus">${opt(statesOf(area), j.status)}</select></label>
+      ${area === "Contenidos" ? (cpEd => `<section class="jfs"><h3><i>4</i>Copy de la publicación</h3><div class="jfg"><div style="grid-column:1/-1">
+        ${j.noCopy && !cpEd ? `<p class="cpst nocopy">${icon("ban")} No lleva copy</p>` : copySheet(j, cpEd, "jCopyF")}
+        ${!cpEd ? "" : own ? (j.copyConf ? "" : `<label class="jcext"><input type="checkbox" id="jNoCopy"${j.noCopy ? " checked" : ""}> No lleva copy <span class="note">(se publica sin copy)</span></label>`)
+          : `<label class="jcext"><input type="checkbox" id="jCopyConf"${j.copyConf ? " checked" : ""}> <b>Copy confirmado</b> <span class="note">(si ya tenés el copy: lo escribís acá y ${esc(firstName(j.owner && j.owner !== "Sin asignar" ? j.owner : "el CM"))} no lo escribe, solo lo publica)</span></label><label class="jcext"><input type="checkbox" id="jNoCopy"${j.noCopy ? " checked" : ""}> No lleva copy</label>`}
+        <p class="note" style="margin:6px 0 0">${icon("info")} El CM entrega el diseño y el copy juntos: los dos le llegan a Admin total en Boceto finalizado (y en Corrección realizada) para aprobar o corregir.</p></div></div></section>`)(f.mode !== "edit" || jcopyEdit(j)) : ""}
+      <section class="jfs"><h3><i>${area === "Contenidos" ? 5 : 4}</i>Estado</h3><div class="jfg">
+      ${own && f.mode === "edit" ? `<div><span class="jll">Estado</span>${pill(j.status, JOB_COLOR[j.status])} <span class="note">(lo cambiás con los botones del contenido)</span></div>` : `<label>Estado *<select class="base" id="jStatus">${opt(own ? CONT_NEW_ST : statesOf(area), j.status)}</select></label>`}
       <label>Prioridad *<select class="base" id="jPrio">${opt(PRIORIDADES, j.priority)}</select></label>
       <label>Complejidad *<select class="base" id="jComp">${opt(COMPLEJIDAD, j.complexity)}</select></label>
       </div></section>
       ${f.mode === "edit" && jobById(j.id) ? `<section class="jfs jfchat">${jobChain(jobById(j.id))}</section>` : ""}
-      <p class="note" style="margin:0">Al guardar, le llega el aviso a quien lo tiene que hacer. La fecha de entrega se registra sola cuando se aprueba (CM: cuando se publica).</p>
-      <div class="chips" style="grid-column:1/-1;justify-content:flex-end">${f.mode === "edit" && canCreateJobs() ? `<button class="btn danger" type="button" data-jdel="${esc(j.id)}" style="margin-right:auto">🗑 Borrar</button>` : ""}<button class="btn" type="button" data-jclose>Cancelar</button><button class="btn primary" type="submit">Guardar trabajo</button></div>
+      <p class="note" style="margin:0">${own && f.mode !== "edit" ? "Si ya lo terminaste, elegí “Boceto finalizado”: le llega el aviso a Admin total para revisarlo. Cuando lo aprueba, queda en tu calendario para que lo publiques vos." : "Al guardar, le llega el aviso a quien lo tiene que hacer."} La fecha de entrega se registra sola cuando se aprueba (CM: cuando se publica).</p>
+      <div class="chips" style="grid-column:1/-1;justify-content:flex-end">${f.mode === "edit" && (canCreateJobs() || canDelJob(jobById(j.id))) ? `<button class="btn danger" type="button" data-jdel="${esc(j.id)}" style="margin-right:auto">🗑 Borrar</button>` : ""}<button class="btn" type="button" data-jclose>Cancelar</button><button class="btn primary" type="submit">Guardar trabajo</button></div>
     </form></div>`;
 }
 // Lee lo que está escrito en el formulario de pedido (sin validar).
@@ -6892,6 +6915,8 @@ const jobLinks = j => Array.isArray(j.links) ? j.links : j.link ? [j.link] : [];
 function readJobForm(j){ const v = id => document.getElementById(id)?.value;
   if (v("jPubCm") !== undefined){ j.pubCm = v("jPubCm") || ""; j.pubDate = v("jPubDate") || ""; j.pubTime = v("jPubTime") || ""; }
   const bf = document.getElementById("jBriefF"); if (bf && bf.dataset.dirty){ j.brief = rtHtml(bf); j.briefBy = viewer.name; j.briefAt = new Date().toISOString(); }
+  const cf = document.getElementById("jCopyF"); if (cf && cf.isContentEditable && cf.dataset.dirty){ j.copy = rtHtml(cf); j.copyBg = ""; } // v239: copy del contenido gráfico
+  const nc = document.getElementById("jNoCopy"), cc = document.getElementById("jCopyConf"); if (nc) j.noCopy = nc.checked; if (cc) j.copyConf = cc.checked && !j.noCopy;
   if (document.querySelector("#jobForm .lked")) readLinkEditor(document.querySelector("#jobForm .lked"), j);
   // (los links se leen del editor de links de acceso, arriba)
   Object.assign(j, { requestDate:v("jReq") ?? j.requestDate, requester:v("jRequester") ?? j.requester, piece:v("jPiece") ?? j.piece, ...(v("jCat") ? { cat:v("jCat") } : {}), ...(v("jVfmt") ? { vfmt:v("jVfmt") } : {}), ...(v("jVtopic") ? { vtopic:v("jVtopic") } : {}), ...(v("jOtro") !== undefined ? { otro:v("jOtro").trim().slice(0, 300) } : {}), ...(v("jVisita") !== undefined ? { visita:v("jVisita").trim().slice(0, 80), traslado:v("jTraslado") === "" ? "" : Math.max(0, +v("jTraslado") || 0) } : {}), title:(v("jTitle") ?? j.title).trim(), owner:v("jOwner") ?? j.owner, status:v("jStatus") ?? j.status, priority:v("jPrio") ?? j.priority, complexity:v("jComp") ?? j.complexity, due:v("jDue") ?? j.due, link:String(v("jLink") ?? j.link ?? "").trim(), notes:(v("jNotes") ?? j.notes).trim() }); }
@@ -6903,10 +6928,10 @@ function stagePicker(j, editable){
 }
 const jobStatusSelect = j => `<select class="base sm" data-jstatus="${j.id}" aria-label="Estado de ${esc(j.title)}" style="--c:${JOB_COLOR[j.status]}">${[...new Set([j.status, ...stageOptions("job", j)])].sort((a, b) => statesOf(j).indexOf(a) - statesOf(j).indexOf(b)).map(st => `<option ${st === j.status ? "selected" : ""}>${st}</option>`).join("")}</select>`;
 function jobStatusCell(j){ return designsJob(j) ? `<div class="chips" style="flex-wrap:nowrap">${stageOptions("job", j).length ? jobStatusSelect(j) : pill(j.status, JOB_COLOR[j.status])}${designerAction(j)}</div>` : canSetAnyStatus(j) ? `<select class="base sm" data-jstatus="${j.id}" aria-label="Estado de ${esc(j.title)}" style="--c:${JOB_COLOR[j.status]}">${[...new Set([j.status, ...stageOptions("job", j)])].sort((a, b) => statesOf(j).indexOf(a) - statesOf(j).indexOf(b)).map(st => `<option ${st === j.status ? "selected" : ""}>${st}</option>`).join("")}</select>` : pill(j.status, JOB_COLOR[j.status]); }
-const jobActions = j => canCreateJobs() ? `<div class="acts" style="flex-wrap:nowrap"><button class="btn ib" data-jedit="${j.id}" title="Editar" aria-label="Editar">${icon("pencil")}</button><button class="btn ib" data-jdup="${j.id}" title="Duplicar" aria-label="Duplicar">${icon("copy")}</button>${viewer.role === "Admin total" ? `<button class="btn danger ib" data-jdel="${j.id}" title="Borrar" aria-label="Borrar">${icon("trash-2")}</button>` : ""}</div>` : "";
+const jobActions = j => !canCreateJobs() && canEditJob(j) ? `<div class="acts" style="flex-wrap:nowrap"><button class="btn ib" data-jedit="${j.id}" title="Editar" aria-label="Editar">${icon("pencil")}</button>${canDelJob(j) ? `<button class="btn danger ib" data-jdel="${j.id}" title="Borrar" aria-label="Borrar">${icon("trash-2")}</button>` : ""}</div>` : canCreateJobs() ? `<div class="acts" style="flex-wrap:nowrap"><button class="btn ib" data-jedit="${j.id}" title="Editar" aria-label="Editar">${icon("pencil")}</button><button class="btn ib" data-jdup="${j.id}" title="Duplicar" aria-label="Duplicar">${icon("copy")}</button>${viewer.role === "Admin total" ? `<button class="btn danger ib" data-jdel="${j.id}" title="Borrar" aria-label="Borrar">${icon("trash-2")}</button>` : ""}</div>` : "";
 // Tabla de pedidos: primero lo que importa (trabajo, fecha límite y estado). Responsable solo cuando se ve todo el equipo; la fecha de solicitud y las acciones, para Admin total.
 function jobTable(list){
-  const at = canCreateJobs(), showOwner = !pedMine(), showReq = viewer.role === "Admin total";
+  const at = canCreateJobs() || list.some(j => canEditJob(j)), showOwner = !pedMine(), showReq = viewer.role === "Admin total";
   const cols = 7 + (showOwner ? 1 : 0) + (showReq ? 1 : 0) + (at ? 1 : 0);
   return `<div class="tw"><table><thead><tr><th>Trabajo solicitado</th><th>Marca</th><th>Tipo</th><th>Fecha límite</th><th>Estado</th><th>Prioridad</th><th>Solicitante</th>${showOwner ? "<th>Responsable</th>" : ""}${showReq ? "<th>Solicitud</th>" : ""}${at ? "<th></th>" : ""}</tr></thead><tbody>
     ${list.map(j => `<tr><td>${j.ex ? `<span class="exbadge sm">Ejemplo</span> ` : ""}<button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button>${j.link ? ` <a class="link-post" href="${esc(j.link)}" target="_blank" rel="noopener">${icon("link")} brief</a>` : ""}</td><td>${jobBrandTags(j)}</td><td>${jobPieceTag(j)}</td><td><div class="chips" style="flex-wrap:nowrap"><span class="num">${dm(j.due)}</span>${urgBadge(j)}</div></td><td>${jobStatusCell(j)}</td><td>${prioTag(j.priority)}</td><td>${esc(j.requester)}</td>${showOwner ? `<td>${esc(j.owner)}</td>` : ""}${showReq ? `<td class="num">${dm(j.requestDate)}</td>` : ""}${at ? `<td>${jobActions(j)}</td>` : ""}</tr>`).join("") || `<tr><td colspan="${cols}" class="empty">No hay pedidos.</td></tr>`}
@@ -6922,7 +6947,7 @@ function jobBoard(list, A){
       return `<div class="card${tap ? " tapstage" : ""}${urgStyle(j)}--c:${BRANDS[j.brand]}"${tap ? ` draggable="true" data-drag="job:${j.id}"` : ""}${canCreateJobs() ? (tap ? ` data-stagemenu="job:${j.id}" role="button" tabindex="0" title="Tocá para cambiar la etapa"` : "") : ` data-jficha="${j.id}" role="button" tabindex="0" title="Tocá para ver el pedido completo"`}><div class="bar-top"></div><div class="in">${urgBadge(j) ? `<div>${urgBadge(j)}</div>` : ""}${j.ex ? `<span class="exbadge sm">Ejemplo</span>` : ""}<div class="t">${esc(j.title)}</div>
         <div class="m">${jobBrandTags(j)}${jobPieceTag(j)}<span>${isFin({ status:st, area:A }) ? "finalizado " + dm(j.delivered || j.due) : "límite " + dm(j.due)}</span></div>
         ${p ? `<div class="link-post">↳ Post del ${dm(p.date)} · ${p.net}</div>` : ""}
-        <div class="foot"><span>${esc(j.owner)} · ${prioTag(j.priority)}</span>${canCreateJobs() ? `<button class="btn sm ib" data-jedit="${j.id}" title="Editar pedido" aria-label="Editar pedido">${icon("pencil")}</button>` : ""}</div>${designsJob(j) && !tap ? `<div class="dact"><span class="spl" style="color:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}">${j.status}</span>${designerAction(j)}</div>` : A === "CM" || A === "Diseño" || A === "Contenidos" ? `<div class="dact"><span class="spl" style="color:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}">● ${j.status}${tap ? " ▾" : ""}</span></div>` : stagePicker(j, canSetAnyStatus(j))}</div></div>`;
+        <div class="foot"><span>${esc(j.owner)} · ${prioTag(j.priority)}</span>${canEditJob(j) ? `<button class="btn sm ib" data-jedit="${j.id}" title="Editar pedido" aria-label="Editar pedido">${icon("pencil")}</button>` : ""}</div>${designsJob(j) && !tap ? `<div class="dact"><span class="spl" style="color:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}">${j.status}</span>${designerAction(j)}</div>` : A === "CM" || A === "Diseño" || A === "Contenidos" ? `<div class="dact"><span class="spl" style="color:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}">● ${j.status}${tap ? " ▾" : ""}</span></div>` : stagePicker(j, canSetAnyStatus(j))}</div></div>`;
     }).join("") || `<div class="empty" style="padding:6px">Vacío</div>`}</div>`; }).join("")}</div>`;
 }
 const loadPanel = (A, note) => `<div class="panel loadpanel"><div class="head" style="margin-bottom:6px"><h2 style="margin:0" class="pmh">${pmIco("gauge")}Carga de trabajo ${A === "CM" ? "de los CM" : "de diseño"}</h2><span class="note">${note}</span></div>${loadChart(loadGroups(A))}</div>`;
@@ -7145,7 +7170,7 @@ function pedPage(A, title, ico, sub, newHint, extra = ""){
   const all = pedList(A), split = A === "Diseño" && pedView !== "procesos", nOk = all.filter(j => !j.ex && isFin(j)).length;
   const list = split ? all.filter(j => j.ex || isFin(j) === (pedTab === "ok")) : all;
   return `<div class="head"><div><h1 class="pmh">${pmIco(ico)}${title}</h1><p class="sub">${sub}</p></div><div class="chips">${extra}${refreshBtn()}</div></div>
-  ${canCreateJobs() ? `<button class="panel cmnew" data-jnew><span class="cmplus">${icon("plus")}</span><span><b>Cargar pedido</b><small>${newHint}</small></span></button>` : ""}
+  ${canNewJob(A) ? `<button class="panel cmnew" data-jnew><span class="cmplus">${icon("plus")}</span><span><b>${canCreateJobs() ? "Cargar pedido" : "Cargar contenido gráfico"}</b><small>${canCreateJobs() ? newHint : "Lo armás vos y lo publicás vos: al terminar, marcalo Boceto finalizado y le llega el aviso a Admin total."}</small></span></button>` : ""}
   ${pedScopeChips(A)}
   <div class="head"><h2 class="pmh" style="margin:0">${pmIco(pedView === "procesos" ? "kanban" : "table-2")}${pedMine() ? "Mis pedidos" : "Pedidos"} de ${monthName(MONTH)} <span class="note" style="font-weight:400">· ${split ? `${list.filter(j => !j.ex).length} ${pedTab === "ok" ? (nOk === 1 ? "aprobado" : "aprobados") : "pendientes"}` : list.length}</span></h2>${viewTabs([["tabla","Tabla","table-2"],["procesos","Procesos","kanban"]], pedView, "data-pedview")}</div>
   ${split ? histTabs(all.filter(j => !j.ex).length - nOk, nOk, pedTab === "ok" ? "ok" : "pend", "data-pedtab") : ""}
@@ -7176,7 +7201,7 @@ function pCalDG(){
 document.addEventListener("click", e => { const b = e.target.closest("[data-dgst]"); if (!b) return; const st = b.dataset.dgst; dgPlanUI.st = st === "Todos" || dgPlanUI.st === st ? "Todos" : st; render(); });
 // Gestión de Contenidos (CM): igual que las páginas de Diseño gráfico (Tabla y Procesos), con los pedidos a los CM.
 function pContenidos(){
-  return pedPage("Contenidos", "Gestión de Contenidos", "shapes", `Piezas simples para redes que arma el CM (posts, historias, carruseles, flyers…), con el mismo proceso de Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección → Corrección realizada) → Aprobado. Al aprobarla, Admin total elige la fecha y la publicación queda sola en el calendario del mismo CM.${ownsJobs() ? " Cambiá el estado de tus pedidos desde la tabla o desde Procesos." : ""}`,
+  return pedPage("Contenidos", "Gestión de Contenidos", "shapes", `Piezas simples para redes que arma el CM (posts, historias, carruseles, flyers…), con el mismo proceso de Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección → Corrección realizada) → Aprobado. El CM carga sus propios contenidos gráficos y los avanza; en Boceto finalizado y en Corrección realizada le llega el aviso a Admin total, que aprueba o pide cambios. Al aprobarla, Admin total elige la fecha y la publicación queda sola en el calendario del mismo CM, que la publica (no se deriva a otro CM).${ownsJobs() ? " Cambiá el estado de tus contenidos desde la tabla o desde Procesos." : ""}`,
     "Qué pieza, para qué marca, qué CM la arma y para cuándo.");
 }
 function pPedidos(){
@@ -7288,6 +7313,44 @@ function copyLogList(p){
   const t = { send:"terminó el boceto del copy", none:"marcó que no lleva copy", has:"marcó que sí lleva copy", fix:"pidió corregir el copy", ok:"aprobó el copy", edit:"volvió a abrir el copy para cambiarlo", conf:"cargó el copy confirmado (ya aprobado)" };
   return `<ol class="cplog">${L.map(c => `<li class="${c.k}"><b>${esc(firstName(c.by || ""))}</b> ${t[c.k] || ""}${c.text ? `: <q>${esc(c.text)}</q>` : ""} <span>${dm(c.date)} ${c.time || ""}</span></li>`).join("")}</ol>`;
 }
+// v239 · Contenidos gráficos: el mismo pedido lleva diseño + copy. El CM escribe el copy en la misma hoja (blanca, con
+// emojis) y lo manda junto con el boceto (Boceto finalizado / Corrección realizada); Admin total aprueba o corrige todo
+// junto. Si Admin total ya tiene el copy, lo carga como “Copy confirmado” y el CM no lo escribe. Al aprobar, la publicación
+// del mismo CM queda con el copy aprobado (o “No lleva copy”). En el pedido: copy, noCopy, copyConf, copyLog.
+const contCopy = j => !!j && j.area === "Contenidos";
+const jcopyHas = j => !!copyPlain(j).trim() || /<img/i.test(j.copy || "");
+const jcopyOk = j => !!j.noCopy || !!j.copyConf || jcopyHas(j);
+const jcopyEdit = j => contCopy(j) && !isClosed() && !isViewOnly() && !isFin(j) && (viewer.role === "Admin total" || (j.owner === viewer.name && !j.copyConf && ["Pendiente","En proceso","En corrección"].includes(j.status)));
+function jcopyTake(j){ const ed = document.getElementById("jCopy"); if (ed && ed.isContentEditable && ed.dataset.dirty && jcopyEdit(j)){ j.copy = rtHtml(ed); j.copyBg = ""; delete ed.dataset.dirty; } }
+const jcopyShort = j => j.noCopy ? "no lleva copy" : j.copyConf ? "copy confirmado por Admin total" : jcopyHas(j) ? `copy: “${rclShort(copyPlain(j), 120)}”` : "sin copy";
+function jobCopyBlock(j){
+  if (!contCopy(j)) return "";
+  const at = viewer.role === "Admin total", ed = jcopyEdit(j), mine = j.owner === viewer.name, fin = isFin(j), wait = REVIEW_WAIT.includes(j.status), id = esc(j.id);
+  const st = j.noCopy ? `${icon("ban")} No lleva copy: se publica sin copy` : j.copyConf ? `${icon("badge-check")} Copy confirmado por Admin total${mine && !at ? ": no lo tenés que escribir, solo publicarlo" : ""}`
+    : fin ? `${icon("badge-check")} Copy aprobado junto con el diseño` : wait ? `${icon("hourglass")} Copy enviado con el boceto: Admin total lo revisa junto con el diseño`
+    : `${icon("file-text")} ${mine ? "Escribí el copy acá: se manda junto con el diseño cuando tocás “Boceto finalizado” (o “Corrección realizada”)" : `${esc(firstName(j.owner))} escribe el copy y lo manda junto con el diseño`}`;
+  const cls = j.noCopy ? "nocopy" : j.copyConf || fin ? "ok" : wait ? "rev" : j.status === "En corrección" ? "fix" : "none";
+  const btns = !ed ? "" : `<button type="button" class="btn" data-jcp="save:${id}">${icon("save")} Guardar copy</button>`
+    + (j.copyConf ? "" : `<button type="button" class="chip cpnone${j.noCopy ? " on" : ""}" data-jcp="none:${id}" aria-pressed="${!!j.noCopy}">${icon("ban")} No lleva copy</button>`)
+    + (at ? (j.copyConf ? `<button type="button" class="btn" data-jcp="unconf:${id}">Quitar “Copy confirmado”</button>` : j.noCopy ? "" : `<button type="button" class="btn primary" data-jcp="conf:${id}">${icon("badge-check")} Copy confirmado</button>`) : "");
+  return `<section class="panel jp-sec jp-copy"><h2 class="pmh">${pmIco("file-text")}Copy de la publicación</h2>
+    <div class="cphead"><p class="cpst ${cls}">${st}</p></div>
+    ${j.noCopy ? "" : copySheet(j, ed, "jCopy")}
+    ${btns ? `<div class="chips cpacts">${btns}</div>` : ""}
+    ${at && ed && !j.copyConf && !j.noCopy ? `<p class="note" style="margin:6px 0 0">${icon("info")} ¿Ya tenés el copy? Escribilo en la hoja y tocá “Copy confirmado”: ${esc(firstName(j.owner || "el CM"))} no lo escribe, solo lo publica. Si no, lo escribe el CM y te llega junto con el boceto.</p>` : ""}
+    ${copyLogList(j)}</section>`;
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-jcp]"); if (!b) return;
+  const [act, id] = b.dataset.jcp.split(":"), j = jobById(id); if (!j || !jcopyEdit(j)) return;
+  if (rtUploading(document.getElementById("jCopy"))) return toast("Esperá que termine de subir la imagen.");
+  jcopyTake(j);
+  if (act === "none"){ j.noCopy = !j.noCopy; copyLogAdd(j, j.noCopy ? "none" : "has"); toast(j.noCopy ? "Listo: no lleva copy. Se manda solo el diseño." : "Listo: lleva copy. Escribilo en la hoja."); }
+  else if (act === "conf"){ if (viewer.role !== "Admin total") return; if (!jcopyHas(j)) return toast("Escribí el copy en la hoja antes de tocar “Copy confirmado”.");
+    j.copyConf = true; j.noCopy = false; copyLogAdd(j, "conf"); if (j.owner && j.owner !== "Sin asignar" && j.owner !== viewer.name) notify({ to:j.owner, type:"nota", job:j.id, text:"Cargué el copy confirmado: no lo tenés que escribir, solo publicarlo." });
+    toast(`Copy confirmado. ${firstName(j.owner || "El CM")} no lo tiene que escribir.`); }
+  else if (act === "unconf"){ if (viewer.role !== "Admin total") return; j.copyConf = false; copyLogAdd(j, "edit"); toast("Quitaste “Copy confirmado”: el CM puede escribir el copy."); }
+  else toast("Copy guardado.");
+  render(); window.RMH?.flushNow?.(); });
 // Hoja de la CM para una publicación que viene de Diseño gráfico: solo el copy, el día y la hora, y la etapa.
 // (Sin “¿Se repite?”, sin el texto del pedido, sin la ruta repetida, sin prioridad ni cambios de Diseño.)
 function pubCopyForm(f, p, dj, canal, real, chat){
@@ -10496,7 +10559,7 @@ const GUIDE = [
     ["message-circle","Gestión Canal WhatsApp","Lo que se publica en el Canal de WhatsApp de cada marca. Etapas: Pendiente → En proceso → Programado → Publicado (sin Pautado), también en los repetitivos. Calendario, Tablero y Tabla."],
     ["folder-symlink","Ruta de la compartida y aprobar un diseño","En Diseño gráfico y Gestión de Contenidos queda solo la Ruta de la compartida (la carpeta del servidor): tocá Abrir o Copiar link. Al aprobar, Admin total elige quién aprobó y, si hace falta, qué CM lo publica, el día y el formato: se carga sola la publicación en su calendario con la ruta y le llega el aviso (+1)."],
     ["clapperboard","Gestión de Video","Los pedidos a los CM: grabaciones, ediciones de video, coberturas, copys y pauta. Etapas: Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado (en Revisión, Admin total aprueba o pide cambios). Tabla y Procesos (una columna por etapa), más la lista de Repetitivos; las grabaciones repetitivas siguen las mismas etapas. En el calendario de Planificación se ven todos los videos y las grabaciones en su fecha."],
-    ["shapes","Gestión de Contenidos","Piezas simples para redes que arma el CM (posts, historias, carruseles, flyers…), con el mismo proceso de Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección → Corrección realizada) → Aprobado. El CM responsable la avanza; Admin total la aprueba (eligiendo quién aprobó y la fecha) y la publicación queda sola en el calendario del mismo CM."],
+    ["shapes","Gestión de Contenidos","Piezas simples para redes que arma el CM (posts, historias, carruseles, flyers…), con el mismo proceso de Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección → Corrección realizada) → Aprobado. El CM carga sus propios contenidos gráficos (“Cargar contenido gráfico”, o “Cargar trabajo” → Creación de contenidos gráficos) y los avanza: Empezar · En proceso → ✓ Boceto finalizado; si Admin total pide cambios, ✓ Corrección realizada. En las dos le llega el aviso a Admin total. Si lo carga ya terminado, puede elegir Boceto finalizado al cargarlo. Lo que cargó él lo puede editar y borrar hasta que se aprueba. El mismo pedido lleva diseño + copy: el CM escribe el copy en la hoja del pedido (blanca, con emojis; o marca “No lleva copy”) y se manda junto con el boceto; si Admin total ya tiene el copy, lo carga como “Copy confirmado” y el CM no lo escribe. Admin total aprueba o corrige diseño y copy juntos. Admin total la aprueba (eligiendo quién aprobó y la fecha) y la publicación queda sola en el calendario del mismo CM, que la publica él mismo."],
     ["gauge","Carga de trabajo CM","En %: el tiempo estimado de lo que le falta a cada CM hasta el domingo (publicaciones, historias, Canal, contenidos, videos según su etapa, traslados y la atención diaria de Mensajes) sobre sus horas disponibles, ya descontadas ausencias y reuniones. Si no tiene horario propio se usa el de oficina (lunes a viernes 8:00–17:00) y lo dice; si falta un tiempo, también lo dice. Admin total configura tiempos, horarios, ausencias y cuentas. La pestaña “Informe del mes” muestra lo que hizo cada CM: cantidades, detalle, plazos y pendientes."],
     ["list-checks","Plan de posteo","Todo lo de CM del mes: feed, historias, Canal de WhatsApp, videos y repetitivos. Arriba, cuántos hay en cada etapa y el % ya publicado (tocá una etapa para filtrar) y los tres procesos a la vista. Cada contenido sigue el suyo: publicaciones e historias Pendiente → En proceso → Programado → Publicado → Pautado; Canal de WhatsApp igual sin Pautado; videos Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado. Cambiás la etapa ahí mismo, el CM que la hace y pedís el diseño si hace falta."],
     ["archive","Historial CM","Publicaciones y pedidos de CM del mes: primero lo pendiente; lo publicado, pautado o terminado, aparte en la pestaña Aprobados."],
@@ -10988,8 +11051,8 @@ function jobPopInfo(n){
   const brands = j ? jobBrands(j).join(" + ") : "";
   if (n.type === "nota") return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "", t:n.to === "admin" ? `${firstName(n.who || "") || "Alguien"} comentó en un trabajo` : "Admin total comentó en tu trabajo", m:n.text ? `“${rclShort(String(n.text), 160)}”` : brands };
   if (n.type === "approved") return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "", m:`${brands} · ${j ? cmPiece(j) : ""}` };
-  if (n.type === "review") return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "", t:n.fix ? (j?.area === "CM" ? "Correcciones listas para revisar" : "Corrección realizada: lista para revisar") : j?.area === "CM" ? "Trabajo listo para revisar" : P.t,
-    m:`${firstName(n.who || "")} ${n.fix ? "terminó las correcciones" : j?.area === "CM" ? "terminó su trabajo" : "terminó el boceto"} · ${brands} · ${j ? cmPiece(j) : ""}${j?.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}` };
+  if (n.type === "review") return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "", t:n.fix ? (j?.area === "CM" ? "Correcciones listas para revisar" : contCopy(j) ? "Corrección realizada: diseño y copy para revisar" : "Corrección realizada: lista para revisar") : j?.area === "CM" ? "Trabajo listo para revisar" : contCopy(j) ? "Boceto y copy listos para revisar" : P.t,
+    m:`${firstName(n.who || "")} ${n.fix ? "terminó las correcciones" : j?.area === "CM" ? "terminó su trabajo" : "terminó el boceto"} · ${brands} · ${j ? cmPiece(j) : ""}${j?.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}${contCopy(j) ? " · " + jcopyShort(j) : ""}` };
   return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "",
     m:n.type === "fix" ? (n.text ? `“${rclShort(String(n.text), 160)}”` : `${brands} · ${j ? cmPiece(j) : ""}`)
       : n.type === "listo" ? `${brands} · ${j ? cmPiece(j) : ""} · sumalo a tu calendario`
@@ -12491,11 +12554,11 @@ document.addEventListener("click", e => {
   if (jt){ const d = jt.dataset, find = id => jobs.find(x => x.id === id);
     if (d.jarea){ jobUI.area = d.jarea; jobUI.owner = "Todos"; }
     else if (d.jview) jobUI.view = d.jview;
-    else if (d.jnew !== undefined){ const area = jobArea(); jobUI.form = { mode:"new", job:{ id:nextJobId(area), area, requestDate:TODAY, requester:"Marketing", brand:myBrands()[0], ...(area === "CM" ? { piece:CM_TYPES[0] } : area === "Contenidos" ? { piece:CONT_TYPES[0] } : dgDefault(dgPageSec())), title:"", owner:"Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due:"", link:"", notes:"", post:null } }; }
+    else if (d.jnew !== undefined){ const area = jobArea(); jobUI.form = { mode:"new", job:{ id:nextJobId(area), area, requestDate:TODAY, requester:"Marketing", brand:myBrands()[0], ...(area === "CM" ? { piece:CM_TYPES[0] } : area === "Contenidos" ? { piece:CONT_TYPES[0] } : dgDefault(dgPageSec())), title:"", owner:area === "Contenidos" && !canCreateJobs() ? viewer.name : "Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due:"", link:"", notes:"", post:null } }; }
     else if (d.jedit){ jobUI.ficha = null; jobUI.form = { mode:"edit", job:{ ...find(d.jedit) } }; }
     else if (d.jdup){ const o = find(d.jdup); jobUI.form = { mode:"dup", job:{ ...o, id:nextJobId(o.area), requestDate:TODAY, status:"Pendiente", delivered:null, approved:null, post:null, pub:null, pubs:null } }; }
     else if (d.jdel){ if (!confirmTap(jt, "job:" + d.jdel, "¿Seguro? Tocá de nuevo")) return;
-      const o = find(d.jdel); if (!o) return; jobs.splice(jobs.indexOf(o), 1); if (jobUI.form?.job?.id === o.id) jobUI.form = null; toast(`Pedido “${o.title}” borrado.`); }
+      const o = find(d.jdel); if (!o || !(canCreateJobs() || canDelJob(o))) return; NOTIFS.forEach(n => { if (n.job === o.id) n.read = true; }); jobs.splice(jobs.indexOf(o), 1); if (jobUI.form?.job?.id === o.id) jobUI.form = null; toast(`Pedido “${o.title}” borrado.`); }
     else if (d.jclose !== undefined) jobUI.form = null;
     render(); return; }
   if (e.target.closest("[data-bdclear]")){ viewer.birthday = null; render(); toast("Quitaste tu cumpleaños."); return; }
@@ -12631,14 +12694,24 @@ document.addEventListener("submit", e => {
     const past = f.mode !== "edit" && due < TODAY, key = "jpast:" + j.id + ":" + due;
     if (past && !(sureKey === key && Date.now() - sureAt < 8000)){ sureKey = key; sureAt = Date.now(); toast(`Ojo: la fecha límite ${dm(due)} ya pasó. Si está bien, tocá “Guardar” de nuevo.`); return; }
     sureKey = "";
+    const own = j.area === "Contenidos" && !canCreateJobs(); // v239: el CM con su propio contenido gráfico
+    if (own && (!cmOwnCont() || (f.mode === "edit" && !canEditJob(jobById(j.id))))){ toast("Este contenido no lo podés editar."); return; }
+    if (rtUploading(document.getElementById("jCopyF"))){ toast("Esperá que termine de subir la imagen del copy."); return; }
+    if (j.area === "Contenidos"){ const t = { ...j }; readJobForm(t); const wasConf = !!jobById(j.id)?.copyConf;
+      if (t.copyConf && !jcopyHas(t)){ toast("Escribí el copy en la hoja para marcarlo como “Copy confirmado” (o destildalo)."); return; }
+      if (own && f.mode !== "edit" && t.status === "Boceto finalizado" && !jcopyOk(t)){ toast("Para cargarlo en Boceto finalizado falta el copy: escribilo (o marcá “No lleva copy”). Se manda junto con el diseño."); return; }
+      if (t.copyConf && !wasConf) copyLogAdd(j, "conf"); }
     readJobForm(j); j.title = title; j.due = due; if (Array.isArray(j.links)) j.links = j.links.filter(Boolean);
-    if (!j.repOf){ const ru = document.getElementById("jRepUntil")?.value || ""; if (f.repDays?.length) j.rep = { days:[...f.repDays], until:ru }; else delete j.rep; }
+    if (own){ j.owner = viewer.name; delete j.rep; j.status = f.mode === "edit" ? jobById(j.id).status : CONT_NEW_ST.includes(j.status) ? j.status : "Pendiente"; }
+    if (!j.repOf && !own){ const ru = document.getElementById("jRepUntil")?.value || ""; if (f.repDays?.length) j.rep = { days:[...f.repDays], until:ru }; else delete j.rep; }
     if (isFin(j) && !j.delivered) j.delivered = TODAY;
     const prevOwner = f.mode === "edit" ? jobById(j.id)?.owner : null;
     const prevPubCm = f.mode === "edit" ? jobById(j.id)?.pubCm || jobPubsOf(jobById(j.id))[0]?.cm || "" : "";
     if (f.mode === "edit"){ Object.assign(jobs.find(x => x.id === j.id), j); } else { if (!j.byId) j.byId = viewer.id; jobs.push(j); } // byId: quién lo cargó (para el chat del pedido)
     if (j.area === "Diseño" && (j.pubCm || prevPubCm)) syncJobPubs(jobById(j.id), prevPubCm);
     if (j.owner && j.owner !== "Sin asignar" && j.owner !== prevOwner && j.owner !== viewer.name) notify({ to:j.owner, type:"nuevo", job:j.id }); // le llega el aviso a quien lo tiene que hacer
+    // v239: el CM lo carga ya terminado → igual que al tocar “Boceto finalizado”: versión 1 y aviso a Admin total para revisar
+    if (own && f.mode !== "edit" && j.status === "Boceto finalizado"){ if (!j.noCopy && !j.copyConf) copyLogAdd(j, "send"); (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), kind:"boceto", by:viewer.name, fix:false, link:j.designLink || "" }); notify({ to:"admin", type:"review", job:j.id, who:viewer.name, fix:false }); }
     // Lo que se carga se ve enseguida: va a su sección, su mes y su marca (y sin filtros que lo escondan).
     const to = jobSection(j), moved = to !== page; MONTH = m;
     if (moved && can(to) && !isPlanPage() && page !== "caldg" && !CM_CAL_KIND[page]) page = to; // desde el Plan de posteo o un calendario de CM se queda donde estaba
