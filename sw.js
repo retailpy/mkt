@@ -27,7 +27,7 @@ self.addEventListener("push", e => {
   let d = {}; try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data && e.data.text() }; }
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(cs => {
     if (cs.some(c => c.focused && c.visibilityState === "visible")) return; // si la app está a la vista, avisa la propia app
-    return self.registration.showNotification(d.title || "Chat Retail MKT", { body: d.body || "", tag: d.tag || "rmh-chat", renotify: true, icon: "./icon-192.png", badge: "./icon-192.png", data: { open: d.open || "", go: d.go || "" } });
+    return self.registration.showNotification(d.title || "Chat Retail MKT", { body: d.body || "", tag: d.tag || "rmh-chat", renotify: true, icon: "./icon-192.png", badge: "./icon-192.png", ...(d.vibrate ? { vibrate: d.vibrate, requireInteraction: true } : {}), data: { open: d.open || "", go: d.go || "" } });
   }));
 });
 self.addEventListener("notificationclick", e => {

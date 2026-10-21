@@ -3108,6 +3108,7 @@ const SECTIONS = [
   { g:"General", k:"mensajes", l:"Chat Retail MKT", i:"messages-square" },
   { g:"General", k:"comercial", l:"Comercial", i:"tags", virtual:true }, // ofertas publicadas de cada quincena (Excel de Comercial)
   { g:"General", k:"notas", l:"Bloc de notas", i:"notebook-pen" },
+  { g:"General", k:"aviso", l:"Aviso", i:"siren", virtual:true }, // solo Admin total: mensaje emergente al momento, con sonido y vibración (a personas, CM, Diseño o todos)
   { g:"Diseño gráfico", k:"paneldg", l:"Panel de Trabajo Diseño gráfico", n:"Panel de Trabajo", i:"layout-grid", virtual:true }, // acceso visual a las categorías de Diseño (no es un permiso aparte)
   { g:"Diseño gráfico", k:"caldg", l:"Planificación Diseño gráfico", n:"Planificación", i:"calendar-days", virtual:true }, // todas las entregas de Diseño en su fecha (mías o de todo el equipo)
   { g:"Diseño gráfico", k:"cargadiseno", l:"Carga de trabajo Diseño gráfico", n:"Carga de trabajo", i:"gauge" },
@@ -4846,7 +4847,7 @@ function lucideFull(){
 if (!window.lucide) window.lucide = { createIcons(){ document.querySelectorAll("i[data-lucide]").forEach(el => { const n = el.getAttribute("data-lucide"); if (ICONS[n]) el.outerHTML = svgIcon(n, el.getAttribute("class") || ""); else lucideFull(); }); } };
 const icon = n => ICONS[n] ? svgIcon(n) : (lucideFull(), `<i data-lucide="${n}"></i>`);
 // Vistas TV, Usuarios y Carga de trabajo: solo Admin total (aunque el permiso esté marcado).
-const ONLY_AT = ["tv","tvredes","tvimpacto","usuarios","sugerencias","encuestas"]; // Encuestas y sugerencias: solo Admin total (también en la base)
+const ONLY_AT = ["tv","tvredes","tvimpacto","usuarios","sugerencias","encuestas","aviso"]; // Encuestas y sugerencias: solo Admin total (también en la base)
 const ONLY_ADMINS = ["historial","historialcm","pauta","reportes"]; // Historial de Diseño y de CM, Meta Ads e Informe mensual: solo Admin total y Admin
 // Todo el equipo ve los Paneles de Trabajo (y sus categorías), la Planificación, la Carga de trabajo de Diseño y de CM
 // y el Informe Redes (Diseño y CM incluidos). Meta Ads (pauta) y el Informe del mes siguen solo para Admin total y Admin.
@@ -10473,6 +10474,7 @@ const GUIDE = [
     ["bell","Alertas","Todo lo pendiente en un solo lugar. Desde cada alerta podés responder, aprobar, pedir correcciones o ir a ver."],
     ["megaphone","Avisos","Comunicados de Admin total para todos, para un grupo (Diseño gráfico, CM, admins) con fecha de inicio y fin. Aparecen arriba en Inicio hasta que tocás “Entendido”; Admin total ve cuántos lo leyeron."],
     ["messages-square","Chat Retail MKT","Grupos y mensajes privados del equipo, en tiempo real. Podés mandar fotos (tocá el ícono de imagen en el campo de texto: se achican solas y se guardan en Google Drive, en la carpeta del mes), emojis, stickers y GIFs. Arriba de los mensajes directos estás vos: escribite notas, links o fotos, como en WhatsApp. Mantené apretado un mensaje (o clic derecho en la compu) para responder, reenviar, copiar, editar o eliminar. La goma de arriba vacía la conversación solo para vos."],
+    ["siren","Aviso","Solo Admin total: un mensaje al momento (ej. “Tenemos reunión a las 15 h”) a todos, solo a CM, solo a Diseño gráfico o a personas puntuales. Les sale la ventana emergente con sonido y vibración y queda en su Inicio hasta que tocan “Entendido”."],
     ["notebook-pen","Bloc de notas","Tus notas y checklists privadas. “+ Reunión” arma una lista para la minuta. Cambiás el orden arrastrando desde ⋮⋮ o con las flechitas."]]],
   ["Planificación", [
     ["target","Planificación del mes","Arriba, siempre, los Objetivos principales: las tres prioridades del área (Admin total las edita). Debajo, todo en una página: Objetivos del mes (por equipo, Diseño gráfico y CM: verbo, qué y para qué), Campañas del mes y Lo que se viene. Admin total agrega con los botones “Agregar” y edita tocando cualquier objetivo, campaña o punto de lo que se viene. Cada cosa tiene su fecha (desde y hasta) y se ve en cada mes hasta que termina: lo que se carga en octubre para noviembre sigue apareciendo en noviembre. Una campaña puede ser de una o de varias marcas: “Las tres” marca Superseis, Stock y Delimarket juntas (por ejemplo, Halloween o Navidad). En campañas y en lo que se viene se elige un ícono (Verano, Carnaval, Vuelta a clases, Navidad, Año Nuevo y las demás fechas del año, u otros); si no se elige, sale solo según el título."]]],
@@ -10520,7 +10522,7 @@ const GUIDE = [
 ];
 let guideQ = "";
 function pGuia(){
-  const q = guideQ.trim().toLowerCase(), groups = GUIDE.map(([g, items]) => [g, items.filter(([, t, d]) => !({ Encuestas:1, Sugerencias:1 }[t] && !can(t.toLowerCase())) && (!q || (t + " " + d).toLowerCase().includes(q)))]).filter(([, it]) => it.length);
+  const q = guideQ.trim().toLowerCase(), groups = GUIDE.map(([g, items]) => [g, items.filter(([, t, d]) => !({ Encuestas:1, Sugerencias:1, Aviso:1 }[t] && !can(t.toLowerCase())) && (!q || (t + " " + d).toLowerCase().includes(q)))]).filter(([, it]) => it.length);
   return `<div class="head"><div><h1>Guía de uso</h1><p class="sub">Qué es cada parte de Retail MKT Hub y para qué sirve. Si recién empezás, arrancá por “Primeros pasos”.</p></div></div>
   <input class="base guideq" id="guideQ" value="${esc(guideQ)}" placeholder="Buscar: mensajes, pauta, cumpleaños…" aria-label="Buscar en la guía">
   ${groups.map(([g, items]) => `<section class="pmsec"><h2 style="margin:0">${g}</h2><div class="ggrid">${items.map(([ic, t, d]) => { const sec = SECTIONS.find(x => x.l === t) || ({ "Encuestas":{ k:"encuestas" }, "Sugerencias":{ k:"sugerencias" }, "Mi perfil":{ k:"perfil" }, "Configuración":{ k:"config" }, "Completá tu perfil":{ k:"perfil" }, "Elegí cómo ver la app":{ k:"config" }, "Revisá Alertas todos los días":{ k:"alertas" } })[t];
@@ -10536,11 +10538,11 @@ let AVISOS = [
   { id:3, title:"Entrega de material para el nuevo local", text:"Todo el material de cartelería del nuevo local de Stock tiene que estar aprobado antes del 10/10.", to:["Diseñador"], level:"Urgente", from:"2026-09-28", until:"2026-10-10", by:"alyssa", date:"2026-09-23", seen:[] },
 ];
 let avUI = { form:false };
-const avFor = (a, pp) => a.to.includes("todos") || a.to.includes(pp.role) || (a.to.includes("admins") && ["Admin total","Admin"].includes(pp.role));
+const avFor = (a, pp) => a.to.includes("todos") || a.to.includes(pp.role) || a.to.includes("p:" + pp.id) || (a.to.includes("admins") && ["Admin total","Admin"].includes(pp.role));
 const avState = a => TODAY < a.from ? "Programado" : TODAY > a.until ? "Vencido" : "Activo";
 const avActiveFor = pp => AVISOS.filter(a => avState(a) === "Activo" && avFor(a, pp));
 const avRange = a => a.from === a.until ? `el ${dm(a.from)}` : `del ${dm(a.from)} al ${dm(a.until)}`;
-const avToLabel = a => a.to.map(t => AV_GROUPS.find(g => g[0] === t)?.[1]).join(", ");
+const avToLabel = a => a.to.map(t => t.startsWith("p:") ? personById(t.slice(2))?.name || "alguien que ya no está" : AV_GROUPS.find(g => g[0] === t)?.[1]).join(", ");
 const avBanner = a => { const L = AV_LEVELS[a.level]; return `<div class="panel avban" style="--c:${L.c}"><span class="avic">${icon(L.ic)}</span><div class="grow"><span class="avlvl">Aviso ${a.level.toLowerCase()} · ${avRange(a)}</span><b>${esc(a.title)}</b><p>${esc(a.text)}</p></div><button class="btn" data-avok="${a.id}">Entendido</button></div>`; };
 function pAvisos(){
   const at = viewer.role === "Admin total";
@@ -10561,7 +10563,7 @@ function pAvisos(){
     <div class="chips" style="grid-column:1/-1;justify-content:flex-end"><button class="btn" type="button" data-avnew>Cancelar</button><button class="btn primary" type="submit">Publicar aviso</button></div></form>` : ""}
   ${groups.map(([st, list]) => list.length ? `<h2 style="margin:0">${st === "Activo" ? "Activos ahora" : st === "Programado" ? "Programados" : "Vencidos"} <span class="note">(${list.length})</span></h2><div class="avlist">${list.map(a => avCard(a, true)).join("")}</div>` : "").join("")}`;
 }
-function avCard(a, admin){ const L = AV_LEVELS[a.level], st = avState(a), n = PEOPLE.filter(pp => pp.active && avFor(a, pp) && pp.role !== "Admin total"), seen = n.filter(pp => a.seen.includes(pp.id)).length;
+function avCard(a, admin){ const L = AV_LEVELS[a.level], st = avState(a), n = PEOPLE.filter(pp => pp.active && avFor(a, pp) && (a.flash ? pp.id !== a.by : pp.role !== "Admin total")), seen = n.filter(pp => a.seen.includes(pp.id)).length;
   return `<article class="panel avcard ${st.toLowerCase()}" style="--c:${L.c}"><header><span class="avlvl">${icon(L.ic)} ${a.level}</span><span class="avst">${st}</span>${admin ? `<button class="btn danger sm ib" data-avdel="${a.id}" aria-label="Borrar aviso">${icon("trash-2")}</button>` : ""}</header>
     <h3>${esc(a.title)}</h3><p>${esc(a.text)}</p>
     <footer><span>${icon("calendar")} Se muestra ${avRange(a)}</span><span>${icon("users")} ${avToLabel(a)}</span>${admin ? `<span>${icon("eye")} Lo marcaron como entendido ${seen} de ${n.length}</span>` : ""}</footer></article>`; }
@@ -10570,7 +10572,7 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-avnew]")){ avUI.form = !avUI.form; render(); return; }
   const q = e.target.closest("[data-avq]"); if (q){ $("#avFrom").value = TODAY; $("#avUntil").value = addDays(TODAY, +q.dataset.avq); return; }
   const d = e.target.closest("[data-avdel]"); if (d){ AVISOS.splice(AVISOS.findIndex(a => a.id === +d.dataset.avdel), 1); render(); toast("Aviso borrado."); return; }
-  const ok = e.target.closest("[data-avok]"); if (ok){ const a = AVISOS.find(x => x.id === +ok.dataset.avok); if (!a.seen.includes(viewer.id)) a.seen.push(viewer.id); render(); toast("Listo. El aviso sigue en la sección Avisos."); }
+  const ok = e.target.closest("[data-avok]"); if (ok){ const a = AVISOS.find(x => x.id === +ok.dataset.avok); if (a && !a.seen.includes(viewer.id)) a.seen.push(viewer.id); render(); toast("Listo. El aviso sigue en la sección Avisos."); }
 });
 document.addEventListener("submit", e => {
   if (e.target.id !== "avForm") return; e.preventDefault();
@@ -10579,6 +10581,41 @@ document.addEventListener("submit", e => {
   if (until < from){ toast("La fecha “hasta” no puede ser anterior a “desde”."); return; }
   AVISOS.push({ id:Math.max(0, ...AVISOS.map(a => a.id)) + 1, title:$("#avTitle").value.trim(), text:$("#avText").value.trim(), to:to.includes("todos") ? ["todos"] : to, level:$("#avLevel").value, from, until, by:viewer.id, date:TODAY, seen:[] });
   avUI.form = false; render(); toast(from > TODAY ? `Aviso programado: se va a mostrar desde el ${dm(from)}.` : "Aviso publicado: ya lo ven en su Inicio.");
+});
+// ---------- Aviso (botonera, debajo de Bloc de notas): solo Admin total ----------
+// Un mensaje al momento (ej. “Tenemos reunión a las 15 h”) a personas puntuales, solo CM, solo Diseño gráfico o todos. Se guarda
+// como un Aviso del equipo de hoy (flash: true, to: grupos o "p:<persona>"): a quien le toca le sale enseguida la ventana
+// emergente con su propio sonido y vibración (celular), la notificación con la app cerrada (chat-push) y queda en su Inicio
+// hasta que toca “Entendido” o termina el día.
+const AX_TO = [["todos","Todos"],["CM","Solo CM"],["Diseñador","Solo Diseño gráfico"],["personas","Elegir personas"]];
+let axUI = { to:"todos", ppl:[], text:"" };
+const axPeople = () => PEOPLE.filter(pp => pp.active !== false && pp.id !== viewer.id).sort((a, b) => a.name.localeCompare(b.name));
+const axHM = iso => { try { return new Date(iso).toLocaleTimeString("es-PY", { hour:"2-digit", minute:"2-digit", hour12:false, timeZone:"America/Asuncion" }); } catch { return ""; } };
+function pAviso(){
+  const sent = AVISOS.filter(a => a.flash && a.date >= addDays(TODAY, -6)).sort((a, b) => String(b.at || b.date).localeCompare(String(a.at || a.date)));
+  return `<div><h1>Aviso</h1><p class="sub">Mandá un mensaje al momento: a todos, solo a CM, solo a Diseño gráfico o a las personas que elijas. Les sale enseguida una ventana emergente con sonido y vibración (en el celular), y si tienen la app cerrada les llega la notificación. Queda en su Inicio hasta que tocan “Entendido” o hasta que termina el día.</p></div>
+  <form class="panel pform avform" id="axForm"><h3 style="margin:0;grid-column:1/-1">${icon("siren")} Nuevo aviso</h3>
+    <label class="w3">Mensaje<textarea class="base" id="axText" rows="3" required maxlength="400" placeholder="Ej.: Tenemos reunión a las 15:00 en la sala de reuniones.">${esc(axUI.text)}</textarea></label>
+    <fieldset class="w3 avto"><legend>¿Para quién?</legend>${AX_TO.map(([k, l]) => `<label class="hck"><input type="radio" name="axTo" value="${k}" ${axUI.to === k ? "checked" : ""}>${l}</label>`).join("")}</fieldset>
+    ${axUI.to === "personas" ? `<fieldset class="w3 avto axppl"><legend>Personas (${axUI.ppl.length} elegidas)</legend>${axPeople().map(pp => `<label class="hck"><input type="checkbox" name="axP" value="${esc(pp.id)}" ${axUI.ppl.includes(pp.id) ? "checked" : ""}>${esc(pp.name)} <span class="note">· ${esc(pp.role === "Diseñador" ? "Diseño gráfico" : pp.role)}</span></label>`).join("")}</fieldset>` : ""}
+    <div class="chips" style="grid-column:1/-1;justify-content:flex-end"><button class="btn primary" type="submit">${icon("send")} Enviar aviso ahora</button></div></form>
+  <h2 style="margin:0">Enviados en los últimos 7 días ${sent.length ? `<span class="note">(${sent.length})</span>` : ""}</h2>
+  ${sent.length ? `<div class="avlist">${sent.map(a => avCard(a, true)).join("")}</div>` : `<div class="panel"><div class="empty">Todavía no mandaste avisos.</div></div>`}`;
+}
+document.addEventListener("input", e => { if (e.target.id === "axText") axUI.text = e.target.value; });
+document.addEventListener("change", e => {
+  if (e.target.name === "axTo"){ axUI.to = e.target.value; render(); return; }
+  if (e.target.name === "axP"){ axUI.ppl = [...document.querySelectorAll('input[name="axP"]:checked')].map(x => x.value); const lg = document.querySelector(".axppl legend"); if (lg) lg.textContent = `Personas (${axUI.ppl.length} elegidas)`; }
+});
+document.addEventListener("submit", e => {
+  if (e.target.id !== "axForm") return; e.preventDefault();
+  if (viewer.role !== "Admin total") return;
+  const text = $("#axText").value.trim(), to = axUI.to === "personas" ? axUI.ppl.filter(id => personById(id)).map(id => "p:" + id) : [axUI.to];
+  if (!text){ toast("Escribí el mensaje del aviso."); return; }
+  if (!to.length){ toast("Elegí al menos una persona."); return; }
+  AVISOS.push({ id:Math.max(0, ...AVISOS.map(a => a.id)) + 1, title:`Aviso de ${viewer.name}`, text, to, level:"Urgente", from:TODAY, until:TODAY, by:viewer.id, date:TODAY, at:new Date().toISOString(), flash:true, seen:[] });
+  const n = PEOPLE.filter(pp => pp.active !== false && pp.id !== viewer.id && avFor(AVISOS[AVISOS.length - 1], pp)).length;
+  axUI = { to:axUI.to, ppl:axUI.ppl, text:"" }; render(); toast(`Aviso enviado a ${n} ${n === 1 ? "persona" : "personas"}.`);
 });
 function pPerfil(){
   const v = viewer;
@@ -10849,7 +10886,9 @@ function jobPopCheck(){
   jobPop.items = [...jobPop.items.filter(n => !fresh.some(f => jobPopId(f) === jobPopId(n))), ...fresh].slice(-4);
   jobPopShow();
   const last = fresh[fresh.length - 1], quiet = isDnd();
-  if (!quiet) jobSound(fresh.some(n => n.type === "entrega") ? "due" : JOBPOP[last.type].k); // las entregas tienen su propio sonido (alarma)
+  const flash = fresh.some(n => n.type === "aviso" && n.av.flash); // Aviso de Admin total (botón Aviso): sonido propio y vibración
+  if (!quiet) jobSound(flash ? "aviso" : fresh.some(n => n.type === "entrega") ? "due" : JOBPOP[last.type].k); // las entregas tienen su propio sonido (alarma)
+  if (!quiet && flash) try { navigator.vibrate?.([500, 200, 500, 200, 500]); } catch {}
   if (!quiet) jobLocalNotify(fresh);
   jobTitleBlink(fresh.length);
 }
@@ -10919,6 +10958,7 @@ function jobPopInfo(n){
   if (n.demo) return n.type === "chat" ? { ...P, go:"", t:"Team MKT", title:"Ejemplo: ¿Ya está lista la historia del finde?", m:"" }
     : { ...P, go:"", title:n.type === "fix" ? "Ejemplo: Post Día de la Madre" : "Ejemplo: Historia ofertas del finde", m:n.type === "fix" ? "“Cambiar la foto principal y agrandar el precio”" : "Superseis · Historia · fecha límite " + dm(addDays(TODAY, 2)) };
   if (n.type === "chat") return { ...P, go:"chat:" + n.open, t:n.name, title:n.from ? `${n.from}: ${n.text}` : n.text, m:n.n > 1 ? `${n.n} mensajes nuevos` : "", ic:n.open.startsWith("g:") ? "messages-square" : "message-circle" };
+  if (n.type === "aviso" && n.av.flash){ const a = n.av, pp = personById(a.by); return { ...P, k:"due", go:"inicio", t:`Aviso de ${pp ? pp.name : "Admin total"}`, title:a.text, m:a.at ? `Enviado a las ${axHM(a.at)} h` : "", ic:"siren", c:"#ef4444" }; } // del botón Aviso (Admin total)
   if (n.type === "aviso"){ const a = n.av, L = AV_LEVELS[a.level] || AV_LEVELS.Informativo; return { ...P, go:"inicio", t:`Aviso ${String(a.level || "informativo").toLowerCase()} del equipo`, title:a.title, m:`${a.text} · ${avRange(a)}`, ic:L.ic, c:L.c }; }
   if (n.type === "alerta"){ const a = n.al; return { ...P, go:a.go || "alertas", title:a.t, m:a.m || "", ic:a.ic || "bell", c:/^(#|var\()/.test(a.sev || "") ? a.sev : P.c }; }
   if (n.type === "sug"){ const x = SUGGESTIONS.find(y => y.id === n.sug); return { ...P, go:"sugerencias", title:x ? `${sugNo(x)} · ${x.topic || ""}` : "", m:x ? (x.anon ? "Anónima" : "De " + (PEOPLE.find(pp => pp.id === x.author)?.name || "alguien del equipo")) : "" }; }
@@ -10966,7 +11006,7 @@ document.addEventListener("click", e => {
 document.addEventListener("keydown", e => { if (e.key === "Escape" && jobPop.items.length && !document.querySelector(".imodal,#fixpop")){ jobPop.items = []; jobPopShow(); } });
 // Sonidos (hechos con el navegador, sin archivos): trabajo nuevo (y avisos) = tres notas que suben, suaves, tipo campanita;
 // corrección = dos notas que bajan, repetidas una vez más bajito; mensaje del chat = dos notas cortas; entrega (Diseño o CM) de hoy
-// o atrasada = repique rápido tipo despertador, dos veces. El navegador los deja sonar después del primer toque en la app.
+// o atrasada = repique rápido tipo despertador, dos veces; Aviso de Admin total (botón Aviso) = “din-don” tres veces. El navegador los deja sonar después del primer toque en la app.
 const jobSound = (() => {
   let ctx = null;
   const ac = () => { try { if (!ctx){ const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; ctx = new A(); } if (ctx.state === "suspended") ctx.resume().catch(() => {}); } catch { ctx = null; } return ctx; };
@@ -10985,6 +11025,7 @@ const jobSound = (() => {
     const t = c.currentTime + 0.03;
     if (kind === "fix") [[880, 0, 0.5, 0.5], [659.25, 0.17, 0.75, 0.45], [880, 0.62, 0.45, 0.28], [659.25, 0.79, 0.8, 0.26]].forEach(([f, at, d, v]) => bell(c, out, f, t + at, d, v));
     else if (kind === "due") [0, 0.62].forEach(at => [1567.98, 1318.51, 1567.98, 1318.51].forEach((f, i) => bell(c, out, f, t + at + i * 0.11, 0.16, 0.34))); // entrega hoy o atrasada: “ring-ring” de despertador, dos veces
+    else if (kind === "aviso") [0, 0.55, 1.1].forEach(at => [[1318.51, 0, 0.45, 0.4], [987.77, 0.2, 0.6, 0.38]].forEach(([f, d0, d, v]) => bell(c, out, f, t + at + d0, d, v))); // Aviso de Admin total: “din-don” tres veces
     else if (kind === "msg") [[987.77, 0, 0.22, 0.34], [1318.51, 0.1, 0.35, 0.3]].forEach(([f, at, d, v]) => bell(c, out, f, t + at, d, v)); // mensaje del chat: “tu-tín” corto
     else [[783.99, 0, 0.7, 0.42], [1046.5, 0.13, 0.75, 0.4], [1318.51, 0.26, 1.1, 0.36]].forEach(([f, at, d, v]) => bell(c, out, f, t + at, d, v));
     jobSound.played = (jobSound.played || 0) + 1; jobSound.lastKind = kind; return true;
@@ -11012,12 +11053,14 @@ function jobPopCfg(){
   return `<section class="panel cfgsec"><h2 class="pmh">${pmIco("bell-ring")}Ventana emergente y sonido</h2>
     <p class="note">Todo lo que te avisa la app sale en una ventana en la pantalla, con sonido: los mensajes del chat (con “Responder”), los Avisos del equipo, los trabajos nuevos y las correcciones, los comentarios y los trabajos aprobados${viewer.role === "Admin total" ? ", lo que queda listo para revisar, las sugerencias y las fallas de Google Drive" : ""}. Al abrir la app también salen las alertas nuevas (lo que vence, sábados, cumpleaños). Suena distinto según lo que llega: mensaje, algo nuevo, una corrección o una entrega de hoy o atrasada, de Diseño o de CM (esa suena como un despertador). Con la app cerrada o en otra pestaña llega la notificación del celular o de la compu (si las activaste en este dispositivo), y cada mañana un resumen de lo de hoy. Con “No molestar” no suena ni llegan notificaciones.</p>
     <div class="cfgopts"><button type="button" class="cfgopt ${on ? "on" : ""}" data-jobsound="on"><b>Con sonido</b><span>Suena cuando llega algo para vos.</span></button><button type="button" class="cfgopt ${on ? "" : "on"}" data-jobsound="off"><b>Sin sonido</b><span>Solo la ventana, en silencio.</span></button></div>
-    <div class="chips" style="margin-top:12px"><button type="button" class="btn" data-jobtest="msg">${icon("message-circle")} Probar: mensaje</button><button type="button" class="btn" data-jobtest="new">${icon("bell-ring")} Probar: trabajo nuevo</button><button type="button" class="btn" data-jobtest="fix">${icon("bell-ring")} Probar: corrección</button><button type="button" class="btn" data-jobtest="due">${icon("alarm-clock")} Probar: entrega atrasada</button></div></section>`;
+    <div class="chips" style="margin-top:12px"><button type="button" class="btn" data-jobtest="msg">${icon("message-circle")} Probar: mensaje</button><button type="button" class="btn" data-jobtest="new">${icon("bell-ring")} Probar: trabajo nuevo</button><button type="button" class="btn" data-jobtest="fix">${icon("bell-ring")} Probar: corrección</button><button type="button" class="btn" data-jobtest="due">${icon("alarm-clock")} Probar: entrega atrasada</button><button type="button" class="btn" data-jobtest="aviso">${icon("siren")} Probar: aviso de Admin total</button></div></section>`;
 }
 document.addEventListener("click", e => {
   const s = e.target.closest("[data-jobsound]"); if (s){ try { localStorage.setItem(JOBSOUND_KEY, s.dataset.jobsound); } catch {} render(); toast(s.dataset.jobsound === "off" ? "Listo: los avisos salen sin sonido en este dispositivo." : "Listo: los avisos suenan en este dispositivo."); return; }
   const t = e.target.closest("[data-jobtest]"); if (!t) return; const k = t.dataset.jobtest;
-  jobPop.items = [{ id:"demo-" + k, type:k === "fix" ? "fix" : k === "msg" ? "chat" : k === "due" ? "entrega" : "nuevo", demo:true }]; jobPopShow();
+  jobPop.items = [k === "aviso" ? { id:"demo-aviso", type:"aviso", av:{ id:0, flash:true, by:"", text:"Ejemplo: Tenemos reunión a las 15:00 en la sala de reuniones.", at:new Date().toISOString() } }
+    : { id:"demo-" + k, type:k === "fix" ? "fix" : k === "msg" ? "chat" : k === "due" ? "entrega" : "nuevo", demo:true }]; jobPopShow();
+  if (k === "aviso") try { navigator.vibrate?.([500, 200, 500, 200, 500]); } catch {}
   setTimeout(() => { if (!jobSound(k, true)) toast("Tocá de nuevo para escuchar el sonido (el navegador lo habilita después de un toque)."); }, 30);
 });
 
@@ -11049,7 +11092,7 @@ function pConfig(){
 document.addEventListener("click", e => { const b = e.target.closest("[data-pref]"); if (!b) return; const [k, val] = b.dataset.pref.split("|"); viewer[k] = val; savePrefs(viewer); applyPrefs(); render();
   toast(k === "theme" ? `Listo: versión ${val === "light" ? "clara" : "oscura"}.` : k === "textSize" ? `Texto ${val === "big" ? "grande" : "normal"}.` : val === "off" ? "Animaciones desactivadas." : "Animaciones activadas."); });
 const EYEBROW = { gcm:"Community Manager", calact:"Community Manager", contenidos:"Community Manager", escraches:"Community Manager", bienvenida:"Edición beta", comercial:"Ofertas", reclamos:"Community Manager", ideas:"Community Manager", inbox:"Community Manager", noticias:"Community Manager", tendg:"Diseño gráfico", tencm:"Community Manager", paneldg:"Diseño gráfico", panelcm:"Community Manager", caldg:"Diseño gráfico", calcm:"Community Manager", web:"Diseño gráfico", pantallas:"Diseño gráfico", sabados:"Equipo", caldiseno:"Redes sociales", cartel:"Diseño gráfico", calcartel:"Cartelería", historialcm:"Community managers", gestioncm:"Community managers", avisos:"Comunicados del equipo", prompts:"Inteligencia artificial", guia:"Ayuda", archivos:"Diseños y archivos", encuestas:"La voz del equipo", planmes:"Hacia dónde vamos", notas:"Tu espacio", mensajes:"Comunicación interna", sugerencias:"Buzón confidencial", tvimpacto:"Pantalla de oficina", inicio:"Panel general", alertas:"Control", calendario:"Community managers", calhistoria:"Community managers", calcanales:"Community managers", cargadiseno:"Diseño gráfico", cargacm:"Community managers", plan:"Contenidos", pedidos:"Diseño gráfico", tv:"Equipo de diseño", historial:"Diseño gráfico", pauta:"Meta Ads", redes:"Audiencia", reportes:"Resultados del mes", usuarios:"Administración", perfil:"Tu cuenta", cumples:"Equipo", dashboard:"Visión general", tvredes:"Pantalla de oficina", staff:"Equipo", config:"Tu cuenta" };
-const PAGES = { gcm:pGestCM, calact:pCalAct, contenidos:pContenidos, escraches:pEscraches, bienvenida:pBienvenida, ideas:pIdeas, inbox:pInbox, reclamos:pReclamos, noticias:pNoticias, comercial:pComercial, tendg:() => pTend("dg"), tencm:() => pTend("cm"), paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), caldg:pCalDG, calcm:pPlan, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
+const PAGES = { gcm:pGestCM, calact:pCalAct, contenidos:pContenidos, escraches:pEscraches, bienvenida:pBienvenida, ideas:pIdeas, inbox:pInbox, reclamos:pReclamos, noticias:pNoticias, comercial:pComercial, tendg:() => pTend("dg"), tencm:() => pTend("cm"), paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), caldg:pCalDG, calcm:pPlan, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, aviso:pAviso, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
 
 /* ---------- render ---------- */
 // Barra de pestañas abajo (celular), como en cualquier app: lo que más usa cada rol + “Más” para el menú completo.

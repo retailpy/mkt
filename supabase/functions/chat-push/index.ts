@@ -122,7 +122,7 @@ async function jobPush(cfg: any, items: any[]) {
 }
 
 // Avisos del equipo (s:AVISOS, v228): cuando Admin total publica uno que ya está vigente, les llega a las personas de ese
-// grupo (todo el equipo, Diseño, CM o Admins), menos a quien lo publicó. Con “No molestar”, sin aviso.
+// grupo (todo el equipo, Diseño, CM o Admins) o a las personas elegidas ("p:<persona>", botón Aviso), menos a quien lo publicó. Con “No molestar”, sin aviso.
 const AV_ICO: Record<string, string> = { Informativo: "📢", Importante: "⚠️", Urgente: "🚨" };
 async function avisoPush(cfg: any, items: any[]) {
   const list = (Array.isArray(items) ? items : []).filter((a) => a && a.title && Array.isArray(a.to)).slice(0, 10);
@@ -132,11 +132,12 @@ async function avisoPush(cfg: any, items: any[]) {
   const now = Date.now();
   let sent = 0;
   for (const a of list) {
-    const to = (members || []).filter((m) => a.to.includes("todos") || a.to.includes(m.role) || (a.to.includes("admins") && ["Admin total", "Admin"].includes(m.role)))
+    const to = (members || []).filter((m) => a.to.includes("todos") || a.to.includes(m.role) || a.to.includes("p:" + m.person_id) || (a.to.includes("admins") && ["Admin total", "Admin"].includes(m.role)))
       .map((m) => m.person_id).filter((id) => id !== a.by && !isDnd(presence[id], now));
     if (!to.length) continue;
     const range = a.from === a.until ? `el ${dm(a.from)}` : `del ${dm(a.from)} al ${dm(a.until)}`;
-    const payload = JSON.stringify({ title: `${AV_ICO[a.level] || "📢"} Aviso ${String(a.level || "informativo").toLowerCase()}: ${short(String(a.title), 60)}`,
+    // Botón Aviso (flash): el mensaje de Admin total tal cual, con vibración y sin que se cierre solo.
+    const payload = a.flash ? JSON.stringify({ title: `🚨 ${short(String(a.title), 60)}`, body: short(String(a.text || ""), 220), tag: "rmh-av-" + a.id, open: "", go: "inicio", vibrate: [500, 200, 500, 200, 500] }) : JSON.stringify({ title: `${AV_ICO[a.level] || "📢"} Aviso ${String(a.level || "informativo").toLowerCase()}: ${short(String(a.title), 60)}`,
       body: short(`${a.text || ""}\n${range}`, 220), tag: "rmh-av-" + a.id, open: "", go: "inicio" });
     sent += await send(cfg, [...new Set(to)], () => payload);
   }
