@@ -1,4 +1,5 @@
 <!doctype html>
+<html lang="es">
 <meta charset="utf-8">
 <title>Retail MKT Hub</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1513,6 +1514,7 @@ html.light .cpemo button{filter:invert(1) hue-rotate(180deg)} /* la hoja queda b
 .pubsum .pubpct span{color:var(--ink)}
 .dgpanhint{margin:8px 0 0}.dgpanlist{margin-top:12px}
 .dgtblbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:4px 0 10px}.dgtblbar label{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
+.appver{display:flex;align-items:center;gap:6px;margin:6px 0 0}.appver svg{width:15px;height:15px;color:#34d399}.appver b{color:var(--ink)}
 .thsort{all:unset;cursor:pointer;font-weight:700;white-space:nowrap}.thsort:hover,.thsort:focus-visible{text-decoration:underline}.thsort.on{color:#67e8f9}
 .dgtbl td{vertical-align:middle}
 /* v211 · Publicación de un diseño todavía sin aprobar; Diseños en camino (Planificación de CM) */
@@ -1539,7 +1541,7 @@ html.light .cpemo button{filter:invert(1) hue-rotate(180deg)} /* la hoja queda b
 .inflp{margin-top:16px}.inflic{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:color-mix(in srgb,var(--c) 22%,transparent);font-size:17px;flex:none}
 .inflform{display:grid;grid-template-columns:2fr .7fr 1.2fr 1.2fr;gap:10px;align-items:end;margin-top:14px;padding-top:14px;border-top:1px solid var(--line-2)}
 .inflform>b{grid-column:1/-1}.inflform label{display:grid;gap:4px;font-size:12.5px;color:var(--muted)}.inflform .chips{grid-column:1/-1}
-@media (max-width:700px){.inflform{grid-template-columns:1fr 1fr}.inflform label:first-of-type{grid-column:1/-1}}
+@media (max-width:1023px){.inflform{grid-template-columns:1fr 1fr}.inflform label:first-of-type{grid-column:1/-1}}
 .bsel{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
 /* usuarios */
 .avatar{width:34px;height:34px;border-radius:12px;display:grid;place-items:center;font-weight:700;font-size:12px;color:#fff;background:linear-gradient(to bottom right,#22d3ee,#2563eb);flex:none}
@@ -2679,6 +2681,13 @@ td .pgauge .pglab{display:none}
 .avban > .btn{flex:none;align-self:center}
 
 /* v61 · iPad: igual que computadora, menú al costado */
+/* v229 · Tablet (768 a 1279 px): que se vea toda la información, como en el celular y en la compu */
+@media (min-width:768px) and (max-width:1279px){
+  .list .row{flex-wrap:wrap;row-gap:8px}
+  .list .row > .grow:first-child{flex:1 1 260px;min-width:min(260px,100%)} /* el título del trabajo no queda en una columna finita: los botones bajan */
+  .cal .ev,.cal .ev span,.cal .ev b,.ev span,.acard{overflow-wrap:break-word;hyphens:auto;-webkit-hyphens:auto} /* palabras enteras (o con guion), no cortadas al medio */
+  .ibchips{flex-wrap:wrap;overflow:visible} /* las marcas de Mensajes en dos renglones, no escondidas a la derecha */
+}
 @media (min-width:768px) and (max-width:1023px){
   .side{width:208px;padding:16px 12px;gap:16px}
   .logo{gap:8px}
@@ -2688,7 +2697,7 @@ td .pgauge .pglab{display:none}
   .nav-label{padding:0 10px 2px;font-size:10px}
   .side-foot select{font-size:13px}
   .content{padding:18px;gap:18px}
-  .cal{grid-template-columns:repeat(7,150px);min-width:0;width:max-content;gap:6px}
+  .cal{grid-template-columns:repeat(7,128px);min-width:0;width:max-content;gap:6px}
   .cal .d{min-height:104px;padding:6px;border-radius:12px}
   .cal .d .dn{padding:0 4px}
   .loadchart:not(.tv) .lgroups{flex-direction:column;height:auto}
@@ -3022,6 +3031,11 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .plwknav{align-items:center}.plwknav b{display:inline-flex;align-items:center;gap:6px}.plwknav b svg{width:16px;height:16px;color:var(--cyan)}
 .plweek .cal .d{min-height:220px}
 @media (max-width:760px){.cagrid{grid-template-columns:96px repeat(7,minmax(130px,1fr))}.carow{font-size:11px}}
+@media (min-width:768px) and (max-width:1279px){ /* v229 · tablet: entra la semana entera (acostada) y la marca y quién lo hace se leen enteros */
+  .cagrid{grid-template-columns:104px repeat(7,minmax(0,1fr));min-width:880px}
+  .acard .ac-br{font-size:9.5px;letter-spacing:.02em;padding:2px 5px;text-overflow:clip}.acard .ac-m{align-items:flex-start}.acard .ac-m span{white-space:normal;overflow:visible}
+  .acard .ac-t{overflow-wrap:break-word;hyphens:auto;-webkit-hyphens:auto}
+}
 </style>
 
 <div class="login" id="login">
@@ -3486,6 +3500,12 @@ function calMoveTo(kind, id, to){
     toast(`“${j.title}”: ${isFin(j) ? "fecha de finalización" : "fecha de entrega"} del ${dm(from)} al ${dm(to)}${from.slice(0,7) !== to.slice(0,7) ? ` (pasó a ${monthName(to.slice(0,7))})` : ""}.`); }
 }
 
+// Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
+const APP_VER = "v231";
+// v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
+// si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
+const safeToReload = () => !jobUI?.form && !postUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
+  && !(document.getElementById("chatInput")?.value || "").trim();
 if ("serviceWorker" in navigator && location.protocol === "https:" && window.top === window.self) window.addEventListener("load", () => {
   const hadCtrl = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.register("sw.js").then(reg => {
@@ -3494,7 +3514,9 @@ if ("serviceWorker" in navigator && location.protocol === "https:" && window.top
     document.addEventListener("visibilitychange", check); setInterval(check, 30 * 60e3);
   }).catch(() => {});
   // Se publicó una versión nueva: se avisa con un botón (no se recarga sola, así no se pierde lo que se está escribiendo).
-  navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadCtrl) showUpdateBar(); });
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (!hadCtrl) return;
+    if (document.visibilityState === "hidden" && safeToReload()) return location.reload();
+    showUpdateBar(); document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && safeToReload()) Promise.resolve(window.RMH?.flushNow?.()).catch(() => {}).finally(() => location.reload()); }); });
 });
 function showUpdateBar(){
   if (document.getElementById("updBar")) return;
@@ -10949,7 +10971,7 @@ function pConfig(){
   const inst = `<section class="panel cfgsec"><h2 class="pmh">${pmIco("smartphone")}Instalar la app</h2><p class="note">Tenela con su ícono en el celular, la tablet o la computadora: abre a pantalla completa, como cualquier app.</p>
     ${isInstalledApp() ? `<p class="pfid">${icon("check")} Ya la estás usando instalada.</p>` : ""}
     <div class="chips">${installPrompt ? `<button class="btn pgen" type="button" data-installnow>${icon("download")} Instalar ahora</button>` : ""}<button class="btn primary" type="button" data-install>${icon("list-ordered")} Ver cómo instalarla</button></div></section>`;
-  return `<div><h1>Configuración</h1><p class="sub">Tu perfil, cómo querés ver la app e instalarla. Se guarda para vos: cada persona elige lo suyo.</p></div>
+  return `<div><h1>Configuración</h1><p class="sub">Tu perfil, cómo querés ver la app e instalarla. Se guarda para vos: cada persona elige lo suyo.</p><p class="note appver">${icon("badge-check")} Versión de la app en este dispositivo: <b>${APP_VER}</b> · tiene que ser la misma en el celular, la tablet y la compu</p></div>
   <div class="chips cfgtabs" role="tablist">${tabs.map(([k, l, i]) => `<button type="button" role="tab" aria-selected="${cfgTab === k}" class="chip ${cfgTab === k ? "on" : ""}" data-cfgtab="${k}">${icon(i)} ${l}</button>`).join("")}</div>
   ${cfgTab === "perfil" ? `${perfil}` : cfgTab === "instalar" ? inst : cfgTab === "guia" ? pGuia().replace(/^<div class="head"><div><h1>Guía de uso<\/h1>/, '<div class="head"><div><h2 class="pmh" style="margin:0">Guía de uso</h2>') : cfgTab === "notif" ? notifCfg() + jobPopCfg() : cfgTab === "integ" && v.role === "Admin total" ? integCfg() : `<div class="cfggrid">
     <section class="panel cfgsec"><h2>Apariencia</h2><p class="note">Elegí la versión oscura o la clara.</p>
@@ -11004,8 +11026,13 @@ function navResetFor(role){
 document.addEventListener("click", e => { const b = e.target.closest("[data-navtog]"); if (!b) return; e.preventDefault(); const g = b.dataset.navtog;
   navClosed.has(g) ? navClosed.delete(g) : navClosed.add(g); try { localStorage.setItem("rmh-navclosed2", JSON.stringify([...navClosed])); } catch {} renderNav(); if (window.lucide) lucide.createIcons(); });
 // Menú lateral en computadora: completo → reducido (solo íconos) → oculto, y de vuelta. El contenido usa el espacio libre.
+// v229: en la tablet (768 a 1279 px de ancho) arranca reducido, así el contenido entra entero (calendarios, listas). Si la
+// persona elige otro tamaño con las flechas, se respeta; si no, se acomoda solo al girar la tablet.
 const NAV_MODES = ["full","mini","hidden"];
-let navMode = (() => { try { const v = localStorage.getItem("rmh-navmode"); return NAV_MODES.includes(v) ? v : "full"; } catch { return "full"; } })();
+const isTabletW = () => innerWidth >= 768 && innerWidth < 1280;
+const navAuto = () => { try { return !NAV_MODES.includes(localStorage.getItem("rmh-navmode")); } catch { return true; } };
+let navMode = (() => { try { const v = localStorage.getItem("rmh-navmode"); return NAV_MODES.includes(v) ? v : isTabletW() ? "mini" : "full"; } catch { return "full"; } })();
+window.addEventListener("resize", () => { if (!navAuto()) return; const m = isTabletW() ? "mini" : "full"; if (m !== navMode){ navMode = m; applyNavMode(); } });
 function applyNavMode(){ const h = document.documentElement; h.classList.toggle("navmini", navMode === "mini"); h.classList.toggle("navhidden", navMode === "hidden"); }
 applyNavMode();
 document.addEventListener("click", e => { const b = e.target.closest("[data-navmode]"); if (!b) return;
