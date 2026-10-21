@@ -4925,8 +4925,20 @@ notify.here = new WeakSet(); // avisos creados en este dispositivo (no le saltan
 const jobById = id => jobs.find(j => j.id === id);
 // Un aviso de revisión sigue activo mientras el trabajo esté “En revisión”.
 const copyWaits = n => (n.canal ? canalById(n.post) : postById(n.post))?.copySt === "rev"; // copy de la CM esperando a Admin total
-const adminNotifs = () => NOTIFS.filter(n => n.to === "admin" && !n.read && (n.type !== "review" || (n.copy ? copyWaits(n) : REVIEW_WAIT.includes(jobById(n.job)?.status))));
-const myNotifs = () => NOTIFS.filter(n => n.to === viewer.name && !n.read && !(n.job && repLater(jobById(n.job)))); // un repetitivo avisa recién 7 días antes
+// Tus alertas duran poco: quedan las de hoy y las del día hábil anterior (el lunes, desde el viernes); las más viejas se borran solas.
+const alertCutoff = () => addDays(TODAY, new Date(TODAY + "T12:00").getDay() === 1 ? -3 : -1);
+const notifFresh = n => !n.date || n.date >= alertCutoff();
+const adminNotifs = () => NOTIFS.filter(n => n.to === "admin" && !n.read && notifFresh(n) && (n.type !== "review" || (n.copy ? copyWaits(n) : REVIEW_WAIT.includes(jobById(n.job)?.status))));
+const myNotifs = () => NOTIFS.filter(n => n.to === viewer.name && !n.read && notifFresh(n) && !(n.job && repLater(jobById(n.job)))); // un repetitivo avisa recién 7 días antes
+// Abrir el pedido o la publicación ya es atenderlo: se borran sus alertas para quien lo abrió (Admin total, las que le llegaron a él).
+function clearDocAlerts(go, mine){
+  if (!viewer || window.RMH?.previewing) return;
+  NOTIFS.forEach(n => { if (mine(n) && !n.read && (n.to === viewer.name || (n.to === "admin" && viewer.role === "Admin total"))) n.read = true; });
+  const keys = alerts().filter(a => a.go === go).map(a => a.key);
+  if (keys.length){ const g = alertsGone(); keys.forEach(k => g.add(k)); try { localStorage.setItem("rmh-agone-" + viewer.id, JSON.stringify([...g].slice(-300))); } catch {} }
+}
+const clearJobAlerts = j => clearDocAlerts("job:" + j.id, n => n.job === j.id && !n.post);
+const clearPubAlerts = (x, canal) => clearDocAlerts("pub:" + (canal ? "canal:" : "post:") + x.id, n => n.post === x.id && !!n.canal === !!canal);
 function notifAlerts(){
   if (viewer.role === "Admin total") return adminNotifs().map(n => {
     if (n.type === "sug" && !can("sugerencias")) return null;
@@ -6702,6 +6714,7 @@ document.addEventListener("click", async e => {
 function jobFicha(){
   const j = jobUI.ficha && jobById(jobUI.ficha); if (!j) return "";
   markSeen(j); // la persona responsable ya lo abrió: deja de contar en la botonera
+  clearJobAlerts(j);
   const at = viewer.role === "Admin total", p = j.post && postById(j.post), hist = (j.changes || []).slice().reverse();
   const row = (k, v) => v ? `<div><span>${k}</span><b>${v}</b></div>` : "";
   const last = j.status === fixStage(j) && hist.find(c => !c.ok && !c.kind);
@@ -7312,6 +7325,7 @@ function postForm(){
   const f = postUI.form; if (!f) return "";
   if (!f.repDays) f.repDays = [...(f.post.rep?.days || [])];
   const p = f.post, canal = f.kind === "Canal", real = f.mode === "edit" ? (canal ? canalById(p.id) : postById(p.id)) : null;
+  if (real && postForm.cleared !== f){ postForm.cleared = f; clearPubAlerts(real, canal); } // una vez por cada vez que se abre
   const opt = (list, v) => [...new Set([...list, v].filter(Boolean))].map(x => `<option ${x === v ? "selected" : ""}>${esc(x)}</option>`).join("");
   const j = canal ? null : jobs.find(x => x.post === p.id), stages = canal ? CANAL_STAGES : POST_STAGES, cur = stages.indexOf(p.status);
   const what = canal ? "contenido del Canal de WhatsApp" : f.kind === "Historia" ? "historia" : "publicación";
