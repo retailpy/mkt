@@ -597,7 +597,7 @@ tr.tot td{border-top:1px solid var(--line-3)}
 .comdate{display:flex;align-items:center;gap:8px}.comdate svg{width:18px;height:18px;color:#60a5fa;flex:none}
 .comk span{display:inline-flex;align-items:center;gap:5px}.comk svg{width:16px;height:16px;color:#94a3b8}.comk .k-tapa svg{color:#ef4444}.comk .k-redes svg{color:#60a5fa}.comk .k-dest svg,.comk .k-pct svg{color:#fbbf24}
 .comsrc{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}.comsrc .note{display:inline-flex;align-items:center;gap:5px;font-size:12px}.comsrc .note svg{width:13px;height:13px}
-.comgone{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#fca5a5;border:1px solid rgba(239,68,68,.4);border-radius:10px;padding:5px 10px}.comgone svg{width:15px;height:15px}.comhead p{margin:0;color:var(--muted);font-size:14.5px}.comhead p b{color:var(--ink)}.comhead .note{margin-top:6px;font-size:12px}.comhead .note a{color:#60a5fa}.comwarn{display:flex;gap:6px;align-items:center;color:#fbbf24!important}.comwarn svg{width:14px;height:14px}
+.comgone{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#fca5a5;border:1px solid rgba(239,68,68,.4);border-radius:10px;padding:5px 10px}.comgone svg{width:15px;height:15px}.comhead p{margin:0;color:var(--muted);font-size:14.5px}.comhead p b{color:var(--ink)}.comhead .note{margin-top:6px;font-size:12px}.comhead .note a{color:#60a5fa}.cpct.txt{text-transform:none;white-space:normal;font-size:12px;line-height:1.25;text-align:center;max-width:100%;overflow-wrap:anywhere}.ctem{display:inline-flex;align-items:center;font-size:11px;font-weight:800;letter-spacing:.02em;padding:2px 7px;border-radius:999px;border:1px solid rgba(167,139,250,.55);color:#c4b5fd;background:rgba(167,139,250,.12);margin-left:6px;vertical-align:middle;white-space:nowrap}.ctc .ctem{margin:6px 0 0;align-self:flex-start}.comwarn{display:flex;gap:6px;align-items:center;color:#fbbf24!important}.comwarn svg{width:14px;height:14px}
 .comnew{font-style:normal;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(52,211,153,.16);color:#34d399;white-space:nowrap}
 .comalert{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 2px;padding:10px 14px;border-radius:14px;border:1px solid rgba(52,211,153,.45);background:rgba(52,211,153,.1);color:#d1fae5}.comalert svg{width:18px;height:18px;color:#34d399;flex:none}.comalert>div{flex:1 1 220px;min-width:0}.comalert b{color:#fff}
 .cnew{font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:1px 7px;border-radius:999px;background:#34d399;color:#04231a;margin-left:6px;white-space:nowrap}
@@ -3506,7 +3506,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v231";
+const APP_VER = "v232";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -11391,8 +11391,15 @@ const comStName = (st, f) => st === "prox" && (f?.cat || "quincenal") !== "quinc
 const comRange = f => { const [a, b] = [f.from, f.to].map(d => new Date(d + "T12:00")); const mm = d => MONTHS_ES[d.getMonth()];
   return a.getMonth() === b.getMonth() ? `${a.getDate()} al ${b.getDate()} de ${mm(b)}` : `${a.getDate()} de ${mm(a)} al ${b.getDate()} de ${mm(b)}`; };
 // % de descuento solo cuando es un precio rebajado. Si es una promo (2x1, 2 x 28.000…), el descuento queda vacío.
-const comPct = it => { if (typeof it.of !== "number") return ""; if (/^\d{1,2}%$/.test(it.pct || "")) return it.pct;
-  return typeof it.pvp === "number" && it.pvp > it.of ? Math.round((1 - it.of / it.pvp) * 100) + "%" : ""; };
+// Todo tal cual dice el Excel: si la columna está vacía no se muestra nada (no se calcula), y los textos (“PAGUE 3 LLEVE 4”,
+// “2x1”, “COMBO VIRTUAL”, “solo destacar”…) se ven como están escritos.
+const comRaw = v => String(v ?? "").replace(/\s+/g, " ").trim();
+const comPct = it => comRaw(it.pct);
+const comPctNum = pc => /^\d{1,3}%$/.test(pc); // un porcentaje (sale “−27%”); si no, es un texto del Excel y sale tal cual
+const comPctTag = (pc, sm) => `<span class="cpct${sm ? " sm" : ""}${comPctNum(pc) ? "" : " txt"}">${comPctNum(pc) ? "−" : ""}${esc(pc)}</span>`;
+const comPvpTxt = it => typeof it.pvp === "number" ? gs(it.pvp) : comRaw(it.pvp);
+const comTem = it => { const t = comRaw(it.tem); return /^FLEJE$/i.test(t) ? "" : t; }; // temática distinta de la común (FLEJE)
+const comTemTag = it => comTem(it) ? `<span class="ctem">${esc(comTem(it))}</span>` : "";
 // Lectura fácil: el Excel viene todo en mayúsculas y sin acentos. Se pasa a "Papas Fritas Vima Congeladas 1kg" y se corrigen
 // los acentos de palabras comunes (las marcas no se tocan: no están en la lista).
 const COM_LOW = new Set(["de","del","la","las","el","los","y","e","o","con","sin","en","para","por","a","al","x","c/","s/"]);
@@ -11422,7 +11429,7 @@ const COM_ICO = [[/rotiser|confiter|panader|pan\b/, "croissant"], [/carne|carnic
   [/veterin|mascota|perro|gato/, "paw-print"], [/cuidado del hogar|limpieza|lavander/, "spray-can"], [/cuidado personal|perfum|higiene|belleza/, "sparkles"], [/beb[eé]|infantil|nino/, "baby"],
   [/halloween|fiesta|oktober|navidad/, "party-popper"], [/tapa/, "star"]];
 const comIco = s => { const t = rclFold(s); return (COM_ICO.find(([re]) => re.test(t)) || [0, "tag"])[1]; };
-const comOfTxt = it => typeof it.of === "number" ? gs(it.of) : comNice(it.of || "");
+const comOfTxt = it => typeof it.of === "number" ? gs(it.of) : comRaw(it.of);
 // Nombre del producto: el texto del folleto tal cual (columna “DESCRIPCION FOLLETO” del Excel FINAL) o la descripción del sistema, prolija.
 const comName = i => i.fol ? String(i.desc || "").replace(/\s+/g, " ").trim() : comNice(i.desc);
 // Novedad (Excel FINAL): “Nuevo” en el folleto o “Se mantiene” de la quincena anterior. No es lo mismo que el aviso de productos recién cargados.
@@ -11430,7 +11437,7 @@ const comHasNov = f => (f?.sheets || []).some(s => s.items.some(i => i.nov));
 const comNov = i => i.nov ? `<span class="cnov n-${i.nov === "Nuevo" ? "nuevo" : i.nov === "Se mantiene" ? "mant" : "x"}"><small>Novedad: </small>${esc(i.nov)}</span>` : "";
 // Variantes (filas del Excel sin texto de folleto, que van en el mismo cuadro): ¿alguna tiene otro precio?
 const comVarDif = i => (i.vars || []).some(v => v.of !== i.of || v.pvp !== i.pvp);
-const comVarOf = v => typeof v.of === "number" ? gs(v.of) : comNice(v.of || "");
+const comVarOf = v => typeof v.of === "number" ? gs(v.of) : comRaw(v.of);
 const comFind = i => [comName(i), i.desc, i.dsis, i.sector, i.prov, i.cod, i.mat, i.sub, i.nov, ...(i.vars || []).flatMap(v => [v.d, v.cod, v.mat])].join(" ");
 const comSheetName = (x, k, f) => /^PUBLICADAS$/i.test(x.name) || (k === 0 && (f?.cat || "quincenal") === "quincenal") ? "Folleto" : comNice(x.name);
 const comBrand = f => f.brand || "Superseis";
@@ -11464,11 +11471,12 @@ function comEmptyMsg(key){
   return `Todavía no se leyeron las ofertas. Tocá <b>Actualizar</b>.${at ? " Si avisa que falta el script, actualizalo en Configuración → Integraciones." : ""}`;
 }
 const COM_FLAG_TXT = { "Tapa":"Tapa", "Destacar":"Destacado", "Zócalo redes":"Redes", "Publicada":"Publicada", "Confirmado":"Confirmado" };
-const comFlag = it => it.flag ? `<span class="cflag f-${rclFold(COM_FLAG_TXT[it.flag] || "x").replace(/\W/g, "")}">${esc(COM_FLAG_TXT[it.flag] || comNice(it.flag))}</span>` : "";
-const COM_COLS = [["Página / sección", i => comSec(i.sec || i.sector)], ["Producto", i => comName(i)], ["Novedad", i => i.nov || "", i => i.nov], ["Precio normal", i => typeof i.pvp === "number" ? i.pvp : ""], ["Precio oferta", i => typeof i.of === "number" ? i.of : comNice(i.of)],
-  ["Descuento", i => comPct(i)], ["Destacado", i => COM_FLAG_TXT[i.flag] || i.flag || ""], ["Sector", i => comSent(i.sector)], ["Código", i => i.cod || ""], ["Material", i => i.mat || ""], ["Temática", i => comSent(i.tem)],
+const comFlagTxt = it => comRaw(it.fx) || comRaw(it.flag); // lo que dice la primera columna del Excel (“DESTACAR”, “SOCALO”…)
+const comFlag = it => it.flag ? `<span class="cflag f-${rclFold(COM_FLAG_TXT[it.flag] || "x").replace(/\W/g, "")}">${esc(comFlagTxt(it))}</span>` : "";
+const COM_COLS = [["Página / sección", i => comSec(i.sec || i.sector)], ["Producto", i => comName(i)], ["Novedad", i => i.nov || "", i => i.nov], ["Precio normal", i => typeof i.pvp === "number" ? i.pvp : comRaw(i.pvp)], ["Precio oferta", i => typeof i.of === "number" ? i.of : comRaw(i.of)],
+  ["Descuento", i => comPct(i)], ["Destacado", i => i.flag ? comFlagTxt(i) : ""], ["Sector", i => comSent(i.sector)], ["Código", i => i.cod || ""], ["Material", i => i.mat || ""], ["Temática", i => comRaw(i.tem)],
   ["Reconocimiento", i => i.rec ?? ""], ["Oferta negociada", i => i.neg || ""], ["Proveedor", i => comNice(i.prov)], ["N.° proveedor", i => i.nprov || ""], ["Subcategoría", i => comSent(i.sub)],
-  ["Descripción del sistema", i => i.dsis ? comNice(i.dsis) : "", i => i.dsis], ["Variantes", i => (i.vars || []).map(v => `${comNice(v.d)}${v.cod ? " (" + v.cod + ")" : ""}${v.of !== i.of || v.pvp !== i.pvp ? " · " + (typeof v.pvp === "number" ? gs(v.pvp) + " → " : "") + comVarOf(v) : ""}`).join(" | "), i => i.vars?.length]];
+  ["Descripción del sistema", i => i.dsis ? comNice(i.dsis) : "", i => i.dsis], ["Variantes", i => (i.vars || []).map(v => `${comNice(v.d)}${v.cod ? " (" + v.cod + ")" : ""}${v.of !== i.of || v.pvp !== i.pvp ? " · " + (comPvpTxt(v) ? comPvpTxt(v) + " → " : "") + comVarOf(v) : ""}`).join(" | "), i => i.vars?.length]];
 // Columnas que van en el Excel: las de siempre y las del Excel FINAL solo si ese archivo las tiene.
 const comCols = f => COM_COLS.filter(c => !c[2] || (f.sheets || []).some(s => s.items.some(c[2])));
 // Ilustración de la cabecera: una etiqueta de oferta con el carrito (azul de la app y amarillo de oferta).
@@ -11508,7 +11516,7 @@ function comPdf(f){
   const td = v => `<td>${esc(String(v ?? ""))}</td>`, nv = comHasNov(f);
   const body = (f.sheets || []).map((sh, k) => { const groups = []; sh.items.forEach(i => { const s = comSec(i.sec || i.sector); let g = groups.find(x => x[0] === s); if (!g) groups.push(g = [s, []]); g[1].push(i); });
     return `${(f.sheets || []).length > 1 ? `<h2>${esc(comSheetName(sh, k, f))}</h2>` : ""}${groups.map(([s, items]) => `<h3>${esc(s)}</h3><table><thead><tr><th>Producto</th>${nv ? "<th>Novedad</th>" : ""}<th class="r">Precio normal</th><th class="r">Oferta</th><th class="r">Desc.</th><th>Destacado</th><th>Código</th></tr></thead><tbody>
-      ${items.map(i => `<tr><td>${esc(comName(i))}</td>${nv ? td(i.nov) : ""}<td class="r">${typeof i.pvp === "number" ? gs(i.pvp) : ""}</td><td class="r"><b>${esc(comOfTxt(i))}</b></td><td class="r">${esc(comPct(i))}</td>${td(COM_FLAG_TXT[i.flag] || "")}${td(i.cod)}</tr>`).join("")}</tbody></table>`).join("")}`; }).join("");
+      ${items.map(i => `<tr><td>${esc(comName(i))}</td>${nv ? td(i.nov) : ""}<td class="r">${esc(comPvpTxt(i))}</td><td class="r"><b>${esc(comOfTxt(i))}</b></td><td class="r">${esc(comPct(i))}</td>${td(i.flag ? comFlagTxt(i) : "")}${td(i.cod)}</tr>`).join("")}</tbody></table>`).join("")}`; }).join("");
   w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(comFileName(f))}</title><style>
     body{font:700 12.5px/1.45 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#000;margin:24px}h1{font-size:20px;font-weight:800;margin:0}p{margin:2px 0 14px;color:#222}
     h2{font-size:16px;font-weight:800;margin:22px 0 4px}h3{font-size:14px;font-weight:800;margin:18px 0 4px;color:#1d4ed8}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:5px 6px;border-bottom:1px solid #bbb;font-weight:700}
@@ -11526,8 +11534,8 @@ const COM_GUIDE = {
 const comGuide = k => COM_GUIDE[k] ? `<p class="comguide">${icon("info")}<span><b>${COM_GUIDE[k][0]}</b><small>Indicación del Excel: “${COM_GUIDE[k][1]}”</small></span></p>` : "";
 // Tarjeta de un destacado: precio de oferta grande en amarillo, el precio de antes y el % bien visibles.
 // Producto, precios y descuento en texto, para pegar donde haga falta (un producto: una línea por dato; la lista: columnas).
-const comPcTxt = i => { const pc = comPct(i); return pc && !/x/i.test(pc) ? pc : ""; };
-const comCopyTxt = i => [comName(i), typeof i.pvp === "number" && i.of !== i.pvp ? `Antes: ${gs(i.pvp)}` : "", `Oferta: ${comOfTxt(i)}`, comPcTxt(i) ? `Descuento: ${comPcTxt(i)}` : ""].filter(Boolean).join("\n");
+const comPcTxt = i => comPct(i);
+const comCopyTxt = i => [comName(i), comPvpTxt(i) && i.of !== i.pvp ? `Antes: ${comPvpTxt(i)}` : "", `Oferta: ${comOfTxt(i)}`, comPcTxt(i) ? `Descuento: ${comPcTxt(i)}` : ""].filter(Boolean).join("\n");
 const comCopyBtn = id => `<button type="button" class="cofcp" data-comcopy="${esc(id)}" title="Copiar todo: producto y precios" aria-label="Copiar todo: producto y precios">${icon("copy")}</button>`;
 // Cada dato por separado (producto, oferta, precio de antes y descuento): se toca y queda copiado tal como se ve, para pegarlo en la pieza.
 const comF = (txt, what, html, tag = "span") => { if (!txt) return tag === "span" ? html : `<${tag}>${html}</${tag}>`;
@@ -11535,8 +11543,8 @@ const comF = (txt, what, html, tag = "span") => { if (!txt) return tag === "span
   return `<${tag} class="comf" role="button" tabindex="0" data-comcp="${esc(txt)}" title="Copiar ${what}" aria-label="Copiar ${what}: ${esc(txt)}">${k ? html.slice(0, k) + `<span class="comfw">${html.slice(k)}${icon("copy")}</span>` : html + icon("copy")}</${tag}>`; };
 const comFd = i => comF(comName(i), "el producto", esc(comName(i)), "b");
 const comFo = (i, html) => comF(comOfTxt(i), "el precio de oferta", html);
-const comFp = (i, html) => comF(typeof i.pvp === "number" ? gs(i.pvp) : "", "el precio de antes", html);
-const comFc = (i, html) => comF(comPcTxt(i) ? "-" + comPcTxt(i) : "", "el descuento", html);
+const comFp = (i, html) => comF(comPvpTxt(i), "el precio de antes", html);
+const comFc = (i, html) => comF(comPcTxt(i) ? (comPctNum(comPcTxt(i)) ? "-" : "") + comPcTxt(i) : "", "el descuento", html);
 // Cada página del folleto se puede ordenar por el precio final de oferta y buscar palabras solo en ella.
 // Precio para ordenar: el de la oferta; “Precio normal” → el precio normal; “2 x 28.000” → 28.000. Sin precio (2x1) → al final, como en el Excel.
 const comOfVal = i => typeof i.of === "number" ? i.of : /precio normal/i.test(i.of || "") ? (typeof i.pvp === "number" ? i.pvp : null) : (m => m ? +m[0].replace(/\./g, "") : null)(String(i.of || "").match(/\d{1,3}(?:\.\d{3})+|\d{4,}/));
@@ -11552,8 +11560,8 @@ async function comClip(txt, msg){
   document.body.appendChild(t); t.select(); let ok = false; try { ok = document.execCommand("copy"); } catch {} t.remove();
   toast(ok ? msg : "No se pudo copiar: seleccioná el texto y copialo.");
 }
-const comCard = (i, id) => { const pc = comPct(i), was = typeof i.pvp === "number" && i.of !== i.pvp;
-  return `<div class="ctc">${id ? comCopyBtn(id) : ""}${comFd(i)}<div class="ctp">${comFo(i, `<em>${esc(comOfTxt(i))}</em>`)}${pc && !/x/i.test(pc) ? comFc(i, `<span class="cpct">−${esc(pc)}</span>`) : ""}</div>${was ? `<span class="cwas">Antes ${comFp(i, gs(i.pvp))}</span>` : ""}<small>${esc(comSec(i.sec || i.sector))}</small></div>`; };
+const comCard = (i, id) => { const pc = comPct(i), was = !!comPvpTxt(i) && i.of !== i.pvp;
+  return `<div class="ctc">${id ? comCopyBtn(id) : ""}${comFd(i)}<div class="ctp">${comFo(i, `<em>${esc(comOfTxt(i))}</em>`)}${pc ? comFc(i, comPctTag(pc)) : ""}</div>${was ? `<span class="cwas">Antes ${comFp(i, esc(comPvpTxt(i)))}</span>` : ""}${comTemTag(i)}<small>${esc(comSec(i.sec || i.sector))}</small></div>`; };
 function pComercial(){
   const per = comPeriods();
   if (!comUI.auto && !window.RMH?.previewing){ comUI.auto = true; if (!COMERCIAL.syncedAt || Date.now() - Date.parse(COMERCIAL.syncedAt) > 3 * 3600e3) setTimeout(() => comSync(false), 0); }
@@ -11569,18 +11577,18 @@ function pComercial(){
   const secs = [...new Set(sh.items.map(i => comSec(i.sec || i.sector)))];
   const nv = comHasNov(f), novN = k => all.filter(i => i.nov === k).length, varN = all.reduce((n, i) => n + (i.vars?.length || 0), 0);
   const list = sh.items.filter(i => (!comUI.top || i.flag) && (!comUI.onlyNew || isNew(i)) && (!nv || !comUI.nov || i.nov === comUI.nov) && (comUI.sec === "Todas" || comSec(i.sec || i.sector) === comUI.sec) && (!q || comFind(i).toLowerCase().includes(q)));
-  const best = all.reduce((m, i) => Math.max(m, parseInt(comPct(i)) || 0), 0);
+  const best = all.reduce((m, i) => Math.max(m, comPctNum(comPct(i)) ? parseInt(comPct(i)) : 0), 0);
   // Productos de tapa que también están en una página de adentro (mismo código): el Excel pide que no se repitan.
   const tapaCods = new Set(all.filter(i => i.flag === "Tapa" && i.cod).map(i => i.cod));
   const dupTapa = all.filter(i => i.flag !== "Tapa" && i.cod && tapaCods.has(i.cod) && !/tapa/i.test(i.sec || ""));
   const groupsTop = [["Tapa", "star", "tapa", all.filter(i => i.flag === "Tapa")], ["Redes", "smartphone", "redes", all.filter(i => i.flag === "Zócalo redes")], ["Destacados", "sparkles", "dest", all.filter(i => i.flag === "Destacar")]].filter(g => g[3].length);
   const row = (i, k) => { const id = f.id + ":" + sheets.indexOf(sh) + ":" + k, open = comUI.open === id, pc = comPct(i);
     return `<div class="cof${open ? " open" : ""}"><div class="cofr"><div class="cofb${nv ? " nv" : ""}" data-comopen="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">
-      <span class="cofm">${comFd(i)}${isNew(i) ? `<span class="cnew" title="Se sumó al Excel en la última actualización">Nuevo</span>` : ""}${i.flag ? comFlag(i) : ""}${i.vars?.length ? `<span class="cvars${comVarDif(i) ? " dif" : ""}">${icon("layers")}${i.vars.length + 1} variantes${comVarDif(i) ? " · con otro precio" : ""}</span>` : ""}</span>${nv ? `<span class="cofv" data-l="Novedad">${comNov(i)}</span>` : ""}
-      <span class="cofn" data-l="Antes">${typeof i.pvp === "number" ? comFp(i, gs(i.pvp)) : "—"}</span>
+      <span class="cofm">${comFd(i)}${isNew(i) ? `<span class="cnew" title="Se sumó al Excel en la última actualización">Nuevo</span>` : ""}${i.flag ? comFlag(i) : ""}${comTemTag(i)}${i.vars?.length ? `<span class="cvars${comVarDif(i) ? " dif" : ""}">${icon("layers")}${i.vars.length + 1} variantes${comVarDif(i) ? " · con otro precio" : ""}</span>` : ""}</span>${nv ? `<span class="cofv" data-l="Novedad">${comNov(i)}</span>` : ""}
+      <span class="cofn" data-l="Antes">${comPvpTxt(i) ? comFp(i, esc(comPvpTxt(i))) : ""}</span>
       <span class="cofo" data-l="Oferta">${comFo(i, esc(comOfTxt(i)))}</span>
-      <span class="cofd2" data-l="${pc ? "Descuento" : ""}">${pc ? comFc(i, `<span class="cpct sm">−${esc(pc)}</span>`) : ""}</span></div>${comCopyBtn(id)}</div>
-      ${open ? `<dl class="cofd">${[["Código", i.cod], ["Material", i.mat], ["Sector", comSent(i.sector)], ["Temática", comSent(i.tem)], ["Reconocimiento", typeof i.rec === "number" ? gs(i.rec) : i.rec], ["Oferta negociada", i.neg], ["Proveedor", comNice(i.prov) + (i.nprov ? " · N.° " + i.nprov : "")], ["Subcategoría", comSent(i.sub)], ["Página del folleto", i.sec ? comSec(i.sec) : ""], ["Destacado", COM_FLAG_TXT[i.flag] || i.flag], ["Novedad", i.nov], ["Descripción del sistema", i.dsis ? comNice(i.dsis) : ""]].filter(([, v]) => v && String(v).trim()).map(([l, v]) => `<dt>${l}</dt><dd>${esc(String(v))}</dd>`).join("")}</dl>${i.vars?.length ? `<div class="cofvar"><b>Mismo cuadro del folleto: ${i.vars.length + 1} variantes</b><ul>${[{ d:i.dsis || i.desc, cod:i.cod, mat:i.mat, pvp:i.pvp, of:i.of }, ...i.vars].map(v => `<li><span>${esc(comNice(v.d))}</span><small>${[v.cod && "Cód. " + v.cod, v.mat && "Mat. " + v.mat].filter(Boolean).map(esc).join(" · ")}</small>${comVarDif(i) ? `<small>${typeof v.pvp === "number" ? "Antes " + gs(v.pvp) + " · " : ""}</small><em>${esc(comVarOf(v))}</em>` : ""}</li>`).join("")}</ul></div>` : ""}` : ""}</div>`; };
+      <span class="cofd2" data-l="${pc ? "Descuento" : ""}">${pc ? comFc(i, comPctTag(pc, 1)) : ""}</span></div>${comCopyBtn(id)}</div>
+      ${open ? `<dl class="cofd">${[["Código", i.cod], ["Material", i.mat], ["Sector", comSent(i.sector)], ["Temática", comRaw(i.tem)], ["Reconocimiento", typeof i.rec === "number" ? gs(i.rec) : i.rec], ["Oferta negociada", i.neg], ["Proveedor", comNice(i.prov) + (i.nprov ? " · N.° " + i.nprov : "")], ["Subcategoría", comSent(i.sub)], ["Página del folleto", i.sec ? comSec(i.sec) : ""], ["Destacado", i.flag ? comFlagTxt(i) : ""], ["Novedad", i.nov], ["Descripción del sistema", i.dsis ? comNice(i.dsis) : ""]].filter(([, v]) => v && String(v).trim()).map(([l, v]) => `<dt>${l}</dt><dd>${esc(String(v))}</dd>`).join("")}</dl>${i.vars?.length ? `<div class="cofvar"><b>Mismo cuadro del folleto: ${i.vars.length + 1} variantes</b><ul>${[{ d:i.dsis || i.desc, cod:i.cod, mat:i.mat, pvp:i.pvp, of:i.of }, ...i.vars].map(v => `<li><span>${esc(comNice(v.d))}</span><small>${[v.cod && "Cód. " + v.cod, v.mat && "Mat. " + v.mat].filter(Boolean).map(esc).join(" · ")}</small>${comVarDif(i) ? `<small>${comPvpTxt(v) ? "Antes " + esc(comPvpTxt(v)) + " · " : ""}</small><em>${esc(comVarOf(v))}</em>` : ""}</li>`).join("")}</ul></div>` : ""}` : ""}</div>`; };
   const bySec = []; list.forEach(i => { const k = comSec(i.sec || i.sector); let g = bySec.find(x => x[0] === k); if (!g) bySec.push(g = [k, []]); g[1].push(i); });
   return head + `<div class="comper" role="group" aria-label="Quincena">${chips.map(x => { const st = comState(x); return `<button type="button" class="comchip s-${st} ${x.id === f.id ? "on" : ""}" data-comper="${x.id}" aria-pressed="${x.id === f.id}"><small>${icon(st === "vig" ? "circle-check" : st === "prox" ? "calendar-clock" : "history")}${comStName(st, x)}</small><b>${comRange(x)}</b></button>`; }).join("")}
       ${older.length ? `<select class="base sm" data-comold aria-label="Ofertas anteriores"><option value="">${comUI.cat.endsWith("|quincenal") ? "Quincenas anteriores…" : "Ofertas anteriores…"}</option>${older.map(x => `<option value="${x.id}" ${x.id === f.id ? "selected" : ""}>${comRange(x)} ${x.from.slice(0, 4)}</option>`).join("")}</select>` : ""}</div>
@@ -11623,7 +11631,7 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-comcopyall]")){ const rows = [...document.querySelectorAll(".comlist [data-comcopy]")].map(b => { const [si, k] = b.dataset.comcopy.split(":").slice(-2), fid = b.dataset.comcopy.split(":").slice(0, -2).join(":"); return COMERCIAL.files?.[fid]?.sheets?.[+si]?.items?.[+k]; }).filter(Boolean);
     const cell = v => String(v ?? "").replace(/[\t\r\n]+/g, " ").trim();
     const nv = rows.some(i => i.nov);
-    const txt = [["Página", "Producto", ...(nv ? ["Novedad"] : []), "Antes", "Oferta", "Descuento"], ...rows.map(i => [comSec(i.sec || i.sector), comName(i), ...(nv ? [i.nov || ""] : []), typeof i.pvp === "number" && i.of !== i.pvp ? gs(i.pvp) : "", comOfTxt(i), comPcTxt(i)])].map(r => r.map(cell).join("\t")).join("\n");
+    const txt = [["Página", "Producto", ...(nv ? ["Novedad"] : []), "Antes", "Oferta", "Descuento"], ...rows.map(i => [comSec(i.sec || i.sector), comName(i), ...(nv ? [i.nov || ""] : []), comPvpTxt(i) && i.of !== i.pvp ? comPvpTxt(i) : "", comOfTxt(i), comPcTxt(i)])].map(r => r.map(cell).join("\t")).join("\n");
     comClip(txt, `Lista copiada: ${rows.length} ${rows.length === 1 ? "producto" : "productos"}. Pegala en Excel o en un texto.`); return; }
 });
 document.addEventListener("change", e => {

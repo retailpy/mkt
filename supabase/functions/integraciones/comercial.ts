@@ -2,7 +2,7 @@
 // Lee el Excel tal cual (hojas, páginas del folleto, códigos y precios) y arma una lista liviana para la app.
 import * as XLSX from "npm:xlsx@0.18.5";
 
-export const PARSE_V = 3; // si cambia la forma de leer, se vuelven a leer todos los archivos (2: sin “INTERNAS”, bloque “Adicional”, Excel de fin de semana e Imbatibles · 3: “DESCRIPCION FOLLETO” y “NOVEDAD”)
+export const PARSE_V = 4; // si cambia la forma de leer, se vuelven a leer todos los archivos (2: sin “INTERNAS”, bloque “Adicional”, Excel de fin de semana e Imbatibles · 3: “DESCRIPCION FOLLETO” y “NOVEDAD”) · 4: precio normal con texto (“solo destacar”) tal cual
 
 const norm = (v: unknown) => String(v ?? "").replace(/\s+/g, " ").trim();
 const key = (v: unknown) => norm(v).toUpperCase().normalize("NFD").replace(/\p{M}/gu, "").replace(/[^A-Z%]/g, "");
@@ -24,6 +24,8 @@ const HEAD2: Record<string, string> = {
 };
 const esDesc = (k: string) => HEAD[k] === "desc" || HEAD2[k] === "desc", esOferta = (k: string) => HEAD[k] === "of" || HEAD2[k] === "of";
 const num = (v: unknown) => typeof v === "number" ? v : null;
+// Precio normal: el número, o el texto tal cual si el Excel puso otra cosa (“solo destacar”); vacío → null.
+const pvpDe = (v: unknown) => typeof v === "number" ? v : clean(v) || null;
 const clean = (v: unknown) => { const s = norm(v); return /^\W?#(N\/A|REF!|VALUE!|DIV\/0!|NAME\?)$/i.test(s) ? "" : s; }; // celdas con error de Excel
 // Novedad: “NUEVO” → “Nuevo”, “SE MANTIENE” → “Se mantiene”.
 const novedad = (v: unknown) => { const k = key(v); if (!k) return ""; if (/^NUEV/.test(k)) return "Nuevo"; if (/MANTIEN/.test(k)) return "Se mantiene"; const s = norm(v).toLowerCase(); return s.charAt(0).toUpperCase() + s.slice(1); };
@@ -87,14 +89,14 @@ export function parseOfertas(bytes: Uint8Array){
       // “Salamín RANCHO 250 gr. Con/sin picante”). Van juntas en un solo producto, con sus códigos y precios.
       const prev = items[items.length - 1], s0 = blk ? (sec ? `${blk} · ${sec}` : blk) : sec;
       if (col!.dfol !== undefined && !dfol && prev?.fol && prev.sec === s0 && prev.sector === sector){
-        (prev.vars ||= []).push({ d: desc, cod: txtNum(g("cod")), mat: txtNum(g("mat")), pvp: num(g("pvp")), of: ofv, pct: pct(g("pct")) });
+        (prev.vars ||= []).push({ d: desc, cod: txtNum(g("cod")), mat: txtNum(g("mat")), pvp: pvpDe(g("pvp")), of: ofv, pct: pct(g("pct")) });
         if (f && !prev.flag) Object.assign(prev, { flag: f.t, fx: f.x });
         continue;
       }
       const nov = novedad(g("nov"));
       items.push({
         sec: s0, sector, cod: txtNum(g("cod")), mat: txtNum(g("mat")), desc: dfol || desc, ...(dfol ? { fol: 1, dsis: desc } : {}), ...(nov ? { nov } : {}),
-        pvp: num(g("pvp")), of: ofv, tem: norm(g("tem")), pct: pct(g("pct")),
+        pvp: pvpDe(g("pvp")), of: ofv, tem: norm(g("tem")), pct: pct(g("pct")),
         rec: typeof g("rec") === "number" ? g("rec") : norm(g("rec")), neg: norm(g("neg")), prov: norm(g("prov")),
         nprov: txtNum(g("nprov")), sub: typeof g("sub") === "string" ? clean(g("sub")) : "", ...(f ? { flag: f.t, fx: f.x } : {}),
       });
