@@ -983,6 +983,10 @@ html.nomotion .nav a.wknew .ibc,html.nomotion .tabbar a.wknew .tbc,html.nomotion
 .jpitem .btn{margin-top:4px}
 .jpbtns{display:flex;flex-wrap:wrap;gap:6px}
 .jpacts{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+/* v231: entrega de diseño de hoy o atrasada: ventana con borde que late y el reloj que vibra más tiempo */
+.jobpop.due .jpcard{border-width:2px;animation:jpNudge .9s .55s ease-in-out 3}
+.jobpop.due .jpring{animation:jpPulse 1.2s ease-out 6}.jobpop.due .jpico{animation:jpBell .7s .4s ease-in-out 5}
+.jobpop.due .jphead b{color:var(--c)}
 @keyframes jpIn{0%{opacity:0;transform:translateY(40px) scale(.9)}100%{opacity:1;transform:none}}
 @keyframes jpOut{to{opacity:0;transform:translateY(24px) scale(.96)}}
 @keyframes jpPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--c) 55%,transparent)}100%{box-shadow:0 0 0 18px transparent}}
@@ -3501,7 +3505,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v230";
+const APP_VER = "v231";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -10802,8 +10806,9 @@ const JOBPOP = { nuevo:{ k:"new", t:"Nuevo trabajo para vos", ic:"inbox", c:"#22
   // v228: todo lo que avisa tiene ventana: aprobado, comentario, sugerencia, falla de Drive, avisos del equipo, mensajes del chat y alertas
   approved:{ k:"new", t:"Admin total aprobó tu trabajo", ic:"badge-check", c:"#10b981" }, nota:{ k:"new", t:"Comentario en un trabajo", ic:"message-circle", c:"#60a5fa" },
   sug:{ k:"new", t:"Llegó una sugerencia nueva", ic:"message-square", c:"#22d3ee" }, drive:{ k:"fix", t:"Google Drive: no se pudo subir un archivo", ic:"triangle-alert", c:"#ef4444" },
-  aviso:{ k:"new", t:"Aviso del equipo", ic:"megaphone", c:"#22d3ee" }, chat:{ k:"msg", t:"Mensaje nuevo", ic:"message-circle", c:"#22c55e" }, alerta:{ k:"new", t:"Alerta", ic:"bell", c:"#f59e0b" } };
-const POP_LOCAL = ["aviso", "chat", "alerta"]; // no vienen de s:NOTIFS
+  aviso:{ k:"new", t:"Aviso del equipo", ic:"megaphone", c:"#22d3ee" }, chat:{ k:"msg", t:"Mensaje nuevo", ic:"message-circle", c:"#22c55e" }, alerta:{ k:"new", t:"Alerta", ic:"bell", c:"#f59e0b" },
+  entrega:{ k:"due", t:"¡Atención! Entrega de diseño", ic:"alarm-clock", c:"#ef4444" } }; // v231: entrega de hoy o atrasada (Diseño gráfico)
+const POP_LOCAL = ["aviso", "chat", "alerta", "entrega"]; // no vienen de s:NOTIFS
 const ADMIN_POP = ["review", "nota", "sug", "drive"]; // lo que le llega a Admin total (to: "admin")
 const JOBSOUND_KEY = "rmh-jobsound";
 const jobSoundOn = () => { try { const v = localStorage.getItem(JOBSOUND_KEY); return v === "on" || (v !== "off" && notifDefault()); } catch { return notifDefault(); } };
@@ -10821,12 +10826,12 @@ function jobPopCheck(){
   const fresh = mine.filter(n => !seen.includes(jobPopId(n)) && !notify.here.has(n) && (!first || n.date === TODAY)); // la primera vez en este dispositivo: solo lo de hoy
   const ids = mine.map(jobPopId);
   if (first || fresh.length || ids.some(id => !seen.includes(id))) jobPopSave([...seen.filter(id => !ids.includes(id)), ...ids]); // los que siguen sin leer, al final (no se recortan)
-  fresh.unshift(...alertPopItems()); // primero las alertas: si hay muchas cosas, quedan a la vista los avisos más nuevos
+  fresh.unshift(...alertPopItems(), ...duePopItems()); // primero las alertas: si hay muchas cosas, quedan a la vista los avisos más nuevos
   if (!fresh.length) return;
   jobPop.items = [...jobPop.items.filter(n => !fresh.some(f => jobPopId(f) === jobPopId(n))), ...fresh].slice(-4);
   jobPopShow();
   const last = fresh[fresh.length - 1], quiet = isDnd();
-  if (!quiet) jobSound(JOBPOP[last.type].k);
+  if (!quiet) jobSound(fresh.some(n => n.type === "entrega") ? "due" : JOBPOP[last.type].k); // las entregas tienen su propio sonido (alarma)
   if (!quiet) jobLocalNotify(fresh);
   jobTitleBlink(fresh.length);
 }
@@ -10840,13 +10845,33 @@ function alertPopItems(){
   if (!jobPop.t0){ jobPop.t0 = Date.now(); setTimeout(() => window.jobPopCheck?.(), 3200); return []; } // se espera a que la app termine de abrir
   if (Date.now() - jobPop.t0 < 3000) return [];
   jobPop.alDay = TODAY;
-  const skip = new Set(notifAlerts().filter(Boolean).map(a => a.key)); // los avisos de trabajo ya tienen su ventana
-  const list = alerts().filter(a => !skip.has(a.key) && !/^(av:|notifask|t:Pedido sin asignar)/.test(a.key));
+  const skip = new Set(notifAlerts().filter(Boolean).map(a => a.key)), due = new Set(duePopJobs().map(j => "job:" + j.id)); // los avisos de trabajo y las entregas ya tienen su ventana
+  const list = alerts().filter(a => !skip.has(a.key) && !due.has(a.go) && !/^(av:|notifask|t:Pedido sin asignar)/.test(a.key));
   const K = "rmh-alpop-" + viewer.id; let seen = null; try { seen = JSON.parse(localStorage.getItem(K)); } catch {}
   const first = !Array.isArray(seen), keys = list.map(a => a.key), was = first ? [] : seen;
   try { localStorage.setItem(K, JSON.stringify([...was.filter(k => !keys.includes(k)).slice(-200), ...keys])); } catch {}
   return first ? [] : list.filter(a => !was.includes(a.key)).slice(0, 3).reverse().map(a => ({ id:"al:" + a.key, type:"alerta", al:a })); // las 3 más urgentes (la más urgente, arriba); el resto, en Alertas
 }
+// v231 · Entregas de Diseño gráfico: por cada pedido que se entrega hoy o está atrasado (1 día, 2 días…) sale una ventana
+// propia, con un sonido de alarma distinto al resto. Al diseñador, lo suyo que todavía no entregó (no lo que ya espera la
+// revisión); a Admin total, lo de todo el equipo. Sale al abrir la app y otra vez a la tarde (desde las 14 h) si sigue sin
+// entregarse; cada dispositivo recuerda lo que ya mostró (rmh-duepop-<persona>).
+const duePopJobs = () => !viewer || isViewOnly() ? [] : jobs.filter(j => j.area === "Diseño" && !j.ex && seesJob(j) && urgency(j) && daysTo(j.due) <= 0
+  && (j.owner === viewer.name ? !REVIEW_WAIT.includes(j.status) : viewer.role === "Admin total")).sort((a, b) => a.due.localeCompare(b.due));
+const dueSlot = () => +new Intl.DateTimeFormat("en-GB", { timeZone:"America/Asuncion", hour:"2-digit", hourCycle:"h23" }).format(new Date()) >= 14 ? "pm" : "am";
+function duePopItems(){
+  if (!jobPop.t0 || Date.now() - jobPop.t0 < 3000) return []; // como las alertas: cuando la app terminó de abrir
+  const slot = dueSlot(), L = duePopJobs(); if (!L.length) return [];
+  const K = "rmh-duepop-" + viewer.id; let seen = []; try { seen = JSON.parse(localStorage.getItem(K)) || []; } catch {}
+  const items = L.map(j => ({ id:`due:${j.id}|${TODAY}|${slot}`, type:"entrega", job:j.id, d:daysTo(j.due) })).filter(n => !seen.includes(n.id));
+  if (!items.length) return [];
+  try { localStorage.setItem(K, JSON.stringify([...seen, ...items.map(n => n.id)].slice(-300))); } catch {}
+  if (items.length <= 4) return items.reverse(); // el más atrasado queda arriba
+  const rest = items.slice(3), late = rest.filter(n => n.d < 0).length; // si son muchos: los 3 más atrasados y una tarjeta con el resto
+  return [{ id:`due:sum|${TODAY}|${slot}`, type:"entrega", sum:rest.length, late, d:Math.min(...rest.map(n => n.d)) }, ...items.slice(0, 3).reverse()];
+}
+const dueTitle = d => d >= 0 ? "¡Atención! Hoy es el día de entrega" : `¡Atención! ${-d === 1 ? "Un día atrasado" : -d === 2 ? "Dos días atrasados" : `${-d} días atrasados`}`;
+const dueColor = d => d >= 0 ? "#f59e0b" : d === -1 ? "#f97316" : "#ef4444";
 // Mensajes del chat: una tarjeta por conversación con el último mensaje (y cuántos hay sin leer).
 function chatPopItems(keys, cur){
   return keys.map(k => { const [kind, id] = k.split(/:(.*)/s), g = kind === "g" ? CHAT_GROUPS.find(x => x.id === id) : null, pp = kind === "p" ? personById(id) : null;
@@ -10857,6 +10882,12 @@ function chatPopItems(keys, cur){
 // Texto de cada aviso (el mismo en la ventana, en la notificación del sistema y en el push).
 function jobPopInfo(n){
   const P = JOBPOP[n.type], j = n.job ? jobById(n.job) : null;
+  if (n.type === "entrega"){ const d = n.demo ? -2 : n.d;
+    if (n.sum) return { ...P, go:"paneldg", t:"¡Atención! Más entregas de diseño", c:dueColor(d), title:`Y ${n.sum} ${n.sum === 1 ? "pedido más" : "pedidos más"} para entregar hoy o atrasados`,
+      m:[n.late && `${n.late} ${n.late === 1 ? "atrasado" : "atrasados"}`, n.sum - n.late && `${n.sum - n.late} para hoy`].filter(Boolean).join(" · ") + " · están en el Panel de Trabajo" };
+    if (n.demo) return { ...P, go:"", t:dueTitle(d), c:dueColor(d), title:"Ejemplo: Cartel de góndola ofertas del finde", m:`Stock · Cartelería · tenía que entregarse el ${dm(addDays(TODAY, d))} · En proceso` };
+    return { ...P, go:j ? "job:" + j.id : "", t:dueTitle(d), c:dueColor(d), title:j?.title || "",
+      m:j ? `${jobBrands(j).join(" + ")} · ${cmPiece(j)} · ${d >= 0 ? "se entrega hoy" : "tenía que entregarse el " + dm(j.due)} · ${j.status}${j.owner !== viewer.name ? ` · ${j.owner === "Sin asignar" ? "sin diseñador asignado" : j.owner}` : ""}` : "" }; }
   if (n.demo) return n.type === "chat" ? { ...P, go:"", t:"Team MKT", title:"Ejemplo: ¿Ya está lista la historia del finde?", m:"" }
     : { ...P, go:"", title:n.type === "fix" ? "Ejemplo: Post Día de la Madre" : "Ejemplo: Historia ofertas del finde", m:n.type === "fix" ? "“Cambiar la foto principal y agrandar el precio”" : "Superseis · Historia · fecha límite " + dm(addDays(TODAY, 2)) };
   if (n.type === "chat") return { ...P, go:"chat:" + n.open, t:n.name, title:n.from ? `${n.from}: ${n.text}` : n.text, m:n.n > 1 ? `${n.n} mensajes nuevos` : "", ic:n.open.startsWith("g:") ? "messages-square" : "message-circle" };
@@ -10878,16 +10909,17 @@ function jobPopInfo(n){
       : n.type === "listo" ? `${brands} · ${j ? cmPiece(j) : ""} · sumalo a tu calendario`
       : `${brands} · ${j ? cmPiece(j) : ""}${j?.due ? " · fecha límite " + dm(j.due) : ""}${j?.requester ? " · pidió " + j.requester : ""}` };
 }
-const jpBtnTxt = (n, x) => n.type === "chat" ? "Responder" : x.go === "calcm" ? "Ver en Planificación" : n.type === "pub" || n.post ? "Ver publicación" : n.type === "fix" ? "Ver la corrección"
+const jpBtnTxt = (n, x) => n.type === "chat" ? "Responder" : n.sum ? "Ver Panel de Trabajo" : x.go === "calcm" ? "Ver en Planificación" : n.type === "pub" || n.post ? "Ver publicación" : n.type === "fix" ? "Ver la corrección"
   : n.type === "sug" ? "Ver sugerencia" : n.type === "drive" ? "Ver Integraciones" : n.type === "alerta" ? "Ver" : "Ver pedido";
 function jobPopShow(){
   let el = document.getElementById("jobpop");
   if (!jobPop.items.length){ if (el && !el.classList.contains("out")){ el.classList.add("out"); setTimeout(() => { if (!jobPop.items.length) el.remove(); }, 260); } return; }
   if (!el){ el = document.createElement("div"); el.id = "jobpop"; el.setAttribute("role", "alertdialog"); el.setAttribute("aria-live", "assertive"); document.body.appendChild(el); }
   const L = jobPop.items.map(n => ({ n, x:jobPopInfo(n) })), top = L[L.length - 1].x, many = L.length > 1;
-  el.className = "jobpop " + (top.k === "fix" ? "fix" : "new"); el.style.setProperty("--c", top.c);
-  el.setAttribute("aria-label", many ? `Tenés ${L.length} avisos nuevos` : top.t);
-  el.innerHTML = `<div class="jpcard"><span class="jpring" aria-hidden="true"></span><div class="jphead"><span class="jpico">${icon(top.ic)}</span><div class="grow"><b>${many ? `Tenés ${L.length} avisos nuevos` : esc(top.t)}</b><small>Retail MKT Hub · recién</small></div><button type="button" class="jpx" data-jpclose aria-label="Cerrar">${icon("x")}</button></div>
+  const head = L.every(({ n }) => n.type === "entrega") ? `¡Atención! Entregas de diseño (${L.reduce((t, { n }) => t + (n.sum || 1), 0)})` : `Tenés ${L.length} avisos nuevos`;
+  el.className = "jobpop " + (top.k === "fix" ? "fix" : top.k === "due" ? "due" : "new"); el.style.setProperty("--c", top.c);
+  el.setAttribute("aria-label", many ? head : top.t);
+  el.innerHTML = `<div class="jpcard"><span class="jpring" aria-hidden="true"></span><div class="jphead"><span class="jpico">${icon(top.ic)}</span><div class="grow"><b>${many ? esc(head) : esc(top.t)}</b><small>Retail MKT Hub · recién</small></div><button type="button" class="jpx" data-jpclose aria-label="Cerrar">${icon("x")}</button></div>
     <div class="jplist">${L.slice().reverse().map(({ n, x }) => `<div class="jpitem" style="--c:${x.c}">${many ? `<span class="jpk">${icon(x.ic)} ${esc(x.t)}</span>` : ""}<b class="jpt">${esc(x.title)}</b>${x.m ? `<span class="jpm">${esc(x.m)}</span>` : ""}${n.type === "review" && x.go ? `<div class="jpbtns"><button type="button" class="btn ${many ? "sm " : ""}primary" data-nact="approve" data-nid="${n.id}" data-jpid="${esc(String(n.id))}">${icon("check")} ${n.copy ? "Aprobar copy" : "Aprobar"}</button><button type="button" class="btn${many ? " sm" : ""}" data-nact="fix" data-nid="${n.id}" data-jpid="${esc(String(n.id))}">${icon("pencil")} ${n.copy ? "Pedir corrección" : "Pedir cambios"}</button><button type="button" class="btn${many ? " sm" : ""}" data-jpgo="${esc(x.go)}" data-jpid="${esc(String(n.id))}">${icon("eye")} Ver</button></div>`
       : n.type === "aviso" ? `<div class="jpbtns"><button type="button" class="btn ${many ? "sm " : ""}primary" data-avok="${n.av.id}" data-jpdone="${esc(String(n.id))}">${icon("check")} Entendido</button></div>`
       : x.go ? `<button type="button" class="btn ${many ? "sm" : "primary"}" data-jpgo="${esc(x.go)}" data-jpid="${esc(String(n.id))}">${icon(n.type === "chat" ? "reply" : n.type === "pub" || n.post ? "arrow-up-right" : "eye")} ${jpBtnTxt(n, x)}</button>` : ""}</div>`).join("")}</div>
@@ -10904,7 +10936,8 @@ document.addEventListener("click", e => {
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && jobPop.items.length && !document.querySelector(".imodal,#fixpop")){ jobPop.items = []; jobPopShow(); } });
 // Sonidos (hechos con el navegador, sin archivos): trabajo nuevo (y avisos) = tres notas que suben, suaves, tipo campanita;
-// corrección = dos notas que bajan, repetidas una vez más bajito; mensaje del chat = dos notas cortas. El navegador los deja sonar después del primer toque en la app.
+// corrección = dos notas que bajan, repetidas una vez más bajito; mensaje del chat = dos notas cortas; entrega de diseño de hoy
+// o atrasada = repique rápido tipo despertador, dos veces. El navegador los deja sonar después del primer toque en la app.
 const jobSound = (() => {
   let ctx = null;
   const ac = () => { try { if (!ctx){ const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; ctx = new A(); } if (ctx.state === "suspended") ctx.resume().catch(() => {}); } catch { ctx = null; } return ctx; };
@@ -10922,6 +10955,7 @@ const jobSound = (() => {
     const out = c.createGain(), lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 5200; out.gain.value = 0.32; out.connect(lp); lp.connect(c.destination);
     const t = c.currentTime + 0.03;
     if (kind === "fix") [[880, 0, 0.5, 0.5], [659.25, 0.17, 0.75, 0.45], [880, 0.62, 0.45, 0.28], [659.25, 0.79, 0.8, 0.26]].forEach(([f, at, d, v]) => bell(c, out, f, t + at, d, v));
+    else if (kind === "due") [0, 0.62].forEach(at => [1567.98, 1318.51, 1567.98, 1318.51].forEach((f, i) => bell(c, out, f, t + at + i * 0.11, 0.16, 0.34))); // entrega hoy o atrasada: “ring-ring” de despertador, dos veces
     else if (kind === "msg") [[987.77, 0, 0.22, 0.34], [1318.51, 0.1, 0.35, 0.3]].forEach(([f, at, d, v]) => bell(c, out, f, t + at, d, v)); // mensaje del chat: “tu-tín” corto
     else [[783.99, 0, 0.7, 0.42], [1046.5, 0.13, 0.75, 0.4], [1318.51, 0.26, 1.1, 0.36]].forEach(([f, at, d, v]) => bell(c, out, f, t + at, d, v));
     jobSound.played = (jobSound.played || 0) + 1; jobSound.lastKind = kind; return true;
@@ -10947,14 +10981,14 @@ navigator.serviceWorker?.addEventListener("message", e => { if (e.data?.type ===
 function jobPopCfg(){
   const on = jobSoundOn();
   return `<section class="panel cfgsec"><h2 class="pmh">${pmIco("bell-ring")}Ventana emergente y sonido</h2>
-    <p class="note">Todo lo que te avisa la app sale en una ventana en la pantalla, con sonido: los mensajes del chat (con “Responder”), los Avisos del equipo, los trabajos nuevos y las correcciones, los comentarios y los trabajos aprobados${viewer.role === "Admin total" ? ", lo que queda listo para revisar, las sugerencias y las fallas de Google Drive" : ""}. Al abrir la app también salen las alertas nuevas (lo que vence, sábados, cumpleaños). Suena distinto según lo que llega: mensaje, algo nuevo o una corrección. Con la app cerrada o en otra pestaña llega la notificación del celular o de la compu (si las activaste en este dispositivo), y cada mañana un resumen de lo de hoy. Con “No molestar” no suena ni llegan notificaciones.</p>
+    <p class="note">Todo lo que te avisa la app sale en una ventana en la pantalla, con sonido: los mensajes del chat (con “Responder”), los Avisos del equipo, los trabajos nuevos y las correcciones, los comentarios y los trabajos aprobados${viewer.role === "Admin total" ? ", lo que queda listo para revisar, las sugerencias y las fallas de Google Drive" : ""}. Al abrir la app también salen las alertas nuevas (lo que vence, sábados, cumpleaños). Suena distinto según lo que llega: mensaje, algo nuevo, una corrección o una entrega de diseño de hoy o atrasada (esa suena como un despertador). Con la app cerrada o en otra pestaña llega la notificación del celular o de la compu (si las activaste en este dispositivo), y cada mañana un resumen de lo de hoy. Con “No molestar” no suena ni llegan notificaciones.</p>
     <div class="cfgopts"><button type="button" class="cfgopt ${on ? "on" : ""}" data-jobsound="on"><b>Con sonido</b><span>Suena cuando llega algo para vos.</span></button><button type="button" class="cfgopt ${on ? "" : "on"}" data-jobsound="off"><b>Sin sonido</b><span>Solo la ventana, en silencio.</span></button></div>
-    <div class="chips" style="margin-top:12px"><button type="button" class="btn" data-jobtest="msg">${icon("message-circle")} Probar: mensaje</button><button type="button" class="btn" data-jobtest="new">${icon("bell-ring")} Probar: trabajo nuevo</button><button type="button" class="btn" data-jobtest="fix">${icon("bell-ring")} Probar: corrección</button></div></section>`;
+    <div class="chips" style="margin-top:12px"><button type="button" class="btn" data-jobtest="msg">${icon("message-circle")} Probar: mensaje</button><button type="button" class="btn" data-jobtest="new">${icon("bell-ring")} Probar: trabajo nuevo</button><button type="button" class="btn" data-jobtest="fix">${icon("bell-ring")} Probar: corrección</button><button type="button" class="btn" data-jobtest="due">${icon("alarm-clock")} Probar: entrega atrasada</button></div></section>`;
 }
 document.addEventListener("click", e => {
   const s = e.target.closest("[data-jobsound]"); if (s){ try { localStorage.setItem(JOBSOUND_KEY, s.dataset.jobsound); } catch {} render(); toast(s.dataset.jobsound === "off" ? "Listo: los avisos salen sin sonido en este dispositivo." : "Listo: los avisos suenan en este dispositivo."); return; }
   const t = e.target.closest("[data-jobtest]"); if (!t) return; const k = t.dataset.jobtest;
-  jobPop.items = [{ id:"demo-" + k, type:k === "fix" ? "fix" : k === "msg" ? "chat" : "nuevo", demo:true }]; jobPopShow();
+  jobPop.items = [{ id:"demo-" + k, type:k === "fix" ? "fix" : k === "msg" ? "chat" : k === "due" ? "entrega" : "nuevo", demo:true }]; jobPopShow();
   setTimeout(() => { if (!jobSound(k, true)) toast("Tocá de nuevo para escuchar el sonido (el navegador lo habilita después de un toque)."); }, 30);
 });
 
