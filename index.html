@@ -987,6 +987,7 @@ html.nomotion .nav a.wknew .ibc,html.nomotion .tabbar a.wknew .tbc,html.nomotion
 .jobpop.due .jpcard{border-width:2px;animation:jpNudge .9s .55s ease-in-out 3}
 .jobpop.due .jpring{animation:jpPulse 1.2s ease-out 6}.jobpop.due .jpico{animation:jpBell .7s .4s ease-in-out 5}
 .jobpop.due .jphead b{color:var(--c)}
+.jpask{display:flex;gap:6px;align-items:center;font-size:13px;font-weight:600;color:var(--ink);margin-top:2px}.jpask svg{width:14px;height:14px;flex:none;color:var(--c)}
 @keyframes jpIn{0%{opacity:0;transform:translateY(40px) scale(.9)}100%{opacity:1;transform:none}}
 @keyframes jpOut{to{opacity:0;transform:translateY(24px) scale(.96)}}
 @keyframes jpPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--c) 55%,transparent)}100%{box-shadow:0 0 0 18px transparent}}
@@ -10876,6 +10877,8 @@ function duePopItems(){
   return [{ id:`due:sum|${TODAY}|${slot}`, type:"entrega", sum:rest.length, late, cm:rest.filter(n => n.cm).length > rest.length / 2, d:Math.min(...rest.map(n => n.d)) }, ...items.slice(0, 3).reverse()];
 }
 const dueTitle = (d, pub) => d >= 0 ? `¡Atención! Hoy es el día de ${pub ? "publicación" : "entrega"}` : `¡Atención! ${-d === 1 ? "Un día atrasado" : -d === 2 ? "Dos días atrasados" : `${-d} días atrasados`}`;
+// Con un día o más de atraso, la ventana pide confirmar la nueva fecha con Alyssa (Admin total) y trae el botón de su chat.
+const dueAsk = d => { const a = personById("alyssa"); return d < 0 && a && a.active !== false && viewer.id !== a.id && !sinChat(viewer) ? a : null; };
 const dueColor = d => d >= 0 ? "#f59e0b" : d === -1 ? "#f97316" : "#ef4444";
 // Mensajes del chat: una tarjeta por conversación con el último mensaje (y cuántos hay sin leer).
 function chatPopItems(keys, cur){
@@ -10890,11 +10893,11 @@ function jobPopInfo(n){
   if (n.type === "entrega"){ const d = n.demo ? -2 : n.d;
     if (n.sum) return { ...P, go:n.cm ? "panelcm" : "paneldg", t:"¡Atención! Más entregas", c:dueColor(d), title:`Y ${n.sum} ${n.sum === 1 ? "entrega más" : "entregas más"} para hoy o atrasadas`,
       m:[n.late && `${n.late} ${n.late === 1 ? "atrasado" : "atrasados"}`, n.sum - n.late && `${n.sum - n.late} para hoy`].filter(Boolean).join(" · ") + " · están en el Panel de Trabajo" };
-    if (n.demo) return { ...P, go:"", t:dueTitle(d), c:dueColor(d), title:"Ejemplo: Cartel de góndola ofertas del finde", m:`Stock · Cartelería · tenía que entregarse el ${dm(addDays(TODAY, d))} · En proceso` };
+    if (n.demo) return { ...P, go:"", t:dueTitle(d), c:dueColor(d), ask:dueAsk(d), title:"Ejemplo: Cartel de góndola ofertas del finde", m:`Stock · Cartelería · tenía que entregarse el ${dm(addDays(TODAY, d))} · En proceso` };
     if (n.post){ const p = postById(n.post);
-      return { ...P, go:p ? "pub:post:" + p.id : "", t:dueTitle(d, true), c:dueColor(d), title:p?.title || "",
+      return { ...P, go:p ? "pub:post:" + p.id : "", t:dueTitle(d, true), c:dueColor(d), ask:dueAsk(d), title:p?.title || "",
         m:p ? `${p.brand} · ${p.format} · ${d >= 0 ? "se publica hoy" + (p.time ? ` a las ${p.time} h` : "") : "tenía que publicarse el " + dm(p.date)} · ${p.status}${p.cm !== viewer.name ? " · " + (p.cm || "sin CM asignada") : ""}` : "" }; }
-    return { ...P, go:j ? "job:" + j.id : "", t:dueTitle(d), c:dueColor(d), title:j?.title || "",
+    return { ...P, go:j ? "job:" + j.id : "", t:dueTitle(d), c:dueColor(d), ask:dueAsk(d), title:j?.title || "",
       m:j ? `${jobBrands(j).join(" + ")} · ${cmPiece(j)} · ${d >= 0 ? "se entrega hoy" : "tenía que entregarse el " + dm(j.due)} · ${j.status}${j.owner !== viewer.name ? ` · ${j.owner === "Sin asignar" ? "sin asignar" : j.owner}` : ""}` : "" }; }
   if (n.demo) return n.type === "chat" ? { ...P, go:"", t:"Team MKT", title:"Ejemplo: ¿Ya está lista la historia del finde?", m:"" }
     : { ...P, go:"", title:n.type === "fix" ? "Ejemplo: Post Día de la Madre" : "Ejemplo: Historia ofertas del finde", m:n.type === "fix" ? "“Cambiar la foto principal y agrandar el precio”" : "Superseis · Historia · fecha límite " + dm(addDays(TODAY, 2)) };
@@ -10929,6 +10932,7 @@ function jobPopShow(){
   el.setAttribute("aria-label", many ? head : top.t);
   el.innerHTML = `<div class="jpcard"><span class="jpring" aria-hidden="true"></span><div class="jphead"><span class="jpico">${icon(top.ic)}</span><div class="grow"><b>${many ? esc(head) : esc(top.t)}</b><small>Retail MKT Hub · recién</small></div><button type="button" class="jpx" data-jpclose aria-label="Cerrar">${icon("x")}</button></div>
     <div class="jplist">${L.slice().reverse().map(({ n, x }) => `<div class="jpitem" style="--c:${x.c}">${many ? `<span class="jpk">${icon(x.ic)} ${esc(x.t)}</span>` : ""}<b class="jpt">${esc(x.title)}</b>${x.m ? `<span class="jpm">${esc(x.m)}</span>` : ""}${n.type === "review" && x.go ? `<div class="jpbtns"><button type="button" class="btn ${many ? "sm " : ""}primary" data-nact="approve" data-nid="${n.id}" data-jpid="${esc(String(n.id))}">${icon("check")} ${n.copy ? "Aprobar copy" : "Aprobar"}</button><button type="button" class="btn${many ? " sm" : ""}" data-nact="fix" data-nid="${n.id}" data-jpid="${esc(String(n.id))}">${icon("pencil")} ${n.copy ? "Pedir corrección" : "Pedir cambios"}</button><button type="button" class="btn${many ? " sm" : ""}" data-jpgo="${esc(x.go)}" data-jpid="${esc(String(n.id))}">${icon("eye")} Ver</button></div>`
+      : x.ask ? `<span class="jpask">${icon("message-circle")} Para confirmar fecha de entrega, comunicate con ${esc(x.ask.name.split(" ")[0])}</span><div class="jpbtns"><button type="button" class="btn ${many ? "sm " : ""}primary" data-jpgo="chat:p:${esc(x.ask.id)}" data-jpid="${esc(String(n.id))}">${icon("message-circle")} Chat con ${esc(x.ask.name.split(" ")[0])}</button>${x.go ? `<button type="button" class="btn${many ? " sm" : ""}" data-jpgo="${esc(x.go)}" data-jpid="${esc(String(n.id))}">${icon(n.post ? "arrow-up-right" : "eye")} ${jpBtnTxt(n, x)}</button>` : ""}</div>`
       : n.type === "aviso" ? `<div class="jpbtns"><button type="button" class="btn ${many ? "sm " : ""}primary" data-avok="${n.av.id}" data-jpdone="${esc(String(n.id))}">${icon("check")} Entendido</button></div>`
       : x.go ? `<button type="button" class="btn ${many ? "sm" : "primary"}" data-jpgo="${esc(x.go)}" data-jpid="${esc(String(n.id))}">${icon(n.type === "chat" ? "reply" : n.type === "pub" || n.post ? "arrow-up-right" : "eye")} ${jpBtnTxt(n, x)}</button>` : ""}</div>`).join("")}</div>
     <div class="jpacts"><button type="button" class="btn" data-jpclose>Después</button></div></div>`;
