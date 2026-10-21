@@ -30,7 +30,7 @@ equipo. Es una **PWA** (se instala en celular, tablet y compu).
 - **Admin:** Usuarios y permisos. **Equipo:** Team MKT (antes Staff), Turnos Sábados, Cumpleaños. **Ayuda:** Guía de uso.
 
 ### Procesos (etapas) que la app respeta
-- **Diseño gráfico:** Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección) → Aprobado. Pedidos nuevos con Categoría y Tipo de trabajo (v196).
+- **Diseño gráfico:** Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección → Corrección realizada) → Aprobado. El diseñador mueve Pendiente → En proceso → Boceto finalizado y, si le piden cambios, Corrección realizada (las dos avisan a Admin total). En revisión, En corrección y Aprobado los pone solo Admin total (v238). Pedidos nuevos con Categoría y Tipo de trabajo (v196).
   La etapa la cambian solo **Admin total** (todas) y el **diseñador responsable**, paso a paso y sin volver atrás:
   Pendiente → En proceso → Boceto finalizado (y En corrección → Boceto finalizado). **CM y Admin no cambian** etapas de diseño (v184).
 - **CM publicaciones** (feed, historias, Plan de posteo): Pendiente → En proceso → Programado → Publicado → Pautado.
