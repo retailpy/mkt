@@ -1,5 +1,5 @@
 // Retail MKT Hub · service worker: la app abre aunque no haya internet (muestra lo último que se cargó).
-const CACHE = "mkthub-v233";
+const CACHE = "mkthub-v234";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./logo.png", "./logo-wide.png", "./marcas.png", "./config.js", "./sync.js", "./vendor/supabase.js"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
@@ -27,7 +27,7 @@ self.addEventListener("push", e => {
   let d = {}; try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data && e.data.text() }; }
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(cs => {
     if (cs.some(c => c.focused && c.visibilityState === "visible")) return; // si la app está a la vista, avisa la propia app
-    return self.registration.showNotification(d.title || "Chat Retail MKT", { body: d.body || "", tag: d.tag || "rmh-chat", renotify: true, icon: "./icon-192.png", badge: "./icon-192.png", data: { open: d.open || "", go: d.go || "" } });
+    return self.registration.showNotification(d.title || "Chat Retail MKT", { body: d.body || "", tag: d.tag || "rmh-chat", renotify: true, icon: "./icon-192.png", badge: "./icon-192.png", ...(d.vibrate ? { vibrate: d.vibrate, requireInteraction: true } : {}), data: { open: d.open || "", go: d.go || "" } });
   }));
 });
 self.addEventListener("notificationclick", e => {
