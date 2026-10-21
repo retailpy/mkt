@@ -4947,7 +4947,7 @@ function alerts(){
   if (!isDesigner()){
     posts.filter(p => seesBrand(p.brand) && p.cm === viewer.name).forEach(p => { // solo lo que está a tu nombre
       const u = postUrgency(p);
-      if (u) out.push({ d:p.date, go:p.format === "Historia" ? "calhistoria" : "calendario", ic:u.late ? "alarm-clock" : "calendar-clock", sev:u.c, rank: u.late ? 0 : daysTo(p.date) + 1, t:`Post: ${u.t.toLowerCase()}: ${p.title}`, m:`${p.brand} · ${p.cm} · publicación ${dm(p.date)} · está en ${p.status}` });
+      if (u) out.push({ d:p.date, post:p.id, go:p.format === "Historia" ? "calhistoria" : "calendario", ic:u.late ? "alarm-clock" : "calendar-clock", sev:u.c, rank: u.late ? 0 : daysTo(p.date) + 1, t:`Post: ${u.t.toLowerCase()}: ${p.title}`, m:`${p.brand} · ${p.cm} · publicación ${dm(p.date)} · está en ${p.status}` });
     });
   }
   jobs.filter(j => seesJob(j) && !isFin(j) && (j.owner === viewer.name || (j.owner === "Sin asignar" && canCreateJobs()))).forEach(j => { // alertas personales: lo tuyo (y, para quien asigna, lo que falta asignar)
@@ -10807,7 +10807,7 @@ const JOBPOP = { nuevo:{ k:"new", t:"Nuevo trabajo para vos", ic:"inbox", c:"#22
   approved:{ k:"new", t:"Admin total aprobó tu trabajo", ic:"badge-check", c:"#10b981" }, nota:{ k:"new", t:"Comentario en un trabajo", ic:"message-circle", c:"#60a5fa" },
   sug:{ k:"new", t:"Llegó una sugerencia nueva", ic:"message-square", c:"#22d3ee" }, drive:{ k:"fix", t:"Google Drive: no se pudo subir un archivo", ic:"triangle-alert", c:"#ef4444" },
   aviso:{ k:"new", t:"Aviso del equipo", ic:"megaphone", c:"#22d3ee" }, chat:{ k:"msg", t:"Mensaje nuevo", ic:"message-circle", c:"#22c55e" }, alerta:{ k:"new", t:"Alerta", ic:"bell", c:"#f59e0b" },
-  entrega:{ k:"due", t:"¡Atención! Entrega de diseño", ic:"alarm-clock", c:"#ef4444" } }; // v231: entrega de hoy o atrasada (Diseño gráfico)
+  entrega:{ k:"due", t:"¡Atención! Entrega", ic:"alarm-clock", c:"#ef4444" } }; // v231: entrega de hoy o atrasada (Diseño y CM)
 const POP_LOCAL = ["aviso", "chat", "alerta", "entrega"]; // no vienen de s:NOTIFS
 const ADMIN_POP = ["review", "nota", "sug", "drive"]; // lo que le llega a Admin total (to: "admin")
 const JOBSOUND_KEY = "rmh-jobsound";
@@ -10845,32 +10845,37 @@ function alertPopItems(){
   if (!jobPop.t0){ jobPop.t0 = Date.now(); setTimeout(() => window.jobPopCheck?.(), 3200); return []; } // se espera a que la app termine de abrir
   if (Date.now() - jobPop.t0 < 3000) return [];
   jobPop.alDay = TODAY;
-  const skip = new Set(notifAlerts().filter(Boolean).map(a => a.key)), due = new Set(duePopJobs().map(j => "job:" + j.id)); // los avisos de trabajo y las entregas ya tienen su ventana
-  const list = alerts().filter(a => !skip.has(a.key) && !due.has(a.go) && !/^(av:|notifask|t:Pedido sin asignar)/.test(a.key));
+  const skip = new Set(notifAlerts().filter(Boolean).map(a => a.key)), due = new Set([...duePopJobs().map(j => "job:" + j.id), ...duePopPosts().map(p => "post:" + p.id)]); // los avisos de trabajo y las entregas ya tienen su ventana
+  const list = alerts().filter(a => !skip.has(a.key) && !due.has(a.go) && !due.has("post:" + a.post) && !/^(av:|notifask|t:Pedido sin asignar)/.test(a.key));
   const K = "rmh-alpop-" + viewer.id; let seen = null; try { seen = JSON.parse(localStorage.getItem(K)); } catch {}
   const first = !Array.isArray(seen), keys = list.map(a => a.key), was = first ? [] : seen;
   try { localStorage.setItem(K, JSON.stringify([...was.filter(k => !keys.includes(k)).slice(-200), ...keys])); } catch {}
   return first ? [] : list.filter(a => !was.includes(a.key)).slice(0, 3).reverse().map(a => ({ id:"al:" + a.key, type:"alerta", al:a })); // las 3 más urgentes (la más urgente, arriba); el resto, en Alertas
 }
-// v231 · Entregas de Diseño gráfico: por cada pedido que se entrega hoy o está atrasado (1 día, 2 días…) sale una ventana
-// propia, con un sonido de alarma distinto al resto. Al diseñador, lo suyo que todavía no entregó (no lo que ya espera la
-// revisión); a Admin total, lo de todo el equipo. Sale al abrir la app y otra vez a la tarde (desde las 14 h) si sigue sin
-// entregarse; cada dispositivo recuerda lo que ya mostró (rmh-duepop-<persona>).
-const duePopJobs = () => !viewer || isViewOnly() ? [] : jobs.filter(j => j.area === "Diseño" && !j.ex && seesJob(j) && urgency(j) && daysTo(j.due) <= 0
+// v231 · Entregas de hoy y atrasadas: por cada pedido de Diseño gráfico o de CM que se entrega hoy o está atrasado (1 día,
+// 2 días…), y por cada publicación del CM que se publica hoy o se pasó de fecha sin quedar Programada, sale una ventana propia,
+// con un sonido de alarma distinto al resto. A cada uno, lo suyo que todavía no entregó (no lo que ya espera la revisión);
+// a Admin total, lo de todo el equipo. Sale al abrir la app y otra vez a la tarde (desde las 14 h) si sigue pendiente;
+// cada dispositivo recuerda lo que ya mostró (rmh-duepop-<persona>).
+const duePopJobs = () => !viewer || isViewOnly() ? [] : jobs.filter(j => !j.ex && seesJob(j) && urgency(j) && daysTo(j.due) <= 0
   && (j.owner === viewer.name ? !REVIEW_WAIT.includes(j.status) : viewer.role === "Admin total")).sort((a, b) => a.due.localeCompare(b.due));
+const duePopPosts = () => !viewer || isViewOnly() || isDesigner() ? [] : posts.filter(p => !p.ex && seesBrand(p.brand) && postUrgency(p) && daysTo(p.date) <= 0
+  && (p.cm === viewer.name || viewer.role === "Admin total")).sort((a, b) => a.date.localeCompare(b.date));
 const dueSlot = () => +new Intl.DateTimeFormat("en-GB", { timeZone:"America/Asuncion", hour:"2-digit", hourCycle:"h23" }).format(new Date()) >= 14 ? "pm" : "am";
 function duePopItems(){
   if (!jobPop.t0 || Date.now() - jobPop.t0 < 3000) return []; // como las alertas: cuando la app terminó de abrir
-  const slot = dueSlot(), L = duePopJobs(); if (!L.length) return [];
+  const slot = dueSlot(), L = [...duePopJobs().map(j => ({ id:`due:${j.id}|${TODAY}|${slot}`, type:"entrega", job:j.id, cm:j.area !== "Diseño", d:daysTo(j.due) })),
+    ...duePopPosts().map(p => ({ id:`due:post:${p.id}|${TODAY}|${slot}`, type:"entrega", post:p.id, cm:true, d:daysTo(p.date) }))].sort((a, b) => a.d - b.d);
+  if (!L.length) return [];
   const K = "rmh-duepop-" + viewer.id; let seen = []; try { seen = JSON.parse(localStorage.getItem(K)) || []; } catch {}
-  const items = L.map(j => ({ id:`due:${j.id}|${TODAY}|${slot}`, type:"entrega", job:j.id, d:daysTo(j.due) })).filter(n => !seen.includes(n.id));
+  const items = L.filter(n => !seen.includes(n.id));
   if (!items.length) return [];
   try { localStorage.setItem(K, JSON.stringify([...seen, ...items.map(n => n.id)].slice(-300))); } catch {}
   if (items.length <= 4) return items.reverse(); // el más atrasado queda arriba
   const rest = items.slice(3), late = rest.filter(n => n.d < 0).length; // si son muchos: los 3 más atrasados y una tarjeta con el resto
-  return [{ id:`due:sum|${TODAY}|${slot}`, type:"entrega", sum:rest.length, late, d:Math.min(...rest.map(n => n.d)) }, ...items.slice(0, 3).reverse()];
+  return [{ id:`due:sum|${TODAY}|${slot}`, type:"entrega", sum:rest.length, late, cm:rest.filter(n => n.cm).length > rest.length / 2, d:Math.min(...rest.map(n => n.d)) }, ...items.slice(0, 3).reverse()];
 }
-const dueTitle = d => d >= 0 ? "¡Atención! Hoy es el día de entrega" : `¡Atención! ${-d === 1 ? "Un día atrasado" : -d === 2 ? "Dos días atrasados" : `${-d} días atrasados`}`;
+const dueTitle = (d, pub) => d >= 0 ? `¡Atención! Hoy es el día de ${pub ? "publicación" : "entrega"}` : `¡Atención! ${-d === 1 ? "Un día atrasado" : -d === 2 ? "Dos días atrasados" : `${-d} días atrasados`}`;
 const dueColor = d => d >= 0 ? "#f59e0b" : d === -1 ? "#f97316" : "#ef4444";
 // Mensajes del chat: una tarjeta por conversación con el último mensaje (y cuántos hay sin leer).
 function chatPopItems(keys, cur){
@@ -10883,11 +10888,14 @@ function chatPopItems(keys, cur){
 function jobPopInfo(n){
   const P = JOBPOP[n.type], j = n.job ? jobById(n.job) : null;
   if (n.type === "entrega"){ const d = n.demo ? -2 : n.d;
-    if (n.sum) return { ...P, go:"paneldg", t:"¡Atención! Más entregas de diseño", c:dueColor(d), title:`Y ${n.sum} ${n.sum === 1 ? "pedido más" : "pedidos más"} para entregar hoy o atrasados`,
+    if (n.sum) return { ...P, go:n.cm ? "panelcm" : "paneldg", t:"¡Atención! Más entregas", c:dueColor(d), title:`Y ${n.sum} ${n.sum === 1 ? "entrega más" : "entregas más"} para hoy o atrasadas`,
       m:[n.late && `${n.late} ${n.late === 1 ? "atrasado" : "atrasados"}`, n.sum - n.late && `${n.sum - n.late} para hoy`].filter(Boolean).join(" · ") + " · están en el Panel de Trabajo" };
     if (n.demo) return { ...P, go:"", t:dueTitle(d), c:dueColor(d), title:"Ejemplo: Cartel de góndola ofertas del finde", m:`Stock · Cartelería · tenía que entregarse el ${dm(addDays(TODAY, d))} · En proceso` };
+    if (n.post){ const p = postById(n.post);
+      return { ...P, go:p ? "pub:post:" + p.id : "", t:dueTitle(d, true), c:dueColor(d), title:p?.title || "",
+        m:p ? `${p.brand} · ${p.format} · ${d >= 0 ? "se publica hoy" + (p.time ? ` a las ${p.time} h` : "") : "tenía que publicarse el " + dm(p.date)} · ${p.status}${p.cm !== viewer.name ? " · " + (p.cm || "sin CM asignada") : ""}` : "" }; }
     return { ...P, go:j ? "job:" + j.id : "", t:dueTitle(d), c:dueColor(d), title:j?.title || "",
-      m:j ? `${jobBrands(j).join(" + ")} · ${cmPiece(j)} · ${d >= 0 ? "se entrega hoy" : "tenía que entregarse el " + dm(j.due)} · ${j.status}${j.owner !== viewer.name ? ` · ${j.owner === "Sin asignar" ? "sin diseñador asignado" : j.owner}` : ""}` : "" }; }
+      m:j ? `${jobBrands(j).join(" + ")} · ${cmPiece(j)} · ${d >= 0 ? "se entrega hoy" : "tenía que entregarse el " + dm(j.due)} · ${j.status}${j.owner !== viewer.name ? ` · ${j.owner === "Sin asignar" ? "sin asignar" : j.owner}` : ""}` : "" }; }
   if (n.demo) return n.type === "chat" ? { ...P, go:"", t:"Team MKT", title:"Ejemplo: ¿Ya está lista la historia del finde?", m:"" }
     : { ...P, go:"", title:n.type === "fix" ? "Ejemplo: Post Día de la Madre" : "Ejemplo: Historia ofertas del finde", m:n.type === "fix" ? "“Cambiar la foto principal y agrandar el precio”" : "Superseis · Historia · fecha límite " + dm(addDays(TODAY, 2)) };
   if (n.type === "chat") return { ...P, go:"chat:" + n.open, t:n.name, title:n.from ? `${n.from}: ${n.text}` : n.text, m:n.n > 1 ? `${n.n} mensajes nuevos` : "", ic:n.open.startsWith("g:") ? "messages-square" : "message-circle" };
@@ -10916,7 +10924,7 @@ function jobPopShow(){
   if (!jobPop.items.length){ if (el && !el.classList.contains("out")){ el.classList.add("out"); setTimeout(() => { if (!jobPop.items.length) el.remove(); }, 260); } return; }
   if (!el){ el = document.createElement("div"); el.id = "jobpop"; el.setAttribute("role", "alertdialog"); el.setAttribute("aria-live", "assertive"); document.body.appendChild(el); }
   const L = jobPop.items.map(n => ({ n, x:jobPopInfo(n) })), top = L[L.length - 1].x, many = L.length > 1;
-  const head = L.every(({ n }) => n.type === "entrega") ? `¡Atención! Entregas de diseño (${L.reduce((t, { n }) => t + (n.sum || 1), 0)})` : `Tenés ${L.length} avisos nuevos`;
+  const head = L.every(({ n }) => n.type === "entrega") ? `¡Atención! Entregas de hoy y atrasadas (${L.reduce((t, { n }) => t + (n.sum || 1), 0)})` : `Tenés ${L.length} avisos nuevos`;
   el.className = "jobpop " + (top.k === "fix" ? "fix" : top.k === "due" ? "due" : "new"); el.style.setProperty("--c", top.c);
   el.setAttribute("aria-label", many ? head : top.t);
   el.innerHTML = `<div class="jpcard"><span class="jpring" aria-hidden="true"></span><div class="jphead"><span class="jpico">${icon(top.ic)}</span><div class="grow"><b>${many ? esc(head) : esc(top.t)}</b><small>Retail MKT Hub · recién</small></div><button type="button" class="jpx" data-jpclose aria-label="Cerrar">${icon("x")}</button></div>
@@ -10936,7 +10944,7 @@ document.addEventListener("click", e => {
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && jobPop.items.length && !document.querySelector(".imodal,#fixpop")){ jobPop.items = []; jobPopShow(); } });
 // Sonidos (hechos con el navegador, sin archivos): trabajo nuevo (y avisos) = tres notas que suben, suaves, tipo campanita;
-// corrección = dos notas que bajan, repetidas una vez más bajito; mensaje del chat = dos notas cortas; entrega de diseño de hoy
+// corrección = dos notas que bajan, repetidas una vez más bajito; mensaje del chat = dos notas cortas; entrega (Diseño o CM) de hoy
 // o atrasada = repique rápido tipo despertador, dos veces. El navegador los deja sonar después del primer toque en la app.
 const jobSound = (() => {
   let ctx = null;
@@ -10981,7 +10989,7 @@ navigator.serviceWorker?.addEventListener("message", e => { if (e.data?.type ===
 function jobPopCfg(){
   const on = jobSoundOn();
   return `<section class="panel cfgsec"><h2 class="pmh">${pmIco("bell-ring")}Ventana emergente y sonido</h2>
-    <p class="note">Todo lo que te avisa la app sale en una ventana en la pantalla, con sonido: los mensajes del chat (con “Responder”), los Avisos del equipo, los trabajos nuevos y las correcciones, los comentarios y los trabajos aprobados${viewer.role === "Admin total" ? ", lo que queda listo para revisar, las sugerencias y las fallas de Google Drive" : ""}. Al abrir la app también salen las alertas nuevas (lo que vence, sábados, cumpleaños). Suena distinto según lo que llega: mensaje, algo nuevo, una corrección o una entrega de diseño de hoy o atrasada (esa suena como un despertador). Con la app cerrada o en otra pestaña llega la notificación del celular o de la compu (si las activaste en este dispositivo), y cada mañana un resumen de lo de hoy. Con “No molestar” no suena ni llegan notificaciones.</p>
+    <p class="note">Todo lo que te avisa la app sale en una ventana en la pantalla, con sonido: los mensajes del chat (con “Responder”), los Avisos del equipo, los trabajos nuevos y las correcciones, los comentarios y los trabajos aprobados${viewer.role === "Admin total" ? ", lo que queda listo para revisar, las sugerencias y las fallas de Google Drive" : ""}. Al abrir la app también salen las alertas nuevas (lo que vence, sábados, cumpleaños). Suena distinto según lo que llega: mensaje, algo nuevo, una corrección o una entrega de hoy o atrasada, de Diseño o de CM (esa suena como un despertador). Con la app cerrada o en otra pestaña llega la notificación del celular o de la compu (si las activaste en este dispositivo), y cada mañana un resumen de lo de hoy. Con “No molestar” no suena ni llegan notificaciones.</p>
     <div class="cfgopts"><button type="button" class="cfgopt ${on ? "on" : ""}" data-jobsound="on"><b>Con sonido</b><span>Suena cuando llega algo para vos.</span></button><button type="button" class="cfgopt ${on ? "" : "on"}" data-jobsound="off"><b>Sin sonido</b><span>Solo la ventana, en silencio.</span></button></div>
     <div class="chips" style="margin-top:12px"><button type="button" class="btn" data-jobtest="msg">${icon("message-circle")} Probar: mensaje</button><button type="button" class="btn" data-jobtest="new">${icon("bell-ring")} Probar: trabajo nuevo</button><button type="button" class="btn" data-jobtest="fix">${icon("bell-ring")} Probar: corrección</button><button type="button" class="btn" data-jobtest="due">${icon("alarm-clock")} Probar: entrega atrasada</button></div></section>`;
 }
