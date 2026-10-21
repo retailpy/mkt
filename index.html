@@ -3506,7 +3506,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v232";
+const APP_VER = "v233";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -9334,11 +9334,14 @@ const chatConvUnread = () => { const o = {}; // conversación → mensajes sin l
   chatGroupsMine().filter(g => !g.archived && !isMuted("g:" + g.id)).forEach(g => { const k = grpUnread(g.id); if (k) o["g:" + g.id] = k; });
   PEOPLE.filter(pp => pp.id !== viewer.id && !isMuted("p:" + pp.id)).forEach(pp => { const k = dmUnread(pp.id); if (k) o["p:" + pp.id] = k; });
   return o; };
+// v233: el rol Admin (control) no tiene ventanas emergentes, sonidos ni avisos del sistema: solo el +N en los botones del
+// chat (que vuelve a 0 al abrir la conversación). Las ventanas son para Diseño gráfico, CM y Admin total.
+const noPops = () => viewer?.role === "Admin";
 function chatNotify(){
   if (!viewer || sinChat(viewer)) return; markDelivered(); const n = chatUnreadTotal(), loud = chatUnreadLoud();
   if (chatLastTotal !== null && n > chatLastTotal) setTimeout(bumpChatBadges, 0);
   if (loud !== chatLastLoud){ const cur = chatConvUnread(), was = chatLastConv; chatLastConv = cur;
-    if (chatLastLoud !== null && loud > chatLastLoud && !isDnd()){
+    if (chatLastLoud !== null && loud > chatLastLoud && !isDnd() && !noPops()){
       const keys = Object.keys(cur).filter(k => cur[k] > (was[k] || 0)), seeing = page === "mensajes" && document.visibilityState === "visible";
       const items = chatPopItems(keys.filter(k => !(seeing && chatUI.open === k)), cur);
       if (items.length && page !== "mensajes" && !window.RMH?.previewing){ jobPop.items = [...jobPop.items.filter(x => !(x.type === "chat" && items.some(y => y.open === x.open))), ...items].slice(-4); jobPopShow(); jobTitleBlink(loud); }
@@ -10819,7 +10822,7 @@ const jobPopRead = () => { try { const v = localStorage.getItem(jobPopKey()); re
 const jobPopSave = ids => { try { localStorage.setItem(jobPopKey(), JSON.stringify(ids.slice(-400))); } catch {} };
 let jobPop = { items:[] };
 function jobPopCheck(){
-  if (!viewer || !enterApp.done || !$("#login").hidden || window.RMH?.previewing) return;
+  if (!viewer || !enterApp.done || !$("#login").hidden || window.RMH?.previewing || noPops()) return;
   const mine = [...myNotifs(), ...(viewer.role === "Admin total" ? adminNotifs().filter(n => ADMIN_POP.includes(n.type) && n.who !== viewer.name && (n.type !== "sug" || can("sugerencias"))) : [])]
     .filter(n => JOBPOP[n.type] && !POP_LOCAL.includes(n.type) && (n.copy ? copyAlert(n) : (n.type !== "pub" || pubAlert(n)) && (n.type !== "listo" || !n.post || listoAlert(n)) && (!n.job || jobById(n.job))))
     .concat(avActiveFor(viewer).filter(a => !(a.seen || []).includes(viewer.id) && a.by !== viewer.id).map(a => avPopOf(a))); // avisos del equipo vigentes, sin “Entendido”
@@ -11019,7 +11022,7 @@ function pConfig(){
     <div class="chips">${installPrompt ? `<button class="btn pgen" type="button" data-installnow>${icon("download")} Instalar ahora</button>` : ""}<button class="btn primary" type="button" data-install>${icon("list-ordered")} Ver cómo instalarla</button></div></section>`;
   return `<div><h1>Configuración</h1><p class="sub">Tu perfil, cómo querés ver la app e instalarla. Se guarda para vos: cada persona elige lo suyo.</p><p class="note appver">${icon("badge-check")} Versión de la app en este dispositivo: <b>${APP_VER}</b> · tiene que ser la misma en el celular, la tablet y la compu</p></div>
   <div class="chips cfgtabs" role="tablist">${tabs.map(([k, l, i]) => `<button type="button" role="tab" aria-selected="${cfgTab === k}" class="chip ${cfgTab === k ? "on" : ""}" data-cfgtab="${k}">${icon(i)} ${l}</button>`).join("")}</div>
-  ${cfgTab === "perfil" ? `${perfil}` : cfgTab === "instalar" ? inst : cfgTab === "guia" ? pGuia().replace(/^<div class="head"><div><h1>Guía de uso<\/h1>/, '<div class="head"><div><h2 class="pmh" style="margin:0">Guía de uso</h2>') : cfgTab === "notif" ? notifCfg() + jobPopCfg() : cfgTab === "integ" && v.role === "Admin total" ? integCfg() : `<div class="cfggrid">
+  ${cfgTab === "perfil" ? `${perfil}` : cfgTab === "instalar" ? inst : cfgTab === "guia" ? pGuia().replace(/^<div class="head"><div><h1>Guía de uso<\/h1>/, '<div class="head"><div><h2 class="pmh" style="margin:0">Guía de uso</h2>') : cfgTab === "notif" ? notifCfg() + (noPops() ? "" : jobPopCfg()) : cfgTab === "integ" && v.role === "Admin total" ? integCfg() : `<div class="cfggrid">
     <section class="panel cfgsec"><h2>Apariencia</h2><p class="note">Elegí la versión oscura o la clara.</p>
       <div class="cfgopts">${opt("theme", "dark", "Oscura", "Fondo oscuro, ideal para pantallas y poca luz.", `<span class="thprev dark"><i></i><i></i><i></i></span>`)}${opt("theme", "light", "Clara", "Fondo blanco, ideal para oficinas con mucha luz.", `<span class="thprev light"><i></i><i></i><i></i></span>`)}</div></section>
     <section class="panel cfgsec"><h2>Tamaño del texto</h2><p class="note">Para leer más cómodo.</p>
