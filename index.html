@@ -3270,9 +3270,10 @@ function openApproveModal(j){
       <label>Hora de publicación *<input class="base" type="time" id="okTime" value="${esc(preTime)}"></label>
       <label>¿Dónde se publica? *<select class="base" id="okFmt">${PUB_FMTS.map(([v, l]) => `<option value="${v}" ${v === preFmt ? "selected" : ""}>${l}</option>`).join("")}</select></label>
       <label class="oknet"${preFmt === "Canal" ? " hidden" : ""}>Red *<select class="base" id="okNet">${netOpts(j.brand, x?.net || "IG")}</select></label></div>
-      ${viewer.role === "Admin total" ? (cf => `<div class="okcopy"><label class="jcext okcpon"><input type="checkbox" id="okCopyOn"${cf ? " checked" : ""}> <b>Copy confirmado</b> <span class="note">(si ya tenés el copy: lo escribís acá, queda aprobado y la CM solo lo publica)</span></label>
+      ${cont ? `<div class="okcopy"><b>${icon("file-text")} Copy</b> <span class="note">(se aprueba junto con el diseño y queda en la publicación del CM)</span>${j.noCopy ? `<p class="note" style="margin:4px 0 0">No lleva copy.</p>` : jcopyHas(j) ? (h => `<div class="rtview cpprev${rtBgCls(rtBgOf(h))}"${rtBgStyle(rtBgOf(h))}>${h.replace(/^<!--bg:#[0-9a-f]{6}-->/i, "")}</div>`)(copyHtml(j)) : `<p class="perr" style="margin:4px 0 0">Todavía no tiene copy: el CM lo escribe en su publicación y te llega para aprobar.</p>`}</div>`
+      : viewer.role === "Admin total" ? (cf => `<div class="okcopy"><label class="jcext okcpon"><input type="checkbox" id="okCopyOn"${cf ? " checked" : ""}> <b>Copy confirmado</b> <span class="note">(si ya tenés el copy: lo escribís acá, queda aprobado y la CM solo lo publica)</span></label>
         <div class="okcpsheet"${cf ? "" : " hidden"}>${copySheet({ copy:cf ? x.copy : "" }, true, "okCopy")}</div></div>`)(x?.copyConf && x.copySt === "ok") : ""}
-      <p class="note" style="margin:0">${icon("calendar-days")} Se carga sola en el calendario del CM con lo justo para publicar (título, tipo de gráfica, dónde se publica, día, hora y la ruta de la compartida), y le llega el aviso (+1). Si no marcás “Copy confirmado”, el CM escribe el copy y te llega para aprobarlo. Con “Post + Historia” se cargan las dos.</p></div>
+      <p class="note" style="margin:0">${icon("calendar-days")} Se carga sola en el calendario del CM con lo justo para publicar (título, tipo de gráfica, dónde se publica, día, hora y la ruta de la compartida), y le llega el aviso (+1). ${cont ? "El copy de arriba queda aprobado en su publicación: solo la publica." : "Si no marcás “Copy confirmado”, el CM escribe el copy y te llega para aprobarlo."} Con “Post + Historia” se cargan las dos.</p></div>
     <p class="perr" id="okErr" hidden></p>
     <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-oksend="${j.id}">✓ Aprobar</button></div></div>`;
   document.body.appendChild(w);
@@ -3362,6 +3363,7 @@ function approveJob(j, opts = {}){
   j.status = j.area === "CM" ? "Programado" : "Aprobado"; if (!j.approved) j.approved = TODAY; // en Diseño, Aprobado es el final del pedido; en CM, aprobado pasa a Programado
   if (j.area !== "CM"){ if (!j.delivered) j.delivered = TODAY; const p = j.post && postById(j.post); if (p && p.status === "Pendiente") p.status = "En proceso"; }
   if (by) j.approvedBy = by; // quién aprobó (Alyssa, Patricia, Emanuel…): queda registrado
+  if (contCopy(j) && !j.noCopy && !j.copyConf && jcopyHas(j)) copyLogAdd(j, "ok");
   (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), ok:true, by:viewer.name, ...(by ? { okBy:by } : {}) });
   NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
   notify({ to:j.owner, type:"approved", job:j.id }); jobUI.form = null;
@@ -3370,6 +3372,10 @@ function approveJob(j, opts = {}){
   if (cm && j.area !== "CM" && opts.date){ const had = new Map(jobPubsOf(j).map(p => [p.id, p.cm])); NOTIFS.forEach(n => { if (n.job === j.id && ((n.type === "pub" && !n.post) || ((n.type === "pub" || n.type === "listo") && n.to !== cm))) n.read = true; });
     xs = makePub(j, { ...opts, cm }); x = xs[0]; j.cmNotified = cm; j.pubCm = cm; j.pubDate = opts.date; j.pubTime = opts.time || "";
     if (opts.copy) xs.forEach(p => copyConfSet(p, opts.copy));
+    else if (contCopy(j)) xs.forEach(p => { // v239: el copy del contenido se aprueba con el diseño
+      if (j.noCopy){ Object.assign(p, { noCopy:true }); return; }
+      if (!jcopyHas(j)) return;
+      Object.assign(p, { copy:j.copy, copyBg:"", noCopy:false, copySt:"ok", copyBy:j.copyConf ? (j.copyLog || []).filter(c => c.k === "conf").pop()?.by || viewer.name : by || viewer.name, copyConf:!!j.copyConf }); copyLogAdd(p, j.copyConf ? "conf" : "ok"); });
     xs.forEach(p => notify({ to:cm, type:had.get(p.id) === cm ? "listo" : "pub", job:j.id, post:p.id, canal:!!p.channel })); }
   else if (cm){ notify({ to:cm, type:"listo", job:j.id }); j.cmNotified = cm; }
   render(); window.RMH?.flushNow?.();
@@ -3402,10 +3408,14 @@ document.addEventListener("click", e => {
 // Cambia la etapa respetando el flujo: cuando la persona termina (boceto o trabajo de CM) le avisa a Admin total para revisar.
 function moveJob(j, to){
   if (!j || j.status === to || !stageOptions("job", j).includes(to)) return render();
+  if (contCopy(j)){ if (rtUploading(document.getElementById("jCopy"))) return toast("Esperá que termine de subir la imagen del copy."); jcopyTake(j); } // lo escrito en la hoja del copy no se pierde
   if (viewer.role === "Admin total" && to === fixStage(j)){ render(); openFixModal(j); return; } // los cambios siempre van con mensaje
   if (viewer.role === "Admin total" && (to === "Aprobado" || (j.area === "CM" && to === "Programado")) && REVIEW_WAIT.includes(j.status)){ render(); return openApproveModal(j); }
   if (viewer.role !== "Admin total" && to === reviewStage(j)){
+    if (contCopy(j) && !jcopyOk(j)){ jobUI.ficha = j.id; render(); window.scrollTo(0, 0); setTimeout(() => document.querySelector(".jp-copy")?.scrollIntoView({ block:"center" }), 50);
+      return toast("Falta el copy: escribilo en “Copy de la publicación” (o marcá “No lleva copy”) y tocá de nuevo. Se manda junto con el diseño."); }
     const fix = j.status === fixStage(j); if (fix) j.rounds = (j.rounds || 0) + 1;
+    if (contCopy(j) && !j.noCopy && !j.copyConf) copyLogAdd(j, "send");
     j.status = to; NOTIFS.forEach(n => { if (n.to === viewer.name && n.job === j.id) n.read = true; });
     (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), kind:"boceto", by:viewer.name, fix, link:j.designLink || "" });
     notify({ to:"admin", type:"review", job:j.id, who:viewer.name, fix });
@@ -4952,7 +4962,7 @@ function notifAlerts(){
     if (n.copy) return copyAlert(n);
     const j = jobById(n.job); if (!j) return null;
     if (n.type === "nota") return { go:"job:" + j.id, key:"n:" + n.id, sev:"#94a3b8", rank:-4, ic:"message-circle", t:`${n.who} comentó en: ${j.title}`, m:`“${n.text}” · ${dm(n.date)} ${n.time}` };
-    return { go:"job:" + j.id, key:"n:" + n.id, sev:"#a855f7", rank:-5, ic:"circle-check", t:`${n.who} ${n.fix ? "terminó las correcciones" : j.area === "CM" ? "terminó su trabajo" : "terminó el boceto"}: ${j.title}`, m:`${j.brand} · ${j.piece} · listo para revisar · ${dm(n.date)} ${n.time}${j.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}`,
+    return { go:"job:" + j.id, key:"n:" + n.id, sev:"#a855f7", rank:-5, ic:"circle-check", t:`${n.who} ${n.fix ? "terminó las correcciones" : j.area === "CM" ? "terminó su trabajo" : contCopy(j) ? "terminó el boceto y el copy" : "terminó el boceto"}: ${j.title}`, m:`${j.brand} · ${j.piece} · listo para revisar${contCopy(j) ? " · " + jcopyShort(j) : ""} · ${dm(n.date)} ${n.time}${j.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}`,
       acts:`<button class="btn primary" data-nact="approve" data-nid="${n.id}">${j.area === "CM" ? "Aprobar" : "✓ Aprobar"}</button><button class="btn" data-nact="fix" data-nid="${n.id}">Pedir cambios</button><button class="btn" data-jficha="${j.id}">Ver pedido</button>` };
   });
   return myNotifs().map(n => n.copy ? copyAlert(n) : n.type === "pub" ? pubAlert(n) : n.type === "nuevo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:"inbox", t:`Nuevo pedido para vos: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""} · fecha límite ${jobById(n.job) ? dm(jobById(n.job).due) : ""} · tocá para ver todo` }
@@ -6747,6 +6757,7 @@ function jobFicha(){
     <section class="panel jp-sec"><h2 class="pmh">${pmIco("users")}<i class="jpn">2</i>Quién y para cuándo</h2>
       <div class="jfgrid"><div><span>Quién lo pidió</span><b>${esc(j.requester || "Sin indicar")}</b></div>${row("Responsable", esc(j.owner))}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", prioTag(j.priority))}${row("Complejidad", esc(j.complexity))}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}${j.approvedBy ? row("Aprobó", `${icon("badge-check")} ${esc(j.approvedBy)}${j.approved ? " · " + dm(j.approved) : ""}`) : ""}</div>${seesPubDate() ? pubInfo(j) : ""}</section>
     ${jobBriefSection(j)}
+    ${jobCopyBlock(j)}
     ${j.area === "CM" ? videoBlock(j) : ""}
     ${j.area !== "CM" || (j.bocetos || []).length ? bocetoBlock(j) : ""}
     <section class="panel jp-sec jp-mat onlyshare"><h2 class="pmh">${pmIco("folder-symlink")}Ruta de la compartida</h2><p class="note shnote">${icon("server")} Es la carpeta del disco del servidor de la empresa (no es una página web): tocá <b>Abrir</b> o <b>Copiar link</b> y pegala en el Explorador de archivos.</p>
@@ -6848,7 +6859,12 @@ function jobForm(){
       <div style="grid-column:1/-1"><span class="jll">Texto del pedido <span class="note">(de qué se trata, el texto que va en el diseño o lo que dice el video)</span></span>${rtEditor("jBriefF", j.brief ? cleanRich(j.brief) : "", BRIEF_PH[area])}</div>
       <div style="grid-column:1/-1"><span class="jll">${icon("folder-symlink")} Ruta de la compartida <span class="note">(la carpeta del disco del servidor donde van los archivos de este trabajo; no es una página web)</span></span>${linkEditor(j, "form")}</div>
       </div></section>
-      <section class="jfs"><h3><i>4</i>Estado</h3><div class="jfg">
+      ${area === "Contenidos" ? (cpEd => `<section class="jfs"><h3><i>4</i>Copy de la publicación</h3><div class="jfg"><div style="grid-column:1/-1">
+        ${j.noCopy && !cpEd ? `<p class="cpst nocopy">${icon("ban")} No lleva copy</p>` : copySheet(j, cpEd, "jCopyF")}
+        ${!cpEd ? "" : own ? (j.copyConf ? "" : `<label class="jcext"><input type="checkbox" id="jNoCopy"${j.noCopy ? " checked" : ""}> No lleva copy <span class="note">(se publica sin copy)</span></label>`)
+          : `<label class="jcext"><input type="checkbox" id="jCopyConf"${j.copyConf ? " checked" : ""}> <b>Copy confirmado</b> <span class="note">(si ya tenés el copy: lo escribís acá y ${esc(firstName(j.owner && j.owner !== "Sin asignar" ? j.owner : "el CM"))} no lo escribe, solo lo publica)</span></label><label class="jcext"><input type="checkbox" id="jNoCopy"${j.noCopy ? " checked" : ""}> No lleva copy</label>`}
+        <p class="note" style="margin:6px 0 0">${icon("info")} El CM entrega el diseño y el copy juntos: los dos le llegan a Admin total en Boceto finalizado (y en Corrección realizada) para aprobar o corregir.</p></div></div></section>`)(f.mode !== "edit" || jcopyEdit(j)) : ""}
+      <section class="jfs"><h3><i>${area === "Contenidos" ? 5 : 4}</i>Estado</h3><div class="jfg">
       ${own && f.mode === "edit" ? `<div><span class="jll">Estado</span>${pill(j.status, JOB_COLOR[j.status])} <span class="note">(lo cambiás con los botones del contenido)</span></div>` : `<label>Estado *<select class="base" id="jStatus">${opt(own ? CONT_NEW_ST : statesOf(area), j.status)}</select></label>`}
       <label>Prioridad *<select class="base" id="jPrio">${opt(PRIORIDADES, j.priority)}</select></label>
       <label>Complejidad *<select class="base" id="jComp">${opt(COMPLEJIDAD, j.complexity)}</select></label>
@@ -6898,6 +6914,8 @@ const jobLinks = j => Array.isArray(j.links) ? j.links : j.link ? [j.link] : [];
 function readJobForm(j){ const v = id => document.getElementById(id)?.value;
   if (v("jPubCm") !== undefined){ j.pubCm = v("jPubCm") || ""; j.pubDate = v("jPubDate") || ""; j.pubTime = v("jPubTime") || ""; }
   const bf = document.getElementById("jBriefF"); if (bf && bf.dataset.dirty){ j.brief = rtHtml(bf); j.briefBy = viewer.name; j.briefAt = new Date().toISOString(); }
+  const cf = document.getElementById("jCopyF"); if (cf && cf.isContentEditable && cf.dataset.dirty){ j.copy = rtHtml(cf); j.copyBg = ""; } // v239: copy del contenido gráfico
+  const nc = document.getElementById("jNoCopy"), cc = document.getElementById("jCopyConf"); if (nc) j.noCopy = nc.checked; if (cc) j.copyConf = cc.checked && !j.noCopy;
   if (document.querySelector("#jobForm .lked")) readLinkEditor(document.querySelector("#jobForm .lked"), j);
   // (los links se leen del editor de links de acceso, arriba)
   Object.assign(j, { requestDate:v("jReq") ?? j.requestDate, requester:v("jRequester") ?? j.requester, piece:v("jPiece") ?? j.piece, ...(v("jCat") ? { cat:v("jCat") } : {}), ...(v("jVfmt") ? { vfmt:v("jVfmt") } : {}), ...(v("jVtopic") ? { vtopic:v("jVtopic") } : {}), ...(v("jOtro") !== undefined ? { otro:v("jOtro").trim().slice(0, 300) } : {}), ...(v("jVisita") !== undefined ? { visita:v("jVisita").trim().slice(0, 80), traslado:v("jTraslado") === "" ? "" : Math.max(0, +v("jTraslado") || 0) } : {}), title:(v("jTitle") ?? j.title).trim(), owner:v("jOwner") ?? j.owner, status:v("jStatus") ?? j.status, priority:v("jPrio") ?? j.priority, complexity:v("jComp") ?? j.complexity, due:v("jDue") ?? j.due, link:String(v("jLink") ?? j.link ?? "").trim(), notes:(v("jNotes") ?? j.notes).trim() }); }
@@ -7294,6 +7312,44 @@ function copyLogList(p){
   const t = { send:"terminó el boceto del copy", none:"marcó que no lleva copy", has:"marcó que sí lleva copy", fix:"pidió corregir el copy", ok:"aprobó el copy", edit:"volvió a abrir el copy para cambiarlo", conf:"cargó el copy confirmado (ya aprobado)" };
   return `<ol class="cplog">${L.map(c => `<li class="${c.k}"><b>${esc(firstName(c.by || ""))}</b> ${t[c.k] || ""}${c.text ? `: <q>${esc(c.text)}</q>` : ""} <span>${dm(c.date)} ${c.time || ""}</span></li>`).join("")}</ol>`;
 }
+// v239 · Contenidos gráficos: el mismo pedido lleva diseño + copy. El CM escribe el copy en la misma hoja (blanca, con
+// emojis) y lo manda junto con el boceto (Boceto finalizado / Corrección realizada); Admin total aprueba o corrige todo
+// junto. Si Admin total ya tiene el copy, lo carga como “Copy confirmado” y el CM no lo escribe. Al aprobar, la publicación
+// del mismo CM queda con el copy aprobado (o “No lleva copy”). En el pedido: copy, noCopy, copyConf, copyLog.
+const contCopy = j => !!j && j.area === "Contenidos";
+const jcopyHas = j => !!copyPlain(j).trim() || /<img/i.test(j.copy || "");
+const jcopyOk = j => !!j.noCopy || !!j.copyConf || jcopyHas(j);
+const jcopyEdit = j => contCopy(j) && !isClosed() && !isViewOnly() && !isFin(j) && (viewer.role === "Admin total" || (j.owner === viewer.name && !j.copyConf && ["Pendiente","En proceso","En corrección"].includes(j.status)));
+function jcopyTake(j){ const ed = document.getElementById("jCopy"); if (ed && ed.isContentEditable && ed.dataset.dirty && jcopyEdit(j)){ j.copy = rtHtml(ed); j.copyBg = ""; delete ed.dataset.dirty; } }
+const jcopyShort = j => j.noCopy ? "no lleva copy" : j.copyConf ? "copy confirmado por Admin total" : jcopyHas(j) ? `copy: “${rclShort(copyPlain(j), 120)}”` : "sin copy";
+function jobCopyBlock(j){
+  if (!contCopy(j)) return "";
+  const at = viewer.role === "Admin total", ed = jcopyEdit(j), mine = j.owner === viewer.name, fin = isFin(j), wait = REVIEW_WAIT.includes(j.status), id = esc(j.id);
+  const st = j.noCopy ? `${icon("ban")} No lleva copy: se publica sin copy` : j.copyConf ? `${icon("badge-check")} Copy confirmado por Admin total${mine && !at ? ": no lo tenés que escribir, solo publicarlo" : ""}`
+    : fin ? `${icon("badge-check")} Copy aprobado junto con el diseño` : wait ? `${icon("hourglass")} Copy enviado con el boceto: Admin total lo revisa junto con el diseño`
+    : `${icon("file-text")} ${mine ? "Escribí el copy acá: se manda junto con el diseño cuando tocás “Boceto finalizado” (o “Corrección realizada”)" : `${esc(firstName(j.owner))} escribe el copy y lo manda junto con el diseño`}`;
+  const cls = j.noCopy ? "nocopy" : j.copyConf || fin ? "ok" : wait ? "rev" : j.status === "En corrección" ? "fix" : "none";
+  const btns = !ed ? "" : `<button type="button" class="btn" data-jcp="save:${id}">${icon("save")} Guardar copy</button>`
+    + (j.copyConf ? "" : `<button type="button" class="chip cpnone${j.noCopy ? " on" : ""}" data-jcp="none:${id}" aria-pressed="${!!j.noCopy}">${icon("ban")} No lleva copy</button>`)
+    + (at ? (j.copyConf ? `<button type="button" class="btn" data-jcp="unconf:${id}">Quitar “Copy confirmado”</button>` : j.noCopy ? "" : `<button type="button" class="btn primary" data-jcp="conf:${id}">${icon("badge-check")} Copy confirmado</button>`) : "");
+  return `<section class="panel jp-sec jp-copy"><h2 class="pmh">${pmIco("file-text")}Copy de la publicación</h2>
+    <div class="cphead"><p class="cpst ${cls}">${st}</p></div>
+    ${j.noCopy ? "" : copySheet(j, ed, "jCopy")}
+    ${btns ? `<div class="chips cpacts">${btns}</div>` : ""}
+    ${at && ed && !j.copyConf && !j.noCopy ? `<p class="note" style="margin:6px 0 0">${icon("info")} ¿Ya tenés el copy? Escribilo en la hoja y tocá “Copy confirmado”: ${esc(firstName(j.owner || "el CM"))} no lo escribe, solo lo publica. Si no, lo escribe el CM y te llega junto con el boceto.</p>` : ""}
+    ${copyLogList(j)}</section>`;
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-jcp]"); if (!b) return;
+  const [act, id] = b.dataset.jcp.split(":"), j = jobById(id); if (!j || !jcopyEdit(j)) return;
+  if (rtUploading(document.getElementById("jCopy"))) return toast("Esperá que termine de subir la imagen.");
+  jcopyTake(j);
+  if (act === "none"){ j.noCopy = !j.noCopy; copyLogAdd(j, j.noCopy ? "none" : "has"); toast(j.noCopy ? "Listo: no lleva copy. Se manda solo el diseño." : "Listo: lleva copy. Escribilo en la hoja."); }
+  else if (act === "conf"){ if (viewer.role !== "Admin total") return; if (!jcopyHas(j)) return toast("Escribí el copy en la hoja antes de tocar “Copy confirmado”.");
+    j.copyConf = true; j.noCopy = false; copyLogAdd(j, "conf"); if (j.owner && j.owner !== "Sin asignar" && j.owner !== viewer.name) notify({ to:j.owner, type:"nota", job:j.id, text:"Cargué el copy confirmado: no lo tenés que escribir, solo publicarlo." });
+    toast(`Copy confirmado. ${firstName(j.owner || "El CM")} no lo tiene que escribir.`); }
+  else if (act === "unconf"){ if (viewer.role !== "Admin total") return; j.copyConf = false; copyLogAdd(j, "edit"); toast("Quitaste “Copy confirmado”: el CM puede escribir el copy."); }
+  else toast("Copy guardado.");
+  render(); window.RMH?.flushNow?.(); });
 // Hoja de la CM para una publicación que viene de Diseño gráfico: solo el copy, el día y la hora, y la etapa.
 // (Sin “¿Se repite?”, sin el texto del pedido, sin la ruta repetida, sin prioridad ni cambios de Diseño.)
 function pubCopyForm(f, p, dj, canal, real, chat){
@@ -10502,7 +10558,7 @@ const GUIDE = [
     ["message-circle","Gestión Canal WhatsApp","Lo que se publica en el Canal de WhatsApp de cada marca. Etapas: Pendiente → En proceso → Programado → Publicado (sin Pautado), también en los repetitivos. Calendario, Tablero y Tabla."],
     ["folder-symlink","Ruta de la compartida y aprobar un diseño","En Diseño gráfico y Gestión de Contenidos queda solo la Ruta de la compartida (la carpeta del servidor): tocá Abrir o Copiar link. Al aprobar, Admin total elige quién aprobó y, si hace falta, qué CM lo publica, el día y el formato: se carga sola la publicación en su calendario con la ruta y le llega el aviso (+1)."],
     ["clapperboard","Gestión de Video","Los pedidos a los CM: grabaciones, ediciones de video, coberturas, copys y pauta. Etapas: Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado (en Revisión, Admin total aprueba o pide cambios). Tabla y Procesos (una columna por etapa), más la lista de Repetitivos; las grabaciones repetitivas siguen las mismas etapas. En el calendario de Planificación se ven todos los videos y las grabaciones en su fecha."],
-    ["shapes","Gestión de Contenidos","Piezas simples para redes que arma el CM (posts, historias, carruseles, flyers…), con el mismo proceso de Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección → Corrección realizada) → Aprobado. El CM carga sus propios contenidos gráficos (“Cargar contenido gráfico”, o “Cargar trabajo” → Creación de contenidos gráficos) y los avanza: Empezar · En proceso → ✓ Boceto finalizado; si Admin total pide cambios, ✓ Corrección realizada. En las dos le llega el aviso a Admin total. Si lo carga ya terminado, puede elegir Boceto finalizado al cargarlo. Admin total la aprueba (eligiendo quién aprobó y la fecha) y la publicación queda sola en el calendario del mismo CM, que la publica él mismo."],
+    ["shapes","Gestión de Contenidos","Piezas simples para redes que arma el CM (posts, historias, carruseles, flyers…), con el mismo proceso de Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección → Corrección realizada) → Aprobado. El CM carga sus propios contenidos gráficos (“Cargar contenido gráfico”, o “Cargar trabajo” → Creación de contenidos gráficos) y los avanza: Empezar · En proceso → ✓ Boceto finalizado; si Admin total pide cambios, ✓ Corrección realizada. En las dos le llega el aviso a Admin total. Si lo carga ya terminado, puede elegir Boceto finalizado al cargarlo. El mismo pedido lleva diseño + copy: el CM escribe el copy en la hoja del pedido (blanca, con emojis; o marca “No lleva copy”) y se manda junto con el boceto; si Admin total ya tiene el copy, lo carga como “Copy confirmado” y el CM no lo escribe. Admin total aprueba o corrige diseño y copy juntos. Admin total la aprueba (eligiendo quién aprobó y la fecha) y la publicación queda sola en el calendario del mismo CM, que la publica él mismo."],
     ["gauge","Carga de trabajo CM","En %: el tiempo estimado de lo que le falta a cada CM hasta el domingo (publicaciones, historias, Canal, contenidos, videos según su etapa, traslados y la atención diaria de Mensajes) sobre sus horas disponibles, ya descontadas ausencias y reuniones. Si no tiene horario propio se usa el de oficina (lunes a viernes 8:00–17:00) y lo dice; si falta un tiempo, también lo dice. Admin total configura tiempos, horarios, ausencias y cuentas. La pestaña “Informe del mes” muestra lo que hizo cada CM: cantidades, detalle, plazos y pendientes."],
     ["list-checks","Plan de posteo","Todo lo de CM del mes: feed, historias, Canal de WhatsApp, videos y repetitivos. Arriba, cuántos hay en cada etapa y el % ya publicado (tocá una etapa para filtrar) y los tres procesos a la vista. Cada contenido sigue el suyo: publicaciones e historias Pendiente → En proceso → Programado → Publicado → Pautado; Canal de WhatsApp igual sin Pautado; videos Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado. Cambiás la etapa ahí mismo, el CM que la hace y pedís el diseño si hace falta."],
     ["archive","Historial CM","Publicaciones y pedidos de CM del mes: primero lo pendiente; lo publicado, pautado o terminado, aparte en la pestaña Aprobados."],
@@ -10994,8 +11050,8 @@ function jobPopInfo(n){
   const brands = j ? jobBrands(j).join(" + ") : "";
   if (n.type === "nota") return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "", t:n.to === "admin" ? `${firstName(n.who || "") || "Alguien"} comentó en un trabajo` : "Admin total comentó en tu trabajo", m:n.text ? `“${rclShort(String(n.text), 160)}”` : brands };
   if (n.type === "approved") return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "", m:`${brands} · ${j ? cmPiece(j) : ""}` };
-  if (n.type === "review") return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "", t:n.fix ? (j?.area === "CM" ? "Correcciones listas para revisar" : "Corrección realizada: lista para revisar") : j?.area === "CM" ? "Trabajo listo para revisar" : P.t,
-    m:`${firstName(n.who || "")} ${n.fix ? "terminó las correcciones" : j?.area === "CM" ? "terminó su trabajo" : "terminó el boceto"} · ${brands} · ${j ? cmPiece(j) : ""}${j?.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}` };
+  if (n.type === "review") return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "", t:n.fix ? (j?.area === "CM" ? "Correcciones listas para revisar" : contCopy(j) ? "Corrección realizada: diseño y copy para revisar" : "Corrección realizada: lista para revisar") : j?.area === "CM" ? "Trabajo listo para revisar" : contCopy(j) ? "Boceto y copy listos para revisar" : P.t,
+    m:`${firstName(n.who || "")} ${n.fix ? "terminó las correcciones" : j?.area === "CM" ? "terminó su trabajo" : "terminó el boceto"} · ${brands} · ${j ? cmPiece(j) : ""}${j?.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}${contCopy(j) ? " · " + jcopyShort(j) : ""}` };
   return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "",
     m:n.type === "fix" ? (n.text ? `“${rclShort(String(n.text), 160)}”` : `${brands} · ${j ? cmPiece(j) : ""}`)
       : n.type === "listo" ? `${brands} · ${j ? cmPiece(j) : ""} · sumalo a tu calendario`
@@ -12639,6 +12695,11 @@ document.addEventListener("submit", e => {
     sureKey = "";
     const own = j.area === "Contenidos" && !canCreateJobs(); // v239: el CM con su propio contenido gráfico
     if (own && (!cmOwnCont() || (f.mode === "edit" && !canEditJob(jobById(j.id))))){ toast("Este contenido no lo podés editar."); return; }
+    if (rtUploading(document.getElementById("jCopyF"))){ toast("Esperá que termine de subir la imagen del copy."); return; }
+    if (j.area === "Contenidos"){ const t = { ...j }; readJobForm(t); const wasConf = !!jobById(j.id)?.copyConf;
+      if (t.copyConf && !jcopyHas(t)){ toast("Escribí el copy en la hoja para marcarlo como “Copy confirmado” (o destildalo)."); return; }
+      if (own && f.mode !== "edit" && t.status === "Boceto finalizado" && !jcopyOk(t)){ toast("Para cargarlo en Boceto finalizado falta el copy: escribilo (o marcá “No lleva copy”). Se manda junto con el diseño."); return; }
+      if (t.copyConf && !wasConf) copyLogAdd(j, "conf"); }
     readJobForm(j); j.title = title; j.due = due; if (Array.isArray(j.links)) j.links = j.links.filter(Boolean);
     if (own){ j.owner = viewer.name; delete j.rep; j.status = f.mode === "edit" ? jobById(j.id).status : CONT_NEW_ST.includes(j.status) ? j.status : "Pendiente"; }
     if (!j.repOf && !own){ const ru = document.getElementById("jRepUntil")?.value || ""; if (f.repDays?.length) j.rep = { days:[...f.repDays], until:ru }; else delete j.rep; }
@@ -12649,7 +12710,7 @@ document.addEventListener("submit", e => {
     if (j.area === "Diseño" && (j.pubCm || prevPubCm)) syncJobPubs(jobById(j.id), prevPubCm);
     if (j.owner && j.owner !== "Sin asignar" && j.owner !== prevOwner && j.owner !== viewer.name) notify({ to:j.owner, type:"nuevo", job:j.id }); // le llega el aviso a quien lo tiene que hacer
     // v239: el CM lo carga ya terminado → igual que al tocar “Boceto finalizado”: versión 1 y aviso a Admin total para revisar
-    if (own && f.mode !== "edit" && j.status === "Boceto finalizado"){ (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), kind:"boceto", by:viewer.name, fix:false, link:j.designLink || "" }); notify({ to:"admin", type:"review", job:j.id, who:viewer.name, fix:false }); }
+    if (own && f.mode !== "edit" && j.status === "Boceto finalizado"){ if (!j.noCopy && !j.copyConf) copyLogAdd(j, "send"); (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), kind:"boceto", by:viewer.name, fix:false, link:j.designLink || "" }); notify({ to:"admin", type:"review", job:j.id, who:viewer.name, fix:false }); }
     // Lo que se carga se ve enseguida: va a su sección, su mes y su marca (y sin filtros que lo escondan).
     const to = jobSection(j), moved = to !== page; MONTH = m;
     if (moved && can(to) && !isPlanPage() && page !== "caldg" && !CM_CAL_KIND[page]) page = to; // desde el Plan de posteo o un calendario de CM se queda donde estaba
