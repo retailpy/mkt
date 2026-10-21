@@ -31,6 +31,7 @@ equipo. Es una **PWA** (se instala en celular, tablet y compu).
 
 ### Procesos (etapas) que la app respeta
 - **Diseño gráfico:** Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección → Corrección realizada) → Aprobado. El diseñador mueve Pendiente → En proceso → Boceto finalizado y, si le piden cambios, Corrección realizada (las dos avisan a Admin total). En revisión, En corrección y Aprobado los pone solo Admin total (v238). Pedidos nuevos con Categoría y Tipo de trabajo (v196).
+- **Contenidos gráficos de CM** (Gestión de Contenidos): el mismo proceso y los mismos avisos que Diseño gráfico. El CM carga sus propios contenidos (queda como responsable; puede cargarlo ya en Boceto finalizado), los avanza y le avisa a Admin total en Boceto finalizado y Corrección realizada. Al aprobarse, la publicación queda en el calendario del mismo CM, que la publica (no se deriva a otro CM) (v239).
   La etapa la cambian solo **Admin total** (todas) y el **diseñador responsable**, paso a paso y sin volver atrás:
   Pendiente → En proceso → Boceto finalizado (y En corrección → Boceto finalizado). **CM y Admin no cambian** etapas de diseño (v184).
 - **CM publicaciones** (feed, historias, Plan de posteo): Pendiente → En proceso → Programado → Publicado → Pautado.
