@@ -3241,7 +3241,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-nact
   const j = n && jobById(n.job); if (!j) return;
   if (b.dataset.nact === "approve"){ n.read = true; openApproveModal(j); } else openFixModal(j, n); });
 // Revisión de Admin total: aprobar, o pedir cambios con un mensaje que le llega a la persona.
-const reviewStage = j => j.area === "CM" ? "Revisión" : "Boceto finalizado";
+const reviewStage = j => j.area === "CM" ? "Revisión" : j.status === "En corrección" || j.status === "Corrección realizada" ? "Corrección realizada" : "Boceto finalizado"; // después de una corrección, el diseñador entrega como “Corrección realizada”
 const fixStage = j => j.area === "CM" ? "Corrección" : "En corrección"; // cuando Admin total pide cambios
 const jobDone = j => j.area === "CM" ? "trabajo" : j.area === "Contenidos" ? "contenido" : "diseño";
 // Aprobar un diseño: solo se aprueba (sin pedir links); Admin total puede elegir a qué CM avisarle para su grilla.
@@ -3508,7 +3508,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v233";
+const APP_VER = "v238";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -3635,8 +3635,8 @@ const POST_COLOR = { "Pendiente":"#334155","En proceso":"#eab308","Programado":"
 const OLD_POST_ST = { "Borrador":"Pendiente", "En diseño":"En proceso", "Listo":"En proceso" };
 const OLD_CM_ST = j => ({ "En proceso":/grabaci|cobertura/i.test(j.piece || "") ? "Grabación" : "Edición", "Finalizado":"Revisión", "En revisión":"Revisión", "En corrección":"Corrección", "Aprobado":"Programado" })[j.status];
 // Diseño: el diseñador lo lleva hasta “Boceto finalizado”; la revisión (aprobar o pedir correcciones) la confirma solo Admin total.
-const JOB_STAGES = ["Pendiente","En proceso","Boceto finalizado","En revisión","En corrección","Aprobado"]; // Aprobado es el final (ya no hay “Entregado”)
-const REVIEW_WAIT = ["Boceto finalizado","En revisión","Revisión"]; // esperando que Admin total revise
+const JOB_STAGES = ["Pendiente","En proceso","Boceto finalizado","En revisión","En corrección","Corrección realizada","Aprobado"]; // Aprobado es el final (ya no hay “Entregado”)
+const REVIEW_WAIT = ["Boceto finalizado","Corrección realizada","En revisión","Revisión"]; // esperando que Admin total revise
 // Gestión de Video (pedidos a CM): Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado.
 // En Revisión, Admin total aprueba (pasa a Programado) o pide cambios (Corrección, con un mensaje).
 const CM_STAGES = ["Pendiente","Grabación","Edición","Revisión","Corrección","Programado","Publicado","Pautado"];
@@ -3649,7 +3649,7 @@ const SEM = ["#ef4444","#f59e0b","#84cc16","#16a34a"];
 function semLvl(st){
   if (["Publicado","Pautado","Entregado","Hecho"].includes(st)) return 3;
   if (["Listo","Programado","Finalizado","En revisión","Revisión","Aprobado"].includes(st)) return 2;
-  if (["En diseño","En proceso","Grabación","Edición","En corrección","Corrección","Boceto finalizado"].includes(st)) return 1;
+  if (["En diseño","En proceso","Grabación","Edición","En corrección","Corrección","Boceto finalizado","Corrección realizada"].includes(st)) return 1;
   return 0;
 }
 // Los repetitivos los marca como publicados el CM (o Admin total).
@@ -3657,7 +3657,7 @@ const canMarkRec = () => !isViewOnly() && !isClosed() && (viewer.role === "Admin
 // Etapa de un repetitivo en una fecha: tocándola se elige la siguiente, dentro del proceso de su tipo.
 const recChip = (r, d) => { const st = recSt(r, d), l = semLvl(st), txt = `${l === 3 ? icon("check") + " " : ""}${st}`;
   return canMarkRec() ? `<button type="button" class="semchip s${l}" data-stagemenu="rec:${r.id}~${d}" title="Etapa: ${st} · tocá para cambiarla">${txt} ▾</button>` : `<span class="semchip s${l}">${txt}</span>`; };
-const JOB_COLOR = { "Pendiente":"#334155","En proceso":"#3b82f6","Boceto finalizado":"#06b6d4","En revisión":"#eab308","En corrección":"#f97316","Aprobado":"#14b8a6","Finalizado":"#84cc16","Entregado":"#10b981","Grabación":"#3b82f6","Edición":"#6366f1","Revisión":"#eab308","Corrección":"#f97316","Programado":"#8b5cf6","Publicado":"#10b981","Pautado":"#d946ef","Cancelado":"#64748b" };
+const JOB_COLOR = { "Pendiente":"#334155","En proceso":"#3b82f6","Boceto finalizado":"#06b6d4","En revisión":"#eab308","En corrección":"#f97316","Corrección realizada":"#a855f7","Aprobado":"#14b8a6","Finalizado":"#84cc16","Entregado":"#10b981","Grabación":"#3b82f6","Edición":"#6366f1","Revisión":"#eab308","Corrección":"#f97316","Programado":"#8b5cf6","Publicado":"#10b981","Pautado":"#d946ef","Cancelado":"#64748b" };
 const stagesOf = a => ((a && a.area) || a) === "CM" ? CM_STAGES : JOB_STAGES;
 const statesOf = a => [...stagesOf(a), "Cancelado"];
 const FIN_STATES = ["Programado","Publicado","Pautado"];
@@ -3772,7 +3772,7 @@ const CM_TIME_ROWS = [["post","Redes Sociales","Cargar/programar un post prepara
 // Videos: cuánto falta (en %) según la etapa en la que está. Las etapas ya hechas se descuentan.
 const VID_LEFT_DEF = { "Pendiente":100, "Grabación":85, "Edición":50, "Revisión":15, "Corrección":15, "Programado":5, "Publicado":0, "Pautado":0 };
 // Contenidos: lo mismo con las etapas de Diseño gráfico.
-const CONT_LEFT = { "Pendiente":100, "En proceso":60, "Boceto finalizado":10, "En revisión":10, "En corrección":30, "Aprobado":0 };
+const CONT_LEFT = { "Pendiente":100, "En proceso":60, "Boceto finalizado":10, "En revisión":10, "En corrección":30, "Corrección realizada":10, "Aprobado":0 };
 const CM_FUNCS = [["redes","Redes Sociales","image"], ["historias","Historias","smartphone"], ["canal","Canal de WhatsApp","message-circle"], ["contenidos","Gestión de Contenidos","shapes"], ["videos","Gestión de Videos","clapperboard"], ["mensajes","Mensajes","inbox"], ["actividades","Otras actividades","list-todo"]];
 // Lo configura Admin total: tiempos, % de video por etapa, horario de cada CM (por día), ausencias y reuniones, y las cuentas de Mensajes.
 let CM_LOAD = { times:{}, vidLeft:{}, avail:{}, off:[], accounts:{} };
@@ -4958,7 +4958,7 @@ function notifAlerts(){
   return myNotifs().map(n => n.copy ? copyAlert(n) : n.type === "pub" ? pubAlert(n) : n.type === "nuevo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:"inbox", t:`Nuevo pedido para vos: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""} · fecha límite ${jobById(n.job) ? dm(jobById(n.job).due) : ""} · tocá para ver todo` }
     : n.type === "listo" && n.post ? listoAlert(n)
     : n.type === "listo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#10b981", rank:-6, ic:"badge-check", t:`Diseño listo para tu grilla: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""}${jobById(n.job)?.designLink ? " · tiene el link del diseño" : ""} · sumalo a tu calendario` }
-    : n.type === "nota" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#94a3b8", rank:-4, ic:"message-circle", t:`Admin total comentó en: ${jobById(n.job)?.title || ""}`, m:`“${n.text}” · ${dm(n.date)} ${n.time}` } : ({ go:"job:" + n.job, key:"n:" + n.id, sev:n.type === "approved" ? "#10b981" : "#f97316", rank:-5, ic:n.type === "approved" ? "badge-check" : "pencil", t:n.type === "approved" ? `Admin total aprobó tu ${jobDone(jobById(n.job) || {})}: ${jobById(n.job)?.title}` : `Admin total pidió cambios: ${jobById(n.job)?.title}`, m:`${n.type === "fix" && n.text ? `“${n.text}” · ` : ""}${dm(n.date)} ${n.time}${n.type === "fix" ? " · cuando termines, tocá “Terminé las correcciones”" : ""}`, acts:`${n.type === "fix" ? `<button class="btn primary" data-jdone="${n.job}">✓ Terminé las correcciones</button>` : ""}<button class="btn" data-jficha="${n.job}">Ver pedido</button>` }));
+    : n.type === "nota" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#94a3b8", rank:-4, ic:"message-circle", t:`Admin total comentó en: ${jobById(n.job)?.title || ""}`, m:`“${n.text}” · ${dm(n.date)} ${n.time}` } : ({ go:"job:" + n.job, key:"n:" + n.id, sev:n.type === "approved" ? "#10b981" : "#f97316", rank:-5, ic:n.type === "approved" ? "badge-check" : "pencil", t:n.type === "approved" ? `Admin total aprobó tu ${jobDone(jobById(n.job) || {})}: ${jobById(n.job)?.title}` : `Admin total pidió cambios: ${jobById(n.job)?.title}`, m:`${n.type === "fix" && n.text ? `“${n.text}” · ` : ""}${dm(n.date)} ${n.time}${n.type === "fix" ? ` · cuando termines, tocá “${jobById(n.job)?.area === "CM" ? "Terminé las correcciones" : "Corrección realizada"}”` : ""}`, acts:`${n.type === "fix" ? `<button class="btn primary" data-jdone="${n.job}">✓ ${jobById(n.job)?.area === "CM" ? "Terminé las correcciones" : "Corrección realizada"}</button>` : ""}<button class="btn" data-jficha="${n.job}">Ver pedido</button>` }));
 }
 function alerts(){
   const out = [];
@@ -5217,7 +5217,8 @@ function panelStats(){
 const dgStColor = st => st === "Pendiente" ? "#ef4444" : JOB_COLOR[st] || "#94a3b8";
 const DG_GROUPS = [["pend", "Pendientes", "#ef4444", j => j.status === "Pendiente"], ["proc", "En proceso", JOB_COLOR["En proceso"] || "#3b82f6", j => j.status === "En proceso"],
   ["bof", "Bocetos finalizados", JOB_COLOR["Boceto finalizado"] || "#06b6d4", j => j.status === "Boceto finalizado"],
-  ["rev", "En revisión", JOB_COLOR["En revisión"] || "#eab308", j => REVIEW_WAIT.includes(j.status) && j.status !== "Boceto finalizado"], ["fix", "En corrección", JOB_COLOR["En corrección"] || "#f97316", j => j.status === "En corrección"],
+  ["rev", "En revisión", JOB_COLOR["En revisión"] || "#eab308", j => REVIEW_WAIT.includes(j.status) && !["Boceto finalizado","Corrección realizada"].includes(j.status)], ["fix", "En corrección", JOB_COLOR["En corrección"] || "#f97316", j => j.status === "En corrección"],
+  ["fixok", "Correcciones realizadas", JOB_COLOR["Corrección realizada"], j => j.status === "Corrección realizada"],
   ["ok", "Aprobados", JOB_COLOR["Aprobado"] || "#10b981", j => isFin(j)], ["all", "Total del mes", "var(--ink)", () => true]];
 const DG_SORTS = [["due", "Fecha límite"], ["req", "Fecha de pedido"], ["brand", "Marca"], ["requester", "Solicitante"], ["piece", "Tipo"], ["owner", "Responsable"], ["title", "Trabajo"]];
 let dgPanUI = { g:null }, dgTblUI = { sort:"due", dir:1 };
@@ -5359,9 +5360,9 @@ const urgStyle = j => { const u = urgency(j); return u ? ` u" style="--u:${u.c};
 const URG_LEGEND = ""; // las alarmas se ven en cada tarjeta y fila, no arriba
 // Etapas que cada uno puede elegir. CM: todas las de publicaciones, canales y pedidos a CM.
 // Pedidos de Diseño gráfico: la etapa la cambian solo Admin total (todas) y el diseñador responsable, paso a paso y hacia
-// adelante: Pendiente → En proceso → Boceto finalizado (y, si le piden cambios, En corrección → Boceto finalizado). CM y Admin
+// adelante: Pendiente → En proceso → Boceto finalizado (y, si le piden cambios, En corrección → Corrección realizada). CM y Admin
 // los ven pero no cambian la etapa. La revisión (En revisión, En corrección, Aprobado): solo Admin total.
-const DESIGN_NEXT = { "Pendiente":"En proceso", "En proceso":"Boceto finalizado", "En corrección":"Boceto finalizado" };
+const DESIGN_NEXT = { "Pendiente":"En proceso", "En proceso":"Boceto finalizado", "En corrección":"Corrección realizada" };
 function stageOptions(kind, it){
   if (!it || isViewOnly() || isClosed()) return [];
   if (kind === "post") return canEditPost() ? POST_STAGES : [];
@@ -5429,7 +5430,7 @@ function designerAction(j){
     return ""; }
   if (j.status === "Pendiente") return `<button class="btn primary donebtn" data-jstart="${j.id}">${icon("play")} Empezar · En proceso</button>`;
   if (j.status === "En proceso") return `<button class="btn primary donebtn" data-jdone="${j.id}">✓ Boceto finalizado</button>`;
-  if (j.status === "En corrección") return `<button class="btn primary donebtn fix" data-jdone="${j.id}">✓ Terminé las correcciones</button>`;
+  if (j.status === "En corrección") return `<button class="btn primary donebtn fix" data-jdone="${j.id}">✓ Corrección realizada</button>`;
   if (REVIEW_WAIT.includes(j.status)) return `<span class="waitchip">${icon("hourglass")} Esperando revisión</span>`;
   if (j.status === "Aprobado") return j.area === "CM" ? `<span class="okchip">✓ Aprobado</span><button class="btn primary donebtn" data-jdeliver="${j.id}">✓ Publicado</button>` : `<span class="okchip">✓ Aprobado · terminado</span>`;
   return "";
@@ -6386,14 +6387,14 @@ document.addEventListener("click", e => {
     j.brief = rtHtml(ed); j.briefBy = viewer.name; j.briefAt = new Date().toISOString(); render(); toast("Texto del pedido guardado."); }
 });
 // ----- Recorrido del pedido: cada paso con su nombre, lo hecho, dónde está ahora y qué sigue. Cada entrega es una versión. -----
-const PROC_DESC = { "Pendiente":"Pedido cargado", "En proceso":"Trabajando", "Boceto finalizado":"Versión lista para revisar", "En revisión":"Esperando la revisión", "En corrección":"Haciendo los cambios",
+const PROC_DESC = { "Pendiente":"Pedido cargado", "En proceso":"Trabajando", "Boceto finalizado":"Versión lista para revisar", "En revisión":"Esperando la revisión", "En corrección":"Haciendo los cambios", "Corrección realizada":"Cambios listos para revisar",
   "Grabación":"Grabando", "Edición":"Editando", "Revisión":"Esperando la revisión", "Corrección":"Haciendo los cambios",
   "Aprobado":"Final del pedido", "Programado":"Listo para salir", "Publicado":"Publicado", "Pautado":"Con pauta" };
 const jobVersions = j => (j.changes || []).filter(c => c.kind === "boceto").length;
 function jobProcess(j){
   const st = stagesOf(j), cur = st.indexOf(j.status), v = jobVersions(j), rounds = jobRounds(j), cm = j.area === "CM";
   const next = { "Pendiente":"el responsable empieza a trabajar.", "En proceso":cm ? "terminar y mandarlo a revisión." : `entregar la versión ${v + 1} para revisar.`,
-    "Boceto finalizado":"Admin total aprueba o pide cambios.", "En revisión":"Admin total aprueba o pide cambios.", "En corrección":cm ? "corregir y mandarlo de nuevo a revisión." : `entregar la versión ${v + 1} con los cambios.`,
+    "Boceto finalizado":"Admin total aprueba o pide cambios.", "En revisión":"Admin total aprueba o pide cambios.", "En corrección":cm ? "corregir y mandarlo de nuevo a revisión." : `entregar la versión ${v + 1} con los cambios (Corrección realizada).`, "Corrección realizada":"Admin total aprueba o pide cambios otra vez.",
     "Grabación":"editar el video.", "Edición":"terminar y mandarlo a revisión.", "Revisión":"Admin total aprueba o pide cambios.", "Corrección":"corregir y mandarlo de nuevo a revisión.",
     "Aprobado":cm ? "programarlo para que salga." : "", "Programado":"que se publique.", "Publicado":cm ? "pautarlo, si lleva pauta." : "", "Pautado":"", "Cancelado":"" }[j.status];
   const can2 = new Set(stageOptions("job", j).filter(x => x !== j.status));
@@ -7126,7 +7127,7 @@ function procExample(A){
     ["Boceto finalizado", D, "Entrega la versión 1 y avisa a Admin total.", "02/10 15:10", false, false, "Versión 1"],
     ["En revisión", AT, "Revisa la versión 1.", "02/10 16:00"],
     ["En corrección", AT, "Pide cambios con un mensaje: “Agrandá el precio y usá el logo nuevo”.", "02/10 16:05", true],
-    ["Boceto finalizado", D, "Hace los cambios y entrega la versión 2.", "03/10 11:40", false, false, "Versión 2"],
+    ["Corrección realizada", D, "Hace los cambios, entrega la versión 2 y avisa a Admin total.", "03/10 11:40", false, false, "Versión 2"],
     ["En revisión", AT, "Revisa la versión 2.", "03/10 12:10"],
     ["Aprobado", AT, "Lo aprueba: fin del pedido. Si hace falta, avisa al CM para que lo sume a su grilla.", "03/10 12:15", false, true],
   ];
@@ -7175,7 +7176,7 @@ function pCalDG(){
 document.addEventListener("click", e => { const b = e.target.closest("[data-dgst]"); if (!b) return; const st = b.dataset.dgst; dgPlanUI.st = st === "Todos" || dgPlanUI.st === st ? "Todos" : st; render(); });
 // Gestión de Contenidos (CM): igual que las páginas de Diseño gráfico (Tabla y Procesos), con los pedidos a los CM.
 function pContenidos(){
-  return pedPage("Contenidos", "Gestión de Contenidos", "shapes", `Piezas simples para redes que arma el CM (posts, historias, carruseles, flyers…), con el mismo proceso de Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección) → Aprobado. Al aprobarla, Admin total elige la fecha y la publicación queda sola en el calendario del mismo CM.${ownsJobs() ? " Cambiá el estado de tus pedidos desde la tabla o desde Procesos." : ""}`,
+  return pedPage("Contenidos", "Gestión de Contenidos", "shapes", `Piezas simples para redes que arma el CM (posts, historias, carruseles, flyers…), con el mismo proceso de Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección → Corrección realizada) → Aprobado. Al aprobarla, Admin total elige la fecha y la publicación queda sola en el calendario del mismo CM.${ownsJobs() ? " Cambiá el estado de tus pedidos desde la tabla o desde Procesos." : ""}`,
     "Qué pieza, para qué marca, qué CM la arma y para cuándo.");
 }
 function pPedidos(){
@@ -10463,10 +10464,10 @@ const GUIDE = [
     ["gauge","Carga de trabajo","Cada persona tiene una barra. Diseño gráfico: suman los trabajos sin terminar según su complejidad (Baja 1 · Media 2 · Alta 3) sobre 10 puntos de capacidad. CM: en %, el tiempo estimado de lo que le falta esta semana sobre sus horas disponibles (100 % = capacidad completa; más, sobrecarga). Verde = ideal, amarillo = carga alta, naranja = al límite, rojo = sobrecargado."],
     ["bell-ring","Avisos de pedidos (+1)","Cuando te cargan un pedido (o te piden cambios), el botón Panel de Trabajo (en el celular, “Trabajo”) muestra +1, +2… y late hasta que abrís cada pedido. En Diseño gráfico el número no se apaga al abrirlo: sigue sumando hasta que el pedido se aprueba o se cancela. En CM se apaga al abrirlo. Adentro del panel, cada sección (Redes Sociales, Cartelería, Web, Pantallas y Gestión de Videos) muestra cuántos pedidos tenés sin terminar: el número queda hasta que el pedido se aprueba, se termina o se cancela."],
     ["alarm-clock","Alarmas de entrega","Cada pedido y publicación avisa cuánto falta: falta 7 días, falta 3, falta 1, hoy, o ⏰ retraso de tantos días. La alarma queda hasta que se marca como terminado."],
-    ["list-ordered","Etapas con cuadraditos","Cada tarjeta muestra sus etapas numeradas. Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección) → Aprobado (final). Admin total carga el pedido. El diseñador o el CM toca el pedido y ve la ficha completa; el diseñador lo lleva hasta Boceto finalizado y le llega el aviso a Admin total, que pide cambios con un mensaje escrito (se cuentan en la ficha) o toca Diseño finalizado y cierra el ciclo. El CM recibe el pedido y lo marca Programado → Publicado. Tocás el cuadradito de la etapa o arrastrás la tarjeta a otra columna."],
-    ["check-check","Etapas de los pedidos de diseño: quién las cambia","Solo el diseñador responsable y Admin total. El diseñador va paso a paso: “Empezar · En proceso” y después “✓ Boceto finalizado” (pasa a revisión y le llega un aviso a Admin total, que aprueba o pide correcciones; con correcciones aparece “Terminé las correcciones”). No vuelve para atrás ni salta etapas. Los CM y Admin ven las etapas pero no las cambian."],
+    ["list-ordered","Etapas con cuadraditos","Cada tarjeta muestra sus etapas numeradas. Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección → Corrección realizada) → Aprobado (final). Admin total carga el pedido. El diseñador o el CM toca el pedido y ve la ficha completa; el diseñador lo lleva hasta Boceto finalizado y le llega el aviso a Admin total, que lo pasa a En revisión mientras lo mira y después pide cambios con un mensaje escrito (En corrección; se cuentan en la ficha) o lo aprueba y cierra el ciclo. Con cambios, el diseñador toca Corrección realizada y le vuelve a llegar el aviso a Admin total. El CM recibe el pedido y lo marca Programado → Publicado. Tocás el cuadradito de la etapa o arrastrás la tarjeta a otra columna."],
+    ["check-check","Etapas de los pedidos de diseño: quién las cambia","Solo el diseñador responsable y Admin total. El diseñador va paso a paso: “Empezar · En proceso” y después “✓ Boceto finalizado” (pasa a revisión y le llega un aviso a Admin total, que aprueba o pide correcciones; si pide correcciones aparece “✓ Corrección realizada”, que vuelve a avisarle a Admin total). En revisión, En corrección y Aprobado los pone solo Admin total. El diseñador no vuelve para atrás ni salta etapas. Los CM y Admin ven las etapas pero no las cambian."],
     ["calendar-clock","Meses y cierre","Arriba cambiás de mes con ‹ Anterior / Siguiente ›. Admin total cierra el mes desde Informe mensual: queda para consultar y lo no cumplido pasa al mes siguiente como “arrastrado”."],
-    ["mouse-pointer-click","Cambiar de etapa desde el calendario","En cualquier calendario, tocá la línea de estado de un contenido (● Estado ▾) y elegí la etapa: Programado, Publicado, Aprobado… Los CM cambian las etapas de lo suyo (publicaciones y videos), no las de los pedidos de diseño. Los diseñadores llevan sus trabajos paso a paso hasta “Boceto finalizado”; aprobar o pedir cambios lo hace solo Admin total."],
+    ["mouse-pointer-click","Cambiar de etapa desde el calendario","En cualquier calendario, tocá la línea de estado de un contenido (● Estado ▾) y elegí la etapa: Programado, Publicado, Aprobado… Los CM cambian las etapas de lo suyo (publicaciones y videos), no las de los pedidos de diseño. Los diseñadores llevan sus trabajos paso a paso hasta “Boceto finalizado” (y “Corrección realizada” si les piden cambios); aprobar o pedir cambios lo hace solo Admin total."],
     ["hand","Arrastrar y ordenar","En la compu podés arrastrar tarjetas entre columnas, posteos y entregas a otro día (o a otro mes) y reordenar notas. En iPad y celular usá los botones y las flechitas."],
     ["refresh-cw","Versión nueva","Cuando se publica una versión nueva de la app, aparece abajo el aviso “Hay una versión nueva de la app” con el botón Actualizar: tocalo y se guarda lo que estabas haciendo y se recarga con lo último."],
     ["menu","Menú al entrar","Cuando salís de la app y volvés a entrar (o la primera vez en un dispositivo), el menú arranca con General y tu área abiertos: Diseño gráfico si sos diseñador, Community Manager si sos CM. Lo demás queda comprimido; tocá el título de un grupo para abrirlo. Mientras usás la app, se recuerda lo que abriste."],
@@ -10495,7 +10496,7 @@ const GUIDE = [
     ["message-circle","Gestión Canal WhatsApp","Lo que se publica en el Canal de WhatsApp de cada marca. Etapas: Pendiente → En proceso → Programado → Publicado (sin Pautado), también en los repetitivos. Calendario, Tablero y Tabla."],
     ["folder-symlink","Ruta de la compartida y aprobar un diseño","En Diseño gráfico y Gestión de Contenidos queda solo la Ruta de la compartida (la carpeta del servidor): tocá Abrir o Copiar link. Al aprobar, Admin total elige quién aprobó y, si hace falta, qué CM lo publica, el día y el formato: se carga sola la publicación en su calendario con la ruta y le llega el aviso (+1)."],
     ["clapperboard","Gestión de Video","Los pedidos a los CM: grabaciones, ediciones de video, coberturas, copys y pauta. Etapas: Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado (en Revisión, Admin total aprueba o pide cambios). Tabla y Procesos (una columna por etapa), más la lista de Repetitivos; las grabaciones repetitivas siguen las mismas etapas. En el calendario de Planificación se ven todos los videos y las grabaciones en su fecha."],
-    ["shapes","Gestión de Contenidos","Piezas simples para redes que arma el CM (posts, historias, carruseles, flyers…), con el mismo proceso de Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección) → Aprobado. El CM responsable la avanza; Admin total la aprueba (eligiendo quién aprobó y la fecha) y la publicación queda sola en el calendario del mismo CM."],
+    ["shapes","Gestión de Contenidos","Piezas simples para redes que arma el CM (posts, historias, carruseles, flyers…), con el mismo proceso de Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección → Corrección realizada) → Aprobado. El CM responsable la avanza; Admin total la aprueba (eligiendo quién aprobó y la fecha) y la publicación queda sola en el calendario del mismo CM."],
     ["gauge","Carga de trabajo CM","En %: el tiempo estimado de lo que le falta a cada CM hasta el domingo (publicaciones, historias, Canal, contenidos, videos según su etapa, traslados y la atención diaria de Mensajes) sobre sus horas disponibles, ya descontadas ausencias y reuniones. Si no tiene horario propio se usa el de oficina (lunes a viernes 8:00–17:00) y lo dice; si falta un tiempo, también lo dice. Admin total configura tiempos, horarios, ausencias y cuentas. La pestaña “Informe del mes” muestra lo que hizo cada CM: cantidades, detalle, plazos y pendientes."],
     ["list-checks","Plan de posteo","Todo lo de CM del mes: feed, historias, Canal de WhatsApp, videos y repetitivos. Arriba, cuántos hay en cada etapa y el % ya publicado (tocá una etapa para filtrar) y los tres procesos a la vista. Cada contenido sigue el suyo: publicaciones e historias Pendiente → En proceso → Programado → Publicado → Pautado; Canal de WhatsApp igual sin Pautado; videos Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado. Cambiás la etapa ahí mismo, el CM que la hace y pedís el diseño si hace falta."],
     ["archive","Historial CM","Publicaciones y pedidos de CM del mes: primero lo pendiente; lo publicado, pautado o terminado, aparte en la pestaña Aprobados."],
@@ -10987,7 +10988,7 @@ function jobPopInfo(n){
   const brands = j ? jobBrands(j).join(" + ") : "";
   if (n.type === "nota") return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "", t:n.to === "admin" ? `${firstName(n.who || "") || "Alguien"} comentó en un trabajo` : "Admin total comentó en tu trabajo", m:n.text ? `“${rclShort(String(n.text), 160)}”` : brands };
   if (n.type === "approved") return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "", m:`${brands} · ${j ? cmPiece(j) : ""}` };
-  if (n.type === "review") return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "", t:n.fix ? "Correcciones listas para revisar" : j?.area === "CM" ? "Trabajo listo para revisar" : P.t,
+  if (n.type === "review") return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "", t:n.fix ? (j?.area === "CM" ? "Correcciones listas para revisar" : "Corrección realizada: lista para revisar") : j?.area === "CM" ? "Trabajo listo para revisar" : P.t,
     m:`${firstName(n.who || "")} ${n.fix ? "terminó las correcciones" : j?.area === "CM" ? "terminó su trabajo" : "terminó el boceto"} · ${brands} · ${j ? cmPiece(j) : ""}${j?.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}` };
   return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "",
     m:n.type === "fix" ? (n.text ? `“${rclShort(String(n.text), 160)}”` : `${brands} · ${j ? cmPiece(j) : ""}`)
