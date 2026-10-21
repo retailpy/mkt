@@ -3518,7 +3518,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v239";
+const APP_VER = "v240";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -5748,11 +5748,11 @@ const cmWhere = x => x.k === "canal" ? x.it.channel || "Canal de WhatsApp" : x.k
 const cmStKind = x => x.k === "job" ? "job" : x.k;
 const cmMine = x => !soloYo || x.who === viewer.name;
 // Plataformas (filas del calendario, como el Excel). X, YouTube y LinkedIn aparecen cuando hay algo cargado ahí.
-const CM_PLATS = [["igfb","Instagram / Facebook","instagram"],["tiktok","TikTok","music"],["canal","Canal de WhatsApp","message-circle"],["x","X","at-sign"],["yt","YouTube","youtube"],["in","LinkedIn","briefcase"],["otras","Otras actividades","list-todo"]];
+const CM_PLATS = [["igfb","Instagram / Facebook","instagram"],["tiktok","TikTok","music"],["canal","Canal de WhatsApp","message-circle"],["x","X","at-sign"],["yt","YouTube","youtube"],["in","LinkedIn","briefcase"],["interno","Canal interno","megaphone"],["otras","Otras actividades","list-todo"]];
 const CM_PLAT_FIXED = ["igfb","tiktok","canal","x","yt","in"]; // v222: todas las redes de Superseis y Stock, siempre a la vista
 function cmPlats(x){
   const net = x.k === "post" ? String(x.it.net || "") : "", out = [];
-  if (x.k === "post"){ if (/IG|FB/.test(net)) out.push("igfb"); if (/TikTok/.test(net)) out.push("tiktok"); if (/(^|\+ )X\b/.test(net)) out.push("x"); if (/YouTube/.test(net)) out.push("yt"); if (/LinkedIn/.test(net)) out.push("in"); return out.length ? out : ["igfb"]; }
+  if (x.k === "post"){ if (/IG|FB/.test(net)) out.push("igfb"); if (/TikTok/.test(net)) out.push("tiktok"); if (/(^|\+ )X\b/.test(net)) out.push("x"); if (/YouTube/.test(net)) out.push("yt"); if (/LinkedIn/.test(net)) out.push("in"); if (/^Canal de WhatsApp/.test(net)) out.push("canal"); if (net === "Canal interno") out.push("interno"); return out.length ? out : ["igfb"]; }
   if (x.k === "canal") return [!x.it.channel || x.it.channel === "Canal de WhatsApp" ? "canal" : "otras"];
   if (x.k === "rec") return [x.r.kind === "Canal" ? "canal" : "igfb"];
   if (x.k === "job" && x.act === "video" && x.it.piece === "Video para redes"){ const f = String(x.it.vfmt || ""); if (/Reel/.test(f)) out.push("igfb"); if (/TikTok/.test(f)) out.push("tiktok"); return out.length ? out : ["igfb"]; }
@@ -7226,7 +7226,7 @@ function postStatusCell(p){
 }
 // Ficha de un posteo: se abre tocándolo en el calendario (o tocando un día vacío para cargar uno nuevo).
 // El CM responsable se elige libremente: un CM de Superseis puede hacer de CM de Stock, por ejemplo.
-const POST_NETS = ["IG","FB","IG + FB","TikTok","IG + TikTok","X","YouTube","LinkedIn"];
+const POST_NETS = ["IG","FB","IG + FB","TikTok","IG + TikTok","X","YouTube","LinkedIn","Canal de WhatsApp S6","Canal de WhatsApp Stock","Canal interno"]; // v240: canales de WhatsApp de S6 y Stock, y el canal interno
 // Redes de cada marca (v222): Superseis y Stock tienen todas; Delimarket, solo Instagram y Facebook (sin Canal de WhatsApp). Las demás marcas, todas.
 const BRAND_NETS = { Delimarket:["IG","FB","IG + FB"] };
 const BRAND_NETS_TXT = "Superseis y Stock: Instagram, Facebook, X, Canal de WhatsApp, LinkedIn, YouTube y TikTok · Delimarket: Instagram y Facebook";
