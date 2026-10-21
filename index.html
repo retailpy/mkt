@@ -3306,7 +3306,7 @@ function openPub(ref){
   if (!x) return toast("No se encontró la publicación (quizás la borraron).");
   page = pubSec(x, canal); if (!can(page)) page = can("calcm") ? "calcm" : "inicio";
   const m = x.date.slice(0, 7); if (MONTHS_APP.some(v => v.v === m)) MONTH = m;
-  jobUI.ficha = null; jobUI.form = null;
+  jobUI.ficha = null; jobUI.form = null; clearPubAlerts(x, canal);
   postUI.form = canEditPost() ? { mode:"edit", kind:canal ? "Canal" : x.format === "Historia" ? "Historia" : "Feed", post:{ ...x } } : null;
   location.hash = page; render(); window.scrollTo({ top:0, behavior:"smooth" });
 }
@@ -4932,15 +4932,18 @@ const alertCutoff = () => addDays(TODAY, new Date(TODAY + "T12:00").getDay() ===
 const notifFresh = n => !n.date || n.date >= alertCutoff();
 const adminNotifs = () => NOTIFS.filter(n => n.to === "admin" && !n.read && notifFresh(n) && (n.type !== "review" || (n.copy ? copyWaits(n) : REVIEW_WAIT.includes(jobById(n.job)?.status))));
 const myNotifs = () => NOTIFS.filter(n => n.to === viewer.name && !n.read && notifFresh(n) && !(n.job && repLater(jobById(n.job)))); // un repetitivo avisa recién 7 días antes
-// Abrir el pedido o la publicación ya es atenderlo: se borran sus alertas para quien lo abrió (Admin total, las que le llegaron a él).
-function clearDocAlerts(go, mine){
+// Abrir el pedido o la publicación ya es atenderlo: se borran de Tus alertas (y de las ventanas emergentes) todas las alertas
+// que llevan a ese documento, vengan de donde vengan (la ventana, la lista, el calendario). Admin total: las que le llegaron a él.
+function clearDocAlerts(go, postId){
   if (!viewer || window.RMH?.previewing) return;
-  NOTIFS.forEach(n => { if (mine(n) && !n.read && (n.to === viewer.name || (n.to === "admin" && viewer.role === "Admin total"))) n.read = true; });
-  const keys = alerts().filter(a => a.go === go).map(a => a.key);
-  if (keys.length){ const g = alertsGone(); keys.forEach(k => g.add(k)); try { localStorage.setItem("rmh-agone-" + viewer.id, JSON.stringify([...g].slice(-300))); } catch {} }
+  const L = alerts().filter(a => a.go === go || (postId && a.post === postId)), g = alertsGone(); let add = false;
+  L.forEach(a => { if (a.key.startsWith("n:")){ const n = NOTIFS.find(x => x.id === +a.key.slice(2)); if (n) n.read = true; } else if (!a.key.startsWith("av:")){ g.add(a.key); add = true; } });
+  NOTIFS.forEach(n => { if (!n.read && (n.to === viewer.name || (n.to === "admin" && viewer.role === "Admin total")) && (go === "job:" + n.job && !n.post || go === "pub:" + (n.canal ? "canal:" : "post:") + n.post)) n.read = true; });
+  if (add) try { localStorage.setItem("rmh-agone-" + viewer.id, JSON.stringify([...g].slice(-300))); } catch {}
+  if (L.length) setTimeout(renderNav, 0);
 }
-const clearJobAlerts = j => clearDocAlerts("job:" + j.id, n => n.job === j.id && !n.post);
-const clearPubAlerts = (x, canal) => clearDocAlerts("pub:" + (canal ? "canal:" : "post:") + x.id, n => n.post === x.id && !!n.canal === !!canal);
+const clearJobAlerts = j => clearDocAlerts("job:" + j.id);
+const clearPubAlerts = (x, canal) => clearDocAlerts("pub:" + (canal ? "canal:" : "post:") + x.id, canal ? null : x.id);
 function notifAlerts(){
   if (viewer.role === "Admin total") return adminNotifs().map(n => {
     if (n.type === "sug" && !can("sugerencias")) return null;
