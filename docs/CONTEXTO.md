@@ -316,3 +316,4 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 2. Pedir acceso avanzado de `instagram_manage_comments` (sección 4.5).
 3. Cuando aprueben: borrar el usuario "RevisorMeta"; mandar un mensaje de prueba desde una cuenta **sin** rol para confirmar que llega.
 4. Repetir lo de Superseis con las otras marcas no hace falta: las 7 páginas ya están conectadas; solo verificar que lleguen.
+- **v239 · Red: canales de WhatsApp y canal interno (21/10/2026):** la lista “Red” (`POST_NETS`: Aprobar diseño, hoja de publicación, carga en varias marcas) suma “Canal de WhatsApp S6”, “Canal de WhatsApp Stock” y “Canal interno” (no para Delimarket, que sigue con IG/FB). En el Calendario de Actividades los dos canales de WhatsApp van a la fila Canal de WhatsApp y el canal interno a su propia fila “Canal interno” (aparece cuando hay algo cargado).
