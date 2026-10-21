@@ -2674,6 +2674,7 @@ td .pgauge .pglab{display:none}
 .avcard.activo .avst{color:#34d399;border-color:rgba(52,211,153,.5)}
 .avcard h3{margin:0;font-size:16.5px;color:#fff}
 .avcard p{margin:0;color:#cbd5e1;font-size:14px;line-height:1.5}
+.avread{display:grid;gap:8px;border-top:1px solid var(--line-2);padding-top:8px}.avread > div{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.avread b{font-size:12.5px;color:var(--muted);margin-right:4px}.avread b svg{width:14px;height:14px;vertical-align:-2px}.avread .chip.ok{border-color:color-mix(in srgb,#10b981 55%,transparent);color:#6ee7b7}
 .avcard footer{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--faint);border-top:1px solid var(--line-2);padding-top:8px}
 .avform{grid-template-columns:repeat(3,minmax(0,1fr))}
 .avform .w2{grid-column:span 2}.avform .w3{grid-column:1/-1}
@@ -10566,13 +10567,18 @@ function pAvisos(){
 function avCard(a, admin){ const L = AV_LEVELS[a.level], st = avState(a), n = PEOPLE.filter(pp => pp.active && avFor(a, pp) && (a.flash ? pp.id !== a.by : pp.role !== "Admin total")), seen = n.filter(pp => a.seen.includes(pp.id)).length;
   return `<article class="panel avcard ${st.toLowerCase()}" style="--c:${L.c}"><header><span class="avlvl">${icon(L.ic)} ${a.level}</span><span class="avst">${st}</span>${admin ? `<button class="btn danger sm ib" data-avdel="${a.id}" aria-label="Borrar aviso">${icon("trash-2")}</button>` : ""}</header>
     <h3>${esc(a.title)}</h3><p>${esc(a.text)}</p>
-    <footer><span>${icon("calendar")} Se muestra ${avRange(a)}</span><span>${icon("users")} ${avToLabel(a)}</span>${admin ? `<span>${icon("eye")} Lo marcaron como entendido ${seen} de ${n.length}</span>` : ""}</footer></article>`; }
+    <footer><span>${icon("calendar")} Se muestra ${avRange(a)}</span><span>${icon("users")} ${avToLabel(a)}</span>${admin ? `<span>${icon("eye")} Lo marcaron como entendido ${seen} de ${n.length}</span>` : ""}</footer>
+    ${admin && a.flash && n.length ? avReadList(a, n) : ""}</article>`; }
+// Botón Aviso: quién ya tocó “Entendido” (con la hora) y a quién le falta.
+const avReadList = (a, n) => { const ok = n.filter(pp => a.seen.includes(pp.id)), no = n.filter(pp => !a.seen.includes(pp.id)), at = a.seenAt || {};
+  return `<div class="avread">${ok.length ? `<div class="avrok"><b>${icon("check-check")} Leyeron (${ok.length})</b>${ok.map(pp => `<span class="chip ok">${esc(pp.name)}${at[pp.id] ? ` · ${axHM(at[pp.id])} h` : ""}</span>`).join("")}</div>` : ""}
+    ${no.length ? `<div class="avrno"><b>${icon("clock")} Todavía no (${no.length})</b>${no.map(pp => `<span class="chip">${esc(pp.name)}</span>`).join("")}</div>` : ""}</div>`; };
 const addDays = (d, k) => { const x = new Date(d + "T12:00"); x.setDate(x.getDate() + k); return x.toISOString().slice(0, 10); };
 document.addEventListener("click", e => {
   if (e.target.closest("[data-avnew]")){ avUI.form = !avUI.form; render(); return; }
   const q = e.target.closest("[data-avq]"); if (q){ $("#avFrom").value = TODAY; $("#avUntil").value = addDays(TODAY, +q.dataset.avq); return; }
   const d = e.target.closest("[data-avdel]"); if (d){ AVISOS.splice(AVISOS.findIndex(a => a.id === +d.dataset.avdel), 1); render(); toast("Aviso borrado."); return; }
-  const ok = e.target.closest("[data-avok]"); if (ok){ const a = AVISOS.find(x => x.id === +ok.dataset.avok); if (a && !a.seen.includes(viewer.id)) a.seen.push(viewer.id); render(); toast("Listo. El aviso sigue en la sección Avisos."); }
+  const ok = e.target.closest("[data-avok]"); if (ok){ const a = AVISOS.find(x => x.id === +ok.dataset.avok); if (a && !a.seen.includes(viewer.id)){ a.seen.push(viewer.id); if (a.flash) (a.seenAt = a.seenAt || {})[viewer.id] = new Date().toISOString(); } render(); toast("Listo. El aviso sigue en la sección Avisos."); }
 });
 document.addEventListener("submit", e => {
   if (e.target.id !== "avForm") return; e.preventDefault();
@@ -10613,7 +10619,7 @@ document.addEventListener("submit", e => {
   const text = $("#axText").value.trim(), to = axUI.to === "personas" ? axUI.ppl.filter(id => personById(id)).map(id => "p:" + id) : [axUI.to];
   if (!text){ toast("Escribí el mensaje del aviso."); return; }
   if (!to.length){ toast("Elegí al menos una persona."); return; }
-  AVISOS.push({ id:Math.max(0, ...AVISOS.map(a => a.id)) + 1, title:`Aviso de ${viewer.name}`, text, to, level:"Urgente", from:TODAY, until:TODAY, by:viewer.id, date:TODAY, at:new Date().toISOString(), flash:true, seen:[] });
+  AVISOS.push({ id:Math.max(0, ...AVISOS.map(a => a.id)) + 1, title:`Aviso de ${viewer.name}`, text, to, level:"Urgente", from:TODAY, until:TODAY, by:viewer.id, date:TODAY, at:new Date().toISOString(), flash:true, seen:[], seenAt:{} });
   const n = PEOPLE.filter(pp => pp.active !== false && pp.id !== viewer.id && avFor(AVISOS[AVISOS.length - 1], pp)).length;
   axUI = { to:axUI.to, ppl:axUI.ppl, text:"" }; render(); toast(`Aviso enviado a ${n} ${n === 1 ? "persona" : "personas"}.`);
 });
@@ -10862,8 +10868,9 @@ const JOBPOP = { nuevo:{ k:"new", t:"Nuevo trabajo para vos", ic:"inbox", c:"#22
   approved:{ k:"new", t:"Admin total aprobó tu trabajo", ic:"badge-check", c:"#10b981" }, nota:{ k:"new", t:"Comentario en un trabajo", ic:"message-circle", c:"#60a5fa" },
   sug:{ k:"new", t:"Llegó una sugerencia nueva", ic:"message-square", c:"#22d3ee" }, drive:{ k:"fix", t:"Google Drive: no se pudo subir un archivo", ic:"triangle-alert", c:"#ef4444" },
   aviso:{ k:"new", t:"Aviso del equipo", ic:"megaphone", c:"#22d3ee" }, chat:{ k:"msg", t:"Mensaje nuevo", ic:"message-circle", c:"#22c55e" }, alerta:{ k:"new", t:"Alerta", ic:"bell", c:"#f59e0b" },
-  entrega:{ k:"due", t:"¡Atención! Entrega", ic:"alarm-clock", c:"#ef4444" } }; // v231: entrega de hoy o atrasada (Diseño y CM)
-const POP_LOCAL = ["aviso", "chat", "alerta", "entrega"]; // no vienen de s:NOTIFS
+  entrega:{ k:"due", t:"¡Atención! Entrega", ic:"alarm-clock", c:"#ef4444" }, // v231: entrega de hoy o atrasada (Diseño y CM)
+  avok:{ k:"msg", t:"Leyeron tu aviso", ic:"check-check", c:"#10b981" } }; // v236: a quien mandó un Aviso, cuando alguien toca “Entendido”
+const POP_LOCAL = ["aviso", "avok", "chat", "alerta", "entrega"]; // no vienen de s:NOTIFS
 const ADMIN_POP = ["review", "nota", "sug", "drive"]; // lo que le llega a Admin total (to: "admin")
 const JOBSOUND_KEY = "rmh-jobsound";
 const jobSoundOn = () => { try { const v = localStorage.getItem(JOBSOUND_KEY); return v === "on" || (v !== "off" && notifDefault()); } catch { return notifDefault(); } };
@@ -10876,7 +10883,8 @@ function jobPopCheck(){
   if (!viewer || !enterApp.done || !$("#login").hidden || window.RMH?.previewing || noPops()) return;
   const mine = [...myNotifs(), ...(viewer.role === "Admin total" ? adminNotifs().filter(n => ADMIN_POP.includes(n.type) && n.who !== viewer.name && (n.type !== "sug" || can("sugerencias"))) : [])]
     .filter(n => JOBPOP[n.type] && !POP_LOCAL.includes(n.type) && (n.copy ? copyAlert(n) : (n.type !== "pub" || pubAlert(n)) && (n.type !== "listo" || !n.post || listoAlert(n)) && (!n.job || jobById(n.job))))
-    .concat(avActiveFor(viewer).filter(a => !(a.seen || []).includes(viewer.id) && a.by !== viewer.id).map(a => avPopOf(a))); // avisos del equipo vigentes, sin “Entendido”
+    .concat(avActiveFor(viewer).filter(a => !(a.seen || []).includes(viewer.id) && a.by !== viewer.id).map(a => avPopOf(a))) // avisos del equipo vigentes, sin “Entendido”
+    .concat(avOkItems()); // a quien mandó un Aviso: cada persona que tocó “Entendido”
   let seen = jobPopRead(); const first = seen === null; seen = seen || [];
   const fresh = mine.filter(n => !seen.includes(jobPopId(n)) && !notify.here.has(n) && (!first || n.date === TODAY)); // la primera vez en este dispositivo: solo lo de hoy
   const ids = mine.map(jobPopId);
@@ -10892,6 +10900,10 @@ function jobPopCheck(){
   if (!quiet) jobLocalNotify(fresh);
   jobTitleBlink(fresh.length);
 }
+// Botón Aviso: a quien lo mandó le avisa cada “Entendido” (de los avisos de hoy y ayer). Un objeto fijo por aviso y persona.
+const avOkItems = () => { const m = avOkItems.m = avOkItems.m || new Map(), y = addDays(TODAY, -1);
+  return AVISOS.filter(a => a.flash && a.by === viewer.id && a.date >= y).flatMap(a => a.seen.filter(id => id !== viewer.id).map(id => { const k = a.id + "|" + id;
+    if (!m.has(k)) m.set(k, { id:"avok:" + k, type:"avok", av:a, who:id, date:TODAY }); return m.get(k); })); };
 // Avisos del equipo: un objeto fijo por aviso (así la ventana no lo repite).
 const avPopOf = a => (avPopOf.m = avPopOf.m || new Map()).get(a.id) || avPopOf.m.set(a.id, { id:"av" + a.id, type:"aviso", av:a, date:a.from === TODAY ? TODAY : a.date }).get(a.id);
 // Alertas (lo que vence, sábados, cumpleaños de influencers, encuestas…): al abrir la app (y al cambiar el día) salen en la
@@ -10958,6 +10970,8 @@ function jobPopInfo(n){
   if (n.demo) return n.type === "chat" ? { ...P, go:"", t:"Team MKT", title:"Ejemplo: ¿Ya está lista la historia del finde?", m:"" }
     : { ...P, go:"", title:n.type === "fix" ? "Ejemplo: Post Día de la Madre" : "Ejemplo: Historia ofertas del finde", m:n.type === "fix" ? "“Cambiar la foto principal y agrandar el precio”" : "Superseis · Historia · fecha límite " + dm(addDays(TODAY, 2)) };
   if (n.type === "chat") return { ...P, go:"chat:" + n.open, t:n.name, title:n.from ? `${n.from}: ${n.text}` : n.text, m:n.n > 1 ? `${n.n} mensajes nuevos` : "", ic:n.open.startsWith("g:") ? "messages-square" : "message-circle" };
+  if (n.type === "avok"){ const a = n.av, pp = personById(n.who), all = PEOPLE.filter(x => x.active !== false && x.id !== a.by && avFor(a, x)), ok = all.filter(x => a.seen.includes(x.id)).length, at = (a.seenAt || {})[n.who];
+    return { ...P, go:"aviso", t:`${pp ? pp.name : "Alguien"} leyó tu aviso`, title:`“${rclShort(String(a.text), 140)}”`, m:`Tocó Entendido${at ? ` a las ${axHM(at)} h` : ""} · lo leyeron ${ok} de ${all.length}` }; }
   if (n.type === "aviso" && n.av.flash){ const a = n.av, pp = personById(a.by); return { ...P, k:"due", go:"inicio", t:`Aviso de ${pp ? pp.name : "Admin total"}`, title:a.text, m:a.at ? `Enviado a las ${axHM(a.at)} h` : "", ic:"siren", c:"#ef4444" }; } // del botón Aviso (Admin total)
   if (n.type === "aviso"){ const a = n.av, L = AV_LEVELS[a.level] || AV_LEVELS.Informativo; return { ...P, go:"inicio", t:`Aviso ${String(a.level || "informativo").toLowerCase()} del equipo`, title:a.title, m:`${a.text} · ${avRange(a)}`, ic:L.ic, c:L.c }; }
   if (n.type === "alerta"){ const a = n.al; return { ...P, go:a.go || "alertas", title:a.t, m:a.m || "", ic:a.ic || "bell", c:/^(#|var\()/.test(a.sev || "") ? a.sev : P.c }; }
@@ -10977,7 +10991,7 @@ function jobPopInfo(n){
       : n.type === "listo" ? `${brands} · ${j ? cmPiece(j) : ""} · sumalo a tu calendario`
       : `${brands} · ${j ? cmPiece(j) : ""}${j?.due ? " · fecha límite " + dm(j.due) : ""}${j?.requester ? " · pidió " + j.requester : ""}` };
 }
-const jpBtnTxt = (n, x) => n.type === "chat" ? "Responder" : n.sum ? "Ver Panel de Trabajo" : x.go === "calcm" ? "Ver en Planificación" : n.type === "pub" || n.post ? "Ver publicación" : n.type === "fix" ? "Ver la corrección"
+const jpBtnTxt = (n, x) => n.type === "chat" ? "Responder" : n.type === "avok" ? "Ver quién lo leyó" : n.sum ? "Ver Panel de Trabajo" : x.go === "calcm" ? "Ver en Planificación" : n.type === "pub" || n.post ? "Ver publicación" : n.type === "fix" ? "Ver la corrección"
   : n.type === "sug" ? "Ver sugerencia" : n.type === "drive" ? "Ver Integraciones" : n.type === "alerta" ? "Ver" : "Ver pedido";
 function jobPopShow(){
   let el = document.getElementById("jobpop");
