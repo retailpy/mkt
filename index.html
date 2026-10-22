@@ -1506,7 +1506,9 @@ html.light .cpemo button{filter:invert(1) hue-rotate(180deg)} /* la hoja queda b
 .stprogh{display:flex;align-items:baseline;gap:8px;font-size:12.5px;color:var(--muted)}.stprogh b{color:var(--ink);font-size:15px;font-weight:650}.stprogh em{margin-left:auto;font-style:normal;color:#86efac;font-weight:650}
 .stprog>i{display:block;height:5px;margin-top:8px;border-radius:999px;background:rgba(148,163,184,.18);overflow:hidden}.stprog>i>i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#34d399,#6ee7b7)}
 /* v212 · Diseño: cuadros por etapa y tabla ordenable */
-.dgpan .pubst small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.dgpan .pubst small,.pubsum .pubst.late small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+/* v241 · Cuadro “Con retraso” (Diseño y CM, Panel y Planificación) */
+.pubsum .pubst.late{border-color:color-mix(in srgb,var(--c) 45%,var(--line-3))}
 /* v225 · Cuadros de resumen unificados (Diseño y CM): sin franja arriba, el color va en el número y en el puntito */
 .pubsum .pubst{border:1px solid var(--line-3);background:transparent;padding:14px 16px;gap:4px;box-shadow:none}
 .pubsum .pubst:hover{border-color:color-mix(in srgb,var(--c) 55%,var(--line-3))}
@@ -2713,7 +2715,7 @@ td .pgauge .pglab{display:none}
 }
 
 /* v62 · Gestión CM */
-.pubsum{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(120px,100%),1fr));gap:10px}
+.pubsum{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(108px,100%),1fr));gap:10px} /* v241: entran los 9 cuadros de Diseño en una fila */
 .pubst{display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:1px solid var(--line-3);border-top:3px solid var(--c);background:var(--panel);border-radius:16px;padding:12px 14px;color:var(--muted);font:inherit;cursor:pointer;text-align:left;transition:border-color .15s,transform .15s}
 .pubst:hover{transform:translateY(-2px)}
 .pubst b{font-size:26px;font-weight:900;color:var(--c);line-height:1.1}
@@ -3518,7 +3520,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v240";
+const APP_VER = "v241";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -5254,11 +5256,15 @@ document.addEventListener("change", e => { if (e.target.matches?.("[data-dgsorts
 // Panel de Trabajo de Diseño: cuadros por etapa del mes; al tocar uno, abajo se ven todos esos trabajos (todas las secciones juntas).
 // Barra fina de avance: cuántos se terminaron del total (lo primero que se mira en los tableros).
 const stProgress = (done, total, txt) => { const p = total ? Math.round(done / total * 100) : 0; return `<div class="stprog" role="img" aria-label="${done} de ${total} ${esc(txt)}"><div class="stprogh"><b>${done} de ${total}</b><span>${esc(txt)}</span><em>${p}%</em></div><i><i style="width:${p}%"></i></i></div>`; };
+// v241 · “Con retraso” suma también lo de meses anteriores que sigue sin aprobarse (como las ventanas de entrega).
+const dgLateList = base => base.filter(j => j.area === "Diseño" && !j.ex && j.status !== "Cancelado" && jobLate(j) && j.due.slice(0, 7) <= MONTH);
 function dgPanelBlock(scope){
-  const mes = scope.filter(j => j.area === "Diseño" && jobMonth(j) === MONTH && j.status !== "Cancelado" && !j.ex), fin = mes.filter(isFin).length, G = DG_GROUPS.find(x => x[0] === dgPanUI.g);
-  const pct = mes.length ? Math.round(fin / mes.length * 100) : 0;
-  return `${stProgress(fin, mes.length, "finalizados (aprobados) en " + monthName(MONTH))}<div class="pubsum dgsum dgpan">${DG_GROUPS.map(([k, l, c, f]) => `<button type="button" class="pubst ${dgPanUI.g === k ? "on" : ""}" data-dgpan="${esc(k)}" aria-pressed="${dgPanUI.g === k}" style="--c:${c}"><b class="num">${mes.filter(f).length}</b><span>${l}</span>${k === "all" ? `<small>${fin} ${fin === 1 ? "finalizado" : "finalizados"} · ${pct}%</small>` : ""}</button>`).join("")}</div>
-  ${G ? `<section class="panel dgpanlist"><div class="head" style="margin-bottom:8px"><h2 class="pmh" style="margin:0">${pmIco("table-2")}${G[1]} <span class="note" style="font-weight:500">· ${monthName(MONTH)} · Redes, Cartelería, Web y Pantallas</span></h2><button type="button" class="btn sm" data-dgpan="${G[0]}">${icon("x")} Cerrar</button></div>${dgTable(mes.filter(G[3]))}</section>`
+  const mes = scope.filter(j => j.area === "Diseño" && jobMonth(j) === MONTH && j.status !== "Cancelado" && !j.ex), fin = mes.filter(isFin).length;
+  const late = dgLateList(scope), G = dgPanUI.g === "late" ? ["late", LATE_ST] : DG_GROUPS.find(x => x[0] === dgPanUI.g);
+  const pct = mes.length ? Math.round(fin / mes.length * 100) : 0, cards = DG_GROUPS.map(([k, l, c, f]) => `<button type="button" class="pubst ${dgPanUI.g === k ? "on" : ""}" data-dgpan="${esc(k)}" aria-pressed="${dgPanUI.g === k}" style="--c:${c}"><b class="num">${mes.filter(f).length}</b><span>${l}</span>${k === "all" ? `<small>${fin} ${fin === 1 ? "finalizado" : "finalizados"} · ${pct}%</small>` : ""}</button>`);
+  cards.splice(-2, 0, lateCard(late.length, dgPanUI.g === "late", `data-dgpan="late"`, prevMonths(late))); // antes de Aprobados y Total del mes
+  return `${stProgress(fin, mes.length, "finalizados (aprobados) en " + monthName(MONTH))}<div class="pubsum dgsum dgpan">${cards.join("")}</div>
+  ${G ? `<section class="panel dgpanlist"><div class="head" style="margin-bottom:8px"><h2 class="pmh" style="margin:0">${pmIco(G[0] === "late" ? "alarm-clock" : "table-2")}${G[1]} <span class="note" style="font-weight:500">· ${G[0] === "late" ? "1 día o más de atraso, sin aprobar" : monthName(MONTH)} · Redes, Cartelería, Web y Pantallas</span></h2><button type="button" class="btn sm" data-dgpan="${G[0]}">${icon("x")} Cerrar</button></div>${dgTable(G[0] === "late" ? late : mes.filter(G[3]))}</section>`
     : `<p class="note dgpanhint">${icon("info")} Tocá un cuadro para ver la lista de esos trabajos (todas las secciones juntas).</p>`}`;
 }
 function pPanel(ar){
@@ -5295,7 +5301,9 @@ function pPanelCM(){
   const icons = PANEL_CM.filter(x => can(x.k)).map((x, i) => {
     const badge = x.k === "inbox" ? pendBadge() : x.k === "gcm" && gOpen ? `<span class="count ibc${gUnseen ? " new" : ""}" title="${gOpen} a tu nombre sin terminar${gUnseen ? ` · ${gUnseen} sin abrir` : ""}">+${gOpen > 99 ? 99 : gOpen}</span>` : "";
     return `<button type="button" class="picon" data-page="${x.k}" style="--i:${i}" aria-label="Abrir ${esc(x.t)}"><span class="pring" aria-hidden="true">${icon(x.i)}${badge}</span><b>${x.t}</b><small>${x.d}</small><span class="pmeta">${meta[x.k] || ""}</span></button>`; }).join("");
+  const go = can("calcm") ? "calcm" : "plan";
   return `<div class="phero"><h1>Panel de Trabajo</h1><p class="sub">Community Manager</p></div>
+  ${can(go) ? `${cmPlanSummary(cmPlanMonth().all, go)}<p class="note dgpanhint">${icon("info")} Lo de ${monthName(MONTH)}, como en Planificación. Tocá un cuadro para ver esos trabajos en Planificación.</p>` : ""}
   <nav class="picons pcm4" aria-label="Community Manager">${icons || `<div class="empty">No tenés secciones habilitadas.</div>`}</nav>`;
 }
 let panelDoneAll = false, panelDoneOpen = false; // Diseño: los aprobados del Panel de Trabajo, ocultos hasta tocar “Ver aprobados”
@@ -5363,6 +5371,14 @@ function postUrgency(p){
   if (["Programado","Publicado","Pautado"].includes(p.status) || p.date.slice(0,7) < CURRENT_MONTH) return null;
   return urgency({ status:"", due:p.date });
 }
+// v241 · Cuadro “Con retraso”: lo que pasó su fecha (1 día o más) sin terminarse, con la misma regla que las ventanas de entrega
+// (pedidos: hasta que se aprueban; publicaciones: hasta que quedan Programadas; actividades: hasta que se marcan Hecho).
+const LATE_ST = "Con retraso", LATE_C = "#f43f5e";
+const jobLate = j => !!urgency(j)?.late;
+const planLate = x => x.act ? x.status !== "Hecho" && !!x.date && x.date < TODAY : x.vid ? jobLate(x.job) : !!postUrgency({ ex:x.ex, status:x.status, date:x.date })?.late;
+const cmStOk = x => cmUI.st === "Todos" || (cmUI.st === LATE_ST ? planLate(x) : x.status === cmUI.st);
+const lateCard = (n, on, attr, prev = 0) => `<button type="button" class="pubst late ${on ? "on" : ""}" ${attr} aria-pressed="${on}" style="--c:${LATE_C}" title="Pasaron su fecha (1 día o más) y todavía no se terminaron"><b class="num">${n}</b><span>${LATE_ST}</span><small>${prev ? `${prev} de meses anteriores` : "1 día o más de atraso"}</small></button>`;
+const prevMonths = list => list.filter(j => j.due.slice(0, 7) < MONTH).length;
 const postUrgBadge = p => { const u = postUrgency(p); return u ? `<span class="urg ${u.late ? "late" : ""}" style="--u:${u.c}">${u.late ? ALARM_SVG : ""}${u.t}</span>` : ""; };
 const postUrgStyle = p => { const u = postUrgency(p); return u ? ` u" style="--u:${u.c};` : `" style="`; };
 const urgBadge = j => { const u = urgency(j); return u ? `<span class="urg ${u.late ? "late" : ""}" style="--u:${u.c}">${u.late ? ALARM_SVG : ""}${u.t}</span>` : ""; };
@@ -5588,32 +5604,41 @@ function pCalCanales(){
 function pCalendario(){ return pCalCM("Feed"); }
 function pCalHistoria(){ return pCalCM("Historia"); }
 
-function pPlan(){
-  const calOnly = page === "calcm", view = calOnly ? gView() : planUI.view;
-  // Plan de posteo: todo lo de CM del mes junto: feed, historias, Canal de WhatsApp, videos (pedidos a CM) y repetitivos.
-  const byCm = x => cmUI.cm === "Todos" || x === cmUI.cm, allSt = cmUI.st === "Todos";
+// Todo lo de CM del mes (feed, historias, canal, videos, repetitivos y actividades): para Planificación y el Panel de Trabajo.
+function cmPlanMonth(){
   const canalesMes = visibleCanales().filter(k => k.date.slice(0, 7) === MONTH).map(k => ({ ...k, canal:true }));
   const vidsAll = visibleJobs().filter(j => j.area === "CM" && j.status !== "Cancelado" && j.due.slice(0, 7) === MONTH)
     .map(j => ({ vid:true, id:j.id, date:j.due, brand:j.brand, title:j.title, status:j.status, cm:j.owner, piece:cmPiece(j), job:j }));
   const recsAll = []; { const rl = recVisible(); for (let d = 1; d <= lastDay(MONTH); d++){ const c = MONTH + "-" + String(d).padStart(2, "0"); rl.filter(r => recOn(r, c)).forEach(r => recsAll.push({ rec:true, id:r.id + "|" + c, sid:r.id + "~" + c, date:c, brand:r.brand, title:r.title, cm:r.owner, r, status:recSt(r, c) })); } }
-  const vids = vidsAll.filter(x => byCm(x.cm) && soloMine(x.job) && (allSt || x.status === cmUI.st));
-  const recs = recsAll.filter(x => byCm(x.cm) && soloRec(x.r) && (allSt || x.status === cmUI.st));
   const actsAll = CM_ACTS.filter(a => seesBrand(a.brand) && inFilter(a.brand) && String(a.date).slice(0, 7) === MONTH).map(a => ({ act:true, id:a.id, date:a.date, brand:a.brand, title:a.title, status:a.status, cm:a.owner, a }));
-  const acts = actsAll.filter(x => byCm(x.cm) && soloPost(x) && (allSt || x.status === cmUI.st));
-  const vp = [...cmPosts(), ...canalesMes.filter(k => byCm(k.cm) && (allSt || k.status === cmUI.st))].filter(soloPost);
-  const items = [...vp, ...vids, ...recs, ...acts].sort((a, b) => a.date.localeCompare(b.date) || (a.r?.time || "").localeCompare(b.r?.time || ""));
-  // Resumen: todo lo de CM del mes (feed, historias, canal, videos y repetitivos), por etapa de su proceso.
-  const all = [...visiblePosts(), ...canalesMes, ...vidsAll, ...recsAll, ...actsAll];
-  const names = [...new Set([...all.map(p => p.cm), ...CM_NAMES()])].filter(Boolean).sort();
-  const count = st => all.filter(p => p.status === st).length;
-  const done = all.filter(p => ["Publicado","Pautado","Hecho"].includes(p.status)).length;
+  return { canalesMes, vidsAll, recsAll, actsAll, all:[...visiblePosts(), ...canalesMes, ...vidsAll, ...recsAll, ...actsAll] };
+}
+// Resumen: todo lo de CM del mes, por etapa de su proceso, y lo que está con retraso. En el Panel, cada cuadro lleva a Planificación.
+function cmPlanSummary(all, go){
+  const count = st => all.filter(p => p.status === st).length, late = all.filter(planLate).length;
+  const done = all.filter(p => ["Publicado","Pautado","Hecho"].includes(p.status)).length, on = st => !go && cmUI.st === st;
   const sumSt = [...PLAN_STAGES, "Hecho"].filter(st => POST_STAGES.includes(st) || count(st) || cmUI.st === st); // las de video, solo si hay algo en esa etapa
-  const summary = `<div class="pubsum">${sumSt.map(st => `<button class="pubst ${cmUI.st === st ? "on" : ""}" data-cmst="${st}" style="--c:${SEM[semLvl(st)]}"><b class="num">${count(st)}</b><span>${st}</span></button>`).join("")}
+  const attr = st => go ? `data-cmstgo="${st}" data-page="${go}"` : `data-cmst="${st}"`;
+  return `<div class="pubsum">${sumSt.map(st => `<button type="button" class="pubst ${on(st) ? "on" : ""}" ${attr(st)} style="--c:${SEM[semLvl(st)]}"><b class="num">${count(st)}</b><span>${st}</span></button>`).join("")}
+    ${lateCard(late, on(LATE_ST), attr(LATE_ST))}
     <div class="pubpct"><b class="num">${done}</b><span>${done === 1 ? "ya publicado" : "ya publicados"} de ${all.length} del mes</span></div></div>`; // v225: la cantidad, no el %
+}
+function pPlan(){
+  const calOnly = page === "calcm", view = calOnly ? gView() : planUI.view;
+  // Plan de posteo: todo lo de CM del mes junto: feed, historias, Canal de WhatsApp, videos (pedidos a CM) y repetitivos.
+  const byCm = x => cmUI.cm === "Todos" || x === cmUI.cm;
+  const { canalesMes, vidsAll, recsAll, actsAll, all } = cmPlanMonth();
+  const vids = vidsAll.filter(x => byCm(x.cm) && soloMine(x.job) && cmStOk(x));
+  const recs = recsAll.filter(x => byCm(x.cm) && soloRec(x.r) && cmStOk(x));
+  const acts = actsAll.filter(x => byCm(x.cm) && soloPost(x) && cmStOk(x));
+  const vp = [...cmPosts(), ...canalesMes.filter(k => byCm(k.cm) && cmStOk(k))].filter(soloPost);
+  const items = [...vp, ...vids, ...recs, ...acts].sort((a, b) => a.date.localeCompare(b.date) || (a.r?.time || "").localeCompare(b.r?.time || ""));
+  const names = [...new Set([...all.map(p => p.cm), ...CM_NAMES()])].filter(Boolean).sort();
+  const summary = cmPlanSummary(all);
   const filters = `<div class="panel" style="padding:14px;display:flex;flex-direction:column;gap:10px"><div class="head"><div class="chips">${brandChips()}${calOnly ? "" : soloBtn()}</div></div>
     ${calOnly ? `<div class="chips pedscope"><button type="button" class="chip ${soloYo ? "on" : ""}" data-soloset="1">${icon("user-round")} Mi calendario</button><button type="button" class="chip ${soloYo ? "" : "on"}" data-soloset="0">${icon("users")} Todo el equipo</button></div>` : ""}
     <div class="jfilters"><select class="base" data-cmf="cm"><option value="Todos">CM: todos</option>${names.map(n => `<option ${cmUI.cm === n ? "selected" : ""}>${n}</option>`).join("")}</select>
-    <select class="base" data-cmf="st"><option value="Todos">Etapa: todas</option>${[...PLAN_STAGES, "Hecho"].map(st => `<option ${cmUI.st === st ? "selected" : ""}>${st}</option>`).join("")}</select></div></div>`;
+    <select class="base" data-cmf="st"><option value="Todos">Etapa: todas</option>${[...PLAN_STAGES, "Hecho", LATE_ST].map(st => `<option ${cmUI.st === st ? "selected" : ""}>${st}</option>`).join("")}</select></div></div>`;
   const tema = (x, kind) => canEditPost() ? `<button type="button" class="linkish" data-pedit="${kind}:${x.id}">${esc(x.title)}</button>` : `<b style="color:#fff">${esc(x.title)}</b>`;
   const row = x => {
     if (x.act) return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}${x.a.time ? ` <span class="note">${esc(x.a.time)}</span>` : ""}</td><td>${brandTag(x.brand)}</td><td>${esc(firstName(x.cm || ""))}</td><td style="white-space:nowrap">${icon(actType(x.a.type).i)} ${esc(actType(x.a.type).t)}</td><td style="min-width:190px"><button type="button" class="linkish" data-cmopen="act:${esc(x.id)}">${esc(x.title)}</button></td><td><span class="note">—</span></td><td>${cmStage({ k:"act", id:x.id, it:x.a, status:x.status })}</td><td><span class="note">—</span></td></tr>`;
@@ -5628,7 +5653,7 @@ function pPlan(){
   ${calOnly ? "" : calAdds(canEditPost() ? [['data-pnew="Feed"', "image", "Cargar publicación", "Post, carrusel o reel para el feed."], ['data-pnew="Historia"', "smartphone", "Cargar historia", "Una historia en su fecha."], ['data-pnew="Canal"', "message-circle", "Cargar para el Canal de WhatsApp", "Un contenido para el canal."], ...(canCreateJobs() && can("gestioncm") ? [['data-plvid', "clapperboard", "Cargar gestión de video", "Video para redes o para pantallas, con su fecha."]] : [])] : [])}
   ${summary}${filters}${calOnly ? "" : CM_PROC_LEGEND()}
   ${calOnly ? dgOnTheWay() : ""}
-  ${view === "semana" ? planWeek(planWeekItems(byCm, allSt)) : view === "calendario" ? planCal(items) : view === "tablero" ? planBoard(items) : `<div class="head"><span class="note">${items.length} ${items.length === 1 ? "contenido" : "contenidos"} en ${monthName(MONTH)} · ordenados por fecha${canEditPost() ? " · cambiá el estado desde la lista" : ""}</span></div>
+  ${view === "semana" ? planWeek(planWeekItems(byCm)) : view === "calendario" ? planCal(items) : view === "tablero" ? planBoard(items) : `<div class="head"><span class="note">${items.length} ${items.length === 1 ? "contenido" : "contenidos"} en ${monthName(MONTH)} · ordenados por fecha${canEditPost() ? " · cambiá el estado desde la lista" : ""}</span></div>
   <div class="tw"><table><thead><tr><th>Fecha</th><th>Marca</th><th>CM</th><th>Qué es</th><th>Tema</th><th>Diseño gráfico</th><th>Estado</th><th>Siguiente paso</th></tr></thead><tbody>
     ${items.map(row).join("") || `<tr><td colspan="8" class="empty">No hay contenidos con estos filtros.</td></tr>`}
   </tbody></table></div>`}
@@ -5960,14 +5985,14 @@ function planWk(){
   return planUI.wk;
 }
 // Todo lo de CM de esa semana (aunque cruce de mes), con los mismos filtros de arriba (marca, CM, etapa y “Mi calendario”).
-function planWeekItems(byCm, allSt){
+function planWeekItems(byCm){
   const from = planWk(), to = addDays(from, 6), inR = d => !!d && d >= from && d <= to, out = [], days = Array.from({ length:7 }, (_, i) => addDays(from, i));
   posts.filter(p => !p.ex && seesBrand(p.brand) && inFilter(p.brand) && inR(p.date)).forEach(p => out.push(p));
   CHANNEL_POSTS.filter(k => seesBrand(k.brand) && inFilter(k.brand) && inR(k.date)).forEach(k => out.push({ ...k, canal:true }));
   jobs.filter(j => j.area === "CM" && j.status !== "Cancelado" && !j.ex && seesJob(j) && jobBrands(j).some(inFilter) && inR(j.due)).forEach(j => out.push({ vid:true, id:j.id, date:j.due, brand:j.brand, title:j.title, status:j.status, cm:j.owner, piece:cmPiece(j), job:j }));
   recVisible().forEach(r => days.forEach(c => { if (recOn(r, c)) out.push({ rec:true, id:r.id + "|" + c, sid:r.id + "~" + c, date:c, brand:r.brand, title:r.title, cm:r.owner, r, status:recSt(r, c) }); }));
   CM_ACTS.filter(a => seesBrand(a.brand) && inFilter(a.brand) && inR(a.date)).forEach(a => out.push({ act:true, id:a.id, date:a.date, brand:a.brand, title:a.title, status:a.status, cm:a.owner, a }));
-  return out.filter(x => byCm(x.cm) && soloPost(x) && (allSt || x.status === cmUI.st)).sort((a, b) => a.date.localeCompare(b.date) || (a.time || a.a?.time || a.r?.time || "").localeCompare(b.time || b.a?.time || b.r?.time || ""));
+  return out.filter(x => byCm(x.cm) && soloPost(x) && cmStOk(x)).sort((a, b) => a.date.localeCompare(b.date) || (a.time || a.a?.time || a.r?.time || "").localeCompare(b.time || b.a?.time || b.r?.time || ""));
 }
 function planWeek(items){
   const wk = planWk(), days = Array.from({ length:7 }, (_, i) => addDays(wk, i)), prevOk = addDays(wk, -1) >= APP_FIRST(), nextOk = addDays(wk, 7) <= APP_LAST();
@@ -7183,19 +7208,21 @@ function pedPage(A, title, ico, sub, newHint, extra = ""){
 let dgPlanUI = { st:"Todos", view:"calendario" };
 function pCalDG(){
   const base = jobs.filter(j => j.area === "Diseño" && seesJob(j) && j.status !== "Cancelado" && (!pedMine() || j.owner === viewer.name || j.ex));
-  const list = base.filter(j => dgPlanUI.st === "Todos" || j.status === dgPlanUI.st).sort((a, b) => a.due.localeCompare(b.due));
+  const lateOn = dgPlanUI.st === LATE_ST, late = dgLateList(base);
+  const list = (lateOn ? late : base.filter(j => dgPlanUI.st === "Todos" || j.status === dgPlanUI.st)).sort((a, b) => a.due.localeCompare(b.due));
   const n = list.filter(j => j.due.slice(0, 7) === MONTH).length;
   const mes = base.filter(j => j.due.slice(0, 7) === MONTH), cnt = st => mes.filter(j => j.status === st).length, done = mes.filter(isFin).length;
   const sts = [...JOB_STAGES, ...new Set(mes.map(j => j.status).filter(st => !JOB_STAGES.includes(st)))]; // las de antes (ej. Entregado), solo si hay
   const summary = `<div class="pubsum dgsum">${sts.map(st => `<button type="button" class="pubst ${dgPlanUI.st === st ? "on" : ""}" data-dgst="${esc(st)}" aria-pressed="${dgPlanUI.st === st}" style="--c:${dgStColor(st)}"><b class="num">${cnt(st)}</b><span>${esc(st)}</span></button>`).join("")}
+    ${lateCard(late.length, lateOn, `data-dgst="${LATE_ST}"`, prevMonths(late))}
     <div class="pubpct"><b class="num">${mes.length ? Math.round(done / mes.length * 100) : 0}%</b><span>del mes ya aprobado (${done} de ${mes.length})</span></div></div>
-    ${dgPlanUI.st !== "Todos" ? `<p class="note dgstnote" style="margin:-6px 0 0">${icon("info")} Mostrando solo <b>${esc(dgPlanUI.st)}</b>. <button type="button" class="linkish" data-dgst="Todos">Ver todas las etapas</button></p>` : ""}`;
+    ${dgPlanUI.st !== "Todos" ? `<p class="note dgstnote" style="margin:-6px 0 0">${icon("info")} Mostrando solo <b>${esc(dgPlanUI.st)}</b>.${lateOn && dgPlanUI.view !== "tabla" && late.some(j => j.due.slice(0, 7) < MONTH) ? " Los atrasados de meses anteriores se ven en Tabla." : ""} <button type="button" class="linkish" data-dgst="Todos">Ver todas las etapas</button></p>` : ""}`;
   return `<div class="head"><div><h1 class="pmh">${pmIco("calendar-days")}Planificación de entregas</h1><p class="sub">${monthLabel(MONTH)} · cada trabajo de Diseño gráfico (redes, cartelería, web y pantallas) en su fecha de entrega.</p></div></div>
   ${canCreateJobs() ? `<button class="panel cmnew" data-jnew><span class="cmplus">${icon("plus")}</span><span><b>Cargar pedido</b><small>Qué pieza, para qué marca, quién la hace y para cuándo. También podés tocar un día del calendario.</small></span></button>` : ""}
   ${summary}
   ${ownsJobs() ? `<div class="chips pedscope"><button type="button" class="chip ${pedMine() ? "on" : ""}" data-pedscope="mine">${icon("user-round")} Mis trabajos</button><button type="button" class="chip ${pedMine() ? "" : "on"}" data-pedscope="team">${icon("users")} Todo el equipo</button></div>` : ""}
   ${viewTabs([["calendario", "Calendario", "calendar-days"], ["tabla", "Tabla", "table-2"]], dgPlanUI.view || "calendario", "data-dgview")}
-  ${dgPlanUI.view === "tabla" ? dgTable(list.filter(j => j.due.slice(0, 7) === MONTH)) : `${jobDeliveryCal(list, "Diseño")}${n ? "" : `<p class="note">No hay entregas en ${monthName(MONTH)}${dgPlanUI.st !== "Todos" ? ` en ${esc(dgPlanUI.st)}` : ""}${pedMine() ? " a tu nombre" : ""}.</p>`}`}
+  ${dgPlanUI.view === "tabla" ? dgTable(lateOn ? list : list.filter(j => j.due.slice(0, 7) === MONTH)) : `${jobDeliveryCal(list, "Diseño")}${n ? "" : `<p class="note">No hay entregas en ${monthName(MONTH)}${dgPlanUI.st !== "Todos" ? ` en ${esc(dgPlanUI.st)}` : ""}${pedMine() ? " a tu nombre" : ""}.</p>`}`}
   ${jobForm()}`;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-dgst]"); if (!b) return; const st = b.dataset.dgst; dgPlanUI.st = st === "Todos" || dgPlanUI.st === st ? "Todos" : st; render(); });
@@ -7213,7 +7240,7 @@ function pPedidos(){
 /* ---------- Gestión CM: publicaciones (fecha de publicación y estado) + tareas de CM ---------- */
 let cmUI = { tview:"calendario", st:"Todos", cm:"Todos" };
 const canEditPost = () => !isClosed() && !isViewOnly() && !isDesigner();
-function cmPosts(){ return visiblePosts().filter(p => (cmUI.cm === "Todos" || p.cm === cmUI.cm) && (cmUI.st === "Todos" || p.status === cmUI.st)).sort((a, b) => a.date.localeCompare(b.date)); }
+function cmPosts(){ return visiblePosts().filter(p => (cmUI.cm === "Todos" || p.cm === cmUI.cm) && cmStOk(p)).sort((a, b) => a.date.localeCompare(b.date)); }
 function postDesignCell(p){
   const j = jobs.find(x => x.post === p.id);
   if (j) return `<span class="note">${icon("palette")} ${esc(firstName(j.owner))} · ${pill(j.status, JOB_COLOR[j.status])}</span>`;
@@ -12549,7 +12576,9 @@ function enterApp(){ try { if (localStorage.getItem("rmh-navreset") || !localSto
 
 document.addEventListener("click", e => {
   const cmt = e.target.closest("[data-cmview],[data-cmtv],[data-cmst]");
-  if (cmt){ const d = cmt.dataset; if (d.cmtv) cmUI.tview = d.cmtv; else if (d.cmst) cmUI.st = cmUI.st === d.cmst ? "Todos" : d.cmst; render(); return; }
+  if (cmt){ const d = cmt.dataset; if (d.cmtv) cmUI.tview = d.cmtv; else if (d.cmst){ cmUI.st = cmUI.st === d.cmst ? "Todos" : d.cmst; if (cmUI.st === LATE_ST && page === "calcm" && gView() === "semana") cmView.calcm = "tabla"; } render(); return; }
+  const cg = e.target.closest("[data-cmstgo]"); // v241 · desde el Panel de Trabajo de CM: abre Planificación con esa etapa
+  if (cg){ cmUI.st = cg.dataset.cmstgo; cmUI.cm = "Todos"; if (cmUI.st === LATE_ST && (cmView.calcm || "semana") === "semana") cmView.calcm = "tabla"; } // y su data-page abre la sección
   const jt = !e.target.closest(".pev [data-stagemenu]") && e.target.closest("[data-jarea],[data-jview],[data-jnew],[data-jedit],[data-jdup],[data-jdel],[data-jclose]");
   if (jt){ const d = jt.dataset, find = id => jobs.find(x => x.id === id);
     if (d.jarea){ jobUI.area = d.jarea; jobUI.owner = "Todos"; }
