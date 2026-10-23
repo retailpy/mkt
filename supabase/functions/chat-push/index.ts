@@ -2,7 +2,7 @@
 //   GET  → devuelve la clave pública VAPID (la crea la primera vez; la privada nunca sale del servidor).
 //   POST → la llama la base de datos (trigger chat_push) cuando llega un mensaje nuevo, un aviso de trabajo
 //          (trabajo nuevo, publicación para hacer, corrección, listo para revisar, aprobado, comentario, sugerencia o
-//          falla de Drive: s:NOTIFS) o un aviso del equipo (s:AVISOS); requiere x-push-secret.
+//          falla de Drive: s:NOTIFS), un aviso del equipo (s:AVISOS) o un Pedido Comercial (s:PEDIDOS_COM); requiere x-push-secret.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
@@ -123,6 +123,7 @@ async function jobPush(cfg: any, items: any[]) {
 
 // Avisos del equipo (s:AVISOS, v228): cuando Admin total publica uno que ya está vigente, les llega a las personas de ese
 // grupo (todo el equipo, Diseño, CM o Admins) o a las personas elegidas ("p:<persona>", botón Aviso), menos a quien lo publicó. Con “No molestar”, sin aviso.
+const NO_TEAM = ["Revisor", "Comercial"]; // no son del equipo: sin avisos del equipo, sin chat de grupos y sin resumen del día
 const AV_ICO: Record<string, string> = { Informativo: "📢", Importante: "⚠️", Urgente: "🚨" };
 async function avisoPush(cfg: any, items: any[]) {
   const list = (Array.isArray(items) ? items : []).filter((a) => a && a.title && Array.isArray(a.to)).slice(0, 10);
@@ -132,13 +133,34 @@ async function avisoPush(cfg: any, items: any[]) {
   const now = Date.now();
   let sent = 0;
   for (const a of list) {
-    const to = (members || []).filter((m) => a.to.includes("todos") || a.to.includes(m.role) || a.to.includes("p:" + m.person_id) || (a.to.includes("admins") && ["Admin total", "Admin"].includes(m.role)))
+    const to = (members || []).filter((m) => !NO_TEAM.includes(m.role)).filter((m) => a.to.includes("todos") || a.to.includes(m.role) || a.to.includes("p:" + m.person_id) || (a.to.includes("admins") && ["Admin total", "Admin"].includes(m.role)))
       .map((m) => m.person_id).filter((id) => id !== a.by && !isDnd(presence[id], now));
     if (!to.length) continue;
     const range = a.from === a.until ? `el ${dm(a.from)}` : `del ${dm(a.from)} al ${dm(a.until)}`;
     // Botón Aviso (flash): el mensaje de Admin total tal cual, con vibración y sin que se cierre solo.
     const payload = a.flash ? JSON.stringify({ title: `🚨 ${short(String(a.title), 60)}`, body: short(String(a.text || ""), 220), tag: "rmh-av-" + a.id, open: "", go: "inicio", vibrate: [500, 200, 500, 200, 500] }) : JSON.stringify({ title: `${AV_ICO[a.level] || "📢"} Aviso ${String(a.level || "informativo").toLowerCase()}: ${short(String(a.title), 60)}`,
       body: short(`${a.text || ""}\n${range}`, 220), tag: "rmh-av-" + a.id, open: "", go: "inicio" });
+    sent += await send(cfg, [...new Set(to)], () => payload);
+  }
+  return json({ ok: true, sent });
+}
+
+// Pedidos Comercial (v242): pedido nuevo de un comprador → a Admin total; pedido publicado → al comprador que lo cargó.
+// Con “No molestar”, sin aviso.
+async function pedidoPush(cfg: any, items: any[]) {
+  const list = (Array.isArray(items) ? items : []).filter((p) => p && p.id && p.title).slice(0, 10);
+  if (!list.length) return json({ ok: true, skipped: "sin pedidos" });
+  const presence: Record<string, any> = (await state("s:PRESENCE")) || {};
+  const { data: admins } = await db.from("members").select("person_id").eq("active", true).eq("role", "Admin total");
+  const now = Date.now(), brands = (p: any) => (Array.isArray(p.brands) ? p.brands : []).join(" + ");
+  let sent = 0;
+  for (const p of list) {
+    const pub = p.ev === "pub";
+    const to = (pub ? [String(p.by || "")] : (admins || []).map((m) => m.person_id)).filter((id) => id && id !== (pub ? "" : p.by) && !isDnd(presence[id], now));
+    if (!to.length) continue;
+    const payload = JSON.stringify(pub
+      ? { title: "✅ ¡Tu pedido se publicó!", body: short(`${p.title}${brands(p) ? " · " + brands(p) : ""}`, 220), tag: "rmh-pc-" + p.id, open: "", go: "com:" + p.id }
+      : { title: "🛍️ Nuevo pedido de Comercial", body: short([p.title, String(p.byName || ""), brands(p), p.date ? "publicar el " + dm(p.date) : ""].filter(Boolean).join(" · "), 220), tag: "rmh-pc-" + p.id, open: "", go: "com:" + p.id });
     sent += await send(cfg, [...new Set(to)], () => payload);
   }
   return json({ ok: true, sent });
@@ -157,6 +179,7 @@ async function dailyPush(cfg: any, dry = false) { // dry: devuelve lo que mandar
   const bdays = (infl || []).filter((x: any) => x && x.bday === hoy.slice(5));
   let sent = 0; const would: any[] = [];
   for (const m of members || []) {
+    if (NO_TEAM.includes(m.role)) continue;
     const pp = P.find((x) => x.id === m.person_id);
     if (!pp || pp.active === false || isDnd(pres[m.person_id], now) || pres[m.person_id]?.st === "vac") continue;
     const mine = (jobs || []).filter((j: any) => j && j.owner === pp.name && !JOB_DONE.includes(j.status) && !(j.status === "Aprobado" && j.area !== "CM") && j.due);
@@ -190,6 +213,7 @@ Deno.serve(async (req) => {
   const key = String(body.key || "");
   if (key === "s:NOTIFS") return jobPush(cfg, body.items || []);
   if (key === "s:AVISOS") return avisoPush(cfg, body.items || []);
+  if (key === "s:PEDIDOS_COM") return pedidoPush(cfg, body.items || []);
   if (key === "daily") return dailyPush(cfg, body.dry === true);
   if (!/^(thread|chat):/.test(key)) return json({ ok: true, skipped: "clave" });
   const row = await state(key);
@@ -213,7 +237,7 @@ Deno.serve(async (req) => {
     const gid = key.slice(5);
     const g = ((await state("s:CHAT_GROUPS")) || []).find((x: any) => x.id === gid);
     if (!g || g.archived) return json({ ok: true, skipped: "grupo" });
-    to = (members || []).filter((x) => x.role !== "Revisor" && (g.all || (g.members || []).includes(x.person_id) || (g.roles || []).includes(x.role))).map((x) => x.person_id);
+    to = (members || []).filter((x) => !NO_TEAM.includes(x.role) && (g.all || (g.members || []).includes(x.person_id) || (g.roles || []).includes(x.role))).map((x) => x.person_id);
     title = g.name;
     open = "g:" + gid;
   }

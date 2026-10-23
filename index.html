@@ -3044,6 +3044,28 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
   .acard .ac-br{font-size:9.5px;letter-spacing:.02em;padding:2px 5px;text-overflow:clip}.acard .ac-m{align-items:flex-start}.acard .ac-m span{white-space:normal;overflow:visible}
   .acard .ac-t{overflow-wrap:break-word;hyphens:auto;-webkit-hyphens:auto}
 }
+/* v242 · Pedidos Comercial */
+.pcst{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:800;color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent);border:1px solid color-mix(in srgb,var(--c) 45%,transparent)}
+.pcst svg{width:14px;height:14px}
+.pckpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.pckpi>div{padding:12px 14px;border-radius:14px;border:1px solid color-mix(in srgb,var(--c) 40%,var(--line-2));background:color-mix(in srgb,var(--c) 9%,transparent)}
+.pckpi b{display:block;font-size:26px;line-height:1.1;color:var(--c)}.pckpi span{color:var(--muted);font-size:13px;font-weight:600}
+.pccard{cursor:pointer}.pccard .dact{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap}
+.pccard.pub{border-color:color-mix(in srgb,#22c55e 55%,transparent)}
+.pcform{display:grid;grid-template-columns:1fr 1fr;gap:14px}.pcform label{display:flex;flex-direction:column;gap:5px;font-weight:600;min-width:0}
+.pcform .pcw{grid-column:1/-1}
+.pcform input.base{border:1px solid var(--line-3);background:var(--inner);border-radius:14px;padding:9px 12px;color:var(--ink);outline:none;font:inherit;color-scheme:dark;width:100%}
+.pcform input.base:focus{border-color:var(--cyan)}.pcform select.base{width:100%}
+.pcfiles{display:flex;flex-direction:column;gap:8px}.pcup{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.pcup .fup{flex:none!important;flex-direction:row!important}.pcvig{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pcbr{border:0;padding:0;margin:0}.pcbr legend{font-weight:600;margin-bottom:6px}
+.pcchk{flex-direction:row!important;align-items:center;gap:8px!important;padding:8px 12px;border-radius:12px;border:1px solid var(--line-3);cursor:pointer}
+.pcchk:has(input:checked){border-color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent)}
+.pcchk input{accent-color:var(--c);width:18px;height:18px;margin:0}
+.pcok{display:flex;align-items:center;gap:12px;border-color:color-mix(in srgb,#22c55e 55%,transparent);background:color-mix(in srgb,#22c55e 12%,transparent)}
+.pcok>svg{width:30px;height:30px;color:#22c55e;flex:none}.pcok b{display:block;color:#22c55e;font-size:18px}.pcok span{color:var(--ink)}
+.pcdl{display:grid;grid-template-columns:max-content 1fr;gap:8px 16px;margin:0}.pcdl dt{color:var(--muted);font-weight:600}.pcdl dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.pcev{cursor:pointer}
+@media (max-width:640px){.pcform,.pcvig{grid-template-columns:1fr}.pcdl{grid-template-columns:1fr}.pcdl dt{margin-top:4px}}
 </style>
 
 <div class="login" id="login">
@@ -3110,6 +3132,7 @@ const SECTIONS = [
   { g:"General", k:"avisos", l:"Avisos", i:"megaphone", hide:true }, // se ven en Inicio
   { g:"General", k:"mensajes", l:"Chat Retail MKT", i:"messages-square" },
   { g:"General", k:"comercial", l:"Comercial", i:"tags", virtual:true }, // ofertas publicadas de cada quincena (Excel de Comercial)
+  { g:"General", k:"pedcom", l:"Pedidos Comercial", i:"shopping-bag", virtual:true }, // v242: pedidos de activaciones de los compradores (rol Comercial); lo ven Admin total y Admin
   { g:"General", k:"notas", l:"Bloc de notas", i:"notebook-pen" },
   { g:"General", k:"aviso", l:"Aviso", i:"siren", virtual:true }, // solo Admin total: mensaje emergente al momento, con sonido y vibración (a personas, CM, Diseño o todos)
   { g:"Diseño gráfico", k:"paneldg", l:"Panel de Trabajo Diseño gráfico", n:"Panel de Trabajo", i:"layout-grid", virtual:true }, // acceso visual a las categorías de Diseño (no es un permiso aparte)
@@ -3165,6 +3188,7 @@ const ROLE_DEFAULTS = {
   "CM": ROLE_CM,
   "Diseñador": ROLE_DESIGN,
   "Revisor": ["inbox"],
+  "Comercial": ["dashboard","comercial","pedcom"],
 };
 const PEOPLE = [
   { id:"alyssa", username:"Alesme", workPhone:"+595 21 618 1001", phone:"+595 981 111 222", mainBrand:"Varias", skills:["Planificación estratégica","Gestión de equipos","Análisis de datos"], birthday:"11-08", brandsHandled:["Superseis","Stock","Delimarket"], quote:"Mi idea es cambiar las cosas", name:"Alyssa Lesme", cargo:"Jefa de Marketing", email:"alyssa.lesme@empresa.com.py", role:"Admin total", brands:null, last:"hoy 08:12" },
@@ -3191,18 +3215,23 @@ function upgradePerms(p){ const v = p.permsV || 1; if (v >= 10) return;
   if (p.perms.has("inbox")) p.perms.add("escraches");
   p.permsV = 10; }
 let DESIGNERS = [];
-const ROLES = ["Admin total","Admin","Diseñador","CM","Revisor"];
+const ROLES = ["Admin total","Admin","Diseñador","CM","Revisor","Comercial"];
 // Revisor: el usuario de la revisión de Meta. Solo Mensajes de las cuentas (DM, comentarios y menciones, y contestar),
 // su cuenta y la guía. Sin chat, sin pedidos, sin datos del equipo: la base tampoco le deja leer otra cosa.
 const isRevisor = () => viewer?.role === "Revisor";
 const REVISOR_SEE = ["inbox","perfil","config","guia"];
-const sinChat = pp => !!pp && (!!pp.noChat || pp.role === "Revisor");
+// Comercial (v242): los compradores (ej. Gisella Aquino). Dashboard (solo sus supermercados), las ofertas de Comercial y sus
+// Pedidos de activaciones. Sin chat, sin el equipo y sin nada del proceso de Diseño o CM: la base tampoco le deja leer otra cosa.
+const isComercial = () => viewer?.role === "Comercial";
+const COMERCIAL_SEE = ["dashboard","comercial","pedcom","perfil","config","guia"];
+const sinChat = pp => !!pp && (!!pp.noChat || pp.role === "Revisor" || pp.role === "Comercial");
 const ROLE_INFO = {
   "Admin total":"Configura y controla todo: usuarios, permisos, marcas y cierres de mes.",
   "Admin":"Ve todo el sitio para control, descarga informes. No modifica ni configura.",
   "Diseñador":"Ve todo menos Vista TV, los historiales, Pauta Meta Ads, el Informe mensual y Usuarios (esas son solo para Admin). Admin total puede sacarle o darle secciones. No ve los mensajes de las cuentas ni los reclamos.",
   "CM":"Ve todo menos Vista TV, los historiales, Pauta Meta Ads, el Informe mensual y Usuarios (esas son solo para Admin). Admin total puede sacarle o darle secciones.",
   "Revisor":"Para la revisión de Meta: solo Mensajes de las cuentas (mensajes, comentarios y menciones de Instagram y Facebook) y contestarlos. No ve el chat, los pedidos ni los datos del equipo.",
+  "Comercial":"Compradores: Dashboard de sus supermercados, las ofertas de Comercial y la hoja para pedir activaciones (con su calendario). No ve el chat, el equipo ni el proceso de Diseño o CM: solo sus pedidos y cuándo se publicaron.",
 };
 let resetRequests = [];
 let userUI = { newOpen:false, confirm:null, lastPass:null };
@@ -3212,6 +3241,7 @@ const ROLE_SVG = {
   "Admin total":'<path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/>',
   "Admin":'<path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/>',
   "CM":'<path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
+  "Comercial":'<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
   "Revisor":'<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>' };
 const avatarHTML = (pp, cls = "", style = "") => pp.photo ? `<img class="avatar ${cls}" src="${pp.photo}" alt="Foto de ${esc(pp.name)}" style="object-fit:cover;padding:0;${style}">` : ROLE_SVG[pp.role] ? `<div class="avatar roleav ${cls}" style="${style}" title="${esc(pp.name)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ROLE_SVG[pp.role]}</svg></div>` : `<div class="avatar ${cls}" style="${style}">${initials(pp.name)}</div>`;
 const initials = n => n.split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
@@ -3520,10 +3550,10 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v241";
+const APP_VER = "v242";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
-const safeToReload = () => !jobUI?.form && !postUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
+const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
   && !(document.getElementById("chatInput")?.value || "").trim();
 if ("serviceWorker" in navigator && location.protocol === "https:" && window.top === window.self) window.addEventListener("load", () => {
   const hadCtrl = !!navigator.serviceWorker.controller;
@@ -3966,7 +3996,7 @@ let MONTH = CURRENT_MONTH;
 function dayChanged(){ return new Intl.DateTimeFormat("en-CA", { timeZone:"America/Asuncion" }).format(new Date()) !== TODAY; }
 function reloadIfNewDay(){
   if (!dayChanged()) return;
-  const typing = (typeof jobUI !== "undefined" && jobUI.form) || (typeof postUI !== "undefined" && postUI.form) || (typeof actUI !== "undefined" && actUI.form) || document.querySelector(".rtedit[data-dirty]") || (document.getElementById("chatInput")?.value || "").trim();
+  const typing = (typeof jobUI !== "undefined" && jobUI.form) || (typeof postUI !== "undefined" && postUI.form) || (typeof actUI !== "undefined" && actUI.form) || (typeof pcUI !== "undefined" && pcUI.form) || document.querySelector(".rtedit[data-dirty]") || (document.getElementById("chatInput")?.value || "").trim();
   if (!typing) location.reload();
 }
 setInterval(reloadIfNewDay, 60000);
@@ -4392,7 +4422,7 @@ function staffSat(pp){
 }
 const STAFF_GROUPS = [["Jefa de Marketing", pp => pp.role === "Admin total" || pp.role === "Admin"], ["Diseñador gráfico", pp => pp.role === "Diseñador"], ["Community Manager", pp => pp.role === "CM"]];
 // Cómo se nombra cada puesto en Team MKT (sin siglas ni nombres internos de permisos).
-const CARGO_OF = { "Admin total":"Jefa de Marketing", "Admin":"Jefa de Marketing", "CM":"Community Manager", "Diseñador":"Diseñador gráfico" };
+const CARGO_OF = { "Admin total":"Jefa de Marketing", "Admin":"Jefa de Marketing", "CM":"Community Manager", "Diseñador":"Diseñador gráfico", "Comercial":"Comercial" };
 const cargoOf = pp => { const c = (pp.cargo || "").trim(); return !c || CARGO_OF[c] ? CARGO_OF[c || pp.role] || pp.role : c; };
 function pStaff(){
   const sup = viewer.role === "Admin total";
@@ -4873,7 +4903,7 @@ const MEMBER_ALWAYS = ["bienvenida","perfil","config","guia"]; // la bienvenida 
 const canMember = key => ONLY_AT.includes(key) || ONLY_ADMINS.includes(key) ? false : MEMBER_ALWAYS.includes(key) ? true
   : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "gcm" || key === "calact" ? CM_GEST.some(k => can(k))
   : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : viewer.perms.has(key);
-const can = key => isRevisor() ? REVISOR_SEE.includes(key) : key === "mensajes" && viewer?.noChat ? false : isAdminAny() ? canAdmin(key) : canMember(key); // noChat: sin Chat Retail MKT (Usuarios y permisos)
+const can = key => isRevisor() ? REVISOR_SEE.includes(key) : isComercial() ? COMERCIAL_SEE.includes(key) : key === "pedcom" ? isAdminAny() : key === "mensajes" && viewer?.noChat ? false : isAdminAny() ? canAdmin(key) : canMember(key); // noChat: sin Chat Retail MKT (Usuarios y permisos)
 const myGroups = () => viewer.brands || GROUPS;
 const seesBrand = b => myGroups().includes(groupOf(b));
 const myBrands = () => Object.keys(BRANDS).filter(seesBrand);
@@ -4992,6 +5022,7 @@ function alerts(){
   if (false && can("cumples")) bdayAlerts().forEach(({ pp, d }) => out.push({ go:"cumples", key:`bday:${pp.id}:${TODAY}`, sev: d === 0 ? "#ef4444" : "#f97316", rank:-2, ic:"cake", t:`${d === 0 ? `Hoy cumple años ${pp.name}` : `${d === 1 ? "Mañana" : `En ${d} días`} cumple años ${pp.name}`}`, m:bdayLabel(pp.birthday) }));
   avActiveFor(viewer).filter(a => !a.seen.includes(viewer.id)).forEach(a => out.push({ key:"av:" + a.id, sev:AV_LEVELS[a.level].c, rank:-8, ic:AV_LEVELS[a.level].ic, t:`Aviso: ${a.title}`, m:`${a.text} · ${avRange(a)}`, acts:`<button class="btn" data-avok="${a.id}">Entendido</button>` }));
   out.push(...notifAlerts().filter(Boolean), ...msgAlerts(), ...pendingSurveys().map(sv => ({ sev:"#a78bfa", rank:-3, ic:"clipboard-list", t:`Encuesta para responder: ${sv.title}`, m:`${sv.qs.length} preguntas · te lleva 2 minutos`, acts:`<button class="btn primary" data-svopen="${sv.id}">Responder</button>` })));
+  if (viewer.role === "Admin total") PEDIDOS_COM.filter(p => p.st === "Enviado").forEach(p => out.push({ go:"com:" + p.id, key:"pc:" + p.id, ic:"shopping-bag", sev:"#38bdf8", rank:-5, t:`Nuevo pedido de Comercial: ${p.title}`, m:`${p.byName} · ${pcBrandTxt(p)} · publicar el ${p.date ? dm(p.date) : "—"} · pasalo a Diseño gráfico o a un CM` }));
   if (viewer.role === "Admin total") resetRequests.forEach(id => { const pp = PEOPLE.find(x => x.id === id); if (pp) out.push({ go:"usuarios", sev:"#22d3ee", rank:-1, ic:"key-round", t:`${pp.name} pidió restablecer su contraseña`, m:"Andá a Usuarios y permisos → Restablecer contraseña" }); });
   if (satPeople().includes(viewer) && !isViewOnly()){ const n = satList(SAT_TURN[CURRENT_MONTH] || {}, viewer.id).length;
     if (!n) out.push({ go:"sabados", key:`sat:${CURRENT_MONTH}:${n}`, sev:"#f97316", rank:-2, ic:"calendar-clock", t:"Elegí tus sábados de turno", m:`${monthLabel(CURRENT_MONTH)} · elegí los sábados que venís a la oficina (los que quieras)` }); }
@@ -5019,6 +5050,7 @@ function goAlert(go){
   go = String(go || "");
   if (go.startsWith("job:")){ const j = jobById(go.slice(4)); if (!j) return toast("No se encontró el pedido (quizás lo borraron)."); postUI.form = null; jobUI.form = null; jobUI.ficha = j.id; page = jobSection(j); if (!can(page)) page = "inicio"; }
   else if (go.startsWith("pub:")) return openPub(go.slice(4));
+  else if (go.startsWith("com:")){ postUI.form = null; jobUI.form = null; jobUI.ficha = null; pcUI.form = null; pcUI.open = go.slice(4); page = "pedcom"; pcSeen(pcById(pcUI.open)); }
   else if (go.startsWith("chat:")) return openChatFrom(go.slice(5));
   else if (go.startsWith("sug")) page = "sugerencias";
   else if (go.startsWith("cfg:")){ page = "config"; cfgTab = go.slice(4); }
@@ -8595,7 +8627,7 @@ const PERM_EXTRA = ["comercial","inbox","reclamos","escraches","ideas"]; // secc
 const permSections = () => SECTIONS.filter(sc => (!sc.virtual || PERM_EXTRA.includes(sc.k)) && !ONLY_AT.includes(sc.k) && !ONLY_ADMINS.includes(sc.k));
 function permSheet(){
   const secs = permSections(), groups = [...new Set(secs.map(sc => sc.g))];
-  const members = PEOPLE.filter(pp => pp.active && !["Admin total","Admin","Revisor"].includes(pp.role)), admins = PEOPLE.filter(pp => pp.active && (pp.role === "Admin total" || pp.role === "Admin"));
+  const members = PEOPLE.filter(pp => pp.active && !["Admin total","Admin","Revisor","Comercial"].includes(pp.role)), admins = PEOPLE.filter(pp => pp.active && (pp.role === "Admin total" || pp.role === "Admin"));
   const card = pp => { const on = secs.filter(sc => pp.perms.has(sc.k)).length, basic = ROLE_BASIC.length === on && ROLE_BASIC.every(k => pp.perms.has(k));
     return `<section class="pxcard"><header><div class="person">${avatarHTML(pp)}<div><b>${esc(pp.name)}</b><span>${esc(pp.role)}${pp.cargo ? " · " + esc(pp.cargo) : ""}</span></div></div>
       <div class="pxhead"><span class="pxsum${basic ? " basic" : ""}">${basic ? "Ve solo lo básico" : `Ve ${on} de ${secs.length}`}</span><button type="button" class="btn sm" data-pxpreset="${pp.id}|basic">Dejar solo lo básico</button><button type="button" class="btn sm" data-pxpreset="${pp.id}|all">Activar todo</button></div></header>
@@ -10964,7 +10996,9 @@ const JOBPOP = { nuevo:{ k:"new", t:"Nuevo trabajo para vos", ic:"inbox", c:"#22
   aviso:{ k:"new", t:"Aviso del equipo", ic:"megaphone", c:"#22d3ee" }, chat:{ k:"msg", t:"Mensaje nuevo", ic:"message-circle", c:"#22c55e" }, alerta:{ k:"new", t:"Alerta", ic:"bell", c:"#f59e0b" },
   entrega:{ k:"due", t:"¡Atención! Entrega", ic:"alarm-clock", c:"#ef4444" }, // v231: entrega de hoy o atrasada (Diseño y CM)
   avok:{ k:"msg", t:"Leyeron tu aviso", ic:"check-check", c:"#10b981" } }; // v236: a quien mandó un Aviso, cuando alguien toca “Entendido”
-const POP_LOCAL = ["aviso", "avok", "chat", "alerta", "entrega"]; // no vienen de s:NOTIFS
+  // v242: Pedidos Comercial: a Admin total cuando un comprador carga uno; al comprador cuando su pedido se publicó
+JOBPOP.comped = { k:"new", t:"Nuevo pedido de Comercial", ic:"shopping-bag", c:"#38bdf8" }; JOBPOP.compub = { k:"new", t:"¡Tu pedido se publicó!", ic:"badge-check", c:"#22c55e" };
+const POP_LOCAL = ["aviso", "avok", "chat", "alerta", "entrega", "comped", "compub"]; // no vienen de s:NOTIFS
 const ADMIN_POP = ["review", "nota", "sug", "drive"]; // lo que le llega a Admin total (to: "admin")
 const JOBSOUND_KEY = "rmh-jobsound";
 const jobSoundOn = () => { try { const v = localStorage.getItem(JOBSOUND_KEY); return v === "on" || (v !== "off" && notifDefault()); } catch { return notifDefault(); } };
@@ -10978,7 +11012,8 @@ function jobPopCheck(){
   const mine = [...myNotifs(), ...(viewer.role === "Admin total" ? adminNotifs().filter(n => ADMIN_POP.includes(n.type) && n.who !== viewer.name && (n.type !== "sug" || can("sugerencias"))) : [])]
     .filter(n => JOBPOP[n.type] && !POP_LOCAL.includes(n.type) && (n.copy ? copyAlert(n) : (n.type !== "pub" || pubAlert(n)) && (n.type !== "listo" || !n.post || listoAlert(n)) && (!n.job || jobById(n.job))))
     .concat(avActiveFor(viewer).filter(a => !(a.seen || []).includes(viewer.id) && a.by !== viewer.id).map(a => avPopOf(a))) // avisos del equipo vigentes, sin “Entendido”
-    .concat(avOkItems()); // a quien mandó un Aviso: cada persona que tocó “Entendido”
+    .concat(avOkItems()) // a quien mandó un Aviso: cada persona que tocó “Entendido”
+    .concat(pcPopItems()); // v242: Pedidos Comercial
   let seen = jobPopRead(); const first = seen === null; seen = seen || [];
   const fresh = mine.filter(n => !seen.includes(jobPopId(n)) && !notify.here.has(n) && (!first || n.date === TODAY)); // la primera vez en este dispositivo: solo lo de hoy
   const ids = mine.map(jobPopId);
@@ -11063,6 +11098,8 @@ function jobPopInfo(n){
       m:j ? `${jobBrands(j).join(" + ")} · ${cmPiece(j)} · ${d >= 0 ? "se entrega hoy" : "tenía que entregarse el " + dm(j.due)} · ${j.status}${j.owner !== viewer.name ? ` · ${j.owner === "Sin asignar" ? "sin asignar" : j.owner}` : ""}` : "" }; }
   if (n.demo) return n.type === "chat" ? { ...P, go:"", t:"Team MKT", title:"Ejemplo: ¿Ya está lista la historia del finde?", m:"" }
     : { ...P, go:"", title:n.type === "fix" ? "Ejemplo: Post Día de la Madre" : "Ejemplo: Historia ofertas del finde", m:n.type === "fix" ? "“Cambiar la foto principal y agrandar el precio”" : "Superseis · Historia · fecha límite " + dm(addDays(TODAY, 2)) };
+  if (n.type === "comped" || n.type === "compub"){ const p = pcById(n.ped);
+    return { ...P, go:"com:" + n.ped, title:p?.title || "", m:!p ? "" : n.type === "comped" ? `${p.byName} · ${pcBrandTxt(p)} · publicar el ${p.date ? dm(p.date) : "—"}${p.marcas ? " · " + p.marcas : ""}` : `${pcBrandTxt(p)} · ya está en las redes` }; }
   if (n.type === "chat") return { ...P, go:"chat:" + n.open, t:n.name, title:n.from ? `${n.from}: ${n.text}` : n.text, m:n.n > 1 ? `${n.n} mensajes nuevos` : "", ic:n.open.startsWith("g:") ? "messages-square" : "message-circle" };
   if (n.type === "avok"){ const a = n.av, pp = personById(n.who), all = PEOPLE.filter(x => x.active !== false && x.id !== a.by && avFor(a, x)), ok = all.filter(x => a.seen.includes(x.id)).length, at = (a.seenAt || {})[n.who];
     return { ...P, go:"aviso", t:`${pp ? pp.name : "Alguien"} leyó tu aviso`, title:`“${rclShort(String(a.text), 140)}”`, m:`Tocó Entendido${at ? ` a las ${axHM(at)} h` : ""} · lo leyeron ${ok} de ${all.length}` }; }
@@ -11200,7 +11237,194 @@ function pConfig(){
 document.addEventListener("click", e => { const b = e.target.closest("[data-pref]"); if (!b) return; const [k, val] = b.dataset.pref.split("|"); viewer[k] = val; savePrefs(viewer); applyPrefs(); render();
   toast(k === "theme" ? `Listo: versión ${val === "light" ? "clara" : "oscura"}.` : k === "textSize" ? `Texto ${val === "big" ? "grande" : "normal"}.` : val === "off" ? "Animaciones desactivadas." : "Animaciones activadas."); });
 const EYEBROW = { gcm:"Community Manager", calact:"Community Manager", contenidos:"Community Manager", escraches:"Community Manager", bienvenida:"Edición beta", comercial:"Ofertas", reclamos:"Community Manager", ideas:"Community Manager", inbox:"Community Manager", noticias:"Community Manager", tendg:"Diseño gráfico", tencm:"Community Manager", paneldg:"Diseño gráfico", panelcm:"Community Manager", caldg:"Diseño gráfico", calcm:"Community Manager", web:"Diseño gráfico", pantallas:"Diseño gráfico", sabados:"Equipo", caldiseno:"Redes sociales", cartel:"Diseño gráfico", calcartel:"Cartelería", historialcm:"Community managers", gestioncm:"Community managers", avisos:"Comunicados del equipo", prompts:"Inteligencia artificial", guia:"Ayuda", archivos:"Diseños y archivos", encuestas:"La voz del equipo", planmes:"Hacia dónde vamos", notas:"Tu espacio", mensajes:"Comunicación interna", sugerencias:"Buzón confidencial", tvimpacto:"Pantalla de oficina", inicio:"Panel general", alertas:"Control", calendario:"Community managers", calhistoria:"Community managers", calcanales:"Community managers", cargadiseno:"Diseño gráfico", cargacm:"Community managers", plan:"Contenidos", pedidos:"Diseño gráfico", tv:"Equipo de diseño", historial:"Diseño gráfico", pauta:"Meta Ads", redes:"Audiencia", reportes:"Resultados del mes", usuarios:"Administración", perfil:"Tu cuenta", cumples:"Equipo", dashboard:"Visión general", tvredes:"Pantalla de oficina", staff:"Equipo", config:"Tu cuenta" };
-const PAGES = { gcm:pGestCM, calact:pCalAct, contenidos:pContenidos, escraches:pEscraches, bienvenida:pBienvenida, ideas:pIdeas, inbox:pInbox, reclamos:pReclamos, noticias:pNoticias, comercial:pComercial, tendg:() => pTend("dg"), tencm:() => pTend("cm"), paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), caldg:pCalDG, calcm:pPlan, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, aviso:pAviso, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
+// ---------- Pedidos Comercial (v242) ----------
+// Los compradores (rol Comercial, ej. Gisella Aquino) cargan acá sus pedidos de activaciones para publicar en redes: nombre,
+// supermercados, marcas, qué piden, fecha de publicación deseada, vigencia, la hoja (textos y bocetos, como en Diseño gráfico)
+// y archivos. Se ven en tablero y en calendario. Le llega a Admin total (ventana emergente, alerta y push), que lo pasa a
+// Diseño gráfico o a un CM (Gestión de Contenidos) con los datos que falten; después lo publica el CM. Comercial no ve el
+// proceso: solo sus pedidos y, cuando la publicación sale, “Publicado” en verde (con aviso).
+let PEDIDOS_COM = []; // { id, by, byName, at, title, brands[], marcas, pedido, date, from, until, brief, files[], st:"Enviado"|"Tomado"|"Publicado", job, area, takenAt, takenBy, pubAt, pubDay, pubSeen, seenBy[] }
+const PC_BRANDS = ["Superseis","Stock","Delimarket"];
+const PC_PEDIDO = ["Post para redes","Historia","Post + Historia","Carrusel","Reel o video","Canal de WhatsApp","Otro"];
+const PC_PH = "Ejemplo:\nACCIÓN: Día Internacional de las Pastas, 20% de descuento en Pastas Frescas Envasadas.\nMARCAS: S6: Edward, Quiero Más, De la Nonna… · Stock: Edward, Stock, Bianca…\nTEXTO QUE VA: “20% OFF en pastas frescas”.\nLEGAL: Válido del viernes 23 al domingo 25 de octubre.\nOBSERVACIONES: segmentar por marca participante.";
+let pcUI = { view:"tablero", open:null, form:null, busy:0 };
+const pcById = id => PEDIDOS_COM.find(p => p.id === id);
+const pcMine = () => (isComercial() ? PEDIDOS_COM.filter(p => p.by === viewer.id) : PEDIDOS_COM).filter(p => p && p.id);
+const pcBrandTxt = p => (p.brands || []).join(" + ") || "Sin supermercado";
+const pcRange = p => p.from && p.until ? (p.from === p.until ? dm(p.from) : `del ${dm(p.from)} al ${dm(p.until)}`) : p.from ? "desde el " + dm(p.from) : p.until ? "hasta el " + dm(p.until) : "";
+// Lo que ve Comercial: Enviado o Publicado. Admin total y Admin ven además si ya se pasó a Diseño o CM.
+const pcCols = () => isComercial() ? [["Enviado", "Enviados", "#38bdf8"], ["Publicado", "Publicados", "#22c55e"]] : [["Enviado", "Nuevos", "#38bdf8"], ["Tomado", "En Diseño o CM", "#a855f7"], ["Publicado", "Publicados", "#22c55e"]];
+const pcCol = p => isComercial() && p.st === "Tomado" ? "Enviado" : p.st;
+const pcStTxt = p => p.st === "Publicado" ? "Publicado" : isComercial() || p.st === "Enviado" ? "Enviado" : p.area === "Contenidos" ? "En CM (contenidos)" : "En Diseño gráfico";
+const pcStColor = p => p.st === "Publicado" ? "#22c55e" : p.st === "Tomado" && !isComercial() ? "#a855f7" : "#38bdf8";
+const pcPill = p => `<span class="pcst" style="--c:${pcStColor(p)}">${p.st === "Publicado" ? icon("badge-check") : ""}${esc(pcStTxt(p))}</span>`;
+// En el menú: a Admin total, los pedidos que todavía no pasó; al comprador, sus pedidos publicados que no abrió.
+const pcBadgeN = () => isComercial() ? pcMine().filter(p => p.st === "Publicado" && !p.pubSeen).length : viewer?.role === "Admin total" ? PEDIDOS_COM.filter(p => p.st === "Enviado").length : 0;
+const pcCanEdit = p => !window.RMH?.previewing && ((isComercial() && p.by === viewer.id && p.st === "Enviado") || viewer.role === "Admin total");
+const pcSeen = p => { if (!p || window.RMH?.previewing) return; if (isComercial() && p.by === viewer.id && p.st === "Publicado" && !p.pubSeen) p.pubSeen = true; };
+// El pedido de Admin total para Diseño o CM: sale del pedido de Comercial. Cuando una de sus publicaciones queda Publicada
+// (o Pautada), el pedido de Comercial pasa a Publicado (lo hace la app de Admin total o del CM, que ven las publicaciones).
+function pcLinkJob(j){
+  const p = pcById(j.com); if (!p || (p.job && jobById(p.job) && p.job !== j.id)) return;
+  Object.assign(p, { st:p.st === "Publicado" ? "Publicado" : "Tomado", job:j.id, area:j.area, takenAt:new Date().toISOString(), takenBy:viewer.name });
+}
+function pcSync(){
+  if (!viewer || !["Admin total", "CM"].includes(viewer.role) || window.RMH?.previewing || !PEDIDOS_COM.length) return;
+  PEDIDOS_COM.forEach(p => { if (p.st !== "Tomado" || !p.job) return; const j = jobById(p.job);
+    if (j && jobPubsOf(j).some(x => ["Publicado", "Pautado"].includes(x.status))) Object.assign(p, { st:"Publicado", pubAt:new Date().toISOString(), pubDay:TODAY, pubBy:viewer.name }); });
+}
+// Ventanas emergentes: a Admin total, cada pedido nuevo; al comprador, cada pedido suyo que se publicó (un objeto fijo por pedido).
+function pcPopItems(){
+  const m = pcPopItems.m = pcPopItems.m || new Map(), one = (k, o) => m.get(k) || m.set(k, o).get(k);
+  if (viewer.role === "Admin total") return PEDIDOS_COM.filter(p => p.st === "Enviado" && p.by !== viewer.id).map(p => one("pc:" + p.id, { id:"pc:" + p.id, type:"comped", ped:p.id, date:String(p.at || "").slice(0, 10) }));
+  if (isComercial()) return pcMine().filter(p => p.st === "Publicado" && !p.pubSeen).map(p => one("pcpub:" + p.id, { id:"pcpub:" + p.id, type:"compub", ped:p.id, date:p.pubDay || TODAY }));
+  return [];
+}
+const pcNewId = () => "PC-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+function pcNew(date){
+  const d = date && date >= TODAY ? date : "";
+  pcUI.form = { mode:"new", p:{ id:pcNewId(), title:"", brands:[], marcas:"", pedido:PC_PEDIDO[0], date:d, from:d, until:d, brief:"", files:[] } }; pcUI.open = null;
+}
+// Lo escrito en la hoja queda en pcUI.form (así no se pierde al subir un archivo o cuando llega algo de otra persona).
+function pcRead(){
+  const f = pcUI.form, p = f?.p; if (!p || !document.getElementById("pcForm")) return p;
+  const v = id => document.getElementById(id)?.value ?? "";
+  Object.assign(p, { title:v("pcTitle").trim(), marcas:v("pcMarcas").trim(), pedido:v("pcPedido"), pedOtro:v("pcOtro").trim(), date:v("pcDate"), from:v("pcFrom"), until:v("pcUntil"),
+    brands:[...document.querySelectorAll('#pcForm input[name="pcBrand"]:checked')].map(x => x.value) });
+  const ed = document.getElementById("pcBrief"); if (ed) p.brief = rtHtml(ed);
+  return p;
+}
+const pcFileRow = (p, f, i, edit) => `<div class="jfile"><span class="jfic">${icon(/^image\//.test(f.t) ? "image" : /pdf/.test(f.t) ? "file-text" : "file")}</span><div class="grow"><b>${esc(f.n)}</b><small>${fileSize(f.s || 0)}</small></div>
+  <button type="button" class="btn sm" data-pcfdl="${esc(p.id)}|${i}">${icon("download")} Ver</button>${edit ? `<button type="button" class="btn ib sm" data-pcfdel="${i}" aria-label="Quitar archivo">${icon("x")}</button>` : ""}</div>`;
+function pcFormPage(){
+  const f = pcUI.form, p = f.p, nu = f.mode === "new", sel = (id, list, val) => `<select class="base" id="${id}">${list.map(x => `<option ${x === val ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>`;
+  return `<div class="jpage pcpage"><div class="jp-top"><button class="btn pback" type="button" data-pcclose>${icon("arrow-left")} Volver</button></div>
+  <div class="jp-h"><span class="note">Pedido de activación · Comercial</span><h1 style="margin:4px 0 0">${nu ? "Nuevo pedido" : "Editar pedido"}</h1></div>
+  <form id="pcForm" class="panel pcform" autocomplete="off">
+    <label class="pcw">Nombre de la acción *<input class="base" id="pcTitle" maxlength="120" required value="${esc(p.title)}" placeholder="Ej.: Día Internacional de las Pastas · 20% OFF"></label>
+    <fieldset class="pcw pcbr"><legend>¿En qué supermercados se publica? *</legend><div class="chips">${PC_BRANDS.map(b => `<label class="pcchk" style="--c:${BRANDS[b]}"><input type="checkbox" name="pcBrand" value="${b}" ${(p.brands || []).includes(b) ? "checked" : ""}><span>${b === "Superseis" ? "Superseis (S6)" : b}</span></label>`).join("")}</div></fieldset>
+    <label class="pcw">Marcas participantes<input class="base" id="pcMarcas" maxlength="300" value="${esc(p.marcas || "")}" placeholder="Ej.: Edward, Quiero Más, De la Nonna, Bianca"><span class="note">Las marcas de los productos (proveedores) que entran en la acción.</span></label>
+    <label>¿Qué necesitás?${sel("pcPedido", PC_PEDIDO, p.pedido)}</label>
+    <label>Si es “Otro”, ¿qué?<input class="base" id="pcOtro" maxlength="120" value="${esc(p.pedOtro || "")}" placeholder="Ej.: gráfica para pantallas"></label>
+    <label>Fecha de publicación que te gustaría *<input class="base" type="date" id="pcDate" required value="${esc(p.date || "")}" min="${TODAY}"><span class="note">También podés tocar el día en el calendario.</span></label>
+    <div class="pcvig"><label>Vigencia desde<input class="base" type="date" id="pcFrom" value="${esc(p.from || "")}"></label><label>Vigencia hasta<input class="base" type="date" id="pcUntil" value="${esc(p.until || "")}"></label></div>
+    <div class="pcw"><span class="jll">${icon("file-text")} La hoja del pedido</span><p class="note" style="margin:2px 0 8px">Todo lo que tiene que ir: el texto, los descuentos, las marcas por supermercado, el legal y los bocetos o ejemplos (pegá una captura o una imagen).</p>${rtEditor("pcBrief", p.brief ? cleanRich(p.brief) : "", PC_PH)}</div>
+    <div class="pcw pcfiles"><span class="jll">${icon("paperclip")} Archivos adjuntos</span>${(p.files || []).length ? `<div class="jfiles">${p.files.map((x, i) => pcFileRow(p, x, i, true)).join("")}</div>` : `<p class="note" style="margin:0">Sin archivos todavía.</p>`}
+      <div class="pcup"><label class="btn sm fup${pcUI.busy ? " disabled" : ""}">${icon("upload")} ${pcUI.busy ? "Subiendo…" : "Adjuntar archivo"}<input type="file" multiple data-pcfup hidden ${pcUI.busy ? "disabled" : ""}></label><span class="note">El mail, el Excel, logos o fotos · hasta 15 MB cada uno</span></div></div>
+    <div class="chips pcw" style="justify-content:flex-end"><button class="btn" type="button" data-pcclose>Cancelar</button><button class="btn primary" type="submit">${icon("send")} ${nu ? "Enviar pedido" : "Guardar cambios"}</button></div>
+  </form></div>`;
+}
+function pcDetail(p){
+  const at = viewer.role === "Admin total" && !window.RMH?.previewing, j = p.job ? jobById(p.job) : null, html = p.brief ? cleanRich(p.brief) : "";
+  const row = (k, v) => v ? `<dt>${k}</dt><dd>${v}</dd>` : "";
+  const derive = at && p.st !== "Publicado" && !j;
+  return `<div class="jpage pcpage"><div class="jp-top"><button class="btn pback" type="button" data-pcback>${icon("arrow-left")} Volver</button></div>
+  <div class="jp-h"><span class="note">Pedido de activación · ${esc(p.byName || "Comercial")} · ${dm(String(p.at).slice(0, 10))}</span><h1 style="margin:4px 0 6px">${esc(p.title)}</h1>${pcPill(p)}</div>
+  ${p.st === "Publicado" ? `<div class="panel pcok">${icon("badge-check")}<div><b>¡Publicado!</b><span>${isComercial() ? "Tu pedido ya está en las redes" : "Ya salió en las redes"}${p.pubDay ? " · " + dm(p.pubDay) : ""}.</span></div></div>` : isComercial() ? `<p class="note">${icon("send")} Le llegó a Marketing. Cuando se publique, acá te sale <b style="color:#22c55e">Publicado</b> en verde y te avisamos.</p>` : ""}
+  ${derive ? `<section class="panel pcderive"><h2 class="pmh">${pmIco("route")}Pasar el pedido</h2><p class="note" style="margin:0 0 10px">Se abre el pedido con todo lo que cargó ${esc(firstName(p.byName || "Comercial"))} (nombre, supermercados, la hoja, los archivos y la fecha de publicación). Completá lo que falte y guardalo: queda en su sección y le llega a quien lo tenga que hacer. ${esc(firstName(p.byName || "Comercial"))} no ve el proceso: solo “Publicado” cuando el CM lo publica.</p>
+    <div class="chips"><button type="button" class="btn primary" data-pcderive="Diseño">${icon("palette")} Pasar a Diseño gráfico</button><button type="button" class="btn primary" data-pcderive="Contenidos">${icon("shapes")} Pasar a CM (contenidos gráficos)</button></div></section>` : ""}
+  ${!isComercial() && j ? `<section class="panel"><h2 class="pmh">${pmIco("route")}Dónde está</h2><p style="margin:0 0 8px">${j.area === "Contenidos" ? "Gestión de Contenidos (CM)" : "Diseño gráfico"} · <b>${esc(j.title)}</b> · ${esc(j.owner || "Sin asignar")} · ${esc(j.status)}${jobPubsOf(j).length ? " · publicación: " + jobPubsOf(j).map(x => `${esc(x.cm || "")} ${dm(x.date)} (${esc(x.status)})`).join(", ") : ""}</p>
+    <div class="chips"><button type="button" class="btn" data-pcjob="${esc(j.id)}">${icon("eye")} Ver el trabajo</button>${at && p.st !== "Publicado" ? `<button type="button" class="btn" data-pcpub="${esc(p.id)}">${icon("badge-check")} Marcar como publicado</button>` : ""}</div><p class="note" style="margin:8px 0 0">Pasa solo a Publicado cuando el CM marca la publicación como Publicada.</p></section>` : ""}
+  ${!isComercial() && p.job && !j ? `<p class="note">${icon("triangle-alert")} El trabajo que salió de este pedido ya no está (lo borraron).${at ? ` Podés volver a pasarlo:` : ""}</p>${at ? `<div class="chips"><button type="button" class="btn" data-pcderive="Diseño">${icon("palette")} Pasar a Diseño gráfico</button><button type="button" class="btn" data-pcderive="Contenidos">${icon("shapes")} Pasar a CM</button></div>` : ""}` : ""}
+  <section class="panel"><h2 class="pmh">${pmIco("clipboard-list")}El pedido</h2><dl class="pcdl">
+    ${row("Supermercados", (p.brands || []).map(brandTag).join(" "))}${row("Marcas", esc(p.marcas || ""))}${row("Qué necesita", esc(p.pedido === "Otro" ? p.pedOtro || "Otro" : p.pedido || ""))}
+    ${row("Publicar el", p.date ? `<b>${dm(p.date)}</b> (${["domingo","lunes","martes","miércoles","jueves","viernes","sábado"][new Date(p.date + "T12:00").getDay()]})` : "")}${row("Vigencia", esc(pcRange(p)))}${row("Cargado por", esc(p.byName || ""))}</dl></section>
+  <section class="panel"><h2 class="pmh">${pmIco("file-text")}La hoja</h2><div class="rtview${rtBgCls(rtBgOf(html))}"${rtBgStyle(rtBgOf(html))}>${html || `<p class="rtempty">Sin texto.</p>`}</div></section>
+  ${(p.files || []).length ? `<section class="panel"><h2 class="pmh">${pmIco("paperclip")}Archivos adjuntos</h2><div class="jfiles">${p.files.map((x, i) => pcFileRow(p, x, i, false)).join("")}</div></section>` : ""}
+  ${pcCanEdit(p) ? `<div class="chips" style="justify-content:flex-end"><button type="button" class="btn" data-pcedit="${esc(p.id)}">${icon("pencil")} Editar</button><button type="button" class="btn danger" data-pcdel="${esc(p.id)}">${icon("trash-2")} Borrar</button></div>` : ""}</div>`;
+}
+const pcCard = p => `<div class="card pccard${p.st === "Publicado" ? " pub" : ""}" style="--c:${pcStColor(p)}" data-pcopen="${esc(p.id)}" role="button" tabindex="0"><div class="in"><div class="t">${esc(p.title)}</div>
+  <div class="m">${(p.brands || []).map(brandTag).join("")}${p.date ? `<span>${icon("calendar-days")} ${dm(p.date)}</span>` : ""}</div>${p.marcas ? `<div class="m"><span>${esc(p.marcas)}</span></div>` : ""}
+  <div class="dact">${pcPill(p)}${!isComercial() ? `<span class="note">${esc(firstName(p.byName || ""))}</span>` : ""}</div></div></div>`;
+function pPedCom(){
+  const mine = pcMine(), com = isComercial(), at = viewer.role === "Admin total" && !window.RMH?.previewing;
+  if (pcUI.form) return pcFormPage();
+  const op = pcUI.open && pcById(pcUI.open); if (op) return pcDetail(op); pcUI.open = null;
+  const vt = [["tablero", "Tablero", "kanban"], ["calendario", "Calendario", "calendar-days"]];
+  const head = `<div class="head"><div><h1 class="pmh">${pmIco("shopping-bag")}${com ? "Mis pedidos de activaciones" : "Pedidos Comercial"}</h1><p class="sub">${com ? "Cargá acá lo que te gustaría que se publique en las redes: el pedido le llega a Marketing. Elegí el día que te gustaría que salga (también tocando el día en el calendario). Cuando se publique, te sale <b style=\"color:#22c55e\">Publicado</b> en verde y te avisamos." : "Lo que piden los compradores para publicar. Abrí cada pedido para pasarlo a Diseño gráfico o a un CM con los datos que falten: cuando el CM lo publica, al comprador le sale Publicado."}</p></div>
+    <div class="chips">${viewTabs(vt, pcUI.view, "data-pcview")}${com || at ? `<button type="button" class="btn primary" data-pcnew>${icon("plus")} Nuevo pedido</button>` : ""}</div></div>`;
+  const n = k => mine.filter(p => p.st === k).length;
+  const kpis = `<div class="pckpi">${pcCols().map(([k, l, c]) => `<div style="--c:${c}"><b>${com && k === "Enviado" ? n("Enviado") + n("Tomado") : n(k)}</b><span>${l}</span></div>`).join("")}</div>`;
+  if (pcUI.view === "calendario"){
+    const day = d => mine.filter(p => p.date === d).map(p => `<div class="ev pcev" style="--c:${pcStColor(p)};--s:${pcStColor(p)}" data-pcopen="${esc(p.id)}" role="button" tabindex="0" title="${esc(p.title)} · ${esc(pcStTxt(p))}"><span>${p.st === "Publicado" ? "✓ " : ""}${esc(p.title)}</span></div>`).join("");
+    return `${head}${kpis}${com ? `<p class="draghint">Tocá un día para cargar un pedido para esa fecha. Tocá un pedido para verlo.</p>` : ""}<div class="pccal">${calGrid(day)}</div>`;
+  }
+  const list = [...mine].sort((a, b) => String(a.date || "9").localeCompare(String(b.date || "9")) || String(b.at).localeCompare(String(a.at)));
+  return `${head}${kpis}${list.length ? `<div class="kanban" style="grid-template-columns:repeat(${pcCols().length},minmax(min(240px,100%),1fr))">${pcCols().map(([k, l, c]) => { const col = list.filter(p => pcCol(p) === k);
+    return `<div class="col"><div class="col-h" style="--c:${c}"><span>${l}</span><span class="num">${col.length}</span></div>${col.map(pcCard).join("") || `<div class="empty" style="padding:6px">Vacío</div>`}</div>`; }).join("")}</div>`
+    : `<div class="panel"><div class="empty">${com ? `Todavía no cargaste pedidos. Tocá <b>Nuevo pedido</b> para empezar.` : "Todavía no hay pedidos de Comercial."}</div></div>`}`;
+}
+document.addEventListener("click", async e => {
+  if (!viewer || !can("pedcom")) return;
+  const t = e.target;
+  const vw = t.closest("[data-pcview]"); if (vw){ pcUI.view = vw.dataset.pcview; render(); return; }
+  if (t.closest("[data-pcnew]")){ pcNew(); render(); window.scrollTo(0, 0); return; }
+  if (t.closest("[data-pcclose]")){ pcUI.form = null; render(); return; }
+  if (t.closest("[data-pcback]")){ pcUI.open = null; render(); return; }
+  const o = t.closest("[data-pcopen]"); if (o){ const p = pcById(o.dataset.pcopen); if (!p) return; pcUI.open = p.id; pcSeen(p); render(); window.scrollTo(0, 0); return; }
+  const cd = page === "pedcom" && !pcUI.form && !pcUI.open && pcUI.view === "calendario" && (isComercial() || viewer.role === "Admin total") && !t.closest(".ev,button,a") && t.closest(".pccal [data-cdrop]");
+  if (cd){ const d = cd.dataset.cdrop; if (d < TODAY) return toast("Ese día ya pasó: elegí uno de hoy en adelante."); pcNew(d); render(); window.scrollTo(0, 0); toast(`Nuevo pedido para publicar el ${dm(d)}.`); return; }
+  const ed = t.closest("[data-pcedit]"); if (ed){ const p = pcById(ed.dataset.pcedit); if (!p || !pcCanEdit(p)) return; pcUI.form = { mode:"edit", p:JSON.parse(JSON.stringify(p)) }; render(); window.scrollTo(0, 0); return; }
+  const dl = t.closest("[data-pcdel]"); if (dl){ const p = pcById(dl.dataset.pcdel); if (!p || !pcCanEdit(p) || !confirmTap(dl, "pcdel:" + p.id, "¿Seguro? Tocá de nuevo")) return;
+    PEDIDOS_COM = PEDIDOS_COM.filter(x => x !== p); pcUI.open = null; render(); window.RMH?.flushNow?.(); toast(`Pedido “${p.title}” borrado.`); return; }
+  const dv = t.closest("[data-pcderive]"); if (dv){ const p = pcById(pcUI.open); if (p && viewer.role === "Admin total") pcToJob(p, dv.dataset.pcderive); return; }
+  const jb = t.closest("[data-pcjob]"); if (jb){ goAlert("job:" + jb.dataset.pcjob); return; }
+  const pb = t.closest("[data-pcpub]"); if (pb){ const p = pcById(pb.dataset.pcpub); if (!p || viewer.role !== "Admin total" || !confirmTap(pb, "pcpub:" + p.id, "¿Ya salió? Tocá de nuevo")) return;
+    Object.assign(p, { st:"Publicado", pubAt:new Date().toISOString(), pubDay:TODAY, pubBy:viewer.name }); render(); window.RMH?.flushNow?.(); toast(`Listo: a ${firstName(p.byName || "Comercial")} le sale “Publicado”.`); return; }
+  const fd = t.closest("[data-pcfdl]"); if (fd){ const [id, i] = fd.dataset.pcfdl.split("|"), p = pcUI.form?.p?.id === id ? pcUI.form.p : pcById(id), f = p?.files?.[+i]; if (!f) return;
+    const w = window.open("", "_blank"); const u = window.RMH?.fileUrl ? await RMH.fileUrl(f.p) : null; if (u && w) w.location = u; else { w?.close(); toast("No se pudo abrir el archivo."); } return; }
+  const fx = t.closest("[data-pcfdel]"); if (fx && pcUI.form){ const p = pcRead(), f = p.files[+fx.dataset.pcfdel]; if (!f || !confirmTap(fx, "pcfdel:" + f.p, "¿Quitar?")) return;
+    p.files.splice(+fx.dataset.pcfdel, 1); if (!pcById(p.id)?.files?.some(x => x.p === f.p) && window.RMH?.fileDel) RMH.fileDel(f.p); render(); return; }
+});
+document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("[data-pcopen]")){ e.preventDefault(); e.target.click(); } });
+document.addEventListener("change", async e => {
+  const inp = e.target.closest?.("[data-pcfup]"); if (!inp || !pcUI.form) return;
+  const files = [...inp.files]; inp.value = ""; if (!files.length) return;
+  if (window.RMH?.previewing) return toast("Estás en vista previa: no se suben archivos.");
+  const p = pcRead(); pcUI.busy++; render();
+  for (const f of files){
+    if (f.size > 15 * 1048576){ toast(`“${f.name}” supera 15 MB.`); continue; }
+    const path = `com/${p.id}/${Date.now().toString(36)}-${f.name.replace(/[^\w.\-]+/g, "_").slice(-80)}`;
+    toast(`Subiendo “${f.name}”…`);
+    const r = window.RMH?.upload ? await RMH.upload(path, f) : { ok:false, error:"Sin conexión" };
+    if (!r.ok){ toast(`${r.error || "No se pudo subir"}: ${f.name}`); continue; }
+    (p.files = p.files || []).push({ p:path, n:f.name, s:f.size, t:f.type, by:viewer.name, at:new Date().toISOString() });
+    toast(`Listo: “${f.name}” quedó adjunto.`);
+  }
+  pcUI.busy = Math.max(0, pcUI.busy - 1); if (pcUI.form?.p === p) render();
+});
+document.addEventListener("submit", e => {
+  if (e.target.id !== "pcForm") return; e.preventDefault();
+  const f = pcUI.form; if (!f) return;
+  if (rtUploading(document.getElementById("pcBrief"))) return toast("Esperá que termine de subir la imagen.");
+  if (pcUI.busy) return toast("Esperá que terminen de subir los archivos.");
+  const p = pcRead();
+  if (!p.title) return toast("Poné el nombre de la acción.");
+  if (!p.brands.length) return toast("Elegí al menos un supermercado (Superseis, Stock o Delimarket).");
+  if (!p.date) return toast("Elegí la fecha de publicación que te gustaría.");
+  if (f.mode === "new" && p.date < TODAY) return toast("La fecha de publicación ya pasó: elegí una de hoy en adelante.");
+  if (p.from && p.until && p.until < p.from) return toast("La vigencia termina antes de empezar: revisá las fechas.");
+  if (p.pedido !== "Otro") delete p.pedOtro;
+  if (f.mode === "new"){ PEDIDOS_COM.push({ ...p, by:viewer.id, byName:viewer.name, at:new Date().toISOString(), st:"Enviado" }); }
+  else { const cur = pcById(p.id); if (!cur || !pcCanEdit(cur)) return toast("Este pedido ya no se puede cambiar."); Object.assign(cur, p, { edAt:new Date().toISOString() }); }
+  const m = p.date.slice(0, 7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m;
+  pcUI.form = null; pcUI.open = null; render(); window.RMH?.flushNow?.(); window.scrollTo(0, 0);
+  toast(f.mode === "new" ? `Listo: tu pedido “${p.title}” le llegó a Marketing.` : "Cambios guardados.");
+});
+// Admin total pasa el pedido: se abre el formulario de Diseño gráfico o de Gestión de Contenidos con lo del comprador.
+function pcToJob(p, area){
+  const brands = (p.brands || []).length ? p.brands : [PC_BRANDS[0]], pd = p.date || "";
+  const due = pd && addDays(pd, -2) >= TODAY ? addDays(pd, -2) : pd && pd >= TODAY ? pd : TODAY; // para que llegue a publicarse
+  const info = [`<p><b>Pedido de Comercial</b> · ${esc(p.byName || "")} · ${dm(String(p.at).slice(0, 10))}</p>`,
+    `<p><b>Supermercados:</b> ${esc(pcBrandTxt(p))}${p.marcas ? ` · <b>Marcas:</b> ${esc(p.marcas)}` : ""}</p>`,
+    `<p><b>Qué necesita:</b> ${esc(p.pedido === "Otro" ? p.pedOtro || "Otro" : p.pedido || "")}${pd ? ` · <b>Publicar el:</b> ${dm(pd)}` : ""}${pcRange(p) ? ` · <b>Vigencia:</b> ${esc(pcRange(p))}` : ""}</p>`].join("");
+  const job = { id:nextJobId(area), area, requestDate:TODAY, requester:"Comercial · " + (p.byName || ""), brand:brands[0], ...(brands.length > 1 ? { brands:[...brands] } : {}),
+    ...(area === "Contenidos" ? { piece:CONT_TYPES[0] } : dgDefault("pedidos")), title:p.title, owner:"Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due, link:"", notes:"", post:null,
+    brief:cleanRich(info + String(p.brief || "").replace(/^<!--bg:#[0-9a-f]{6}-->/i, "")), files:(p.files || []).map(x => ({ ...x })), pubDate:pd, com:p.id };
+  jobUI.ficha = null; jobUI.form = { mode:"new", job }; render(); window.scrollTo(0, 0);
+  toast(`Completá lo que falte y tocá Guardar: queda en ${area === "Contenidos" ? "Gestión de Contenidos" : "Diseño gráfico"}.`);
+}
+const PAGES = { pedcom:pPedCom, gcm:pGestCM, calact:pCalAct, contenidos:pContenidos, escraches:pEscraches, bienvenida:pBienvenida, ideas:pIdeas, inbox:pInbox, reclamos:pReclamos, noticias:pNoticias, comercial:pComercial, tendg:() => pTend("dg"), tencm:() => pTend("cm"), paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), caldg:pCalDG, calcm:pPlan, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, aviso:pAviso, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
 
 /* ---------- render ---------- */
 // Barra de pestañas abajo (celular), como en cualquier app: lo que más usa cada rol + “Más” para el menú completo.
@@ -11219,8 +11443,8 @@ const tbIcon = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 function renderTabbar(){
   const tb = document.getElementById("tabbar"); if (!tb) return;
   const work = isRevisor() ? ["inbox","Mensajes","messages-square"] : isDesigner() ? ["paneldg","Trabajo","layout-grid"] : viewer.role === "CM" ? ["panelcm","Trabajo","layout-grid"] : ["dashboard","Dashboard","layout-dashboard"];
-  const tabs = [["inicio","Inicio","house"],work,["mensajes","Chat","messages-square"]].filter(([k]) => can(k));
-  const cnt = k => { const w = k === "paneldg" || k === "panelcm", n = k === "inicio" ? alerts().length : k === "mensajes" ? chatUnreadTotal() : workPend(k);
+  const tabs = (isComercial() ? [["dashboard","Dashboard","layout-dashboard"],["pedcom","Mis pedidos","list-checks"]] : [["inicio","Inicio","house"],work,["mensajes","Chat","messages-square"]]).filter(([k]) => can(k));
+  const cnt = k => { const w = k === "paneldg" || k === "panelcm", n = k === "inicio" ? alerts().length : k === "mensajes" ? chatUnreadTotal() : k === "pedcom" ? pcBadgeN() : workPend(k);
     return n ? `<span class="tbc"${w ? ` title="${k === "paneldg" ? `${n} pedido${n === 1 ? "" : "s"} sin terminar` : `${n} pedido${n === 1 ? "" : "s"} sin abrir`}"` : ""}>${w ? "+" : ""}${n > 99 ? "99+" : n}</span>` : ""; };
   const open = document.querySelector(".side")?.classList.contains("open");
   tb.innerHTML = tabs.map(([k, l, i]) => `<a href="#${k}" data-page="${k}" class="${page === k && !open ? "on" : ""}${workNew(k) ? " wknew" : ""}" ${page === k ? 'aria-current="page"' : ""}><span class="tbi">${tbIcon(i)}${cnt(k)}</span><span>${l}</span></a>`).join("")
@@ -11270,7 +11494,7 @@ function renderNav(){
   $("#nav").innerHTML = groups.map(g => {
     const items = SECTIONS.filter(s => s.g === g && can(s.k) && (!s.hide || (isRevisor() && s.k === "inbox")));
     if (!items.length) return "";
-    const shut = !isRevisor() && navClosed.has(g); // el Revisor tiene una sola sección: siempre a la vista
+    const shut = !isRevisor() && !isComercial() && navClosed.has(g); // el Revisor tiene una sola sección: siempre a la vista
     return `<div class="nav-group${shut ? " closed" : ""}"><button type="button" class="nav-label navtog" data-navtog="${esc(g)}" aria-expanded="${!shut}">${g}${shut ? items.map(x => navBadge(x.k)).join("") : ""}${icon("chevron-down")}</button>${items.map(s => `<a href="#${s.k}" data-page="${s.k}" title="${esc(s.n || s.l)}" class="${page===s.k || (s.k === "paneldg" && PANEL_DG_KEYS.includes(page)) || (s.k === "panelcm" && PANEL_CM_KEYS.includes(page)) ?"on":""}">${icon(s.i)}<span>${s.n || s.l}</span>${s.k==="mensajes" && chatUnreadTotal() ? `<span class="count msgc">${chatUnreadTotal()}</span>` : ""}${s.k==="alertas" && alerts().length ? `<span class="count">${alerts().length}</span>` : ""}${navBadge(s.k)}</a>`).join("")}</div>`;
   }).join("");
   document.querySelectorAll('.nav a[data-page="paneldg"], .nav a[data-page="panelcm"]').forEach(a => a.classList.toggle("wknew", workNew(a.dataset.page) > 0));
@@ -11347,7 +11571,8 @@ const newPubTxt = k => { const n = myNewPubs(k).length; return n ? ` · <em>${n}
 // Pantallas, Videos). El número queda hasta que el pedido se aprueba, se termina o se cancela.
 const JOB_SECS = ["pedidos","cartel","web","pantallas","gestioncm","contenidos"];
 const myJobsOpen = k => viewer ? jobs.filter(j => !j.ex && !repLater(j) && j.owner === viewer.name && jobSection(j) === k && !isClosedJob(j)) : [];
-const navBadge = k => { const n = workPend(k), nw = workNew(k);
+const navBadge = k => { if (k === "pedcom"){ const n = pcBadgeN(); return n ? `<span class="count ibc" title="${isComercial() ? `${n} pedido${n === 1 ? "" : "s"} publicado${n === 1 ? "" : "s"} sin ver` : `${n} pedido${n === 1 ? "" : "s"} de Comercial sin pasar a Diseño o CM`}">+${n > 99 ? 99 : n}</span>` : ""; }
+  const n = workPend(k), nw = workNew(k);
   const t = k === "paneldg" ? `${n} pedido${n === 1 ? "" : "s"} de diseño a tu nombre sin terminar${nw ? ` (${nw} sin abrir)` : ""}` : `${n} pedido${n === 1 ? "" : "s"} nuevo${n === 1 ? "" : "s"} o con cambios para vos, sin abrir`;
   return n ? `<span class="count ibc" title="${t}">+${n > 99 ? 99 : n}</span>` : ""; };
 // Cuando llega un pedido nuevo (también en vivo), el botón del Panel de Trabajo salta una vez.
@@ -12474,7 +12699,7 @@ function stickBottom(cm){
   if (window.ResizeObserver && !cm._ro){ cm._ro = new ResizeObserver(() => { if (cm.dataset.pin) cm.scrollTop = cm.scrollHeight; }); cm._ro.observe(cm); cm.querySelectorAll("img, .cmsg:last-child").forEach(x => cm._ro.observe(x)); }
 }
 function render(){
-  stampPubDone();
+  stampPubDone(); pcSync();
   if (page !== render.histPage){ if (page === "historial") histUI.tab = "pend"; if (page === "historialcm") histCmTab = "pend"; pedTab = "pend"; panelDoneOpen = false; render.histPage = page; } // al entrar al Historial, siempre los pendientes
   for (const p of posts) if (OLD_POST_ST[p.status]) p.status = OLD_POST_ST[p.status]; // etapas de antes de las publicaciones de CM
   for (const k of CHANNEL_POSTS) if (OLD_POST_ST[k.status]) k.status = OLD_POST_ST[k.status];
@@ -12486,6 +12711,7 @@ function render(){
   if (page === "guia"){ page = "config"; cfgTab = "guia"; } // la Guía de uso está dentro de Configuración
   // Si se cambió de sección y el pedido abierto es el mismo de antes, se cierra (el pedido o el formulario no “persiguen” a la persona).
   if (render.prevPage && page !== render.prevPage) lpFull = null;
+  if (render.prevPage === "pedcom" && page !== "pedcom"){ pcUI.form = null; pcUI.open = null; } // Pedidos Comercial: al salir se cierra el pedido abierto
   if (render.prevPage && page !== render.prevPage){ if (!render.goingBack){ navHist.push(render.prevPage); if (navHist.length > 30) navHist.shift(); } if (jobUI.ficha && jobUI.ficha === render.prevFicha) jobUI.ficha = null; if (jobUI.form && jobUI.form === render.prevForm) jobUI.form = null; }
   render.goingBack = false; render.prevPage = page; render.prevFicha = jobUI.ficha; render.prevForm = jobUI.form;
   if (page === "perfil"){ page = "config"; cfgTab = "perfil"; } // Mi Perfil se edita solo en Configuración // y el de redes, dentro de Diseño para Redes
@@ -12501,11 +12727,11 @@ function render(){
   const ro = isViewOnly() && ["calendario","calhistoria","calcanales","caldiseno","caldg","calcm","plan","pedidos","gestioncm","inicio"].includes(page) ? `<div class="ro">👁 Perfil Admin (control): ves todo el sitio y descargás informes, pero no modificás contenidos, usuarios ni configuración.</div>` : "";
   const avb = page === "inicio" ? avActiveFor(viewer).filter(a => !a.seen.includes(viewer.id)).sort((a, b) => ["Urgente","Importante","Informativo"].indexOf(a.level) - ["Urgente","Importante","Informativo"].indexOf(b.level)).map(avBanner).join("") : "";
   const inst = false && page === "inicio" && !isInstalledApp() && !installTipClosed() ? `<div class="panel insttip"><span class="pico">${icon("smartphone")}</span><div class="grow"><b>Tené la app a un toque</b><span>Instalala en tu celular, tablet o computadora: queda con su ícono y abre a pantalla completa.</span></div><button class="btn pgen" data-install>${icon("download")} Ver cómo</button><button class="btn ib" data-installclose aria-label="Cerrar aviso">${icon("x")}</button></div>` : "";
-  const bdays = (page === "inicio" || page === "dashboard" ? bdayParty() : "") + (page === "inicio" && can("cumples") ? bdayAlerts().filter(x => x.d > 0).map(({ pp, d }) => `<div class="panel bday" style="--u:#f97316"><div class="ic">${CAKE_SVG}</div><div><b>${d === 1 ? "Mañana" : `En ${d} días`} cumple años ${esc(pp.name)}</b> <span>${esc(pp.cargo || pp.role)} · ${bdayLabel(pp.birthday)}</span></div></div>`).join("") : "");
+  const bdays = (page === "inicio" || (page === "dashboard" && !isComercial()) ? bdayParty() : "") + (page === "inicio" && can("cumples") ? bdayAlerts().filter(x => x.d > 0).map(({ pp, d }) => `<div class="panel bday" style="--u:#f97316"><div class="ic">${CAKE_SVG}</div><div><b>${d === 1 ? "Mañana" : `En ${d} días`} cumple años ${esc(pp.name)}</b> <span>${esc(pp.cargo || pp.role)} · ${bdayLabel(pp.birthday)}</span></div></div>`).join("") : "");
   const demo = window.RMH?.previewing ? `<div class="panel demo">${icon("info")}<div><b>Vista previa como ${esc(viewer.name)}.</b> <span>Lo que cambies acá no se guarda. Volvé a tu usuario en “ver como” (abajo a la izquierda).</span></div></div>` : "";
   const i = MONTHS_APP.findIndex(m => m.v === MONTH);
   const est = isClosed() ? pill("🔒 Cerrado", "#334155") : isFuture() ? pill("En planificación", "#d946ef") : "";
-  const bar = ["gcm","calact","usuarios","config","tv","perfil","staff","tvredes","tvimpacto","sugerencias","mensajes","inbox","noticias","notas","prompts","guia","avisos","tendg","tencm","ideas"].includes(page) ? "" : `<div class="monthbar"><div class="mb-c"><b>${monthLabel(MONTH)}</b>${est}</div><div class="mb-n"><button class="btn" data-month="-1" ${i === 0 ? "disabled" : ""}>‹ Anterior</button><button class="btn" data-month="1" ${i === MONTHS_APP.length-1 ? "disabled" : ""}>Siguiente ›</button></div></div>`;
+  const bar = ["gcm","calact","usuarios","config","tv","perfil","staff","tvredes","tvimpacto","sugerencias","mensajes","inbox","noticias","notas","prompts","guia","avisos","tendg","tencm","ideas"].includes(page) || (page === "pedcom" && (pcUI.form || pcUI.open || pcUI.view !== "calendario")) ? "" : `<div class="monthbar"><div class="mb-c"><b>${monthLabel(MONTH)}</b>${est}</div><div class="mb-n"><button class="btn" data-month="-1" ${i === 0 ? "disabled" : ""}>‹ Anterior</button><button class="btn" data-month="1" ${i === MONTHS_APP.length-1 ? "disabled" : ""}>Siguiente ›</button></div></div>`;
   const viewKey = [page, MONTH, viewer.id, calCM, reportTab, redesBrand, brandFilter, jobUI.view, cmUI.tview, cartUI.view, soloYo].join("|");
   if (animate0(page)) { jobUI.owner = "Todos"; jobUI.q = ""; if (!stagesOf(jobArea()).includes(jobUI.status)) jobUI.status = jobUI.status === "Todos" ? "Todos" : "Activos"; }
   const animate = viewKey !== render.lastKey; render.lastKey = viewKey; if (animate) render.visit = (render.visit || 0) + 1;
@@ -12585,7 +12811,7 @@ document.addEventListener("click", e => {
     else if (d.jview) jobUI.view = d.jview;
     else if (d.jnew !== undefined){ const area = jobArea(); jobUI.form = { mode:"new", job:{ id:nextJobId(area), area, requestDate:TODAY, requester:"Marketing", brand:myBrands()[0], ...(area === "CM" ? { piece:CM_TYPES[0] } : area === "Contenidos" ? { piece:CONT_TYPES[0] } : dgDefault(dgPageSec())), title:"", owner:area === "Contenidos" && !canCreateJobs() ? viewer.name : "Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due:"", link:"", notes:"", post:null } }; }
     else if (d.jedit){ jobUI.ficha = null; jobUI.form = { mode:"edit", job:{ ...find(d.jedit) } }; }
-    else if (d.jdup){ const o = find(d.jdup); jobUI.form = { mode:"dup", job:{ ...o, id:nextJobId(o.area), requestDate:TODAY, status:"Pendiente", delivered:null, approved:null, post:null, pub:null, pubs:null } }; }
+    else if (d.jdup){ const o = find(d.jdup); jobUI.form = { mode:"dup", job:{ ...o, id:nextJobId(o.area), requestDate:TODAY, status:"Pendiente", delivered:null, approved:null, post:null, pub:null, pubs:null, com:undefined } }; }
     else if (d.jdel){ if (!confirmTap(jt, "job:" + d.jdel, "¿Seguro? Tocá de nuevo")) return;
       const o = find(d.jdel); if (!o || !(canCreateJobs() || canDelJob(o))) return; NOTIFS.forEach(n => { if (n.job === o.id) n.read = true; }); jobs.splice(jobs.indexOf(o), 1); if (jobUI.form?.job?.id === o.id) jobUI.form = null; toast(`Pedido “${o.title}” borrado.`); }
     else if (d.jclose !== undefined) jobUI.form = null;
@@ -12737,6 +12963,7 @@ document.addEventListener("submit", e => {
     const prevOwner = f.mode === "edit" ? jobById(j.id)?.owner : null;
     const prevPubCm = f.mode === "edit" ? jobById(j.id)?.pubCm || jobPubsOf(jobById(j.id))[0]?.cm || "" : "";
     if (f.mode === "edit"){ Object.assign(jobs.find(x => x.id === j.id), j); } else { if (!j.byId) j.byId = viewer.id; jobs.push(j); } // byId: quién lo cargó (para el chat del pedido)
+    if (f.mode !== "edit" && j.com) pcLinkJob(j); // v242: el pedido de Comercial queda tomado (Comercial sigue viendo “Enviado”)
     if (j.area === "Diseño" && (j.pubCm || prevPubCm)) syncJobPubs(jobById(j.id), prevPubCm);
     if (j.owner && j.owner !== "Sin asignar" && j.owner !== prevOwner && j.owner !== viewer.name) notify({ to:j.owner, type:"nuevo", job:j.id }); // le llega el aviso a quien lo tiene que hacer
     // v239: el CM lo carga ya terminado → igual que al tocar “Boceto finalizado”: versión 1 y aviso a Admin total para revisar
@@ -12761,7 +12988,7 @@ document.addEventListener("submit", e => {
     if (email && PEOPLE.some(x => [x.email, x.personalEmail].some(m => (m || "").toLowerCase() === email.toLowerCase()))){ toast("Ya hay una persona con ese email."); return; }
     const id = "u" + Date.now();
     const bd = $("#pBday").value;
-    const person = { id, username:user, workPhone:$("#pWork").value.trim(), phone:$("#pPhone").value.trim(), phone2:$("#pPhone2").value.trim() || null, mainBrand:$("#pMain").value, birthday: bd ? bd.slice(5) : null, skills:$("#pSkills").value.split(",").map(x => x.trim()).filter(Boolean), tempPass:pass, name, email, cargo:role === "Diseñador" ? "Diseñador" : role === "CM" ? "Community Manager" : role === "Admin" ? "Gerencia" : "Administración", role, brands:null, perms:new Set(ROLE_DEFAULTS[role]), active:true, mustChange:true, last:null };
+    const person = { id, username:user, workPhone:$("#pWork").value.trim(), phone:$("#pPhone").value.trim(), phone2:$("#pPhone2").value.trim() || null, mainBrand:$("#pMain").value, birthday: bd ? bd.slice(5) : null, skills:$("#pSkills").value.split(",").map(x => x.trim()).filter(Boolean), tempPass:pass, name, email, cargo:role === "Diseñador" ? "Diseñador" : role === "CM" ? "Community Manager" : role === "Admin" ? "Gerencia" : role === "Comercial" ? "Comercial" : "Administración", role, brands:role === "Comercial" ? [...PC_BRANDS] : null, perms:new Set(ROLE_DEFAULTS[role]), active:true, mustChange:true, last:null };
     const btn = e.target.querySelector('[type="submit"]'); btn.disabled = true;
     RMH.admin({ action:"create", person_id:id, email, role, password:pass, username:user }).then(ok => { btn.disabled = false; if (!ok) return;
       PEOPLE.push(person);
