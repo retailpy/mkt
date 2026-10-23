@@ -78,6 +78,7 @@ const RMH = (() => {
     MSG_DUTY:[() => MSG_DUTY, v => { MSG_DUTY = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // Mensajes: la atención de cada día por persona
     CM_REMINDERS:[() => CM_REMINDERS, v => { CM_REMINDERS = Array.isArray(v) ? v : CM_REM_DEF.map(r => ({ ...r, days:[...r.days] })); }], // recordatorios fijos del calendario de CM (v209)
     CM_ACTS:[() => CM_ACTS, v => { CM_ACTS = Array.isArray(v) ? v : []; }], // actividades de CM (encuestas, fotos, DL, regalos, sorteos, vales) (v220)
+    PLAN_TXT:[() => PLAN_TXT, v => { PLAN_TXT = Array.isArray(v) ? v : []; }], // Plan de posteo: calendario de texto del mes (v249)
     INFLUENCERS:[() => INFLUENCERS, v => { INFLUENCERS = Array.isArray(v) ? v : []; }], // cumpleaños de influencers de las marcas (solo Admin total y CM)
     ESCRACHES:[() => ESCRACHES, v => { ESCRACHES = Array.isArray(v) ? v : []; }], // Búsqueda de Escraches: los cargados y las marcas (solo Admin total, Admin y CM)
     PEDIDOS_COM:[() => PEDIDOS_COM, v => { PEDIDOS_COM = Array.isArray(v) ? v : []; }], // v242: pedidos de activaciones de Comercial (los compradores)
@@ -88,7 +89,7 @@ const RMH = (() => {
   const CM_ONLY = new Set(["s:RECLAMOS", "s:ESCRACHES", "s:META_DM", "s:META_DM_LOG", "s:META_IG_ACT"]);
   const isCMish = () => ["Admin total", "Admin", "CM"].includes(member?.role);
   // Claves que solo leen y guardan Admin total y CM (Admin, no): los cumpleaños de influencers.
-  const ATCM_ONLY = new Set(["s:INFLUENCERS"]);
+  const ATCM_ONLY = new Set(["s:INFLUENCERS", "s:PLAN_TXT"]);
   const isATCM = () => ["Admin total", "CM"].includes(member?.role);
   // Claves que todos leen pero solo Admin total guarda. (Los grupos de chat los crea cualquiera: la base controla
   // que cada uno cambie solo los suyos.)
