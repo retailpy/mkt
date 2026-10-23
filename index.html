@@ -7505,7 +7505,7 @@ function postForm(){
         <label>CM responsable (de cualquier marca) *<select class="base" id="poCm">${opt(CM_NAMES(), p.cm)}</select></label>
         <label>Fecha de publicación *<input class="base" type="date" id="poDate" value="${p.date}" required></label>
         <label>Hora de publicación <span class="note">(opcional)</span><input class="base" type="time" id="poTime" value="${esc(p.time || "")}"></label>
-        ${p.repOf ? `<p class="note" style="grid-column:1/-1;margin:0">${icon("repeat")} Se cargó sola porque se repite (la repite “${esc((canal ? canalById(p.repOf) : postById(p.repOf))?.title || p.title)}”).</p>` : `<div class="jrep" style="grid-column:1/-1"><span class="jll">${icon("repeat")} ¿Se repite? <span class="note">(opcional: elegí los días y se carga sola cada semana, con la misma marca, CM, texto y links)</span></span>
+        ${p.repOf ? `<p class="note" style="grid-column:1/-1;margin:0">${icon("repeat")} Se cargó sola porque se repite (la repite “${esc((canal ? canalById(p.repOf) : postById(p.repOf))?.title || p.title)}”).${canEditPost() && (canal ? canalById(p.repOf) : postById(p.repOf)) ? ` <button type="button" class="btn sm" data-reptpl="${canal ? "canal" : "post"}:${esc(p.repOf)}">${icon("repeat")} Editar la repetición (días, vigencia, texto, CM)</button>` : ""}</p>` : `<div class="jrep" style="grid-column:1/-1"><span class="jll">${icon("repeat")} ¿Se repite? <span class="note">(opcional: elegí los días y se carga sola cada semana, con la misma marca, CM, texto y links)</span></span>
           <div class="chips">${WEEKDAYS.map((w, i) => `<button type="button" class="chip ${f.repDays.includes(i) ? "on" : ""}" data-prepday="${i}" aria-pressed="${f.repDays.includes(i)}">${w}</button>`).join("")}</div>
           <label class="jrepu">Hasta <span class="note">(vacío = siempre)</span><input class="base" type="date" id="poRepUntil" value="${esc(p.rep?.until || "")}"></label>
           <p class="note" style="margin:0">Ej.: “Beneficio del día con tarjetas” → marcá Lunes: cada lunes aparece ${canal ? "un contenido nuevo" : f.kind === "Historia" ? "una historia nueva" : "una publicación nueva"} en Pendiente, ya asignada a su CM.</p></div>`}
@@ -7673,14 +7673,14 @@ document.addEventListener("submit", e => {
   if (!MONTHS_APP.some(x => x.v === date.slice(0,7))){ toast(`La fecha (${dm(date)}) está fuera de los meses de la app. Revisá la fecha.`); return; }
   if (isCalPage() || (brandFilter !== "Todas" && groupOf(common.brand) !== brandFilter)) brandFilter = groupOf(common.brand); // lo cargado se ve enseguida, en su marca
   const setRep = x => { if (x.repOf) return; const ru = document.getElementById("poRepUntil")?.value || ""; if (f.repDays?.length) x.rep = { days:[...f.repDays], until:ru }; else delete x.rep; };
-  const repMsg = x => x.rep ? ` Se repite: ${repText(x.rep).toLowerCase()}.${(x.nRep = spawnPostRepeats()) ? ` Ya ${x.nRep === 1 ? "se cargó 1" : `se cargaron ${x.nRep}`} de los próximos 7 días.` : ""}` : "";
+  const repMsg = x => x.rep ? ` Se repite: ${repText(x.rep).toLowerCase()}.${(x.nRep = spawnPostRepeats()) ? ` Ya ${x.nRep === 1 ? "se cargó 1" : `se cargaron ${x.nRep}`} hasta el domingo de la semana que viene.` : ""}` : "";
   const extraBrands = f.mode === "edit" ? [] : (f.brands || []).slice(1); // v213: una publicación más por cada marca elegida
   if (f.kind === "Canal"){
     const data = { ...common, channel:$("#poChannel").value };
     let k = f.mode === "edit" ? canalById(f.post.id) : null;
     if (k) Object.assign(k, data); else { k = { ...f.post, ...data }; CHANNEL_POSTS.push(k); }
     extraBrands.forEach(b => { const x = { ...f.post, ...data, brand:b, id:"K" + (Math.max(0, ...CHANNEL_POSTS.map(c => +(String(c.id).match(/^K?(\d+)$/) || [])[1] || 0)) + 1) }; CHANNEL_POSTS.push(x); setRep(x); });
-    setRep(k); const extra = repMsg(k) + (extraBrands.length ? ` También para ${extraBrands.join(", ")}.` : ""); delete k.nRep;
+    setRep(k); if (f.mode === "edit") syncRepCopies(k, true); const extra = repMsg(k) + (extraBrands.length ? ` También para ${extraBrands.join(", ")}.` : ""); delete k.nRep;
     postUI.form = null; const m = date.slice(0,7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m;
     render(); window.RMH?.flushNow?.(); toast(`${f.mode === "edit" ? "Guardado" : "Cargado"}: “${k.title}” en ${k.channel} el ${dm(k.date)}.${extra}`); return;
   }
@@ -7691,7 +7691,7 @@ document.addEventListener("submit", e => {
   if (p) Object.assign(p, data); else { p = { ...f.post, ...data }; posts.push(p); }
   const more = [];
   (f.mode === "edit" ? [] : f.brands || []).forEach((b, i) => (both ? ["Post", "Historia"] : [data.format]).forEach((fm, k) => { if (!i && !k) return; const x = { ...f.post, ...data, brand:b, format:fm, id:nextPostId() }; posts.push(x); setRep(x); more.push(x); }));
-  setRep(p); const extra = repMsg(p) + (more.length ? ` Se cargaron ${more.length + 1} en total (${[p, ...more].map(x => `${x.brand} ${x.format}`).join(", ")}).` : "") + (skipNet.length ? ` ${skipNet.join(", ")} no ${skipNet.length === 1 ? "tiene" : "tienen"} ${data.net}: no se ${skipNet.length === 1 ? "cargó" : "cargaron"}.` : ""); delete p.nRep;
+  setRep(p); if (f.mode === "edit") syncRepCopies(p, false); const extra = repMsg(p) + (more.length ? ` Se cargaron ${more.length + 1} en total (${[p, ...more].map(x => `${x.brand} ${x.format}`).join(", ")}).` : "") + (skipNet.length ? ` ${skipNet.join(", ")} no ${skipNet.length === 1 ? "tiene" : "tienen"} ${data.net}: no se ${skipNet.length === 1 ? "cargó" : "cargaron"}.` : ""); delete p.nRep;
   const ask = !!document.getElementById("poAskDesign")?.checked;
   postUI.form = null;
   const m = date.slice(0,7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m;
@@ -7707,13 +7707,16 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-pobr
 document.addEventListener("click", e => { const b = e.target.closest("[data-prepday]"); if (!b || !postUI.form) return; const i = +b.dataset.prepday, f = postUI.form;
   f.repDays = (f.repDays || []).includes(i) ? f.repDays.filter(x => x !== i) : [...(f.repDays || []), i].sort(); b.classList.toggle("on"); b.setAttribute("aria-pressed", b.classList.contains("on")); });
 // Contenidos de CM que se repiten (historia, feed y Canal de WhatsApp): el original guarda los días (rep.days, 0 = lunes)
-// y se cargan solos los de los próximos 7 días, en Pendiente. El id de cada copia es fijo (original + fecha), así no se duplica
+// y se cargan solos hasta el domingo de la semana que viene, en Pendiente. El id de cada copia es fijo (original + fecha), así no se duplica
 // aunque dos personas tengan la app abierta.
+// v245: se cargan hasta el domingo de la semana que viene (antes, solo 7 días: el sábado y el domingo de esta semana
+// no aparecían hasta el día anterior y parecía que faltaban).
+const repPostDays = () => Math.max(REP_AHEAD, daysTo(addDays(mondayOf(TODAY), 13)));
 function spawnPostRepeats(){
   if (!viewer || isClosed() || isViewOnly() || isDesigner()) return 0;
-  let n = 0;
+  let n = 0, ahead = repPostDays();
   [[posts, false], [CHANNEL_POSTS, true]].forEach(([list, canal]) => list.filter(t => t.rep?.days?.length && !t.repOf && (viewer.role === "Admin total" || t.cm === viewer.name)).forEach(t => {
-    for (let k = 0; k <= REP_AHEAD; k++){
+    for (let k = 0; k <= ahead; k++){
       const d = addDays(TODAY, k), wd = (new Date(d + "T12:00").getDay() + 6) % 7;
       if (d <= t.date || !t.rep.days.includes(wd) || (t.rep.until && d > t.rep.until) || !MONTHS_APP.some(m => m.v === d.slice(0,7))) continue;
       const id = `${t.id}-R${d.slice(2).replace(/-/g, "")}`; if (list.some(x => x.id === id || (x.repOf === t.id && x.date === d))) continue;
@@ -7725,12 +7728,25 @@ function spawnPostRepeats(){
   }));
   return n;
 }
+// v245: al editar el original de una repetición, las copias pendientes (de hoy en adelante) toman los cambios; las de días que
+// ya no se repiten (o después del “Hasta”) se sacan, y las que faltan se cargan solas.
+function syncRepCopies(t, canal){
+  if (!t || t.repOf) return;
+  const L = canal ? CHANNEL_POSTS : posts, ok = x => !!t.rep?.days?.length && x.date > t.date && t.rep.days.includes(wdOf(x.date)) && (!t.rep.until || x.date <= t.rep.until);
+  for (let i = L.length - 1; i >= 0; i--){ const x = L[i]; if (x.repOf !== t.id || x.status !== "Pendiente" || x.date < TODAY) continue;
+    if (!ok(x)){ L.splice(i, 1); NOTIFS.forEach(n => { if (n.post === x.id) n.read = true; }); continue; }
+    Object.assign(x, { brand:t.brand, title:t.title, cm:t.cm, requester:t.requester || "Marketing", notes:t.notes || "", brief:t.brief || "", canva:t.canva || "", drive:t.drive || "",
+      canvaN:t.canvaN || "", driveN:t.driveN || "", xlinks:(t.xlinks || []).map(y => ({ ...y })), links:(t.links || []).slice() }, canal ? { channel:t.channel } : { net:t.net, format:t.format }); }
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-reptpl]"); if (!b || !canEditPost()) return;
+  const [k, id] = b.dataset.reptpl.split(":"), t = k === "canal" ? canalById(id) : postById(id); if (!t) return toast("No se encontró la repetición original (quizás la borraron).");
+  postUI.form = { mode:"edit", kind:k === "canal" ? "Canal" : t.format === "Historia" ? "Historia" : "Feed", post:{ ...t } }; render(); window.scrollTo(0, 0); });
 document.addEventListener("click", e => {
   if (e.target.closest("[data-pclose]")){ postUI.form = null; render(); return; }
   const d = e.target.closest("[data-postdel]");
   if (d && !confirmTap(d, "post:" + d.dataset.postdel, "¿Seguro? Tocá de nuevo para borrar")) return;
-  if (d && d.dataset.postdel.startsWith("canal:")){ const k = canalById(d.dataset.postdel.slice(6)); CHANNEL_POSTS.splice(CHANNEL_POSTS.indexOf(k), 1); postUI.form = null; render(); toast(`“${k.title}” borrado.`); return; }
-  if (d){ const p = postById(d.dataset.postdel); posts.splice(posts.indexOf(p), 1); jobs.forEach(j => { if (j.post === p.id) j.post = null; }); postUI.form = null; render(); toast(`Posteo “${p.title}” borrado.`); return; }
+  if (d && d.dataset.postdel.startsWith("canal:")){ const k = canalById(d.dataset.postdel.slice(6)); CHANNEL_POSTS.splice(CHANNEL_POSTS.indexOf(k), 1); if (k.rep) syncRepCopies({ ...k, rep:null }, true); postUI.form = null; render(); toast(`“${k.title}” borrado.`); return; }
+  if (d){ const p = postById(d.dataset.postdel); posts.splice(posts.indexOf(p), 1); if (p.rep) syncRepCopies({ ...p, rep:null }, false); jobs.forEach(j => { if (j.post === p.id) j.post = null; }); postUI.form = null; render(); toast(`Posteo “${p.title}” borrado.`); return; }
   const n = e.target.closest("[data-pnew]"); if (n){ newPostOn(MONTH === TODAY.slice(0,7) ? TODAY : MONTH + "-01", n.dataset.pnew); return; }
   const jn = e.target.closest("[data-jnewcal]"); if (jn){ newJobOn(MONTH === TODAY.slice(0,7) ? TODAY : MONTH + "-01"); return; }
 });
