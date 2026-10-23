@@ -3568,7 +3568,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v248";
+const APP_VER = "v249";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -7007,7 +7007,9 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-jrep
 // Pedidos que se repiten: el pedido original guarda los días (rep.days, 0 = lunes) y, cada día, se cargan solos los de los próximos 7 días
 // (antes 2 semanas: avisaban demasiado pronto). Las copias que ya estaban cargadas más adelante no avisan ni cuentan hasta faltar 7 días.
 const REP_AHEAD = 7;
-const repLater = x => !!x?.repOf && daysTo(x.due || x.date || TODAY) > REP_AHEAD;
+// v249: las copias de publicaciones e historias (tienen date, no due) se ven hasta donde se cargan (el domingo de la semana
+// que viene); antes se escondían a partir del 8.º día y el sábado y el domingo no salían en el Calendario de Actividades.
+const repLater = x => !!x?.repOf && daysTo(x.due || x.date || TODAY) > (x.due ? REP_AHEAD : repPostDays());
 const repText = r => r?.days?.length ? (r.days.length === 7 ? "Todos los días" : r.days.length === 5 && r.days.every(d => d < 5) ? "De lunes a viernes" : "Todos los " + r.days.map(d => WEEKDAYS[d].toLowerCase()).join(" y ").replace(/ y (?=.* y )/g, ", ")) + (r.until ? ` hasta el ${dm(r.until)}` : "") : "";
 function spawnRepeats(){
   if (!viewer || isClosed() || isViewOnly()) return 0;
