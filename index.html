@@ -3003,6 +3003,7 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .ptd .pttx ul.ptchk>li[data-ok]{text-decoration:line-through;opacity:.6}
 .ptd .pttx ul.ptchk>li[data-ok]::before{content:"✓";font-size:10px;line-height:10px;text-align:center;background:#16a34a;border-color:#16a34a;color:#fff;opacity:1}
 .ptd .pttx font[size="2"]{font-size:11px}.ptd .pttx font[size="3"]{font-size:13px}.ptd .pttx font[size="5"]{font-size:17px}
+.jfgrid select.cmswap{width:auto;max-width:100%;min-height:32px;padding:4px 8px;font-weight:600}
 .ptfmts{display:inline-flex;gap:4px;padding-left:6px;border-left:1px solid #e5e7eb}
 @media (max-width:700px){.cal.ptcal .d.ptd{min-height:90px;padding:3px}.ptd .pttx{font-size:12px;min-height:70px}}
 @media (max-width:900px){.picons.pcm4{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -6976,10 +6977,10 @@ function jobFicha(){
     <header class="jp-h"><span class="note">${jobKindLabel(j)}${j.ex ? ` <span class="exbadge sm">Ejemplo para mostrar cómo se carga</span>` : ""}</span><h1>${esc(j.title)}</h1><div class="chips">${pill(j.status, JOB_COLOR[j.status])}${urgBadge(j)}${j.rep?.days?.length ? `<span class="repbadge">${icon("repeat")} Se repite: ${esc(repText(j.rep).toLowerCase())}</span>${at ? `<button class="btn sm" type="button" data-jrepstop="${j.id}">Dejar de repetir</button>` : ""}` : j.repOf ? `<span class="repbadge">${icon("repeat")} Pedido que se repite</span>` : ""}</div></header>
     ${last ? `<div class="jfmsg"><b>${icon("pencil")} Cambios que pidió Admin total</b><p>${esc(last.text)}</p><span>${dm(last.date)} · ${last.time}</span></div>` : ""}
     <section class="panel jp-sec"><h2 class="pmh">${pmIco("clipboard-list")}<i class="jpn">1</i>Qué hay que hacer</h2>
-      <div class="jfgrid">${row(jobBrands(j).length > 1 ? "Marcas" : "Marca", jobBrandTags(j))}${j.area === "Diseño" && j.pubCm && !jobApproved(j) && seesPubDate() ? row("Lo publica", `${esc(j.pubCm)} · ${j.pubDate ? `el ${dm(j.pubDate)}` : "fecha sin definir"} <span class="note">(ya le llegó; la ruta de la compartida la ve al aprobarse)</span>`) : ""}${row("Tipo de trabajo", esc((j.area === "Diseño" && dgCatOf(j) ? dgCatOf(j) + " · " : "") + cmPiece(j)))}${row("Trabajo solicitado", esc(j.title))}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}${j.piece === OTRO && j.otro ? `<div style="grid-column:1/-1"><span>Actividades</span><b>${esc(j.otro)}</b></div>` : ""}</div>
+      <div class="jfgrid">${row(jobBrands(j).length > 1 ? "Marcas" : "Marca", jobBrandTags(j))}${j.area === "Diseño" && j.pubCm && !jobApproved(j) && seesPubDate() ? row("Lo publica", `${cmSwapSel(j, "pub") || esc(j.pubCm)} · ${j.pubDate ? `el ${dm(j.pubDate)}` : "fecha sin definir"} <span class="note">(ya le llegó; la ruta de la compartida la ve al aprobarse)</span>`) : ""}${row("Tipo de trabajo", esc((j.area === "Diseño" && dgCatOf(j) ? dgCatOf(j) + " · " : "") + cmPiece(j)))}${row("Trabajo solicitado", esc(j.title))}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}${j.piece === OTRO && j.otro ? `<div style="grid-column:1/-1"><span>Actividades</span><b>${esc(j.otro)}</b></div>` : ""}</div>
       ${j.notes ? `<div class="jfnotes"><span>Observaciones</span><p>${esc(j.notes)}</p></div>` : ""}</section>
     <section class="panel jp-sec"><h2 class="pmh">${pmIco("users")}<i class="jpn">2</i>Quién y para cuándo</h2>
-      <div class="jfgrid"><div><span>Quién lo pidió</span><b>${esc(j.requester || "Sin indicar")}</b></div>${row("Responsable", esc(j.owner))}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", prioTag(j.priority))}${row("Complejidad", esc(j.complexity))}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}${j.approvedBy ? row("Aprobó", `${icon("badge-check")} ${esc(j.approvedBy)}${j.approved ? " · " + dm(j.approved) : ""}`) : ""}</div>${seesPubDate() ? pubInfo(j) : ""}</section>
+      <div class="jfgrid"><div><span>Quién lo pidió</span><b>${esc(j.requester || "Sin indicar")}</b></div>${row("Responsable", (j.area !== "Diseño" && cmSwapSel(j, "owner")) || esc(j.owner))}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", prioTag(j.priority))}${row("Complejidad", esc(j.complexity))}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}${j.approvedBy ? row("Aprobó", `${icon("badge-check")} ${esc(j.approvedBy)}${j.approved ? " · " + dm(j.approved) : ""}`) : ""}</div>${seesPubDate() ? pubInfo(j) : ""}</section>
     ${jobBriefSection(j)}
     ${jobCopyBlock(j)}
     ${j.area === "CM" ? videoBlock(j) : ""}
@@ -7033,6 +7034,16 @@ function syncJobPubs(live, prevCm){
   out.filter(x => before.get(x.id) !== live.pubCm).forEach(x => notify({ to:live.pubCm, type:"pub", job:live.id, post:x.id, canal:!!x.channel }));
   live.cmNotified = live.pubCm;
 }
+// v250 · Los CM (no solo Admin total) se pasan el trabajo entre ellos desde el pedido: el responsable de un video o un
+// contenido, y la CM que publica un pedido de Diseño. A la nueva le llega el aviso.
+const canSwapCm = j => !!j && !isViewOnly() && !isClosed() && ["Admin total","CM"].includes(viewer.role) && !isFin(j) && j.status !== "Cancelado";
+const cmSwapSel = (j, kind) => { if (!canSwapCm(j)) return ""; const cur = kind === "pub" ? j.pubCm : j.owner;
+  return `<select class="base cmswap" data-cmswap="${kind}:${esc(j.id)}" aria-label="${kind === "pub" ? "CM que lo publica" : "CM responsable"}" title="Pasárselo a otro CM">${cmOwnerOpts([...new Set([...(cur ? [cur] : []), ...CM_NAMES()])], cur)}</select>`; };
+document.addEventListener("change", e => { const s = e.target.closest?.("[data-cmswap]"); if (!s) return; const [kind, id] = s.dataset.cmswap.split(":"), j = jobById(id), v = s.value;
+  if (!canSwapCm(j) || !v) return;
+  if (kind === "pub"){ const prev = j.pubCm; if (v === prev) return; j.pubCm = v; syncJobPubs(j, prev); }
+  else { if (v === j.owner) return; j.owner = v; if (v !== viewer.name) notify({ to:v, type:"nuevo", job:j.id }); }
+  render(); window.RMH?.flushNow?.(); toast(`Listo: ahora lo tiene ${firstName(v)} y le llegó el aviso.`); });
 function jobPubCmBox(j){
   const live = jobById(j.id), done = jobPubsOf(live).length > 0, cur = j.pubCm ?? (done ? jobPubsOf(live)[0].cm : "");
   return `<div class="jpubcm" style="grid-column:1/-1"><span class="jll">${icon("calendar-days")} ¿Qué CM lo publica? <span class="note">(opcional)</span></span>
