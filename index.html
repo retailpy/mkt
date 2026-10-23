@@ -6873,9 +6873,13 @@ function videoBlock(j){
 const cmUp = {}; // clave → { pct, name, n, i } mientras sube
 const cmFileTarget = key => key === "form" ? postUI.form?.post : key.startsWith("job:") ? jobById(key.slice(4)) : null;
 const canDelCmFile = f => !isViewOnly() && !isClosed() && (viewer.role === "Admin total" || f.by === viewer.name);
+// v250: al subir desde una publicación ya cargada el archivo quedaba dos veces (el formulario y la publicación comparten la lista)
+// y la X sacaba solo una copia. Se muestra una vez por archivo, y si alguna copia está sacada, está sacada.
+const cmFilesLive = it => { const all = it?.cmFiles || [], gone = new Set(all.filter(f => f.del).map(f => f.id)), seen = new Set();
+  return all.filter(f => !gone.has(f.id) && !seen.has(f.id) && seen.add(f.id)); };
 function cmFilesBlock(it, key){
   if (!it) return "";
-  const ed = canVideo() && (key !== "form" || canEditPost()), list = (it.cmFiles || []).filter(f => !f.del), up = cmUp[key];
+  const ed = canVideo() && (key !== "form" || canEditPost()), list = cmFilesLive(it), up = cmUp[key];
   if (!ed && !list.length) return "";
   return `<div class="cmfiles" data-cmkey="${esc(key)}"><div class="cmfh"><b>${icon("folder-up")} Archivos de CM</b><span class="note">videos editados, fotos, PDF o lo que necesites, en su formato original · se guardan en Drive (Videos y archivos CM, carpeta del mes)</span></div>
     ${list.length ? `<div class="cmfl">${list.map(f => { const [ic, col, lbl] = DOC_ICO[docKind(f.t)] || DOC_ICO.file; const when = f.at ? pyParts(f.at) : null;
@@ -6907,7 +6911,7 @@ async function uploadCmFiles(key, files){
     // En el formulario de una publicación ya cargada, queda también en la publicación (aunque se cierre sin guardar).
     const targets = [cmFileTarget(key)];
     if (key === "form" && postUI.form?.mode === "edit"){ const real = postUI.form.kind === "Canal" ? canalById(postUI.form.post.id) : postById(postUI.form.post.id); if (real && real !== targets[0]) targets.push(real); }
-    targets.filter(Boolean).forEach(t => (t.cmFiles = t.cmFiles || []).push({ ...rec }));
+    targets.filter(Boolean).forEach(t => { t.cmFiles = t.cmFiles || []; if (!t.cmFiles.some(f => f.id === rec.id)) t.cmFiles.push({ ...rec }); });
     done++;
   }
   delete cmUp[key]; draw(); window.RMH?.flushNow?.();
@@ -6918,7 +6922,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-cmde
   const t = cmFileTarget(key), f = t?.cmFiles?.find(x => x.id === id); if (!f || !canDelCmFile(f)) return;
   if (key === "form" && postUI.form) readPostForm(postUI.form.post);
   const all = [t]; if (key === "form" && postUI.form?.mode === "edit"){ const real = postUI.form.kind === "Canal" ? canalById(postUI.form.post.id) : postById(postUI.form.post.id); if (real && real !== t) all.push(real); }
-  all.forEach(x => { const g = x.cmFiles?.find(y => y.id === id); if (g) g.del = true; }); // se marca (así no vuelve al juntar los cambios de otros)
+  all.forEach(x => (x.cmFiles || []).forEach(g => { if (g.id === id) g.del = true; })); // se marca (así no vuelve al juntar los cambios de otros)
   render(); toast("Lo sacaste de la lista. El archivo sigue en Drive, en la carpeta del mes."); });
 function setVideo(j, link, name){
   j.videoLink = link; j.videoName = name; j.videoBy = viewer.name; j.videoAt = new Date().toISOString();
