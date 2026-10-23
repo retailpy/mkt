@@ -387,6 +387,7 @@ async function comercialSync(c: any, minAge: number){
       // Si no se puede abrir una carpeta, se avisa en la app (no se toma como vacía) y lo de esa carpeta queda como estaba.
       if (!l.ok){ src[fu.id] = { at: now, err: String(l.error || "No se pudo leer la carpeta").slice(0, 200) }; return; }
       src[fu.id] = { at: now, ok: true, name: l.folder || "", n: 0 };
+      if (fu.cat === "fds") console.log("COMLIST", fu.brand, JSON.stringify((l.files || []).filter((f: any) => Date.parse(f.modified || f.created) > Date.now() - 20 * 864e5).map((f: any) => [f.name, f.path, f.mime, f.modified])).slice(0, 3000));
       for (const f of (l.files || []).filter(esPlanilla)){
         if (ARCHIVADAS.test(f.path || "")) continue;
         const r = clasificar(f.name, fu);
