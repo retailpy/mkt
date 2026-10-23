@@ -2995,7 +2995,15 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .cal.ptcal .d.ptd .dn{font-weight:700;font-size:12px;color:var(--ptfg,#374151);opacity:1}
 .ptd .ptn{display:inline-flex;align-items:center;gap:3px;font-size:11px;border:1px solid #c7d2fe;background:#eef2ff;color:#3730a3;border-radius:999px;padding:0 6px;cursor:pointer}
 .ptd .ptn svg{width:11px;height:11px}
-.ptd .pttx{flex:1;width:100%;min-height:90px;resize:vertical;border:0;background:transparent;color:inherit;font:inherit;font-size:13px;line-height:1.35;padding:2px 0;outline:none}
+.ptd .pttx{flex:1;width:100%;min-height:90px;border:0;background:transparent;color:inherit;font:inherit;font-size:13px;line-height:1.35;padding:2px 0;outline:none;overflow-wrap:anywhere;white-space:pre-wrap;cursor:text}
+.ptd .pttx ol,.ptd .pttx ul{margin:2px 0;padding-left:18px;white-space:normal}
+.ptd .pttx ul.ptchk{list-style:none;padding-left:18px}
+.ptd .pttx ul.ptchk>li{position:relative}
+.ptd .pttx ul.ptchk>li::before{content:"";position:absolute;left:-17px;top:.2em;width:11px;height:11px;border:1.5px solid currentColor;border-radius:3px;cursor:pointer;opacity:.75}
+.ptd .pttx ul.ptchk>li[data-ok]{text-decoration:line-through;opacity:.6}
+.ptd .pttx ul.ptchk>li[data-ok]::before{content:"✓";font-size:10px;line-height:10px;text-align:center;background:#16a34a;border-color:#16a34a;color:#fff;opacity:1}
+.ptd .pttx font[size="2"]{font-size:11px}.ptd .pttx font[size="3"]{font-size:13px}.ptd .pttx font[size="5"]{font-size:17px}
+.ptfmts{display:inline-flex;gap:4px;padding-left:6px;border-left:1px solid #e5e7eb}
 @media (max-width:700px){.cal.ptcal .d.ptd{min-height:90px;padding:3px}.ptd .pttx{font-size:12px;min-height:70px}}
 @media (max-width:900px){.picons.pcm4{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .gcmhead .chips{align-items:center}
@@ -3591,7 +3599,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v249";
+const APP_VER = "v250";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -5852,7 +5860,7 @@ const ACT_SIMPLE = ACT_TYPES.slice(3); // las que se cargan con la hoja simple d
 const actType = k => ACT_TYPES.find(x => x.k === k) || ACT_TYPES[ACT_TYPES.length - 1];
 const ACT_STAGES = ["Pendiente","En proceso","Hecho"];
 let CM_ACTS = []; // { id, type, title, brand, owner, date, time, status, notes, byId, at }
-let PLAN_TXT = []; // v249 · Plan de posteo: { id:"YYYY-MM-DD", t, bg, fg, by, at }
+let PLAN_TXT = []; // v249 · Plan de posteo: { id:"YYYY-MM-DD", t, h, bg, fg, by, at } (h: el texto con formato, v250)
 // v249 · Plan de posteo: un calendario de texto por mes, como la hoja de Excel (una celda por día, con color de fondo y de letra).
 // Lo ven y lo editan Admin total y CM; cada día muestra cuánto hay cargado en el Calendario de Actividades ese día.
 const PT_BG = ["#ffffff","#fef3c7","#fde68a","#fed7aa","#fecaca","#fbcfe8","#e9d5ff","#c7d2fe","#bfdbfe","#a5f3fc","#bbf7d0","#d9f99d","#e5e7eb"];
@@ -5866,24 +5874,55 @@ function ptSet(d, patch){
   Object.assign(x, patch, { by:viewer.name, at:new Date().toISOString() });
   for (const k of ["bg","fg"]) if (!x[k]) delete x[k];
 }
+// v250 · formato dentro de la celda: negrita, tamaño de letra, lista numerada y checklist. Se guarda solo lo permitido.
+const PT_TAGS = { B:"b", STRONG:"b", I:"i", EM:"i", U:"u", BR:"br", DIV:"div", P:"div", OL:"ol", UL:"ul", LI:"li", FONT:"font" };
+function ptClean(html){
+  const box = document.createElement("div"); box.innerHTML = html || "";
+  const walk = el => [...el.childNodes].map(n => {
+    if (n.nodeType === 3) return esc(n.nodeValue);
+    if (n.nodeType !== 1 || ["SCRIPT","STYLE"].includes(n.tagName)) return "";
+    const t = PT_TAGS[n.tagName], inner = walk(n);
+    if (!t) return inner;
+    if (t === "br") return "<br>";
+    const a = t === "font" && /^[1-7]$/.test(n.getAttribute("size") || "") ? ` size="${n.getAttribute("size")}"` : t === "ul" && n.classList.contains("ptchk") ? ` class="ptchk"` : t === "li" && n.dataset.ok ? ` data-ok="1"` : "";
+    return t === "font" && !a ? inner : `<${t}${a}>${inner}</${t}>`;
+  }).join("");
+  return walk(box);
+}
+const ptHtml = x => x?.h ? ptClean(x.h) : esc(x?.t || "").replace(/\n/g, "<br>");
+const ptSave = el => ptSet(el.dataset.pttx, { h:ptClean(el.innerHTML), t:el.innerText.trim() });
+const PT_FMT = [["bold","bold","Negrita"],["sz:2","a-arrow-down","Letra chica"],["sz:3","type","Letra normal"],["sz:5","a-arrow-up","Letra grande"],["ol","list-ordered","Lista numerada"],["chk","list-checks","Checklist (tocá el cuadradito para tildar)"]];
 function pPlanTxt(){
   const work = cmWork().filter(x => x.date), n = d => work.filter(x => x.date === d).length;
   const sw = (list, kind) => list.map(c => `<button type="button" class="ptsw" data-ptcolor="${kind}:${c}" style="--c:${c}" title="${kind === "bg" ? "Fondo" : "Letra"} ${c}" aria-label="${kind === "bg" ? "Color de fondo" : "Color de letra"} ${c}"></button>`).join("");
   return `<div class="head"><div><h1 class="pmh">${pmIco("table-2")}Plan de posteo</h1><p class="sub">${monthLabel(MONTH)} · escribí en cada día lo que se va a publicar, como en la hoja de Excel. Se guarda solo.</p></div></div>
   <div class="ptbar"><span class="pttl">${icon("paint-bucket")} Fondo</span><div class="ptsws">${sw(PT_BG, "bg")}</div><span class="pttl">${icon("type")} Letra</span><div class="ptsws">${sw(PT_FG, "fg")}</div>
-    <button type="button" class="btn sm" data-ptcolor="clear:">${icon("eraser")} Quitar colores</button><span class="note ptsel">${ptCell ? `Pintando el ${dm(ptCell)}` : "Tocá un día y después un color"}</span></div>
+    <button type="button" class="btn sm" data-ptcolor="clear:">${icon("eraser")} Quitar colores</button>
+    <span class="ptfmts" role="group" aria-label="Formato del texto">${PT_FMT.map(([k, i, l]) => `<button type="button" class="btn sm ib" data-ptfmt="${k}" title="${l}" aria-label="${l}">${icon(i)}</button>`).join("")}</span><span class="note ptsel">${ptCell ? `Pintando el ${dm(ptCell)}` : "Tocá un día y después un color"}</span></div>
   <div class="calw ptw"><div class="cal ptcal">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => `<div class="dh">${d}</div>`).join("")}
   ${calCells().map(c => { const x = ptGet(c), k = n(c), out = c.slice(0, 7) !== MONTH;
     return `<div class="d ptd ${out ? "out" : ""} ${c === TODAY ? "today" : ""} ${c === ptCell ? "ptsel" : ""}" data-ptday="${c}" style="${x?.bg ? `--ptbg:${x.bg};` : ""}${x?.fg ? `--ptfg:${x.fg};` : ""}">
       <div class="pth"><span class="dn">${+c.slice(8)}</span>${k ? `<button type="button" class="ptn" data-ptcal="${c}" title="Ver lo cargado en el Calendario de Actividades">${icon("calendar-range")} ${k}</button>` : ""}</div>
-      <textarea class="pttx" data-pttx="${c}" ${ptCan() ? "" : "readonly"} aria-label="Plan del ${dm(c)}">${esc(x?.t || "")}</textarea></div>`; }).join("")}</div></div>`;
+      <div class="pttx" data-pttx="${c}" ${ptCan() ? `contenteditable="true"` : ""} role="textbox" aria-multiline="true" aria-label="Plan del ${dm(c)}">${ptHtml(x)}</div></div>`; }).join("")}</div></div>`;
 }
-document.addEventListener("input", e => { const d = e.target.dataset?.pttx; if (!d || !ptCan()) return; ptSet(d, { t:e.target.value }); });
+document.addEventListener("input", e => { if (!e.target.dataset?.pttx || !ptCan()) return; ptSave(e.target); });
+document.addEventListener("paste", e => { if (!e.target.closest?.("[data-pttx]")) return; e.preventDefault(); document.execCommand("insertText", false, e.clipboardData.getData("text/plain")); }); // se pega solo el texto
 document.addEventListener("focusin", e => { const d = e.target.dataset?.pttx; if (!d || d === ptCell) return; ptCell = d;
   document.querySelectorAll(".ptd.ptsel").forEach(el => el.classList.remove("ptsel")); e.target.closest(".ptd")?.classList.add("ptsel");
   const s = document.querySelector(".ptbar .ptsel"); if (s) s.textContent = `Pintando el ${dm(d)}`; });
-document.addEventListener("mousedown", e => { if (e.target.closest("[data-ptcolor]")) e.preventDefault(); }); // el color no le saca el foco a la celda
+document.addEventListener("mousedown", e => { if (e.target.closest("[data-ptcolor],[data-ptfmt]")) e.preventDefault(); }); // el color y el formato no le sacan el foco a la celda
 document.addEventListener("click", e => {
+  const f = e.target.closest("[data-ptfmt]");
+  if (f){ const ed = document.activeElement?.closest?.("[data-pttx]");
+    if (!ptCan()) return; if (!ed) return toast("Tocá primero adentro de un día y elegí el texto.");
+    const k = f.dataset.ptfmt, ul = () => { const n = getSelection().anchorNode; return (n?.nodeType === 1 ? n : n?.parentElement)?.closest("ul"); };
+    if (k === "bold") document.execCommand("bold");
+    else if (k === "ol") document.execCommand("insertOrderedList");
+    else if (k.startsWith("sz:")) document.execCommand("fontSize", false, k.slice(3));
+    else if (k === "chk"){ const u = ul(); if (u && ed.contains(u) && !u.classList.contains("ptchk")) u.classList.add("ptchk"); else { const old = new Set(ed.querySelectorAll("ul")); document.execCommand("insertUnorderedList"); const nu = [...ed.querySelectorAll("ul")].filter(v => !old.has(v)); (nu.length ? nu : [ul()].filter(v => v && ed.contains(v))).forEach(v => v.classList.add("ptchk")); } }
+    ptSave(ed); return; }
+  const li = e.target.closest?.(".pttx ul.ptchk > li");
+  if (li && ptCan() && e.clientX < li.getBoundingClientRect().left + 2){ li.toggleAttribute("data-ok"); if (li.hasAttribute("data-ok")) li.dataset.ok = "1"; ptSave(li.closest("[data-pttx]")); return; }
   const b = e.target.closest("[data-ptcolor]");
   if (b){ if (!ptCan()) return; if (!ptCell) return toast("Tocá primero un día del calendario.");
     const [kind, c] = b.dataset.ptcolor.split(":"); ptSet(ptCell, kind === "clear" ? { bg:"", fg:"" } : { [kind]:c === "#ffffff" && kind === "bg" ? "" : c });
