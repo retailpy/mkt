@@ -74,6 +74,10 @@ Reglas (`clasificar()` en `comercial.ts`): solo planillas (.xlsx/.xls o Google S
 compartidas, si no dice S6 o Stock (o dice las dos) queda pendiente; Express **sin** “publicada” queda pendiente. También queda
 pendiente si no tiene las **fechas** en el nombre o si el Excel no tiene columnas de producto y precio de oferta.
 
+**Solo «MKT - FOLLETOS» y solo FINAL (v250):** las quincenales de Superseis y Stock salen únicamente de la carpeta
+«MKT - FOLLETOS» y del Excel que dice FINAL. Las carpetas «OFERTA QUINCENAL S6/STOCK» ya no se leen (las filas de la tabla de
+abajo quedan como referencia de lo guardado).
+
 **Tal cual el Excel (v232):** descuento = columna «% DESC.» sin calcular nada (vacía → no se muestra; texto → como está);
 oferta y precio normal con texto, la marca de la primera columna y la temática (salvo FLEJE, etiqueta `.ctem`) se muestran como
 están escritos en el Excel (`comRaw`, `comPvpTxt`, `comFlagTxt`, `comTem`). `PARSE_V` = 4.
