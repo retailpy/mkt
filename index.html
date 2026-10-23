@@ -3048,10 +3048,10 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .pcst{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:800;color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent);border:1px solid color-mix(in srgb,var(--c) 45%,transparent)}
 .pcst svg{width:14px;height:14px}
 .pckpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
-.pckpi>div{padding:12px 14px;border-radius:14px;border:1px solid color-mix(in srgb,var(--c) 40%,var(--line-2));background:color-mix(in srgb,var(--c) 9%,transparent)}
+.pckpi>button{padding:12px 14px;border-radius:14px;border:1px solid color-mix(in srgb,var(--c) 40%,var(--line-2));background:color-mix(in srgb,var(--c) 9%,transparent);text-align:left;font:inherit;color:inherit;cursor:pointer}
+.pckpi>button.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 22%,transparent);box-shadow:0 0 0 2px color-mix(in srgb,var(--c) 45%,transparent)}
+.pctw tbody tr{cursor:pointer}.pctw tbody tr:hover{background:color-mix(in srgb,var(--cyan) 7%,transparent)}.pctw tr.pub td:first-child{box-shadow:inset 3px 0 0 #22c55e}.pctw td small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
 .pckpi b{display:block;font-size:26px;line-height:1.1;color:var(--c)}.pckpi span{color:var(--muted);font-size:13px;font-weight:600}
-.pccard{cursor:pointer}.pccard .dact{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap}
-.pccard.pub{border-color:color-mix(in srgb,#22c55e 55%,transparent)}
 .pcform{display:grid;grid-template-columns:1fr 1fr;gap:14px}.pcform label{display:flex;flex-direction:column;gap:5px;font-weight:600;min-width:0}
 .pcform .pcw{grid-column:1/-1}
 .pcform input.base{border:1px solid var(--line-3);background:var(--inner);border-radius:14px;padding:9px 12px;color:var(--ink);outline:none;font:inherit;color-scheme:dark;width:100%}
@@ -3065,7 +3065,8 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .pcok>svg{width:30px;height:30px;color:#22c55e;flex:none}.pcok b{display:block;color:#22c55e;font-size:18px}.pcok span{color:var(--ink)}
 .pcdl{display:grid;grid-template-columns:max-content 1fr;gap:8px 16px;margin:0}.pcdl dt{color:var(--muted);font-weight:600}.pcdl dd{margin:0;min-width:0;overflow-wrap:anywhere}
 .pcev{cursor:pointer}
-@media (max-width:640px){.pcform,.pcvig{grid-template-columns:1fr}.pcdl{grid-template-columns:1fr}.pcdl dt{margin-top:4px}}
+.pctw td:first-child{min-width:200px}.pctw td.num{white-space:nowrap}
+@media (max-width:640px){.pckpi{grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px}.pckpi>button{padding:9px 11px}.pckpi b{font-size:21px}.pcform,.pcvig{grid-template-columns:1fr}.pcdl{grid-template-columns:1fr}.pcdl dt{margin-top:4px}}
 </style>
 
 <div class="login" id="login">
@@ -3550,7 +3551,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v242";
+const APP_VER = "v243";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -6508,7 +6509,8 @@ document.addEventListener("click", async e => {
   if (d){ const w = window.open("", "_blank"); const u = window.RMH?.fileUrl ? await RMH.fileUrl(f.p) : null; if (u && w) w.location = u; else { w?.close(); toast("No se pudo abrir el archivo."); } return; }
   if (!confirmTap(x, "fdel:" + f.p, "¿Quitar? Tocá de nuevo")) return;
   if (jobUI.form?.job === j) readJobForm(j);
-  if (window.RMH?.fileDel) await RMH.fileDel(f.p);
+  // Un adjunto del pedido de Comercial (com/…) sigue siendo del comprador: se quita del trabajo, pero el archivo queda en su pedido.
+  if (window.RMH?.fileDel && !String(f.p).startsWith("com/")) await RMH.fileDel(f.p);
   j.files.splice(+i, 1); render(); toast(`Quitaste “${f.n}”.`);
 });
 // Boceto del pedido: un archivo liviano para ver cómo va (imagen, PDF, logo…), guardado en Google Drive (carpeta de Bocetos,
@@ -11240,22 +11242,28 @@ const EYEBROW = { gcm:"Community Manager", calact:"Community Manager", contenido
 // ---------- Pedidos Comercial (v242) ----------
 // Los compradores (rol Comercial, ej. Gisella Aquino) cargan acá sus pedidos de activaciones para publicar en redes: nombre,
 // supermercados, marcas, qué piden, fecha de publicación deseada, vigencia, la hoja (textos y bocetos, como en Diseño gráfico)
-// y archivos. Se ven en tablero y en calendario. Le llega a Admin total (ventana emergente, alerta y push), que lo pasa a
+// y archivos. Se ven en tabla (la vista de entrada) y en calendario. Le llega a Admin total (ventana emergente, alerta y push), que lo pasa a
 // Diseño gráfico o a un CM (Gestión de Contenidos) con los datos que falten; después lo publica el CM. Comercial no ve el
 // proceso: solo sus pedidos y, cuando la publicación sale, “Publicado” en verde (con aviso).
 let PEDIDOS_COM = []; // { id, by, byName, at, title, brands[], marcas, pedido, date, from, until, brief, files[], st:"Enviado"|"Tomado"|"Publicado", job, area, takenAt, takenBy, pubAt, pubDay, pubSeen, seenBy[] }
 const PC_BRANDS = ["Superseis","Stock","Delimarket"];
 const PC_PEDIDO = ["Post para redes","Historia","Post + Historia","Carrusel","Reel o video","Canal de WhatsApp","Otro"];
 const PC_PH = "Ejemplo:\nACCIÓN: Día Internacional de las Pastas, 20% de descuento en Pastas Frescas Envasadas.\nMARCAS: S6: Edward, Quiero Más, De la Nonna… · Stock: Edward, Stock, Bianca…\nTEXTO QUE VA: “20% OFF en pastas frescas”.\nLEGAL: Válido del viernes 23 al domingo 25 de octubre.\nOBSERVACIONES: segmentar por marca participante.";
-let pcUI = { view:"tablero", open:null, form:null, busy:0 };
+let pcUI = { view:"tabla", tab:null, sort:"nuevos", open:null, form:null, busy:0 };
 const pcById = id => PEDIDOS_COM.find(p => p.id === id);
 const pcMine = () => (isComercial() ? PEDIDOS_COM.filter(p => p.by === viewer.id) : PEDIDOS_COM).filter(p => p && p.id);
 const pcBrandTxt = p => (p.brands || []).join(" + ") || "Sin supermercado";
 const pcRange = p => p.from && p.until ? (p.from === p.until ? dm(p.from) : `del ${dm(p.from)} al ${dm(p.until)}`) : p.from ? "desde el " + dm(p.from) : p.until ? "hasta el " + dm(p.until) : "";
 // Lo que ve Comercial: Enviado o Publicado. Admin total y Admin ven además si ya se pasó a Diseño o CM.
-const pcCols = () => isComercial() ? [["Enviado", "Enviados", "#38bdf8"], ["Publicado", "Publicados", "#22c55e"]] : [["Enviado", "Nuevos", "#38bdf8"], ["Tomado", "En Diseño o CM", "#a855f7"], ["Publicado", "Publicados", "#22c55e"]];
-const pcCol = p => isComercial() && p.st === "Tomado" ? "Enviado" : p.st;
-const pcStTxt = p => p.st === "Publicado" ? "Publicado" : isComercial() || p.st === "Enviado" ? "Enviado" : p.area === "Contenidos" ? "En CM (contenidos)" : "En Diseño gráfico";
+// La tabla se separa en pestañas. Admin total y Admin: Nuevos (lo que llegó), Derivados (ya pasados a Diseño o CM), Publicados.
+// Comercial: Enviados y Publicados (no ve si se derivó). En las dos, además “Todos”.
+const pcTabs = () => isComercial() ? [["Enviado", "Enviados", "#38bdf8"], ["Publicado", "Publicados", "#22c55e"], ["todos", "Todos", "#94a3b8"]] : [["Enviado", "Nuevos", "#38bdf8"], ["Tomado", "Derivados", "#a855f7"], ["Publicado", "Publicados", "#22c55e"], ["todos", "Todos", "#94a3b8"]];
+const pcTab = () => pcTabs().some(([k]) => k === pcUI.tab) ? pcUI.tab : isComercial() ? "todos" : "Enviado";
+const pcInTab = (p, k) => k === "todos" || (isComercial() && k === "Enviado" ? p.st !== "Publicado" : p.st === k);
+// A quién se derivó: la persona responsable del trabajo (Diseño gráfico o CM) y, si todavía no tiene, el área.
+const pcArea = p => p.area === "Contenidos" ? "CM" : "Diseño gráfico";
+const pcWho = p => { const o = p.job && jobById(p.job)?.owner; return o && o !== "Sin asignar" ? o : ""; };
+const pcStTxt = p => p.st === "Publicado" ? "Publicado" : isComercial() || p.st === "Enviado" ? "Enviado" : `Derivado a ${pcWho(p) ? firstName(pcWho(p)) + " (" + pcArea(p) + ")" : pcArea(p)}`;
 const pcStColor = p => p.st === "Publicado" ? "#22c55e" : p.st === "Tomado" && !isComercial() ? "#a855f7" : "#38bdf8";
 const pcPill = p => `<span class="pcst" style="--c:${pcStColor(p)}">${p.st === "Publicado" ? icon("badge-check") : ""}${esc(pcStTxt(p))}</span>`;
 // En el menú: a Admin total, los pedidos que todavía no pasó; al comprador, sus pedidos publicados que no abrió.
@@ -11319,7 +11327,7 @@ function pcDetail(p){
   const row = (k, v) => v ? `<dt>${k}</dt><dd>${v}</dd>` : "";
   const derive = at && p.st !== "Publicado" && !j;
   return `<div class="jpage pcpage"><div class="jp-top"><button class="btn pback" type="button" data-pcback>${icon("arrow-left")} Volver</button></div>
-  <div class="jp-h"><span class="note">Pedido de activación · ${esc(p.byName || "Comercial")} · ${dm(String(p.at).slice(0, 10))}</span><h1 style="margin:4px 0 6px">${esc(p.title)}</h1>${pcPill(p)}</div>
+  <div class="jp-h"><span class="note">Pedido de activación · ${esc(p.byName || "Comercial")} · ${dm(String(p.at).slice(0, 10))}${!isComercial() && !at ? " · solo para ver" : ""}</span><h1 style="margin:4px 0 6px">${esc(p.title)}</h1>${pcPill(p)}</div>
   ${p.st === "Publicado" ? `<div class="panel pcok">${icon("badge-check")}<div><b>¡Publicado!</b><span>${isComercial() ? "Tu pedido ya está en las redes" : "Ya salió en las redes"}${p.pubDay ? " · " + dm(p.pubDay) : ""}.</span></div></div>` : isComercial() ? `<p class="note">${icon("send")} Le llegó a Marketing. Cuando se publique, acá te sale <b style="color:#22c55e">Publicado</b> en verde y te avisamos.</p>` : ""}
   ${derive ? `<section class="panel pcderive"><h2 class="pmh">${pmIco("route")}Pasar el pedido</h2><p class="note" style="margin:0 0 10px">Se abre el pedido con todo lo que cargó ${esc(firstName(p.byName || "Comercial"))} (nombre, supermercados, la hoja, los archivos y la fecha de publicación). Completá lo que falte y guardalo: queda en su sección y le llega a quien lo tenga que hacer. ${esc(firstName(p.byName || "Comercial"))} no ve el proceso: solo “Publicado” cuando el CM lo publica.</p>
     <div class="chips"><button type="button" class="btn primary" data-pcderive="Diseño">${icon("palette")} Pasar a Diseño gráfico</button><button type="button" class="btn primary" data-pcderive="Contenidos">${icon("shapes")} Pasar a CM (contenidos gráficos)</button></div></section>` : ""}
@@ -11333,31 +11341,40 @@ function pcDetail(p){
   ${(p.files || []).length ? `<section class="panel"><h2 class="pmh">${pmIco("paperclip")}Archivos adjuntos</h2><div class="jfiles">${p.files.map((x, i) => pcFileRow(p, x, i, false)).join("")}</div></section>` : ""}
   ${pcCanEdit(p) ? `<div class="chips" style="justify-content:flex-end"><button type="button" class="btn" data-pcedit="${esc(p.id)}">${icon("pencil")} Editar</button><button type="button" class="btn danger" data-pcdel="${esc(p.id)}">${icon("trash-2")} Borrar</button></div>` : ""}</div>`;
 }
-const pcCard = p => `<div class="card pccard${p.st === "Publicado" ? " pub" : ""}" style="--c:${pcStColor(p)}" data-pcopen="${esc(p.id)}" role="button" tabindex="0"><div class="in"><div class="t">${esc(p.title)}</div>
-  <div class="m">${(p.brands || []).map(brandTag).join("")}${p.date ? `<span>${icon("calendar-days")} ${dm(p.date)}</span>` : ""}</div>${p.marcas ? `<div class="m"><span>${esc(p.marcas)}</span></div>` : ""}
-  <div class="dact">${pcPill(p)}${!isComercial() ? `<span class="note">${esc(firstName(p.byName || ""))}</span>` : ""}</div></div></div>`;
+const pcAsk = p => p.pedido === "Otro" ? p.pedOtro || "Otro" : p.pedido || "";
+function pcTable(list){
+  const adm = !isComercial();
+  return `<div class="tw pctw"><table><thead><tr><th>Pedido</th><th>Supermercado</th><th>Qué pide</th>${adm ? "<th>Comprador</th>" : ""}<th>Pedido el</th><th>Publicar el</th><th>Vigencia</th><th>Estado</th></tr></thead><tbody>
+    ${list.map(p => `<tr class="${p.st === "Publicado" ? "pub" : ""}" data-pcopen="${esc(p.id)}" role="button" tabindex="0" title="Tocá para ver el pedido"><td><b>${esc(p.title)}</b>${p.marcas ? `<small>${esc(p.marcas)}</small>` : ""}</td>
+      <td><div class="chips" style="flex-wrap:nowrap">${(p.brands || []).map(brandTag).join("")}</div></td><td>${esc(pcAsk(p))}</td>${adm ? `<td>${esc(p.byName || "")}</td>` : ""}
+      <td class="num">${p.at ? dm(String(p.at).slice(0, 10)) : ""}</td><td class="num"><b>${p.date ? dm(p.date) : "Sin fecha"}</b></td><td>${esc(pcRange(p))}</td><td>${pcPill(p)}</td></tr>`).join("")}
+  </tbody></table></div>`;
+}
 function pPedCom(){
   const mine = pcMine(), com = isComercial(), at = viewer.role === "Admin total" && !window.RMH?.previewing;
   if (pcUI.form) return pcFormPage();
   const op = pcUI.open && pcById(pcUI.open); if (op) return pcDetail(op); pcUI.open = null;
-  const vt = [["tablero", "Tablero", "kanban"], ["calendario", "Calendario", "calendar-days"]];
-  const head = `<div class="head"><div><h1 class="pmh">${pmIco("shopping-bag")}${com ? "Mis pedidos de activaciones" : "Pedidos Comercial"}</h1><p class="sub">${com ? "Cargá acá lo que te gustaría que se publique en las redes: el pedido le llega a Marketing. Elegí el día que te gustaría que salga (también tocando el día en el calendario). Cuando se publique, te sale <b style=\"color:#22c55e\">Publicado</b> en verde y te avisamos." : "Lo que piden los compradores para publicar. Abrí cada pedido para pasarlo a Diseño gráfico o a un CM con los datos que falten: cuando el CM lo publica, al comprador le sale Publicado."}</p></div>
+  const vt = [["tabla", "Tabla", "table-2"], ["calendario", "Calendario", "calendar-days"]];
+  const head = `<div class="head"><div><h1 class="pmh">${pmIco("shopping-bag")}${com ? "Mis pedidos de activaciones" : "Pedidos Comercial"}</h1><p class="sub">${com ? "Cargá acá lo que te gustaría que se publique en las redes: el pedido le llega a Marketing y te queda como <b style=\"color:#38bdf8\">Enviado</b>. Elegí el día que te gustaría que salga (también tocando el día en el calendario). Cuando se publique, te sale <b style=\"color:#22c55e\">Publicado</b> en verde y te avisamos." : at ? "Lo que piden los compradores para publicar. Abrí cada pedido nuevo para pasarlo a Diseño gráfico o a un CM con los datos que falten: ahí pasa a Derivados, con la persona responsable. Cuando el CM lo publica, al comprador le sale Publicado." : "Lo que piden los compradores para publicar, a quién se derivó y si ya salió. Es solo para ver: los pedidos los pasa Admin total."}</p></div>
     <div class="chips">${viewTabs(vt, pcUI.view, "data-pcview")}${com || at ? `<button type="button" class="btn primary" data-pcnew>${icon("plus")} Nuevo pedido</button>` : ""}</div></div>`;
-  const n = k => mine.filter(p => p.st === k).length;
-  const kpis = `<div class="pckpi">${pcCols().map(([k, l, c]) => `<div style="--c:${c}"><b>${com && k === "Enviado" ? n("Enviado") + n("Tomado") : n(k)}</b><span>${l}</span></div>`).join("")}</div>`;
   if (pcUI.view === "calendario"){
     const day = d => mine.filter(p => p.date === d).map(p => `<div class="ev pcev" style="--c:${pcStColor(p)};--s:${pcStColor(p)}" data-pcopen="${esc(p.id)}" role="button" tabindex="0" title="${esc(p.title)} · ${esc(pcStTxt(p))}"><span>${p.st === "Publicado" ? "✓ " : ""}${esc(p.title)}</span></div>`).join("");
-    return `${head}${kpis}${com ? `<p class="draghint">Tocá un día para cargar un pedido para esa fecha. Tocá un pedido para verlo.</p>` : ""}<div class="pccal">${calGrid(day)}</div>`;
+    return `${head}${com ? `<p class="draghint">Tocá un día para cargar un pedido para esa fecha. Tocá un pedido para verlo.</p>` : ""}<div class="pccal">${calGrid(day)}</div>`;
   }
-  const list = [...mine].sort((a, b) => String(a.date || "9").localeCompare(String(b.date || "9")) || String(b.at).localeCompare(String(a.at)));
-  return `${head}${kpis}${list.length ? `<div class="kanban" style="grid-template-columns:repeat(${pcCols().length},minmax(min(240px,100%),1fr))">${pcCols().map(([k, l, c]) => { const col = list.filter(p => pcCol(p) === k);
-    return `<div class="col"><div class="col-h" style="--c:${c}"><span>${l}</span><span class="num">${col.length}</span></div>${col.map(pcCard).join("") || `<div class="empty" style="padding:6px">Vacío</div>`}</div>`; }).join("")}</div>`
-    : `<div class="panel"><div class="empty">${com ? `Todavía no cargaste pedidos. Tocá <b>Nuevo pedido</b> para empezar.` : "Todavía no hay pedidos de Comercial."}</div></div>`}`;
+  const tab = pcTab(), tabs = `<div class="pckpi" role="tablist">${pcTabs().map(([k, l, c]) => `<button type="button" role="tab" aria-selected="${tab === k}" class="${tab === k ? "on" : ""}" style="--c:${c}" data-pctab="${k}"><b>${mine.filter(p => pcInTab(p, k)).length}</b><span>${l}</span></button>`).join("")}</div>`;
+  // Orden: los más nuevos arriba (por cuándo se pidió) o por la fecha en que se tiene que publicar (lo más próximo arriba).
+  const byAt = (a, b) => String(b.at || "").localeCompare(String(a.at || ""));
+  const list = mine.filter(p => pcInTab(p, tab)).sort(pcUI.sort === "fecha" ? (a, b) => String(a.date || "9").localeCompare(String(b.date || "9")) || byAt(a, b) : byAt);
+  const sorts = viewTabs([["nuevos", "Más nuevos", "clock"], ["fecha", "Por fecha de publicación", "calendar-clock"]], pcUI.sort, "data-pcsort");
+  const none = !mine.length ? (com ? `Todavía no cargaste pedidos. Tocá <b>Nuevo pedido</b> para empezar.` : "Todavía no hay pedidos de Comercial.") : tab === "Enviado" && !com ? "No hay pedidos nuevos: todo lo que llegó ya está derivado." : "No hay pedidos acá.";
+  return `${head}${tabs}<div class="head"><span class="note">Tocá un pedido para verlo${at && tab === "Enviado" ? " y derivarlo" : ""}.</span>${sorts}</div>${list.length ? pcTable(list) : `<div class="panel"><div class="empty">${none}</div></div>`}`;
 }
 document.addEventListener("click", async e => {
   if (!viewer || !can("pedcom")) return;
   const t = e.target;
   const vw = t.closest("[data-pcview]"); if (vw){ pcUI.view = vw.dataset.pcview; render(); return; }
+  const tb = t.closest("[data-pctab]"); if (tb){ pcUI.tab = tb.dataset.pctab; render(); return; }
+  const so = t.closest("[data-pcsort]"); if (so){ pcUI.sort = so.dataset.pcsort; render(); return; }
   if (t.closest("[data-pcnew]")){ pcNew(); render(); window.scrollTo(0, 0); return; }
   if (t.closest("[data-pcclose]")){ pcUI.form = null; render(); return; }
   if (t.closest("[data-pcback]")){ pcUI.open = null; render(); return; }
