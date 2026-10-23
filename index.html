@@ -2990,6 +2990,7 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .ptbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 12px;padding:10px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;color:#111827}
 .ptbar .pttl{display:inline-flex;align-items:center;gap:4px;font-weight:600;font-size:13px}
 .ptsws{display:flex;flex-wrap:wrap;gap:4px}
+.ptbrands{margin:0 0 10px}.ptbrands .chip{display:inline-flex;align-items:center;gap:6px}.ptbrands .ptdot{width:10px;height:10px;border-radius:50%;background:var(--c);flex:none}
 .ptsw{width:22px;height:22px;border-radius:6px;border:1px solid #cbd5e1;background:var(--c);cursor:pointer;padding:0}
 .ptsw:hover{outline:2px solid #6366f1;outline-offset:1px}
 .ptbar .ptsel{color:#4b5563}
@@ -3620,7 +3621,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v255";
+const APP_VER = "v256";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -5891,11 +5892,17 @@ let PLAN_TXT = []; // v249 · Plan de posteo: { id:"YYYY-MM-DD", t, h, bg, fg, b
 const PT_BG = ["#ffffff","#fef3c7","#fde68a","#fed7aa","#fecaca","#fbcfe8","#e9d5ff","#c7d2fe","#bfdbfe","#a5f3fc","#bbf7d0","#d9f99d","#e5e7eb"];
 const PT_FG = ["#111827","#b91c1c","#c2410c","#a16207","#15803d","#0f766e","#1d4ed8","#7e22ce","#be185d","#6b7280"];
 const ptCan = () => ["Admin total","CM"].includes(viewer?.role);
-const ptGet = d => PLAN_TXT.find(x => x.id === d);
+// v256 · un Plan de posteo por cuenta (Superseis de entrada). Superseis guarda con la fecha sola (así quedan los días cargados
+// antes de separar por cuenta); las demás cuentas, con "Marca|YYYY-MM-DD".
+const PT_BRANDS = ["Superseis","Stock","Delimarket","Bianca","Clasipar","Dayo","PediWOW","Retail Institucional"];
+let ptBrand = "Superseis";
+const ptBrands = () => PT_BRANDS.filter(b => seesBrand(b));
+const ptKey = d => ptBrand === "Superseis" ? d : ptBrand + "|" + d;
+const ptGet = d => PLAN_TXT.find(x => x.id === ptKey(d));
 let ptCell = null; // el día elegido para pintar (la celda donde se está escribiendo)
 function ptSet(d, patch){
   let x = ptGet(d);
-  if (!x){ x = { id:d, t:"" }; PLAN_TXT.push(x); }
+  if (!x){ x = { id:ptKey(d), brand:ptBrand, t:"" }; PLAN_TXT.push(x); }
   Object.assign(x, patch, { by:viewer.name, at:new Date().toISOString() });
   for (const k of ["bg","fg"]) if (!x[k]) delete x[k];
 }
@@ -5918,9 +5925,11 @@ const ptHtml = x => x?.h ? ptClean(x.h) : esc(x?.t || "").replace(/\n/g, "<br>")
 const ptSave = el => ptSet(el.dataset.pttx, { h:ptClean(el.innerHTML), t:el.innerText.trim() });
 const PT_FMT = [["bold","bold","Negrita"],["sz:2","a-arrow-down","Letra chica"],["sz:3","type","Letra normal"],["sz:5","a-arrow-up","Letra grande"],["ol","list-ordered","Lista numerada"],["chk","list-checks","Checklist (tocá el cuadradito para tildar)"]];
 function pPlanTxt(){
-  const work = cmWork().filter(x => x.date), n = d => work.filter(x => x.date === d).length;
+  const bl = ptBrands(); if (bl.length && !bl.includes(ptBrand)) ptBrand = bl[0];
+  const work = cmWork().filter(x => x.date && x.brand === ptBrand), n = d => work.filter(x => x.date === d).length;
   const sw = (list, kind) => list.map(c => `<button type="button" class="ptsw" data-ptcolor="${kind}:${c}" style="--c:${c}" title="${kind === "bg" ? "Fondo" : "Letra"} ${c}" aria-label="${kind === "bg" ? "Color de fondo" : "Color de letra"} ${c}"></button>`).join("");
-  return `<div class="head"><div><h1 class="pmh">${pmIco("table-2")}Plan de posteo</h1><p class="sub">${monthLabel(MONTH)} · escribí en cada día lo que se va a publicar, como en la hoja de Excel. Se guarda solo.</p></div></div>
+  return `<div class="head"><div><h1 class="pmh">${pmIco("table-2")}Plan de posteo</h1><p class="sub">${monthLabel(MONTH)} · un calendario por cuenta: escribí en cada día lo que se va a publicar en <b>${esc(ptBrand)}</b>, como en la hoja de Excel. Se guarda solo.</p></div></div>
+  <div class="chips ptbrands" role="group" aria-label="Cuenta">${bl.map(b => `<button type="button" class="chip${b === ptBrand ? " on" : ""}" data-ptbrand="${esc(b)}" aria-pressed="${b === ptBrand}" style="--c:${BRANDS[b] || "#94a3b8"}"><span class="ptdot"></span>${esc(b)}</button>`).join("")}</div>
   <div class="ptbar"><span class="pttl">${icon("paint-bucket")} Fondo</span><div class="ptsws">${sw(PT_BG, "bg")}</div><span class="pttl">${icon("type")} Letra</span><div class="ptsws">${sw(PT_FG, "fg")}</div>
     <button type="button" class="btn sm" data-ptcolor="clear:">${icon("eraser")} Quitar colores</button>
     <span class="ptfmts" role="group" aria-label="Formato del texto">${PT_FMT.map(([k, i, l]) => `<button type="button" class="btn sm ib" data-ptfmt="${k}" title="${l}" aria-label="${l}">${icon(i)}</button>`).join("")}</span><span class="note ptsel">${ptCell ? `Pintando el ${dm(ptCell)}` : "Tocá un día y después un color"}</span></div>
@@ -5928,7 +5937,7 @@ function pPlanTxt(){
   ${calCells().map(c => { const x = ptGet(c), k = n(c), out = c.slice(0, 7) !== MONTH;
     return `<div class="d ptd ${out ? "out" : ""} ${c === TODAY ? "today" : ""} ${c === ptCell ? "ptsel" : ""}" data-ptday="${c}" style="${x?.bg ? `--ptbg:${x.bg};` : ""}${x?.fg ? `--ptfg:${x.fg};` : ""}">
       <div class="pth"><span class="dn">${+c.slice(8)}</span>${k ? `<button type="button" class="ptn" data-ptcal="${c}" title="Ver lo cargado en el Calendario de Actividades">${icon("calendar-range")} ${k}</button>` : ""}</div>
-      <div class="pttx" data-pttx="${c}" ${ptCan() ? `contenteditable="true"` : ""} role="textbox" aria-multiline="true" aria-label="Plan del ${dm(c)}">${ptHtml(x)}</div></div>`; }).join("")}</div></div>`;
+      <div class="pttx" data-pttx="${c}" ${ptCan() ? `contenteditable="true"` : ""} role="textbox" aria-multiline="true" aria-label="Plan de ${esc(ptBrand)} del ${dm(c)}">${ptHtml(x)}</div></div>`; }).join("")}</div></div>`;
 }
 document.addEventListener("input", e => { if (!e.target.dataset?.pttx || !ptCan()) return; ptSave(e.target); });
 document.addEventListener("paste", e => { if (!e.target.closest?.("[data-pttx]")) return; e.preventDefault(); document.execCommand("insertText", false, e.clipboardData.getData("text/plain")); }); // se pega solo el texto
@@ -5937,6 +5946,7 @@ document.addEventListener("focusin", e => { const d = e.target.dataset?.pttx; if
   const s = document.querySelector(".ptbar .ptsel"); if (s) s.textContent = `Pintando el ${dm(d)}`; });
 document.addEventListener("mousedown", e => { if (e.target.closest("[data-ptcolor],[data-ptfmt]")) e.preventDefault(); }); // el color y el formato no le sacan el foco a la celda
 document.addEventListener("click", e => {
+  const pb = e.target.closest("[data-ptbrand]"); if (pb){ ptBrand = pb.dataset.ptbrand; ptCell = null; render(); return; }
   const f = e.target.closest("[data-ptfmt]");
   if (f){ const ed = document.activeElement?.closest?.("[data-pttx]");
     if (!ptCan()) return; if (!ed) return toast("Tocá primero adentro de un día y elegí el texto.");
