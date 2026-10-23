@@ -3398,7 +3398,7 @@ function makePubOne(j, o, brand, old){
 }
 function approveJob(j, opts = {}){
   const cm = typeof opts === "string" ? opts : opts.cm || "", by = opts.by || "";
-  j.status = j.area === "CM" ? "Programado" : "Aprobado"; if (!j.approved) j.approved = TODAY; // en Diseño, Aprobado es el final del pedido; en CM, aprobado pasa a Programado
+  j.status = j.area === "CM" ? (CM_STAGES.indexOf(j.status) > CM_STAGES.indexOf("Programado") ? j.status : "Programado") : "Aprobado"; if (!j.approved) j.approved = TODAY; // en CM no vuelve atrás si ya estaba Publicado o Pautado; en Diseño, Aprobado es el final del pedido; en CM, aprobado pasa a Programado
   if (j.area !== "CM"){ if (!j.delivered) j.delivered = TODAY; const p = j.post && postById(j.post); if (p && p.status === "Pendiente") p.status = "En proceso"; }
   if (by) j.approvedBy = by; // quién aprobó (Alyssa, Patricia, Emanuel…): queda registrado
   if (contCopy(j) && !j.noCopy && !j.copyConf && jcopyHas(j)) copyLogAdd(j, "ok");
@@ -3417,7 +3417,7 @@ function approveJob(j, opts = {}){
     xs.forEach(p => notify({ to:cm, type:had.get(p.id) === cm ? "listo" : "pub", job:j.id, post:p.id, canal:!!p.channel })); }
   else if (cm){ notify({ to:cm, type:"listo", job:j.id }); j.cmNotified = cm; }
   render(); window.RMH?.flushNow?.();
-  toast(`Aprobado${j.area === "CM" ? ": pasó a Programado" : ""}${by ? ` por ${firstName(by)}` : ""}. Le avisamos a ${firstName(j.owner)}${x ? `${cm === j.owner ? "" : ` y a ${firstName(cm)} (CM)`}: “${x.title}” quedó en su calendario el ${dm(x.date)}${xs.length > 1 ? ` (${xs.length} publicaciones: ${xs.map(p => `${p.brand} ${p.channel ? "Canal" : p.format}`).join(", ")})` : ""}${opts.copy ? ", con el copy confirmado" : ""}` : cm ? ` y a ${firstName(cm)} (CM)` : ""}.`);
+  toast(`Aprobado${j.area === "CM" ? `: quedó en ${j.status}` : ""}${by ? ` por ${firstName(by)}` : ""}. Le avisamos a ${firstName(j.owner)}${x ? `${cm === j.owner ? "" : ` y a ${firstName(cm)} (CM)`}: “${x.title}” quedó en su calendario el ${dm(x.date)}${xs.length > 1 ? ` (${xs.length} publicaciones: ${xs.map(p => `${p.brand} ${p.channel ? "Canal" : p.format}`).join(", ")})` : ""}${opts.copy ? ", con el copy confirmado" : ""}` : cm ? ` y a ${firstName(cm)} (CM)` : ""}.`);
 }
 const jobRounds = j => (j.changes || []).filter(c => !c.ok && !c.kind).length; // cuántas veces se pidieron cambios
 function sendJobChanges(j, text, req = ""){
@@ -3556,7 +3556,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v245";
+const APP_VER = "v246";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -3685,9 +3685,9 @@ const OLD_CM_ST = j => ({ "En proceso":/grabaci|cobertura/i.test(j.piece || "") 
 // Diseño: el diseñador lo lleva hasta “Boceto finalizado”; la revisión (aprobar o pedir correcciones) la confirma solo Admin total.
 const JOB_STAGES = ["Pendiente","En proceso","Boceto finalizado","En revisión","En corrección","Corrección realizada","Aprobado"]; // Aprobado es el final (ya no hay “Entregado”)
 const REVIEW_WAIT = ["Boceto finalizado","Corrección realizada","En revisión","Revisión"]; // esperando que Admin total revise
-// v245: Admin total puede aprobar en cualquier etapa antes de la aprobación (no solo en Revisión): en CM, hasta antes de Programado.
-const jobCanApprove = j => !!j && viewer?.role === "Admin total" && !isClosed() && !isViewOnly() && !jobApproved(j) && j.status !== "Cancelado"
-  && (j.area === "CM" ? CM_STAGES.indexOf(j.status) >= 0 && CM_STAGES.indexOf(j.status) < CM_STAGES.indexOf("Programado") : !isFin(j));
+// v245: Admin total puede aprobar en cualquier etapa mientras no esté aprobado (no solo en Revisión).
+const jobCanApprove = j => !!j && viewer?.role === "Admin total" && !isClosed() && !isViewOnly() && j.status !== "Cancelado"
+  && (j.area === "CM" ? !j.approved && CM_STAGES.includes(j.status) : !jobApproved(j) && !isFin(j)); // v246: en CM también si el CM lo pasó a Programado o Publicado sin aprobación
 // Gestión de Video (pedidos a CM): Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado.
 // En Revisión, Admin total aprueba (pasa a Programado) o pide cambios (Corrección, con un mensaje).
 const CM_STAGES = ["Pendiente","Grabación","Edición","Revisión","Corrección","Programado","Publicado","Pautado"];
@@ -5466,7 +5466,7 @@ document.addEventListener("click", e => {
   const vid = kind === "job" || (kind === "rec" && it.r.kind === "Grabación");
   const colorOf = st => kind === "act" ? (st === "Pendiente" ? "#94a3b8" : SEM[semLvl(st)]) : vid ? (st === "Pendiente" ? "#94a3b8" : JOB_COLOR[st] || "#94a3b8") : (POST_COLOR[st] === "#334155" ? "#94a3b8" : POST_COLOR[st]);
   const pop = document.createElement("div"); pop.id = "stagepop"; pop.setAttribute("role", "menu");
-  pop.innerHTML = `<div class="sp-h">Etapa de “${esc(it.title)}”</div>${opts.map(st => `<button type="button" role="menuitemradio" aria-checked="${st === it.status}" class="${st === it.status ? "on" : ""}" data-stageset="${kind}:${id}|${esc(st)}" style="--c:${colorOf(st)}"><i></i>${esc(st)}${st === it.status ? " ✓" : ""}</button>`).join("")}${isDesigner() ? `<div class="sp-n">Aprobar y entregar lo hace Admin total.</div>` : ""}${kind === "job" && jobCanApprove(it) ? `<div class="sp-a"><button type="button" role="menuitem" data-jrev="approve:${esc(it.id)}" style="--c:#14b8a6">${icon("badge-check")}${it.area === "CM" ? "Aprobar (pasa a Programado)" : "Aprobar"}</button>${REVIEW_WAIT.includes(it.status) ? `<button type="button" role="menuitem" data-jrev="fix:${esc(it.id)}" style="--c:#f97316">${icon("pencil-line")}Pedir cambios</button>` : ""}</div>` : ""}`;
+  pop.innerHTML = `<div class="sp-h">Etapa de “${esc(it.title)}”</div>${opts.map(st => `<button type="button" role="menuitemradio" aria-checked="${st === it.status}" class="${st === it.status ? "on" : ""}" data-stageset="${kind}:${id}|${esc(st)}" style="--c:${colorOf(st)}"><i></i>${esc(st)}${st === it.status ? " ✓" : ""}</button>`).join("")}${isDesigner() ? `<div class="sp-n">Aprobar y entregar lo hace Admin total.</div>` : ""}${kind === "job" && jobCanApprove(it) ? `<div class="sp-a"><button type="button" role="menuitem" data-jrev="approve:${esc(it.id)}" style="--c:#14b8a6">${icon("badge-check")}${it.area === "CM" ? (CM_STAGES.indexOf(it.status) < CM_STAGES.indexOf("Programado") ? "Aprobar (pasa a Programado)" : "Aprobar") : "Aprobar"}</button>${REVIEW_WAIT.includes(it.status) ? `<button type="button" role="menuitem" data-jrev="fix:${esc(it.id)}" style="--c:#f97316">${icon("pencil-line")}Pedir cambios</button>` : ""}</div>` : ""}`;
   document.body.appendChild(pop);
   const r = b.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
   pop.style.left = Math.max(8, Math.min(r.left, innerWidth - pw - 8)) + "px";
@@ -5568,6 +5568,12 @@ function calDrag(kind, id){
   return calDateOk(d) ? ` draggable="true" data-drag="${kind}:${id}"` : ""; // también los aprobados/finalizados
 }
 const calHint = () => canCalMove() && !isClosed() ? `<p class="draghint">Tocá un contenido para abrirlo y editarlo${CM_CAL_KIND[page] ? "" : ", o tocá un día para cargar uno nuevo en esa fecha"}. Arrastrá un posteo o una entrega a otro día para cambiar la fecha; para pasarlo a otro mes, soltalo en los días grises o dejalo un momento sobre “‹ Anterior” / “Siguiente ›”.</p>` : "";
+// v246: los días del mes anterior o siguiente que se ven en el calendario (ej.: domingo 1/11 en la última fila de octubre)
+// también muestran sus publicaciones; antes quedaban vacíos y parecía que el domingo no se había cargado.
+const calOutPosts = () => { const cs = calCells(), a = cs[0], b = cs[cs.length - 1];
+  return posts.filter(p => p.date >= a && p.date <= b && p.date.slice(0, 7) !== MONTH && seesBrand(p.brand) && inFilter(p.brand)); };
+const calOutCanales = () => { const cs = calCells(), a = cs[0], b = cs[cs.length - 1];
+  return visibleCanales().filter(k => k.date >= a && k.date <= b && k.date.slice(0, 7) !== MONTH); };
 function calGrid(render, addable = false){
   return `<div class="calw${addable && !isClosed() ? " addable" : ""}"><div class="cal">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => `<div class="dh">${d}</div>`).join("")}
   ${calCells().map(c => { const inner = render(c), wd = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][new Date(c + "T12:00").getDay()];
@@ -5620,7 +5626,7 @@ function pCalCM(kind){
   return `${head}${adds}${gFilters("")}
   <div class="legend">${POST_STAGES.map(st => `<span><span class="sw" style="background:${SEM[semLvl(st)]}"></span>${st}</span>`).join("")}<span><span class="sw" style="background:${REC_KINDS[kind].c}"></span>${icon("repeat")} ${kind} repetitiva</span>${hist ? "" : `<span><span class="sw" style="background:${REC_KINDS["Grabación"].c}"></span>${icon("repeat")} Grabación repetitiva</span>`}</div>${calHint()}
   ${calGrid(c => remOn(c).map(remEv).join("") + inflOn(c).map(inflEv).join("") + rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("")
-    + vp.filter(p => p.date === c).map(p => `<div class="ev${sepCls(p.brand)}"${calDrag("post", p.id)}${canEditPost() ? ` data-open="post:${p.id}"` : ""} style="--c:${BRANDS[p.brand]};--s:${SEM[semLvl(p.status)]}" data-sem="${semLvl(p.status)}" title="${esc(p.title)} · ${p.net} ${p.format} · ${p.status} · ${esc(p.cm || "")}"><span>${postUrgency(p)?.late ? icon("alarm-clock") + " " : ""}${p.brand} · ${esc(p.title)}</span>${evStage("post", p, `${p.status} · ${p.net}${hist ? "" : " " + p.format} · ${esc(firstName(p.cm || ""))}`, SEM[semLvl(p.status)])}</div>`).join(""), false)}
+    + [...vp, ...calOutPosts().filter(p => (hist ? p.format === "Historia" : p.format !== "Historia") && soloPost(p))].filter(p => p.date === c).map(p => `<div class="ev${sepCls(p.brand)}"${calDrag("post", p.id)}${canEditPost() ? ` data-open="post:${p.id}"` : ""} style="--c:${BRANDS[p.brand]};--s:${SEM[semLvl(p.status)]}" data-sem="${semLvl(p.status)}" title="${esc(p.title)} · ${p.net} ${p.format} · ${p.status} · ${esc(p.cm || "")}"><span>${postUrgency(p)?.late ? icon("alarm-clock") + " " : ""}${p.brand} · ${esc(p.title)}</span>${evStage("post", p, `${p.status} · ${p.net}${hist ? "" : " " + p.format} · ${esc(firstName(p.cm || ""))}`, SEM[semLvl(p.status)])}</div>`).join(""), false)}
   <p class="note">${icon("repeat")} = repetitivo: se carga una sola vez y aparece solo en cada fecha. Tocá su etapa para cambiarla: sigue el mismo proceso (${hist ? "historias" : "feed"}: Pendiente → En proceso → Programado → Publicado → Pautado${hist ? "" : "; grabaciones: Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado"}).</p>
   ${postForm()}${jobForm()}${recDrawer()}`;
 }
@@ -5772,6 +5778,9 @@ function planEv(x){ const st = x.status, lv = semLvl(st), col = SEM[lv];
     return `<div class="pev" data-sem="${lv}" style="--sem:${col}"${x.rec || x.act ? "" : calDrag(sk, x.id)}${act} title="${PLAN_SEC(x)}: ${esc(x.title)} · ${x.brand} · ${x.act ? actType(x.a.type).t : x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${st} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} <b class="evk">${PLAN_SEC(x)}:</b> ${esc(x.title)}</span>${can2 ? `<button type="button" class="pst" data-stagemenu="${sk}:${sid}" style="--c:${col}" title="Cambiar la etapa">${st} ▾</button>` : `<em style="--c:${col}">${st}</em>`}${x.cm ? `<small class="pwho">${icon("user-round")} ${esc(firstName(x.cm))}</small>` : ""}${!x.rec && !x.vid && !x.canal && it?.fromJob && !jobApproved(jobById(it.fromJob)) ? `<small class="pwait">🎨 Diseño en proceso</small>` : ""}${!x.rec && !x.vid && it?.fromJob ? `<small class="pcopy ${it.copySt || "none"}">${it.time ? `🕒 ${esc(it.time)} · ` : ""}${it.noCopy ? "🚫 Sin copy" : { rev:"✍️ Copy por aprobar", fix:"✏️ Corregir copy", ok:"✅ Copy aprobado" }[it.copySt] || "✍️ Falta el copy"}</small>` : ""}</div>`; }
 const planDay = (c, items) => remOn(c).map(remPev).join("") + inflOn(c).map(inflPev).join("") + items.filter(x => x.date === c).map(planEv).join("");
 function planCal(items){
+  const byCm = x => cmUI.cm === "Todos" || x.cm === cmUI.cm;
+  const out = [...calOutPosts(), ...calOutCanales().map(k => ({ ...k, canal:true }))].filter(x => byCm(x) && soloPost(x) && cmStOk(x));
+  items = [...items, ...out];
   return `<div class="plcal">${calGrid(c => planDay(c, items), canEditPost())}</div>
   <p class="note">Todo lo de CM junto, cada uno con el punto de color de su marca, quién lo hace (abajo), su ícono (${icon("image")} feed, ${icon("smartphone")} historia, ${icon("message-circle")} Canal de WhatsApp, ${icon("clapperboard")} video, ${icon("repeat")} repetitivo) y la etapa de su proceso (el color va de rojo, pendiente, a verde, publicado). Los repetitivos siguen el proceso de su tipo. Tocá uno para editarlo, su etapa para cambiarla (${icon("chevron-down")}), o un día vacío para cargar algo en esa fecha.</p>`;
 }
