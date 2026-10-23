@@ -132,7 +132,7 @@ html.navmini .nav-group.closed > a{display:flex}
 .jcin textarea{flex:1;background:var(--inner);border:1px solid var(--line-3);border-radius:14px;color:var(--ink);padding:9px 12px;font:inherit;outline:none;resize:vertical}
 .jcin textarea:focus{border-color:var(--cyan)}
 /* ---------- Chat ---------- */
-.chatapp{display:grid;grid-template-columns:minmax(260px,330px) 1fr;gap:14px;height:calc(100dvh - 120px);min-height:460px}
+.chatapp{display:grid;grid-template-columns:minmax(260px,330px) minmax(0,1fr);gap:14px;height:calc(100dvh - 120px);min-height:360px;min-width:0} /* el alto exacto lo pone chatFit(): hasta el borde de abajo de la pantalla */
 .chlist,.chconv{background:var(--panel);border:1px solid var(--line);border-radius:22px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .chlist{padding:14px 10px;gap:4px;overflow-y:auto}
 .chhead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 6px 6px}
@@ -156,8 +156,9 @@ html.navmini .nav-group.closed > a{display:flex}
 .cavw .stdot{position:absolute;right:-1px;bottom:-1px;border:2px solid var(--panel)}
 .stdot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--c);flex:none}
 .stl{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted)}
-.chconv{position:relative}
-.cvhead{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line-2)}
+.chconv{position:relative;min-width:0}
+.cvhead{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;padding:12px 16px;border-bottom:1px solid var(--line-2)}
+.cvhead .grow{flex:1 1 140px}
 .cvhead b{display:block;font-size:16px;color:var(--ink)}
 .cvhead .grow{display:flex;flex-direction:column;gap:2px;min-width:0}
 .cvhead .btn.cback{display:none}
@@ -337,6 +338,13 @@ html.navmini .nav-group.closed > a{display:flex}
 .cvarch{padding:12px 16px;border-top:1px solid var(--line-2);color:var(--muted);font-size:13px}
 .empanel{position:absolute;bottom:calc(100% + 6px);left:8px;z-index:6;width:min(340px,calc(100vw - 40px));max-height:300px;overflow-y:auto;background:var(--panel);border:1px solid var(--line-3);border-radius:16px;padding:8px;box-shadow:0 20px 40px rgba(0,0,0,.4)}
 .rqpick+.empanel{left:auto;right:0;bottom:calc(100% + 50px)}
+.cvcomp .empanel{max-height:min(300px,45vh)}
+/* Reacciones y menú de un mensaje: van flotando sobre la conversación y siempre quedan adentro (chatPop) */
+.cpop{position:absolute;top:0;left:0;z-index:25;display:flex;flex-direction:column;align-items:flex-start;gap:6px;max-width:calc(100% - 16px);overflow-y:auto;overscroll-behavior:contain;visibility:hidden}
+.cpop.me{align-items:flex-end}
+.cpop .rqpick,.cpop .rqpick+.empanel{position:static;flex:none;background:#0b1222}
+.cpop .empanel{width:min(340px,100%);max-height:240px;flex:none}
+.cpop .cacts{margin-top:0;flex:none}
 .emg span{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin:6px 4px 2px}
 .emg div{display:grid;grid-template-columns:repeat(auto-fill,minmax(34px,1fr))}
 .emg button{all:unset;cursor:pointer;font-size:21px;text-align:center;padding:3px;border-radius:8px}
@@ -359,7 +367,7 @@ html.navmini .nav-group.closed > a{display:flex}
 .stin input{border:1px solid var(--line-3);background:var(--inner);border-radius:10px;padding:4px 8px;color:var(--ink);color-scheme:dark}
 .gmembers{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px}
 @media (max-width:760px){
-  .chatapp{grid-template-columns:1fr;height:calc(100dvh - 170px)}
+  .chatapp{grid-template-columns:minmax(0,1fr);height:calc(100dvh - 170px)}
   .chatapp .chconv{display:none}
   .chatapp.inconv .chlist{display:none}
   .chatapp.inconv .chconv{display:flex}
@@ -3612,7 +3620,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v254";
+const APP_VER = "v255";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -9399,6 +9407,40 @@ document.addEventListener("click", e => {
   const cc = e.target.closest("[data-cclear]"); if (cc){ if (!confirmTap(cc, "cclear:" + cc.dataset.cclear, "¿Vaciar? Tocá de nuevo")) return; clearChat(cc.dataset.cclear); }
 });
 document.addEventListener("change", e => { if (e.target.id === "chatPhoto"){ const f = e.target.files?.[0]; e.target.value = ""; if (f) sendPhoto(f); } });
+// Reacciones rápidas + menú del mensaje elegido. Se dibuja fuera de la lista de mensajes para que no lo corte
+// el borde de la conversación; chatPop() lo ubica al lado del mensaje.
+function reactPop(c){
+  const mid = chatUI.react, m = mid && findMsg(c, mid); if (!m || m.del) return "";
+  const mine = m.from === viewer.id;
+  return `<div class="cpop${mine ? " me" : ""}" data-pmid="${esc(mid)}"><div class="rqpick">${QUICK_RE.map(x => `<button type="button" data-re="${x}" data-rmid="${esc(mid)}">${x}</button>`).join("")}<button type="button" data-remore="${esc(mid)}" aria-label="Más emojis">＋</button></div>${chatUI.reactMore === mid ? emojiPanel("re:" + mid) : ""}${msgActions(m, mid, mine)}</div>`;
+}
+function chatPop(){
+  const p = document.querySelector(".chconv > .cpop"), cm = document.getElementById("cvMsgs"); if (!p || !cm) return;
+  const b = [...cm.querySelectorAll(".cmsg")].find(x => x.dataset.mid === p.dataset.pmid)?.querySelector(".cbub"); if (!b) return;
+  const box = p.parentElement, R = box.getBoundingClientRect(), z = R.width / box.offsetWidth || 1; // z: letra grande (zoom)
+  const M = cm.getBoundingClientRect(), br = b.getBoundingClientRect(), y = v => (v - R.top) / z, x = v => (v - R.left) / z;
+  const lo = y(M.top) + 6, hi = y(M.bottom) - 6;
+  p.style.maxHeight = Math.max(120, hi - lo) + "px";
+  const ph = p.offsetHeight, pw = p.offsetWidth, W = box.clientWidth;
+  const top = y(br.bottom) + 6 + ph <= hi ? y(br.bottom) + 6 : y(br.top) - 6 - ph >= lo ? y(br.top) - 6 - ph : hi - ph; // abajo del mensaje, si no entra arriba, si no lo más abajo posible
+  const left = p.classList.contains("me") ? x(br.right) - pw : x(br.left);
+  p.style.top = Math.max(lo, Math.min(hi - ph, top)) + "px";
+  p.style.left = Math.max(8, Math.min(W - 8 - pw, left)) + "px";
+  p.style.visibility = "visible";
+}
+// El chat ocupa justo hasta abajo de la pantalla (sin cortarse ni dejar que la página se desplace),
+// arranque donde arranque: con o sin la barra de “Volver”, el título y los avisos de arriba.
+function chatFit(){
+  const a = document.querySelector("#content .chatapp"); if (!a) return;
+  if (getComputedStyle(a).position === "fixed"){ a.style.height = ""; return; } // celular con la conversación abierta: ya ocupa toda la pantalla
+  const r = a.getBoundingClientRect(), z = r.width / a.offsetWidth || 1;
+  const tb = document.querySelector(".tabbar"), bot = tb && getComputedStyle(tb).display !== "none" ? tb.getBoundingClientRect().top : innerHeight;
+  let h = Math.max(360, Math.floor((bot - (r.top + scrollY) - 16) / z)); a.style.height = h + "px";
+  const extra = document.documentElement.scrollHeight - innerHeight; // márgenes de abajo de la página: que tampoco quede para desplazar
+  if (extra > 0 && h > 360){ h = Math.max(360, h - Math.ceil(extra / z)); a.style.height = h + "px"; }
+}
+addEventListener("resize", () => { if (page === "mensajes"){ chatFit(); chatPop(); } });
+document.addEventListener("scroll", e => { if (e.target.id === "cvMsgs") chatPop(); }, true);
 function bubbles(c){
   let lastDay = "", lastFrom = "";
   return c.msgs.map((m, i) => {
@@ -9413,7 +9455,6 @@ function bubbles(c){
     return `${sep}<div class="cmsg ${mine ? "me" : ""}" data-mid="${esc(mid)}">${!mine && c.kind === "g" ? (head ? `<span class="cmav">${who ? avatarHTML(who) : ""}</span>` : `<span class="cmav"></span>`) : ""}
       <div class="cbub${!m.text && !m.rp && !m.fw && ((m.stk && stkSrc(m.stk)) || m.gif || m.img?.id || m.img?.up) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.fw ? `<span class="cfw">${icon("forward")} Reenviado</span>` : ""}${m.rp ? `<button type="button" class="crq" data-cjump="${esc(m.rp.id)}"><b>${esc(m.rp.from === viewer.id ? "Vos" : nickOf(personById(m.rp.from)) || "")}</b><span>${esc(m.rp.t || "")}</span></button>` : ""}${m.stk && stkSrc(m.stk) ? `<span class="cstkw"><img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer" onerror="imgRetry(this)"><button type="button" class="cstkfav${stkFavs().includes(m.stk) ? " on" : ""}" data-stkfav="${esc(m.stk)}" title="${stkFavs().includes(m.stk) ? "Está en tus favoritos (tocá para quitarlo)" : "Guardar en mis favoritos"}" aria-label="${stkFavs().includes(m.stk) ? "Quitar de favoritos" : "Guardar en favoritos"}">${stkFavs().includes(m.stk) ? "★" : "☆"}</button></span>` : ""}${m.img?.id ? photoTag(m.img) : m.img?.up ? photoUp(m.img, m) : ""}${m.doc ? docTag(m.doc, m) : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${chatLinks(m.text)}</div>${chatPrev(m.text)}` : ""}${m.via ? `<span class="cvia">Prueba enviada por ${esc(nickOf(personById(m.via)) || m.via)} como ${esc(nickOf(who) || m.from)}</span>` : ""}<span class="ctime">${m.ed ? "editado · " : ""}${msgTime(m)}${mine ? msgTicks(m, c) : ""}</span>
         <button type="button" class="creact" data-react="${esc(mid)}" aria-label="Reaccionar">${icon("smile-plus")}</button>
-        ${chatUI.react === mid ? `<div class="rqpick">${QUICK_RE.map(x => `<button type="button" data-re="${x}" data-rmid="${esc(mid)}">${x}</button>`).join("")}<button type="button" data-remore="${esc(mid)}" aria-label="Más emojis">＋</button></div>${chatUI.reactMore === mid ? emojiPanel("re:" + mid) : ""}${msgActions(m, mid, mine)}` : ""}
       </div>
       ${re.length ? `<div class="cres">${re.map(([e, ids]) => `<button type="button" class="rchip ${ids.includes(viewer.id) ? "mine" : ""}" data-rewho="${esc(mid)}" aria-expanded="${chatUI.whoRe === mid}" title="${esc(ids.map(id => id === viewer.id ? "Vos" : nickOf(personById(id)) || id).join(", "))} · tocá para ver quiénes">${e} ${ids.length}</button>`).join("")}${chatUI.whoRe === mid ? reWho(re, mid) : ""}</div>` : ""}</div>`;
   }).join("") || `<div class="cempty">Todavía no hay mensajes. ¡Escribí el primero!</div>`;
@@ -9492,6 +9533,7 @@ function pMensajes(){
         ${c.kind === "g" && canEditGroup(c.g) ? `<button type="button" class="btn sm" data-gedit="${c.id}">${icon("settings")} Grupo</button>` : ""}</header>
       ${chatUI.docs ? docsPanel(c) : ""}
       <div class="cvmsgs" id="cvMsgs">${c.msgs.length || !clearedAt(chatUI.open) ? bubbles(c) : `<div class="cempty">Vaciaste este chat. Los mensajes nuevos van a aparecer acá.</div>`}</div>
+      ${chatUI.react ? reactPop(c) : ""}
       ${c.kind === "g" && c.g.archived ? `<div class="cvarch">Grupo archivado: se puede leer pero no escribir.</div>` : `<div class="cvcomp">
         <button type="button" class="btn ib" data-emopen aria-label="Emojis" aria-expanded="${chatUI.emoji}">${icon("smile")}</button>
         <button type="button" class="btn ib" data-stkopen aria-label="Stickers" title="Stickers" aria-expanded="${!!chatUI.stk}">${icon("sticker")}</button>
@@ -9569,7 +9611,7 @@ document.addEventListener("click", e => {
   if (chatUI.stk && !e.target.closest(".stkpanel")){ chatUI.stk = false; render(); }
   else if (chatUI.gif && !e.target.closest(".gifpanel")){ chatUI.gif = false; render(); }
   else if (chatUI.emoji && !e.target.closest(".empanel")){ chatUI.emoji = false; render(); }
-  else if (chatUI.react && !e.target.closest(".rqpick,.empanel")){ chatUI.react = null; chatUI.reactMore = null; render(); }
+  else if (chatUI.react && !e.target.closest(".cpop")){ chatUI.react = null; chatUI.reactMore = null; render(); }
 });
 // ----- Stickers: 10 bocetos con emociones que trae la app + la biblioteca del equipo en Google Drive (función “integraciones” de Supabase) -----
 const SK_FACE = (fill, inner) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" stroke="#1f2937" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M60 12C88 10 108 30 108 60c2 30-20 48-48 48-30 2-48-18-48-48-2-30 20-46 48-48z" fill="${fill}"/><path d="M58 15c27-1 46 18 47 44M16 66c2 24 18 40 42 41" stroke-width="2" opacity=".35"/>${inner}</svg>`;
@@ -13106,6 +13148,7 @@ function render(){
   if (animate || render.calPage !== page){ render.calPage = page; document.querySelectorAll("#content .calw").forEach(w => { const t = w.querySelector(".d.today"); if (t && w.scrollWidth > w.clientWidth + 4) w.scrollLeft = Math.max(0, t.offsetLeft - 8); }); } // si el calendario no entra, arranca mostrando hoy
   else if (calSL) document.querySelectorAll("#content .calw").forEach((w, i) => { if (calSL[i] != null) w.scrollLeft = calSL[i]; });
   document.documentElement.classList.toggle("chatfull", page === "mensajes" && !!chatUI.mob && !!chatUI.open);
+  if (page === "mensajes"){ chatFit(); chatPop(); }
   chatNotify(); jobPopCheck(); chatPreviews();
   if (window.lucide) lucide.createIcons();
   if (page === "tendg" || page === "tencm") gcseMount();
