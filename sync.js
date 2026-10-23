@@ -80,6 +80,7 @@ const RMH = (() => {
     CM_ACTS:[() => CM_ACTS, v => { CM_ACTS = Array.isArray(v) ? v : []; }], // actividades de CM (encuestas, fotos, DL, regalos, sorteos, vales) (v220)
     INFLUENCERS:[() => INFLUENCERS, v => { INFLUENCERS = Array.isArray(v) ? v : []; }], // cumpleaños de influencers de las marcas (solo Admin total y CM)
     ESCRACHES:[() => ESCRACHES, v => { ESCRACHES = Array.isArray(v) ? v : []; }], // Búsqueda de Escraches: los cargados y las marcas (solo Admin total, Admin y CM)
+    PEDIDOS_COM:[() => PEDIDOS_COM, v => { PEDIDOS_COM = Array.isArray(v) ? v : []; }], // v242: pedidos de activaciones de Comercial (los compradores)
   };
   // Claves que solo existen para Admin total (la base no se las deja leer ni guardar al resto).
   const ADMIN_ONLY = new Set(["s:SUGGESTIONS", "s:SURVEYS"]);
@@ -176,7 +177,9 @@ const RMH = (() => {
   const READONLY = new Set(["s:META_FOLLOWERS", "s:META_DEMO", "s:META_POSTS", "s:META_CREATIVES", "s:META_INBOX", "s:META_REFS", "s:COMERCIAL", "s:META_DM", "s:META_DM_LOG", "s:META_IG_ACT"]);
   // El Revisor (usuario de la revisión de Meta) solo guarda “contestado” y su presencia: la base tampoco le deja otra cosa.
   const REVISOR_SAVE = new Set(["s:INBOX_DONE", "s:PRESENCE"]);
-  const noSave = k => READONLY.has(k) || (ADMIN_WRITE.has(k) && !isAT()) || (member?.role === "Revisor" && !REVISOR_SAVE.has(k));
+  // Comercial (los compradores) solo guarda sus pedidos, su presencia y su perfil: la base tampoco le deja otra cosa.
+  const COMERCIAL_SAVE = new Set(["s:PEDIDOS_COM", "s:PRESENCE", "s:PEOPLE"]);
+  const noSave = k => READONLY.has(k) || (ADMIN_WRITE.has(k) && !isAT()) || (member?.role === "Revisor" && !REVISOR_SAVE.has(k)) || (member?.role === "Comercial" && !COMERCIAL_SAVE.has(k));
   function dirtyKeys(){ return localKeys().filter(k => { if (noSave(k) || getLocal(k) === undefined) return false; const b = base.get(k); return !b || b.v === 0 || C(enc(getLocal(k))) !== b.json; }); }
   async function saveKey(key){
     if (noSave(key)) return;
