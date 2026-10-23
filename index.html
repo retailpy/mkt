@@ -3612,7 +3612,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v252";
+const APP_VER = "v253";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -12120,8 +12120,8 @@ const comKeyOf = f => (f.brand || "Superseis") + "|" + (f.cat || "quincenal"); /
 const comFolderUrl = (key = comUI.cat, fid) => { const [b, c] = key.split("|"); return "https://drive.google.com/drive/folders/" + (fid || (COM_FOLDER[c] ? comFids(key)[0] : COM_FOLDER.quincenal.Superseis)); };
 // Si de una quincena está la versión “FINAL” del Excel (Stock), se muestra esa y no la de “PUBLICADAS” de las mismas fechas.
 // Si hay más de un FINAL de las mismas fechas, uno solo: el que está en Drive, el de «MKT - FOLLETOS» y el más nuevo, en ese orden.
-// Quincenales: lo que viene sale solo del FINAL de «MKT - FOLLETOS»; lo de las carpetas de antes queda solo si ya empezó (historial).
-const comAllOf = key => { const l = Object.values(COMERCIAL.files || {}).filter(f => f.from && f.to && comKeyOf(f) === key && !(key.endsWith("|quincenal") && f.src !== COM_FOLLETOS && f.from > TODAY)), fin = {};
+// Quincenales de Superseis y Stock: SOLO los Excel FINAL de «MKT - FOLLETOS» (nada de las carpetas de antes, aunque esté vigente).
+const comAllOf = key => { const l = Object.values(COMERCIAL.files || {}).filter(f => f.from && f.to && comKeyOf(f) === key && !(key.endsWith("|quincenal") && (f.src !== COM_FOLLETOS || !f.final))), fin = {};
   const pts = f => [f.inDrive !== false ? 1 : 0, f.src === COM_FOLLETOS ? 1 : 0, f.modified || ""];
   const mejor = (a, b) => { const x = pts(a), y = pts(b); return x[0] - y[0] || x[1] - y[1] || String(x[2]).localeCompare(String(y[2])); };
   for (const f of l) if (f.final){ const k = f.from + "|" + f.to; if (!fin[k] || mejor(f, fin[k]) > 0) fin[k] = f; }
@@ -12310,7 +12310,7 @@ function pComercial(){
   if (!comUI.auto && !window.RMH?.previewing){ comUI.auto = true; if (!COMERCIAL.syncedAt || Date.now() - Date.parse(COMERCIAL.syncedAt) > 3 * 3600e3) setTimeout(() => comSync(false), 0); }
   const f0 = per.find(x => x.id === comUI.id) || per[0];
   const head = `<div class="comhero">${COM_ART}<div class="grow"><h1>Ofertas de Comercial</h1><p>Todas las ofertas de Superseis, Stock y Delimarket en un solo lugar.</p></div>
-    <div class="comacts">${f0 ? `<button class="btn" type="button" data-comxls>${icon("download")} Excel</button><button class="btn" type="button" data-compdf>${icon("file-text")} PDF</button>` : ""}<a class="btn" href="https://drive.google.com/drive/folders/${COM_ROOT}" target="_blank" rel="noopener" title="Abre la carpeta general de Drive («OFERTAS DIVISION») con las carpetas de todas las ofertas">${icon("folder-open")} Carpeta de Comercial (Drive)</a><button class="btn" type="button" data-comsync ${comUI.busy ? "disabled" : ""}>${icon("refresh-cw")} ${comUI.busy ? "Revisando…" : "Actualizar"}</button></div></div>` + comHub();
+    <div class="comacts">${f0 ? `<button class="btn" type="button" data-comxls>${icon("download")} Excel</button><button class="btn" type="button" data-compdf>${icon("file-text")} PDF</button>` : ""}<a class="btn" href="${comUI.cat.endsWith("|quincenal") ? comFolderUrl(comUI.cat) : "https://drive.google.com/drive/folders/" + COM_ROOT}" target="_blank" rel="noopener" title="${comUI.cat.endsWith("|quincenal") ? "Abre «MKT - FOLLETOS»: la carpeta de las quincenales (Excel FINAL)" : "Abre la carpeta general de Drive («OFERTAS DIVISION») con las carpetas de todas las ofertas"}">${icon("folder-open")} ${comUI.cat.endsWith("|quincenal") ? "Carpeta MKT - FOLLETOS (Drive)" : "Carpeta de Comercial (Drive)"}</a><button class="btn" type="button" data-comsync ${comUI.busy ? "disabled" : ""}>${icon("refresh-cw")} ${comUI.busy ? "Revisando…" : "Actualizar"}</button></div></div>` + comHub();
   if (!per.length) return head + `<div class="panel"><div class="empty comempty">${comEmptyMsg(comUI.cat)}</div>${comPending(comUI.cat)}</div>`;
   const f = f0; comUI.id = f.id;
   const chips = per.slice(0, 4), older = per.slice(4);
