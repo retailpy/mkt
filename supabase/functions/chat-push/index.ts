@@ -155,6 +155,14 @@ async function pedidoPush(cfg: any, items: any[]) {
   const now = Date.now(), brands = (p: any) => (Array.isArray(p.brands) ? p.brands : []).join(" + ");
   let sent = 0;
   for (const p of list) {
+    if (p.ev === "msg") { // v244: mensaje en un pedido. Del comprador → a Admin total; de Marketing → al comprador.
+      const m = p.m || {}, fromBuyer = String(m.by || "") === String(p.by || "");
+      const to = (fromBuyer ? (admins || []).map((x) => x.person_id) : [String(p.by || "")]).filter((id) => id && id !== m.by && !isDnd(presence[id], now));
+      if (!to.length || !m.text) continue;
+      const payload = JSON.stringify({ title: `💬 ${String(m.name || "Mensaje").split(" ")[0]} · ${short(String(p.title), 60)}`, body: short(String(m.text), 220), tag: "rmh-pcm-" + p.id, open: "", go: "com:" + p.id });
+      sent += await send(cfg, [...new Set(to)], () => payload);
+      continue;
+    }
     const pub = p.ev === "pub";
     const to = (pub ? [String(p.by || "")] : (admins || []).map((m) => m.person_id)).filter((id) => id && id !== (pub ? "" : p.by) && !isDnd(presence[id], now));
     if (!to.length) continue;
