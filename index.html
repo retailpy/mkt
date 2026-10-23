@@ -3568,7 +3568,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v246";
+const APP_VER = "v248";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -3805,8 +3805,8 @@ function loadBar(title, L, big = false){
     ${ltrack(L)}
     <div class="pmeta">${meta}</div></div>`;
 }
-const LOAD_LEGEND_CM = `<div class="llegend"><span>Carga CM = tiempo estimado de lo que le falta de esta semana (lunes a domingo) ÷ sus horas disponibles de la semana × 100. 100 % = capacidad completa; más de 100 %, sobrecarga. Las horas son estimadas.</span><span><i style="background:#10b981"></i>Zona ideal (menos de 50 %)</span><span><i style="background:#eab308"></i>Carga alta</span><span><i style="background:#f97316"></i>Al límite</span><span><i style="background:#ef4444"></i>Sobrecargado</span></div>`;
-const LOAD_LEGEND = `<div class="llegend"><span>Diseño gráfico: trabajos sin finalizar según complejidad (Baja 1 · Media 2 · Alta 3) sobre ${LOAD_FULL} puntos por persona. CM: tiempo estimado de lo que le falta esta semana sobre sus horas disponibles (100 % = capacidad completa). Lo ideal es la zona verde.</span><span><i style="background:#10b981"></i>Zona ideal (menos de 50 %)</span><span><i style="background:#eab308"></i>Carga alta</span><span><i style="background:#f97316"></i>Al límite</span><span><i style="background:#ef4444"></i>Sobrecargado</span></div>`;
+const LOAD_LEGEND_CM = `<div class="llegend"><span>Carga CM = tiempo estimado de todo lo asignado esta semana (lunes a domingo, hecho y pendiente) ÷ sus horas de la semana completa × 100. 100 % = capacidad completa; más de 100 %, sobrecarga. Las horas son estimadas.</span><span><i style="background:#10b981"></i>Zona ideal (menos de 50 %)</span><span><i style="background:#eab308"></i>Carga alta</span><span><i style="background:#f97316"></i>Al límite</span><span><i style="background:#ef4444"></i>Sobrecargado</span></div>`;
+const LOAD_LEGEND = `<div class="llegend"><span>Diseño gráfico: trabajos sin finalizar según complejidad (Baja 1 · Media 2 · Alta 3) sobre ${LOAD_FULL} puntos por persona. CM: tiempo estimado de lo asignado esta semana sobre sus horas de la semana (100 % = capacidad completa). Lo ideal es la zona verde.</span><span><i style="background:#10b981"></i>Zona ideal (menos de 50 %)</span><span><i style="background:#eab308"></i>Carga alta</span><span><i style="background:#f97316"></i>Al límite</span><span><i style="background:#ef4444"></i>Sobrecargado</span></div>`;
 function loadChart(groups, cls = ""){
   const all = groups.flatMap(g => g.people.map(pp => ({ pp, ...loadOf(pp.name) })));
   const max = Math.max(100, ...all.map(x => Math.min(x.pct ?? 0, 200)));
@@ -3851,7 +3851,7 @@ const nowMin = () => { const n = new Date(); return n.getHours() * 60 + n.getMin
 const DONE_PUB = ["Programado","Publicado","Pautado"];
 const POST_TIME_KEY = p => p.format === "Historia" ? "historia" : p.format === "Carrusel" ? "carrusel" : p.format === "Reel" ? "reel" : "post";
 // Cuentas que atiende cada CM en Mensajes (las elige Admin total; si no, las marcas que tiene a cargo).
-const cmAccounts = pp => { const a = CM_LOAD.accounts?.[pp.id]; return Array.isArray(a) ? a : Object.keys(CM_BY_BRAND).filter(b => CM_BY_BRAND[b] === pp.name && BRANDS[b] && b !== "Retail Institucional"); };
+const cmAccounts = pp => { const a = CM_LOAD.accounts?.[pp.id]; return Array.isArray(a) ? a : Object.keys(CM_BRAND_IDS).filter(b => cmOfBrand(b) === pp.name && BRANDS[b] && b !== "Retail Institucional"); };
 // Horario de una persona en un día: minutos disponibles (sin la pausa). null = no está configurado.
 const CM_AVAIL_DEF = [0,1,2,3,4,5,6].map(i => i < 5 ? { from:"08:00", to:"17:00", pause:60 } : { off:true }); // horario de oficina, si no se cargó otro
 const cmDay = (pp, wd) => { const av = CM_LOAD.avail?.[pp.id] || CM_AVAIL_DEF; const d = av[wd]; if (!d || d.off) return { from:0, to:0, pause:0, min:0 };
@@ -3865,58 +3865,69 @@ function cmOffMin(pp, d, dayMin){ let m = 0;
     if (d === TODAY && st !== null){ const end = st + dur, now = nowMin(); if (end <= now) return; m += Math.max(0, end - Math.max(st, now)); return; }
     m += dur; });
   return Math.min(dayMin, m); }
-// Minutos disponibles entre dos fechas (hoy, lo que falta del día), ya descontadas ausencias y reuniones.
-function cmAvailRange(pp, from, end){
+// Minutos disponibles entre dos fechas, ya descontadas ausencias y reuniones. Con left = true, de hoy cuenta solo lo que falta del día.
+function cmAvailRange(pp, from, end, left = true){
   let tot = 0;
   for (let d = from; d <= end; d = addDays(d, 1)){ const day = cmDay(pp, wdOf(d)); if (!day.min) continue;
-    let left = day.min;
-    if (d === TODAY){ const now = nowMin(); left = now <= day.from ? day.min : now >= day.to ? 0 : Math.round((day.to - now) * day.min / (day.to - day.from)); }
-    tot += Math.max(0, left - cmOffMin(pp, d, left)); }
+    let m = day.min;
+    if (left && d === TODAY){ const now = nowMin(); m = now <= day.from ? day.min : now >= day.to ? 0 : Math.round((day.to - now) * day.min / (day.to - day.from)); }
+    tot += Math.max(0, m - (left ? cmOffMin(pp, d, m) : cmOffFull(pp, d, m))); }
   return tot; }
-// La carga es de UNA semana (lunes a domingo): solo cuenta lo de esa semana, no lo atrasado del mes. Si ya no le quedan
-// horas esta semana (sábado, domingo o viernes después de hora), se muestra la semana que viene.
+// Ausencias y reuniones de un día completo (sin mirar la hora actual).
+const cmOffFull = (pp, d, dayMin) => Math.min(dayMin, (CM_LOAD.off || []).filter(o => o.who === pp.id && o.date === d).reduce((a, o) => a + (o.allDay ? Infinity : Math.max(0, (+o.hours || 0) * 60)), 0));
+// v248: la carga es lo ASIGNADO en la semana (lunes a domingo, hecho y pendiente) sobre las horas de la semana completa.
+// Antes era lo que falta sobre las horas que quedan: a fin de semana se inflaba (viernes 16:20 con 37 min libres → 757 %).
+// Así es estable de lunes a viernes y sirve para comparar y repartir. Si ya no le quedan horas esta semana, se muestra la que viene.
 function cmWeek(pp){
   const mon = addDays(TODAY, -wdOf(TODAY)), sun = addDays(mon, 6), left = cmAvailRange(pp, TODAY, sun);
-  if (left > 0) return { from:mon, to:sun, avail:left, next:false };
-  const m2 = addDays(mon, 7), s2 = addDays(m2, 6); return { from:m2, to:s2, avail:cmAvailRange(pp, m2, s2), next:true }; }
-const cmAvailLeft = pp => cmWeek(pp).avail;
-// Días que trabaja en lo que queda de esa semana (para la atención diaria de Mensajes).
-const cmWorkDaysLeft = (pp, wk = cmWeek(pp)) => { const out = [], end = wk.to; for (let d = wk.from > TODAY ? wk.from : TODAY; d <= end; d = addDays(d, 1)){ const day = cmDay(pp, wdOf(d)); if (day && day.min && !(CM_LOAD.off || []).some(o => o.who === pp.id && o.date === d && o.allDay)) out.push(d); } return out; };
+  if (left > 0) return { from:mon, to:sun, avail:cmAvailRange(pp, mon, sun, false), left, next:false };
+  const m2 = addDays(mon, 7), s2 = addDays(m2, 6), av = cmAvailRange(pp, m2, s2, false); return { from:m2, to:s2, avail:av, left:av, next:true }; }
+// Días que trabaja esa semana (para la atención diaria de Mensajes).
+const cmWorkDaysLeft = (pp, wk = cmWeek(pp)) => { const out = [], end = wk.to; for (let d = wk.from; d <= end; d = addDays(d, 1)){ const day = cmDay(pp, wdOf(d)); if (day && day.min && !(CM_LOAD.off || []).some(o => o.who === pp.id && o.date === d && o.allDay)) out.push(d); } return out; };
 const dutyOf = (pp, d) => MSG_DUTY[pp.id + "|" + d];
-// Lo que le falta hacer esta semana a un CM, por función, con su tiempo estimado (en minutos).
+// Lo asignado a un CM en la semana, por función: t = tiempo estimado completo, left = lo que falta (0 si ya está hecho). En minutos.
 function cmPending(pp){
-  const name = pp.name, wk = cmWeek(pp), end = wk.to, from = wk.from, items = [], add = (fn, t, x) => items.push({ fn, t, ...x }); // solo lo de esa semana
+  const name = pp.name, wk = cmWeek(pp), end = wk.to, from = wk.from, items = [], add = (fn, t, x, left = t) => items.push({ fn, t, left, done:left === 0, ...x }); // solo lo de esa semana
   const vidJobs = jobs.filter(j => j.area === "CM" && !j.ex);
   const inVideo = id => vidJobs.some(j => j.post === id || j.pub?.id === id); // la publicación de un video ya está en su tiempo
-  posts.filter(p => p.cm === name && !p.ex && p.date >= from && p.date <= end && !DONE_PUB.includes(p.status) && !inVideo(p.id)).forEach(p => {
-    const k = POST_TIME_KEY(p); add(p.format === "Historia" ? "historias" : "redes", cmTime(k), { title:p.title, brand:p.brand, date:p.date, st:p.status, what:p.format }); });
-  CHANNEL_POSTS.filter(k => k.cm === name && k.date >= from && k.date <= end && !DONE_PUB.includes(k.status)).forEach(k => add("canal", cmTime("canal"), { title:k.title, brand:k.brand, date:k.date, st:k.status, what:"Canal" }));
-  // Repetitivos de la semana (desde el lunes) que todavía no están hechos
+  posts.filter(p => p.cm === name && !p.ex && p.date >= from && p.date <= end && p.status !== "Cancelado" && !inVideo(p.id)).forEach(p => {
+    const k = POST_TIME_KEY(p), t = cmTime(k); add(p.format === "Historia" ? "historias" : "redes", t, { title:p.title, brand:p.brand, date:p.date, st:p.status, what:p.format }, DONE_PUB.includes(p.status) ? 0 : t); });
+  CHANNEL_POSTS.filter(k => k.cm === name && k.date >= from && k.date <= end && k.status !== "Cancelado").forEach(k => { const t = cmTime("canal"); add("canal", t, { title:k.title, brand:k.brand, date:k.date, st:k.status, what:"Canal" }, DONE_PUB.includes(k.status) ? 0 : t); });
+  // Repetitivos de la semana (desde el lunes)
   const mon = from;
-  RECURRING.filter(r => r.owner === name).forEach(r => { for (let d = mon; d <= end; d = addDays(d, 1)){ if (!recOn(r, d)) continue; const st = recSt(r, d); if (DONE_PUB.includes(st)) continue;
-    if (r.kind === "Grabación"){ const v = cmTime("video"); add("videos", v === null ? null : v * vidLeft(st), { title:r.title, brand:r.brand, date:d, st, what:"Grabación repetitiva" }); }
-    else add(r.kind === "Historia" ? "historias" : r.kind === "Canal" ? "canal" : "redes", cmTime(r.kind === "Historia" ? "historia" : r.kind === "Canal" ? "canal" : "post"), { title:r.title, brand:r.brand, date:d, st, what:"Repetitivo" }); } });
-  jobs.filter(j => j.area === "Contenidos" && !j.ex && j.owner === name && !isClosedJob(j) && j.due >= from && j.due <= end).forEach(j => { const c = cmTime("contenido");
-    add("contenidos", c === null ? null : c * (CONT_LEFT[j.status] ?? 100) / 100, { title:j.title, brand:j.brand, date:j.due, st:j.status, what:cmPiece(j) }); });
-  // Videos: lo que falta según la etapa, más el traslado (una sola vez por visita compartida)
+  RECURRING.filter(r => r.owner === name).forEach(r => { for (let d = mon; d <= end; d = addDays(d, 1)){ if (!recOn(r, d)) continue; const st = recSt(r, d), dn = DONE_PUB.includes(st);
+    if (r.kind === "Grabación"){ const v = cmTime("video"); add("videos", v, { title:r.title, brand:r.brand, date:d, st, what:"Grabación repetitiva" }, v === null ? null : dn ? 0 : v * vidLeft(st)); }
+    else { const t = cmTime(r.kind === "Historia" ? "historia" : r.kind === "Canal" ? "canal" : "post"); add(r.kind === "Historia" ? "historias" : r.kind === "Canal" ? "canal" : "redes", t, { title:r.title, brand:r.brand, date:d, st, what:"Repetitivo" }, dn ? 0 : t); } } });
+  jobs.filter(j => j.area === "Contenidos" && !j.ex && j.owner === name && j.status !== "Cancelado" && j.due >= from && j.due <= end).forEach(j => { const c = cmTime("contenido");
+    add("contenidos", c, { title:j.title, brand:j.brand, date:j.due, st:j.status, what:cmPiece(j) }, c === null ? null : isClosedJob(j) ? 0 : c * (CONT_LEFT[j.status] ?? 100) / 100); });
+  // Videos: el tiempo completo y lo que falta según la etapa, más el traslado (una sola vez por visita compartida)
   const visits = new Set();
-  vidJobs.filter(j => j.owner === name && j.status !== "Cancelado" && j.due >= from && j.due <= end && vidLeft(j.status) > 0).forEach(j => { const v = cmTime("video"); // los videos de esa semana
-    add("videos", v === null ? null : v * vidLeft(j.status), { title:j.title, brand:j.brand, date:j.due, st:j.status, what:cmPiece(j) });
-    if (["Pendiente","Grabación"].includes(j.status) && (j.traslado || j.visita)){ const key = (j.visita || "").trim().toLowerCase() || "j:" + j.id; if (visits.has(key)) return; visits.add(key);
-      add("videos", j.traslado === "" || j.traslado === undefined ? null : +j.traslado, { title:`Traslado${j.visita ? ": " + j.visita : ""}`, brand:j.brand, date:j.due, st:"", what:"Traslado", trip:true }); } });
+  vidJobs.filter(j => j.owner === name && j.status !== "Cancelado" && j.due >= from && j.due <= end).forEach(j => { const v = cmTime("video"); // los videos de esa semana
+    add("videos", v, { title:j.title, brand:j.brand, date:j.due, st:j.status, what:cmPiece(j) }, v === null ? null : v * vidLeft(j.status));
+    if (j.traslado || j.visita){ const key = (j.visita || "").trim().toLowerCase() || "j:" + j.id; if (visits.has(key)) return; visits.add(key);
+      const tr = j.traslado === "" || j.traslado === undefined ? null : +j.traslado;
+      add("videos", tr, { title:`Traslado${j.visita ? ": " + j.visita : ""}`, brand:j.brand, date:j.due, st:"", what:"Traslado", trip:true }, ["Pendiente","Grabación"].includes(j.status) ? tr : 0); } });
   // Otras actividades (encuestas, fotos, DL, regalos, sorteos, vales): lo que falta según el estado (v220)
-  CM_ACTS.filter(a => a.owner === name && a.date >= from && a.date <= end && a.status !== "Hecho").forEach(a => { const t = cmTime("actividad");
-    add("actividades", t === null ? null : a.status === "En proceso" ? t / 2 : t, { title:a.title, brand:a.brand, date:a.date, st:a.status, what:actType(a.type).t }); });
+  CM_ACTS.filter(a => a.owner === name && a.date >= from && a.date <= end).forEach(a => { const t = cmTime("actividad");
+    add("actividades", t, { title:a.title, brand:a.brand, date:a.date, st:a.status, what:actType(a.type).t }, t === null ? null : a.status === "Hecho" ? 0 : a.status === "En proceso" ? t / 2 : t); });
   // Mensajes: una responsabilidad por día de trabajo, con sus cuentas (no una tarea por mensaje)
   const acc = cmAccounts(pp);
-  if (acc.length) cmWorkDaysLeft(pp, wk).filter(d => !dutyOf(pp, d)).forEach(d => add("mensajes", cmTime("mensajes"), { title:`Atención de ${acc.join(", ")}`, brand:acc[0], date:d, st:"Pendiente", what:"Mensajes del día" }));
+  if (acc.length) cmWorkDaysLeft(pp, wk).forEach(d => { const t = cmTime("mensajes"), dn = !!dutyOf(pp, d); add("mensajes", t, { title:`Atención de ${acc.join(", ")}`, brand:acc[0], date:d, st:dn ? "Atendido" : "Pendiente", what:"Mensajes del día" }, dn ? 0 : t); });
   return items; }
-// Carga de un CM: % y desglose. Si falta el horario o algún tiempo, lo dice (no se toma como cero).
+// Carga de un CM: % (lo asignado en la semana ÷ horas de la semana) y desglose. Si falta algún tiempo, lo dice (no se toma como cero).
 function cmLoad(pp){
-  const wk = cmWeek(pp), items = cmPending(pp), unknown = items.filter(x => x.t === null), min = items.reduce((a, x) => a + (x.t || 0), 0), avail = wk.avail;
-  const by = Object.fromEntries(CM_FUNCS.map(([k]) => [k, { n:0, min:0, unk:0 }])); items.forEach(x => { const b = by[x.fn]; b.n++; if (x.t === null) b.unk++; else b.min += x.t; });
+  const wk = cmWeek(pp), all = cmPending(pp), items = all.filter(x => !x.done), unknown = all.filter(x => x.t === null), min = all.reduce((a, x) => a + (x.t || 0), 0), left = items.reduce((a, x) => a + (x.left || 0), 0), avail = wk.avail;
+  const by = Object.fromEntries(CM_FUNCS.map(([k]) => [k, { n:0, min:0, unk:0, done:0 }])); all.forEach(x => { const b = by[x.fn]; b.n++; if (x.done) b.done++; if (x.t === null) b.unk++; else b.min += x.t; });
   const pct = avail === null ? null : avail > 0 ? Math.round(min / avail * 100) : min > 0 ? 999 : 0;
-  return { items, n:items.length, min, avail, pct, by, unknown:unknown.length, defAvail:!cmHasAvail(pp), week:wk, missing:unknown.length ? "estimación" : "" }; }
+  return { items, all, n:items.length, total:all.length, min, left, done:Math.max(0, min - left), avail, leftAvail:wk.left, pct, by, unknown:unknown.length, defAvail:!cmHasAvail(pp), week:wk, missing:unknown.length ? "estimación" : "" }; }
+// Para repartir (v248): al elegir el CM de un trabajo, cada uno aparece con su % de la semana y se sugiere quien menos carga tiene.
+const cmLoadPct = name => { const pp = PEOPLE.find(x => x.name === name && x.role === "CM" && x.active); return pp ? cmLoad(pp).pct : null; };
+const cmSuggest = () => CM_NAMES().map(n => ({ n, p:cmLoadPct(n) })).filter(x => x.p !== null).sort((a, b) => a.p - b.p)[0]?.n || "";
+const cmOwnerOpts = (list, cur) => { const sg = cmSuggest(); return list.map(n => { const p = CM_NAMES().includes(n) ? cmLoadPct(n) : null;
+  return `<option value="${esc(n)}" ${n === cur ? "selected" : ""}>${esc(n)}${p === null ? "" : ` · ${p >= 999 ? "+100" : p} % esta semana`}${n === sg ? " · menos carga" : ""}</option>`; }).join(""); };
+const cmSuggestNote = (selId, cur) => { const sg = cmSuggest(); return sg && sg !== cur ? `<p class="note cmsug" style="grid-column:1/-1;margin:-4px 0 0">${icon("scale")} Para repartir parejo: <button type="button" class="linkish" data-cmsug="${esc(sg)}" data-for="${selId}">asignarle a ${esc(firstName(sg))}</button>, que es quien menos carga tiene esta semana (${cmLoadPct(sg)} %).</p>` : ""; };
+document.addEventListener("click", e => { const b = e.target.closest("[data-cmsug]"); if (!b) return; const sel = document.getElementById(b.dataset.for); if (!sel) return;
+  sel.value = b.dataset.cmsug; sel.dispatchEvent(new Event("change", { bubbles:true })); b.closest(".cmsug")?.remove(); });
 // Color y texto de la carga (también cuando falta el horario: no se toma como cero).
 const lvOf = L => L.pct === null || L.pct === undefined ? { c:"#94a3b8", t:L.cm ? "Falta el horario" : "Sin datos", k:"none" } : L.cm && L.avail === 0 && L.min > 0 ? { c:"#ef4444", t:"Sin horas disponibles", k:"red" } : loadLevel(L.pct);
 const pctHTML = L => L.pct === null || L.pct === undefined ? "—" : L.pct >= 999 ? "+100%" : `<span data-count="${L.pct}">${L.pct}</span>%`;
@@ -4002,9 +4013,11 @@ const pieceTag = pc => `<span class="ptag">${icon(PIECE_ICO[pc] || "shapes")}${e
 // Tipo de un pedido en tablas y tarjetas: Diseño con su ícono; “Otro” con lo que dice Actividades; videos con formato y tema.
 const jobPieceTag = j => j.piece === OTRO ? `<span class="ptag">${icon("shapes")}${esc(cmPiece(j))}</span>` : j.area === "CM" ? `<span>${esc(cmPiece(j))}</span>` : pieceTag(j.piece);
 const isCartelPage = () => page === "calcartel" || MAT_SECS.includes(page);
-const CM_BY_BRAND = { Superseis:"Aníbal Iván Martinez", Stock:"Aníbal Iván Martinez", Delimarket:"Miguel Sebastián Kunzle Insfrán", "Retail Institucional":"Miguel Sebastián Kunzle Insfrán", Bianca:"Miguel Sebastián Kunzle Insfrán", Dayo:"Miguel Sebastián Kunzle Insfrán", PediWOW:"Miguel Sebastián Kunzle Insfrán", Clasipar:"Miguel Sebastián Kunzle Insfrán" };
-posts.forEach(p => { p.cm = CM_BY_BRAND[p.brand]; });
-const CMS = [...new Set(Object.values(CM_BY_BRAND))];
+// CM de cada marca (para proponer quién la publica). Va por id de la persona: si le cambian el nombre en Usuarios, sigue andando
+// (antes estaba por nombre y, al cambiarlo, las publicaciones nuevas quedaban a nombre de alguien que ya no existe).
+const CM_BRAND_IDS = { Superseis:"anibal", Stock:"anibal", Delimarket:"miguel", "Retail Institucional":"miguel", Bianca:"miguel", Dayo:"miguel", PediWOW:"miguel", Clasipar:"miguel" };
+const cmOfBrand = b => PEOPLE.find(x => x.id === CM_BRAND_IDS[b] && x.active !== false)?.name || "";
+posts.forEach(p => { p.cm = cmOfBrand(p.brand); });
 const CURRENT_MONTH = TODAY.slice(0,7);
 // Meses navegables: desde septiembre 2026 (antes no existe) hasta el mes que viene.
 const MONTHS_APP = (() => { const out = [], end = +CURRENT_MONTH.slice(0,4) * 12 + +CURRENT_MONTH.slice(5) + 1;
@@ -4195,7 +4208,7 @@ function publicationsFor(month){
   socialBrands().forEach(b => igPosts(b, month).forEach(x => {
     const date = pyDate(x.ts);
     const inter = (x.likes || 0) + (x.comments || 0) + (x.saved || 0) + (x.shares || 0);
-    out.push({ brand:b, date, net:"IG", format:x.type || "Post", title:(x.cap || "").split("\n")[0].slice(0, 90) || "Publicación sin texto", cap:x.cap || "", cm:CM_BY_BRAND[b], paid:false,
+    out.push({ brand:b, date, net:"IG", format:x.type || "Post", title:(x.cap || "").split("\n")[0].slice(0, 90) || "Publicación sin texto", cap:x.cap || "", cm:cmOfBrand(b), paid:false,
       reach:isNum(x.reach) ? x.reach : null, likes:x.likes, comments:x.comments, inter, img:x.img, link:x.link, age:Math.floor((now - new Date(x.ts).getTime()) / 864e5) });
   }));
   return out;
@@ -5892,7 +5905,7 @@ const newJobOf = (area, due) => { const brand = MAIN_BRANDS.includes(brandFilter
   jobUI.form = { mode:"new", job:{ id:nextJobId(area), area, requestDate:TODAY, requester:"Marketing", brand, piece:(area === "CM" ? CM_TYPES : CONT_TYPES)[0], title:"", owner:area === "Contenidos" && !canCreateJobs() ? viewer.name : "Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due, link:"", notes:"", post:null } }; render(); window.scrollTo(0, 0); };
 function actNew(type, date){
   const brand = MAIN_BRANDS.includes(brandFilter) && myBrands().includes(brandFilter) ? brandFilter : myBrands()[0];
-  const owner = viewer.role === "CM" ? viewer.name : CM_BY_BRAND[brand] && CM_NAMES().includes(CM_BY_BRAND[brand]) ? CM_BY_BRAND[brand] : CM_NAMES()[0] || "";
+  const owner = viewer.role === "CM" ? viewer.name : cmOfBrand(brand) && CM_NAMES().includes(cmOfBrand(brand)) ? cmOfBrand(brand) : CM_NAMES()[0] || "";
   actUI.form = { mode:"new", act:{ id:"A" + (Math.max(0, ...CM_ACTS.map(a => +(String(a.id).match(/^A(\d+)$/) || [])[1] || 0)) + 1), type:ACT_SIMPLE.some(a => a.k === type) ? type : ACT_SIMPLE[0].k, title:"", brand, owner, date, time:"", status:"Pendiente", notes:"" } };
   render(); window.scrollTo(0, 0);
 }
@@ -6949,7 +6962,7 @@ function jobForm(){
       </div></section>
       <section class="jfs"><h3><i>2</i>Quién y para cuándo</h3><div class="jfg">
       <label>Solicitante *<select class="base" id="jRequester">${opt(SOLICITANTES, j.requester)}</select></label>
-      ${own ? `<label>Responsable *<select class="base" disabled><option>${esc(viewer.name)}</option></select></label>` : `<label>Responsable (de cualquier marca) *<select class="base" id="jOwner">${opt([...new Set(["Sin asignar", ...areaPeople(area), j.owner])], j.owner)}</select></label>`}
+      ${own ? `<label>Responsable *<select class="base" disabled><option>${esc(viewer.name)}</option></select></label>` : `<label>Responsable (de cualquier marca) *<select class="base" id="jOwner">${area === "Diseño" ? opt([...new Set(["Sin asignar", ...areaPeople(area), j.owner])], j.owner) : cmOwnerOpts([...new Set(["Sin asignar", ...areaPeople(area), j.owner])], j.owner)}</select></label>${area === "Diseño" ? "" : cmSuggestNote("jOwner", j.owner)}`}
       <label>Fecha de solicitud *<input class="base" type="date" id="jReq" value="${j.requestDate}" required></label>
       <label >Fecha límite *<input class="base" type="date" id="jDue" value="${j.due}" required></label>
       ${area === "Diseño" ? jobPubCmBox(j) : ""}
@@ -7068,16 +7081,16 @@ const DAY_SHORT = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
 const canCfgLoad = () => viewer.role === "Admin total" && !isClosed();
 function cmLoadCard(pp){
   const L = cmLoad(pp), lv = lvOf({ ...L, cm:true }), acc = cmAccounts(pp), duty = dutyOf(pp, TODAY), open = cargaUI.open[pp.id];
-  const fnRow = ([k, l, ic]) => { const b = L.by[k]; if (!b.n) return ""; return `<div class="clfn"><span>${icon(ic)} ${l}</span><b>${b.n}</b><span class="note">${b.min ? "≈ " + fmtMin(b.min) : ""}${b.unk ? `${b.min ? " · " : ""}${b.unk} sin estimar` : ""}</span></div>`; };
+  const fnRow = ([k, l, ic]) => { const b = L.by[k]; if (!b.n) return ""; return `<div class="clfn"><span>${icon(ic)} ${l}</span><b>${b.n}</b><span class="note">${b.min ? "≈ " + fmtMin(b.min) : ""}${b.unk ? `${b.min ? " · " : ""}${b.unk} sin estimar` : ""}${b.done ? ` · ${b.done === b.n ? "todo hecho ✓" : b.done + " hecho" + (b.done === 1 ? "" : "s")}` : ""}</span></div>`; };
   const items = L.items.slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
   return `<section class="panel clcard"><header class="clh"><div class="person">${avatarHTML(pp)}<div><b>${esc(pp.name)}</b><span>${acc.length ? `Mensajes: ${esc(acc.join(", "))}` : "Sin cuentas de Mensajes asignadas"}</span></div></div>
     <div class="clpct" style="color:${lv.c}"><span>${pctHTML({ ...L, cm:true })}</span><small>${lv.t}</small></div></header>
     ${ltrack({ ...L, cm:true })}
-    <p class="note clmeta">Solo lo de esta semana: ≈ <b>${fmtMin(L.min)}</b> estimadas pendientes · <b>${fmtMin(L.avail)}</b> disponibles (ya descontadas ausencias y reuniones). ${L.week.next ? `${icon("calendar-days")} Ya terminó su horario de esta semana: se muestra la que viene (del ${dm(L.week.from)} al ${dm(L.week.to)}). ` : ""}${L.defAvail ? `${icon("clock")} Con el horario de oficina (lunes a viernes 8:00–17:00, 1 h de almuerzo)${canCfgLoad() ? ": cambialo en Configurar si trabaja otro horario" : ""}. ` : ""}${L.unknown ? `${icon("triangle-alert")} ${L.unknown} ${L.unknown === 1 ? "trabajo sin tiempo estimado" : "trabajos sin tiempo estimado"} (no se cuenta como cero). ` : ""}</p>
-    <div class="clfns">${CM_FUNCS.map(fnRow).join("") || `<p class="note" style="margin:0">No tiene nada pendiente esta semana.</p>`}</div>
+    <p class="note clmeta">Semana del ${dm(L.week.from)} al ${dm(L.week.to)}: ≈ <b>${fmtMin(L.min)}</b> de trabajo asignado (ya hecho ≈ ${fmtMin(L.done)} · falta ≈ <b>${fmtMin(L.left)}</b>) sobre <b>${fmtMin(L.avail)}</b> disponibles en la semana (ya descontadas ausencias y reuniones).${!L.week.next && L.left > L.leftAvail ? ` ${icon("triangle-alert")} Le quedan ≈ ${fmtMin(L.leftAvail)} de horario esta semana: no le alcanza para lo que falta.` : ""} ${L.week.next ? `${icon("calendar-days")} Ya terminó su horario de esta semana: se muestra la que viene. ` : ""}${L.defAvail ? `${icon("clock")} Con el horario de oficina (lunes a viernes 8:00–17:00, 1 h de almuerzo)${canCfgLoad() ? ": cambialo en Configurar si trabaja otro horario" : ""}. ` : ""}${L.unknown ? `${icon("triangle-alert")} ${L.unknown} ${L.unknown === 1 ? "trabajo sin tiempo estimado" : "trabajos sin tiempo estimado"} (no se cuenta como cero). ` : ""}</p>
+    <div class="clfns">${CM_FUNCS.map(fnRow).join("") || `<p class="note" style="margin:0">No tiene nada asignado esta semana.</p>`}</div>
     ${acc.length ? `<p class="note cldt">${icon("inbox")} Mensajes de hoy: ${duty ? (duty.st === "none" ? "sin consultas ✓" : `atendido ✓${duty.n ? ` · ${duty.n} conversaciones` : ""}`) : "todavía sin registrar"}</p>` : ""}
     ${items.length ? `<button type="button" class="btn sm" data-clopen="${pp.id}">${icon(open ? "chevron-up" : "chevron-down")} ${open ? "Ocultar" : "Ver"} lo pendiente (${items.length})</button>` : ""}
-    ${open ? `<div class="tw"><table class="cltab"><thead><tr><th>Función</th><th>Qué</th><th>Marca</th><th>Fecha</th><th>Etapa</th><th>Tiempo estimado</th></tr></thead><tbody>${items.map(x => `<tr><td>${esc(CM_FUNCS.find(f => f[0] === x.fn)[1])}</td><td>${esc(x.title)}${x.what ? ` <span class="note">· ${esc(x.what)}</span>` : ""}</td><td>${x.brand ? brandTag(x.brand) : ""}</td><td class="num">${dm(x.date)}${x.date < TODAY ? ` <span class="down">atrasado</span>` : ""}</td><td>${esc(x.st || "")}</td><td class="num">${x.t === null ? `<span class="warn">sin estimar</span>` : "≈ " + fmtMin(x.t)}</td></tr>`).join("")}</tbody></table></div>` : ""}</section>`;
+    ${open ? `<div class="tw"><table class="cltab"><thead><tr><th>Función</th><th>Qué</th><th>Marca</th><th>Fecha</th><th>Etapa</th><th>Falta (estimado)</th></tr></thead><tbody>${items.map(x => `<tr><td>${esc(CM_FUNCS.find(f => f[0] === x.fn)[1])}</td><td>${esc(x.title)}${x.what ? ` <span class="note">· ${esc(x.what)}</span>` : ""}</td><td>${x.brand ? brandTag(x.brand) : ""}</td><td class="num">${dm(x.date)}${x.date < TODAY ? ` <span class="down">atrasado</span>` : ""}</td><td>${esc(x.st || "")}</td><td class="num">${x.left === null ? `<span class="warn">sin estimar</span>` : "≈ " + fmtMin(x.left)}</td></tr>`).join("")}</tbody></table></div>` : ""}</section>`;
 }
 // Configurar (Admin total): tiempos, etapas de video, horario de cada CM, ausencias y reuniones, y cuentas de Mensajes.
 function cmLoadCfg(){
@@ -7139,13 +7152,13 @@ function cmReportCard(pp){
 function pCargaCM(){
   const ppl = cmPeople(), team = loadStats(ppl.map(pp => pp.name)), full = isAdminAny(), tab = full ? cargaUI.tab : "semana";
   // CM y Diseñador: solo la carga pintada de cada CM (el detalle, la configuración y el informe son de Admin total y Admin).
-  if (!full) return `<div class="head"><div><h1>Carga de trabajo CM</h1><p class="sub">Cuánto tiene cada CM esta semana, en %: el tiempo estimado de lo que le falta hasta el domingo sobre sus horas disponibles. 100 % = capacidad completa; más de 100 %, sobrecarga.</p></div></div>
+  if (!full) return `<div class="head"><div><h1>Carga de trabajo CM</h1><p class="sub">Cuánto trabajo se le asignó a cada CM esta semana, en %: el tiempo estimado de todo lo de la semana (hecho y pendiente) sobre sus horas de la semana. 100 % = capacidad completa; más de 100 %, sobrecarga.</p></div></div>
   <div class="panel loadpanel"><div class="head" style="margin-bottom:6px"><h2 style="margin:0" class="pmh">${pmIco("gauge")}Carga de trabajo de los CM</h2></div>${loadChart(loadGroups("CM"))}</div>`;
-  const head = `<div class="head"><div><h1>Carga de trabajo CM</h1><p class="sub">${tab === "informe" ? `Lo que hizo cada CM en ${monthName(MONTH)}: cantidades y detalle por función, con marca, fecha, estado, plazos y pendientes. Es producción y cumplimiento (no usa horas).` : "Cuánto tiene cada CM esta semana (de lunes a domingo), en %: el tiempo estimado de lo que le falta de esa semana sobre sus horas disponibles (ya descontadas ausencias y reuniones). Lo atrasado de semanas anteriores no suma. 100 % = capacidad completa; más de 100 %, sobrecarga. Las horas son estimadas."}</p></div>
+  const head = `<div class="head"><div><h1>Carga de trabajo CM</h1><p class="sub">${tab === "informe" ? `Lo que hizo cada CM en ${monthName(MONTH)}: cantidades y detalle por función, con marca, fecha, estado, plazos y pendientes. Es producción y cumplimiento (no usa horas).` : "Cuánto trabajo se le asignó a cada CM esta semana (de lunes a domingo), en %: el tiempo estimado de todo lo de esa semana (hecho y pendiente) sobre sus horas de la semana completa (ya descontadas ausencias y reuniones). No se infla a fin de semana, así sirve para repartir: el que tiene menos % es el que tiene lugar. 100 % = capacidad completa; más de 100 %, sobrecarga. Las horas son estimadas."}</p></div>
     ${viewTabs([["semana","Carga de la semana","gauge"],["informe","Informe del mes","file-bar-chart"]], tab, "data-cltab")}</div>`;
   if (tab === "informe") return `${head}<div class="clgrid">${ppl.map(cmReportCard).join("") || `<div class="empty">No hay CM activos.</div>`}</div>`;
   return `${head}
-  <div class="panel loadpanel"><div class="head" style="margin-bottom:6px"><h2 style="margin:0" class="pmh">${pmIco("gauge")}Carga de trabajo de los CM</h2><span class="note">Equipo CM: ${team.pct === null ? "—" : `${team.pct >= 999 ? "+100" : team.pct}%`} · solo lo de esta semana</span></div>${loadChart(loadGroups("CM"))}</div>
+  <div class="panel loadpanel"><div class="head" style="margin-bottom:6px"><h2 style="margin:0" class="pmh">${pmIco("gauge")}Carga de trabajo de los CM</h2><span class="note">Equipo CM: ${team.pct === null ? "—" : `${team.pct >= 999 ? "+100" : team.pct}%`} · lo asignado esta semana</span></div>${loadChart(loadGroups("CM"))}</div>
   <div class="clgrid">${ppl.map(cmLoadCard).join("") || `<div class="empty">No hay CM activos.</div>`}</div>
   ${cmLoadCfg()}`;
 }
@@ -7350,7 +7363,7 @@ let postUI = { form:null };
 const nextPostId = () => "P" + (Math.max(0, ...posts.map(p => +(String(p.id).match(/^P?(\d+)$/) || [])[1] || 0)) + 1);
 function newPostOn(date, kind){
   const brand = MAIN_BRANDS.includes(brandFilter) && myBrands().includes(brandFilter) ? brandFilter : myBrands()[0];
-  const cm = CM_BY_BRAND[brand] || CM_NAMES()[0] || "";
+  const cm = cmOfBrand(brand) || CM_NAMES()[0] || "";
   postUI.form = kind === "Canal"
     ? { mode:"new", kind, post:{ id:"K" + (Math.max(0, ...CHANNEL_POSTS.map(k => +(String(k.id).match(/^K?(\d+)$/) || [])[1] || 0)) + 1), date, brand, channel:CANALES[0], title:"", status:"Pendiente", cm, notes:"" } }
     : { mode:"new", kind, post:{ id:nextPostId(), date, brand, net:"IG", format:kind === "Historia" ? "Historia" : "Post", title:"", status:"Pendiente", cm, notes:"", carried:null } };
@@ -7527,7 +7540,7 @@ function postForm(){
       </div></section>
       <section class="jfs"><h3><i>2</i>Quién y para cuándo</h3><div class="jfg">
         <label>Solicitante *<select class="base" id="poReq">${opt(SOLICITANTES, p.requester || "Marketing")}</select></label>
-        <label>CM responsable (de cualquier marca) *<select class="base" id="poCm">${opt(CM_NAMES(), p.cm)}</select></label>
+        <label>CM responsable (de cualquier marca) *<select class="base" id="poCm">${cmOwnerOpts([...new Set([...CM_NAMES(), p.cm].filter(Boolean))], p.cm)}</select></label>${canCreateJobs() ? cmSuggestNote("poCm", p.cm) : ""}
         <label>Fecha de publicación *<input class="base" type="date" id="poDate" value="${p.date}" required></label>
         <label>Hora de publicación <span class="note">(opcional)</span><input class="base" type="time" id="poTime" value="${esc(p.time || "")}"></label>
         ${p.repOf || p.fromJob ? "" : moreDaysBox(f)}
@@ -7699,7 +7712,7 @@ document.addEventListener("click", e => {
     (p.changes = p.changes || []).push(ext ? { date:TODAY, time:nowTime(), text:t, by:viewer.name, req:document.getElementById("pcReq")?.value || "" } : { date:TODAY, time:nowTime(), kind:"nota", text:t, by:viewer.name });
     if (postUI.form) postUI.form.post.changes = p.changes; render(); toast(ext ? "Cambios anotados." : "Comentario enviado."); }
 });
-document.addEventListener("change", e => { if (e.target.id === "poBrand"){ const cm = CM_BY_BRAND[e.target.value], s2 = $("#poCm"); if (cm && s2 && [...s2.options].some(o => o.value === cm)) s2.value = cm;
+document.addEventListener("change", e => { if (e.target.id === "poBrand"){ const cm = cmOfBrand(e.target.value), s2 = $("#poCm"); if (cm && s2 && [...s2.options].some(o => o.value === cm)) s2.value = cm;
   const n = $("#poNet"); if (n){ const nets = netsFor(e.target.value), v = nets.includes(n.value) ? n.value : nets[0]; n.innerHTML = netOpts(e.target.value, v); n.value = v; } } }); // solo las redes que tiene esa marca
 document.addEventListener("submit", e => {
   if (e.target.id !== "postForm") return; e.preventDefault();
@@ -7753,7 +7766,7 @@ document.addEventListener("submit", e => {
 document.addEventListener("click", e => { const b = e.target.closest("[data-pobrand]"); if (!b || !postUI.form) return; const f = postUI.form, k = b.dataset.pobrand, cur = f.brands || [];
   const next = cur.includes(k) ? cur.filter(x => x !== k) : [...cur, k], first = cur[0]; f.brands = myBrands().filter(x => next.includes(x)); const h = document.getElementById("poBrand"); if (h) h.value = f.brands[0] || "";
   b.classList.toggle("on", next.includes(k)); b.setAttribute("aria-pressed", next.includes(k));
-  const cm = f.brands[0] !== first && CM_BY_BRAND[f.brands[0]], s2 = $("#poCm"); if (cm && s2 && [...s2.options].some(o => o.value === cm)) s2.value = cm; // la CM de la primera marca, como con una sola
+  const cm = f.brands[0] !== first && cmOfBrand(f.brands[0]), s2 = $("#poCm"); if (cm && s2 && [...s2.options].some(o => o.value === cm)) s2.value = cm; // la CM de la primera marca, como con una sola
   const n = $("#poNet"); if (n && f.brands.length){ const nets = netsOf(f.brands), v = nets.includes(n.value) ? n.value : nets[0]; n.innerHTML = netOpts(f.brands, v); n.value = v; } }); // las redes de las marcas elegidas
 document.addEventListener("click", e => { const b = e.target.closest("[data-prepday]"); if (!b || !postUI.form) return; const i = +b.dataset.prepday, f = postUI.form;
   f.repDays = (f.repDays || []).includes(i) ? f.repDays.filter(x => x !== i) : [...(f.repDays || []), i].sort(); b.classList.toggle("on"); b.setAttribute("aria-pressed", b.classList.contains("on")); });
@@ -8393,7 +8406,7 @@ function repCM(){
       return `<tr><td>${brandTag(b)}</td><td class="r num">${c.length}</td><td class="r num">${d.length}</td><td class="r num">${pa.length}</td><td style="min-width:180px"><div class="bar" style="grid-template-columns:1fr 44px"><div class="tr"><div class="fl" style="width:${pc}%"></div></div><span class="v">${pc}%</span></div></td></tr>`; }).join("")}
   </tbody></table></div>
   <div class="tw"><table><thead><tr><th>CM</th><th>Marcas</th><th class="r">Posteos a cargo</th><th class="r">Publicados</th><th class="r">Pautados</th><th class="r">Pedidos de diseño</th><th class="r">${isClosed() ? "No cumplidos" : "Pendientes"}</th><th>Cumplimiento</th></tr></thead><tbody>
-    ${CMS.filter(n => cur.some(p => p.cm === n)).map(n => { const c = cur.filter(p => p.cm === n), d = c.filter(isDone), pa = c.filter(p => p.status === "Pautado"), pc = c.length ? Math.round(d.length / c.length * 100) : 0;
+    ${CM_NAMES().filter(n => cur.some(p => p.cm === n)).map(n => { const c = cur.filter(p => p.cm === n), d = c.filter(isDone), pa = c.filter(p => p.status === "Pautado"), pc = c.length ? Math.round(d.length / c.length * 100) : 0;
       const pj = jobs.filter(j => j.post && c.some(p => p.id === j.post)).length;
       return `<tr><td><b style="color:#fff">${n}</b></td><td>${[...new Set(c.map(p => p.brand))].map(brandTag).join(" ")}</td><td class="r num">${c.length}</td><td class="r num">${d.length}</td><td class="r num">${pa.length}</td><td class="r num">${pj}</td><td class="r num ${c.length - d.length ? "warn" : ""}">${c.length - d.length}</td><td style="min-width:160px"><div class="bar" style="grid-template-columns:1fr 44px"><div class="tr"><div class="fl" style="width:${pc}%"></div></div><span class="v">${pc}%</span></div></td></tr>`; }).join("")}
   </tbody></table></div>
@@ -8537,7 +8550,7 @@ function monthData(){
       const pct = pc(done.length, due.length);
       if (!due.length) cmP.push(`Community Manager tiene ${n(cur.length, "posteo planificado", "posteos planificados")}; todavía ninguno llegó a su fecha.`);
       else cmP.push(`Community Manager ${live ? "lleva" : "cumplió"} el <b>${pct}%</b> del plan de posteo: ${dots(done.length)} de ${n(due.length, "posteo", "posteos")}${live ? " con fecha hasta hoy" : ""} ${done.length === 1 ? "quedó" : "quedaron"} publicados o pautados${live && cur.length > due.length ? ` (y faltan ${dots(cur.length - due.length)} más en el resto del mes)` : ""}.`);
-      const per = CMS.map(c => { const l = due.filter(p => p.cm === c); return { c, n:l.length, p:pc(l.filter(isDone).length, l.length) }; }).filter(x => x.n >= 3).sort((a, b) => a.p - b.p);
+      const per = CM_NAMES().map(c => { const l = due.filter(p => p.cm === c); return { c, n:l.length, p:pc(l.filter(isDone).length, l.length) }; }).filter(x => x.n >= 3).sort((a, b) => a.p - b.p);
       if (per.length > 1 && per[0].p < per[per.length - 1].p) cmP.push(`Por persona va de ${per[per.length - 1].p}% (${esc(firstName(per[per.length - 1].c))}) a ${per[0].p}% (${esc(firstName(per[0].c))}).`);
       if (pend.length){
         cmP.push(live ? `${pend.length === 1 ? "Hay un posteo vencido" : `Hay ${n(pend.length, "posteo vencido", "posteos vencidos")}`} sin publicar.` : `${pend.length === 1 ? "Un posteo no se cumplió y pasó" : `${dots(pend.length)} posteos no se cumplieron y pasaron`} al mes siguiente.`);
