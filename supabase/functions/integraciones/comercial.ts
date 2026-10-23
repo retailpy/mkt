@@ -134,22 +134,22 @@ export const marcaDe = (name: string) => /\bS6\b|SUPERSEIS/i.test(name) ? "Super
 // ---------- De qué carpeta sale cada categoría y cómo se reconoce cada archivo por su nombre ----------
 // Carpetas de Drive (solo lectura). Express e Imbatibles son compartidas entre Superseis y Stock: la marca sale del nombre.
 export const FOLLETOS_ID = "1-xZ--Tb9rvCYDpmh2zrsYQz-jy-AfDBf";
+// Carpetas de antes de las quincenales («OFERTA QUINCENAL S6» y «OFERTA QUINCENAL STOCK»): ya NO se leen (v252). Quedan para lo guardado.
+export const VIEJA_S6_ID = "1ciqZuhAtcIa-_OYYutd-8Zq8CTPZS-5N", VIEJA_STOCK_ID = "1RIqkeQ7iR22JX_j3k5JqZXdMsPl0x7eP";
 export const FUENTES: { id: string; cat: string; brand?: string }[] = [
-  { id: "1ciqZuhAtcIa-_OYYutd-8Zq8CTPZS-5N", cat: "quincenal", brand: "Superseis" }, // la de siempre (con sus subcarpetas, ej. VIGENTE)
-  { id: "1RIqkeQ7iR22JX_j3k5JqZXdMsPl0x7eP", cat: "quincenal", brand: "Stock" },      // "Publicadas Stock"
   { id: "16e3im1-9kYWZ7rZixRtRPUelHyDSoxxy", cat: "fds", brand: "Superseis" },        // "FDS SG"
   { id: "1iHSUvW6WbZO2WDSZ0o3VtS345p48aAdR", cat: "fds", brand: "Stock" },            // "FDS Stock"
   { id: "1NnZGuw3iWQaWNqz5axsE4zWlUAW-sXhA", cat: "fds", brand: "Delimarket" },       // "FDS Deli"
   { id: "14b8mp9dItU2SmoJUbiaCNc9g3vBI3xal", cat: "express" },                        // "S6 Express Publicadas" y "Stock Express (publicadas)"
   { id: "1wnr3i0WNIUOuOEILUg5z_LWdmHd1A79W", cat: "imbatibles" },                     // "Imbatibles S6" e "Imbatibles Stock"
-  // «MKT - FOLLETOS»: los Excel FINAL de las quincenales de Superseis y Stock (compartida: la marca sale del nombre). Se prefiere a
-  // las carpetas de arriba: si de una quincena está el FINAL acá, se usa ese (las otras siguen para las quincenas que todavía no están).
+  // «MKT - FOLLETOS»: la ÚNICA carpeta de las quincenales de Superseis y Stock (compartida: la marca sale del nombre).
+  // Solo se usan los Excel que dicen FINAL (la corrección final de Comercial).
   { id: FOLLETOS_ID, cat: "quincenal" },
 ];
 // Nombre del archivo en mayúsculas, sin acentos y con espacios alrededor de cada palabra: " FDS SG 17 AL 19 10 XLSX ".
 const palabras = (name: string) => ` ${name.toUpperCase().normalize("NFD").replace(/\p{M}/gu, "").replace(/\.XLSX?$|\.XLSM$/, "").replace(/[^A-Z0-9%]+/g, " ").trim()} `;
 const MARCA_RE: Record<string, RegExp> = { Superseis: / S6 | SUPERSEIS | SUPER SEIS | SG /, Stock: / STOCK /, Delimarket: / DELI | DELIMARKET /, };
-// Quincenal: las “PUBLICADAS” o la versión “FINAL” (Superseis y Stock, carpeta «MKT - FOLLETOS»); si de una quincena están las dos, se usa la FINAL (ver comercialSync).
+// Quincenal: solo la versión “FINAL” de la carpeta «MKT - FOLLETOS» (un PUBLICADAS ahí queda pendiente de revisión).
 const CAT_RE: Record<string, RegExp> = { quincenal: / PUBLICAD| FINAL /, fds: / FDS | FIN DE SEMANA /, express: / EXPRESS /, imbatibles: / IMBATIBLE/ };
 // Qué es un archivo de una carpeta: { brand, cat } si se reconoce · { pending: motivo } si parece de la categoría pero no se puede
 // asegurar (queda “pendiente de revisión”) · null si no es de la categoría (otra dinámica, versión interna…: no se usa).
@@ -163,6 +163,7 @@ export function clasificar(name: string, fu: { cat: string; brand?: string }): {
     if (marcas.length && !marcas.includes(fu.brand)) return { pending: `El nombre dice ${marcas.join(" y ")}, pero está en la carpeta de ${fu.brand}.` };
     return { brand: fu.brand, cat: fu.cat, ...(fu.cat === "quincenal" && / FINAL /.test(w) ? { final: true } : {}) };
   }
+  if (fu.cat === "quincenal" && !/ FINAL /.test(w)) return { pending: "No dice FINAL en el nombre: las quincenales de Superseis y Stock usan solo el Excel FINAL." };
   const b = marcas.filter((x) => x !== "Delimarket"); // carpeta compartida: Superseis o Stock, según el nombre
   if (b.length !== 1) return { pending: b.length ? "El nombre dice Superseis y Stock a la vez." : "El nombre no dice si es de Superseis (S6) o de Stock." };
   return { brand: b[0], cat: fu.cat, ...(fu.cat === "quincenal" && / FINAL /.test(w) ? { final: true } : {}) };

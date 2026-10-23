@@ -3612,7 +3612,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v251";
+const APP_VER = "v252";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -12104,13 +12104,12 @@ const comState = f => TODAY < f.from ? "prox" : TODAY > f.to ? "fin" : "vig";
 // Cada mes muestra sus quincenas (las que caen en el mes elegido arriba; la que cruza de un mes al otro sale en los dos).
 // Los 3 supermercados y sus 9 categorías, cada una con su carpeta de Drive (la misma lista que FUENTES en el servidor).
 // Express e Imbatibles comparten carpeta entre Superseis y Stock: el servidor separa por el nombre del archivo.
-const COM_FOLDER = { quincenal:{ Superseis:"1ciqZuhAtcIa-_OYYutd-8Zq8CTPZS-5N", Stock:"1RIqkeQ7iR22JX_j3k5JqZXdMsPl0x7eP" },
+const COM_FOLDER = { quincenal:{ Superseis:"1-xZ--Tb9rvCYDpmh2zrsYQz-jy-AfDBf", Stock:"1-xZ--Tb9rvCYDpmh2zrsYQz-jy-AfDBf" }, // «MKT - FOLLETOS», solo los FINAL
   fds:{ Superseis:"16e3im1-9kYWZ7rZixRtRPUelHyDSoxxy", Stock:"1iHSUvW6WbZO2WDSZ0o3VtS345p48aAdR", Delimarket:"1NnZGuw3iWQaWNqz5axsE4zWlUAW-sXhA" },
   express:{ Superseis:"14b8mp9dItU2SmoJUbiaCNc9g3vBI3xal", Stock:"14b8mp9dItU2SmoJUbiaCNc9g3vBI3xal" }, imbatibles:{ Superseis:"1wnr3i0WNIUOuOEILUg5z_LWdmHd1A79W", Stock:"1wnr3i0WNIUOuOEILUg5z_LWdmHd1A79W" } };
-// «MKT - FOLLETOS»: los Excel FINAL de las quincenales de Superseis y Stock (compartida). Se lee junto con la carpeta de cada marca;
-// si de una quincena está el FINAL, se usa ese.
+// «MKT - FOLLETOS»: la única carpeta de las quincenales de Superseis y Stock; solo se usan los Excel FINAL (v252).
 const COM_FOLLETOS = "1-xZ--Tb9rvCYDpmh2zrsYQz-jy-AfDBf";
-const comFids = key => { const [b, c] = key.split("|"); return c === "quincenal" && b !== "Delimarket" ? [COM_FOLLETOS, COM_FOLDER[c][b]] : [COM_FOLDER[c][b]]; };
+const comFids = key => { const [b, c] = key.split("|"); return [COM_FOLDER[c][b]]; };
 // Cómo se leyó la categoría: la primera de sus carpetas que se pudo leer; si ninguna, la primera (con su error o "falta el script").
 const comSrcOf = key => { const l = comFids(key).map(id => COMERCIAL.src?.[id]); return l.find(x => x?.ok) || l.find(x => x?.err) || l[0]; };
 const COM_ROOT = "1Tlj4ITfLdxtKZ8CuciI0e7UDn_em6rek"; // «OFERTAS DIVISION»: la carpeta general con todas las carpetas de ofertas (botón de arriba)
@@ -12121,7 +12120,8 @@ const comKeyOf = f => (f.brand || "Superseis") + "|" + (f.cat || "quincenal"); /
 const comFolderUrl = (key = comUI.cat, fid) => { const [b, c] = key.split("|"); return "https://drive.google.com/drive/folders/" + (fid || (COM_FOLDER[c] ? comFids(key)[0] : COM_FOLDER.quincenal.Superseis)); };
 // Si de una quincena está la versión “FINAL” del Excel (Stock), se muestra esa y no la de “PUBLICADAS” de las mismas fechas.
 // Si hay más de un FINAL de las mismas fechas, uno solo: el que está en Drive, el de «MKT - FOLLETOS» y el más nuevo, en ese orden.
-const comAllOf = key => { const l = Object.values(COMERCIAL.files || {}).filter(f => f.from && f.to && comKeyOf(f) === key), fin = {};
+// Quincenales: lo que viene sale solo del FINAL de «MKT - FOLLETOS»; lo de las carpetas de antes queda solo si ya empezó (historial).
+const comAllOf = key => { const l = Object.values(COMERCIAL.files || {}).filter(f => f.from && f.to && comKeyOf(f) === key && !(key.endsWith("|quincenal") && f.src !== COM_FOLLETOS && f.from > TODAY)), fin = {};
   const pts = f => [f.inDrive !== false ? 1 : 0, f.src === COM_FOLLETOS ? 1 : 0, f.modified || ""];
   const mejor = (a, b) => { const x = pts(a), y = pts(b); return x[0] - y[0] || x[1] - y[1] || String(x[2]).localeCompare(String(y[2])); };
   for (const f of l) if (f.final){ const k = f.from + "|" + f.to; if (!fin[k] || mejor(f, fin[k]) > 0) fin[k] = f; }

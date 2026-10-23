@@ -11,7 +11,7 @@
 //   tendencias {area:"dg"|"cm"|"ideas", force?}                      → campañas, piezas y contenidos con foto, en español (force: solo Admin total)
 //   noticias {force?}                                                → lo que sale en los medios de Paraguay sobre Retail S.A. y sus marcas (3 meses)
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { parseOfertas, periodo, PARSE_V, nombreOfertas, excelOfertas, FUENTES, FOLLETOS_ID, clasificar } from "./comercial.ts";
+import { parseOfertas, periodo, PARSE_V, nombreOfertas, excelOfertas, FUENTES, FOLLETOS_ID, VIEJA_S6_ID, clasificar } from "./comercial.ts";
 import { armar } from "./tendencias.ts";
 import { buscarNoticias, juntarNoticias } from "./noticias.ts";
 
@@ -362,9 +362,8 @@ async function comercialSync(c: any, minAge: number){
   if (!c?.sticker_url) return { ok: false, nokey: true, error: "Falta conectar Google Drive (Configuración → Integraciones)." };
   const sv = await scriptVersion(c.sticker_url, c.sticker_secret);
   if (sv < 4) return { ok: false, old: true, error: "Falta actualizar el script de Google Drive para leer las ofertas: Admin total lo hace en Configuración → Integraciones." };
-  // Con el script de antes (hasta la versión 6) solo se puede leer la carpeta de las quincenales de Superseis; con el 7, todas menos
-  // «MKT - FOLLETOS» (el script 7 no la tiene en su lista y la rechaza).
-  const fuentes = sv >= 8 ? FUENTES : sv >= 7 ? FUENTES.filter((fu) => fu.id !== FOLLETOS_ID) : FUENTES.slice(0, 1);
+  // Con el script 7 se leen todas menos «MKT - FOLLETOS» (no la tiene en su lista y la rechaza); con el de antes, ninguna.
+  const fuentes = sv >= 8 ? FUENTES : sv >= 7 ? FUENTES.filter((fu) => fu.id !== FOLLETOS_ID) : [];
   for (let intento = 0; intento < 2; intento++){
     const { data: row } = await db.from("app_state").select("data, version").eq("key", "s:COMERCIAL").maybeSingle();
     const prev = row?.data || {};
@@ -442,11 +441,14 @@ async function comercialSync(c: any, minAge: number){
     });
     // Lo que ya no está en su carpeta (solo si esa carpeta se pudo leer): queda guardado y la app avisa que el original ya no está.
     for (const x of Object.values(files) as any[]){
-      if (!x.cat) Object.assign(x, { cat: "quincenal", brand: x.brand || "Superseis", src: FUENTES[0].id }); // las de antes: quincenales de Superseis
+      if (!x.cat) Object.assign(x, { cat: "quincenal", brand: x.brand || "Superseis", src: VIEJA_S6_ID }); // las de antes: quincenales de Superseis
       if (src[x.src]?.ok && !vistos.has(x.id)) x.inDrive = false;
       if (x.light) delete x.light;
     }
     for (const [id, q] of reemplazados) if (finalLeida(q)) delete files[id];
+    // Quincenales de Superseis y Stock: solo los FINAL de «MKT - FOLLETOS». Lo guardado de las carpetas de antes que todavía no
+    // empezó se borra (lo que ya empezó queda como historial del mes).
+    for (const [id, x] of Object.entries(files) as [string, any][]) if (x.cat === "quincenal" && (x.brand === "Superseis" || x.brand === "Stock") && x.src !== FOLLETOS_ID && x.from > hoy) delete files[id];
     // Un FINAL guardado que ya no está en Drive (ej. lo movieron a «MKT - FOLLETOS», queda con otro id) se borra cuando el FINAL
     // de esa quincena que sí está en Drive ya se leyó: así no quedan dos versiones de la misma quincena.
     const finalEnDrive = new Set((Object.values(files) as any[]).filter((x) => x.final && x.inDrive && x.v === PARSE_V).map((x) => quincena(x.brand, x.cat, x)));
