@@ -134,7 +134,7 @@ export const marcaDe = (name: string) => /\bS6\b|SUPERSEIS/i.test(name) ? "Super
 // ---------- De qué carpeta sale cada categoría y cómo se reconoce cada archivo por su nombre ----------
 // Carpetas de Drive (solo lectura). Express e Imbatibles son compartidas entre Superseis y Stock: la marca sale del nombre.
 export const FOLLETOS_ID = "1-xZ--Tb9rvCYDpmh2zrsYQz-jy-AfDBf";
-// Carpetas de antes de las quincenales («OFERTA QUINCENAL S6» y «OFERTA QUINCENAL STOCK»): ya NO se leen (v250). Quedan para lo guardado.
+// Carpetas de antes de las quincenales («OFERTA QUINCENAL S6» y «OFERTA QUINCENAL STOCK»): ya NO se leen (v252). Quedan para lo guardado.
 export const VIEJA_S6_ID = "1ciqZuhAtcIa-_OYYutd-8Zq8CTPZS-5N", VIEJA_STOCK_ID = "1RIqkeQ7iR22JX_j3k5JqZXdMsPl0x7eP";
 export const FUENTES: { id: string; cat: string; brand?: string }[] = [
   { id: "16e3im1-9kYWZ7rZixRtRPUelHyDSoxxy", cat: "fds", brand: "Superseis" },        // "FDS SG"
