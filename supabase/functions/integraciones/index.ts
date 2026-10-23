@@ -446,9 +446,9 @@ async function comercialSync(c: any, minAge: number){
       if (x.light) delete x.light;
     }
     for (const [id, q] of reemplazados) if (finalLeida(q)) delete files[id];
-    // Quincenales de Superseis y Stock: solo los FINAL de «MKT - FOLLETOS». Lo guardado de las carpetas de antes que todavía no
-    // empezó se borra (lo que ya empezó queda como historial del mes).
-    for (const [id, x] of Object.entries(files) as [string, any][]) if (x.cat === "quincenal" && (x.brand === "Superseis" || x.brand === "Stock") && x.src !== FOLLETOS_ID && x.from > hoy) delete files[id];
+    // Quincenales de Superseis y Stock: SOLO los FINAL de «MKT - FOLLETOS». Todo lo demás guardado (de las carpetas de antes o
+    // que no es FINAL) se borra, aunque esté vigente.
+    for (const [id, x] of Object.entries(files) as [string, any][]) if (x.cat === "quincenal" && (x.brand === "Superseis" || x.brand === "Stock") && (x.src !== FOLLETOS_ID || !x.final)) delete files[id];
     // Un FINAL guardado que ya no está en Drive (ej. lo movieron a «MKT - FOLLETOS», queda con otro id) se borra cuando el FINAL
     // de esa quincena que sí está en Drive ya se leyó: así no quedan dos versiones de la misma quincena.
     const finalEnDrive = new Set((Object.values(files) as any[]).filter((x) => x.final && x.inDrive && x.v === PARSE_V).map((x) => quincena(x.brand, x.cat, x)));
