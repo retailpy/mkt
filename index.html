@@ -4931,14 +4931,17 @@ function visibleJobs(){
   return list;
 }
 function brandChips(){
-  const opts = myGroups().length > 1 ? ["Todas", ...myGroups()] : myGroups();
+  const opts = myGroups().length > 1 ? (planSuperFirst() ? [...myGroups(), "Todas"] : ["Todas", ...myGroups()]) : myGroups();
   if (isCalPage()){
     const all = myGroups(); // siempre por marca, nunca todas juntas
     return `<div class="chips">${all.map(b => `<button class="chip ${brandFilter===b?"on":""}" data-brand="${b}">${b === "Todas" ? "Todos juntos" : b === "Otros" ? "Otras marcas" : b === "Materiales" ? "📦 Materiales" : b}</button>`).join("")}</div>`;
   }
   if (opts.length === 1) return `<div class="note">Viendo solo: <span class="brand" style="--c:${GROUP_COLOR[opts[0]]}">${opts[0] === "Otros" ? "Otras marcas" : opts[0]}</span></div>`;
-  return `<div class="chips">${opts.map(b => b === "Todas" && (page === "calendario" || page === "calhistoria" || page === "calcanales" || page === "caldiseno") ? `<button class="chip ${brandFilter===b?"on":""}" data-brand="Todas">Todos juntos</button>` : `<button class="chip ${brandFilter===b?"on":""}" data-brand="${b}">${b === "Otros" ? "Otras marcas" : b}</button>`).join("")}</div>`;
+  return `<div class="chips">${opts.map(b => b === "Todas" && (page === "calendario" || page === "calhistoria" || page === "calcanales" || page === "caldiseno") ? `<button class="chip ${brandFilter===b?"on":""}" data-brand="Todas">Todos juntos</button>` : b === "Todas" && planSuperFirst() ? `<button class="chip ${brandFilter===b?"on":""}" data-brand="Todas">Todas juntas</button>` : `<button class="chip ${brandFilter===b?"on":""}" data-brand="${b}">${b === "Otros" ? "Otras marcas" : b}</button>`).join("")}</div>`;
 }
+
+// v245: en Planificación de CM, Admin total entra viendo solo Superseis; las otras marcas (y todas juntas) con sus botones.
+const planSuperFirst = () => page === "calcm" && viewer?.role === "Admin total" && myGroups().includes("Superseis");
 
 /* ---------- actions ---------- */
 function pedirDiseno(postId){
@@ -7461,6 +7464,7 @@ function pubCopyForm(f, p, dj, canal, real, chat){
       ${at ? `<section class="jfs"><h3><i>2</i>Día y hora de publicación</h3><div class="jfg">
         <label>Fecha de publicación *<input class="base" type="date" id="poDate" value="${esc(p.date)}" required></label>
         <label>Hora de publicación<input class="base" type="time" id="poTime" value="${esc(p.time || "")}"></label>
+        ${p.repOf || p.fromJob ? "" : moreDaysBox(f)}
         <p class="note" style="grid-column:1/-1;margin:0">La CM lo publica en este día y a esta hora, cuando el copy esté aprobado.</p></div></section>` : hid("poDate", p.date) + hid("poTime", p.time || "")}
       <section class="jfs"><h3><i>${at ? 3 : 2}</i>Etapa</h3><div class="jfg">
         <div style="grid-column:1/-1"><div class="pproc" role="group" aria-label="Etapa">${stages.map((x, i) => `<button type="button" class="${i < cur ? "done" : ""}${i === cur ? " on" : ""}${copyLock(p, x) && x !== p.status ? " lock" : ""}" style="--c:${POST_COLOR[x] === "#334155" ? "#94a3b8" : POST_COLOR[x]}" data-postep="${esc(x)}" aria-pressed="${i === cur}"><span>${i + 1}</span>${esc(x)}</button>`).join("")}</div>
@@ -7505,6 +7509,7 @@ function postForm(){
         <label>CM responsable (de cualquier marca) *<select class="base" id="poCm">${opt(CM_NAMES(), p.cm)}</select></label>
         <label>Fecha de publicación *<input class="base" type="date" id="poDate" value="${p.date}" required></label>
         <label>Hora de publicación <span class="note">(opcional)</span><input class="base" type="time" id="poTime" value="${esc(p.time || "")}"></label>
+        ${p.repOf || p.fromJob ? "" : moreDaysBox(f)}
         ${p.repOf ? `<p class="note" style="grid-column:1/-1;margin:0">${icon("repeat")} Se cargó sola porque se repite (la repite “${esc((canal ? canalById(p.repOf) : postById(p.repOf))?.title || p.title)}”).${canEditPost() && (canal ? canalById(p.repOf) : postById(p.repOf)) ? ` <button type="button" class="btn sm" data-reptpl="${canal ? "canal" : "post"}:${esc(p.repOf)}">${icon("repeat")} Editar la repetición (días, vigencia, texto, CM)</button>` : ""}</p>` : `<div class="jrep" style="grid-column:1/-1"><span class="jll">${icon("repeat")} ¿Se repite? <span class="note">(opcional: elegí los días y se carga sola cada semana, con la misma marca, CM, texto y links)</span></span>
           <div class="chips">${WEEKDAYS.map((w, i) => `<button type="button" class="chip ${f.repDays.includes(i) ? "on" : ""}" data-prepday="${i}" aria-pressed="${f.repDays.includes(i)}">${w}</button>`).join("")}</div>
           <label class="jrepu">Hasta <span class="note">(vacío = siempre)</span><input class="base" type="date" id="poRepUntil" value="${esc(p.rep?.until || "")}"></label>
@@ -7628,6 +7633,29 @@ function postChain(p, canal){
       <label class="jcext"><input type="checkbox" id="pcExt" checked> Es un pedido de cambios (se cuenta como ronda)</label><label class="jcext">¿Quién los pidió? <select class="base" id="pcReq">${[...new Set([p.requester, ...SOLICITANTES].filter(Boolean))].map(x => `<option>${esc(x)}</option>`).join("")}</select></label>` : ""}</div>`;
 }
 // Lo que está escrito en la hoja (para no perderlo al volver a dibujarla, y para guardar).
+// v245: “¿También otros días?”: se elige uno o varios días más y, al guardar, se carga una igual por cada día
+// (ej.: una historia que sale el martes y el jueves). Cada una queda suelta, en Pendiente, y se maneja por separado.
+const moreDaysChips = f => (f.moreDays || []).map(d => `<button type="button" class="chip on" data-pomoredel="${d}" title="Quitar este día">${WEEKDAYS[wdOf(d)].slice(0, 3)} ${dm(d)} ✕</button>`).join("");
+const moreDaysBox = f => `<div class="jmore" style="grid-column:1/-1"><span class="jll">${icon("calendar-days")} ¿También otros días? <span class="note">(opcional: elegí uno o varios días y se carga una igual en cada uno)</span></span>
+  <div class="chips"><span class="chips" id="poMoreList">${moreDaysChips(f)}</span><input class="base sm" type="date" id="poMoreDate" aria-label="Otro día de publicación" style="width:auto"><button type="button" class="btn sm" data-pomoreadd>${icon("plus")} Agregar día</button></div></div>`;
+document.addEventListener("click", e => {
+  const f = postUI.form; if (!f) return;
+  const del = e.target.closest("[data-pomoredel]"); if (del){ f.moreDays = (f.moreDays || []).filter(d => d !== del.dataset.pomoredel); document.getElementById("poMoreList").innerHTML = moreDaysChips(f); return; }
+  if (!e.target.closest("[data-pomoreadd]")) return;
+  const inp = document.getElementById("poMoreDate"), d = inp?.value || "", main = document.getElementById("poDate")?.value || f.post.date;
+  if (!d) return toast("Elegí el día en el calendario y tocá “Agregar día”.");
+  if (!MONTHS_APP.some(m => m.v === d.slice(0, 7))) return toast(`El ${dm(d)} está fuera de los meses de la app.`);
+  if (d === main || (f.moreDays || []).includes(d)) return toast("Ese día ya está.");
+  f.moreDays = [...(f.moreDays || []), d].sort(); document.getElementById("poMoreList").innerHTML = moreDaysChips(f); inp.value = ""; });
+// Copias para los otros días elegidos: lo mismo (marca, red, CM, texto, copy, links) en Pendiente, sin repetición ni pedido de Diseño.
+function cloneOnDays(items, days, canal){
+  const L = canal ? CHANNEL_POSTS : posts, out = [];
+  days.forEach(d => items.forEach(x => { if (d === x.date) return;
+    const c = { ...JSON.parse(JSON.stringify(x)), date:d, status:"Pendiente", id:canal ? "K" + (Math.max(0, ...CHANNEL_POSTS.map(k => +(String(k.id).match(/^K?(\d+)$/) || [])[1] || 0)) + 1) : nextPostId() };
+    ["rep", "repOf", "fromJob", "approvedBy", "seenBy", "carried", "changes", "pubAt", "doneAt"].forEach(k => delete c[k]); if (!canal) c.carried = null;
+    L.push(c); out.push(c); }));
+  return out;
+}
 function readPostForm(d){
   const v = id => document.getElementById(id); if (!v("postForm") || !d) return;
   const val = id => v(id) ? v(id).value : undefined;
@@ -7680,7 +7708,8 @@ document.addEventListener("submit", e => {
     let k = f.mode === "edit" ? canalById(f.post.id) : null;
     if (k) Object.assign(k, data); else { k = { ...f.post, ...data }; CHANNEL_POSTS.push(k); }
     extraBrands.forEach(b => { const x = { ...f.post, ...data, brand:b, id:"K" + (Math.max(0, ...CHANNEL_POSTS.map(c => +(String(c.id).match(/^K?(\d+)$/) || [])[1] || 0)) + 1) }; CHANNEL_POSTS.push(x); setRep(x); });
-    setRep(k); if (f.mode === "edit") syncRepCopies(k, true); const extra = repMsg(k) + (extraBrands.length ? ` También para ${extraBrands.join(", ")}.` : ""); delete k.nRep;
+    setRep(k); if (f.mode === "edit") syncRepCopies(k, true); const dk = cloneOnDays([k, ...CHANNEL_POSTS.filter(x => x !== k && x.title === k.title && x.date === k.date && extraBrands.includes(x.brand))], f.moreDays || [], true);
+    const extra = repMsg(k) + (extraBrands.length ? ` También para ${extraBrands.join(", ")}.` : "") + (dk.length ? ` También el ${(f.moreDays || []).map(dm).join(", ")}.` : ""); delete k.nRep;
     postUI.form = null; const m = date.slice(0,7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m;
     render(); window.RMH?.flushNow?.(); toast(`${f.mode === "edit" ? "Guardado" : "Cargado"}: “${k.title}” en ${k.channel} el ${dm(k.date)}.${extra}`); return;
   }
@@ -7691,7 +7720,8 @@ document.addEventListener("submit", e => {
   if (p) Object.assign(p, data); else { p = { ...f.post, ...data }; posts.push(p); }
   const more = [];
   (f.mode === "edit" ? [] : f.brands || []).forEach((b, i) => (both ? ["Post", "Historia"] : [data.format]).forEach((fm, k) => { if (!i && !k) return; const x = { ...f.post, ...data, brand:b, format:fm, id:nextPostId() }; posts.push(x); setRep(x); more.push(x); }));
-  setRep(p); if (f.mode === "edit") syncRepCopies(p, false); const extra = repMsg(p) + (more.length ? ` Se cargaron ${more.length + 1} en total (${[p, ...more].map(x => `${x.brand} ${x.format}`).join(", ")}).` : "") + (skipNet.length ? ` ${skipNet.join(", ")} no ${skipNet.length === 1 ? "tiene" : "tienen"} ${data.net}: no se ${skipNet.length === 1 ? "cargó" : "cargaron"}.` : ""); delete p.nRep;
+  setRep(p); if (f.mode === "edit") syncRepCopies(p, false); const dp = cloneOnDays([p, ...more], f.moreDays || [], false);
+  const extra = (dp.length ? ` También el ${(f.moreDays || []).map(dm).join(", ")} (${dp.length} más).` : "") + repMsg(p) + (more.length ? ` Se cargaron ${more.length + 1} en total (${[p, ...more].map(x => `${x.brand} ${x.format}`).join(", ")}).` : "") + (skipNet.length ? ` ${skipNet.join(", ")} no ${skipNet.length === 1 ? "tiene" : "tienen"} ${data.net}: no se ${skipNet.length === 1 ? "cargó" : "cargaron"}.` : ""); delete p.nRep;
   const ask = !!document.getElementById("poAskDesign")?.checked;
   postUI.form = null;
   const m = date.slice(0,7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m;
@@ -12801,6 +12831,7 @@ function stickBottom(cm){
 }
 function render(){
   stampPubDone(); pcSync(); pubBrandFix();
+  if (page !== render.planPage){ if (render.planForced) brandFilter = "Todas"; render.planForced = false; render.planPage = page; if (planSuperFirst()){ brandFilter = "Superseis"; render.planForced = true; } } // al salir, las demás secciones siguen con todas
   if (page !== render.histPage){ if (page === "historial") histUI.tab = "pend"; if (page === "historialcm") histCmTab = "pend"; pedTab = "pend"; panelDoneOpen = false; render.histPage = page; } // al entrar al Historial, siempre los pendientes
   for (const p of posts) if (OLD_POST_ST[p.status]) p.status = OLD_POST_ST[p.status]; // etapas de antes de las publicaciones de CM
   for (const k of CHANNEL_POSTS) if (OLD_POST_ST[k.status]) k.status = OLD_POST_ST[k.status];
