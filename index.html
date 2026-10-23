@@ -3612,7 +3612,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v250";
+const APP_VER = "v251";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -5877,7 +5877,7 @@ const ACT_SIMPLE = ACT_TYPES.slice(3); // las que se cargan con la hoja simple d
 const actType = k => ACT_TYPES.find(x => x.k === k) || ACT_TYPES[ACT_TYPES.length - 1];
 const ACT_STAGES = ["Pendiente","En proceso","Hecho"];
 let CM_ACTS = []; // { id, type, title, brand, owner, date, time, status, notes, byId, at }
-let PLAN_TXT = []; // v249 · Plan de posteo: { id:"YYYY-MM-DD", t, h, bg, fg, by, at } (h: el texto con formato, v250)
+let PLAN_TXT = []; // v249 · Plan de posteo: { id:"YYYY-MM-DD", t, h, bg, fg, by, at } (h: el texto con formato, v251)
 // v249 · Plan de posteo: un calendario de texto por mes, como la hoja de Excel (una celda por día, con color de fondo y de letra).
 // Lo ven y lo editan Admin total y CM; cada día muestra cuánto hay cargado en el Calendario de Actividades ese día.
 const PT_BG = ["#ffffff","#fef3c7","#fde68a","#fed7aa","#fecaca","#fbcfe8","#e9d5ff","#c7d2fe","#bfdbfe","#a5f3fc","#bbf7d0","#d9f99d","#e5e7eb"];
@@ -5891,7 +5891,7 @@ function ptSet(d, patch){
   Object.assign(x, patch, { by:viewer.name, at:new Date().toISOString() });
   for (const k of ["bg","fg"]) if (!x[k]) delete x[k];
 }
-// v250 · formato dentro de la celda: negrita, tamaño de letra, lista numerada y checklist. Se guarda solo lo permitido.
+// v251 · formato dentro de la celda: negrita, tamaño de letra, lista numerada y checklist. Se guarda solo lo permitido.
 const PT_TAGS = { B:"b", STRONG:"b", I:"i", EM:"i", U:"u", BR:"br", DIV:"div", P:"div", OL:"ol", UL:"ul", LI:"li", FONT:"font" };
 function ptClean(html){
   const box = document.createElement("div"); box.innerHTML = html || "";
@@ -6890,7 +6890,7 @@ function videoBlock(j){
 const cmUp = {}; // clave → { pct, name, n, i } mientras sube
 const cmFileTarget = key => key === "form" ? postUI.form?.post : key.startsWith("job:") ? jobById(key.slice(4)) : null;
 const canDelCmFile = f => !isViewOnly() && !isClosed() && (viewer.role === "Admin total" || f.by === viewer.name);
-// v250: al subir desde una publicación ya cargada el archivo quedaba dos veces (el formulario y la publicación comparten la lista)
+// v251: al subir desde una publicación ya cargada el archivo quedaba dos veces (el formulario y la publicación comparten la lista)
 // y la X sacaba solo una copia. Se muestra una vez por archivo, y si alguna copia está sacada, está sacada.
 const cmFilesLive = it => { const all = it?.cmFiles || [], gone = new Set(all.filter(f => f.del).map(f => f.id)), seen = new Set();
   return all.filter(f => !gone.has(f.id) && !seen.has(f.id) && seen.add(f.id)); };
@@ -7050,7 +7050,7 @@ function syncJobPubs(live, prevCm){
   out.filter(x => before.get(x.id) !== live.pubCm).forEach(x => notify({ to:live.pubCm, type:"pub", job:live.id, post:x.id, canal:!!x.channel }));
   live.cmNotified = live.pubCm;
 }
-// v250 · Los CM (no solo Admin total) se pasan el trabajo entre ellos desde el pedido: el responsable de un video o un
+// v251 · Los CM (no solo Admin total) se pasan el trabajo entre ellos desde el pedido: el responsable de un video o un
 // contenido, y la CM que publica un pedido de Diseño. A la nueva le llega el aviso.
 const canSwapCm = j => !!j && !isViewOnly() && !isClosed() && ["Admin total","CM"].includes(viewer.role) && !isFin(j) && j.status !== "Cancelado";
 const cmSwapSel = (j, kind) => { if (!canSwapCm(j)) return ""; const cur = kind === "pub" ? j.pubCm : j.owner;
