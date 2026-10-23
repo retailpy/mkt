@@ -338,7 +338,9 @@ function productosNuevos(antes: any[] = [], despues: any[] = []){
 }
 const COM_LEER = 40; // archivos que se leen por vez (el resto, en la próxima revisión)
 const COM_DIAS: Record<string, number> = { quincenal: 120, otras: 60 }; // no se leen ofertas que terminaron hace más de esto (las carpetas guardan años de historia)
-const esPlanilla = (f: any) => /\.xlsx?$|\.xlsm$/i.test(f.name) || f.mime === "application/vnd.google-apps.spreadsheet";
+// Por el nombre o por el tipo de archivo: a veces el Excel se sube sin «.xlsx» en el nombre (ej.: "FDS S6 23/10/2026 AL 25/10/2026.").
+const MIME_PLANILLA = /^application\/(vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet|vnd\.ms-excel(\.sheet\.macroenabled\.12)?|vnd\.google-apps\.spreadsheet)$/i;
+const esPlanilla = (f: any) => /\.xlsx?$|\.xlsm$/i.test(f.name) || MIME_PLANILLA.test(f.mime || "");
 const ARCHIVADAS = /ANTERIOR|HISTORIC|VIEJ|ARCHIV/i; // subcarpetas con ofertas viejas: no se leen
 // Baja el Excel directo de Drive (las carpetas de ofertas se comparten con el link): es mucho más rápido que pasar por el script.
 // Si Drive no lo entrega (permisos, planilla de Google…), se pide al script de Drive como antes.
