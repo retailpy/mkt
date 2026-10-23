@@ -193,3 +193,5 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
   `desc` es el texto del folleto). Pasar del PUBLICADAS al FINAL no la dispara (es otro archivo); una actualización del FINAL sí.
 - Las quincenas quedan guardadas aunque borren el Excel de Drive (`inDrive:false` → "Ya no se encuentra el archivo original").
 - No mostrar ni pedir claves (Supabase, Google, Vercel). La configuración del script está en la tabla `integration_config`.
+
+**Excel sin «.xlsx» en el nombre (v254):** un archivo de las carpetas se toma como Excel por el nombre (.xlsx/.xls/.xlsm) o por el tipo de archivo de Drive (`MIME_PLANILLA`). Pasó con «FDS S6 23/10/2026 AL 25/10/2026.» y «FDS DELI 23/10/26 AL 25/10/2026.».

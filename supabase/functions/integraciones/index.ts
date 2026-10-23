@@ -338,7 +338,9 @@ function productosNuevos(antes: any[] = [], despues: any[] = []){
 }
 const COM_LEER = 40; // archivos que se leen por vez (el resto, en la próxima revisión)
 const COM_DIAS: Record<string, number> = { quincenal: 120, otras: 60 }; // no se leen ofertas que terminaron hace más de esto (las carpetas guardan años de historia)
-const esPlanilla = (f: any) => /\.xlsx?$|\.xlsm$/i.test(f.name) || f.mime === "application/vnd.google-apps.spreadsheet";
+// Por el nombre o por el tipo de archivo: a veces el Excel se sube sin «.xlsx» en el nombre (ej.: "FDS S6 23/10/2026 AL 25/10/2026.").
+const MIME_PLANILLA = /^application\/(vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet|vnd\.ms-excel(\.sheet\.macroenabled\.12)?|vnd\.google-apps\.spreadsheet)$/i;
+const esPlanilla = (f: any) => /\.xlsx?$|\.xlsm$/i.test(f.name) || MIME_PLANILLA.test(f.mime || "");
 const ARCHIVADAS = /ANTERIOR|HISTORIC|VIEJ|ARCHIV/i; // subcarpetas con ofertas viejas: no se leen
 // Baja el Excel directo de Drive (las carpetas de ofertas se comparten con el link): es mucho más rápido que pasar por el script.
 // Si Drive no lo entrega (permisos, planilla de Google…), se pide al script de Drive como antes.
@@ -387,7 +389,6 @@ async function comercialSync(c: any, minAge: number){
       // Si no se puede abrir una carpeta, se avisa en la app (no se toma como vacía) y lo de esa carpeta queda como estaba.
       if (!l.ok){ src[fu.id] = { at: now, err: String(l.error || "No se pudo leer la carpeta").slice(0, 200) }; return; }
       src[fu.id] = { at: now, ok: true, name: l.folder || "", n: 0 };
-      if (fu.cat === "fds") console.log("COMLIST", fu.brand, JSON.stringify((l.files || []).filter((f: any) => Date.parse(f.modified || f.created) > Date.now() - 20 * 864e5).map((f: any) => [f.name, f.path, f.mime, f.modified])).slice(0, 3000));
       for (const f of (l.files || []).filter(esPlanilla)){
         if (ARCHIVADAS.test(f.path || "")) continue;
         const r = clasificar(f.name, fu);
