@@ -3398,7 +3398,7 @@ function makePubOne(j, o, brand, old){
 }
 function approveJob(j, opts = {}){
   const cm = typeof opts === "string" ? opts : opts.cm || "", by = opts.by || "";
-  j.status = j.area === "CM" ? "Programado" : "Aprobado"; if (!j.approved) j.approved = TODAY; // en Diseño, Aprobado es el final del pedido; en CM, aprobado pasa a Programado
+  j.status = j.area === "CM" ? (CM_STAGES.indexOf(j.status) > CM_STAGES.indexOf("Programado") ? j.status : "Programado") : "Aprobado"; if (!j.approved) j.approved = TODAY; // en CM no vuelve atrás si ya estaba Publicado o Pautado; en Diseño, Aprobado es el final del pedido; en CM, aprobado pasa a Programado
   if (j.area !== "CM"){ if (!j.delivered) j.delivered = TODAY; const p = j.post && postById(j.post); if (p && p.status === "Pendiente") p.status = "En proceso"; }
   if (by) j.approvedBy = by; // quién aprobó (Alyssa, Patricia, Emanuel…): queda registrado
   if (contCopy(j) && !j.noCopy && !j.copyConf && jcopyHas(j)) copyLogAdd(j, "ok");
@@ -3417,7 +3417,7 @@ function approveJob(j, opts = {}){
     xs.forEach(p => notify({ to:cm, type:had.get(p.id) === cm ? "listo" : "pub", job:j.id, post:p.id, canal:!!p.channel })); }
   else if (cm){ notify({ to:cm, type:"listo", job:j.id }); j.cmNotified = cm; }
   render(); window.RMH?.flushNow?.();
-  toast(`Aprobado${j.area === "CM" ? ": pasó a Programado" : ""}${by ? ` por ${firstName(by)}` : ""}. Le avisamos a ${firstName(j.owner)}${x ? `${cm === j.owner ? "" : ` y a ${firstName(cm)} (CM)`}: “${x.title}” quedó en su calendario el ${dm(x.date)}${xs.length > 1 ? ` (${xs.length} publicaciones: ${xs.map(p => `${p.brand} ${p.channel ? "Canal" : p.format}`).join(", ")})` : ""}${opts.copy ? ", con el copy confirmado" : ""}` : cm ? ` y a ${firstName(cm)} (CM)` : ""}.`);
+  toast(`Aprobado${j.area === "CM" ? `: quedó en ${j.status}` : ""}${by ? ` por ${firstName(by)}` : ""}. Le avisamos a ${firstName(j.owner)}${x ? `${cm === j.owner ? "" : ` y a ${firstName(cm)} (CM)`}: “${x.title}” quedó en su calendario el ${dm(x.date)}${xs.length > 1 ? ` (${xs.length} publicaciones: ${xs.map(p => `${p.brand} ${p.channel ? "Canal" : p.format}`).join(", ")})` : ""}${opts.copy ? ", con el copy confirmado" : ""}` : cm ? ` y a ${firstName(cm)} (CM)` : ""}.`);
 }
 const jobRounds = j => (j.changes || []).filter(c => !c.ok && !c.kind).length; // cuántas veces se pidieron cambios
 function sendJobChanges(j, text, req = ""){
@@ -3685,9 +3685,9 @@ const OLD_CM_ST = j => ({ "En proceso":/grabaci|cobertura/i.test(j.piece || "") 
 // Diseño: el diseñador lo lleva hasta “Boceto finalizado”; la revisión (aprobar o pedir correcciones) la confirma solo Admin total.
 const JOB_STAGES = ["Pendiente","En proceso","Boceto finalizado","En revisión","En corrección","Corrección realizada","Aprobado"]; // Aprobado es el final (ya no hay “Entregado”)
 const REVIEW_WAIT = ["Boceto finalizado","Corrección realizada","En revisión","Revisión"]; // esperando que Admin total revise
-// v245: Admin total puede aprobar en cualquier etapa antes de la aprobación (no solo en Revisión): en CM, hasta antes de Programado.
-const jobCanApprove = j => !!j && viewer?.role === "Admin total" && !isClosed() && !isViewOnly() && !jobApproved(j) && j.status !== "Cancelado"
-  && (j.area === "CM" ? CM_STAGES.indexOf(j.status) >= 0 && CM_STAGES.indexOf(j.status) < CM_STAGES.indexOf("Programado") : !isFin(j));
+// v245: Admin total puede aprobar en cualquier etapa mientras no esté aprobado (no solo en Revisión).
+const jobCanApprove = j => !!j && viewer?.role === "Admin total" && !isClosed() && !isViewOnly() && j.status !== "Cancelado"
+  && (j.area === "CM" ? !j.approved && CM_STAGES.includes(j.status) : !jobApproved(j) && !isFin(j)); // v246: en CM también si el CM lo pasó a Programado o Publicado sin aprobación
 // Gestión de Video (pedidos a CM): Pendiente → Grabación → Edición → Revisión → Corrección → Programado → Publicado → Pautado.
 // En Revisión, Admin total aprueba (pasa a Programado) o pide cambios (Corrección, con un mensaje).
 const CM_STAGES = ["Pendiente","Grabación","Edición","Revisión","Corrección","Programado","Publicado","Pautado"];
@@ -5466,7 +5466,7 @@ document.addEventListener("click", e => {
   const vid = kind === "job" || (kind === "rec" && it.r.kind === "Grabación");
   const colorOf = st => kind === "act" ? (st === "Pendiente" ? "#94a3b8" : SEM[semLvl(st)]) : vid ? (st === "Pendiente" ? "#94a3b8" : JOB_COLOR[st] || "#94a3b8") : (POST_COLOR[st] === "#334155" ? "#94a3b8" : POST_COLOR[st]);
   const pop = document.createElement("div"); pop.id = "stagepop"; pop.setAttribute("role", "menu");
-  pop.innerHTML = `<div class="sp-h">Etapa de “${esc(it.title)}”</div>${opts.map(st => `<button type="button" role="menuitemradio" aria-checked="${st === it.status}" class="${st === it.status ? "on" : ""}" data-stageset="${kind}:${id}|${esc(st)}" style="--c:${colorOf(st)}"><i></i>${esc(st)}${st === it.status ? " ✓" : ""}</button>`).join("")}${isDesigner() ? `<div class="sp-n">Aprobar y entregar lo hace Admin total.</div>` : ""}${kind === "job" && jobCanApprove(it) ? `<div class="sp-a"><button type="button" role="menuitem" data-jrev="approve:${esc(it.id)}" style="--c:#14b8a6">${icon("badge-check")}${it.area === "CM" ? "Aprobar (pasa a Programado)" : "Aprobar"}</button>${REVIEW_WAIT.includes(it.status) ? `<button type="button" role="menuitem" data-jrev="fix:${esc(it.id)}" style="--c:#f97316">${icon("pencil-line")}Pedir cambios</button>` : ""}</div>` : ""}`;
+  pop.innerHTML = `<div class="sp-h">Etapa de “${esc(it.title)}”</div>${opts.map(st => `<button type="button" role="menuitemradio" aria-checked="${st === it.status}" class="${st === it.status ? "on" : ""}" data-stageset="${kind}:${id}|${esc(st)}" style="--c:${colorOf(st)}"><i></i>${esc(st)}${st === it.status ? " ✓" : ""}</button>`).join("")}${isDesigner() ? `<div class="sp-n">Aprobar y entregar lo hace Admin total.</div>` : ""}${kind === "job" && jobCanApprove(it) ? `<div class="sp-a"><button type="button" role="menuitem" data-jrev="approve:${esc(it.id)}" style="--c:#14b8a6">${icon("badge-check")}${it.area === "CM" ? (CM_STAGES.indexOf(it.status) < CM_STAGES.indexOf("Programado") ? "Aprobar (pasa a Programado)" : "Aprobar") : "Aprobar"}</button>${REVIEW_WAIT.includes(it.status) ? `<button type="button" role="menuitem" data-jrev="fix:${esc(it.id)}" style="--c:#f97316">${icon("pencil-line")}Pedir cambios</button>` : ""}</div>` : ""}`;
   document.body.appendChild(pop);
   const r = b.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
   pop.style.left = Math.max(8, Math.min(r.left, innerWidth - pw - 8)) + "px";
