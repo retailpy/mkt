@@ -2975,6 +2975,28 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .clean .pill{background:transparent;color:color-mix(in srgb,var(--c) 65%,white);border-color:color-mix(in srgb,var(--c) 55%,transparent)}
 /* v220 · Community Manager simple: Panel con 4 accesos, Gestión de Comunicación y Marketing, Calendario de Actividades */
 .picons.pcm4{grid-template-columns:repeat(4,minmax(0,1fr));max-width:1100px;margin:0 auto;width:100%}
+.picons.pcm4.pcm5{grid-template-columns:repeat(5,minmax(0,1fr));max-width:1320px}
+@media (max-width:1200px){.picons.pcm4.pcm5{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* v249 · Plan de posteo: hoja clara tipo Excel */
+.ptbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 12px;padding:10px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;color:#111827}
+.ptbar .pttl{display:inline-flex;align-items:center;gap:4px;font-weight:600;font-size:13px}
+.ptsws{display:flex;flex-wrap:wrap;gap:4px}
+.ptsw{width:22px;height:22px;border-radius:6px;border:1px solid #cbd5e1;background:var(--c);cursor:pointer;padding:0}
+.ptsw:hover{outline:2px solid #6366f1;outline-offset:1px}
+.ptbar .ptsel{color:#4b5563}
+.ptw{background:#fff;border-radius:12px;padding:0;color-scheme:light}
+.cal.ptcal{background:#d1d5db;gap:1px;border:1px solid #d1d5db;border-radius:10px;overflow:hidden}
+.cal.ptcal .dh{background:#f3f4f6;color:#374151;font-weight:700;padding:6px 4px;text-align:center}
+.cal.ptcal .d.ptd{background:var(--ptbg,#fff);color:var(--ptfg,#111827);min-height:120px;padding:4px 6px;display:flex;flex-direction:column;border-radius:0;border:0;margin:0}
+.cal.ptcal .d.ptd.out{background:var(--ptbg,#f9fafb);opacity:.6}
+.cal.ptcal .d.ptd.today .dn{background:#6366f1;color:#fff;border-radius:999px;padding:0 6px}
+.cal.ptcal .d.ptd.ptsel{box-shadow:inset 0 0 0 2px #6366f1}
+.ptd .pth{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.cal.ptcal .d.ptd .dn{font-weight:700;font-size:12px;color:var(--ptfg,#374151);opacity:1}
+.ptd .ptn{display:inline-flex;align-items:center;gap:3px;font-size:11px;border:1px solid #c7d2fe;background:#eef2ff;color:#3730a3;border-radius:999px;padding:0 6px;cursor:pointer}
+.ptd .ptn svg{width:11px;height:11px}
+.ptd .pttx{flex:1;width:100%;min-height:90px;resize:vertical;border:0;background:transparent;color:inherit;font:inherit;font-size:13px;line-height:1.35;padding:2px 0;outline:none}
+@media (max-width:700px){.cal.ptcal .d.ptd{min-height:90px;padding:3px}.ptd .pttx{font-size:12px;min-height:70px}}
 @media (max-width:900px){.picons.pcm4{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .gcmhead .chips{align-items:center}
 .cmloadbtn{white-space:nowrap}
@@ -3169,6 +3191,7 @@ const SECTIONS = [
   { g:"Community Manager", k:"noticias", l:"Noticias", n:"Noticias", i:"newspaper", virtual:true }, // lo que sale en los medios de Paraguay sobre Retail S.A. y sus marcas (en la botonera, debajo de Tendencias)
   { g:"Community Manager", k:"plan", l:"Plan de posteo", i:"list-checks", hide:true },
   { g:"Community Manager", k:"gcm", l:"Gestión de Comunicación y Marketing", n:"Gestión", i:"layers", hide:true, virtual:true }, // v220: todo el trabajo de CM en una tabla (redes, historias, WhatsApp, videos, contenidos y actividades)
+  { g:"Community Manager", k:"postext", l:"Plan de posteo", n:"Plan de posteo", i:"table-2", hide:true, virtual:true }, // v249: calendario de texto del mes (Admin total y CM)
   { g:"Community Manager", k:"calact", l:"Calendario de Actividades", n:"Calendario", i:"calendar-range", hide:true, virtual:true }, // v220: semana de lunes a domingo, una fila por plataforma (como el Excel)
   { g:"Community Manager", k:"calendario", l:"Gestión Redes", n:"Gestión: Redes", i:"calendar-days", hide:true },
   { g:"Community Manager", k:"calhistoria", l:"Gestión Historia", n:"Gestión: Historia", i:"smartphone", hide:true },
@@ -3568,7 +3591,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v248";
+const APP_VER = "v249";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -4937,7 +4960,7 @@ const MEMBER_ALWAYS = ["bienvenida","perfil","config","guia"]; // la bienvenida 
 const canMember = key => ONLY_AT.includes(key) || ONLY_ADMINS.includes(key) ? false : MEMBER_ALWAYS.includes(key) ? true
   : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "gcm" || key === "calact" ? CM_GEST.some(k => can(k))
   : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : viewer.perms.has(key);
-const can = key => isRevisor() ? REVISOR_SEE.includes(key) : isComercial() ? COMERCIAL_SEE.includes(key) : key === "pedcom" ? isAdminAny() : key === "mensajes" && viewer?.noChat ? false : isAdminAny() ? canAdmin(key) : canMember(key); // noChat: sin Chat Retail MKT (Usuarios y permisos)
+const can = key => key === "postext" ? ["Admin total","CM"].includes(viewer?.role) : isRevisor() ? REVISOR_SEE.includes(key) : isComercial() ? COMERCIAL_SEE.includes(key) : key === "pedcom" ? isAdminAny() : key === "mensajes" && viewer?.noChat ? false : isAdminAny() ? canAdmin(key) : canMember(key); // noChat: sin Chat Retail MKT (Usuarios y permisos)
 const myGroups = () => viewer.brands || GROUPS;
 const seesBrand = b => myGroups().includes(groupOf(b));
 const myBrands = () => Object.keys(BRANDS).filter(seesBrand);
@@ -5255,6 +5278,7 @@ const PANEL_DESIGN = [
 const PANEL_CM = [
   { k:"gcm", t:"Gestión de Comunicación y Marketing", d:"Todos los pedidos pendientes en una tabla: publicaciones, historias, WhatsApp, videos, contenidos y actividades.", i:"layers" },
   { k:"calact", t:"Calendario de Actividades", d:"La semana de lunes a domingo, por plataforma: qué sale, quién lo hace, a qué hora y en qué estado está.", i:"calendar-range" },
+  { k:"postext", t:"Plan de posteo", d:"El mes en texto, como la hoja de Excel: qué se publica cada día, con colores de fondo y de letra.", i:"table-2" },
   { k:"inbox", t:"Mensajes en Redes Sociales", d:"Mensajes directos y comentarios que arroban a la marca en Instagram y Facebook, con reclamos y escraches.", i:"inbox" },
   { k:"ideas", t:"Banco de Ideas", d:"Ideas para creadores de contenido: tendencias de TikTok, Instagram y Facebook para cada marca.", i:"lightbulb" },
 ];
@@ -5373,7 +5397,7 @@ function pPanelCM(){
   const go = can("calcm") ? "calcm" : "plan";
   return `<div class="phero"><h1>Panel de Trabajo</h1><p class="sub">Community Manager</p></div>
   ${can(go) ? `${cmPlanSummary(cmPlanMonth().all, go)}<p class="note dgpanhint">${icon("info")} Lo de ${monthName(MONTH)}, como en Planificación. Tocá un cuadro para ver esos trabajos en Planificación.</p>` : ""}
-  <nav class="picons pcm4" aria-label="Community Manager">${icons || `<div class="empty">No tenés secciones habilitadas.</div>`}</nav>`;
+  <nav class="picons pcm4${PANEL_CM.filter(x => can(x.k)).length > 4 ? " pcm5" : ""}" aria-label="Community Manager">${icons || `<div class="empty">No tenés secciones habilitadas.</div>`}</nav>`;
 }
 let panelDoneAll = false, panelDoneOpen = false; // Diseño: los aprobados del Panel de Trabajo, ocultos hasta tocar “Ver aprobados”
 document.addEventListener("click", e => { if (e.target.closest("[data-paneldoneopen]")){ panelDoneOpen = !panelDoneOpen; render(); } });
@@ -5828,6 +5852,47 @@ const ACT_SIMPLE = ACT_TYPES.slice(3); // las que se cargan con la hoja simple d
 const actType = k => ACT_TYPES.find(x => x.k === k) || ACT_TYPES[ACT_TYPES.length - 1];
 const ACT_STAGES = ["Pendiente","En proceso","Hecho"];
 let CM_ACTS = []; // { id, type, title, brand, owner, date, time, status, notes, byId, at }
+let PLAN_TXT = []; // v249 · Plan de posteo: { id:"YYYY-MM-DD", t, bg, fg, by, at }
+// v249 · Plan de posteo: un calendario de texto por mes, como la hoja de Excel (una celda por día, con color de fondo y de letra).
+// Lo ven y lo editan Admin total y CM; cada día muestra cuánto hay cargado en el Calendario de Actividades ese día.
+const PT_BG = ["#ffffff","#fef3c7","#fde68a","#fed7aa","#fecaca","#fbcfe8","#e9d5ff","#c7d2fe","#bfdbfe","#a5f3fc","#bbf7d0","#d9f99d","#e5e7eb"];
+const PT_FG = ["#111827","#b91c1c","#c2410c","#a16207","#15803d","#0f766e","#1d4ed8","#7e22ce","#be185d","#6b7280"];
+const ptCan = () => ["Admin total","CM"].includes(viewer?.role);
+const ptGet = d => PLAN_TXT.find(x => x.id === d);
+let ptCell = null; // el día elegido para pintar (la celda donde se está escribiendo)
+function ptSet(d, patch){
+  let x = ptGet(d);
+  if (!x){ x = { id:d, t:"" }; PLAN_TXT.push(x); }
+  Object.assign(x, patch, { by:viewer.name, at:new Date().toISOString() });
+  for (const k of ["bg","fg"]) if (!x[k]) delete x[k];
+}
+function pPlanTxt(){
+  const work = cmWork().filter(x => x.date), n = d => work.filter(x => x.date === d).length;
+  const sw = (list, kind) => list.map(c => `<button type="button" class="ptsw" data-ptcolor="${kind}:${c}" style="--c:${c}" title="${kind === "bg" ? "Fondo" : "Letra"} ${c}" aria-label="${kind === "bg" ? "Color de fondo" : "Color de letra"} ${c}"></button>`).join("");
+  return `<div class="head"><div><h1 class="pmh">${pmIco("table-2")}Plan de posteo</h1><p class="sub">${monthLabel(MONTH)} · escribí en cada día lo que se va a publicar, como en la hoja de Excel. Se guarda solo.</p></div></div>
+  <div class="ptbar"><span class="pttl">${icon("paint-bucket")} Fondo</span><div class="ptsws">${sw(PT_BG, "bg")}</div><span class="pttl">${icon("type")} Letra</span><div class="ptsws">${sw(PT_FG, "fg")}</div>
+    <button type="button" class="btn sm" data-ptcolor="clear:">${icon("eraser")} Quitar colores</button><span class="note ptsel">${ptCell ? `Pintando el ${dm(ptCell)}` : "Tocá un día y después un color"}</span></div>
+  <div class="calw ptw"><div class="cal ptcal">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => `<div class="dh">${d}</div>`).join("")}
+  ${calCells().map(c => { const x = ptGet(c), k = n(c), out = c.slice(0, 7) !== MONTH;
+    return `<div class="d ptd ${out ? "out" : ""} ${c === TODAY ? "today" : ""} ${c === ptCell ? "ptsel" : ""}" data-ptday="${c}" style="${x?.bg ? `--ptbg:${x.bg};` : ""}${x?.fg ? `--ptfg:${x.fg};` : ""}">
+      <div class="pth"><span class="dn">${+c.slice(8)}</span>${k ? `<button type="button" class="ptn" data-ptcal="${c}" title="Ver lo cargado en el Calendario de Actividades">${icon("calendar-range")} ${k}</button>` : ""}</div>
+      <textarea class="pttx" data-pttx="${c}" ${ptCan() ? "" : "readonly"} aria-label="Plan del ${dm(c)}">${esc(x?.t || "")}</textarea></div>`; }).join("")}</div></div>`;
+}
+document.addEventListener("input", e => { const d = e.target.dataset?.pttx; if (!d || !ptCan()) return; ptSet(d, { t:e.target.value }); });
+document.addEventListener("focusin", e => { const d = e.target.dataset?.pttx; if (!d || d === ptCell) return; ptCell = d;
+  document.querySelectorAll(".ptd.ptsel").forEach(el => el.classList.remove("ptsel")); e.target.closest(".ptd")?.classList.add("ptsel");
+  const s = document.querySelector(".ptbar .ptsel"); if (s) s.textContent = `Pintando el ${dm(d)}`; });
+document.addEventListener("mousedown", e => { if (e.target.closest("[data-ptcolor]")) e.preventDefault(); }); // el color no le saca el foco a la celda
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-ptcolor]");
+  if (b){ if (!ptCan()) return; if (!ptCell) return toast("Tocá primero un día del calendario.");
+    const [kind, c] = b.dataset.ptcolor.split(":"); ptSet(ptCell, kind === "clear" ? { bg:"", fg:"" } : { [kind]:c === "#ffffff" && kind === "bg" ? "" : c });
+    const x = ptGet(ptCell), el = document.querySelector(`.ptd[data-ptday="${ptCell}"]`);
+    if (el){ el.style.setProperty("--ptbg", x.bg || ""); el.style.setProperty("--ptfg", x.fg || ""); if (!x.bg) el.style.removeProperty("--ptbg"); if (!x.fg) el.style.removeProperty("--ptfg"); }
+    return; }
+  const c = e.target.closest("[data-ptcal]");
+  if (c){ const d = c.dataset.ptcal; calActUI.view = "semana"; calActUI.wk = mondayOf(d); calActUI.month = d.slice(0, 7); page = "calact"; render(); window.scrollTo(0, 0); }
+});
 const actById = id => CM_ACTS.find(a => a.id === id);
 let actUI = { form:null };
 // Todo el trabajo de CM en un mismo formato (Gestión, Calendario de Actividades): publicaciones, Canal de WhatsApp,
@@ -7007,7 +7072,9 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-jrep
 // Pedidos que se repiten: el pedido original guarda los días (rep.days, 0 = lunes) y, cada día, se cargan solos los de los próximos 7 días
 // (antes 2 semanas: avisaban demasiado pronto). Las copias que ya estaban cargadas más adelante no avisan ni cuentan hasta faltar 7 días.
 const REP_AHEAD = 7;
-const repLater = x => !!x?.repOf && daysTo(x.due || x.date || TODAY) > REP_AHEAD;
+// v249: las copias de publicaciones e historias (tienen date, no due) se ven hasta donde se cargan (el domingo de la semana
+// que viene); antes se escondían a partir del 8.º día y el sábado y el domingo no salían en el Calendario de Actividades.
+const repLater = x => !!x?.repOf && daysTo(x.due || x.date || TODAY) > (x.due ? REP_AHEAD : repPostDays());
 const repText = r => r?.days?.length ? (r.days.length === 7 ? "Todos los días" : r.days.length === 5 && r.days.every(d => d < 5) ? "De lunes a viernes" : "Todos los " + r.days.map(d => WEEKDAYS[d].toLowerCase()).join(" y ").replace(/ y (?=.* y )/g, ", ")) + (r.until ? ` hasta el ${dm(r.until)}` : "") : "";
 function spawnRepeats(){
   if (!viewer || isClosed() || isViewOnly()) return 0;
@@ -11343,7 +11410,7 @@ function pConfig(){
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-pref]"); if (!b) return; const [k, val] = b.dataset.pref.split("|"); viewer[k] = val; savePrefs(viewer); applyPrefs(); render();
   toast(k === "theme" ? `Listo: versión ${val === "light" ? "clara" : "oscura"}.` : k === "textSize" ? `Texto ${val === "big" ? "grande" : "normal"}.` : val === "off" ? "Animaciones desactivadas." : "Animaciones activadas."); });
-const EYEBROW = { gcm:"Community Manager", calact:"Community Manager", contenidos:"Community Manager", escraches:"Community Manager", bienvenida:"Edición beta", comercial:"Ofertas", reclamos:"Community Manager", ideas:"Community Manager", inbox:"Community Manager", noticias:"Community Manager", tendg:"Diseño gráfico", tencm:"Community Manager", paneldg:"Diseño gráfico", panelcm:"Community Manager", caldg:"Diseño gráfico", calcm:"Community Manager", web:"Diseño gráfico", pantallas:"Diseño gráfico", sabados:"Equipo", caldiseno:"Redes sociales", cartel:"Diseño gráfico", calcartel:"Cartelería", historialcm:"Community managers", gestioncm:"Community managers", avisos:"Comunicados del equipo", prompts:"Inteligencia artificial", guia:"Ayuda", archivos:"Diseños y archivos", encuestas:"La voz del equipo", planmes:"Hacia dónde vamos", notas:"Tu espacio", mensajes:"Comunicación interna", sugerencias:"Buzón confidencial", tvimpacto:"Pantalla de oficina", inicio:"Panel general", alertas:"Control", calendario:"Community managers", calhistoria:"Community managers", calcanales:"Community managers", cargadiseno:"Diseño gráfico", cargacm:"Community managers", plan:"Contenidos", pedidos:"Diseño gráfico", tv:"Equipo de diseño", historial:"Diseño gráfico", pauta:"Meta Ads", redes:"Audiencia", reportes:"Resultados del mes", usuarios:"Administración", perfil:"Tu cuenta", cumples:"Equipo", dashboard:"Visión general", tvredes:"Pantalla de oficina", staff:"Equipo", config:"Tu cuenta" };
+const EYEBROW = { postext:"Community Manager", gcm:"Community Manager", calact:"Community Manager", contenidos:"Community Manager", escraches:"Community Manager", bienvenida:"Edición beta", comercial:"Ofertas", reclamos:"Community Manager", ideas:"Community Manager", inbox:"Community Manager", noticias:"Community Manager", tendg:"Diseño gráfico", tencm:"Community Manager", paneldg:"Diseño gráfico", panelcm:"Community Manager", caldg:"Diseño gráfico", calcm:"Community Manager", web:"Diseño gráfico", pantallas:"Diseño gráfico", sabados:"Equipo", caldiseno:"Redes sociales", cartel:"Diseño gráfico", calcartel:"Cartelería", historialcm:"Community managers", gestioncm:"Community managers", avisos:"Comunicados del equipo", prompts:"Inteligencia artificial", guia:"Ayuda", archivos:"Diseños y archivos", encuestas:"La voz del equipo", planmes:"Hacia dónde vamos", notas:"Tu espacio", mensajes:"Comunicación interna", sugerencias:"Buzón confidencial", tvimpacto:"Pantalla de oficina", inicio:"Panel general", alertas:"Control", calendario:"Community managers", calhistoria:"Community managers", calcanales:"Community managers", cargadiseno:"Diseño gráfico", cargacm:"Community managers", plan:"Contenidos", pedidos:"Diseño gráfico", tv:"Equipo de diseño", historial:"Diseño gráfico", pauta:"Meta Ads", redes:"Audiencia", reportes:"Resultados del mes", usuarios:"Administración", perfil:"Tu cuenta", cumples:"Equipo", dashboard:"Visión general", tvredes:"Pantalla de oficina", staff:"Equipo", config:"Tu cuenta" };
 // ---------- Pedidos Comercial (v242) ----------
 // Los compradores (rol Comercial, ej. Gisella Aquino) cargan acá sus pedidos de activaciones para publicar en redes: nombre,
 // supermercados, marcas, qué piden, fecha de publicación deseada, vigencia, la hoja (textos y bocetos, como en Diseño gráfico)
@@ -11637,7 +11704,7 @@ function pcToJob(p, area){
   jobUI.ficha = null; jobUI.form = { mode:"new", job }; render(); window.scrollTo(0, 0);
   toast(`Completá lo que falte y tocá Guardar: queda en ${area === "Contenidos" ? "Gestión de Contenidos" : "Diseño gráfico"}.`);
 }
-const PAGES = { pedcom:pPedCom, gcm:pGestCM, calact:pCalAct, contenidos:pContenidos, escraches:pEscraches, bienvenida:pBienvenida, ideas:pIdeas, inbox:pInbox, reclamos:pReclamos, noticias:pNoticias, comercial:pComercial, tendg:() => pTend("dg"), tencm:() => pTend("cm"), paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), caldg:pCalDG, calcm:pPlan, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, aviso:pAviso, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
+const PAGES = { postext:pPlanTxt, pedcom:pPedCom, gcm:pGestCM, calact:pCalAct, contenidos:pContenidos, escraches:pEscraches, bienvenida:pBienvenida, ideas:pIdeas, inbox:pInbox, reclamos:pReclamos, noticias:pNoticias, comercial:pComercial, tendg:() => pTend("dg"), tencm:() => pTend("cm"), paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), caldg:pCalDG, calcm:pPlan, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, aviso:pAviso, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
 
 /* ---------- render ---------- */
 // Barra de pestañas abajo (celular), como en cualquier app: lo que más usa cada rol + “Más” para el menú completo.
@@ -11716,7 +11783,7 @@ function renderNav(){
 // Aparición animada de todo lo que se ve: paneles, tablas (fila por fila), calendarios (día por día), tableros, listas y tarjetas.
 // Cada cosa se anima recién cuando entra en pantalla (también al bajar con el scroll), con un pequeño escalonado.
 const REVEAL = [".panel", ".tw", ".tw tbody tr:not(.arow)", ".kanban .col", ".kanban .card", ".list > .row", ".row", ".dcard", ".cityrow", ".agebars .ar", ".sexlist .sr", ".tvp", ".tvrow-h", ".monthbar", ".head", ".legend", ".urg-legend", ".pipe .stage", ".prow", ".fbar", ".grid > div", ".chips > .chip", "h1", ".sub", ".eyebrow", ".demo-h", ".bday", ".ro", ".scard", ".staff-grid > *", ".note-card", ".alist > *", ".items > *", ".rtabs", ".hellohead", ".motto", ".jfilters", ".pipe-note", ".tag-row", ".perm", ".fhead", ".demo-wrap", ".tvsum .panel", ".ocard", ".ccard", ".upitem", ".upmonth", ".svcard", ".svrq", ".svq", ".gcard"].join(",");
-const CAL_PAGES = ["calact","caldg","calcm","calendario","calhistoria","calcanales","plan","caldiseno","planmes"]; // calendarios: aparecen enteros, sin animación
+const CAL_PAGES = ["postext","calact","caldg","calcm","calendario","calhistoria","calcanales","plan","caldiseno","planmes"]; // calendarios: aparecen enteros, sin animación
 function reveal(){
   if (viewer.motion === "off" || CAL_PAGES.includes(page)) return;
   if (viewer.motion === "off" || !("IntersectionObserver" in window)) return;
