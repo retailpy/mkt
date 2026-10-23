@@ -163,6 +163,15 @@ async function pedidoPush(cfg: any, items: any[]) {
       sent += await send(cfg, [...new Set(to)], () => payload);
       continue;
     }
+    if (p.ev === "st") { // v246: cambio de estado del pedido → al comprador
+      const st = p.st === "Publicado" ? "Finalizado" : String(p.st || "");
+      const T: Record<string, string> = { "Aprobado": "👍 Tu pedido fue aprobado", "En curso": "🎨 Tu pedido está en curso", "Con modificaciones": "✏️ Tu pedido tiene modificaciones", "Finalizado": "✅ Tu pedido está finalizado", "No ejecutable": "⛔ Tu pedido no se va a realizar" };
+      const to = [String(p.by || "")].filter((id) => id && !isDnd(presence[id], now));
+      if (!to.length || !T[st]) continue;
+      const payload = JSON.stringify({ title: T[st], body: short(`${p.title}${p.note ? " · " + p.note : ""}`, 220), tag: "rmh-pc-" + p.id, open: "", go: "com:" + p.id });
+      sent += await send(cfg, to, () => payload);
+      continue;
+    }
     const pub = p.ev === "pub";
     const to = (pub ? [String(p.by || "")] : (admins || []).map((m) => m.person_id)).filter((id) => id && id !== (pub ? "" : p.by) && !isDnd(presence[id], now));
     if (!to.length) continue;
