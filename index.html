@@ -2999,6 +2999,8 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .cal.ptcal{background:#d1d5db;gap:1px;border:1px solid #d1d5db;border-radius:10px;overflow:hidden}
 .cal.ptcal .dh{background:#f3f4f6;color:#374151;font-weight:700;padding:6px 4px;text-align:center}
 .cal.ptcal .d.ptd{background:var(--ptbg,#fff);color:var(--ptfg,#111827);min-height:120px;padding:4px 6px;display:flex;flex-direction:column;border-radius:0;border:0;margin:0}
+.cal.ptcal.ptweek .d.ptd{min-height:340px}.cal.ptcal.ptweek .pttx{font-size:14px}
+.ptviews{margin:0 0 10px;flex-wrap:wrap;gap:10px}.ptwknav{display:flex;align-items:center;gap:8px}
 .cal.ptcal .d.ptd.out{background:var(--ptbg,#f9fafb);opacity:.6}
 .cal.ptcal .d.ptd.today .dn{background:#6366f1;color:#fff;border-radius:999px;padding:0 6px}
 .cal.ptcal .d.ptd.ptsel{box-shadow:inset 0 0 0 2px #6366f1}
@@ -3622,7 +3624,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v256";
+const APP_VER = "v258";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -5928,17 +5930,22 @@ function ptClean(html){
 const ptHtml = x => x?.h ? ptClean(x.h) : esc(x?.t || "").replace(/\n/g, "<br>");
 const ptSave = el => ptSet(el.dataset.pttx, { h:ptClean(el.innerHTML), t:el.innerText.trim() });
 const PT_FMT = [["bold","bold","Negrita"],["sz:2","a-arrow-down","Letra chica"],["sz:3","type","Letra normal"],["sz:5","a-arrow-up","Letra grande"],["ol","list-ordered","Lista numerada"],["chk","list-checks","Checklist (tocá el cuadradito para tildar)"]];
+// v258 · vista Mes (la hoja del mes entero) o Semana (de lunes a domingo, con más lugar para escribir en cada día).
+let ptView = "mes", ptWk = null;
+const ptWeek = () => { const ok = w => w && addDays(w, 6).slice(0, 7) >= MONTH && w.slice(0, 7) <= MONTH;
+  if (!ok(ptWk)) ptWk = mondayOf(MONTH === CURRENT_MONTH ? TODAY : MONTH + "-01"); return ptWk; };
 function pPlanTxt(){
   const bl = ptBrands(); if (bl.length && !bl.includes(ptBrand)) ptBrand = bl[0];
   const work = cmWork().filter(x => x.date && x.brand === ptBrand), n = d => work.filter(x => x.date === d).length;
   const sw = (list, kind) => list.map(c => `<button type="button" class="ptsw" data-ptcolor="${kind}:${c}" style="--c:${c}" title="${kind === "bg" ? "Fondo" : "Letra"} ${c}" aria-label="${kind === "bg" ? "Color de fondo" : "Color de letra"} ${c}"></button>`).join("");
   return `<div class="head"><div><h1 class="pmh">${pmIco("table-2")}Plan de posteo</h1><p class="sub">${monthLabel(MONTH)} · un calendario por cuenta: escribí en cada día lo que se va a publicar en <b>${esc(ptBrand)}</b>, como en la hoja de Excel. Se guarda solo.</p></div></div>
+  <div class="head ptviews">${viewTabs([["mes","Mes","calendar-days"],["semana","Semana","calendar-range"]], ptView, "data-ptview")}${ptView === "semana" ? (() => { const w = ptWeek(), e = addDays(w, 6); return `<div class="ptwknav"><button type="button" class="btn sm" data-ptwk="-7" aria-label="Semana anterior">‹</button><b>Semana del ${+w.slice(8)}/${+w.slice(5, 7)} al ${+e.slice(8)}/${+e.slice(5, 7)}</b><button type="button" class="btn sm" data-ptwk="7" aria-label="Semana siguiente">›</button></div>`; })() : ""}</div>
   <div class="chips ptbrands" role="group" aria-label="Cuenta">${bl.map(b => `<button type="button" class="chip${b === ptBrand ? " on" : ""}" data-ptbrand="${esc(b)}" aria-pressed="${b === ptBrand}" style="--c:${BRANDS[b] || "#94a3b8"}"><span class="ptdot"></span>${esc(b)}</button>`).join("")}</div>
   <div class="ptbar"><span class="pttl">${icon("paint-bucket")} Fondo</span><div class="ptsws">${sw(PT_BG, "bg")}</div><span class="pttl">${icon("type")} Letra</span><div class="ptsws">${sw(PT_FG, "fg")}</div>
     <button type="button" class="btn sm" data-ptcolor="clear:">${icon("eraser")} Quitar colores</button>
     <span class="ptfmts" role="group" aria-label="Formato del texto">${PT_FMT.map(([k, i, l]) => `<button type="button" class="btn sm ib" data-ptfmt="${k}" title="${l}" aria-label="${l}">${icon(i)}</button>`).join("")}</span><span class="note ptsel">${ptCell ? `Pintando el ${dm(ptCell)}` : "Tocá un día y después un color"}</span></div>
-  <div class="calw ptw"><div class="cal ptcal">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => `<div class="dh">${d}</div>`).join("")}
-  ${calCells().map(c => { const x = ptGet(c), k = n(c), out = c.slice(0, 7) !== MONTH;
+  <div class="calw ptw"><div class="cal ptcal${ptView === "semana" ? " ptweek" : ""}">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map((d, i) => `<div class="dh">${d}${ptView === "semana" ? ` ${+addDays(ptWeek(), i).slice(8)}` : ""}</div>`).join("")}
+  ${(ptView === "semana" ? [0,1,2,3,4,5,6].map(i => addDays(ptWeek(), i)) : calCells()).map(c => { const x = ptGet(c), k = n(c), out = ptView !== "semana" && c.slice(0, 7) !== MONTH;
     return `<div class="d ptd ${out ? "out" : ""} ${c === TODAY ? "today" : ""} ${c === ptCell ? "ptsel" : ""}" data-ptday="${c}" style="${x?.bg ? `--ptbg:${x.bg};` : ""}${x?.fg ? `--ptfg:${x.fg};` : ""}">
       <div class="pth"><span class="dn">${+c.slice(8)}</span>${k ? `<button type="button" class="ptn" data-ptcal="${c}" title="Ver lo cargado en el Calendario de Actividades">${icon("calendar-range")} ${k}</button>` : ""}</div>
       <div class="pttx" data-pttx="${c}" ${ptCan() ? `contenteditable="true"` : ""} role="textbox" aria-multiline="true" aria-label="Plan de ${esc(ptBrand)} del ${dm(c)}">${ptHtml(x)}</div></div>`; }).join("")}</div></div>`;
@@ -5950,6 +5957,9 @@ document.addEventListener("focusin", e => { const d = e.target.dataset?.pttx; if
   const s = document.querySelector(".ptbar .ptsel"); if (s) s.textContent = `Pintando el ${dm(d)}`; });
 document.addEventListener("mousedown", e => { if (e.target.closest("[data-ptcolor],[data-ptfmt]")) e.preventDefault(); }); // el color y el formato no le sacan el foco a la celda
 document.addEventListener("click", e => {
+  const pv = e.target.closest("[data-ptview]"); if (pv){ ptView = pv.dataset.ptview; render(); return; }
+  const pw = e.target.closest("[data-ptwk]"); if (pw){ const w = addDays(ptWeek(), +pw.dataset.ptwk), m = addDays(w, 3).slice(0, 7);
+    if (!MONTHS_APP.some(x => x.v === m)) return toast("Esa semana todavía no se puede abrir."); ptWk = w; MONTH = m; render(); return; }
   const pb = e.target.closest("[data-ptbrand]"); if (pb){ ptBrand = pb.dataset.ptbrand; ptCell = null; render(); return; }
   const f = e.target.closest("[data-ptfmt]");
   if (f){ const ed = document.activeElement?.closest?.("[data-pttx]");
