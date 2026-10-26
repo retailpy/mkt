@@ -194,6 +194,7 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 ---
 
 ## 5. Otras cosas recientes (v137–v160)
+- **v260 · Planificación con Mes y Semana (26/10/2026):** en Planificación de Diseño gráfico (`caldg`) y de CM (`calcm`) se abre el **mes entero** por defecto y hay un botón **Semana** (de lunes a domingo, con ‹ › para moverse). Diseño usa `dgPlanUI.view = "semana"`; CM `gView()` ya no arranca en semana. La grilla de la semana es una sola para los dos (`weekGrid`, misma semana `planUI.wk`).
 - **v259 · ocho cambios de CM y Diseño (26/10/2026):**
   1. **Plan de posteo con una fila por red**, como el Calendario de Actividades y el Excel: Instagram/Facebook, TikTok, Canal de WhatsApp, X, YouTube y LinkedIn (Delimarket solo Instagram/Facebook). Cada cuadro se escribe y se pinta igual que antes. Instagram/Facebook usa la misma celda de antes (id = fecha); las demás guardan `fecha#red` en `s:PLAN_TXT` (`ptCid`, `ptGridWeek`).
   2. **Red con selección múltiple** al cargar una publicación de CM (`netPick`): se tildan varias y se guarda como “IG + FB + TikTok” (`netParts`/`netJoin`; lo viejo como “IG + FB” se lee igual). Cada marca se queda solo con las redes que tiene (`netFit`).

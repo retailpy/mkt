@@ -3662,7 +3662,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v259";
+const APP_VER = "v260";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -5714,7 +5714,7 @@ function pCalDiseno(){ page = "caldg"; return pCalDG(); } // compatibilidad con 
 let calCM = "todo";
 // Gestiones de CM (Redes, Historia y Canales): Calendario (predeterminado), Tablero y Tabla.
 const cmView = {};
-const gView = () => cmView[page] || (page === "calcm" ? "semana" : "calendario"); // Planificación arranca en la semana (v220)
+const gView = () => cmView[page] || "calendario"; // Planificación arranca en el mes entero; Semana es un botón (v260)
 document.addEventListener("click", e => { const v = e.target.closest("[data-gview]"); if (v){ cmView[page] = v.dataset.gview; render(); } });
 const G_VIEWS = [["calendario","Calendario","calendar-days"],["tabla","Tabla","table-2"],["tablero","Tablero","kanban"]];
 const soloPost = p => !soloYo || p.cm === viewer.name;
@@ -6278,8 +6278,8 @@ document.addEventListener("click", e => {
   else { const i = MONTHS_APP.findIndex(x => x.v === calActUI.month) + k; calActUI.month = k === 0 ? CURRENT_MONTH : (MONTHS_APP[i] || {}).v || calActUI.month; MONTH = calActUI.month; }
   render();
 });
-// v220 · Planificación (Temario): la semana de lunes a domingo (predeterminada); el mes, la tabla y el tablero siguen igual.
-const PLAN_VIEWS = [["semana","Semana","calendar-range"],["calendario","Mes","calendar-days"],["tabla","Tabla","table-2"],["tablero","Tablero","kanban"]];
+// v260 · Planificación (Temario): el mes entero (predeterminado) o la semana de lunes a domingo; la tabla y el tablero siguen igual.
+const PLAN_VIEWS = [["calendario","Mes","calendar-days"],["semana","Semana","calendar-range"],["tabla","Tabla","table-2"],["tablero","Tablero","kanban"]];
 // La semana que se ve: la de hoy, o la primera del mes elegido arriba (si se cambió de mes).
 function planWk(){
   const w = planUI.wk, e = w && addDays(w, 6);
@@ -6296,11 +6296,12 @@ function planWeekItems(byCm){
   CM_ACTS.filter(a => seesBrand(a.brand) && inFilter(a.brand) && inR(a.date)).forEach(a => out.push({ act:true, id:a.id, date:a.date, brand:a.brand, title:a.title, status:a.status, cm:a.owner, a }));
   return out.filter(x => byCm(x.cm) && soloPost(x) && cmStOk(x)).sort((a, b) => a.date.localeCompare(b.date) || (a.time || a.a?.time || a.r?.time || "").localeCompare(b.time || b.a?.time || b.r?.time || ""));
 }
-function planWeek(items){
+const planWeek = items => weekGrid(c => planDay(c, items), canEditPost());
+function weekGrid(dayFn, addable){
   const wk = planWk(), days = Array.from({ length:7 }, (_, i) => addDays(wk, i)), prevOk = addDays(wk, -1) >= APP_FIRST(), nextOk = addDays(wk, 7) <= APP_LAST();
   return `<div class="head plwknav"><b>${icon("calendar-range")} Semana del ${weekLabel(wk)}</b><div class="chips"><button type="button" class="btn sm" data-plwk="-1" ${prevOk ? "" : "disabled"}>‹ Semana anterior</button>${wk === mondayOf(TODAY) ? "" : `<button type="button" class="btn sm" data-plwk="0">Esta semana</button>`}<button type="button" class="btn sm" data-plwk="1" ${nextOk ? "" : "disabled"}>Semana siguiente ›</button></div></div>
-  <div class="plcal plweek"><div class="calw${canEditPost() && !isClosed() ? " addable" : ""}"><div class="cal">${days.map((c, i) => `<div class="dh">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"][i]} ${+c.slice(8)}</div>`).join("")}
-    ${days.map(c => { const inner = planDay(c, items); return `<div class="d ${c === TODAY ? "today" : ""} ${inner ? "" : "emptyday"}" data-cdrop="${c}">${inner}</div>`; }).join("")}</div></div></div>`;
+  <div class="plcal plweek"><div class="calw${addable && !isClosed() ? " addable" : ""}"><div class="cal">${days.map((c, i) => `<div class="dh">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"][i]} ${+c.slice(8)}</div>`).join("")}
+    ${days.map(c => { const inner = dayFn(c); return `<div class="d ${c === TODAY ? "today" : ""} ${inner ? "" : "emptyday"}" data-cdrop="${c}">${inner}</div>`; }).join("")}</div></div></div>`;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-plwk]"); if (!b) return; const k = +b.dataset.plwk;
   planUI.wk = k === 0 ? mondayOf(TODAY) : addDays(planWk(), 7 * k); const m = addDays(planUI.wk, 3).slice(0, 7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m; render(); });
@@ -7451,12 +7452,12 @@ const leadLv = n => n === null ? "" : n <= 1 ? "late" : n <= 3 ? "warn" : "ok"; 
 const leadTxt = n => n < 0 ? "después de la fecha límite" : n === 0 ? "el mismo día" : n === 1 ? "1 día antes" : n + " días antes";
 const evReq = j => { const n = leadDays(j); return n === null ? "" : `<span class="evreq ${leadLv(n)}" title="Se pidió el ${dm(j.requestDate)}, ${leadTxt(n)} de la fecha límite (${dm(j.due)})">${icon("inbox")} Pedido ${dm(j.requestDate)} · ${leadTxt(n)}</span>`; };
 // Calendario de Diseño: cada trabajo en su fecha de entrega (fecha límite). Arriba del nombre, cuándo se pidió.
-function jobDeliveryCal(list, A = "Diseño"){
+function jobDeliveryCal(list, A = "Diseño", week = false){
   const tight = list.filter(j => !j.ex && leadDays(j) !== null && leadDays(j) <= 1).length;
   const rec = A === "CM" ? recVisible().filter(r => r.kind === "Grabación") : [];
   return `<div class="legend">${stagesOf(A).map(st => `<span><span class="sw" style="background:${st === "Pendiente" ? "#94a3b8" : JOB_COLOR[st]}"></span>${st}</span>`).join("")}${A === "CM" ? `<span><span class="sw" style="background:${REC_KINDS["Grabación"].c}"></span>${icon("repeat")} Grabación repetitiva</span>` : ""}</div>
   <div class="legend reqleg">${icon("inbox")} <b>Pedido:</b> cuándo se pidió, antes de la fecha límite <span class="evreq late">1 día o menos</span><span class="evreq warn">2 o 3 días</span><span class="evreq ok">4 días o más</span>${tight ? `<span class="reqtight">${tight} ${tight === 1 ? "pedido" : "pedidos"} de ${monthName(MONTH)} con 1 día o menos</span>` : ""}</div>${calHint().replace("un posteo o una entrega", "una entrega")}
-  ${calGrid(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("") + list.filter(j => j.due === c).map(j => { const done = isFin(j);
+  ${(week ? weekGrid : calGrid)(c => rec.filter(r => recOn(r, c)).sort((a, b) => a.time.localeCompare(b.time)).map(r => recEv(r, c)).join("") + list.filter(j => j.due === c).map(j => { const done = isFin(j);
     return `<div class="ev job${sepCls(j.brand)}"${calDrag("job", j.id)}${canCreateJobs() && A !== "CM" ? ` data-open="job:${j.id}"` : ` data-jficha="${j.id}" role="button" tabindex="0"`} style="--c:${BRANDS[j.brand]};--s:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}" title="${DG_SEC[jobSection(j)]}: ${esc(j.title)} · ${j.status} · ${esc(j.owner)} · entrega ${dm(j.due)}">${evReq(j)}<span>${done ? icon("check") + " " : urgency(j)?.late ? icon("alarm-clock") + " " : ""}<b class="evk">${DG_SEC[jobSection(j)]}:</b> ${esc(j.title)}</span>${evStage("job", j, `${j.status} · ${esc(firstName(j.owner))}`, j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status])}</div>`; }).join(""), canCreateJobs())}`;
 }
 let cartUI = { cartel:"calendario", web:"calendario", pantallas:"calendario", get view(){ return this[SEC_PIECES[page] ? page : "cartel"]; }, set view(v){ this[SEC_PIECES[page] ? page : "cartel"] = v; } };
@@ -7542,12 +7543,12 @@ function pCalDG(){
     ${lateCard(late.length, lateOn, `data-dgst="${LATE_ST}"`, prevMonths(late))}
     <div class="pubpct"><b class="num">${mes.length ? Math.round(done / mes.length * 100) : 0}%</b><span>del mes ya aprobado (${done} de ${mes.length})</span></div></div>
     ${dgPlanUI.st !== "Todos" ? `<p class="note dgstnote" style="margin:-6px 0 0">${icon("info")} Mostrando solo <b>${esc(dgPlanUI.st)}</b>.${lateOn && dgPlanUI.view !== "tabla" && late.some(j => j.due.slice(0, 7) < MONTH) ? " Los atrasados de meses anteriores se ven en Tabla." : ""} <button type="button" class="linkish" data-dgst="Todos">Ver todas las etapas</button></p>` : ""}`;
-  return `<div class="head"><div><h1 class="pmh">${pmIco("calendar-days")}Planificación de entregas</h1><p class="sub">${monthLabel(MONTH)} · cada trabajo de Diseño gráfico (redes, cartelería, web y pantallas) en su fecha de entrega.</p></div></div>
+  return `<div class="head"><div><h1 class="pmh">${pmIco("calendar-days")}Planificación de entregas</h1><p class="sub">${dgPlanUI.view === "semana" ? `Semana del ${weekLabel(planWk())}` : monthLabel(MONTH)} · cada trabajo de Diseño gráfico (redes, cartelería, web y pantallas) en su fecha de entrega.</p></div></div>
   ${canCreateJobs() ? `<button class="panel cmnew" data-jnew><span class="cmplus">${icon("plus")}</span><span><b>Cargar pedido</b><small>Qué pieza, para qué marca, quién la hace y para cuándo. También podés tocar un día del calendario.</small></span></button>` : ""}
   ${summary}
   ${ownsJobs() ? `<div class="chips pedscope"><button type="button" class="chip ${pedMine() ? "on" : ""}" data-pedscope="mine">${icon("user-round")} Mis trabajos</button><button type="button" class="chip ${pedMine() ? "" : "on"}" data-pedscope="team">${icon("users")} Todo el equipo</button></div>` : ""}
-  ${viewTabs([["calendario", "Calendario", "calendar-days"], ["tabla", "Tabla", "table-2"]], dgPlanUI.view || "calendario", "data-dgview")}
-  ${dgPlanUI.view === "tabla" ? dgTable(lateOn ? list : list.filter(j => j.due.slice(0, 7) === MONTH)) : `${jobDeliveryCal(list, "Diseño")}${n ? "" : `<p class="note">No hay entregas en ${monthName(MONTH)}${dgPlanUI.st !== "Todos" ? ` en ${esc(dgPlanUI.st)}` : ""}${pedMine() ? " a tu nombre" : ""}.</p>`}`}
+  ${viewTabs([["calendario", "Mes", "calendar-days"], ["semana", "Semana", "calendar-range"], ["tabla", "Tabla", "table-2"]], dgPlanUI.view || "calendario", "data-dgview")}
+  ${dgPlanUI.view === "tabla" ? dgTable(lateOn ? list : list.filter(j => j.due.slice(0, 7) === MONTH)) : `${jobDeliveryCal(list, "Diseño", dgPlanUI.view === "semana")}${n || dgPlanUI.view === "semana" ? "" : `<p class="note">No hay entregas en ${monthName(MONTH)}${dgPlanUI.st !== "Todos" ? ` en ${esc(dgPlanUI.st)}` : ""}${pedMine() ? " a tu nombre" : ""}.</p>`}`}
   ${jobForm()}`;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-dgst]"); if (!b) return; const st = b.dataset.dgst; dgPlanUI.st = st === "Todos" || dgPlanUI.st === st ? "Todos" : st; render(); });
