@@ -2,7 +2,7 @@
 
 > Pegá o adjuntá este archivo al empezar una conversación nueva. Resume qué es la app, cómo está armada,
 > cómo se trabaja y en qué punto quedó todo, con el detalle de Instagram (mensajes, menciones y la
-> revisión de Meta). Última actualización de este encabezado: **26 de octubre de 2026** (versión **v262**; lo último de cada versión está en la sección 5, la más nueva arriba).
+> revisión de Meta). Última actualización de este encabezado: **26 de octubre de 2026** (versión **v263**; lo último de cada versión está en la sección 5, la más nueva arriba).
 > **Acá no hay contraseñas, tokens ni claves**: esas están solo en Vercel/Supabase/Meta.
 
 ---
@@ -194,6 +194,9 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 ---
 
 ## 5. Otras cosas recientes (v137–v160)
+- **v263 · “Visto por” más a la vista en los grupos y filtros en Gestión de Comunicación y Marketing (26/10/2026):**
+  1. **Chat (grupos):** el “Visto por …” ahora sale debajo del último mensaje de **cada tanda tuya** (no solo del último del chat) y el menú del mensaje (mantener apretado o clic derecho) tiene **Info: quién lo vio**, como WhatsApp. Siguen andando la línea y los ✓✓ para abrir la lista.
+  2. **Gestión de Comunicación y Marketing (`gcm`):** la tabla aparece **entera y al instante, sin animación** (se sumó `gcm` a `CAL_PAGES`, que no anima). Nueva barra de filtros: **Marca** y **Tipo** (Post, Carrusel, Reel, Historia, Canal de WhatsApp, Video, Contenido gráfico y las actividades; cada opción con su cantidad), **Fecha ascendente / descendente** (por defecto: pendientes de la más antigua a la más nueva, aprobados al revés) y **Limpiar filtros**, con el conteo “X de N” (`gcmUI.brand`, `gcmUI.type`, `gcmUI.ord`, `gcmType`). Los atrasados del encabezado cuentan lo filtrado.
 - **v262 · Avisos con texto largo y fotos, quién vio el aviso, imagen de grupos nítida y “Visto por” en los grupos (26/10/2026):**
   1. **Avisos y botón Aviso:** el mensaje acepta hasta **2000 caracteres** (antes 400; el título, 120) con contador, y respeta los renglones. Si es largo, en el Inicio y en las tarjetas se ve una parte con **Ver todo**. Se pueden adjuntar **hasta 4 fotos o capturas** (botón “Adjuntar foto o captura” o **pegando con Ctrl+V** en el mensaje): se achican y se suben a Google Drive como las fotos del chat (`chat_image`); en el aviso queda `imgs:[{ id, w, h }]`. Se ven en el Inicio, en Avisos, en la ventana emergente y en grande al tocarlas. Al borrar el aviso (o cancelar el formulario) las fotos van a la papelera de Drive. En Alertas el texto sale resumido con “Ver aviso”. La notificación push sigue igual (texto cortado a 220).
   2. **Quién vio el aviso (Admin total):** la primera vez que el aviso le aparece a alguien (Inicio, Avisos o ventana emergente, con la app a la vista y con su propia sesión, no en “ver como”) se anota la hora en `viewAt`; al tocar “Entendido” se anota en `seenAt` (antes solo en los del botón Aviso). En cada aviso Admin total ve “Lo vieron X de N · Entendido Y de N” y la lista **Tocaron Entendido / Lo vieron, sin tocar Entendido / Todavía no lo vieron**, con la hora (`avReadList`, `avMarkViewed`). En los vencidos de antes de v262 no se sabe quién lo vio: solo se muestra Entendido.

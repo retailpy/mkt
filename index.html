@@ -234,7 +234,7 @@ html.navmini .nav-group.closed > a{display:flex}
 .rewh{display:flex;align-items:center;gap:8px;margin-bottom:6px}.rewh b{color:#fff}.rewh .rewn{color:var(--muted)}
 .rewh button{all:unset;cursor:pointer;margin-left:auto;padding:0 6px;font-size:20px;line-height:1;color:var(--muted)}.rewh button:hover{color:#fff}
 .cseen{flex:0 0 100%;display:flex;justify-content:flex-end;margin-top:2px}
-.cseenb{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--faint);padding:1px 4px;border-radius:8px;max-width:85%;text-align:right}.cseenb svg{flex:none}
+.cseenb{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);padding:1px 4px;border-radius:8px;max-width:85%;text-align:right}.cseenb svg{flex:none}
 .cseenb:hover,.cseenb:focus-visible{color:var(--ink);background:rgba(148,163,184,.12)}
 .cseenb.all{color:#22c55e}
 .cseenb svg{width:13px;height:13px}
@@ -3080,6 +3080,13 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .gmon{display:inline-flex;align-items:center;gap:8px}.gmon b{min-width:120px;text-align:center}
 .glate{color:#f87171}
 .gcmtbl td{vertical-align:middle}
+.gcmfil{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 12px;margin-top:-10px}
+.gfil{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+.gfil > span{display:inline-flex;align-items:center;gap:5px}.gfil svg{width:13px;height:13px}
+.gfil select.base{min-width:190px;max-width:100%;padding:7px 10px;border-radius:12px}
+.gcmfil .gord svg{width:15px;height:15px}
+.gcmfil .gcount{margin-left:auto;align-self:center}
+@media (max-width:640px){.gcmfil{margin-top:-6px}.gfil{flex:1 1 140px}.gfil select.base{min-width:0;width:100%}.gcmfil .gcount{margin-left:0}}
 .gcmtbl tr.ggroup th{background:rgba(34,211,238,.06);color:var(--ink);text-align:left;font-size:13px;font-weight:700;padding:10px 12px;border-top:1px solid var(--line-3)}
 .gcmtbl tr.ggroup th svg{width:15px;height:15px;color:var(--cyan);vertical-align:-3px;margin-right:4px}
 .gcmtbl tr.ggroup th span{margin-left:6px;font-weight:600;color:var(--muted);font-size:12px}
@@ -6214,12 +6221,27 @@ document.addEventListener("submit", e => {
 });
 
 // ---------- Gestión de Comunicación y Marketing: la tabla de pedidos pendientes (o los aprobados), por actividad ----------
-let gcmUI = { done:false, month:null };
+let gcmUI = { done:false, month:null, brand:"", type:"", ord:"" }; // v263: filtro por marca y por tipo, y orden por fecha (ord: "" = el de siempre, "asc" o "desc")
+// v263 · Tipo de publicación para el filtro: Post, Carrusel, Reel, Historia, Canal de WhatsApp, Video, Contenido gráfico y las actividades.
+const GCM_TYPES = [["POST","Post"],["CARRUSEL","Carrusel"],["REEL","Reel"],["STORY","Historia"],["CANAL","Canal de WhatsApp"],["VIDEO","Video"],["GRÁFICO","Contenido gráfico"], ...ACT_SIMPLE.map(a => [a.s, a.n])];
+const gcmType = x => x.k === "canal" ? "CANAL" : cmFmt(x);
 function pGestCM(){
   const done = gcmUI.done, mon = gcmUI.month || CURRENT_MONTH;
-  const all = cmWork().filter(cmMine), list = done ? all.filter(x => x.done && x.date.slice(0, 7) === mon) : all.filter(x => !x.done);
+  const all = cmWork().filter(cmMine), base = done ? all.filter(x => x.done && x.date.slice(0, 7) === mon) : all.filter(x => !x.done);
+  const list = base.filter(x => (!gcmUI.brand || x.brand === gcmUI.brand) && (!gcmUI.type || gcmType(x) === gcmUI.type));
   const mi = MONTHS_APP.findIndex(m => m.v === mon);
-  const sortF = done ? (a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time) : (a, b) => a.date.localeCompare(b.date) || (a.time || "99").localeCompare(b.time || "99");
+  const asc = gcmUI.ord ? gcmUI.ord === "asc" : !done; // pendientes: lo más próximo primero · aprobados: lo último primero
+  const dk = x => x.date || (asc ? "9999" : "0000"); // sin fecha, siempre al final
+  const sortF = (a, b) => (asc ? 1 : -1) * (dk(a).localeCompare(dk(b)) || (a.time || "99").localeCompare(b.time || "99"));
+  const bOrd = Object.keys(BRANDS), bi = b => bOrd.includes(b) ? bOrd.indexOf(b) : 99, cnt = f => base.filter(f).length;
+  const brands = [...new Set([...base.map(x => x.brand), gcmUI.brand].filter(Boolean))].sort((a, b) => bi(a) - bi(b) || a.localeCompare(b));
+  const types = GCM_TYPES.filter(([k]) => k === gcmUI.type || base.some(x => gcmType(x) === k)), filt = !!(gcmUI.brand || gcmUI.type);
+  const fil = `<div class="gcmfil" role="group" aria-label="Filtros de la tabla">
+    <label class="gfil"><span>${icon("tag")} Marca</span><select class="base" data-gcmf="brand"><option value="">Todas las marcas (${base.length})</option>${brands.map(b => `<option value="${esc(b)}" ${b === gcmUI.brand ? "selected" : ""}>${esc(b)} (${cnt(x => x.brand === b)})</option>`).join("")}</select></label>
+    <label class="gfil"><span>${icon("shapes")} Tipo</span><select class="base" data-gcmf="type"><option value="">Todos los tipos (${base.length})</option>${types.map(([k, l]) => `<option value="${esc(k)}" ${k === gcmUI.type ? "selected" : ""}>${esc(l)} (${cnt(x => gcmType(x) === k)})</option>`).join("")}</select></label>
+    <button type="button" class="btn sm gord" data-gcmord="${asc ? "desc" : "asc"}" title="Cambiar el orden por fecha">${icon(asc ? "arrow-up-narrow-wide" : "arrow-down-wide-narrow")} Fecha: ${asc ? "ascendente (más antigua primero)" : "descendente (más nueva primero)"}</button>
+    ${filt ? `<button type="button" class="btn sm" data-gcmclear>${icon("x")} Limpiar filtros</button>` : ""}
+    <span class="note gcount">${filt ? `${list.length} de ${base.length}` : `${base.length} ${base.length === 1 ? "trabajo" : "trabajos"}`}</span></div>`;
   const groups = ACT_TYPES.map(t => ({ t, items:list.filter(x => x.act === t.k).sort(sortF) })).filter(g => g.items.length);
   const late = done ? 0 : list.filter(cmLate).length;
   const row = x => { const nw = !done && cmNew(x), cp = cmCopyTxt(x);
@@ -6227,18 +6249,22 @@ function pGestCM(){
       <td><span class="gfmt">${icon(cmIco(x))} ${esc(cmFmt(x))}</span><small class="gwhere">${esc(cmWhere(x))}</small></td><td>${brandTag(x.brand)}</td><td>${esc(x.who || "Sin asignar")}</td>
       <td class="num gdate">${cmLate(x) ? icon("alarm-clock") + " " : ""}${x.date ? `${WEEKDAYS[wdOf(x.date)].slice(0, 3)} ${dm(x.date)}` : "—"}${x.time ? `<small>${esc(x.time)} h</small>` : ""}</td><td>${cmStage(x)}</td></tr>`; };
   const body = groups.length ? groups.map(g => `<tr class="ggroup"><th colspan="6">${icon(g.t.i)} ${esc(g.t.t)} <span>${g.items.length}</span></th></tr>${g.items.map(row).join("")}`).join("")
-    : `<tr><td colspan="6" class="empty">${done ? `No hay trabajos aprobados ${soloYo ? "tuyos " : ""}en ${monthName(mon)}.` : `${icon("check")} No hay pedidos pendientes${soloYo ? " a tu nombre" : ""}.`}</td></tr>`;
+    : `<tr><td colspan="6" class="empty">${filt && base.length ? `No hay trabajos con esos filtros. <button type="button" class="btn sm" data-gcmclear>Limpiar filtros</button>` : done ? `No hay trabajos aprobados ${soloYo ? "tuyos " : ""}en ${monthName(mon)}.` : `${icon("check")} No hay pedidos pendientes${soloYo ? " a tu nombre" : ""}.`}</td></tr>`;
   return `<div class="head gcmhead"><div><h1 class="pmh">${pmIco("layers")}Gestión de Comunicación y Marketing</h1><p class="sub">${done ? "Lo terminado: publicado, aprobado o hecho." : `Pedidos pendientes${late ? ` · <b class="glate">${late} ${late === 1 ? "atrasado" : "atrasados"}</b>` : ""}`}</p></div>
     <div class="chips">${refreshBtn()}${cmLoadBtn()}</div></div>
   <div class="gcmbar"><div class="chips pedscope"><button type="button" class="chip ${soloYo ? "on" : ""}" data-soloset="1">${icon("user-round")} Mis pedidos</button><button type="button" class="chip ${soloYo ? "" : "on"}" data-soloset="0">${icon("users")} Todo el equipo</button></div>
     <div class="chips">${done ? `<span class="gmon"><button type="button" class="btn sm ib" data-gcmmon="-1" ${mi <= 0 ? "disabled" : ""} aria-label="Mes anterior">‹</button><b>${monthLabel(mon)}</b><button type="button" class="btn sm ib" data-gcmmon="1" ${mi >= MONTHS_APP.length - 1 ? "disabled" : ""} aria-label="Mes siguiente">›</button></span>` : ""}
     <button type="button" class="btn ${done ? "on" : ""}" data-gcmdone aria-pressed="${done}">${icon(done ? "list-todo" : "circle-check")} ${done ? "Ver pendientes" : "Aprobados"}</button>${can("historialcm") ? `<button type="button" class="btn" data-page="historialcm">${icon("archive")} Historial</button>` : ""}</div></div>
+  ${fil}
   <div class="tw gcmtw"><table class="gcmtbl"><thead><tr><th>Trabajo</th><th>Qué es</th><th>Marca</th><th>Responsable</th><th>${done ? "Fecha" : "Para cuándo"}</th><th>Estado</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 document.addEventListener("click", e => {
-  if (e.target.closest("[data-gcmdone]")){ gcmUI.done = !gcmUI.done; if (gcmUI.done) gcmUI.month = gcmUI.month || CURRENT_MONTH; render(); return; }
+  if (e.target.closest("[data-gcmdone]")){ gcmUI.done = !gcmUI.done; gcmUI.ord = ""; if (gcmUI.done) gcmUI.month = gcmUI.month || CURRENT_MONTH; render(); return; }
+  const o = e.target.closest("[data-gcmord]"); if (o){ gcmUI.ord = o.dataset.gcmord; render(); return; }
+  if (e.target.closest("[data-gcmclear]")){ gcmUI.brand = gcmUI.type = ""; render(); return; }
   const m = e.target.closest("[data-gcmmon]"); if (m){ const i = MONTHS_APP.findIndex(x => x.v === (gcmUI.month || CURRENT_MONTH)) + +m.dataset.gcmmon; if (MONTHS_APP[i]){ gcmUI.month = MONTHS_APP[i].v; render(); } }
 });
+document.addEventListener("change", e => { const k = e.target.dataset?.gcmf; if (!k) return; gcmUI[k] = e.target.value; e.target.blur(); render(); });
 
 // ---------- Calendario de Actividades: semana de lunes a domingo, una fila por plataforma (como el Excel); mes opcional ----------
 const mondayOf = d => addDays(d, -wdOf(d));
@@ -9343,11 +9369,11 @@ const GRP_ICOS = ["megaphone","palette","users","trending-up","messages-square",
 const GRP_DEF_ICO = { cm:"megaphone", diseno:"palette", equipo:"users", marketing:"trending-up" };
 const grpIco = g => GRP_ICOS.includes(g.ico) ? g.ico : GRP_DEF_ICO[g.id] || "messages-square";
 const grpAvatar = g => g.img ? `<img class="cav" src="${g.img}" alt="">` : g.emo ? `<span class="cav" style="--c:${g.color || "#64748b"}">${esc(g.emo)}</span>` : `<span class="cav cavi" style="--c:${g.color || "#64748b"}">${icon(grpIco(g))}</span>`;
-// Menú de un mensaje (como WhatsApp): Responder, Reenviar, Copiar y, si es tuyo, Editar y Eliminar.
+// Menú de un mensaje (como WhatsApp): Responder, Reenviar, Copiar y, si es tuyo, Info (en grupos: quién lo vio), Editar y Eliminar.
 const msgSnippet = m => (m.text || (m.img ? "📷 Foto" : m.doc ? "📎 " + (m.doc.n || "Documento") : m.gif ? "GIF" : m.stk ? "Sticker" : "")).slice(0, 90);
 function msgActions(m, mid, mine){
   const it = (a, ic, t, cls = "") => `<button type="button" class="${cls}" data-cact="${a}|${esc(mid)}">${icon(ic)}<span>${t}</span></button>`;
-  return `<div class="cacts" role="menu">${it("reply", "reply", "Responder")}${it("fwd", "forward", "Reenviar")}${m.text || m.gif ? it("copy", "copy", "Copiar") : ""}${mine && m.text ? it("edit", "pencil", "Editar") : ""}${mine ? it("del", "trash-2", "Eliminar", "danger") : ""}</div>`;
+  return `<div class="cacts" role="menu">${it("reply", "reply", "Responder")}${it("fwd", "forward", "Reenviar")}${m.text || m.gif ? it("copy", "copy", "Copiar") : ""}${mine && m.id && chatConv()?.kind === "g" ? it("info", "eye", "Info: quién lo vio") : ""}${mine && m.text ? it("edit", "pencil", "Editar") : ""}${mine ? it("del", "trash-2", "Eliminar", "danger") : ""}</div>`;
 }
 // Hora de un mensaje nuevo: la del servidor en el momento en que se manda (si el celular o la compu tiene otra
 // hora, se corrige). El orden es el de llegada, así que no hace falta correr la hora: siempre es la real.
@@ -9381,6 +9407,7 @@ document.addEventListener("click", async e => {
   const [a, mid] = b.dataset.cact.split("|"), c = chatConv(), m = c && findMsg(c, mid); if (!m) return;
   chatUI.react = null; chatUI.reactMore = null;
   if (a === "copy"){ try { await navigator.clipboard.writeText(m.text || m.gif || ""); toast("Copiado."); } catch { toast("No se pudo copiar."); } render(); return; }
+  if (a === "info"){ chatUI.seenOf = m.id; render(); document.querySelector("#cvMsgs .cseenw")?.scrollIntoView({ block:"nearest", behavior:"smooth" }); return; } // grupos: quién lo leyó
   if (a === "reply"){ chatUI.edit = null; chatUI.reply = { id:mid, from:m.from, t:msgSnippet(m) }; render(); document.getElementById("chatInput")?.focus(); return; }
   if (a === "edit"){ if (m.from !== viewer.id) return; chatUI.reply = null; chatUI.edit = mid; render(); const inp = document.getElementById("chatInput"); if (inp){ inp.value = m.text; inp.focus(); } return; }
   if (a === "del"){ if (m.from !== viewer.id) return; if (!confirmTap(b.querySelector("span"), "cdel:" + mid, "¿Seguro? Tocá de nuevo")){ chatUI.react = mid; return; }
@@ -9595,8 +9622,9 @@ function chatFit(){
 }
 addEventListener("resize", () => { if (page === "mensajes"){ chatFit(); chatPop(); } });
 document.addEventListener("scroll", e => { if (e.target.id === "cvMsgs") chatPop(); }, true);
-// Grupos (v262): quién leyó tu mensaje, como WhatsApp. Debajo de tu último mensaje del grupo dice “Visto por …”; tocando
-// esa línea (o los ✓✓ de cualquier mensaje tuyo) se ve la lista: quién lo leyó, a quién le llegó sin leer y a quién todavía no.
+// Grupos (v262): quién leyó tu mensaje, como WhatsApp. Debajo de tu último mensaje (y desde v263, del último de cada tanda
+// tuya) dice “Visto por …”; tocando esa línea, los ✓✓ de cualquier mensaje tuyo o “Info” en el menú del mensaje (mantener
+// apretado o clic derecho) se ve la lista: quién lo leyó, a quién le llegó sin leer y a quién todavía no.
 // Sale de ch.seen (hasta qué mensaje leyó cada uno) y ch.got (hasta cuál le llegó), que la app ya guardaba para los ✓✓.
 function grpReaders(c, m){
   const ch = CHATS[c.id] || {}, ts = msgTs(m), others = PEOPLE.filter(pp => pp.active && pp.id !== viewer.id && chatMember(c.g, pp)).sort((a, b) => nickOf(a).localeCompare(nickOf(b)));
@@ -9629,7 +9657,7 @@ function bubbles(c){
       <div class="cbub${!m.text && !m.rp && !m.fw && ((m.stk && stkSrc(m.stk)) || m.gif || m.img?.id || m.img?.up) ? " cbare" : ""}">${head ? `<b class="cwho">${esc(who ? nickOf(who) : "")}</b>` : ""}${m.fw ? `<span class="cfw">${icon("forward")} Reenviado</span>` : ""}${m.rp ? `<button type="button" class="crq" data-cjump="${esc(m.rp.id)}"><b>${esc(m.rp.from === viewer.id ? "Vos" : nickOf(personById(m.rp.from)) || "")}</b><span>${esc(m.rp.t || "")}</span></button>` : ""}${m.stk && stkSrc(m.stk) ? `<span class="cstkw"><img class="cstk" src="${esc(stkSrc(m.stk))}" alt="Sticker" loading="lazy" referrerpolicy="no-referrer" onerror="imgRetry(this)"><button type="button" class="cstkfav${stkFavs().includes(m.stk) ? " on" : ""}" data-stkfav="${esc(m.stk)}" title="${stkFavs().includes(m.stk) ? "Está en tus favoritos (tocá para quitarlo)" : "Guardar en mis favoritos"}" aria-label="${stkFavs().includes(m.stk) ? "Quitar de favoritos" : "Guardar en favoritos"}">${stkFavs().includes(m.stk) ? "★" : "☆"}</button></span>` : ""}${m.img?.id ? photoTag(m.img) : m.img?.up ? photoUp(m.img, m) : ""}${m.doc ? docTag(m.doc, m) : ""}${m.gif && /^https:\/\//.test(m.gif) ? `<a href="${esc(m.gif)}" target="_blank" rel="noopener" class="cgif"><img src="${esc(m.gif)}" alt="GIF" loading="lazy"></a>` : ""}${m.text ? `<div class="ctext${emojiOnly(m.text) ? " cbig" + emojiOnly(m.text) : ""}">${chatLinks(m.text)}</div>${chatPrev(m.text)}` : ""}${m.via ? `<span class="cvia">Prueba enviada por ${esc(nickOf(personById(m.via)) || m.via)} como ${esc(nickOf(who) || m.from)}</span>` : ""}<span class="ctime">${m.ed ? "editado · " : ""}${msgTime(m)}${mine ? msgTicks(m, c) : ""}</span>
         <button type="button" class="creact" data-react="${esc(mid)}" aria-label="Reaccionar">${icon("smile-plus")}</button>
       </div>
-      ${mine && c.kind === "g" && m.id && (m === lastMine || chatUI.seenOf === m.id) ? seenRow(c, m) : ""}
+      ${mine && c.kind === "g" && m.id && (m === lastMine || chatUI.seenOf === m.id || (c.msgs[i + 1] && c.msgs[i + 1].from !== viewer.id)) ? seenRow(c, m) : ""}
       ${re.length ? `<div class="cres">${re.map(([e, ids]) => `<button type="button" class="rchip ${ids.includes(viewer.id) ? "mine" : ""}" data-rewho="${esc(mid)}" aria-expanded="${chatUI.whoRe === mid}" title="${esc(ids.map(id => id === viewer.id ? "Vos" : nickOf(personById(id)) || id).join(", "))} · tocá para ver quiénes">${e} ${ids.length}</button>`).join("")}${chatUI.whoRe === mid ? reWho(re, mid) : ""}</div>` : ""}</div>`;
   }).join("") || `<div class="cempty">Todavía no hay mensajes. ¡Escribí el primero!</div>`;
 }
@@ -12184,7 +12212,7 @@ function renderNav(){
 // Aparición animada de todo lo que se ve: paneles, tablas (fila por fila), calendarios (día por día), tableros, listas y tarjetas.
 // Cada cosa se anima recién cuando entra en pantalla (también al bajar con el scroll), con un pequeño escalonado.
 const REVEAL = [".panel", ".tw", ".tw tbody tr:not(.arow)", ".kanban .col", ".kanban .card", ".list > .row", ".row", ".dcard", ".cityrow", ".agebars .ar", ".sexlist .sr", ".tvp", ".tvrow-h", ".monthbar", ".head", ".legend", ".urg-legend", ".pipe .stage", ".prow", ".fbar", ".grid > div", ".chips > .chip", "h1", ".sub", ".eyebrow", ".demo-h", ".bday", ".ro", ".scard", ".staff-grid > *", ".note-card", ".alist > *", ".items > *", ".rtabs", ".hellohead", ".motto", ".jfilters", ".pipe-note", ".tag-row", ".perm", ".fhead", ".demo-wrap", ".tvsum .panel", ".ocard", ".ccard", ".upitem", ".upmonth", ".svcard", ".svrq", ".svq", ".gcard"].join(",");
-const CAL_PAGES = ["postext","calact","caldg","calcm","calendario","calhistoria","calcanales","plan","caldiseno","planmes"]; // calendarios: aparecen enteros, sin animación
+const CAL_PAGES = ["postext","calact","caldg","calcm","calendario","calhistoria","calcanales","plan","caldiseno","planmes","gcm"]; // calendarios (y desde v263 la tabla de Gestión de Comunicación y Marketing): aparecen enteros, sin animación
 function reveal(){
   if (viewer.motion === "off" || CAL_PAGES.includes(page)) return;
   if (viewer.motion === "off" || !("IntersectionObserver" in window)) return;
