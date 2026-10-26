@@ -3346,7 +3346,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-jdon
   moveJob(j, reviewStage(j)); });
 // v250: volver una etapa para atrás (si la pasó sin querer)
 document.addEventListener("click", e => { const b = e.target.closest("[data-jback]"); if (!b) return; e.stopPropagation();
-  const j = jobById(b.dataset.jback); if (!j || j.owner !== viewer.name || !DESIGN_BACK[j.status]) return; moveJob(j, DESIGN_BACK[j.status]); });
+  const j = jobById(b.dataset.jback); if (!j || j.owner !== viewer.name || !designBack(j)) return; moveJob(j, designBack(j)); });
 // Diseñador: “Empezar” pasa el pedido de Pendiente a En proceso
 document.addEventListener("click", e => { const b = e.target.closest("[data-jstart]"); if (!b) return; e.stopPropagation();
   const j = jobById(b.dataset.jstart); if (!j || j.owner !== viewer.name) return; moveJob(j, "En proceso"); });
@@ -3662,7 +3662,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v259";
+const APP_VER = "v261";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -5562,6 +5562,8 @@ const URG_LEGEND = ""; // las alarmas se ven en cada tarjeta y fila, no arriba
 // v250: también puede volver una etapa para atrás (por si avanzó sin querer), mientras Admin total no la tomó (En revisión / Aprobado).
 const DESIGN_NEXT = { "Pendiente":"En proceso", "En proceso":"Boceto finalizado", "En corrección":"Corrección realizada" };
 const DESIGN_BACK = { "En proceso":"Pendiente", "Boceto finalizado":"En proceso", "Corrección realizada":"En corrección" };
+// v261: desde “Validado por comercial” se vuelve a la etapa en la que estaba (por si se marcó sin querer).
+const designBack = j => j.status === VAL_COM ? (j.valFrom || "Boceto finalizado") : DESIGN_BACK[j.status];
 function stageOptions(kind, it){
   if (!it || isViewOnly() || isClosed()) return [];
   if (kind === "post") return canEditPost() ? POST_STAGES : [];
@@ -5570,8 +5572,10 @@ function stageOptions(kind, it){
   if (kind === "rec") return canMarkRec() ? recStages(it.r).filter(st => st !== "Corrección" || viewer.role === "Admin total") : []; // como los videos: Corrección la pide Admin total
   if (viewer.role === "Admin total") return statesOf(it);
   if (it.area !== "CM"){ // Diseño gráfico (y Gestión de Contenidos, con el CM que la arma)
-    if (!designsJob(it) || it.owner !== viewer.name || (!DESIGN_NEXT[it.status] && !DESIGN_BACK[it.status])) return [];
-    return [DESIGN_BACK[it.status], it.status, DESIGN_NEXT[it.status]].filter(Boolean);
+    if (!designsJob(it) || it.owner !== viewer.name) return [];
+    const val = canValCom(it) ? [VAL_COM] : []; // v261: el diseñador marca el OK de Comercial
+    if (!DESIGN_NEXT[it.status] && !designBack(it)) return val.length ? [it.status, ...val] : [];
+    return [designBack(it), it.status, DESIGN_NEXT[it.status], ...val].filter(Boolean);
   }
   if (isDesigner()) return [];
   if (!canChangeStatus(it)) return [];
@@ -5627,11 +5631,11 @@ function designerAction(j){
     if (j.status === "Programado") return `<button class="btn primary donebtn" data-jdeliver="${j.id}">✓ Publicado</button>`;
     if (j.status === "Publicado") return `<button class="btn donebtn" data-jdeliver="${j.id}">Pautado</button>`;
     return ""; }
-  const back = designsJob(j) && DESIGN_BACK[j.status] ? `<button class="btn sm backbtn" data-jback="${j.id}" title="Por si lo pasaste sin querer">${icon("undo-2")} Volver a ${DESIGN_BACK[j.status]}</button>` : "";
+  const back = designsJob(j) && designBack(j) ? `<button class="btn sm backbtn" data-jback="${j.id}" title="Por si lo pasaste sin querer">${icon("undo-2")} Volver a ${designBack(j)}</button>` : "";
   if (j.status === "Pendiente") return `<button class="btn primary donebtn" data-jstart="${j.id}">${icon("play")} Empezar · En proceso</button>`;
   if (j.status === "En proceso") return `<button class="btn primary donebtn" data-jdone="${j.id}">✓ Boceto finalizado</button>${back}`;
   if (j.status === "En corrección") return `<button class="btn primary donebtn fix" data-jdone="${j.id}">✓ Corrección realizada</button>`;
-  if (REVIEW_WAIT.includes(j.status)) return `<span class="waitchip">${icon("hourglass")} Esperando revisión</span>${back}`;
+  if (REVIEW_WAIT.includes(j.status)) return `<span class="waitchip">${icon("hourglass")} Esperando revisión</span>${valComBtn(j)}${back}`;
   if (j.status === "Aprobado") return j.area === "CM" ? `<span class="okchip">✓ Aprobado</span><button class="btn primary donebtn" data-jdeliver="${j.id}">✓ Publicado</button>` : `<span class="okchip">✓ Aprobado · terminado</span>`;
   return "";
 }
@@ -6316,8 +6320,12 @@ const canDelJob = j => (canCreateJobs() && viewer.role === "Admin total") || (!!
 const CONT_NEW_ST = ["Pendiente","En proceso","Boceto finalizado"]; // el CM puede cargarlo ya terminado (Boceto finalizado) y le avisa a Admin total
 const jobArea = () => page === "gestioncm" ? "CM" : page === "contenidos" ? "Contenidos" : "Diseño";
 // En el formulario de Admin total: si el pedido espera revisión, aprobar o pedir cambios; y el historial de revisiones.
-// v259 · “Validado por comercial”: Admin total lo marca cuando Comercial da el OK; después aprueba y se cierra el pedido.
-const valComBtn = j => j.area !== "CM" && j.status !== VAL_COM && viewer.role === "Admin total" ? `<button class="btn" type="button" data-jmove="${j.id}|${VAL_COM}">${icon("badge-check")} Validado por comercial</button>` : "";
+// v259 · “Validado por comercial”: se marca cuando Comercial da el OK; después Admin total aprueba y se cierra el pedido.
+// v261: lo marca también el diseñador responsable (es quien habla con Comercial), no solo Admin total.
+const canValCom = j => !!j && j.area !== "CM" && j.status !== VAL_COM && !isViewOnly() && !isClosed() && !jobApproved(j) && !isFin(j)
+  && ["Boceto finalizado","En revisión","Corrección realizada"].includes(j.status)
+  && (viewer.role === "Admin total" || (designsJob(j) && j.owner === viewer.name));
+const valComBtn = j => canValCom(j) ? `<button class="btn" type="button" data-jmove="${j.id}|${VAL_COM}">${icon("badge-check")} Validado por comercial</button>` : "";
 function jobReviewBox(j){
   if (!j || viewer.role !== "Admin total") return "";
   const hist = (j.changes || []).slice().reverse(), wait = REVIEW_WAIT.includes(j.status);
@@ -6733,7 +6741,7 @@ document.addEventListener("click", e => {
     j.brief = rtHtml(ed); j.briefBy = viewer.name; j.briefAt = new Date().toISOString(); render(); toast("Texto del pedido guardado."); }
 });
 // ----- Recorrido del pedido: cada paso con su nombre, lo hecho, dónde está ahora y qué sigue. Cada entrega es una versión. -----
-const PROC_DESC = { "Pendiente":"Pedido cargado", "En proceso":"Trabajando", "Boceto finalizado":"Versión lista para revisar", "En revisión":"Esperando la revisión", "En corrección":"Haciendo los cambios", "Corrección realizada":"Cambios listos para revisar", [VAL_COM]:"OK de Comercial",
+const PROC_DESC = { "Pendiente":"Pedido cargado", "En proceso":"Trabajando", "Boceto finalizado":"Versión lista para revisar", "En revisión":"Esperando la revisión", "En corrección":"Haciendo los cambios", "Corrección realizada":"Cambios listos para revisar", [VAL_COM]:"OK de Comercial (lo marca el diseñador o Admin total)",
   "Grabación":"Grabando", "Edición":"Editando", "Revisión":"Esperando la revisión", "Corrección":"Haciendo los cambios",
   "Aprobado":"Final del pedido", "Programado":"Listo para salir", "Publicado":"Publicado", "Pautado":"Con pauta" };
 const jobVersions = j => (j.changes || []).filter(c => c.kind === "boceto").length;
@@ -7078,8 +7086,8 @@ function jobFicha(){
   const label = st => st === reviewStage(j) && !at ? (j.area === "CM" ? "✓ Mandar a revisión" : `✓ ${st} · enviar a revisión`) : st === "Publicado" ? "✓ Publicado" : st;
   const opts = stageOptions("job", j).filter(st => st !== j.status);
   const acts = at && REVIEW_WAIT.includes(j.status) ? `<div class="chips">${valComBtn(j)}<button class="btn primary" data-jrev="approve:${j.id}">${j.area === "CM" ? "Aprobar" : "✓ Aprobar"}</button><button class="btn" data-jrev="fix:${j.id}">Pedir cambios</button></div>`
-    : REVIEW_WAIT.includes(j.status) ? `<div class="chips"><span class="waitchip">${icon("hourglass")} Esperando la revisión</span>${designsJob(j) && opts.includes(DESIGN_BACK[j.status]) ? `<button class="btn" data-jmove="${j.id}|${DESIGN_BACK[j.status]}">${icon("undo-2")} Volver a ${DESIGN_BACK[j.status]}</button>` : ""}</div>`
-    : opts.length ? `<div class="chips">${jobCanApprove(j) ? `<button class="btn primary" data-jrev="approve:${j.id}">${j.area === "CM" ? "Aprobar" : "✓ Aprobar"}</button>` : ""}${opts.map(st => `<button class="btn${st === reviewStage(j) || st === "Publicado" ? " primary" : ""}" data-jmove="${j.id}|${st}">${!at && designsJob(j) && DESIGN_BACK[j.status] === st ? `${icon("undo-2")} Volver a ${st}` : label(st)}</button>`).join("")}</div>` : "";
+    : REVIEW_WAIT.includes(j.status) ? `<div class="chips"><span class="waitchip">${icon("hourglass")} Esperando la revisión</span>${valComBtn(j)}${designsJob(j) && opts.includes(designBack(j)) ? `<button class="btn" data-jmove="${j.id}|${designBack(j)}">${icon("undo-2")} Volver a ${designBack(j)}</button>` : ""}</div>`
+    : opts.length ? `<div class="chips">${jobCanApprove(j) ? `<button class="btn primary" data-jrev="approve:${j.id}">${j.area === "CM" ? "Aprobar" : "✓ Aprobar"}</button>` : ""}${opts.map(st => `<button class="btn${st === reviewStage(j) || st === "Publicado" ? " primary" : ""}" data-jmove="${j.id}|${st}">${!at && designsJob(j) && designBack(j) === st ? `${icon("undo-2")} Volver a ${st}` : label(st)}</button>`).join("")}</div>` : "";
   const mine = j.owner === viewer.name && !isFin(j) && !isViewOnly() && j.area !== "CM";
   // Página completa del pedido: datos del pedido, el texto (hoja tipo Word), los links de acceso, el proceso (tocable) y al final los cambios.
   return `<div class="jpage jficha" aria-label="Pedido completo">
@@ -10978,7 +10986,7 @@ const GUIDE = [
     ["gauge","Carga de trabajo","Cada persona tiene una barra. Diseño gráfico: suman los trabajos sin terminar según su complejidad (Baja 1 · Media 2 · Alta 3) sobre 10 puntos de capacidad. CM: en %, el tiempo estimado de lo que le falta esta semana sobre sus horas disponibles (100 % = capacidad completa; más, sobrecarga). Verde = ideal, amarillo = carga alta, naranja = al límite, rojo = sobrecargado."],
     ["bell-ring","Avisos de pedidos (+1)","Cuando te cargan un pedido (o te piden cambios), el botón Panel de Trabajo (en el celular, “Trabajo”) muestra +1, +2… y late hasta que abrís cada pedido. En Diseño gráfico el número no se apaga al abrirlo: sigue sumando hasta que el pedido se aprueba o se cancela. En CM se apaga al abrirlo. Adentro del panel, cada sección (Redes Sociales, Cartelería, Web, Pantallas y Gestión de Videos) muestra cuántos pedidos tenés sin terminar: el número queda hasta que el pedido se aprueba, se termina o se cancela."],
     ["alarm-clock","Alarmas de entrega","Cada pedido y publicación avisa cuánto falta: falta 7 días, falta 3, falta 1, hoy, o ⏰ retraso de tantos días. La alarma queda hasta que se marca como terminado."],
-    ["list-ordered","Etapas con cuadraditos","Cada tarjeta muestra sus etapas numeradas. Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección → Corrección realizada) → Validado por comercial (cuando Comercial da el OK; lo marca Admin total) → Aprobado (final). Admin total carga el pedido. El diseñador o el CM toca el pedido y ve la ficha completa; el diseñador lo lleva hasta Boceto finalizado y le llega el aviso a Admin total, que lo pasa a En revisión mientras lo mira y después pide cambios con un mensaje escrito (En corrección; se cuentan en la ficha) o lo aprueba y cierra el ciclo. Con cambios, el diseñador toca Corrección realizada y le vuelve a llegar el aviso a Admin total. El CM recibe el pedido y lo marca Programado → Publicado. Tocás el cuadradito de la etapa o arrastrás la tarjeta a otra columna."],
+    ["list-ordered","Etapas con cuadraditos","Cada tarjeta muestra sus etapas numeradas. Diseño gráfico: Pendiente → En proceso → Boceto finalizado → En revisión → (En corrección → Corrección realizada) → Validado por comercial (cuando Comercial da el OK; lo marca el diseñador responsable o Admin total) → Aprobado (final). Admin total carga el pedido. El diseñador o el CM toca el pedido y ve la ficha completa; el diseñador lo lleva hasta Boceto finalizado y le llega el aviso a Admin total, que lo pasa a En revisión mientras lo mira y después pide cambios con un mensaje escrito (En corrección; se cuentan en la ficha) o lo aprueba y cierra el ciclo. Con cambios, el diseñador toca Corrección realizada y le vuelve a llegar el aviso a Admin total. El CM recibe el pedido y lo marca Programado → Publicado. Tocás el cuadradito de la etapa o arrastrás la tarjeta a otra columna."],
     ["check-check","Etapas de los pedidos de diseño: quién las cambia","Solo el diseñador responsable y Admin total. El diseñador va paso a paso: “Empezar · En proceso” y después “✓ Boceto finalizado” (pasa a revisión y le llega un aviso a Admin total, que aprueba o pide correcciones; si pide correcciones aparece “✓ Corrección realizada”, que vuelve a avisarle a Admin total). En revisión, En corrección y Aprobado los pone solo Admin total. El diseñador no salta etapas, pero sí puede volver una etapa para atrás si la pasó sin querer (“Volver a…”), mientras Admin total no la tomó (En revisión o Aprobado); si vuelve de Boceto finalizado, se retira el aviso a Admin total. Los CM y Admin ven las etapas pero no las cambian."],
     ["calendar-clock","Meses y cierre","Arriba cambiás de mes con ‹ Anterior / Siguiente ›. Admin total cierra el mes desde Informe mensual: queda para consultar y lo no cumplido pasa al mes siguiente como “arrastrado”."],
     ["mouse-pointer-click","Cambiar de etapa desde el calendario","En cualquier calendario, tocá la línea de estado de un contenido (● Estado ▾) y elegí la etapa: Programado, Publicado, Aprobado… Los CM cambian las etapas de lo suyo (publicaciones y videos), no las de los pedidos de diseño. Los diseñadores llevan sus trabajos paso a paso hasta “Boceto finalizado” (y “Corrección realizada” si les piden cambios) y pueden volver una etapa para atrás si se equivocaron; aprobar o pedir cambios lo hace solo Admin total."],
@@ -13351,6 +13359,7 @@ document.addEventListener("click", e => {
 });
 function setJobStatus(j, st){
   const prev = j.status; if (prev === st) return; j.status = st;
+  if (st === VAL_COM) j.valFrom = prev; else if (prev === VAL_COM) delete j.valFrom; // para poder volver atrás
   if (j.status === "Aprobado" && !j.approved) j.approved = TODAY;
   const first = isFin(j) && !j.delivered;
   if (first) j.delivered = TODAY;
