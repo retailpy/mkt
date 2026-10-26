@@ -3033,6 +3033,8 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .ptsw{width:22px;height:22px;border-radius:6px;border:1px solid #cbd5e1;background:var(--c);cursor:pointer;padding:0}
 .ptsw:hover{outline:2px solid #6366f1;outline-offset:1px}
 .ptbar .ptsel{color:#4b5563}
+.ptbar .ptundo{margin-left:auto;background:#fef3c7;border-color:#f59e0b;color:#92400e}
+.ptpastetip{display:flex;align-items:flex-start;gap:6px;margin:-4px 0 12px;font-size:12.5px}.ptpastetip svg{flex:none;width:15px;height:15px;margin-top:1px}
 .ptw{background:#fff;border-radius:12px;padding:0;color-scheme:light}
 .cal.ptcal{background:#d1d5db;gap:1px;border:1px solid #d1d5db;border-radius:10px;overflow:hidden}
 .cal.ptcal .dh{background:#f3f4f6;color:#374151;font-weight:700;padding:6px 4px;text-align:center}
@@ -3129,9 +3131,10 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .acard .ac-k svg{width:13px;height:13px;color:var(--cyan);flex:none}
 .acard .ac-k b{color:#e2e8f0;font-weight:800;letter-spacing:.05em}
 .acard{background:linear-gradient(180deg,color-mix(in srgb,var(--b) 16%,rgba(2,6,23,.85)),rgba(2,6,23,.8) 70%);border-color:color-mix(in srgb,var(--b) 45%,var(--line-3))}
-.acard .ac-br{align-self:stretch;background:var(--b);color:#04121f;font-weight:900;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;border-radius:6px;padding:2px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5}
-.acard.mini .ac-br{font-size:9px;padding:1px 5px;border-radius:4px}
-.cabrands .chip{display:inline-flex;align-items:center;gap:6px}.cabrands .cabdot{width:9px;height:9px;border-radius:50%;background:var(--bc)}
+.acard .ac-br{display:block;max-width:100%;color:var(--muted);font-weight:600;font-size:9.5px;letter-spacing:.02em;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} /* v263: la marca, chiquita (antes una barra de color en mayúsculas) */
+.acard .ac-br::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--b);margin-right:4px;vertical-align:1px}
+.acard.mini .ac-br{font-size:8.5px}
+.cabrands .chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;font-size:12px;border-radius:10px} /* v263: más chicos, menos ruido */.cabrands .cabdot{width:7px;height:7px;border-radius:50%;background:var(--bc)}
 .cabrands .chip.on[style]{border-color:var(--bc);box-shadow:inset 0 0 0 1px var(--bc)}
 .acard .ac-t{font-weight:700;font-size:12.5px;line-height:1.3;color:#fff;overflow-wrap:anywhere}
 .acard .ac-m{display:flex;align-items:center;gap:5px;font-size:11.5px;color:#cbd5e1;min-width:0}
@@ -3147,7 +3150,7 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 @media (max-width:760px){.cagrid{grid-template-columns:96px repeat(7,minmax(130px,1fr))}.carow{font-size:11px}}
 @media (min-width:768px) and (max-width:1279px){ /* v229 · tablet: entra la semana entera (acostada) y la marca y quién lo hace se leen enteros */
   .cagrid{grid-template-columns:104px repeat(7,minmax(0,1fr));min-width:880px}
-  .acard .ac-br{font-size:9.5px;letter-spacing:.02em;padding:2px 5px;text-overflow:clip}.acard .ac-m{align-items:flex-start}.acard .ac-m span{white-space:normal;overflow:visible}
+  .acard .ac-m{align-items:flex-start}.acard .ac-m span{white-space:normal;overflow:visible}
   .acard .ac-t{overflow-wrap:break-word;hyphens:auto;-webkit-hyphens:auto}
 }
 /* v242 · Pedidos Comercial */
@@ -6027,7 +6030,8 @@ function pPlanTxt(){
   <div class="chips ptbrands" role="group" aria-label="Cuenta">${bl.map(b => `<button type="button" class="chip${b === ptBrand ? " on" : ""}" data-ptbrand="${esc(b)}" aria-pressed="${b === ptBrand}" style="--c:${BRANDS[b] || "#94a3b8"}"><span class="ptdot"></span>${esc(b)}</button>`).join("")}</div>
   <div class="ptbar"><span class="pttl">${icon("paint-bucket")} Fondo</span><div class="ptsws">${sw(PT_BG, "bg")}</div><span class="pttl">${icon("type")} Letra</span><div class="ptsws">${sw(PT_FG, "fg")}</div>
     <button type="button" class="btn sm" data-ptcolor="clear:">${icon("eraser")} Quitar colores</button>
-    <span class="ptfmts" role="group" aria-label="Formato del texto">${PT_FMT.map(([k, i, l]) => `<button type="button" class="btn sm ib" data-ptfmt="${k}" title="${l}" aria-label="${l}">${icon(i)}</button>`).join("")}</span><span class="note ptsel">${ptCell ? `Pintando el ${ptCidTxt(ptCell)}` : "Tocá un cuadro y después un color"}</span></div>
+    <span class="ptfmts" role="group" aria-label="Formato del texto">${PT_FMT.map(([k, i, l]) => `<button type="button" class="btn sm ib" data-ptfmt="${k}" title="${l}" aria-label="${l}">${icon(i)}</button>`).join("")}</span><span class="note ptsel">${ptCell ? `Pintando el ${ptCidTxt(ptCell)}` : "Tocá un cuadro y después un color"}</span>${ptUndo ? `<button type="button" class="btn sm ptundo" data-ptundo>${icon("undo-2")} Deshacer pegado</button>` : ""}</div>
+  <p class="note ptpastetip">${icon("clipboard-paste")} Podés copiar varias celdas de la hoja de Excel o Google Sheets y pegarlas acá: tocá el cuadro donde empieza (por ejemplo, el lunes de Instagram / Facebook) y pegá con Ctrl+V. Cada celda va a su día y a su red.</p>
   ${ptWeeks().map(w => ptGridWeek(w, work)).join("")}`;
 }
 // v259 · como el Calendario de Actividades (y el Excel): una fila por red (Instagram/Facebook, TikTok, Canal de WhatsApp, X,
@@ -6048,16 +6052,89 @@ function ptGridWeek(w, work){
   </div></div>`;
 }
 document.addEventListener("input", e => { if (!e.target.dataset?.pttx || !ptCan()) return; ptSave(e.target); });
-document.addEventListener("paste", e => { if (!e.target.closest?.("[data-pttx]")) return; e.preventDefault(); document.execCommand("insertText", false, e.clipboardData.getData("text/plain")); }); // se pega solo el texto
+// v263 · Pegar celdas copiadas de Excel o Google Sheets: cada celda va a su cuadro, empezando por el cuadro donde se pega
+// (las columnas son los días siguientes y las filas, las redes de abajo, como en la hoja). Si el bloque trae la columna con
+// el nombre de la red (INSTAGRAM/FACEBOOK, TIKTOK, CANAL…) va a esa fila; la fila de los días (LUNES…, 26, 27…) se saltea.
+// Trae el color de fondo y de letra de cada celda. Una sola celda (o texto común) se pega como siempre, solo el texto.
+document.addEventListener("paste", e => { const ed = e.target.closest?.("[data-pttx]"); if (!ed) return; e.preventDefault();
+  const cd = e.clipboardData, txt = cd.getData("text/plain"), html = cd.getData("text/html");
+  const g = /<table/i.test(html) ? ptHtmlGrid(html, txt) : /\t/.test(txt) ? ptTSV(txt).map(r => r.map(t => ({ t:t.trim() }))) : null;
+  if (!g || (g.length === 1 && g[0].length === 1)){ document.execCommand("insertText", false, g ? g[0][0].t : txt); return; } // se pega solo el texto
+  if (!ptCan()) return;
+  ptPasteGrid(ed.dataset.pttx, g); });
+// Texto de la hoja (TSV): celdas separadas por tabulación; las que tienen renglones o comillas vienen entre comillas.
+function ptTSV(s){
+  s = String(s || "").replace(/\r\n?/g, "\n"); const rows = [[]]; let cur = "", q = false;
+  for (let i = 0; i < s.length; i++){ const ch = s[i];
+    if (q){ if (ch === '"'){ if (s[i + 1] === '"'){ cur += '"'; i++; } else q = false; } else cur += ch; continue; }
+    if (ch === '"' && cur === ""){ q = true; continue; }
+    if (ch === "\t" || ch === "\n"){ rows[rows.length - 1].push(cur); cur = ""; if (ch === "\n") rows.push([]); continue; }
+    cur += ch; }
+  rows[rows.length - 1].push(cur);
+  if (rows.length > 1 && rows[rows.length - 1].length === 1 && !rows[rows.length - 1][0]) rows.pop(); // el último salto de línea
+  return rows;
+}
+// Tabla HTML que copian Excel y Google Sheets: el texto (o el del TSV, que trae bien los renglones) y los colores de cada celda.
+const ptHex = v => { v = String(v || "").trim().toLowerCase(); let m = v.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/); if (m) return m[1].length === 3 ? "#" + [...m[1]].map(c => c + c).join("") : v;
+  m = v.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)$/); if (!m || (m[4] !== undefined && +m[4] === 0)) return "";
+  return "#" + [m[1], m[2], m[3]].map(x => Math.min(255, +x).toString(16).padStart(2, "0")).join(""); };
+function ptHtmlGrid(html, txt){
+  const tb = new DOMParser().parseFromString(html, "text/html").querySelector("table"); if (!tb) return null;
+  const textOf = el => { let o = ""; const walk = n => n.childNodes.forEach(x => { if (x.nodeType === 3) o += x.nodeValue.replace(/\s+/g, " ");
+      else if (x.nodeType === 1 && !/^(STYLE|SCRIPT)$/.test(x.tagName)){ if (x.tagName === "BR"){ o += "\n"; return; } const blk = /^(DIV|P|LI)$/.test(x.tagName); if (blk && o && !o.endsWith("\n")) o += "\n"; walk(x); if (blk && !o.endsWith("\n")) o += "\n"; } });
+    walk(el); return o.split("\n").map(l => l.trim()).join("\n").replace(/\n{3,}/g, "\n\n").trim(); };
+  const grid = [];
+  [...tb.rows].forEach((tr, r) => { const row = grid[r] = grid[r] || []; let c = 0;
+    [...tr.cells].forEach(td => { while (row[c] !== undefined) c++;
+      const cs = Math.max(1, +td.colSpan || 1), rs = Math.max(1, +td.rowSpan || 1), bg = ptHex(td.style.backgroundColor || td.getAttribute("bgcolor")), fg = ptHex(td.style.color);
+      const v = { t:textOf(td), bg:bg && bg !== "#ffffff" ? bg : "", fg:fg && fg !== "#000000" ? fg : "" };
+      for (let i = 0; i < rs; i++) for (let j = 0; j < cs; j++){ const rr = grid[r + i] = grid[r + i] || []; rr[c + j] = i || j ? { t:"" } : v; } // celda combinada: el texto, en la primera
+      c += cs; }); });
+  const w = Math.max(0, ...grid.map(r => r.length)), out = grid.map(r => Array.from({ length:w }, (_, i) => r[i] || { t:"" }));
+  const tsv = ptTSV(txt); // si el texto trae las mismas filas y columnas, sus renglones son los buenos
+  if (tsv.length === out.length && tsv.every((r, i) => r.length === out[i].length)) out.forEach((r, i) => r.forEach((v, j) => { v.t = tsv[i][j].trim(); }));
+  return out;
+}
+const PT_NET_RX = [["igfb", /insta|face|^ig\b|^fb\b/i], ["tiktok", /tik ?tok/i], ["canal", /canal|whats/i], ["in", /linked/i], ["yt", /you ?tube/i], ["x", /^x$|twitter/i]];
+const ptNetOf = v => { v = String(v || "").trim(); if (!v || v.length > 30 || v.includes(":")) return null; const m = PT_NET_RX.find(([, rx]) => rx.test(v)); return m ? m[0] : null; };
+const ptHdrRow = r => { const f = r.map(v => v.t.trim()).filter(Boolean); return f.length >= 2 && f.filter(v => /^\d{1,2}$/.test(v) || /^(lun|mar|mi[eé]|jue|vie|s[aá]b|dom)/i.test(v)).length >= f.length - 1; };
+let ptUndo = null; // lo que había antes del último pegado, para “Deshacer pegado”
+function ptPasteGrid(cid, grid){
+  const [d0, k0 = "igfb"] = cid.split("#"), plats = ptPlats().map(p => p[0]);
+  const full = r => r.some(v => v.t || v.bg); let rows = grid.slice();
+  while (rows.length && !full(rows[0])) rows.shift(); while (rows.length && !full(rows[rows.length - 1])) rows.pop(); // filas vacías de los bordes (las del medio cuentan: son una red)
+  while (rows.length > 1 && ptHdrRow(rows[0])) rows = rows.slice(1); // LUNES, MARTES… / 26, 27…
+  const lab = rows[0]?.length > 1 && rows.some(r => r[0].t) && rows.every(r => !r[0].t || ptNetOf(r[0].t)) ? rows.map(r => ptNetOf(r[0].t)) : null;
+  if (lab) rows = rows.map(r => r.slice(1));
+  const undo = [], miss = new Set(); let n = 0, cols = 0;
+  rows.forEach((r, i) => {
+    const k = lab ? lab[i] : plats[plats.indexOf(k0) + i];
+    if (!k || !plats.includes(k)){ if (r.some(v => v.t)) miss.add(lab ? (CM_PLATS.find(p => p[0] === k)?.[1] || "una fila sin red") : "las filas que sobran"); return; }
+    r.forEach((v, j) => { if (!v.t && !v.bg) return;
+      const c = ptCid(addDays(d0, j), k), key = ptKey(c), prev = PLAN_TXT.find(x => x.id === key);
+      undo.push([key, prev ? JSON.parse(JSON.stringify(prev)) : null]);
+      ptSet(c, v.t ? { t:v.t, h:esc(v.t).replace(/\n/g, "<br>"), bg:v.bg || "", fg:v.fg || "" } : { bg:v.bg }); n++; cols = Math.max(cols, j + 1); });
+  });
+  if (!n) return toast("No había nada para pegar en esas celdas.");
+  ptUndo = { list:undo, n }; ptCell = cid; render(); window.RMH?.flushNow?.();
+  toast(`Pegado en ${n} ${n === 1 ? "cuadro" : "cuadros"}, del ${dm(d0)} al ${dm(addDays(d0, cols - 1))}.${miss.size ? ` No se pegó: ${[...miss].join(", ")} (no está en el plan de ${ptBrand}).` : ""}`);
+}
+function ptUndoPaste(){
+  if (!ptUndo || !ptCan()) return;
+  ptUndo.list.slice().reverse().forEach(([key, prev]) => { const i = PLAN_TXT.findIndex(x => x.id === key);
+    if (!prev){ if (i >= 0) PLAN_TXT.splice(i, 1); } else if (i >= 0) PLAN_TXT[i] = prev; else PLAN_TXT.push(prev); });
+  const n = ptUndo.n; ptUndo = null; render(); window.RMH?.flushNow?.(); toast(`Listo: se deshizo el pegado (${n} ${n === 1 ? "cuadro" : "cuadros"}).`);
+}
 document.addEventListener("focusin", e => { const d = e.target.dataset?.pttx; if (!d || d === ptCell) return; ptCell = d;
   document.querySelectorAll(".ptd.ptsel").forEach(el => el.classList.remove("ptsel")); e.target.closest(".ptd")?.classList.add("ptsel");
   const s = document.querySelector(".ptbar .ptsel"); if (s) s.textContent = `Pintando el ${ptCidTxt(d)}`; });
 document.addEventListener("mousedown", e => { if (e.target.closest("[data-ptcolor],[data-ptfmt]")) e.preventDefault(); }); // el color y el formato no le sacan el foco a la celda
 document.addEventListener("click", e => {
   const pv = e.target.closest("[data-ptview]"); if (pv){ ptView = pv.dataset.ptview; render(); return; }
+  if (e.target.closest("[data-ptundo]")){ ptUndoPaste(); return; }
   const pw = e.target.closest("[data-ptwk]"); if (pw){ const w = addDays(ptWeek(), +pw.dataset.ptwk), m = addDays(w, 3).slice(0, 7);
     if (!MONTHS_APP.some(x => x.v === m)) return toast("Esa semana todavía no se puede abrir."); ptWk = w; MONTH = m; render(); return; }
-  const pb = e.target.closest("[data-ptbrand]"); if (pb){ ptBrand = pb.dataset.ptbrand; ptCell = null; render(); return; }
+  const pb = e.target.closest("[data-ptbrand]"); if (pb){ ptBrand = pb.dataset.ptbrand; ptCell = null; ptUndo = null; render(); return; }
   const f = e.target.closest("[data-ptfmt]");
   if (f){ const ed = document.activeElement?.closest?.("[data-pttx]");
     if (!ptCan()) return; if (!ed) return toast("Tocá primero adentro de un día y elegí el texto.");
@@ -6276,10 +6353,12 @@ const caBrandOk = x => !calActUI.brand || (calActUI.brand === "otras" ? !CA_BRAN
 const WD_SHORT = ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"];
 const weekLabel = wk => { const e = addDays(wk, 6), M = d => MONTHS_ES[+d.slice(5, 7) - 1]; return wk.slice(5, 7) === e.slice(5, 7) ? `${+wk.slice(8)} al ${+e.slice(8)} de ${M(e)}` : `${+wk.slice(8)} de ${M(wk)} al ${+e.slice(8)} de ${M(e)}`; };
 // Tarjeta: qué es (POST, STORY, REEL…), título, responsable, hora y estado (se cambia ahí mismo). Tocándola se abre el trabajo.
+// v263 · con una marca elegida en el filtro, las tarjetas no repiten su nombre (el color del borde ya la marca).
+const caOneBrand = () => !!calActUI.brand && calActUI.brand !== "otras";
 function cmCard(x, mini){
   const cp = cmCopyTxt(x);
   return `<div class="acard${x.done ? " done" : ""}${cmLate(x) ? " late" : ""}${mini ? " mini" : ""}" style="--b:${BRANDS[x.brand] || "#64748b"}" data-cmopen="${x.k}:${esc(x.id)}" role="button" tabindex="0" title="${esc(cmFmt(x))}: ${esc(x.title)} · ${esc(x.brand)} · ${esc(x.who || "Sin asignar")}${x.time ? " · " + esc(x.time) + " h" : ""} · ${esc(x.status)}">
-    ${x.brand ? `<div class="ac-br">${esc(x.brand)}</div>` : ""}
+    ${x.brand && !caOneBrand() ? `<div class="ac-br">${esc(x.brand)}</div>` : ""}
     <div class="ac-k">${icon(cmIco(x))}<b>${esc(cmFmt(x))}</b></div>
     <div class="ac-t">${esc(x.title || "(sin título)")}</div>
     ${mini ? "" : `<div class="ac-m">${icon("user-round")}<span>${esc(x.who || "Sin asignar")}</span></div>${x.time ? `<div class="ac-m">${icon("clock")}<span>${esc(x.time)} h</span></div>` : ""}${cp ? `<div class="ac-m ac-cp">${icon("pencil-line")}<span>${esc(cp)}</span></div>` : ""}`}
