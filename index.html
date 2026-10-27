@@ -9344,7 +9344,7 @@ function pUsuarios(){
   const roleCards = `<div class="grid kpis">${ROLES.map(r => `<div class="panel kpi"><div class="l">${r}</div><div class="n">${PEOPLE.filter(pp => pp.active && pp.role === r).length}</div><div class="d">${ROLE_INFO[r]}</div></div>`).join("")}</div>`;
   const counts = ROLES.map(r => `<span class="tag">${r}: ${PEOPLE.filter(pp => pp.active && pp.role === r).length}</span>`).join("");
   return `<div class="head"><div><h1>Usuarios y permisos</h1><p class="sub">Quién entra a la app, con qué rol, y qué ve cada uno.</p></div><button class="btn primary" data-unew>${icon("user-plus")} Nueva persona</button></div>
-  ${roleCards}${at ? accessPanel() : ""}${pass}${reqs}${form}
+  ${pass}${form}${roleCards}${at ? accessPanel() : ""}${reqs}
   <div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("users")}Personas del equipo</h2><div class="tag-row">${counts}<span class="tag">Admin total activos: ${activeAdmins().length} (se recomienda 2 o más)</span></div></div>
     <div class="tw" style="border:0;border-radius:0;box-shadow:none"><table><thead><tr><th>Persona</th><th>Rol</th><th>Estado</th><th>Último ingreso</th><th class="r">Acciones</th></tr></thead><tbody>${rows}</tbody></table></div></div>
   ${permSheet()}
@@ -11613,12 +11613,30 @@ function pTvConf(){
   <div class="tvcgrid">${TV_N.map(n => { const c = tvCfg(n); return `<section class="panel tvccard"><header><b class="tvpn">TV ${n}</b><button type="button" class="btn sm" data-tvopen="${n}" title="Abre esta TV acá, como la ve el televisor">${icon("eye")} Ver</button></header>
     <label class="tvcname">Nombre (opcional)<input class="base" data-tvname="${n}" value="${esc(c.name)}" maxlength="40" placeholder="Ej.: Recepción, Oficina de Diseño" ${ed ? "" : "disabled"}></label>
     <div class="tvcopts" role="radiogroup" aria-label="Qué muestra la TV ${n}">${TV_VIEWS.map(([k, l, ic]) => `<label class="tvcopt${c.v === k ? " on" : ""}"><input type="radio" name="tvv${n}" value="${k}" data-tvview="${n}" ${c.v === k ? "checked" : ""} ${ed ? "" : "disabled"}>${icon(ic)}<span>${esc(l)}</span></label>`).join("")}</div></section>`; }).join("")}</div>
-  <section class="panel tvchow"><h2 class="pmh">${pmIco("users")}El usuario de los televisores</h2><ol>
-    <li>En <b>Admin → Usuarios y permisos</b>, tocá <b>Nuevo usuario</b>.</li>
-    <li>Nombre: <b>TV</b> · usuario de ingreso: <b>tv</b> · rol: <b>TV</b>. La contraseña provisoria la arma la app y se ve solo ahí (no la mandes por chat).</li>
-    <li>En cada televisor abrí la app, entrá con ese usuario (la primera vez pide cambiar la contraseña) y tocá TV 1, TV 2, TV 3 o TV 4.</li>
-    <li>Para salir de la pantalla completa: mové el mouse o tocá la pantalla y “Salir”.</li></ol></section>`;
+  ${tvUserBox(ed)}`;
 }
+// El usuario de los televisores: si todavía no está, se crea con un toque (usuario “tv”, rol TV); la contraseña provisoria la
+// arma la app y se ve solo en Usuarios y permisos, como la de cualquier persona nueva.
+const tvUser = () => PEOPLE.find(pp => pp.role === "TV" && pp.active !== false);
+function tvUserBox(ed){
+  const u = tvUser(), steps = `<li>En cada televisor abrí la app y entrá con el usuario <b>${esc(u?.username || "tv")}</b> (la primera vez pide cambiar la contraseña).</li><li>Tocá TV 1, TV 2, TV 3 o TV 4.</li><li>Para salir de la pantalla completa: mové el mouse o tocá la pantalla y “Salir”.</li>`;
+  return `<section class="panel tvchow"><h2 class="pmh">${pmIco("users")}El usuario de los televisores</h2>
+    ${u ? `<p class="note" style="margin:0">${icon("check")} Ya está creado: <b>${esc(u.name)}</b> · usuario <b>${esc(u.username || "")}</b>. La contraseña se restablece en <a href="#usuarios" data-page="usuarios">Usuarios y permisos</a>.</p><ol>${steps}</ol>`
+      : `<p class="note" style="margin:0">Todavía no está. Tocá el botón y se crea el usuario <b>tv</b> (rol TV) con una contraseña provisoria al azar, que vas a ver solo vos en Usuarios y permisos (no la mandes por chat).</p>
+      ${ed ? `<div class="chips"><button type="button" class="btn primary" data-tvmkuser>${icon("plus")} Crear el usuario de las TV</button></div>` : ""}<ol>${steps}</ol>`}</section>`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-tvmkuser]"); if (!b) return;
+  if (viewer.role !== "Admin total" || window.RMH?.previewing || !window.RMH?.admin) return toast("Solo Admin total puede crear usuarios.");
+  if (tvUser()) return toast("El usuario de las TV ya está creado.");
+  if (userTaken("tv")) return toast("El usuario “tv” ya lo tiene otra persona: crealo a mano en Usuarios y permisos con otro nombre.");
+  const id = "u" + Date.now(), pass = genPass();
+  const person = { id, username:"tv", name:"TV", email:"", cargo:"Televisores de la oficina", role:"TV", brands:null, perms:new Set(ROLE_DEFAULTS.TV), active:true, mustChange:true, last:null, tempPass:pass, noChat:true, staffHidden:true, skills:[], birthday:null, mainBrand:"" };
+  b.disabled = true;
+  RMH.admin({ action:"create", person_id:id, email:"", role:"TV", password:pass, username:"tv" }).then(ok => { b.disabled = false; if (!ok) return;
+    PEOPLE.push(person); userUI.lastPass = { name:"TV", pass, user:"tv" }; refreshPeople(); page = "usuarios"; render(); window.scrollTo(0, 0);
+    toast("Listo: se creó el usuario “tv” (rol TV). Arriba está su contraseña provisoria."); });
+});
 function tvSave(n, patch){ if (viewer.role !== "Admin total" || window.RMH?.previewing) return; TV_SCREENS = { ...(TV_SCREENS || {}), [n]:{ ...tvCfg(n), ...patch } }; window.RMH?.flushNow?.(); }
 document.addEventListener("change", e => {
   const v = e.target.dataset?.tvview; if (v){ tvSave(v, { v:e.target.value }); render(); toast(`TV ${v}: ahora muestra ${tvView(e.target.value)[1]}.`); return; }
@@ -13837,7 +13855,8 @@ document.addEventListener("click", e => {
   const t = e.target.closest("[data-unew],[data-ugen],[data-ureset],[data-utoggle],[data-uconfirm],[data-ucancel],[data-uremove],[data-ucopy],[data-uclose]");
   if (!t) return;
   const d = t.dataset, find = id => PEOPLE.find(x => x.id === id);
-  if (d.unew !== undefined){ userUI.newOpen = !userUI.newOpen; render(); }
+  if (d.unew !== undefined){ userUI.newOpen = !userUI.newOpen; render(); // v266: el formulario sale arriba y la página va hasta él (antes quedaba abajo y parecía que no pasaba nada)
+    if (userUI.newOpen) setTimeout(() => { const f = document.getElementById("personForm"); if (f) window.scrollTo({ top:Math.max(0, f.getBoundingClientRect().top + scrollY - 16), behavior:"smooth" }); document.getElementById("pName")?.focus({ preventScroll:true }); }, 60); }
   else if (d.ugen !== undefined){ $("#pPass").value = genPass(); }
   else if (d.ureset){ const pp = find(d.ureset); const pass = genPass();
     // Si la persona todavía no tenía cuenta, se la crea con esta contraseña provisoria.
