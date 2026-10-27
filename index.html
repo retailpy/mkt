@@ -720,8 +720,15 @@ html.tvkiosk .tvredes:not(.tvimp){min-height:100vh;box-sizing:border-box;backgro
 html.tvkiosk .tvredes:not(.tvimp) .tvstage{padding:32px}
 html.tvkiosk .tvimp{min-height:100vh;box-sizing:border-box;padding:5vh 5vw;background:var(--bg)}
 html.tvkiosk{cursor:none}html.tvkiosk.tvcur{cursor:auto}
+/* v269 · Últimas publicaciones dentro de TV Redes: sin botones y con las tres marcas a la vista */
+.tvslide .lpost .lpbig,.tvslide .panel-h .btn{display:none}
+.tvslide .lpost + .lpost{margin-top:clamp(8px,1.4vh,16px)}
+.tvslide .lpost .lph{margin-bottom:6px}
+.tvslide .lpgrid{gap:clamp(6px,.8vw,14px)}
+.tvslide .lpgrid .pthumb.lg{aspect-ratio:auto;width:100%;height:clamp(60px,calc(25vh - 96px),230px);object-fit:cover} /* las tres filas entran justas de 720 a 1080 de alto */
+.tvslide .lpgrid .lpmeta{font-size:clamp(11px,1.3vh,14px)}
 .tvbrandrow{display:none}
-html.tvkiosk .tvbrandrow{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:clamp(8px,1.6vh,18px)}
+html.tvkiosk .tvbrandrow,.tvpage > .tvbrandrow,.tvimp:fullscreen > .tvbrandrow{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:clamp(8px,1.6vh,18px)}
 html.tvkiosk .tvredes:not(.tvimp) > .tvbrandrow{padding:20px 32px 0;margin-bottom:0}
 .tvbr-logo{height:clamp(30px,4.6vh,50px);width:auto;background:#0f172a;border-radius:12px;padding:6px 10px;box-sizing:content-box}
 .tvbr-r{display:flex;align-items:center;gap:clamp(16px,2.2vw,36px)}
@@ -2292,6 +2299,25 @@ html.light .gname{background-image:linear-gradient(90deg,#0891b2,#2563eb)}
 .imptable .ttl .tt{display:inline-block;vertical-align:bottom}
 .imptable .ttl small{display:inline;margin-left:10px}
 @media (max-width:1560px){html:not(.tvkiosk) .tvimp:not(:fullscreen) .imptable .ttl .tt{max-width:15vw}html:not(.tvkiosk) .tvimp:not(:fullscreen) .imptable th,html:not(.tvkiosk) .tvimp:not(:fullscreen) .imptable td{padding-left:8px;padding-right:8px}html:not(.tvkiosk) .tvimp:not(:fullscreen) .imptable th{letter-spacing:.06em}html:not(.tvkiosk) .tvimp:not(:fullscreen) .imptable .ttl small{display:none}}
+/* v269 · TV 3 Impacto: el top de publicaciones con letra más grande y la imagen reducida más grande.
+   En el televisor (y en pantalla completa) se saca el texto de ayuda de arriba y se achica un poco el encabezado de la marca,
+   así entran las 10 filas. El nombre de la publicación ocupa todo el lugar que queda (antes salía en letra de 12 px). */
+html.tvkiosk .tvimp{padding:3.4vh 4vw}
+html.tvkiosk .tvimp .tvbar h1,html.tvkiosk .tvimp .tvbar .sub,html.tvkiosk .tvimp .tvbar .tag-row,
+.tvimp:fullscreen .tvbar h1,.tvimp:fullscreen .tvbar .sub,.tvimp:fullscreen .tvbar .tag-row{display:none}
+html.tvkiosk .tvimp .imphero,.tvimp:fullscreen .imphero{padding-top:clamp(8px,1.3vh,16px);padding-bottom:clamp(8px,1.3vh,16px)}
+html.tvkiosk .tvimp .imphero .nm b,.tvimp:fullscreen .imphero .nm b{font-size:clamp(30px,5vh,56px)!important}
+.imptable th{font-size:clamp(11px,min(1.5vh,.95vw),17px)}
+.imptable td{font-size:clamp(14px,min(2.5vh,1.45vw),30px);padding-top:clamp(2px,.35vh,7px);padding-bottom:clamp(2px,.35vh,7px)}
+.imptable .rk{font-size:clamp(17px,min(3.2vh,1.9vw),38px)}
+.imptable .big{font-size:clamp(17px,min(3.2vh,2vw),38px)}
+.imptable td.ttl{width:100%}
+.imptable .person{gap:clamp(10px,1vw,18px);min-width:0}
+.imptable .person .pt{flex:1 1 0;width:0;min-width:0}
+.imptable .ttl .tt{display:block;max-width:none;font-size:1em;line-height:1.15;color:#fff}
+.imptable .ttl small{display:block;margin:2px 0 0;font-size:.6em;line-height:1.15;color:var(--faint)}
+.imptable .pthumb.imp{width:clamp(30px,4.8vh,76px);height:clamp(30px,4.8vh,76px);border-radius:12px;font-size:clamp(11px,1.3vh,15px)}
+@media (max-height:800px){.imptable .pthumb.imp{width:4.4vh;height:4.4vh;border-radius:8px}.imptable .ttl small{display:none}} /* televisores con navegador de 720: una sola línea por fila */
 
 .multibrand{display:inline-flex;align-items:center;gap:7px;font-weight:600;color:#e2e8f0}
 .mdots{display:inline-flex}
@@ -3779,7 +3805,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v268";
+const APP_VER = "v269";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -4478,8 +4504,8 @@ function demoBlock(b, i = 0){
         <div class="sexlist">${sx.map(([n, v, c], k) => `<div class="sr"><i style="background:${c}"></i><span>${n}</span><b>${pct2(v)}</b><div class="tb"><span class="fl" style="width:${v}%;background:${c};--dl:${k*80}ms;animation-delay:${k*80}ms"></span></div></div>`).join("")}</div></div>` : `<div class="empty">${NO_DATA}</div>`}</div>
     </div></div>`;
 }
-function followersPanel(){
-  const bs = socialBrands(), fm = folMonth(), ml = monthLabel(MONTH);
+function followersPanel(bs = socialBrands()){ // bs (v269): las marcas (TV Redes: solo las tres principales)
+  const fm = folMonth(), ml = monthLabel(MONTH);
   const card = (net, title, color) => { const list = bs.map((b,i) => ({ b, v:folOf(b, fm)?.[net], c:FCOL(b,i) })), max = Math.max(1, ...list.map(x => isNum(x.v) ? x.v : 0));
     return `<div><div class="fhead"><b style="color:${color}">${title}</b><span>${ml}</span></div><div class="fcard">${list.map((x,i) => isNum(x.v) ? `<div class="fbar"><span class="lb" title="${x.b}">${x.b}</span><div class="tr"><div class="fl" style="width:${Math.max(x.v/max*100,1.5)}%;background:${x.c};--dl:${i*60}ms"></div></div><span class="v">${dots(x.v)}</span></div>`
       : `<div class="fbar nodata"><span class="lb" title="${x.b}">${x.b}</span><span class="note">${NO_DATA}</span></div>`).join("")}</div></div>`; };
@@ -4491,8 +4517,8 @@ function followersPanel(){
 function followerRows(bs){
   return bs.map(b => { const c = folOf(b, MONTH), p = folOf(b, prevMonth(MONTH)); return { b, has:!!(c || p), igp:p?.ig, igc:c?.ig, fbp:p?.fb, fbc:c?.fb }; });
 }
-function followersTable(showTotal = true){
-  const bs = socialBrands(), fm = folMonth(), prevLbl = MONTH_ABBR_ES(prevMonth(MONTH)), curLbl = MONTH_ABBR_ES(MONTH);
+function followersTable(showTotal = true, bs = socialBrands()){
+  const fm = folMonth(), prevLbl = MONTH_ABBR_ES(prevMonth(MONTH)), curLbl = MONTH_ABBR_ES(MONTH);
   const num = v => isNum(v) ? dots(v) : "—";
   const diffB = d => d == null ? `<span class="dbadge eq">—</span>` : `<span class="dbadge ${d > 0 ? "up" : d < 0 ? "down" : "eq"}">${d > 0 ? "+" : ""}${dots(d)}</span>`;
   const trend = r => { const a = folDiff(r.igc, r.igp), b = folDiff(r.fbc, r.fbp); if (a == null && b == null) return "—"; return trendBadge((a || 0) + (b || 0)); };
@@ -4565,7 +4591,7 @@ function impStatus(){
 }
 function impSlide(sl){
   const pubs = impPubs(), ml = monthLabel(impMonth()), n = v => isNum(v) ? dots(v) : "—";
-  const row = (p, k, brandCol) => `<tr style="--k:${k}"><td class="rk">${k + 1}</td>${brandCol ? `<td><span class="bname" style="--c:${BRANDS[p.brand]}"><i></i>${p.brand}</span></td>` : ""}<td class="ttl"><div class="person">${pubThumb(p)}<div><span class="tt">${esc(p.title)}</span><small>${p.format} · ${dm(p.date)}</small></div></div></td><td class="r big">${n(p.reach)}</td><td class="r">${n(p.likes)}</td><td class="r">${n(p.comments)}</td><td class="r">${dots(p.inter)}</td></tr>`;
+  const row = (p, k, brandCol) => `<tr style="--k:${k}"><td class="rk">${k + 1}</td>${brandCol ? `<td><span class="bname" style="--c:${BRANDS[p.brand]}"><i></i>${p.brand}</span></td>` : ""}<td class="ttl"><div class="person">${pubThumb(p, "imp")}<div class="pt"><span class="tt">${esc(p.title)}</span><small>${p.format} · ${dm(p.date)}</small></div></div></td><td class="r big">${n(p.reach)}</td><td class="r">${n(p.likes)}</td><td class="r">${n(p.comments)}</td><td class="r">${dots(p.inter)}</td></tr>`;
   const head = brandCol => `<thead><tr><th>#</th>${brandCol ? "<th>Marca</th>" : ""}<th>Publicación</th><th class="r">Alcance</th><th class="r">Me gusta</th><th class="r">Comentarios</th><th class="r">Interacciones</th></tr></thead>`;
   if (sl.general){
     const best = socialBrands().map(b => pubs.filter(p => p.brand === b).sort((a, c) => pubScore(c) - pubScore(a))[0]).filter(Boolean).sort((a, c) => pubScore(c) - pubScore(a));
@@ -4605,9 +4631,13 @@ document.addEventListener("click", e => {
   else if (a === "pause"){ imp.paused = !imp.paused; t.textContent = imp.paused ? "▶ Seguir" : "⏸ Pausar"; const bar = document.getElementById("impBar"); if (bar) bar.style.animationPlayState = imp.paused ? "paused" : "running"; if (!imp.paused){ impShow(imp.i); impLoop(); } }
   else if (a === "full"){ const el = document.querySelector(".tvimp"); if (el && el.requestFullscreen) el.requestFullscreen().catch(() => toast("Tu navegador no permitió la pantalla completa.")); }
 });
-function tvSlides(){ return socialBrands().flatMap((b, i) => [
-  { title:"Seguidores por cuenta", html:() => followersPanel() },
-  { title:"Seguidores por marca", html:() => followersTable(false) },
+// v269: TV Redes muestra solo Superseis, Stock y Delimarket, como el Dashboard de la app: seguidores → últimas publicaciones de
+// Instagram de las tres → tabla de seguidores → demográfico de una marca (y vuelve a empezar con la marca siguiente).
+const tvRedesBrands = () => IG_MAIN.filter(b => myBrands().includes(b));
+function tvSlides(){ const bs = tvRedesBrands(); return bs.flatMap((b, i) => [
+  { title:"Seguidores por cuenta", html:() => followersPanel(bs) },
+  { title:"Últimas publicaciones de Instagram", html:() => lastPostsPanel(bs) },
+  { title:"Seguidores por marca", html:() => followersTable(false, bs) },
   { title:`Demográfico · ${b}`, html:() => tvBrandHero(b) + demoBlock(b, i) },
 ]); }
 function tvShow(n){
@@ -4621,7 +4651,7 @@ function tvStart(){ clearInterval(tv.timer); tv.timer = setInterval(() => { if (
 function tvStop(){ clearInterval(tv.timer); tv.timer = null; }
 function pTVRedes(){
   const n = tvSlides().length;
-  return `<div class="tvredes">${tvBrandRow(true)}<div class="tvbar"><div><h1>Redes</h1><p class="sub">Para una pantalla en la oficina: general → tabla de seguidores → demográfico de una marca, y vuelve a empezar con la marca siguiente. ${TV_SECS} segundos cada pantalla.</p></div>
+  return `<div class="tvredes">${tvBrandRow(true)}<div class="tvbar"><div><h1>Redes</h1><p class="sub">Para una pantalla en la oficina, con Superseis, Stock y Delimarket: seguidores → últimas publicaciones de Instagram → tabla de seguidores → demográfico de una marca, y vuelve a empezar con la marca siguiente. ${TV_SECS} segundos cada pantalla.</p></div>
     <div class="chips"><button class="btn" data-tv="prev" aria-label="Anterior">‹</button><button class="btn" data-tv="pause">${tv.paused ? "▶ Seguir" : "⏸ Pausar"}</button><button class="btn" data-tv="next" aria-label="Siguiente">›</button><button class="btn primary" data-tv="full">⛶ Pantalla completa</button></div></div>
   <div class="tvdots">${Array.from({ length:n }, (_, k) => `<button class="tvdot" data-tvgo="${k}" aria-label="Ir a la pantalla ${k+1}"></button>`).join("")}</div>
   <div class="tvstage" id="tvStage"></div></div>`;
