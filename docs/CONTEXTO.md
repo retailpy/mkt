@@ -2,7 +2,7 @@
 
 > Pegá o adjuntá este archivo al empezar una conversación nueva. Resume qué es la app, cómo está armada,
 > cómo se trabaja y en qué punto quedó todo, con el detalle de Instagram (mensajes, menciones y la
-> revisión de Meta). Última actualización de este encabezado: **26 de octubre de 2026** (versión **v263**; lo último de cada versión está en la sección 5, la más nueva arriba).
+> revisión de Meta). Última actualización de este encabezado: **26 de octubre de 2026** (versión **v264**; lo último de cada versión está en la sección 5, la más nueva arriba).
 > **Acá no hay contraseñas, tokens ni claves**: esas están solo en Vercel/Supabase/Meta.
 
 ---
@@ -194,6 +194,7 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 ---
 
 ## 5. Otras cosas recientes (v137–v160)
+- **v264 · Plan de posteo: elegir varios cuadros y borrarles el texto juntos (27/10/2026):** como en Excel, se eligen varios cuadros **arrastrando con el mouse** de uno a otro, con **Shift + clic** (rango: los días entre los dos y las redes entre las dos), con **Ctrl + clic** (sumar o sacar uno) o, en el celular, con **Seleccionar varios** (cada toque suma o saca un cuadro; mientras está activo los cuadros no abren el teclado; “Listo” vuelve a escribir). Con varios elegidos: **Borrar texto (N)** o la tecla **Suprimir** borran el texto (el color queda), **Deshacer borrado** lo devuelve, un **color** de la barra pinta todos, y **pegar** desde la hoja arranca en el de arriba a la izquierda. Escape o “Quitar selección” la limpian (`ptSelSet`, `ptRange`, `ptDelSel`, `ptPick`).
 - **v263 · “Visto por” más a la vista en los grupos, filtros en Gestión de Comunicación y Marketing, pegar celdas de Excel en el Plan de posteo y Calendario de Actividades más limpio (26/10/2026):**
   1. **Chat (grupos):** el “Visto por …” ahora sale debajo del último mensaje de **cada tanda tuya** (no solo del último del chat) y el menú del mensaje (mantener apretado o clic derecho) tiene **Info: quién lo vio**, como WhatsApp. Siguen andando la línea y los ✓✓ para abrir la lista.
   2. **Gestión de Comunicación y Marketing (`gcm`):** la tabla aparece **entera y al instante, sin animación** (se sumó `gcm` a `CAL_PAGES`, que no anima). Nueva barra de filtros: **Marca** y **Tipo** (Post, Carrusel, Reel, Historia, Canal de WhatsApp, Video, Contenido gráfico y las actividades; cada opción con su cantidad), **Fecha ascendente / descendente** (por defecto: pendientes de la más antigua a la más nueva, aprobados al revés) y **Limpiar filtros**, con el conteo “X de N” (`gcmUI.brand`, `gcmUI.type`, `gcmUI.ord`, `gcmType`). Los atrasados del encabezado cuentan lo filtrado.
