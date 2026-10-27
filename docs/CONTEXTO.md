@@ -2,7 +2,7 @@
 
 > Pegá o adjuntá este archivo al empezar una conversación nueva. Resume qué es la app, cómo está armada,
 > cómo se trabaja y en qué punto quedó todo, con el detalle de Instagram (mensajes, menciones y la
-> revisión de Meta). Última actualización de este encabezado: **26 de octubre de 2026** (versión **v267**; lo último de cada versión está en la sección 5, la más nueva arriba).
+> revisión de Meta). Última actualización de este encabezado: **26 de octubre de 2026** (versión **v268**; lo último de cada versión está en la sección 5, la más nueva arriba).
 > **Acá no hay contraseñas, tokens ni claves**: esas están solo en Vercel/Supabase/Meta.
 
 ---
@@ -194,6 +194,10 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 ---
 
 ## 5. Otras cosas recientes (v137–v160)
+- **v268 · Televisores: barras con color, clima y logos (27/10/2026):**
+  1. **Barras de TV Team sin color en la TV:** las barras verticales de “Carga de trabajo del equipo” se pintaban con `color-mix()`, que los navegadores viejos (los de muchas Smart TV) no entienden: descartaban el color y la barra quedaba invisible. Ahora `.lbar` usa colores comunes (el color de la carga con un degradé oscuro encima) y hay un respaldo `@supports not (color: color-mix(…))` para los demás detalles de las Vistas TV (`.tvhero`, `.lvtag`, `.ub`, `.urg`). Si en algún televisor sigue sin verse algo, conviene anotar la marca y el modelo de la TV.
+  2. **Clima al lado de la hora** en TV Team (también en la Vista TV de la app), con el mismo clima de Asunción del Inicio (`tvWx`, se actualiza solo cada 15 minutos). El reloj de TV Team usa la hora de Paraguay (`clockNow`), como los demás.
+  3. **En los televisores, una franja arriba** con el logo de Retail MKT Hub (izquierda) y los de Superseis, Delimarket y Stock (derecha), los mismos de la barra de la app (`tvBrandRow`). En TV Redes e Impacto, que no tienen reloj propio, la franja también lleva el clima y la hora. En la Vista TV dentro de la app no aparece (ya está la barra de arriba).
 - **v267 · Usuario TV: solo los botones y la misma pantalla completa de cada Vista TV (27/10/2026):** al entrar con el usuario TV se ve **solo TV 1, TV 2, TV 3 y TV 4** (sin título ni textos; “Cerrar sesión” queda escondido abajo a la derecha y aparece al pasar el mouse). Lo que muestra cada uno, de entrada: **TV 1 = TV Team, TV 2 = TV Redes, TV 3 = Impacto Redes** (TV 4 por ahora TV Team; se cambia en Pantallas TV). Al tocar un botón se abre a pantalla completa con **el mismo aspecto que el botón “Pantalla completa” de cada vista** (TV Team con sus márgenes, Redes solo las diapositivas, Impacto con su encabezado), pero usando la pantalla completa del navegador entero: la de cada vista ponía en pantalla completa solo un bloque, y se cortaba cada vez que la pantalla se redibujaba con datos nuevos. **Al salir de la pantalla completa** (Esc, el control remoto o “Salir”) vuelve a los botones (`tvWasFull`).
 - **v266 · Televisores de la oficina: usuario TV y Pantallas TV (27/10/2026):**
   1. **Rol nuevo “TV”** (para los televisores). Quien entra con un usuario de rol TV no ve el menú ni nada más: solo los botones **TV 1, TV 2, TV 3 y TV 4** (`tvpant`). En cada televisor se toca uno y queda mostrando, a pantalla completa y sin menú, la Vista TV que eligió Admin total; el televisor recuerda qué TV es (aunque se apague o se recargue). Al mover el mouse o tocar la pantalla aparecen **“⛶ Pantalla completa”** y **“✕ Salir”** (que vuelve a los botones) y se esconden solos a los 4 segundos, igual que el cursor. Sin chat, sin avisos ni ventanas emergentes (`noPops`, `avFor`), y cuando se publica una versión nueva el televisor se actualiza solo.

@@ -700,6 +700,12 @@ b.comf{display:block}.comfw{white-space:nowrap}b.comf svg{display:inline;vertica
   .kanban .col{flex:0 0 84%;scroll-snap-align:start;min-width:0}
 }
 @media (max-width:900px){ .jproc{overflow-x:auto} }
+/* v268 · Navegadores viejos (los de muchas Smart TV) no entienden color-mix(): sin esto, esas partes quedaban sin color */
+@supports not (color: color-mix(in srgb, red 50%, blue)){
+  .tvhero{border-color:var(--c);background:linear-gradient(to right,rgba(255,255,255,.06),#0f172a 70%),#0f172a}
+  .lvtag{border-color:var(--c);background:rgba(148,163,184,.10)}
+  .tvgrid .tvp .ub,.urg{border-color:var(--u);background:rgba(148,163,184,.10)}
+}
 /* v266 · Televisores: el usuario TV no ve el menú; un televisor (TV 1 a TV 4) muestra solo su pantalla, a lo ancho */
 html.tvrole .side,html.tvrole .brandbar,html.tvrole .tabbar,html.tvrole .navshow,html.tvrole .pcrumb,
 html.tvkiosk .side,html.tvkiosk .brandbar,html.tvkiosk .tabbar,html.tvkiosk .navshow,html.tvkiosk .pcrumb,html.tvkiosk #updBar{display:none !important}
@@ -714,6 +720,17 @@ html.tvkiosk .tvredes:not(.tvimp){min-height:100vh;box-sizing:border-box;backgro
 html.tvkiosk .tvredes:not(.tvimp) .tvstage{padding:32px}
 html.tvkiosk .tvimp{min-height:100vh;box-sizing:border-box;padding:5vh 5vw;background:var(--bg)}
 html.tvkiosk{cursor:none}html.tvkiosk.tvcur{cursor:auto}
+.tvbrandrow{display:none}
+html.tvkiosk .tvbrandrow{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:clamp(8px,1.6vh,18px)}
+html.tvkiosk .tvredes:not(.tvimp) > .tvbrandrow{padding:20px 32px 0;margin-bottom:0}
+.tvbr-logo{height:clamp(30px,4.6vh,50px);width:auto;background:#0f172a;border-radius:12px;padding:6px 10px;box-sizing:content-box}
+.tvbr-r{display:flex;align-items:center;gap:clamp(16px,2.2vw,36px)}
+.tvbr-brands{height:clamp(24px,3.8vh,42px);width:auto}
+.tvwx{display:inline-flex;align-items:center;gap:8px;color:#e2e8f0;line-height:1}
+.tvwx .wxico{width:clamp(26px,3.6vh,40px);height:clamp(26px,3.6vh,40px);color:#fbbf24;flex:none}
+.tvwx b{font-size:clamp(22px,3.4vh,34px);font-weight:800;color:#fff}
+.tvwx small{font-size:clamp(11px,1.4vh,14px);color:var(--muted);max-width:9em}
+.tvhead .chips .tvwx{margin-right:6px}
 .tvkbar{position:fixed;top:12px;right:12px;z-index:9500;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:14px;background:rgba(2,6,23,.88);border:1px solid var(--line-3);box-shadow:0 10px 30px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s}
 .tvkbar.show{opacity:1;pointer-events:auto}
 .tvkbar .tvkn{color:#e2e8f0;font-weight:700;font-size:13px;padding:0 4px}
@@ -2165,7 +2182,7 @@ html.light .gname{background-image:linear-gradient(90deg,#0891b2,#2563eb)}
 .lval b{display:block;font-size:22px;font-weight:900;font-variant-numeric:tabular-nums}
 .lval span{font-size:11px;color:var(--faint)}
 .ltrack{flex:1;width:min(64px,80%);display:flex;align-items:flex-end;border-radius:12px 12px 6px 6px;background:rgba(30,41,59,.45);overflow:hidden}
-.lbar{width:100%;border-radius:12px 12px 4px 4px;background:linear-gradient(to top,color-mix(in srgb,var(--c) 55%,#0f172a),var(--c));box-shadow:0 0 18px color-mix(in srgb,var(--c) 45%,transparent);transform-origin:bottom;animation:growy 1s cubic-bezier(.22,1,.36,1) both}
+.lbar{width:100%;border-radius:12px 12px 4px 4px;background:linear-gradient(to top,rgba(15,23,42,.45),rgba(15,23,42,0)),var(--c);box-shadow:0 0 18px rgba(0,0,0,.25);box-shadow:0 0 18px color-mix(in srgb,var(--c) 45%,transparent);transform-origin:bottom;animation:growy 1s cubic-bezier(.22,1,.36,1) both}
 .noanim .lbar{animation:none}
 .lname{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;max-width:100%}
 .lname .avatar{width:30px;height:30px;border-radius:10px;font-size:11px}
@@ -3762,7 +3779,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v267";
+const APP_VER = "v268";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -4565,7 +4582,7 @@ function impSlide(sl){
 }
 function pTVImpacto(){
   const n = impSlides().length;
-  return `<div class="tvredes tvimp"><div class="tvbar"><div><h1>Impacto en redes</h1><p class="sub">Publicaciones reales de Instagram: primero la mejor de cada marca y después el top 10 de cada cuenta, por alcance (o interacciones). ${IMP_SECS} segundos cada pantalla.</p><div class="tag-row"><span class="tag">Fuente: Instagram (Meta)</span><span class="tag">Última actualización: ${campSync() ? metaWhen(campSync()) : "sin datos"}</span><span class="tag">Seguidores: ${META_FOLLOWERS.updated ? metaWhen(META_FOLLOWERS.updated) : "sin datos"}</span></div>${impStatus()}</div>
+  return `<div class="tvredes tvimp">${tvBrandRow(true)}<div class="tvbar"><div><h1>Impacto en redes</h1><p class="sub">Publicaciones reales de Instagram: primero la mejor de cada marca y después el top 10 de cada cuenta, por alcance (o interacciones). ${IMP_SECS} segundos cada pantalla.</p><div class="tag-row"><span class="tag">Fuente: Instagram (Meta)</span><span class="tag">Última actualización: ${campSync() ? metaWhen(campSync()) : "sin datos"}</span><span class="tag">Seguidores: ${META_FOLLOWERS.updated ? metaWhen(META_FOLLOWERS.updated) : "sin datos"}</span></div>${impStatus()}</div>
     <div class="chips"><button class="btn" data-imp="prev" aria-label="Anterior">‹</button><button class="btn" data-imp="pause">${imp.paused ? "▶ Seguir" : "⏸ Pausar"}</button><button class="btn" data-imp="next" aria-label="Siguiente">›</button><button class="btn primary" data-imp="full">⛶ Pantalla completa</button></div></div>
     <div class="tvdots">${impSlides().map((x, k) => `<button class="tvdot" data-impgo="${k}" aria-label="${x.label}" title="${x.label}"></button>`).join("")}</div>
     <div class="tvtimer"><i id="impBar"></i></div>
@@ -4604,7 +4621,7 @@ function tvStart(){ clearInterval(tv.timer); tv.timer = setInterval(() => { if (
 function tvStop(){ clearInterval(tv.timer); tv.timer = null; }
 function pTVRedes(){
   const n = tvSlides().length;
-  return `<div class="tvredes"><div class="tvbar"><div><h1>Redes</h1><p class="sub">Para una pantalla en la oficina: general → tabla de seguidores → demográfico de una marca, y vuelve a empezar con la marca siguiente. ${TV_SECS} segundos cada pantalla.</p></div>
+  return `<div class="tvredes">${tvBrandRow(true)}<div class="tvbar"><div><h1>Redes</h1><p class="sub">Para una pantalla en la oficina: general → tabla de seguidores → demográfico de una marca, y vuelve a empezar con la marca siguiente. ${TV_SECS} segundos cada pantalla.</p></div>
     <div class="chips"><button class="btn" data-tv="prev" aria-label="Anterior">‹</button><button class="btn" data-tv="pause">${tv.paused ? "▶ Seguir" : "⏸ Pausar"}</button><button class="btn" data-tv="next" aria-label="Siguiente">›</button><button class="btn primary" data-tv="full">⛶ Pantalla completa</button></div></div>
   <div class="tvdots">${Array.from({ length:n }, (_, k) => `<button class="tvdot" data-tvgo="${k}" aria-label="Ir a la pantalla ${k+1}"></button>`).join("")}</div>
   <div class="tvstage" id="tvStage"></div></div>`;
@@ -5427,7 +5444,7 @@ function loadWeather(){
   fetch(url, { signal:ctl.signal }).then(r => r.json()).then(j => { const c = j.current;
     WX = { ...WX, status:"ok", d:{ temp:Math.round(c.temperature_2m), feels:Math.round(c.apparent_temperature), code:c.weather_code, wind:Math.round(c.wind_speed_10m), windDir:c.wind_direction_10m, hum:c.relative_humidity_2m, isDay:c.is_day, at:c.time.slice(11,16) } }; })
     .catch(() => { WX = { ...WX, status:"demo", d:WX_DEMO }; })
-    .finally(() => { clearTimeout(to); const el = document.getElementById("nowcard"); if (el) el.outerHTML = nowCard(); });
+    .finally(() => { clearTimeout(to); const el = document.getElementById("nowcard"); if (el) el.outerHTML = nowCard(); document.querySelectorAll("[data-tvwx]").forEach(x => { x.outerHTML = tvWx(); }); });
   setTimeout(() => { WX.status = "loading"; loadWeather(); }, 15 * 60 * 1000); // se actualiza cada 15 minutos
 }
 const PY_TZ = "America/Asuncion";
@@ -8519,9 +8536,9 @@ let tvTeam = { timer:null, clock:null, slideT:null, updated:"", i:0, paused:fals
 const TV_TEAM_SECS = 10;
 const TV_TEAM_SLIDES = [{ team:true, icon:"👥", label:"Todo el equipo" }, { role:"Diseñador", area:"Diseño", icon:"🎨", label:"Diseño gráfico" }, { role:"CM", area:"CM", icon:"🎬", label:"Community managers" }];
 function pTV(){
-  return `<div class="tvpage">
+  return `<div class="tvpage">${tvBrandRow(false)}
     <div class="tvhead"><div><h1>Equipo</h1><p class="sub">${monthLabel(MONTH)} · equipo, diseño gráfico y CM cada ${TV_TEAM_SECS} segundos · datos actualizados cada ${TV_TEAM_MIN} minutos · última actualización: <b id="tvUpd" style="color:#fff">${tvTeam.updated}</b></p></div>
-      <div class="chips" style="align-items:center"><button class="btn" data-tt="prev" aria-label="Anterior">‹</button><button class="btn" data-tt="pause">${tvTeam.paused ? "▶ Seguir" : "⏸ Pausar"}</button><button class="btn" data-tt="next" aria-label="Siguiente">›</button><button class="btn primary" data-tvteam="full">⛶ Pantalla completa</button><div class="tvclock" id="tvClock">--:--<small>hora actual</small></div></div></div>
+      <div class="chips" style="align-items:center"><button class="btn" data-tt="prev" aria-label="Anterior">‹</button><button class="btn" data-tt="pause">${tvTeam.paused ? "▶ Seguir" : "⏸ Pausar"}</button><button class="btn" data-tt="next" aria-label="Siguiente">›</button><button class="btn primary" data-tvteam="full">⛶ Pantalla completa</button>${tvWx()}<div class="tvclock" id="tvClock">--:--<small>hora actual</small></div></div></div>
     <div class="tvtimer"><i id="ttBar"></i></div>
     <div class="ttstage" id="ttStage"></div>
   </div>`;
@@ -8583,7 +8600,7 @@ addEventListener("resize", () => { if (page === "tv") tvFit(); });
 document.addEventListener("fullscreenchange", () => { if (page === "tv") setTimeout(tvFit, 60); });
 function tvTeamStart(){
   clearInterval(tvTeam.clock);
-  const tick = () => { const el = document.getElementById("tvClock"); if (el) el.firstChild.textContent = new Date().toTimeString().slice(0,5); };
+  const tick = () => { const el = document.getElementById("tvClock"); if (el) el.firstChild.textContent = clockNow(); };
   tick(); tvTeam.clock = setInterval(tick, 15000);
   if (!tvTeam.timer) tvTeam.timer = setInterval(() => { if (page !== "tv") return; render.lastKey = null; render(); toast("Datos del equipo actualizados."); }, TV_TEAM_MIN * 60 * 1000);
 }
@@ -11653,6 +11670,11 @@ document.addEventListener("change", e => {
   const v = e.target.dataset?.tvview; if (v){ tvSave(v, { v:e.target.value }); render(); toast(`TV ${v}: ahora muestra ${tvView(e.target.value)[1]}.`); return; }
   const nm = e.target.dataset?.tvname; if (nm){ tvSave(nm, { name:e.target.value.trim().slice(0, 40) }); toast(`TV ${nm}: nombre guardado.`); }
 });
+// v268 · Clima al lado de la hora (TV Team) y, en los televisores, una franja arriba con el logo de Retail MKT Hub y los de
+// Superseis, Delimarket y Stock (los mismos de la barra de la app). En Redes e Impacto, que no tienen reloj, lleva la hora y el clima.
+const tvWx = () => { const d = WX.d, w = d ? wxInfo(d.code) : null, ico = w ? (w.i === "sun" && !d.isDay ? "moon" : w.i) : "cloud";
+  return `<span class="tvwx" data-tvwx title="Clima en Asunción">${d ? `${wxSvg(ico)}<b>${d.temp}°</b><small>${esc(w.t)}</small>` : `<small>Clima…</small>`}</span>`; };
+const tvBrandRow = clock => `<div class="tvbrandrow"><img class="tvbr-logo" src="logo-wide.png" alt="Retail MKT Hub"><div class="tvbr-r"><img class="tvbr-brands" src="marcas.png" alt="Superseis · Delimarket · Stock">${clock ? `${tvWx()}<div class="tvclock"><span data-clock>${clockNow()}</span><small>hora actual</small></div>` : ""}</div></div>`;
 // Botones flotantes del televisor: aparecen al mover el mouse o tocar la pantalla y se esconden solos (también el cursor).
 let tvKT = null;
 function tvKbarShow(){ const b = document.getElementById("tvKbar"); if (!b) return; b.classList.add("show"); document.documentElement.classList.add("tvcur"); clearTimeout(tvKT); tvKT = setTimeout(() => { b.classList.remove("show"); document.documentElement.classList.remove("tvcur"); }, 4000); }
