@@ -2,7 +2,7 @@
 
 > Pegá o adjuntá este archivo al empezar una conversación nueva. Resume qué es la app, cómo está armada,
 > cómo se trabaja y en qué punto quedó todo, con el detalle de Instagram (mensajes, menciones y la
-> revisión de Meta). Última actualización de este encabezado: **26 de octubre de 2026** (versión **v266**; lo último de cada versión está en la sección 5, la más nueva arriba).
+> revisión de Meta). Última actualización de este encabezado: **26 de octubre de 2026** (versión **v267**; lo último de cada versión está en la sección 5, la más nueva arriba).
 > **Acá no hay contraseñas, tokens ni claves**: esas están solo en Vercel/Supabase/Meta.
 
 ---
@@ -194,6 +194,7 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 ---
 
 ## 5. Otras cosas recientes (v137–v160)
+- **v267 · Usuario TV: solo los botones y la misma pantalla completa de cada Vista TV (27/10/2026):** al entrar con el usuario TV se ve **solo TV 1, TV 2, TV 3 y TV 4** (sin título ni textos; “Cerrar sesión” queda escondido abajo a la derecha y aparece al pasar el mouse). Lo que muestra cada uno, de entrada: **TV 1 = TV Team, TV 2 = TV Redes, TV 3 = Impacto Redes** (TV 4 por ahora TV Team; se cambia en Pantallas TV). Al tocar un botón se abre a pantalla completa con **el mismo aspecto que el botón “Pantalla completa” de cada vista** (TV Team con sus márgenes, Redes solo las diapositivas, Impacto con su encabezado), pero usando la pantalla completa del navegador entero: la de cada vista ponía en pantalla completa solo un bloque, y se cortaba cada vez que la pantalla se redibujaba con datos nuevos. **Al salir de la pantalla completa** (Esc, el control remoto o “Salir”) vuelve a los botones (`tvWasFull`).
 - **v266 · Televisores de la oficina: usuario TV y Pantallas TV (27/10/2026):**
   1. **Rol nuevo “TV”** (para los televisores). Quien entra con un usuario de rol TV no ve el menú ni nada más: solo los botones **TV 1, TV 2, TV 3 y TV 4** (`tvpant`). En cada televisor se toca uno y queda mostrando, a pantalla completa y sin menú, la Vista TV que eligió Admin total; el televisor recuerda qué TV es (aunque se apague o se recargue). Al mover el mouse o tocar la pantalla aparecen **“⛶ Pantalla completa”** y **“✕ Salir”** (que vuelve a los botones) y se esconden solos a los 4 segundos, igual que el cursor. Sin chat, sin avisos ni ventanas emergentes (`noPops`, `avFor`), y cuando se publica una versión nueva el televisor se actualiza solo.
   2. **Pantallas TV** (`tvconf`, en Vista TV, solo Admin total): para cada TV, un nombre opcional (ej. “Recepción”) y qué muestra: **Equipo (TV Team)**, **Redes (seguidores y demográfico)** o **Impacto en redes**. Se guarda en `s:TV_SCREENS` y el televisor se cambia solo. Con “Ver” Admin total abre esa TV en su compu, como la ve el televisor. Abajo, los pasos para crear el usuario.
