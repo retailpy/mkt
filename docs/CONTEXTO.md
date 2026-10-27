@@ -2,7 +2,7 @@
 
 > Pegá o adjuntá este archivo al empezar una conversación nueva. Resume qué es la app, cómo está armada,
 > cómo se trabaja y en qué punto quedó todo, con el detalle de Instagram (mensajes, menciones y la
-> revisión de Meta). Última actualización de este encabezado: **26 de octubre de 2026** (versión **v264**; lo último de cada versión está en la sección 5, la más nueva arriba).
+> revisión de Meta). Última actualización de este encabezado: **26 de octubre de 2026** (versión **v265**; lo último de cada versión está en la sección 5, la más nueva arriba).
 > **Acá no hay contraseñas, tokens ni claves**: esas están solo en Vercel/Supabase/Meta.
 
 ---
@@ -194,6 +194,7 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 ---
 
 ## 5. Otras cosas recientes (v137–v160)
+- **v265 · Panel de Trabajo de CM con los mismos números que Planificación (27/10/2026):** el resumen del Panel (Pendiente, En proceso, Programado… y “ya publicados de N”) contaba **todas las marcas juntas**, pero Planificación de CM se abre para Admin total en **Superseis** (v245): por eso el Panel decía, por ejemplo, 39 pendientes y Planificación 13. Ahora el Panel cuenta **la misma marca con la que se abre Planificación** (Admin total: Superseis; los demás: la marca elegida o todas), lo dice debajo de los cuadros, y tiene los botones **Superseis · Stock · Delimarket · Otras marcas · Todas juntas**. Al tocar un cuadro, Planificación se abre con esa misma marca y esa etapa, y muestra el mismo número (`cmPanBrand`, `cmPanB`, `render.planBrandNext`). Entrando a Planificación por el menú, sigue como antes (Admin total en Superseis).
 - **v264 · Plan de posteo: elegir varios cuadros (o todos) para borrar, copiar y pegar en otra semana (27/10/2026):** como en Excel, se eligen varios cuadros **arrastrando con el mouse** de uno a otro, con **Shift + clic** (rango: los días entre los dos y las redes entre las dos), con **Ctrl + clic** (sumar o sacar uno) o, en el celular, con **Seleccionar varios** (cada toque suma o saca un cuadro; mientras está activo los cuadros no abren el teclado; “Listo” vuelve a escribir). Con varios elegidos: **Borrar texto (N)** o la tecla **Suprimir** borran el texto (el color queda), **Deshacer borrado** lo devuelve, un **color** de la barra pinta todos, y **pegar** desde la hoja arranca en el de arriba a la izquierda. Escape o “Quitar selección” la limpian (`ptSelSet`, `ptRange`, `ptDelSel`, `ptPick`).
   **Copiar y pegar lo que se repite:** **Seleccionar todo** (la semana entera en vista Semana, o los días del mes en vista Mes), **Copiar (N)** o Ctrl+C y después, en otra semana, tocar el cuadro donde empieza y **Pegar** o Ctrl+V (con el texto, el formato y los colores; los cuadros no elegidos no pisan nada; también sirve para pasar de una cuenta a otra). **Copiar a la semana siguiente** lo pasa directo 7 días después y muestra esa semana. Lo copiado queda en la app (`ptClip`) y en el portapapeles como tabla (se puede pegar en Excel o Google Sheets). Lo elegido que deja de verse (otra semana u otro mes) se suelta solo.
 - **v263 · “Visto por” más a la vista en los grupos, filtros en Gestión de Comunicación y Marketing, pegar celdas de Excel en el Plan de posteo y Calendario de Actividades más limpio (26/10/2026):**

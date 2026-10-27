@@ -3089,6 +3089,7 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .gmon{display:inline-flex;align-items:center;gap:8px}.gmon b{min-width:120px;text-align:center}
 .glate{color:#f87171}
 .gcmtbl td{vertical-align:middle}
+.cmpanbr{justify-content:center;margin:-6px 0 12px}.cmpanbr .chip{padding:4px 11px;font-size:12.5px}
 .gcmfil{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 12px;margin-top:-10px}
 .gfil{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
 .gfil > span{display:inline-flex;align-items:center;gap:5px}.gfil svg{width:13px;height:13px}
@@ -5512,6 +5513,12 @@ function pPanel(ar){
     ${done.length > 5 ? `<button type="button" class="btn sm" data-paneldone>${panelDoneAll ? "Ver menos" : `Ver más (${done.length - 5})`}</button>` : ""}</div>${doneList}</section>`}`;
 }
 // v220 · Panel de Trabajo de CM: solo los cuatro accesos, grandes y limpios (lo pendiente está en Gestión de Comunicación y Marketing).
+// v265 · El resumen del Panel de CM cuenta la misma marca con la que se abre Planificación (Admin total: Superseis; antes
+// contaba todas las marcas juntas y no coincidía). Los botones cambian la marca y, al tocar un cuadro, Planificación se abre con esa.
+let cmPanBrand = null; // null: la marca de entrada
+const cmPanStart = () => viewer?.role === "Admin total" && myGroups().includes("Superseis") ? "Superseis" : brandFilter === "Materiales" || (brandFilter !== "Todas" && !myGroups().includes(brandFilter)) ? "Todas" : brandFilter;
+const cmPanB = () => { const b = cmPanBrand || cmPanStart(); return b === "Todas" || myGroups().includes(b) ? b : "Todas"; };
+document.addEventListener("click", e => { const b = e.target.closest("[data-cmpanbrand]"); if (b){ cmPanBrand = b.dataset.cmpanbrand; render(); } });
 function pPanelCM(){
   const work = cmWork(), mine = work.filter(x => !x.done && x.who === viewer.name), late = work.filter(x => cmLate(x) && (!ownsJobs() || x.who === viewer.name)).length;
   const wk = mondayOf(TODAY), wkN = work.filter(x => x.date >= wk && x.date <= addDays(wk, 6)).length;
@@ -5521,9 +5528,13 @@ function pPanelCM(){
   const icons = PANEL_CM.filter(x => can(x.k)).map((x, i) => {
     const badge = x.k === "inbox" ? pendBadge() : x.k === "gcm" && gOpen ? `<span class="count ibc${gUnseen ? " new" : ""}" title="${gOpen} a tu nombre sin terminar${gUnseen ? ` · ${gUnseen} sin abrir` : ""}">+${gOpen > 99 ? 99 : gOpen}</span>` : "";
     return `<button type="button" class="picon" data-page="${x.k}" style="--i:${i}" aria-label="Abrir ${esc(x.t)}"><span class="pring" aria-hidden="true">${icon(x.i)}${badge}</span><b>${x.t}</b><small>${x.d}</small><span class="pmeta">${meta[x.k] || ""}</span></button>`; }).join("");
-  const go = can("calcm") ? "calcm" : "plan";
+  const go = can("calcm") ? "calcm" : "plan", pb = cmPanB(), keep = brandFilter;
+  brandFilter = pb; const sumAll = can(go) ? cmPlanMonth().all : []; brandFilter = keep; // los mismos números que Planificación con esa marca
+  const opts = myGroups().length > 1 ? (cmPanStart() === "Superseis" ? [...myGroups(), "Todas"] : ["Todas", ...myGroups()]) : [];
+  const bTxt = pb === "Todas" ? "todas las marcas" : pb === "Otros" ? "las otras marcas" : pb;
   return `<div class="phero"><h1>Panel de Trabajo</h1><p class="sub">Community Manager</p></div>
-  ${can(go) ? `${cmPlanSummary(cmPlanMonth().all, go)}<p class="note dgpanhint">${icon("info")} Lo de ${monthName(MONTH)}, como en Planificación. Tocá un cuadro para ver esos trabajos en Planificación.</p>` : ""}
+  ${can(go) ? `${opts.length ? `<div class="chips cmpanbr" role="group" aria-label="Marca">${opts.map(b => `<button type="button" class="chip${b === pb ? " on" : ""}" data-cmpanbrand="${b}" aria-pressed="${b === pb}">${b === "Todas" ? "Todas juntas" : b === "Otros" ? "Otras marcas" : b}</button>`).join("")}</div>` : ""}
+  ${cmPlanSummary(sumAll, go)}<p class="note dgpanhint">${icon("info")} Lo de ${monthName(MONTH)} de <b>${esc(bTxt)}</b>, igual que en Planificación. Tocá un cuadro para ver esos trabajos en Planificación (se abre con la misma marca).</p>` : ""}
   <nav class="picons pcm4${PANEL_CM.filter(x => can(x.k)).length > 4 ? " pcm5" : ""}" aria-label="Community Manager">${icons || `<div class="empty">No tenés secciones habilitadas.</div>`}</nav>`;
 }
 let panelDoneAll = false, panelDoneOpen = false; // Diseño: los aprobados del Panel de Trabajo, ocultos hasta tocar “Ver aprobados”
@@ -13601,7 +13612,10 @@ function stickBottom(cm){
 }
 function render(){
   stampPubDone(); pcSync(); pubBrandFix();
-  if (page !== render.planPage){ if (render.planForced) brandFilter = "Todas"; render.planForced = false; render.planPage = page; if (planSuperFirst()){ brandFilter = "Superseis"; render.planForced = true; } } // al salir, las demás secciones siguen con todas
+  if (page !== render.planPage){ if (render.planForced) brandFilter = "Todas"; render.planForced = false; render.planPage = page;
+    if (render.planBrandNext && ["calcm","plan"].includes(page)){ brandFilter = render.planBrandNext; render.planForced = true; } // v265: desde el Panel de CM, con la marca del Panel
+    else if (planSuperFirst()){ brandFilter = "Superseis"; render.planForced = true; } } // al salir, las demás secciones siguen con todas
+  render.planBrandNext = null;
   if (page !== render.histPage){ if (page === "historial") histUI.tab = "pend"; if (page === "historialcm") histCmTab = "pend"; pedTab = "pend"; panelDoneOpen = false; render.histPage = page; } // al entrar al Historial, siempre los pendientes
   for (const p of posts) if (OLD_POST_ST[p.status]) p.status = OLD_POST_ST[p.status]; // etapas de antes de las publicaciones de CM
   for (const k of CHANNEL_POSTS) if (OLD_POST_ST[k.status]) k.status = OLD_POST_ST[k.status];
@@ -13708,7 +13722,7 @@ document.addEventListener("click", e => {
   const cmt = e.target.closest("[data-cmview],[data-cmtv],[data-cmst]");
   if (cmt){ const d = cmt.dataset; if (d.cmtv) cmUI.tview = d.cmtv; else if (d.cmst){ cmUI.st = cmUI.st === d.cmst ? "Todos" : d.cmst; if (cmUI.st === LATE_ST && page === "calcm" && gView() === "semana") cmView.calcm = "tabla"; } render(); return; }
   const cg = e.target.closest("[data-cmstgo]"); // v241 · desde el Panel de Trabajo de CM: abre Planificación con esa etapa
-  if (cg){ cmUI.st = cg.dataset.cmstgo; cmUI.cm = "Todos"; if (cmUI.st === LATE_ST && (cmView.calcm || "semana") === "semana") cmView.calcm = "tabla"; } // y su data-page abre la sección
+  if (cg){ cmUI.st = cg.dataset.cmstgo; cmUI.cm = "Todos"; render.planBrandNext = page === "panelcm" ? cmPanB() : null; if (cmUI.st === LATE_ST && (cmView.calcm || "semana") === "semana") cmView.calcm = "tabla"; } // y su data-page abre la sección (v265: con la misma marca del Panel)
   const jt = !e.target.closest(".pev [data-stagemenu]") && e.target.closest("[data-jarea],[data-jview],[data-jnew],[data-jedit],[data-jdup],[data-jdel],[data-jclose]");
   if (jt){ const d = jt.dataset, find = id => jobs.find(x => x.id === id);
     if (d.jarea){ jobUI.area = d.jarea; jobUI.owner = "Todos"; }
