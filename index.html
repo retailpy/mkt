@@ -3034,6 +3034,11 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .ptsw:hover{outline:2px solid #6366f1;outline-offset:1px}
 .ptbar .ptsel{color:#4b5563}
 .ptbar .ptundo{margin-left:auto;background:#fef3c7;border-color:#f59e0b;color:#92400e}
+.ptmulti{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}
+.ptbar .ptmulti .btn.on{background:#cffafe;border-color:#0891b2;color:#155e75}
+.ptbar .ptdel{background:#fee2e2;border-color:#ef4444;color:#991b1b}
+.ptbar .ptcopy{background:#e0f2fe;border-color:#0284c7;color:#075985}
+.ptbar .ptpaste{background:#dcfce7;border-color:#16a34a;color:#166534}
 .ptpastetip{display:flex;align-items:flex-start;gap:6px;margin:-4px 0 12px;font-size:12.5px}.ptpastetip svg{flex:none;width:15px;height:15px;margin-top:1px}
 .ptw{background:#fff;border-radius:12px;padding:0;color-scheme:light}
 .cal.ptcal{background:#d1d5db;gap:1px;border:1px solid #d1d5db;border-radius:10px;overflow:hidden}
@@ -3071,6 +3076,8 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .ptgrid .ptd .pttx{min-height:64px}
 .ptgrid .ptd.out{background:var(--ptbg,#f9fafb);opacity:.6}
 .ptgrid .ptd.ptsel{box-shadow:inset 0 0 0 2px #6366f1}
+.ptgrid .ptd.ptmsel{box-shadow:inset 0 0 0 2px #0ea5e9;background-image:linear-gradient(rgba(14,165,233,.18),rgba(14,165,233,.18))} /* v264: cuadros elegidos */
+.ptgrid.ptpick .ptd{cursor:pointer}
 .ptgrid.ptweek .ptd{min-height:130px}.ptgrid.ptweek .ptd .pttx{min-height:110px;font-size:14px}
 @media (max-width:760px){.ptgrid{grid-template-columns:84px repeat(7,minmax(120px,1fr))}.ptgrid .ptrow{font-size:10.5px}}
 @media (max-width:700px){.cal.ptcal .d.ptd{min-height:90px;padding:3px}.ptd .pttx{font-size:12px;min-height:70px}}
@@ -6023,6 +6030,9 @@ const ptWeek = () => { const ok = w => w && addDays(w, 6).slice(0, 7) >= MONTH &
   if (!ok(ptWk)) ptWk = mondayOf(MONTH === CURRENT_MONTH ? TODAY : MONTH + "-01"); return ptWk; };
 function pPlanTxt(){
   const bl = ptBrands(); if (bl.length && !bl.includes(ptBrand)) ptBrand = bl[0];
+  const vis = new Set(ptWeeks().flatMap(w => [0,1,2,3,4,5,6].map(i => addDays(w, i)))); // v264: lo elegido que ya no se ve (otra semana u otro mes) se suelta
+  if ([...ptSelSet].some(c => !vis.has(c.split("#")[0]))) ptSelSet = new Set([...ptSelSet].filter(c => vis.has(c.split("#")[0])));
+  if (ptCell && !vis.has(ptCell.split("#")[0])) ptCell = null;
   const work = cmWork().filter(x => x.date && x.brand === ptBrand);
   const sw = (list, kind) => list.map(c => `<button type="button" class="ptsw" data-ptcolor="${kind}:${c}" style="--c:${c}" title="${kind === "bg" ? "Fondo" : "Letra"} ${c}" aria-label="${kind === "bg" ? "Color de fondo" : "Color de letra"} ${c}"></button>`).join("");
   return `<div class="head"><div><h1 class="pmh">${pmIco("table-2")}Plan de posteo</h1><p class="sub">${monthLabel(MONTH)} · un calendario por cuenta: escribí en cada día y en cada red (Instagram/Facebook, TikTok, Canal de WhatsApp…) lo que se va a publicar en <b>${esc(ptBrand)}</b>, como en la hoja de Excel. Se guarda solo.</p></div></div>
@@ -6030,8 +6040,10 @@ function pPlanTxt(){
   <div class="chips ptbrands" role="group" aria-label="Cuenta">${bl.map(b => `<button type="button" class="chip${b === ptBrand ? " on" : ""}" data-ptbrand="${esc(b)}" aria-pressed="${b === ptBrand}" style="--c:${BRANDS[b] || "#94a3b8"}"><span class="ptdot"></span>${esc(b)}</button>`).join("")}</div>
   <div class="ptbar"><span class="pttl">${icon("paint-bucket")} Fondo</span><div class="ptsws">${sw(PT_BG, "bg")}</div><span class="pttl">${icon("type")} Letra</span><div class="ptsws">${sw(PT_FG, "fg")}</div>
     <button type="button" class="btn sm" data-ptcolor="clear:">${icon("eraser")} Quitar colores</button>
-    <span class="ptfmts" role="group" aria-label="Formato del texto">${PT_FMT.map(([k, i, l]) => `<button type="button" class="btn sm ib" data-ptfmt="${k}" title="${l}" aria-label="${l}">${icon(i)}</button>`).join("")}</span><span class="note ptsel">${ptCell ? `Pintando el ${ptCidTxt(ptCell)}` : "Tocá un cuadro y después un color"}</span>${ptUndo ? `<button type="button" class="btn sm ptundo" data-ptundo>${icon("undo-2")} Deshacer pegado</button>` : ""}</div>
-  <p class="note ptpastetip">${icon("clipboard-paste")} Podés copiar varias celdas de la hoja de Excel o Google Sheets y pegarlas acá: tocá el cuadro donde empieza (por ejemplo, el lunes de Instagram / Facebook) y pegá con Ctrl+V. Cada celda va a su día y a su red.</p>
+    <span class="ptfmts" role="group" aria-label="Formato del texto">${PT_FMT.map(([k, i, l]) => `<button type="button" class="btn sm ib" data-ptfmt="${k}" title="${l}" aria-label="${l}">${icon(i)}</button>`).join("")}</span><span class="note ptsel">${ptSelTxt()}</span>${ptUndo ? `<button type="button" class="btn sm ptundo" data-ptundo>${icon("undo-2")} Deshacer ${ptUndo.k || "pegado"}</button>` : ""}
+    ${ptCan() ? `<span class="ptmulti" id="ptMulti">${ptMultiIn()}</span>` : ""}</div>
+  <p class="note ptpastetip">${icon("clipboard-paste")} Podés copiar varias celdas de la hoja de Excel o Google Sheets y pegarlas acá: tocá el cuadro donde empieza (por ejemplo, el lunes de Instagram / Facebook) y pegá con Ctrl+V. Cada celda va a su día y a su red.
+    Para elegir varios cuadros: “Seleccionar todo”, arrastrá con el mouse de uno a otro, Shift + clic (de un cuadro hasta otro) o Ctrl + clic (sumar uno); en el celular, “Seleccionar varios”. Después: “Copiar” (Ctrl+C) y, en otra semana, tocá el cuadro donde empieza y “Pegar” (Ctrl+V); “Copiar a la semana siguiente”; “Borrar texto” (Suprimir) o un color.</p>
   ${ptWeeks().map(w => ptGridWeek(w, work)).join("")}`;
 }
 // v259 · como el Calendario de Actividades (y el Excel): una fila por red (Instagram/Facebook, TikTok, Canal de WhatsApp, X,
@@ -6043,12 +6055,12 @@ const ptWeeks = () => { if (ptView === "semana") return [ptWeek()]; const c = ca
 function ptGridWeek(w, work){
   const days = [0,1,2,3,4,5,6].map(i => addDays(w, i)), plats = ptPlats();
   const n = (d, k) => work.filter(x => x.date === d && cmPlats(x).includes(k)).length;
-  return `<div class="calw ptw"><div class="ptgrid${ptView === "semana" ? " ptweek" : ""}" role="grid" aria-label="Plan de ${esc(ptBrand)}, semana del ${dm(w)}">
+  return `<div class="calw ptw"><div class="ptgrid${ptView === "semana" ? " ptweek" : ""}${ptPick ? " ptpick" : ""}" role="grid" aria-label="Plan de ${esc(ptBrand)}, semana del ${dm(w)}">
     <div class="ptcorner">${icon("calendar-range")}</div>${days.map((d, i) => `<div class="pthd${d === TODAY ? " today" : ""}${ptView !== "semana" && d.slice(0, 7) !== MONTH ? " out" : ""}"><b>${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"][i]}</b> <span class="dn">${+d.slice(8)}</span></div>`).join("")}
     ${plats.map(([k, l, ic]) => `<div class="ptrow">${icon(ic)}<span>${l}</span></div>${days.map(d => { const c = ptCid(d, k), x = ptGet(c), m = n(d, k), out = ptView !== "semana" && d.slice(0, 7) !== MONTH;
-      return `<div class="ptd${out ? " out" : ""}${d === TODAY ? " today" : ""}${c === ptCell ? " ptsel" : ""}" data-ptday="${c}" style="${x?.bg ? `--ptbg:${x.bg};` : ""}${x?.fg ? `--ptfg:${x.fg};` : ""}">
+      return `<div class="ptd${out ? " out" : ""}${d === TODAY ? " today" : ""}${c === ptCell ? " ptsel" : ""}${ptSelSet.has(c) ? " ptmsel" : ""}" data-ptday="${c}" style="${x?.bg ? `--ptbg:${x.bg};` : ""}${x?.fg ? `--ptfg:${x.fg};` : ""}">
         ${m ? `<button type="button" class="ptn" data-ptcal="${d}" title="Ver lo cargado en el Calendario de Actividades">${icon("calendar-range")} ${m}</button>` : ""}
-        <div class="pttx" data-pttx="${c}" ${ptCan() ? `contenteditable="true"` : ""} role="textbox" aria-multiline="true" aria-label="Plan de ${esc(ptBrand)} · ${esc(l)} · ${dm(d)}">${ptHtml(x)}</div></div>`; }).join("")}`).join("")}
+        <div class="pttx" data-pttx="${c}" ${ptCan() && !ptPick ? `contenteditable="true"` : ""} role="textbox" aria-multiline="true" aria-label="Plan de ${esc(ptBrand)} · ${esc(l)} · ${dm(d)}">${ptHtml(x)}</div></div>`; }).join("")}`).join("")}
   </div></div>`;
 }
 document.addEventListener("input", e => { if (!e.target.dataset?.pttx || !ptCan()) return; ptSave(e.target); });
@@ -6056,12 +6068,13 @@ document.addEventListener("input", e => { if (!e.target.dataset?.pttx || !ptCan(
 // (las columnas son los días siguientes y las filas, las redes de abajo, como en la hoja). Si el bloque trae la columna con
 // el nombre de la red (INSTAGRAM/FACEBOOK, TIKTOK, CANAL…) va a esa fila; la fila de los días (LUNES…, 26, 27…) se saltea.
 // Trae el color de fondo y de letra de cada celda. Una sola celda (o texto común) se pega como siempre, solo el texto.
-document.addEventListener("paste", e => { const ed = e.target.closest?.("[data-pttx]"); if (!ed) return; e.preventDefault();
-  const cd = e.clipboardData, txt = cd.getData("text/plain"), html = cd.getData("text/html");
+document.addEventListener("paste", e => { const ed = e.target.closest?.("[data-pttx]"), sel = page === "postext" && ptSelSet.size > 0 && !e.target.closest?.("input,textarea,select,[contenteditable]"); if (!ed && !sel) return; e.preventDefault();
+  const cd = e.clipboardData, txt = cd.getData("text/plain"), html = cd.getData("text/html"), at = ptSelSet.size > 1 || !ed ? ptSelTopLeft() : ed.dataset.pttx;
+  if (ptClip && ptClipSame(txt)){ if (ptCan()) ptPasteGrid(at, ptClip.grid, true); return; } // copiado del mismo plan (v264): con su formato
   const g = /<table/i.test(html) ? ptHtmlGrid(html, txt) : /\t/.test(txt) ? ptTSV(txt).map(r => r.map(t => ({ t:t.trim() }))) : null;
-  if (!g || (g.length === 1 && g[0].length === 1)){ document.execCommand("insertText", false, g ? g[0][0].t : txt); return; } // se pega solo el texto
+  if (ed && ptSelSet.size <= 1 && (!g || (g.length === 1 && g[0].length === 1))){ document.execCommand("insertText", false, g ? g[0][0].t : txt); return; } // se pega solo el texto
   if (!ptCan()) return;
-  ptPasteGrid(ed.dataset.pttx, g); });
+  ptPasteGrid(at, g || [[{ t:String(txt || "").trim() }]]); });
 // Texto de la hoja (TSV): celdas separadas por tabulación; las que tienen renglones o comillas vienen entre comillas.
 function ptTSV(s){
   s = String(s || "").replace(/\r\n?/g, "\n"); const rows = [[]]; let cur = "", q = false;
@@ -6099,42 +6112,139 @@ const PT_NET_RX = [["igfb", /insta|face|^ig\b|^fb\b/i], ["tiktok", /tik ?tok/i],
 const ptNetOf = v => { v = String(v || "").trim(); if (!v || v.length > 30 || v.includes(":")) return null; const m = PT_NET_RX.find(([, rx]) => rx.test(v)); return m ? m[0] : null; };
 const ptHdrRow = r => { const f = r.map(v => v.t.trim()).filter(Boolean); return f.length >= 2 && f.filter(v => /^\d{1,2}$/.test(v) || /^(lun|mar|mi[eé]|jue|vie|s[aá]b|dom)/i.test(v)).length >= f.length - 1; };
 let ptUndo = null; // lo que había antes del último pegado, para “Deshacer pegado”
-function ptPasteGrid(cid, grid){
+function ptPasteGrid(cid, grid, raw){ // raw (v264): copiado del mismo plan, tal cual (con su formato y sin los cuadros no elegidos)
   const [d0, k0 = "igfb"] = cid.split("#"), plats = ptPlats().map(p => p[0]);
   const full = r => r.some(v => v.t || v.bg); let rows = grid.slice();
-  while (rows.length && !full(rows[0])) rows.shift(); while (rows.length && !full(rows[rows.length - 1])) rows.pop(); // filas vacías de los bordes (las del medio cuentan: son una red)
-  while (rows.length > 1 && ptHdrRow(rows[0])) rows = rows.slice(1); // LUNES, MARTES… / 26, 27…
-  const lab = rows[0]?.length > 1 && rows.some(r => r[0].t) && rows.every(r => !r[0].t || ptNetOf(r[0].t)) ? rows.map(r => ptNetOf(r[0].t)) : null;
+  if (!raw){ while (rows.length && !full(rows[0])) rows.shift(); while (rows.length && !full(rows[rows.length - 1])) rows.pop(); // filas vacías de los bordes (las del medio cuentan: son una red)
+    while (rows.length > 1 && ptHdrRow(rows[0])) rows = rows.slice(1); } // LUNES, MARTES… / 26, 27…
+  const lab = !raw && rows[0]?.length > 1 && rows.some(r => r[0].t) && rows.every(r => !r[0].t || ptNetOf(r[0].t)) ? rows.map(r => ptNetOf(r[0].t)) : null;
   if (lab) rows = rows.map(r => r.slice(1));
   const undo = [], miss = new Set(); let n = 0, cols = 0;
   rows.forEach((r, i) => {
     const k = lab ? lab[i] : plats[plats.indexOf(k0) + i];
     if (!k || !plats.includes(k)){ if (r.some(v => v.t)) miss.add(lab ? (CM_PLATS.find(p => p[0] === k)?.[1] || "una fila sin red") : "las filas que sobran"); return; }
-    r.forEach((v, j) => { if (!v.t && !v.bg) return;
+    r.forEach((v, j) => { if (!v || v.skip || (!v.t && !v.bg)) return;
       const c = ptCid(addDays(d0, j), k), key = ptKey(c), prev = PLAN_TXT.find(x => x.id === key);
       undo.push([key, prev ? JSON.parse(JSON.stringify(prev)) : null]);
-      ptSet(c, v.t ? { t:v.t, h:esc(v.t).replace(/\n/g, "<br>"), bg:v.bg || "", fg:v.fg || "" } : { bg:v.bg }); n++; cols = Math.max(cols, j + 1); });
+      ptSet(c, v.t ? { t:v.t, h:v.h ? ptClean(v.h) : esc(v.t).replace(/\n/g, "<br>"), bg:v.bg || "", fg:v.fg || "" } : { bg:v.bg }); n++; cols = Math.max(cols, j + 1); });
   });
   if (!n) return toast("No había nada para pegar en esas celdas.");
-  ptUndo = { list:undo, n }; ptCell = cid; render(); window.RMH?.flushNow?.();
+  ptUndo = { list:undo, n, k:"pegado" }; ptSelSet = new Set(); ptCell = cid; render(); window.RMH?.flushNow?.();
   toast(`Pegado en ${n} ${n === 1 ? "cuadro" : "cuadros"}, del ${dm(d0)} al ${dm(addDays(d0, cols - 1))}.${miss.size ? ` No se pegó: ${[...miss].join(", ")} (no está en el plan de ${ptBrand}).` : ""}`);
+}
+// v264 · Elegir varios cuadros (como en Excel) para borrarles el texto juntos o pintarlos: arrastrando con el mouse,
+// Shift + clic (rango: todos los días entre los dos y las redes entre las dos), Ctrl + clic (de a uno) o, en el celular,
+// el botón “Seleccionar varios” (cada toque suma o saca un cuadro). Suprimir o “Borrar texto” borra el texto (no los colores).
+let ptSelSet = new Set(), ptAnchor = null, ptDrag = null, ptPick = false;
+function ptRange(a, b){
+  const P = ptPlats().map(p => p[0]), [da, ka = "igfb"] = a.split("#"), [db, kb = "igfb"] = b.split("#");
+  const [d1, d2] = da <= db ? [da, db] : [db, da], i1 = Math.max(0, Math.min(P.indexOf(ka), P.indexOf(kb))), i2 = Math.max(P.indexOf(ka), P.indexOf(kb)), out = [];
+  for (let d = d1, g = 0; d <= d2 && g < 62; d = addDays(d, 1), g++) for (let i = i1; i <= i2; i++) out.push(ptCid(d, P[i]));
+  return out;
+}
+const ptSelTopLeft = () => { const P = ptPlats().map(p => p[0]), l = [...ptSelSet].map(c => c.split("#")), d = l.map(x => x[0]).sort()[0];
+  return ptCid(d, P[Math.min(...l.map(x => Math.max(0, P.indexOf(x[1] || "igfb"))))]); };
+const ptSelTxt = () => ptSelSet.size > 1 ? `${ptSelSet.size} cuadros elegidos` : ptCell ? `Pintando el ${ptCidTxt(ptCell)}` : "Tocá un cuadro y después un color";
+const ptMultiIn = () => { const n = ptSelSet.size;
+  return `<button type="button" class="btn sm" data-ptselall title="${ptView === "semana" ? "Todos los cuadros de esta semana" : "Todos los cuadros del mes"}">${icon("list-checks")} Seleccionar todo</button><button type="button" class="btn sm${ptPick ? " on" : ""}" data-ptpick aria-pressed="${ptPick}" title="Tocá los cuadros que querés elegir">${icon(ptPick ? "check" : "mouse-pointer-click")} ${ptPick ? "Listo" : "Seleccionar varios"}</button>${n > 1 ? `<button type="button" class="btn sm ptcopy" data-ptcopy title="También con Ctrl+C">${icon("copy")} Copiar (${n})</button><button type="button" class="btn sm ptcopy" data-ptnext title="Los mismos cuadros, 7 días después">${icon("calendar-range")} Copiar a la semana siguiente</button><button type="button" class="btn sm ptdel" data-ptdel>${icon("eraser")} Borrar texto (${n})</button><button type="button" class="btn sm" data-ptselclear>${icon("x")} Quitar selección</button>` : ""}${ptClip ? `<button type="button" class="btn sm ptpaste" data-ptpaste title="Pega lo copiado empezando en el cuadro elegido (también con Ctrl+V)">${icon("clipboard-paste")} Pegar (${ptClip.n} ${ptClip.n === 1 ? "cuadro" : "cuadros"})</button>` : ""}`; };
+function ptSelPaint(){
+  document.querySelectorAll(".ptd[data-ptday]").forEach(el => el.classList.toggle("ptmsel", ptSelSet.has(el.dataset.ptday)));
+  const m = document.getElementById("ptMulti"); if (m) m.innerHTML = ptMultiIn();
+  const s = document.querySelector(".ptbar .ptsel"); if (s) s.textContent = ptSelTxt();
+  if (window.lucide) lucide.createIcons();
+}
+const ptSelClear = () => { if (!ptSelSet.size) return; ptSelSet = new Set(); ptSelPaint(); };
+function ptDelSel(){
+  if (!ptCan() || !ptSelSet.size) return;
+  const undo = []; let n = 0;
+  [...ptSelSet].forEach(c => { const key = ptKey(c), i = PLAN_TXT.findIndex(x => x.id === key), x = PLAN_TXT[i]; if (!x || !(x.t || x.h)) return;
+    undo.push([key, JSON.parse(JSON.stringify(x))]); n++;
+    if (!x.bg && !x.fg) PLAN_TXT.splice(i, 1); else ptSet(c, { t:"", h:"" }); }); // el color queda; si no tenía, el cuadro queda vacío del todo
+  ptSelSet = new Set();
+  if (!n){ ptSelPaint(); return toast("Esos cuadros ya estaban vacíos."); }
+  ptUndo = { list:undo, n, k:"borrado" }; render(); window.RMH?.flushNow?.();
+  toast(`Se borró el texto de ${n} ${n === 1 ? "cuadro" : "cuadros"}. Si fue sin querer, tocá “Deshacer borrado”.`);
+}
+document.addEventListener("mousedown", e => {
+  const td = e.target.closest?.(".ptd[data-ptday]"); if (!td || e.button !== 0 || e.target.closest("[data-ptcal]") || !ptCan()) return;
+  const c = td.dataset.ptday;
+  if (e.shiftKey && (ptAnchor || ptCell)){ e.preventDefault(); ptSelSet = new Set(ptRange(ptAnchor || ptCell, c)); ptSelPaint(); return; }
+  if (ptPick){ e.preventDefault(); return; } // en “Seleccionar varios” cada toque suma o saca un cuadro (en el click)
+  if (e.ctrlKey || e.metaKey){ e.preventDefault(); if (!ptSelSet.size && ptCell) ptSelSet.add(ptCell);
+    ptSelSet.has(c) ? ptSelSet.delete(c) : ptSelSet.add(c); ptAnchor = c; ptSelPaint(); return; }
+  ptAnchor = ptDrag = c; ptSelClear(); // un clic común: un solo cuadro (y si arrastra, elige el rango)
+});
+document.addEventListener("mouseover", e => { if (!ptDrag) return; const td = e.target.closest?.(".ptd[data-ptday]"); if (!td) return;
+  const c = td.dataset.ptday; if (c === ptDrag && ptSelSet.size <= 1) return;
+  getSelection()?.removeAllRanges(); ptSelSet = new Set(ptRange(ptDrag, c)); ptSelPaint(); });
+document.addEventListener("mouseup", () => { ptDrag = null; });
+document.addEventListener("keydown", e => {
+  if (page !== "postext" || !ptSelSet.size) return;
+  if (e.key === "Escape"){ ptSelClear(); return; }
+  if (ptSelSet.size > 1 && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c"){ e.preventDefault(); ptCopySel(); return; }
+  if (ptSelSet.size > 1 && (e.key === "Delete" || e.key === "Backspace") && (ptPick || e.target.closest?.("[data-pttx]") || e.target === document.body)){ e.preventDefault(); ptDelSel(); return; }
+  if (e.target.closest?.("[data-pttx]") && e.key.length === 1 && !e.ctrlKey && !e.metaKey) ptSelClear(); // si escribe, vuelve a un solo cuadro
+});
+// v264 · Copiar lo elegido (botón o Ctrl+C) y pegarlo en otra semana (botón “Pegar” o Ctrl+V), o pasarlo directo a la
+// semana siguiente: para lo que se repite. Lo copiado queda en la app (con su formato) y también en el portapapeles
+// (como tabla, para pegarlo en Excel o Google Sheets). Los cuadros no elegidos no pisan nada al pegar.
+let ptClip = null;
+function ptClipOf(){
+  const P = ptPlats().map(p => p[0]), l = [...ptSelSet].map(c => { const [d, k = "igfb"] = c.split("#"); return { d, i:P.indexOf(k) }; }).filter(x => x.i >= 0);
+  if (!l.length) return null;
+  const ds = l.map(x => x.d).sort(), d1 = ds[0], nd = Math.round((Date.parse(ds[ds.length - 1]) - Date.parse(d1)) / 864e5) + 1, i1 = Math.min(...l.map(x => x.i)), i2 = Math.max(...l.map(x => x.i));
+  const grid = []; for (let i = i1; i <= i2; i++){ const row = []; for (let j = 0; j < nd; j++){ const c = ptCid(addDays(d1, j), P[i]), x = ptSelSet.has(c) ? ptGet(c) : null;
+    row.push(ptSelSet.has(c) ? { t:x?.t || "", h:x?.h || "", bg:x?.bg || "", fg:x?.fg || "" } : { t:"", skip:true }); } grid.push(row); }
+  return { grid, d1, k1:P[i1], rows:i2 - i1 + 1, cols:nd, n:ptSelSet.size };
+}
+const ptClipTsv = g => g.map(r => r.map(v => { const t = v.t || ""; return /[\t\n"]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; }).join("\t")).join("\n");
+const ptClipHtml = g => `<table>${g.map(r => `<tr>${r.map(v => `<td style="${v.bg ? `background-color:${v.bg};` : ""}${v.fg ? `color:${v.fg};` : ""}">${esc(v.t || "").replace(/\n/g, "<br>")}</td>`).join("")}</tr>`).join("")}</table>`;
+const ptClipSame = txt => { const f = v => String(v || "").replace(/\r\n?/g, "\n").replace(/\n+$/, ""); return !!ptClip && f(txt) === f(ptClip.tsv); };
+async function ptCopySel(){
+  const cl = ptClipOf(); if (!cl) return toast("Elegí primero los cuadros que querés copiar.");
+  ptClip = { ...cl, tsv:ptClipTsv(cl.grid) }; ptSelPaint();
+  try { if (window.ClipboardItem && navigator.clipboard?.write) await navigator.clipboard.write([new ClipboardItem({ "text/plain":new Blob([ptClip.tsv], { type:"text/plain" }), "text/html":new Blob([ptClipHtml(cl.grid)], { type:"text/html" }) })]);
+    else await navigator.clipboard?.writeText(ptClip.tsv); } catch {} // si el navegador no deja, igual queda copiado en la app para “Pegar”
+  toast(`Copiaste ${cl.n} ${cl.n === 1 ? "cuadro" : "cuadros"}. Andá a la otra semana, tocá el cuadro donde empieza y “Pegar” (o Ctrl+V).`);
+}
+function ptPasteClip(){
+  if (!ptClip || !ptCan()) return;
+  const at = ptSelSet.size ? ptSelTopLeft() : ptCell; if (!at) return toast("Tocá primero el cuadro donde empieza (por ejemplo, el lunes de Instagram / Facebook) y después “Pegar”.");
+  ptPasteGrid(at, ptClip.grid, true);
+}
+function ptCopyNextWeek(){
+  if (!ptCan()) return; const cl = ptClipOf(); if (!cl) return;
+  if (ptView === "semana"){ const w = addDays(ptWeek(), 7), m = addDays(w, 3).slice(0, 7); if (MONTHS_APP.some(x => x.v === m)){ ptWk = w; MONTH = m; } } // se ve la semana siguiente
+  ptPasteGrid(ptCid(addDays(cl.d1, 7), cl.k1), cl.grid, true);
+}
+function ptSelAll(){
+  const P = ptPlats().map(p => p[0]), days = ptView === "semana" ? [0,1,2,3,4,5,6].map(i => addDays(ptWeek(), i)) : calCells().filter(d => d.slice(0, 7) === MONTH);
+  ptSelSet = new Set(days.flatMap(d => P.map(k => ptCid(d, k)))); ptAnchor = days[0]; ptSelPaint();
 }
 function ptUndoPaste(){
   if (!ptUndo || !ptCan()) return;
   ptUndo.list.slice().reverse().forEach(([key, prev]) => { const i = PLAN_TXT.findIndex(x => x.id === key);
     if (!prev){ if (i >= 0) PLAN_TXT.splice(i, 1); } else if (i >= 0) PLAN_TXT[i] = prev; else PLAN_TXT.push(prev); });
-  const n = ptUndo.n; ptUndo = null; render(); window.RMH?.flushNow?.(); toast(`Listo: se deshizo el pegado (${n} ${n === 1 ? "cuadro" : "cuadros"}).`);
+  const n = ptUndo.n, k = ptUndo.k || "pegado"; ptUndo = null; render(); window.RMH?.flushNow?.(); toast(`Listo: se deshizo el ${k} (${n} ${n === 1 ? "cuadro" : "cuadros"}).`);
 }
 document.addEventListener("focusin", e => { const d = e.target.dataset?.pttx; if (!d || d === ptCell) return; ptCell = d;
   document.querySelectorAll(".ptd.ptsel").forEach(el => el.classList.remove("ptsel")); e.target.closest(".ptd")?.classList.add("ptsel");
-  const s = document.querySelector(".ptbar .ptsel"); if (s) s.textContent = `Pintando el ${ptCidTxt(d)}`; });
+  const s = document.querySelector(".ptbar .ptsel"); if (s) s.textContent = ptSelTxt(); });
 document.addEventListener("mousedown", e => { if (e.target.closest("[data-ptcolor],[data-ptfmt]")) e.preventDefault(); }); // el color y el formato no le sacan el foco a la celda
 document.addEventListener("click", e => {
-  const pv = e.target.closest("[data-ptview]"); if (pv){ ptView = pv.dataset.ptview; render(); return; }
+  const pv = e.target.closest("[data-ptview]"); if (pv){ ptView = pv.dataset.ptview; ptSelSet = new Set(); render(); return; }
   if (e.target.closest("[data-ptundo]")){ ptUndoPaste(); return; }
+  if (e.target.closest("[data-ptpick]")){ ptPick = !ptPick; if (!ptPick && ptSelSet.size === 1) ptSelSet = new Set(); render(); return; }
+  const pk = ptPick && !e.shiftKey && e.target.closest(".ptd[data-ptday]"); if (pk && !e.target.closest("[data-ptcal]")){ const c = pk.dataset.ptday; ptSelSet.has(c) ? ptSelSet.delete(c) : ptSelSet.add(c); ptAnchor = c; ptSelPaint(); return; }
+  if (e.target.closest("[data-ptdel]")){ ptDelSel(); return; }
+  if (e.target.closest("[data-ptselall]")){ ptSelAll(); return; }
+  if (e.target.closest("[data-ptcopy]")){ ptCopySel(); return; }
+  if (e.target.closest("[data-ptnext]")){ ptCopyNextWeek(); return; }
+  if (e.target.closest("[data-ptpaste]")){ ptPasteClip(); return; }
+  if (e.target.closest("[data-ptselclear]")){ ptSelClear(); return; }
   const pw = e.target.closest("[data-ptwk]"); if (pw){ const w = addDays(ptWeek(), +pw.dataset.ptwk), m = addDays(w, 3).slice(0, 7);
     if (!MONTHS_APP.some(x => x.v === m)) return toast("Esa semana todavía no se puede abrir."); ptWk = w; MONTH = m; render(); return; }
-  const pb = e.target.closest("[data-ptbrand]"); if (pb){ ptBrand = pb.dataset.ptbrand; ptCell = null; ptUndo = null; render(); return; }
+  const pb = e.target.closest("[data-ptbrand]"); if (pb){ ptBrand = pb.dataset.ptbrand; ptCell = null; ptUndo = null; ptSelSet = new Set(); render(); return; }
   const f = e.target.closest("[data-ptfmt]");
   if (f){ const ed = document.activeElement?.closest?.("[data-pttx]");
     if (!ptCan()) return; if (!ed) return toast("Tocá primero adentro de un día y elegí el texto.");
@@ -6147,10 +6257,11 @@ document.addEventListener("click", e => {
   const li = e.target.closest?.(".pttx ul.ptchk > li");
   if (li && ptCan() && e.clientX < li.getBoundingClientRect().left + 2){ li.toggleAttribute("data-ok"); if (li.hasAttribute("data-ok")) li.dataset.ok = "1"; ptSave(li.closest("[data-pttx]")); return; }
   const b = e.target.closest("[data-ptcolor]");
-  if (b){ if (!ptCan()) return; if (!ptCell) return toast("Tocá primero un cuadro del calendario.");
-    const [kind, c] = b.dataset.ptcolor.split(":"); ptSet(ptCell, kind === "clear" ? { bg:"", fg:"" } : { [kind]:c === "#ffffff" && kind === "bg" ? "" : c });
-    const x = ptGet(ptCell), el = document.querySelector(`.ptd[data-ptday="${CSS.escape(ptCell)}"]`);
-    if (el){ el.style.setProperty("--ptbg", x.bg || ""); el.style.setProperty("--ptfg", x.fg || ""); if (!x.bg) el.style.removeProperty("--ptbg"); if (!x.fg) el.style.removeProperty("--ptfg"); }
+  if (b){ if (!ptCan()) return; const tg = ptSelSet.size > 1 ? [...ptSelSet] : ptCell ? [ptCell] : []; if (!tg.length) return toast("Tocá primero un cuadro del calendario.");
+    const [kind, c] = b.dataset.ptcolor.split(":"); // v264: con varios elegidos, se pintan todos
+    tg.forEach(cell => { ptSet(cell, kind === "clear" ? { bg:"", fg:"" } : { [kind]:c === "#ffffff" && kind === "bg" ? "" : c });
+      const x = ptGet(cell), el = document.querySelector(`.ptd[data-ptday="${CSS.escape(cell)}"]`);
+      if (el){ el.style.setProperty("--ptbg", x.bg || ""); el.style.setProperty("--ptfg", x.fg || ""); if (!x.bg) el.style.removeProperty("--ptbg"); if (!x.fg) el.style.removeProperty("--ptfg"); } });
     return; }
   const c = e.target.closest("[data-ptcal]");
   if (c){ const d = c.dataset.ptcal; calActUI.view = "semana"; calActUI.wk = mondayOf(d); calActUI.month = d.slice(0, 7); page = "calact"; render(); window.scrollTo(0, 0); }
