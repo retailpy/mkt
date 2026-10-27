@@ -11,10 +11,10 @@ const cors = {
 };
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
-const ROLES = ["Admin total", "Admin", "Diseñador", "CM", "Revisor", "Comercial"]; // Revisor: para la revisión de Meta (solo Mensajes de las cuentas) · Comercial: los compradores (v242)
+const ROLES = ["Admin total", "Admin", "Diseñador", "CM", "Revisor", "Comercial", "TV"]; // Revisor: para la revisión de Meta (solo Mensajes de las cuentas) · Comercial: los compradores (v242) · TV: los televisores de la oficina (v266)
 const BAN_FOREVER = "876000h";
 // Usuario de ingreso: letras, números, punto o guion (sin espacios ni "_" / "%", que en ilike son comodines).
-const USER_RE = /^[A-Za-z][A-Za-z0-9.-]{2,29}$/;
+const USER_RE = /^[A-Za-z][A-Za-z0-9.-]{1,29}$/; // v266: desde 2 letras (ej. “tv”, el usuario de los televisores)
 // Quien no tiene email entra igual con su usuario: la cuenta usa una dirección interna que nunca recibe correos.
 const noMailEmail = (u: string) => `${u.toLowerCase()}@usuarios.retailmkthub.invalid`;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
     const password = String(body.password || "");
     if (password.length < 10) return json({ error: "La contraseña tiene que tener al menos 10 caracteres." }, 400);
     const username = String(body.username ?? target?.username ?? "").trim();
-    if (username && !USER_RE.test(username)) return json({ error: "El usuario de ingreso tiene que tener de 3 a 30 letras o números, sin espacios." }, 400);
+    if (username && !USER_RE.test(username)) return json({ error: "El usuario de ingreso tiene que tener de 2 a 30 letras o números, sin espacios." }, 400);
     if (username) {
       const { data: other } = await db.from("members").select("person_id").ilike("username", username).neq("person_id", personId).maybeSingle();
       if (other) return json({ error: "Ese usuario de ingreso ya lo tiene otra persona." }, 400);
@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
   }
   if (action === "set_username") {
     const username = String(body.username || "").trim();
-    if (username && !USER_RE.test(username)) return json({ error: "El usuario de ingreso tiene que tener de 3 a 30 letras o números, sin espacios." }, 400);
+    if (username && !USER_RE.test(username)) return json({ error: "El usuario de ingreso tiene que tener de 2 a 30 letras o números, sin espacios." }, 400);
     if (username) {
       const { data: other } = await db.from("members").select("person_id").ilike("username", username).neq("person_id", personId).maybeSingle();
       if (other) return json({ error: "Ese usuario de ingreso ya lo tiene otra persona." }, 400);

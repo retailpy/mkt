@@ -82,6 +82,7 @@ const RMH = (() => {
     INFLUENCERS:[() => INFLUENCERS, v => { INFLUENCERS = Array.isArray(v) ? v : []; }], // cumpleaños de influencers de las marcas (solo Admin total y CM)
     ESCRACHES:[() => ESCRACHES, v => { ESCRACHES = Array.isArray(v) ? v : []; }], // Búsqueda de Escraches: los cargados y las marcas (solo Admin total, Admin y CM)
     PEDIDOS_COM:[() => PEDIDOS_COM, v => { PEDIDOS_COM = Array.isArray(v) ? v : []; }], // v242: pedidos de activaciones de Comercial (los compradores)
+    TV_SCREENS:[() => TV_SCREENS, v => { TV_SCREENS = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v266: qué muestra cada televisor (TV 1 a TV 4); lo cambia Admin total
   };
   // Claves que solo existen para Admin total (la base no se las deja leer ni guardar al resto).
   const ADMIN_ONLY = new Set(["s:SUGGESTIONS", "s:SURVEYS"]);
@@ -93,7 +94,7 @@ const RMH = (() => {
   const isATCM = () => ["Admin total", "CM"].includes(member?.role);
   // Claves que todos leen pero solo Admin total guarda. (Los grupos de chat los crea cualquiera: la base controla
   // que cada uno cambie solo los suyos.)
-  const ADMIN_WRITE = new Set([]);
+  const ADMIN_WRITE = new Set(["s:TV_SCREENS"]);
   const isAT = () => member?.role === "Admin total";
 
   let me = null, member = null, previewing = false, ready = false;
@@ -180,7 +181,9 @@ const RMH = (() => {
   const REVISOR_SAVE = new Set(["s:INBOX_DONE", "s:PRESENCE"]);
   // Comercial (los compradores) solo guarda sus pedidos, su presencia y su perfil: la base tampoco le deja otra cosa.
   const COMERCIAL_SAVE = new Set(["s:PEDIDOS_COM", "s:PRESENCE", "s:PEOPLE"]);
-  const noSave = k => READONLY.has(k) || (ADMIN_WRITE.has(k) && !isAT()) || (member?.role === "Revisor" && !REVISOR_SAVE.has(k)) || (member?.role === "Comercial" && !COMERCIAL_SAVE.has(k));
+  // TV (v266, los televisores de la oficina) solo guarda su presencia y su perfil: la base tampoco le deja otra cosa.
+  const TV_SAVE = new Set(["s:PRESENCE", "s:PEOPLE"]);
+  const noSave = k => READONLY.has(k) || (ADMIN_WRITE.has(k) && !isAT()) || (member?.role === "Revisor" && !REVISOR_SAVE.has(k)) || (member?.role === "Comercial" && !COMERCIAL_SAVE.has(k)) || (member?.role === "TV" && !TV_SAVE.has(k));
   function dirtyKeys(){ return localKeys().filter(k => { if (noSave(k) || getLocal(k) === undefined) return false; const b = base.get(k); return !b || b.v === 0 || C(enc(getLocal(k))) !== b.json; }); }
   async function saveKey(key){
     if (noSave(key)) return;
