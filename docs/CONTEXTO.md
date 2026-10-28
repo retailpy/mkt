@@ -194,6 +194,7 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 ---
 
 ## 5. Otras cosas recientes (v137–v160)
+- **v273 · TV Team: las semanas solo con Superseis, Stock y Delimarket (28/10/2026):** se sacó la pantalla “Otras marcas” de la Semana de Diseño gráfico y de la de CM (`tvTeamSlides`); quedan 6 pantallas de semana: Diseño · Superseis → Stock → Delimarket y CM · Superseis → Stock → Delimarket. Lo de otras marcas sigue en la app, no en el televisor.
 - **v272 · TV Redes: publicaciones en pantallas de 12 grandes y 10 segundos; TV Team con títulos chicos en las semanas (28/10/2026):**
   1. **TV Redes vuelve a 10 segundos por pantalla** (`TV_SECS = 10`). “Seguidores por cuenta”: los números sin negrita.
   2. **Publicaciones de cada marca** (después de su demográfico), sin el encabezado de la marca para que las imágenes sean lo más grandes posible (la marca, el mes y qué publicaciones son van en el título chico de arriba): pantalla 1 = las 12 más nuevas en grande (6 arriba y 6 abajo, con fecha, me gusta y alcance); pantalla 2 = de la 13 a la 24, igual (solo si hay más de 12); pantalla 3 = el resto del mes en tamaño mediano (8 × 3; si hay más de 24, el último cuadro dice “+N publicaciones más”; solo si hay más de 24). `tvPostsOf`, `tvPostsSlide(b, página)`, `.tvpg`. La imagen ocupa todo el alto que queda (probado en 1280×720 y 1920×1080).

@@ -3910,7 +3910,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v272";
+const APP_VER = "v273";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -8699,12 +8699,10 @@ const TV_TEAM_MIN = 10;
 let tvTeam = { timer:null, clock:null, slideT:null, updated:"", i:0, paused:false };
 const TV_TEAM_SECS = 10;
 const TV_TEAM_BASE = [{ team:true, icon:"👥", label:"Todo el equipo" }, { role:"Diseñador", area:"Diseño", icon:"🎨", label:"Diseño gráfico" }, { role:"CM", area:"CM", icon:"🎬", label:"Community managers" }];
-// v271: después, la semana de Diseño gráfico y la de CM, cada una dividida por marca: Superseis → Stock → Delimarket
-// (y “Otras marcas” solo si esa semana hay algo de otra marca).
-const TW_OTRAS = "Otras marcas";
+// v271: después, la semana de Diseño gráfico y la de CM, cada una dividida por marca: Superseis → Stock → Delimarket.
+// v273: solo esas tres (sin “Otras marcas”, pedido de Admin total).
 function tvTeamSlides(){
-  const wk = A => { const has = tvWeekItems(A).some(x => !x.brands.some(b => IG_MAIN.includes(b)));
-    return [...IG_MAIN, ...(has ? [TW_OTRAS] : [])].map(b => ({ week:A, brand:b, icon:A === "CM" ? "🎬" : "🎨", label:`Semana de ${A === "CM" ? "CM" : "Diseño gráfico"} · ${b}` })); };
+  const wk = A => IG_MAIN.map(b => ({ week:A, brand:b, icon:A === "CM" ? "🎬" : "🎨", label:`Semana de ${A === "CM" ? "CM" : "Diseño gráfico"} · ${b}` }));
   return [...TV_TEAM_BASE, ...wk("Diseño"), ...wk("CM")];
 }
 function pTV(){
@@ -8761,10 +8759,9 @@ function tvWeekItems(area){
   return out.sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || ""));
 }
 function tvWeekSlide(sl, dots){
-  const otras = sl.brand === TW_OTRAS, mine = x => otras ? !x.brands.some(b => IG_MAIN.includes(b)) : x.brands.includes(sl.brand);
-  const days = tvWeekDays(), items = tvWeekItems(sl.week).filter(mine).map(x => otras || x.brand === sl.brand ? x : { ...x, brand:sl.brand }), done = items.filter(x => x.done).length;
+  const days = tvWeekDays(), items = tvWeekItems(sl.week).filter(x => x.brands.includes(sl.brand)).map(x => x.brand === sl.brand ? x : { ...x, brand:sl.brand }), done = items.filter(x => x.done).length;
   const sts = [...new Set(items.map(x => x.st))].map(st => ({ st, n:items.filter(x => x.st === st).length, col:items.find(x => x.st === st).col }));
-  const card = (x, k) => `<div class="twc${x.done ? " done" : ""}" style="--b:${BRANDS[x.brand] || "#64748b"};--s:${x.col};--k:${k}"><b>${esc(x.title)}</b><div class="twm"><span class="twst">${esc(x.st)}</span><small>${icon(x.ic)}${x.time ? esc(x.time) + " · " : ""}${otras ? esc(x.brand) + " · " : ""}${esc(x.k)}${x.who ? " · " + esc(firstName(x.who)) : ""}</small></div></div>`;
+  const card = (x, k) => `<div class="twc${x.done ? " done" : ""}" style="--b:${BRANDS[x.brand] || "#64748b"};--s:${x.col};--k:${k}"><b>${esc(x.title)}</b><div class="twm"><span class="twst">${esc(x.st)}</span><small>${icon(x.ic)}${x.time ? esc(x.time) + " · " : ""}${esc(x.k)}${x.who ? " · " + esc(firstName(x.who)) : ""}</small></div></div>`;
   return `<div class="ttslide twslide">
     <div class="tthead"><b>${sl.icon} Semana de ${sl.week === "CM" ? "CM" : "Diseño gráfico"} · <i class="twb" style="--c:${BRANDS[sl.brand] || "#94a3b8"}">${esc(sl.brand)}</i></b><span>${weekLabel(days[0])} · ${items.length} ${items.length === 1 ? "trabajo" : "trabajos"}${items.length ? ` · ${done} ${sl.week === "CM" ? "listos" : "terminados"}` : ""}</span>${sts.length ? `<div class="twsum">${sts.map(x => `<span style="--s:${x.col}"><i></i>${esc(x.st)} <strong>${x.n}</strong></span>`).join("")}</div>` : ""}${dots}</div>
     <div class="twgrid">${days.map((d, i) => { const l = items.filter(x => x.date === d);
