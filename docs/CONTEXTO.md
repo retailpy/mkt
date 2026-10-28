@@ -194,6 +194,7 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 ---
 
 ## 5. Otras cosas recientes (v137–v160)
+- **v288 · Pronóstico del clima en la portada de las TV (29/10/2026):** `loadWeather` ahora pide a Open-Meteo el pronóstico de 7 días (`weather_code`, máxima, mínima y probabilidad de lluvia) y lo guarda en `WX.d.days`. En la portada (la pantalla 1 de TV 1, 2 y 3): abajo del clima de hoy, una tira con los **próximos 5 días** (día, ícono del color de su clima, máxima y mínima, y la lluvia si es 20% o más; `cvForecast`), y en el **calendario del mes**, arriba a la derecha de hoy y de cada día que viene, su ícono y la máxima (`.cv-dfc`). Para que entre, la hora, la fecha y el clima de hoy quedaron un poco más chicos. Sin pronóstico, la portada queda como antes.
 - **v287 · Fechas, temas y avisos de las TV (29/10/2026):** en **Pantallas TV** (`tvconf`), Admin total carga tres cosas, que se guardan en `s:TV_SCREENS.items` (la misma clave que ya leen todos y guarda solo Admin total; no hizo falta tocar la base):
   - **Fecha importante** (ej. Semana Santa, Día del Padre; puede durar varios días): sale en el calendario de 4 meses de TV Team (estrella violeta, en la casilla y en la lista) y en “Campañas y temas”.
   - **Tema del mes**: algo que no está en Planificación del mes (ej. Corrida Superseis), con sus fechas (atajos: este mes, el que viene, en dos meses) y las TV donde sale.
