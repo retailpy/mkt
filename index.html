@@ -3912,7 +3912,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v274";
+const APP_VER = "v275";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -8749,12 +8749,16 @@ function tvTeamSlide(sl){
   const team = progStats(jobs), ar = progStats(jobs.filter(j => j.area === (sl.area || "Diseño")));
   const tL = loadStats(areaNames("Todos")), aL = loadStats(areaNames(sl.area || "Todos"));
   const ppl = PEOPLE.filter(pp => pp.active && pp.role === sl.role);
-  const big = (title, st, L, cls) => { const lv = lvOf(L); return `<div class="ttbar ${cls}"><div class="tth"><b>${title}</b><em style="color:${lv.c}">${pctHTML(L)} <small>${lv.t}</small></em></div>${ltrack(L)}<div class="ttm"><span><i>${L.n}</i> trabajos sin finalizar</span><span class="g"><i>${st.fin}</i> finalizadas</span><span><i>${st.proc}</i> en proceso</span><span class="r"><i>${st.pend}</i> pendientes</span></div></div>`; };
-  const card = (pp, k) => { const st = progStats(jobs.filter(j => j.owner === pp.name)), L = loadStats([pp.name]), lv = lvOf(L);
-    const open = jobs.filter(j => j.owner === pp.name && !isClosedJob(j)).sort((a,b2) => a.due.localeCompare(b2.due));
+  // v275: en CM, los números son de lo de la semana (lo mismo que su carga): publicaciones, historias, Canal, videos, contenidos,
+  // actividades y mensajes del día, con lo que ya terminaron; antes solo contaban los pedidos de video.
+  const cmSt = sl.area === "CM" ? cmTaskStats(ppl.flatMap(cmWeekTasks)) : null;
+  const big = (title, st, L, cls, txt) => { const lv = lvOf(L); return `<div class="ttbar ${cls}"><div class="tth"><b>${title}</b><em style="color:${lv.c}">${pctHTML(L)} <small>${lv.t}</small></em></div>${ltrack(L)}<div class="ttm"><span>${txt || `<i>${L.n}</i> trabajos sin finalizar`}</span><span class="g"><i>${st.fin}</i> finalizadas</span><span><i>${st.proc}</i> en proceso</span><span class="r"><i>${st.pend}</i> pendientes</span></div></div>`; };
+  const card = (pp, k) => { const cmT = pp.role === "CM" ? cmWeekTasks(pp) : null, st = cmT ? cmTaskStats(cmT) : progStats(jobs.filter(j => j.owner === pp.name)), L = loadStats([pp.name]), lv = lvOf(L);
+    const open = cmT ? cmT.filter(x => !x.done).sort((a, b2) => a.date.localeCompare(b2.date)).map(x => ({ title:x.title, brand:x.brand, due:x.date, status:x.st || "Pendiente" }))
+      : jobs.filter(j => j.owner === pp.name && !isClosedJob(j)).sort((a,b2) => a.due.localeCompare(b2.due));
     return `<div class="tvp tc" style="--k:${k}"><div class="top">${avatarHTML(pp)}<div class="who"><b>${esc(pp.name)}</b><span>${open.length} ${open.length === 1 ? "tarea abierta" : "tareas abiertas"}</span></div></div>
       <div class="pline">${ltrack(L)}<div class="pct" style="color:${lv.c}">${pctHTML(L)}</div></div>
-      <div class="lvtag" style="--c:${lv.c}">${lv.t} · ${L.cm ? `${L.n} ${L.n === 1 ? "tarea" : "tareas"} esta semana` : `${L.pts} de ${LOAD_FULL} pts`}</div>
+      <div class="lvtag" style="--c:${lv.c}">${lv.t} · ${cmT ? `${st.total} ${st.total === 1 ? "tarea" : "tareas"} esta semana` : L.cm ? `${L.n} ${L.n === 1 ? "tarea" : "tareas"} esta semana` : `${L.pts} de ${LOAD_FULL} pts`}</div>
       <div class="cnt3"><div class="g"><i>${st.fin}</i><span>finalizadas</span></div><div class="y"><i>${st.proc}</i><span>en proceso</span></div><div class="r"><i>${st.pend}</i><span>pendientes</span></div></div>
       <div class="jl">${open.map(j => { const u = urgency(j); return `<div class="jr" style="--b:${BRANDS[j.brand]}"><b>${esc(j.title)}</b>${u ? `<span class="ub ${u.late ? "late" : ""}" style="--u:${u.c}">${u.late ? "⏰ " : ""}${u.t.replace("Faltan ","").replace("Falta ","").replace("Retraso de ","+")}</span>` : `<span class="dd">${dm(j.due)}</span>`}</div>`; }).join("") || `<div class="empty">Sin tareas abiertas 🎉</div>`}</div>
       <div class="more" hidden></div></div>`; };
@@ -8766,7 +8770,7 @@ function tvTeamSlide(sl){
     <div class="ttload">${loadChart(loadGroups("Todos"), "tv")}</div>
   </div>`;
   return `<div class="ttslide">
-    <div class="ttsum">${big("Carga del equipo <small>(Diseño + CM)</small>", team, tL, "all")}${big(`${sl.icon} Carga de ${sl.label.toLowerCase()}`, ar, aL, "area")}</div>
+    <div class="ttsum">${big("Carga del equipo <small>(Diseño + CM)</small>", team, tL, "all")}${cmSt ? big(`${sl.icon} Carga de ${sl.label.toLowerCase()}`, cmSt, aL, "area", `<i>${cmSt.total}</i> tareas esta semana`) : big(`${sl.icon} Carga de ${sl.label.toLowerCase()}`, ar, aL, "area")}</div>
     <div class="tthead"><b>${sl.icon} ${sl.label}</b><span>${ppl.length} ${ppl.length === 1 ? "persona" : "personas"}</span>${dots}</div>
     <div class="tvgrid">${ppl.map(card).join("")}</div>
   </div>`;
@@ -8811,6 +8815,10 @@ function tvWeekFit(){
     cs.forEach(c => c.hidden = false); more.hidden = true;
     for (let n = cs.length; n > 0 && l.scrollHeight > l.clientHeight + 1; ){ n--; cs[n].hidden = true; more.hidden = false; more.textContent = `+ ${cs.length - n} más`; } });
 }
+// Lo de la semana de un CM (lo mismo que cuenta su carga, sin los traslados ni la atención de mensajes de cada día, que suman
+// al % pero no son entregas) y cuántas terminó, cuántas están en proceso y cuántas sin empezar.
+const cmWeekTasks = pp => cmLoad(pp).all.filter(x => !x.trip && x.fn !== "mensajes");
+const cmTaskStats = list => { const fin = list.filter(x => x.done).length, pend = list.filter(x => !x.done && (!x.st || x.st === "Pendiente")).length; return { total:list.length, fin, pend, proc:list.length - fin - pend }; };
 function tvTeamShow(n){
   const st = document.getElementById("ttStage"); if (!st) return;
   const sls = tvTeamSlides(); tvTeam.i = (n + sls.length) % sls.length;
