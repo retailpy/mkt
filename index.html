@@ -2349,7 +2349,7 @@ html.tvkiosk .tvpage.twon > .tvbrandrow .tvclock,.tvpage.twon:fullscreen > .tvbr
 .twslide .tthead > span{font-size:clamp(12px,1.6vh,17px)}
 .twslide .twsum{font-size:clamp(12px,1.6vh,17px)}
 .twslide .twsum span{font-size:inherit;color:#cbd5e1}
-.twgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:clamp(6px,.7vw,14px);min-height:260px}
+.twgrid{display:grid;grid-template-columns:repeat(var(--cols,7),minmax(0,1fr));gap:clamp(6px,.7vw,14px);min-height:260px}
 .twcol{display:flex;flex-direction:column;min-height:0;border:1px solid var(--line);background:var(--panel);border-radius:18px;overflow:hidden}
 .twcol.today{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan),0 0 24px rgba(34,211,238,.25)}
 .twcol.past{opacity:.72}
@@ -2369,6 +2369,17 @@ html.tvkiosk .tvpage.twon > .tvbrandrow .tvclock,.tvpage.twon:fullscreen > .tvbr
 .twempty{color:var(--faint);font-size:clamp(11px,1.4vh,15px);text-align:center;padding:10px 4px}
 .twmore{flex:none;text-align:center;font-weight:800;color:#67e8f9;font-size:clamp(12px,1.6vh,18px);padding:4px 0}
 @media (max-width:1000px){.twgrid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+/* v284 · semana de Diseño gráfico de lunes a viernes; en la “General” (las tres marcas juntas) las tarjetas son más chicas:
+   el título en una línea y la etapa al lado del resto, así entran muchas más actividades por día */
+.twbn{font-style:normal;font-weight:800;color:var(--c)}
+.twwk{font-style:normal;font-weight:800;color:#fde68a}
+.tthead > span .twbn{margin-left:.5em}
+.twall .twl{gap:clamp(3px,.45vh,6px);padding:clamp(4px,.6vh,8px)}
+.twall .twc{gap:2px;border-radius:9px;border-left-width:4px;padding:clamp(3px,.45vh,6px) clamp(6px,.5vw,9px)}
+.twall .twc > b{font-size:clamp(11px,1.5vh,16px);-webkit-line-clamp:1}
+.twall .twm{flex-direction:row;align-items:center;gap:6px}
+.twall .twst{flex:none;max-width:45%;font-size:clamp(9px,1.15vh,13px);padding:0 6px}
+.twall .twm small{flex:1;min-width:0;font-size:clamp(9px,1.15vh,13px)}
 .cardin{animation:cardin .6s cubic-bezier(.22,1,.36,1) both}
 @keyframes cardin{from{opacity:0;transform:translateY(22px) scale(.96)}}
 
@@ -4037,7 +4048,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v283";
+const APP_VER = "v284";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -6906,7 +6917,7 @@ let calActUI = { view:"semana", wk:null, month:null, brand:"" };
 const CA_BRANDS = ["Superseis","Stock","Delimarket"];
 const caBrandOk = x => !calActUI.brand || (calActUI.brand === "otras" ? !CA_BRANDS.includes(x.brand) : x.brand === calActUI.brand);
 const WD_SHORT = ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"];
-const weekLabel = wk => { const e = addDays(wk, 6), M = d => MONTHS_ES[+d.slice(5, 7) - 1]; return wk.slice(5, 7) === e.slice(5, 7) ? `${+wk.slice(8)} al ${+e.slice(8)} de ${M(e)}` : `${+wk.slice(8)} de ${M(wk)} al ${+e.slice(8)} de ${M(e)}`; };
+const weekLabel = (wk, n = 7) => { const e = addDays(wk, n - 1), M = d => MONTHS_ES[+d.slice(5, 7) - 1]; return wk.slice(5, 7) === e.slice(5, 7) ? `${+wk.slice(8)} al ${+e.slice(8)} de ${M(e)}` : `${+wk.slice(8)} de ${M(wk)} al ${+e.slice(8)} de ${M(e)}`; };
 // Tarjeta: qué es (POST, STORY, REEL…), título, responsable, hora y estado (se cambia ahí mismo). Tocándola se abre el trabajo.
 // v263 · con una marca elegida en el filtro, las tarjetas no repiten su nombre (el color del borde ya la marca).
 const caOneBrand = () => !!calActUI.brand && calActUI.brand !== "otras";
@@ -8907,13 +8918,15 @@ const TV_TEAM_SECS = 10;
 const TV_TEAM_BASE = [{ cover:true, icon:"📅", label:"Hoy" }, { months:true, icon:"📅", label:"Calendario" }, { team:true, icon:"👥", label:"Todo el equipo" }, { role:"Diseñador", area:"Diseño", icon:"🎨", label:"Diseño gráfico" }, { role:"CM", area:"CM", icon:"🎬", label:"Community managers" }];
 // v271: después, la semana de Diseño gráfico y la de CM, cada una dividida por marca: Superseis → Stock → Delimarket.
 // v273: solo esas tres (sin “Otras marcas”, pedido de Admin total).
+// v284: la de Diseño gráfico arranca con una pantalla “General” (las tres marcas juntas, con tarjetas más chicas para que
+// entren más) y después sigue por marca.
 function tvTeamSlides(){
   const wk = A => IG_MAIN.map(b => ({ week:A, brand:b, icon:A === "CM" ? "🎬" : "🎨", label:`Semana de ${A === "CM" ? "CM" : "Diseño gráfico"} · ${b}` }));
-  return [...TV_TEAM_BASE, ...wk("Diseño"), ...wk("CM")];
+  return [...TV_TEAM_BASE, { week:"Diseño", all:true, icon:"🎨", label:"Semana de Diseño gráfico · General" }, ...wk("Diseño"), ...wk("CM")];
 }
 function pTV(){
   return `<div class="tvpage">${tvBrandRow(true)}
-    <div class="tvhead"><div><h1>Equipo</h1><p class="sub">${monthLabel(MONTH)} · equipo, diseño gráfico, CM y la semana de Diseño y de CM por marca, cada ${TV_TEAM_SECS} segundos · datos actualizados cada ${TV_TEAM_MIN} minutos · última actualización: <b id="tvUpd" style="color:#fff">${tvTeam.updated}</b></p></div>
+    <div class="tvhead"><div><h1>Equipo</h1><p class="sub">${monthLabel(MONTH)} · equipo, diseño gráfico, CM, la semana de Diseño (general y por marca, de lunes a viernes) y la de CM por marca, cada ${TV_TEAM_SECS} segundos · datos actualizados cada ${TV_TEAM_MIN} minutos · última actualización: <b id="tvUpd" style="color:#fff">${tvTeam.updated}</b></p></div>
       <div class="chips" style="align-items:center"><button class="btn" data-tt="prev" aria-label="Anterior">‹</button><button class="btn" data-tt="pause">${tvTeam.paused ? "▶ Seguir" : "⏸ Pausar"}</button><button class="btn" data-tt="next" aria-label="Siguiente">›</button><button class="btn primary" data-tvteam="full">⛶ Pantalla completa</button>${tvWx()}<div class="tvclock" id="tvClock">--:--<small>hora actual</small></div></div></div>
     <div class="tvtimer"><i id="ttBar"></i></div>
     <div class="ttstage" id="ttStage"></div>
@@ -8956,7 +8969,7 @@ function tvTeamSlide(sl){
 // v270 · TV Team: la semana (lunes a domingo, hoy resaltado) de Diseño gráfico o de CM, como su calendario en la app.
 // Diseño: los pedidos de Diseño gráfico en su fecha de entrega, con el color de su etapa. CM: lo mismo que la Semana de la
 // Planificación de CM (publicaciones, historias, Canal de WhatsApp, videos, repetitivos y actividades), con el semáforo de su etapa.
-const tvWeekDays = () => { const w = mondayOf(TODAY); return Array.from({ length:7 }, (_, i) => addDays(w, i)); };
+const tvWeekDays = (n = 7) => { const w = mondayOf(TODAY); return Array.from({ length:n }, (_, i) => addDays(w, i)); };
 function tvWeekItems(area){
   const days = tvWeekDays(), inR = d => !!d && d >= days[0] && d <= days[6], out = [];
   if (area === "Diseño"){
@@ -8972,13 +8985,18 @@ function tvWeekItems(area){
   CM_ACTS.filter(a => inR(a.date)).forEach(a => add({ act:true, a, date:a.date, brand:a.brand, title:a.title, status:a.status, cm:a.owner }, a.time));
   return out.sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || ""));
 }
+// v284: la de Diseño gráfico es de lunes a viernes (lo que vence el sábado o el domingo sale el viernes, con su día). En la
+// “General” (sl.all) van las tres marcas juntas, cada tarjeta con el color y el nombre de su marca.
 function tvWeekSlide(sl, dots){
-  const days = tvWeekDays(), items = tvWeekItems(sl.week).filter(x => x.brands.includes(sl.brand)).map(x => x.brand === sl.brand ? x : { ...x, brand:sl.brand }), done = items.filter(x => x.done).length;
+  const dg = sl.week === "Diseño", days = tvWeekDays(dg ? 5 : 7), last = days[days.length - 1], wk7 = tvWeekDays();
+  const items = tvWeekItems(sl.week).filter(x => sl.all ? x.brands.some(b => IG_MAIN.includes(b)) : x.brands.includes(sl.brand))
+    .map(x => ({ ...x, brand:sl.all ? (IG_MAIN.includes(x.brand) ? x.brand : x.brands.find(b => IG_MAIN.includes(b))) : sl.brand, bn:IG_MAIN.filter(b => x.brands.includes(b)), wkd:x.date > last ? x.date : "", date:x.date > last ? last : x.date }));
+  const done = items.filter(x => x.done).length;
   const sts = [...new Set(items.map(x => x.st))].map(st => ({ st, n:items.filter(x => x.st === st).length, col:items.find(x => x.st === st).col }));
-  const card = (x, k) => `<div class="twc${x.done ? " done" : ""}" style="--b:${BRANDS[x.brand] || "#64748b"};--s:${x.col};--k:${k}"><b>${esc(x.title)}</b><div class="twm"><span class="twst">${esc(x.st)}</span><small>${icon(x.ic)}${x.time ? esc(x.time) + " · " : ""}${esc(x.k)}${x.who ? " · " + esc(firstName(x.who)) : ""}</small></div></div>`;
-  return `<div class="ttslide twslide">
-    <div class="tthead"><b>${sl.icon} Semana de ${sl.week === "CM" ? "CM" : "Diseño gráfico"} · <i class="twb" style="--c:${BRANDS[sl.brand] || "#94a3b8"}">${esc(sl.brand)}</i></b><span>${weekLabel(days[0])} · ${items.length} ${items.length === 1 ? "trabajo" : "trabajos"}${items.length ? ` · ${done} ${sl.week === "CM" ? "listos" : "terminados"}` : ""}</span>${sts.length ? `<div class="twsum">${sts.map(x => `<span style="--s:${x.col}"><i></i>${esc(x.st)} <strong>${x.n}</strong></span>`).join("")}</div>` : ""}${dots}</div>
-    <div class="twgrid">${days.map((d, i) => { const l = items.filter(x => x.date === d);
+  const card = (x, k) => `<div class="twc${x.done ? " done" : ""}" style="--b:${BRANDS[x.brand] || "#64748b"};--s:${x.col};--k:${k}"><b>${esc(x.title)}</b><div class="twm"><span class="twst">${esc(x.st)}</span><small>${icon(x.ic)}${x.wkd ? `<i class="twwk">para el ${["sáb","dom"][wk7.indexOf(x.wkd) - 5]} ${+x.wkd.slice(8)}</i> · ` : ""}${sl.all ? x.bn.map(b => `<i class="twbn" style="--c:${BRANDS[b]}">${esc(b)}</i>`).join(" + ") + " · " : ""}${x.time ? esc(x.time) + " · " : ""}${esc(x.k)}${x.who ? " · " + esc(firstName(x.who)) : ""}</small></div></div>`;
+  return `<div class="ttslide twslide${sl.all ? " twall" : ""}">
+    <div class="tthead"><b>${sl.icon} Semana de ${sl.week === "CM" ? "CM" : "Diseño gráfico"} · <i class="twb" style="--c:${sl.all ? "#fff" : BRANDS[sl.brand] || "#94a3b8"}">${sl.all ? "General" : esc(sl.brand)}</i></b><span>${dg ? "lunes a viernes · " : ""}${weekLabel(days[0], days.length)}${sl.all ? ` · ${IG_MAIN.map(b => `<i class="twbn" style="--c:${BRANDS[b]}">${esc(b)} ${items.filter(x => x.bn.includes(b)).length}</i>`).join(" ")}` : ""} · ${items.length} ${items.length === 1 ? "trabajo" : "trabajos"}${items.length ? ` · ${done} ${sl.week === "CM" ? "listos" : "terminados"}` : ""}</span>${sts.length ? `<div class="twsum">${sts.map(x => `<span style="--s:${x.col}"><i></i>${esc(x.st)} <strong>${x.n}</strong></span>`).join("")}</div>` : ""}${dots}</div>
+    <div class="twgrid" style="--cols:${days.length}">${days.map((d, i) => { const l = items.filter(x => x.date === d);
       return `<div class="twcol${d === TODAY ? " today" : d < TODAY ? " past" : ""}"><div class="twh"><b>${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"][i]} ${+d.slice(8)}</b>${d === TODAY ? "<span>hoy</span>" : ""}<em>${l.length || ""}</em></div>
         <div class="twl">${l.map(card).join("") || `<div class="twempty">Nada para este día</div>`}<div class="twmore" hidden></div></div></div>`; }).join("")}</div>
   </div>`;
