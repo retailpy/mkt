@@ -810,9 +810,6 @@ html.tvkiosk .tvredes:not(.tvimp) > .tvbrandrow{padding:20px 32px 0;margin-botto
 .tvpbtn small{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:14px}.tvpbtn small svg{width:16px;height:16px;color:var(--cyan)}
 .tvpmarcas{height:clamp(48px,10vh,110px);width:auto;max-width:90%}
 .avatar.roleav.cmmsg{color:#f0abfc!important;border-color:rgba(232,121,249,.5)!important;background:rgba(112,26,117,.3)!important}
-.tcmsg{display:flex;align-items:center;gap:8px;padding:clamp(6px,1vh,12px) 12px;border-radius:14px;border:1px solid rgba(232,121,249,.4);background:rgba(112,26,117,.25);color:#f5d0fe;font-size:clamp(13px,5.4cqi,19px)}
-.tcmsg b{font-size:1.35em;color:#fff;font-weight:900}
-.tcmsg svg{width:1.2em;height:1.2em;flex:none}
 .clkind .chip .note{font-size:.85em}
 .tvpant .tvplogout{display:inline-flex;align-items:center;gap:10px;padding:12px 26px;font-size:17px;border-radius:14px}
 .tvpant .tvplogout svg{width:20px;height:20px}
@@ -4000,7 +3997,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v280";
+const APP_VER = "v281";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -4299,10 +4296,10 @@ function cmKind(pp){ try { const k = CM_LOAD.kind?.[pp.id]; if (k === "cm" || k 
 const CM_KIND = { cm:["Community manager","mensajes y redes"], real:["Realizador","videos, contenidos y más"] };
 // Mensajes contestados por la persona en un rango de fechas (lo anotado con “Contestado” o “Lo contesté yo”, y lo enviado desde la app).
 const msgAnswered = (name, from, to) => Object.values(INBOX_DONE || {}).filter(h => h?.by === name && h.at && pyDate(h.at) >= from && pyDate(h.at) <= to).length;
-// Cuentas de Mensajes de un CM: las que se eligieron en Configurar; si no se eligieron, todas para el Community manager
-// (v280; antes, por marca, aunque los mensajes los contestara otra persona).
+// Cuentas de Mensajes de un CM: las que se eligieron en Configurar; si no se eligieron, las de sus marcas (los realizadores
+// también contestan, se reparten) y, el Community manager, todas (v281: se le suma a Noelia sin sacárselas a los demás).
 const cmAccounts = pp => { const a = CM_LOAD.accounts?.[pp.id]; if (Array.isArray(a)) return a;
-  if (PEOPLE.some(x => x.role === "CM" && x.active && cmKind(x) === "cm")) return cmKind(pp) === "cm" ? Object.keys(BRANDS).filter(b => b !== "Retail Institucional") : [];
+  if (cmKind(pp) === "cm") return Object.keys(BRANDS).filter(b => b !== "Retail Institucional");
   return Object.keys(CM_BRAND_IDS).filter(b => cmOfBrand(b) === pp.name && BRANDS[b] && b !== "Retail Institucional"); };
 // Horario de una persona en un día: minutos disponibles (sin la pausa). null = no está configurado.
 const CM_AVAIL_DEF = [0,1,2,3,4,5,6].map(i => i < 5 ? { from:"08:00", to:"17:00", pause:60 } : { off:true }); // horario de oficina, si no se cargó otro
@@ -8893,12 +8890,12 @@ function tvTeamSlide(sl){
   const card = (pp, k) => { const cmT = pp.role === "CM" ? cmWeekTasks(pp) : null, st = cmT ? cmTaskStats(cmT) : progStats(jobs.filter(j => j.owner === pp.name)), L = loadStats([pp.name]), lv = lvOf(L);
     const open = cmT ? cmT.filter(x => !x.done).sort((a, b2) => a.date.localeCompare(b2.date)).map(x => ({ title:x.title, brand:x.brand, due:x.date, status:x.st || "Pendiente" }))
       : jobs.filter(j => j.owner === pp.name && !isClosedJob(j)).sort((a,b2) => a.due.localeCompare(b2.due));
-    const kd = cmT ? CM_KIND[cmKind(pp)] : null, wk = cmT ? cmWeek(pp) : null, ans = cmT ? msgAnswered(pp.name, wk.from, wk.to) : 0;
+    const kd = cmT ? CM_KIND[cmKind(pp)] : null;
     return `<div class="tvp tc${kd && cmKind(pp) === "cm" ? " cmmsg" : ""}" style="--k:${k}"><div class="top">${avatarHTML(pp)}<div class="who"><b>${esc(pp.name)}</b><span>${kd ? `${kd[0]} · ` : ""}${open.length} ${open.length === 1 ? "tarea abierta" : "tareas abiertas"}</span></div></div>
       <div class="pline">${ltrack(L)}<div class="pct" style="color:${lv.c}">${pctHTML(L)}</div></div>
       <div class="lvtag" style="--c:${lv.c}">${lv.t} · ${cmT ? `${st.total} ${st.total === 1 ? "tarea" : "tareas"} esta semana` : L.cm ? `${L.n} ${L.n === 1 ? "tarea" : "tareas"} esta semana` : `${L.pts} de ${LOAD_FULL} pts`}</div>
       <div class="cnt3"><div class="g"><i>${st.fin}</i><span>finalizadas</span></div><div class="y"><i>${st.proc}</i><span>en proceso</span></div><div class="r"><i>${st.pend}</i><span>pendientes</span></div></div>
-      ${kd && (ans || cmKind(pp) === "cm") ? `<div class="tcmsg">${icon("message-circle")}<b>${ans}</b> ${ans === 1 ? "mensaje contestado" : "mensajes contestados"} esta semana</div>` : ""}
+
       <div class="jl">${open.map(j => { const u = urgency(j); return `<div class="jr" style="--b:${BRANDS[j.brand]}"><b>${esc(j.title)}</b>${u ? `<span class="ub ${u.late ? "late" : ""}" style="--u:${u.c}">${u.late ? "⏰ " : ""}${u.t.replace("Faltan ","").replace("Falta ","").replace("Retraso de ","+")}</span>` : `<span class="dd">${dm(j.due)}</span>`}</div>`; }).join("") || `<div class="empty">Sin tareas abiertas 🎉</div>`}</div>
       <div class="more" hidden></div></div>`; };
   const dots = `<div class="ttdots">${tvTeamSlides().map((x, k) => `<button class="tvdot ${k === tvTeam.i ? "on" : ""}" data-ttgo="${k}" aria-label="${x.label}"></button>`).join("")}</div>`;
