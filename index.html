@@ -809,6 +809,11 @@ html.tvkiosk .tvredes:not(.tvimp) > .tvbrandrow{padding:20px 32px 0;margin-botto
 .tvpbtn b{color:#e2e8f0;font-size:16px}
 .tvpbtn small{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:14px}.tvpbtn small svg{width:16px;height:16px;color:var(--cyan)}
 .tvpmarcas{height:clamp(48px,10vh,110px);width:auto;max-width:90%}
+.avatar.roleav.cmmsg{color:#f0abfc!important;border-color:rgba(232,121,249,.5)!important;background:rgba(112,26,117,.3)!important}
+.tcmsg{display:flex;align-items:center;gap:8px;padding:clamp(6px,1vh,12px) 12px;border-radius:14px;border:1px solid rgba(232,121,249,.4);background:rgba(112,26,117,.25);color:#f5d0fe;font-size:clamp(13px,5.4cqi,19px)}
+.tcmsg b{font-size:1.35em;color:#fff;font-weight:900}
+.tcmsg svg{width:1.2em;height:1.2em;flex:none}
+.clkind .chip .note{font-size:.85em}
 .tvpant .tvplogout{display:inline-flex;align-items:center;gap:10px;padding:12px 26px;font-size:17px;border-radius:14px}
 .tvpant .tvplogout svg{width:20px;height:20px}
 html.tvrole #content{padding-top:0!important;padding-bottom:0!important}html.tvrole .tvpant{min-height:100vh;box-sizing:border-box} /* la pantalla de botones justo del alto de la pantalla */
@@ -3657,8 +3662,10 @@ const ROLE_SVG = {
   "CM":'<path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
   "Comercial":'<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
   "Revisor":'<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
-  "TV":'<rect width="20" height="15" x="2" y="7" rx="2"/><path d="m17 2-5 5-5-5"/>' };
-const avatarHTML = (pp, cls = "", style = "") => pp.photo ? `<img class="avatar ${cls}" src="${pp.photo}" alt="Foto de ${esc(pp.name)}" style="object-fit:cover;padding:0;${style}">` : ROLE_SVG[pp.role] ? `<div class="avatar roleav ${cls}" style="${style}" title="${esc(pp.name)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ROLE_SVG[pp.role]}</svg></div>` : `<div class="avatar ${cls}" style="${style}">${initials(pp.name)}</div>`;
+  "TV":'<rect width="20" height="15" x="2" y="7" rx="2"/><path d="m17 2-5 5-5-5"/>',
+  "CMmsg":'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.8A8 8 0 1 1 21 12z"/><path d="M8.5 10.5h7M8.5 13.5h4"/>' }; // v280: Community manager (mensajes y redes)
+const roleIcoKey = pp => pp.role === "CM" && cmKind(pp) === "cm" ? "CMmsg" : pp.role;
+const avatarHTML = (pp, cls = "", style = "") => pp.photo ? `<img class="avatar ${cls}" src="${pp.photo}" alt="Foto de ${esc(pp.name)}" style="object-fit:cover;padding:0;${style}">` : ROLE_SVG[pp.role] ? `<div class="avatar roleav${roleIcoKey(pp) === "CMmsg" ? " cmmsg" : ""} ${cls}" style="${style}" title="${esc(pp.name)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ROLE_SVG[roleIcoKey(pp)]}</svg></div>` : `<div class="avatar ${cls}" style="${style}">${initials(pp.name)}</div>`;
 const initials = n => n.split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
 function genPass(){ const a = "abcdefghjkmnpqrstuvwxyz", A = "ABCDEFGHJKMNPQRSTUVWXYZ", r = n => { const u = new Uint32Array(1); crypto.getRandomValues(u); return u[0] % n; };
   return A[r(A.length)] + a[r(a.length)] + a[r(a.length)] + "-" + String(1000 + r(9000)) + "-" + a[r(a.length)] + a[r(a.length)] + A[r(A.length)]; }
@@ -3993,7 +4000,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v279";
+const APP_VER = "v280";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -4265,7 +4272,7 @@ const VID_LEFT_DEF = { "Pendiente":100, "Grabación":85, "Edición":50, "Revisi�
 const CONT_LEFT = { "Pendiente":100, "En proceso":60, "Boceto finalizado":10, "En revisión":10, "En corrección":30, "Corrección realizada":10, [VAL_COM]:5, "Aprobado":0 };
 const CM_FUNCS = [["redes","Redes Sociales","image"], ["historias","Historias","smartphone"], ["canal","Canal de WhatsApp","message-circle"], ["contenidos","Gestión de Contenidos","shapes"], ["videos","Gestión de Videos","clapperboard"], ["mensajes","Mensajes","inbox"], ["actividades","Otras actividades","list-todo"]];
 // Lo configura Admin total: tiempos, % de video por etapa, horario de cada CM (por día), ausencias y reuniones, y las cuentas de Mensajes.
-let CM_LOAD = { times:{}, vidLeft:{}, avail:{}, off:[], accounts:{} };
+let CM_LOAD = { times:{}, vidLeft:{}, avail:{}, off:[], accounts:{}, kind:{} };
 // Mensajes: la atención de cada día por persona ("id|fecha" → { st:"ok" | "none", n, res, der, at }). No es una tarea por mensaje.
 let MSG_DUTY = {};
 const cmTime = k => { const v = CM_LOAD.times?.[k]; return v === "" || v === null ? null : v === undefined ? CM_TIMES_DEF[k] : +v; };
@@ -4278,7 +4285,25 @@ const nowMin = () => { const n = new Date(); return n.getHours() * 60 + n.getMin
 const DONE_PUB = ["Programado","Publicado","Pautado"];
 const POST_TIME_KEY = p => p.format === "Historia" ? "historia" : p.format === "Carrusel" ? "carrusel" : p.format === "Reel" ? "reel" : "post";
 // Cuentas que atiende cada CM en Mensajes (las elige Admin total; si no, las marcas que tiene a cargo).
-const cmAccounts = pp => { const a = CM_LOAD.accounts?.[pp.id]; return Array.isArray(a) ? a : Object.keys(CM_BRAND_IDS).filter(b => cmOfBrand(b) === pp.name && BRANDS[b] && b !== "Retail Institucional"); };
+// v280 · Dos tipos de CM: “Community manager” (atiende los mensajes y las redes) y “Realizador” (videos, contenidos y más).
+// Se elige en Carga de CM → Configurar (CM_LOAD.kind[id] = "cm" | "real"); si no se eligió, es Community manager quien más
+// mensajes contestó en los últimos 30 días (lo anotado en Mensajes, s:INBOX_DONE). El Community manager tiene su propio ícono.
+let cmTopMemo = { ref:null, at:0, v:"" };
+function cmTopAnswerer(){
+  if (cmTopMemo.ref === INBOX_DONE && Date.now() - cmTopMemo.at < 60000) return cmTopMemo.v;
+  const since = Date.now() - 30 * 864e5, n = {}; Object.values(INBOX_DONE || {}).forEach(h => { if (h?.by && new Date(h.at).getTime() >= since) n[h.by] = (n[h.by] || 0) + 1; });
+  const cms = CM_NAMES(), top = Object.keys(n).filter(x => cms.includes(x)).sort((a, b) => n[b] - n[a])[0];
+  cmTopMemo = { ref:INBOX_DONE, at:Date.now(), v:top && n[top] >= 5 ? top : "" }; return cmTopMemo.v;
+}
+function cmKind(pp){ try { const k = CM_LOAD.kind?.[pp.id]; if (k === "cm" || k === "real") return k; return pp.role === "CM" && cmTopAnswerer() === pp.name ? "cm" : "real"; } catch { return "real"; } }
+const CM_KIND = { cm:["Community manager","mensajes y redes"], real:["Realizador","videos, contenidos y más"] };
+// Mensajes contestados por la persona en un rango de fechas (lo anotado con “Contestado” o “Lo contesté yo”, y lo enviado desde la app).
+const msgAnswered = (name, from, to) => Object.values(INBOX_DONE || {}).filter(h => h?.by === name && h.at && pyDate(h.at) >= from && pyDate(h.at) <= to).length;
+// Cuentas de Mensajes de un CM: las que se eligieron en Configurar; si no se eligieron, todas para el Community manager
+// (v280; antes, por marca, aunque los mensajes los contestara otra persona).
+const cmAccounts = pp => { const a = CM_LOAD.accounts?.[pp.id]; if (Array.isArray(a)) return a;
+  if (PEOPLE.some(x => x.role === "CM" && x.active && cmKind(x) === "cm")) return cmKind(pp) === "cm" ? Object.keys(BRANDS).filter(b => b !== "Retail Institucional") : [];
+  return Object.keys(CM_BRAND_IDS).filter(b => cmOfBrand(b) === pp.name && BRANDS[b] && b !== "Retail Institucional"); };
 // Horario de una persona en un día: minutos disponibles (sin la pausa). null = no está configurado.
 const CM_AVAIL_DEF = [0,1,2,3,4,5,6].map(i => i < 5 ? { from:"08:00", to:"17:00", pause:60 } : { off:true }); // horario de oficina, si no se cargó otro
 const cmDay = (pp, wd) => { const av = CM_LOAD.avail?.[pp.id] || CM_AVAIL_DEF; const d = av[wd]; if (!d || d.off) return { from:0, to:0, pause:0, min:0 };
@@ -7957,12 +7982,14 @@ function cmLoadCard(pp){
   const L = cmLoad(pp), lv = lvOf({ ...L, cm:true }), acc = cmAccounts(pp), duty = dutyOf(pp, TODAY), open = cargaUI.open[pp.id];
   const fnRow = ([k, l, ic]) => { const b = L.by[k]; if (!b.n) return ""; return `<div class="clfn"><span>${icon(ic)} ${l}</span><b>${b.n}</b><span class="note">${b.min ? "≈ " + fmtMin(b.min) : ""}${b.unk ? `${b.min ? " · " : ""}${b.unk} sin estimar` : ""}${b.done ? ` · ${b.done === b.n ? "todo hecho ✓" : b.done + " hecho" + (b.done === 1 ? "" : "s")}` : ""}</span></div>`; };
   const items = L.items.slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
-  return `<section class="panel clcard"><header class="clh"><div class="person">${avatarHTML(pp)}<div><b>${esc(pp.name)}</b><span>${acc.length ? `Mensajes: ${esc(acc.join(", "))}` : "Sin cuentas de Mensajes asignadas"}</span></div></div>
+  const kd = CM_KIND[cmKind(pp)], ans = msgAnswered(pp.name, L.week.from, L.week.to);
+  return `<section class="panel clcard"><header class="clh"><div class="person">${avatarHTML(pp)}<div><b>${esc(pp.name)}</b><span>${kd[0]} · ${kd[1]}</span><span>${acc.length ? `Mensajes: ${esc(acc.join(", "))}` : "Sin cuentas de Mensajes asignadas"}</span></div></div>
     <div class="clpct" style="color:${lv.c}"><span>${pctHTML({ ...L, cm:true })}</span><small>${lv.t}</small></div></header>
     ${ltrack({ ...L, cm:true })}
     <p class="note clmeta">Semana del ${dm(L.week.from)} al ${dm(L.week.to)}: ≈ <b>${fmtMin(L.min)}</b> de trabajo asignado (ya hecho ≈ ${fmtMin(L.done)} · falta ≈ <b>${fmtMin(L.left)}</b>) sobre <b>${fmtMin(L.avail)}</b> disponibles en la semana (ya descontadas ausencias y reuniones).${!L.week.next && L.left > L.leftAvail ? ` ${icon("triangle-alert")} Le quedan ≈ ${fmtMin(L.leftAvail)} de horario esta semana: no le alcanza para lo que falta.` : ""} ${L.week.next ? `${icon("calendar-days")} Ya terminó su horario de esta semana: se muestra la que viene. ` : ""}${L.defAvail ? `${icon("clock")} Con el horario de oficina (lunes a viernes 8:00–17:00, 1 h de almuerzo)${canCfgLoad() ? ": cambialo en Configurar si trabaja otro horario" : ""}. ` : ""}${L.unknown ? `${icon("triangle-alert")} ${L.unknown} ${L.unknown === 1 ? "trabajo sin tiempo estimado" : "trabajos sin tiempo estimado"} (no se cuenta como cero). ` : ""}</p>
     <div class="clfns">${CM_FUNCS.map(fnRow).join("") || `<p class="note" style="margin:0">No tiene nada asignado esta semana.</p>`}</div>
     ${acc.length ? `<p class="note cldt">${icon("inbox")} Mensajes de hoy: ${duty ? (duty.st === "none" ? "sin consultas ✓" : `atendido ✓${duty.n ? ` · ${duty.n} conversaciones` : ""}`) : "todavía sin registrar"}</p>` : ""}
+    ${acc.length || ans ? `<p class="note cldt">${icon("message-circle")} Mensajes contestados esta semana: <b>${ans}</b></p>` : ""}
     ${items.length ? `<button type="button" class="btn sm" data-clopen="${pp.id}">${icon(open ? "chevron-up" : "chevron-down")} ${open ? "Ocultar" : "Ver"} lo pendiente (${items.length})</button>` : ""}
     ${open ? `<div class="tw"><table class="cltab"><thead><tr><th>Función</th><th>Qué</th><th>Marca</th><th>Fecha</th><th>Etapa</th><th>Falta (estimado)</th></tr></thead><tbody>${items.map(x => `<tr><td>${esc(CM_FUNCS.find(f => f[0] === x.fn)[1])}</td><td>${esc(x.title)}${x.what ? ` <span class="note">· ${esc(x.what)}</span>` : ""}</td><td>${x.brand ? brandTag(x.brand) : ""}</td><td class="num">${dm(x.date)}${x.date < TODAY ? ` <span class="down">atrasado</span>` : ""}</td><td>${esc(x.st || "")}</td><td class="num">${x.left === null ? `<span class="warn">sin estimar</span>` : "≈ " + fmtMin(x.left)}</td></tr>`).join("")}</tbody></table></div>` : ""}</section>`;
 }
@@ -7974,6 +8001,7 @@ function cmLoadCfg(){
   const avRow = pp => { const av = CM_LOAD.avail?.[pp.id];
     return `<div class="clav"><div class="clavh"><b>${esc(pp.name)}</b>${av ? `<button type="button" class="btn sm" data-clavclear="${pp.id}">Borrar horario</button>` : `<button type="button" class="btn sm primary" data-clavdef="${pp.id}">${icon("clock")} Usar horario de oficina (lun a vie 8:00–17:00, 1 h de almuerzo)</button>`}</div>
       ${av ? `<div class="clavdays">${DAY_SHORT.map((dn, i) => { const d = av[i] || { off:true }; return `<div class="clday${d.off ? " off" : ""}"><label class="cldn"><input type="checkbox" data-clday="${pp.id}|${i}" ${d.off ? "" : "checked"}> ${dn}</label>${d.off ? `<span class="note">no trabaja</span>` : `<input class="base sm" type="time" data-clav="${pp.id}|${i}|from" value="${esc(d.from || "08:00")}" aria-label="${dn} desde"><input class="base sm" type="time" data-clav="${pp.id}|${i}|to" value="${esc(d.to || "17:00")}" aria-label="${dn} hasta"><label class="clpz">pausa <input class="base sm" type="number" min="0" max="240" step="5" data-clav="${pp.id}|${i}|pause" value="${esc(d.pause ?? 60)}"> min</label>`}</div>`; }).join("")}</div>` : `<p class="note" style="margin:4px 0 0">${icon("clock")} Sin horario propio: se usa el de oficina (lunes a viernes 8:00–17:00, 1 h de almuerzo). Tocá el botón para cambiarlo día por día.</p>`}
+      <div class="clacc clkind"><span class="note">Qué hace:</span>${Object.entries(CM_KIND).map(([k, [t, d]]) => `<button type="button" class="chip${cmKind(pp) === k ? " on" : ""}" data-clkind="${pp.id}|${k}" aria-pressed="${cmKind(pp) === k}">${icon(k === "cm" ? "message-circle" : "clapperboard")} ${t} <span class="note">(${d})</span></button>`).join("")}${CM_LOAD.kind?.[pp.id] ? "" : `<span class="note">· elegido solo${cmKind(pp) === "cm" ? ": es quien más mensajes contestó" : ""}</span>`}</div>
       <div class="clacc"><span class="note" title="${esc(BRAND_NETS_TXT)}">Cuentas que atiende en Mensajes:</span>${Object.keys(BRANDS).filter(b => b !== "Retail Institucional").map(b => `<button type="button" class="chip${cmAccounts(pp).includes(b) ? " on" : ""}" data-clacc="${pp.id}|${esc(b)}" aria-pressed="${cmAccounts(pp).includes(b)}">${esc(b)}</button>`).join("")}</div><p class="note" style="margin:6px 0 0">${icon("share-2")} Redes de cada marca: ${BRAND_NETS_TXT}.</p></div>`; };
   const offs = (CM_LOAD.off || []).filter(o => o.date >= addDays(TODAY, -7)).sort((a, b) => a.date.localeCompare(b.date));
   return `<details class="panel clcfg"${cargaUI.cfg ? " open" : ""} data-clcfg><summary>${icon("settings")} Configurar la carga de los CM <span class="note">(solo Admin total)</span></summary>
@@ -8043,6 +8071,7 @@ document.addEventListener("click", e => {
   if (!canCfgLoad()) return;
   const df = e.target.closest("[data-clavdef]"); if (df){ const id = df.dataset.clavdef; CM_LOAD.avail = { ...(CM_LOAD.avail || {}), [id]:[0,1,2,3,4,5,6].map(i => i < 5 ? { from:"08:00", to:"17:00", pause:60 } : { off:true }) }; render(); toast("Horario de oficina cargado. Podés cambiar cada día."); return; }
   const cl = e.target.closest("[data-clavclear]"); if (cl){ if (!confirmTap(cl, "clav:" + cl.dataset.clavclear, "¿Seguro?")) return; const a = { ...(CM_LOAD.avail || {}) }; delete a[cl.dataset.clavclear]; CM_LOAD.avail = a; render(); return; }
+  const kd = e.target.closest("[data-clkind]"); if (kd){ const [id, k] = kd.dataset.clkind.split("|"); CM_LOAD.kind = { ...(CM_LOAD.kind || {}), [id]:k }; render(); return; }
   const ac = e.target.closest("[data-clacc]"); if (ac){ const [id, b] = ac.dataset.clacc.split("|"), pp = PEOPLE.find(x => x.id === id); if (!pp) return; const cur = cmAccounts(pp);
     CM_LOAD.accounts = { ...(CM_LOAD.accounts || {}), [id]:cur.includes(b) ? cur.filter(x => x !== b) : [...cur, b] }; render(); return; }
   const od = e.target.closest("[data-cloffdel]"); if (od){ CM_LOAD.off = (CM_LOAD.off || []).filter(o => String(o.id) !== od.dataset.cloffdel); render(); toast("Quitado."); return; }
@@ -8864,10 +8893,12 @@ function tvTeamSlide(sl){
   const card = (pp, k) => { const cmT = pp.role === "CM" ? cmWeekTasks(pp) : null, st = cmT ? cmTaskStats(cmT) : progStats(jobs.filter(j => j.owner === pp.name)), L = loadStats([pp.name]), lv = lvOf(L);
     const open = cmT ? cmT.filter(x => !x.done).sort((a, b2) => a.date.localeCompare(b2.date)).map(x => ({ title:x.title, brand:x.brand, due:x.date, status:x.st || "Pendiente" }))
       : jobs.filter(j => j.owner === pp.name && !isClosedJob(j)).sort((a,b2) => a.due.localeCompare(b2.due));
-    return `<div class="tvp tc" style="--k:${k}"><div class="top">${avatarHTML(pp)}<div class="who"><b>${esc(pp.name)}</b><span>${open.length} ${open.length === 1 ? "tarea abierta" : "tareas abiertas"}</span></div></div>
+    const kd = cmT ? CM_KIND[cmKind(pp)] : null, wk = cmT ? cmWeek(pp) : null, ans = cmT ? msgAnswered(pp.name, wk.from, wk.to) : 0;
+    return `<div class="tvp tc${kd && cmKind(pp) === "cm" ? " cmmsg" : ""}" style="--k:${k}"><div class="top">${avatarHTML(pp)}<div class="who"><b>${esc(pp.name)}</b><span>${kd ? `${kd[0]} · ` : ""}${open.length} ${open.length === 1 ? "tarea abierta" : "tareas abiertas"}</span></div></div>
       <div class="pline">${ltrack(L)}<div class="pct" style="color:${lv.c}">${pctHTML(L)}</div></div>
       <div class="lvtag" style="--c:${lv.c}">${lv.t} · ${cmT ? `${st.total} ${st.total === 1 ? "tarea" : "tareas"} esta semana` : L.cm ? `${L.n} ${L.n === 1 ? "tarea" : "tareas"} esta semana` : `${L.pts} de ${LOAD_FULL} pts`}</div>
       <div class="cnt3"><div class="g"><i>${st.fin}</i><span>finalizadas</span></div><div class="y"><i>${st.proc}</i><span>en proceso</span></div><div class="r"><i>${st.pend}</i><span>pendientes</span></div></div>
+      ${kd && (ans || cmKind(pp) === "cm") ? `<div class="tcmsg">${icon("message-circle")}<b>${ans}</b> ${ans === 1 ? "mensaje contestado" : "mensajes contestados"} esta semana</div>` : ""}
       <div class="jl">${open.map(j => { const u = urgency(j); return `<div class="jr" style="--b:${BRANDS[j.brand]}"><b>${esc(j.title)}</b>${u ? `<span class="ub ${u.late ? "late" : ""}" style="--u:${u.c}">${u.late ? "⏰ " : ""}${u.t.replace("Faltan ","").replace("Falta ","").replace("Retraso de ","+")}</span>` : `<span class="dd">${dm(j.due)}</span>`}</div>`; }).join("") || `<div class="empty">Sin tareas abiertas 🎉</div>`}</div>
       <div class="more" hidden></div></div>`; };
   const dots = `<div class="ttdots">${tvTeamSlides().map((x, k) => `<button class="tvdot ${k === tvTeam.i ? "on" : ""}" data-ttgo="${k}" aria-label="${x.label}"></button>`).join("")}</div>`;
