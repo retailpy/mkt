@@ -759,12 +759,17 @@ html.tvkiosk{cursor:none}html.tvkiosk.tvcur{cursor:auto}
 .tvpg.med .pwrap,.tvpg.med .pthumb.tvpi{border-radius:10px}
 .tvpc .reelbadge{top:8px;right:8px;font-size:clamp(11px,1.5vh,16px);padding:3px 10px}
 .tvpg.med .reelbadge{top:5px;right:5px;font-size:clamp(9px,1.2vh,13px);padding:2px 7px}
-.tvpm{flex:none;display:flex;align-items:center;flex-wrap:nowrap;overflow:hidden;gap:clamp(6px,.7vw,14px);font-size:clamp(12px,1.9vh,22px);color:#e2e8f0;font-variant-numeric:tabular-nums;line-height:1.1;white-space:nowrap}
+.tvpm{flex:none;display:flex;align-items:center;flex-wrap:nowrap;overflow:hidden;gap:clamp(5px,.6vw,12px);font-size:clamp(10px,min(1.9vh,calc(var(--pw,300px) / 13.5)),22px);color:#e2e8f0;font-variant-numeric:tabular-nums;line-height:1.1;white-space:nowrap}
 .tvpg.med .tvpm{font-size:clamp(10px,1.5vh,17px)}
 .tvpm b{color:#fff;font-weight:700}
 .tvpm span{display:inline-flex;align-items:center;gap:4px}
 .tvpm svg{width:.95em;height:.95em;color:var(--faint)}
 .tvpm .rch{color:#fcd34d;font-weight:600}
+.tvpinfo{flex:none;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tvpcap{font-size:clamp(10px,min(1.55vh,calc(var(--pw,300px) / 16)),18px);line-height:1.25;height:2.5em;color:#cbd5e1;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
+.tvpg.med .tvpcap{font-size:clamp(9px,1.25vh,14px);height:1.25em;-webkit-line-clamp:1}
+.tvpmes{position:absolute;left:8px;bottom:8px;padding:3px 10px;border-radius:999px;background:rgba(2,6,23,.85);color:#fcd34d;font-weight:800;font-size:clamp(10px,1.4vh,15px);box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.tvpg.med .tvpmes{left:5px;bottom:5px;padding:2px 7px;font-size:clamp(9px,1.1vh,12px)}
 .tvpc.more .pwrap{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1px dashed var(--line-3);box-shadow:none}
 .tvpc.more b{font-size:clamp(18px,3vh,36px);color:#fff}
 .tvpc.more small{font-size:clamp(10px,1.4vh,15px);color:var(--faint)}
@@ -2410,6 +2415,7 @@ html.tvkiosk .tvimp .imphero .nm b,.tvimp:fullscreen .imphero .nm b{font-size:cl
 .impc .pthumb.impi{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:0;font-size:clamp(16px,3vh,32px)}
 .imprk{position:absolute;top:clamp(6px,1vh,12px);left:clamp(6px,1vh,12px);min-width:1.7em;height:1.7em;padding:0 .3em;box-sizing:border-box;display:grid;place-items:center;border-radius:999px;background:rgba(2,6,23,.85);color:#67e8f9;font-weight:900;font-size:clamp(16px,2.8vh,32px);line-height:1;box-shadow:0 4px 14px rgba(0,0,0,.5)}
 .impc.top .imprk{background:#facc15;color:#0f172a}
+.impc .impmes{left:auto;right:clamp(6px,1vh,12px);bottom:auto;top:calc(clamp(6px,1vh,12px) + 2.2em)}
 .impc .reelbadge{top:clamp(6px,1vh,12px);right:clamp(6px,1vh,12px);font-size:clamp(11px,1.5vh,16px);padding:3px 10px}
 .impov{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;gap:clamp(2px,.4vh,6px);padding:clamp(20px,3.5vh,44px) clamp(8px,.8vw,14px) clamp(8px,1.1vh,14px);background:linear-gradient(to top,rgba(2,6,23,.95),rgba(2,6,23,.75) 55%,rgba(2,6,23,0))}
 .impov .bname{font-size:clamp(15px,2.4vh,28px)}
@@ -3912,7 +3918,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v275";
+const APP_VER = "v276";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -4654,11 +4660,12 @@ const IG_MAIN = ["Superseis","Stock","Delimarket"]; // las marcas principales: s
 const last9 = (b, m = MONTH) => igPosts(b, m).slice(0, 9);
 const isReelPost = x => /reel|video/i.test(x?.type || "");
 const reelBadge = x => isReelPost(x) ? `<span class="reelbadge" title="Reel">${icon("clapperboard")}Reel</span>` : "";
-function lastPostsPanel(bs){
-  const rows = bs.map(b => ({ b, list:last9(b), h:META_POSTS[b]?.handle })).filter(r => r.list.length);
+function lastPostsPanel(bs, fill = false){ // fill (v276, TV): si una marca tiene menos de 9 en el mes, se completa con el mes anterior
+  const pm = prevMonth(MONTH), nine = b => { const l = last9(b); return fill && l.length < 9 ? [...l, ...igPosts(b, pm).slice(0, 9 - l.length).map(x => ({ ...x, _m:pm }))] : l; };
+  const rows = bs.map(b => ({ b, list:nine(b), h:META_POSTS[b]?.handle })).filter(r => r.list.length);
   return `<div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram</h2><div class="tag-row"><span class="tag">${monthLabel(MONTH)}</span><span class="tag">Fuente: Meta</span>${updTag(postsUpdated())}${rows.length > 1 ? `<button type="button" class="btn sm" data-lpfull="${esc(rows.map(r => r.b).join(","))}">${icon("maximize-2")} Ver todas en grande</button>` : ""}${metaBtn("publicaciones", "Publicaciones")}</div></div>
     <div class="panel-b">${rows.length ? rows.map(r => `<div class="lpost"><div class="lph">${brandTag(r.b)}${r.h ? `<span class="note">${esc(r.h)}</span>` : ""}<button type="button" class="btn sm lpbig" data-lpfull="${esc(rows.map(x => x.b).join(","))}" data-lpsel="${esc(r.b)}" title="Ver las 9 de ${esc(r.b)} en grande, con sus números">${icon("maximize-2")} Ver en grande</button></div><div class="lpgrid">${r.list.map(x => { const pp = { img:x.img, format:x.type };
-      return `<a class="lpitem" href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="${esc((x.cap || "").slice(0, 140))}"><span class="pwrap">${pubThumb(pp, "lg")}${reelBadge(x)}</span><span class="lpmeta">${dm(pyDate(x.ts))} · ♥ ${dots(x.likes || 0)}</span></a>`; }).join("")}</div></div>`).join("")
+      return `<a class="lpitem" href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="${esc((x.cap || "").slice(0, 140))}"><span class="pwrap">${pubThumb(pp, "lg")}${reelBadge(x)}${x._m ? `<span class="tvpmes">${monthName(x._m)}</span>` : ""}</span><span class="lpmeta">${dm(pyDate(x.ts))} · ♥ ${dots(x.likes || 0)}</span></a>`; }).join("")}</div></div>`).join("")
       : `<div class="empty">${isFuture() ? `${monthLabel(MONTH)} todavía no empezó: acá van a salir sus publicaciones.` : `Todavía no hay publicaciones de ${monthName(MONTH)}: llegan con la actualización diaria de Meta.`}</div>`}
       ${rows.length && bs.some(b => !rows.some(r => r.b === b)) ? `<p class="note" style="margin:8px 0 0">Todavía sin publicaciones en ${monthName(MONTH)}: ${bs.filter(b => !rows.some(r => r.b === b)).join(", ")}${canMetaRefresh() ? " (tocá “Actualizar”)" : ""}.</p>` : ""}</div></div>`;
 }
@@ -4703,22 +4710,24 @@ function impStatus(){
 // impFit calcula el tamaño: lo más grande que entra en la pantalla (v274).
 const impRatio = p => isReelPost({ type:p.format }) ? 9 / 16 : 4 / 5;
 function impSlide(sl){
-  const pubs = impPubs().filter(p => impBrands().includes(p.brand)), ml = monthLabel(impMonth());
-  const card = (p, k, brandOn) => `<div class="impc${k < 3 ? " top" : ""}${isReelPost({ type:p.format }) ? " reel" : ""}" style="--k:${k};--r:${impRatio(p).toFixed(4)};--c:${BRANDS[p.brand]}">${pubThumb(p, "impi")}<span class="imprk">${k + 1}</span>${reelBadge({ type:p.format })}
+  const pubs = impPubs().filter(p => impBrands().includes(p.brand)), ml = monthLabel(impMonth()), pm = prevMonth(impMonth());
+  // v276: si una marca tiene pocas publicaciones en el mes (ej. los primeros días), se completa con las mejores del mes anterior, marcadas.
+  const prevPubs = publicationsFor(pm).filter(p => impBrands().includes(p.brand)).map(p => ({ ...p, _m:pm })), best = (l, b) => l.filter(p => p.brand === b).sort((a, c) => pubScore(c) - pubScore(a));
+  const card = (p, k, brandOn) => `<div class="impc${k < 3 ? " top" : ""}${isReelPost({ type:p.format }) ? " reel" : ""}" style="--k:${k};--r:${impRatio(p).toFixed(4)};--c:${BRANDS[p.brand]}">${pubThumb(p, "impi")}<span class="imprk">${k + 1}</span>${reelBadge({ type:p.format })}${p._m ? `<span class="tvpmes impmes">${monthName(p._m)}</span>` : ""}
     <div class="impov">${brandOn ? `<span class="bname" style="--c:${BRANDS[p.brand]}"><i></i>${p.brand}</span>` : ""}<b class="impr">${ICO.eye}${dots(pubScore(p))}<small>${isNum(p.reach) ? "alcance" : "interacciones"}</small></b>
       <span class="impsub"><span>${ICO.heart}${dots(p.likes || 0)}</span><span>${icon("message-circle")}${dots(p.comments || 0)}</span><span>${dm(p.date)}</span></span>${brandOn ? `<span class="impt">${esc(p.title)}</span>` : ""}</div></div>`;
   const grid = (rows, gen) => `<div class="impgrid${gen ? " gen" : ""}">${rows.filter(r => r.length).map(r => `<div class="improw">${r.join("")}</div>`).join("")}</div>`;
   if (sl.general){
-    const best = impBrands().map(b => pubs.filter(p => p.brand === b).sort((a, c) => pubScore(c) - pubScore(a))[0]).filter(Boolean).sort((a, c) => pubScore(c) - pubScore(a));
+    const top = impBrands().map(b => best(pubs, b)[0] || best(prevPubs, b)[0]).filter(Boolean).sort((a, c) => !!a._m - !!c._m || pubScore(c) - pubScore(a));
     return `<div class="impslide"><div class="imphead"><div class="it">${ICO.top}<div><b>Lo mejor de cada marca</b><span>La publicación de Instagram con más alcance (o interacciones) de Superseis, Stock y Delimarket · ${ml}</span></div></div></div>
-      ${best.length ? grid([best.map((p, k) => card(p, k, true))], true) : `<div class="empty">Todavía no hay publicaciones de ${monthName(impMonth())} cargadas desde Meta.</div>`}</div>`;
+      ${top.length ? grid([top.map((p, k) => card(p, k, true))], true) : `<div class="empty">Todavía no hay publicaciones de ${monthName(impMonth())} cargadas desde Meta.</div>`}</div>`;
   }
   const b = sl.brand, f = folOf(b, folMonth(impMonth())), fn = v => isNum(v) ? dots(v) : NO_DATA;
-  const list = pubs.filter(p => p.brand === b).sort((a, c) => pubScore(c) - pubScore(a)).slice(0, 10);
-  const tot = k => list.reduce((a, p) => a + (+p[k] || 0), 0), cards = list.map((p, k) => card(p, k, false));
+  const cur = best(pubs, b).slice(0, 10), list = [...cur, ...best(prevPubs, b).slice(0, 10 - cur.length)];
+  const tot = k => cur.reduce((a, p) => a + (+p[k] || 0), 0), cards = list.map((p, k) => card(p, k, false));
   return `<div class="impslide">
     <div class="tvhero imphero" style="--c:${BRANDS[b]}"><div class="nm"><i></i><div><b>${b}</b><span>Top 10 publicaciones de Instagram · ${ml}</span></div></div>
-      <div class="impnums"><div><em>${ICO.IG}${fn(f?.ig)}</em><small>seguidores en Instagram</small></div><div><em>${ICO.FB}${fn(f?.fb)}</em><small>seguidores en Facebook</small></div><div><em>${ICO.heart}${list.length ? dots(tot("likes")) : "—"}</em><small>me gusta del top 10</small></div><div><em>${ICO.eye}${list.some(p => isNum(p.reach)) ? dots(tot("reach")) : "—"}</em><small>alcance del top 10</small></div></div></div>
+      <div class="impnums"><div><em>${ICO.IG}${fn(f?.ig)}</em><small>seguidores en Instagram</small></div><div><em>${ICO.FB}${fn(f?.fb)}</em><small>seguidores en Facebook</small></div><div><em>${ICO.heart}${cur.length ? dots(tot("likes")) : "—"}</em><small>me gusta del top 10</small></div><div><em>${ICO.eye}${cur.some(p => isNum(p.reach)) ? dots(tot("reach")) : "—"}</em><small>alcance del top 10</small></div></div></div>
     ${list.length ? grid([cards.slice(0, 5), cards.slice(5, 10)]) : `<div class="empty">Todavía no hay publicaciones de ${b} de ${monthName(impMonth())} cargadas desde Meta.</div>`}</div>`;
 }
 // El alto de las imágenes (--ih): lo que deja cada fila, o lo que permite el ancho de la fila más ancha (los reels son más angostos).
@@ -4767,30 +4776,40 @@ const tvRedesBrands = () => IG_MAIN.filter(b => myBrands().includes(b));
 const TVP_PAGE = 10, TVP_MED = 24, TVP_GRID = { big:[5, 2], med:[8, 3] }; // columnas × filas
 function tvSlides(){ const bs = tvRedesBrands(); return [
   { title:"Seguidores por cuenta", cls:"tvfol", html:() => followersPanel(bs) },
-  { title:"Últimas publicaciones de Instagram", html:() => lastPostsPanel(bs) },
+  { title:"Últimas publicaciones de Instagram", html:() => lastPostsPanel(bs, true) },
   { title:`Seguidores · ${monthName(MONTH)} contra ${monthName(prevMonth(MONTH))}`, cls:"tvcmp", html:() => followersTable(false, bs) },
-  ...bs.flatMap((b, i) => { const { m, list } = tvPostsOf(b), n = list.length, t = `Publicaciones · <b style="color:${BRANDS[b]}">${b}</b> · ${monthName(m)}`;
+  ...bs.flatMap((b, i) => { const o = tvPostsOf(b), N = o.list.length;
     return [
       { title:`Demográfico · ${b}`, html:() => tvBrandHero(b) + demoBlock(b, i) },
-      { title:`${t}${n ? ` · 1 a ${Math.min(n, TVP_PAGE)} de ${n}` : ""}`, cls:"tvposts", html:() => tvPostsSlide(b, 0) },
-      ...(n > TVP_PAGE ? [{ title:`${t} · ${TVP_PAGE + 1} a ${Math.min(n, 2 * TVP_PAGE)} de ${n}`, cls:"tvposts", html:() => tvPostsSlide(b, 1) }] : []),
-      ...(n > 2 * TVP_PAGE ? [{ title:`${t} · el resto del mes (${n - 2 * TVP_PAGE})`, cls:"tvposts", html:() => tvPostsSlide(b, 2) }] : []),
+      ...[0, 1, 2].filter(pg => pg === 0 || N > pg * TVP_PAGE).map(pg => ({ title:tvPostsTitle(b, o, pg), cls:"tvposts", html:() => tvPostsSlide(b, pg) })),
     ]; }),
 ]; }
-// Las publicaciones de Instagram del mes de una marca (de la más nueva a la más vieja); si el mes todavía no tiene, las del anterior.
+// Las publicaciones de Instagram del mes de una marca (de la más nueva a la más vieja). v276: si faltan para llenar la última
+// pantalla (10, 20 o 44 lugares), se completa con las últimas del mes anterior, marcadas con su mes (ej. los primeros días de
+// noviembre se ven las de octubre). Así nunca queda vacía.
 function tvPostsOf(b){
-  const list = igPosts(b, MONTH);
-  return !list.length && igPosts(b, prevMonth(MONTH)).length ? { m:prevMonth(MONTH), list:igPosts(b, prevMonth(MONTH)) } : { m:MONTH, list };
+  const cur = igPosts(b, MONTH), n = cur.length, pm = prevMonth(MONTH);
+  const slots = n <= TVP_PAGE ? TVP_PAGE : n <= 2 * TVP_PAGE ? 2 * TVP_PAGE : n < 2 * TVP_PAGE + TVP_MED ? 2 * TVP_PAGE + TVP_MED : n;
+  const prev = slots > n ? igPosts(b, pm).slice(0, slots - n).map(x => ({ ...x, _m:pm })) : [];
+  return { n, pm, list:[...cur, ...prev] };
 }
+// Título de cada pantalla: la marca, qué publicaciones del mes son y cuántas del mes anterior completan.
+function tvPostsTitle(b, o, pg){
+  const from = pg * TVP_PAGE, to = pg < 2 ? Math.min(o.list.length, from + TVP_PAGE) : o.list.length, cur = Math.max(0, Math.min(o.n, to) - from), prev = (pg < 2 ? to : Math.min(to, from + TVP_MED)) - from - cur;
+  const what = !o.n ? `${monthName(MONTH)} todavía sin publicaciones` : pg === 2 ? `el resto de ${monthName(MONTH)} (${o.n - from})` : cur ? `${monthName(MONTH)} · ${from + 1} a ${from + cur} de ${o.n}` : "";
+  return `Publicaciones · <b style="color:${BRANDS[b]}">${b}</b>${what ? " · " + what : ""}${prev > 0 ? ` · ${cur ? "y " : ""}${prev} de ${monthName(o.pm)}` : ""}`;
+}
+// El copy de la publicación en una línea (sin saltos ni espacios de más).
+const capLine = x => (x.cap || "").replace(/\s+/g, " ").trim();
 // Página 0 y 1: 10 publicaciones en grande (5 arriba y 5 abajo), sin encabezado, la imagen 4:5 lo más grande posible, con fecha,
 // me gusta y alcance. Página 2: el resto del mes en tamaño mediano (8 × 3; si hay más, el último cuadro dice cuántas).
 // El tamaño exacto lo calcula tvPostsFit según el lugar que queda en la pantalla (sin recortar la imagen).
 function tvPostsSlide(b, pg = 0){
   const { list } = tvPostsOf(b);
-  if (!list.length) return `<div class="empty">Todavía no hay publicaciones de ${b} en ${monthName(MONTH)}: llegan con la actualización diaria de Meta.</div>`;
+  if (!list.length) return `<div class="empty">Todavía no hay publicaciones de ${b}: llegan con la actualización diaria de Meta.</div>`;
   const med = pg >= 2, rest = list.slice(pg * TVP_PAGE), more = med && rest.length > TVP_MED ? rest.length - TVP_MED + 1 : 0;
   const shown = med ? (more ? rest.slice(0, TVP_MED - 1) : rest.slice(0, TVP_MED)) : rest.slice(0, TVP_PAGE);
-  const card = (x, k) => `<div class="tvpc" style="--k:${k}"><span class="pwrap">${pubThumb({ img:x.img, format:x.type }, "tvpi")}${reelBadge(x)}</span><div class="tvpm"><b>${dm(pyDate(x.ts))}</b><span>${ICO.heart}${dots(x.likes || 0)}</span>${!med && isNum(x.reach) ? `<span class="rch">${ICO.eye}${dots(x.reach)}</span>` : ""}</div></div>`;
+  const card = (x, k) => `<div class="tvpc${x._m ? " prev" : ""}" style="--k:${k}"><span class="pwrap">${pubThumb({ img:x.img, format:x.type }, "tvpi")}${reelBadge(x)}${x._m ? `<span class="tvpmes">${monthName(x._m)}</span>` : ""}</span><div class="tvpinfo"><div class="tvpm"><b>${dm(pyDate(x.ts))}</b><span>${ICO.heart}${dots(x.likes || 0)}</span>${!med && isNum(x.reach) ? `<span class="rch">${ICO.eye}${dots(x.reach)}</span>` : ""}</div><div class="tvpcap">${esc(capLine(x))}</div></div></div>`;
   const [c, r] = TVP_GRID[med ? "med" : "big"];
   return `<div class="tvpg${med ? " med" : ""}" data-cols="${c}" data-rows="${r}" style="--c:${c}">${shown.map(card).join("")}${more ? `<div class="tvpc more"><span class="pwrap"><b>+${more}</b><small>publicaciones más</small></span></div>` : ""}</div>`;
 }
@@ -4799,7 +4818,7 @@ function tvPostsSlide(b, pg = 0){
 function tvPostsFit(){
   const g = document.querySelector("#tvStage .tvpg"); if (!g) return;
   const c = +g.dataset.cols, r = +g.dataset.rows, cs = getComputedStyle(g), gx = parseFloat(cs.columnGap) || 0, gy = parseFloat(cs.rowGap) || 0;
-  const card = g.querySelector(".tvpc:not(.more)"), meta = card ? card.querySelector(".tvpm").offsetHeight + (parseFloat(getComputedStyle(card).rowGap) || 0) : 0;
+  const card = g.querySelector(".tvpc:not(.more)"), meta = card ? card.querySelector(".tvpinfo").offsetHeight + (parseFloat(getComputedStyle(card).rowGap) || 0) : 0;
   const h = Math.max(60, Math.floor(Math.min((g.clientHeight - (r - 1) * gy) / r - meta, (g.clientWidth - (c - 1) * gx) / c * 1.25)));
   g.style.setProperty("--ph", h + "px"); g.style.setProperty("--pw", Math.floor(h * .8) + "px"); g.style.setProperty("--pm", meta + "px");
 }
