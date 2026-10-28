@@ -194,6 +194,9 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 ---
 
 ## 5. Otras cosas recientes (v137–v160)
+- **v277 · TV Redes: las 3 más nuevas bien grandes y todo en 4:5 (28/10/2026):**
+  1. **“Últimas publicaciones de Instagram” (pantalla 2, las tres marcas):** las 9 de cada marca ahora en **4:5 vertical** (columnas del ancho justo, centradas; la fecha y los me gusta en una línea).
+  2. **Publicaciones de cada marca, nueva secuencia** (después de su demográfico; `TVP_PAGES`): **las 3 más nuevas bien grandes** (3 en fila, 4:5, con fecha, me gusta, comentarios, alcance y 5 líneas del copy) → **las 10 siguientes** (4 a 13, 5 × 2) → **otras 10** (14 a 23) → **el resto del mes en mediano** (8 × 3). Siempre salen las 3 grandes y al menos una pantalla de 10; si faltan publicaciones se completa con las del mes anterior, marcadas (`tvPostsOf` llena hasta 13, 23 o 47). Superseis → Stock → Delimarket.
 - **v276 · Televisores: el copy de cada publicación y nunca vacío (se completa con el mes anterior) (28/10/2026):**
   1. **TV Redes, publicaciones de cada marca:** debajo de cada imagen, además de fecha, me gusta y alcance, **2 líneas del copy** (`capLine`, `.tvpcap`; en el tamaño mediano, 1 línea). El tamaño se sigue calculando solo (`tvPostsFit` mide el bloque `.tvpinfo`).
   2. **Si faltan publicaciones para llenar la pantalla, se completa con las últimas del mes anterior**, cada una con la etiqueta de su mes (ej. “septiembre”; los primeros días de noviembre se verán las de octubre): en las pantallas de cada marca (`tvPostsOf` llena hasta 10, 20 o 44 lugares) y en “Últimas publicaciones” de las tres (`lastPostsPanel(bs, true)`, hasta 9 por marca; en la app sigue sin completar). El título lo dice: “Publicaciones · Stock · octubre · 1 a 3 de 3 · y 7 de septiembre” (`tvPostsTitle`).
