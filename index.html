@@ -502,6 +502,7 @@ html.nomotion .picon{animation:none}
 .okbox .okgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.okbox .okgrid .oknet{grid-column:1/-1}
 .okbox .okpub{display:flex;flex-direction:column;gap:10px;padding:12px;border:1px dashed var(--line-3);border-radius:14px}
 .okbox{max-height:calc(100dvh - 32px);overflow:auto}.okbox .okcopy{display:flex;flex-direction:column;gap:8px}.okbox .okcpsheet[hidden]{display:none}
+.fixbox.okbox label.okpubon{flex-direction:row;align-items:flex-start;flex-wrap:wrap;gap:4px 8px;padding:10px 12px;border:1px solid var(--line-3);border-radius:12px;color:var(--ink)}.okbox label.okpubon input{width:auto;margin:2px 0 0}.okbox label.okpubon .note{flex-basis:100%;padding-left:24px}
 .fixbox.okbox label.okcpon{flex-direction:row;align-items:flex-start;flex-wrap:wrap;gap:4px 8px;padding:10px 12px;border:1px solid var(--line-3);border-radius:12px;color:var(--ink)}.okbox label.okcpon input{width:auto;margin:2px 0 0}.okbox label.okcpon .note{flex-basis:100%;padding-left:24px}.okbox .okcpsheet .rtedit{min-height:140px}
 .okbox .okpub[hidden]{display:none}.okbox .okcm{margin:0;display:flex;gap:6px;align-items:center;color:var(--muted)}
 @media (max-width:520px){.okbox .okgrid{grid-template-columns:1fr}}
@@ -3758,12 +3759,16 @@ function openApproveModal(j){
   const fms = [...new Set((j.pubs || []).map(r => r.canal ? "Canal" : postById(r.id)?.format).filter(Boolean))];
   const preCm = cont ? j.owner : x?.cm || j.pubCm || "", preDate = x?.date || j.pubDate || (j.due >= TODAY ? j.due : TODAY), preTime = x?.time || j.pubTime || "", preFmts = fms.length ? fms : fmtList(pubFmtOf(j));
   const preNet = jobPubsOf(j).find(y => !y.channel && y.format !== "Historia")?.net || x?.net || "IG";
+  // v283: en Gestión de Contenidos no todo se publica (coberturas, sesiones de fotos, plantillas…): se puede aprobar sin publicación.
+  // Viene destildado si es “Otro” o una plantilla y no tenía publicación cargada.
+  const contPub = cont && (jobPubsOf(j).length > 0 || (j.piece !== OTRO && j.piece !== "Plantilla editable"));
   const w = document.createElement("div"); w.id = "fixpop"; w.className = "fixpop";
   w.innerHTML = `<div class="fixbox okbox" role="dialog" aria-modal="true" aria-labelledby="okh"><h2 id="okh">${cont ? "Aprobar contenido" : "Aprobar diseño"}</h2><p class="note">${esc(j.title)} · ${esc(j.owner)}</p>
     <label>¿Quién aprobó? *<select class="base" id="okBy"><option value="">Elegí quién lo aprobó</option>${approverNames().map(n => `<option>${esc(n)}</option>`).join("")}</select></label>
-    ${cont ? `<p class="okcm">${icon("user-round")} Lo publica <b>${esc(j.owner)}</b>, el mismo CM que lo armó.</p><input type="hidden" id="okCm" value="${esc(j.owner)}">`
+    ${cont ? `<label class="jcext okpubon"><input type="checkbox" id="okPubOn" data-pubowner="${esc(j.owner)}"${contPub ? " checked" : ""}> <b>Se publica en redes</b> <span class="note">(destildalo si es una cobertura de evento, una sesión de fotos u otra actividad que no se publica)</span></label>
+      <p class="okcm"${contPub ? "" : " hidden"}>${icon("user-round")} Lo publica <b>${esc(j.owner)}</b>, el mismo CM que lo armó.</p><input type="hidden" id="okCm" value="${contPub ? esc(j.owner) : ""}">`
       : `<label>¿Qué CM lo publica en redes?<select class="base" id="okCm"><option value="">Nadie (solo aprobar)</option>${cms.map(n => `<option ${n === preCm ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label>`}
-    <div class="okpub"${!cont && !preCm ? " hidden" : ""}>
+    <div class="okpub"${(!cont && !preCm) || (cont && !contPub) ? " hidden" : ""}>
       <div class="okgrid"><label>Fecha de publicación *<input class="base" type="date" id="okDate" value="${esc(preDate)}"></label>
       <label>Hora de publicación *<input class="base" type="time" id="okTime" value="${esc(preTime)}"></label>
       ${fmtPick(preFmts)}
@@ -3779,6 +3784,8 @@ function openApproveModal(j){
 }
 document.addEventListener("change", e => { if (!e.target.closest?.(".okbox")) return;
   if (e.target.id === "okCm"){ const pub = document.querySelector(".okbox .okpub"); if (pub) pub.hidden = !e.target.value; }
+  if (e.target.id === "okPubOn"){ const on = e.target.checked, cm = document.getElementById("okCm"), pub = document.querySelector(".okbox .okpub"), who = document.querySelector(".okbox .okcm");
+    if (cm) cm.value = on ? e.target.dataset.pubowner : ""; if (pub) pub.hidden = !on; if (who) who.hidden = !on; }
   if (e.target.id === "okCopyOn"){ const c = document.querySelector(".okbox .okcpsheet"); if (c){ c.hidden = !e.target.checked; if (e.target.checked) c.querySelector(".rtedit")?.focus(); } if (e.target.checked){ const nc = document.getElementById("okNoCopy"); if (nc) nc.checked = false; } }
   if (e.target.id === "okNoCopy" && e.target.checked){ const c = document.getElementById("okCopyOn"); if (c?.checked){ c.checked = false; const sh = document.querySelector(".okbox .okcpsheet"); if (sh) sh.hidden = true; } } });
 document.addEventListener("click", e => { const b = e.target.closest("[data-oksend]"); if (!b) return;
@@ -4030,7 +4037,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v282";
+const APP_VER = "v283";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
