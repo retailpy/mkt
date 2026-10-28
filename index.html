@@ -724,9 +724,9 @@ html.tvkiosk{cursor:none}html.tvkiosk.tvcur{cursor:auto}
 .tvslide .lpost .lpbig,.tvslide .panel-h .btn{display:none}
 .tvslide .lpost + .lpost{margin-top:clamp(8px,1.4vh,16px)}
 .tvslide .lpost .lph{margin-bottom:6px}
-.tvslide .lpgrid{gap:clamp(6px,.8vw,14px)}
-.tvslide .lpgrid .pthumb.lg{aspect-ratio:auto;width:100%;height:clamp(60px,calc(25vh - 96px),230px);object-fit:cover} /* las tres filas entran justas de 720 a 1080 de alto */
-.tvslide .lpgrid .lpmeta{font-size:clamp(11px,1.3vh,14px)}
+.tvslide .lpgrid{gap:clamp(6px,.8vw,14px);grid-template-columns:repeat(9,calc(clamp(60px,calc(25vh - 96px),230px) * .8));justify-content:center}
+.tvslide .lpgrid .pthumb.lg{aspect-ratio:auto;width:100%;height:clamp(60px,calc(25vh - 96px),230px);object-fit:cover} /* v277: 4:5 vertical; las tres filas entran justas de 720 a 1080 de alto */
+.tvslide .lpgrid .lpmeta{font-size:clamp(10px,1.3vh,14px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis} /* una sola línea aunque la imagen sea angosta */
 /* v270 · TV Redes: seguidores con números bien grandes (nombre y número arriba, la barra abajo) */
 .tvredes .tvslide.tvfol .fbar{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"lb v" "tr tr";align-items:end;column-gap:16px;row-gap:clamp(4px,.9vh,10px)}
 .tvredes .tvslide.tvfol .fbar .lb{grid-area:lb;width:auto!important;font-size:clamp(18px,min(3.8vh,2.2vw),42px)!important;font-weight:700;color:#fff}
@@ -768,6 +768,11 @@ html.tvkiosk{cursor:none}html.tvkiosk.tvcur{cursor:auto}
 .tvpinfo{flex:none;display:flex;flex-direction:column;gap:2px;min-width:0}
 .tvpcap{font-size:clamp(10px,min(1.55vh,calc(var(--pw,300px) / 16)),18px);line-height:1.25;height:2.5em;color:#cbd5e1;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
 .tvpg.med .tvpcap{font-size:clamp(9px,1.25vh,14px);height:1.25em;-webkit-line-clamp:1}
+.tvpg.top{gap:clamp(14px,1.6vw,36px)}
+.tvpg.top .tvpm{font-size:clamp(13px,min(2.6vh,calc(var(--pw,400px) / 14)),30px)}
+.tvpg.top .tvpcap{font-size:clamp(12px,min(2.1vh,calc(var(--pw,400px) / 17)),24px);height:6.25em;-webkit-line-clamp:5;color:#e2e8f0}
+.tvpg.top .pwrap,.tvpg.top .pthumb.tvpi{border-radius:18px}
+.tvpg.top .reelbadge{font-size:clamp(12px,1.8vh,20px);top:12px;right:12px}
 .tvpmes{position:absolute;left:8px;bottom:8px;padding:3px 10px;border-radius:999px;background:rgba(2,6,23,.85);color:#fcd34d;font-weight:800;font-size:clamp(10px,1.4vh,15px);box-shadow:0 2px 8px rgba(0,0,0,.4)}
 .tvpg.med .tvpmes{left:5px;bottom:5px;padding:2px 7px;font-size:clamp(9px,1.1vh,12px)}
 .tvpc.more .pwrap{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1px dashed var(--line-3);box-shadow:none}
@@ -3918,7 +3923,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v276";
+const APP_VER = "v277";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -4768,12 +4773,13 @@ document.addEventListener("click", e => {
   else if (a === "pause"){ imp.paused = !imp.paused; t.textContent = imp.paused ? "▶ Seguir" : "⏸ Pausar"; const bar = document.getElementById("impBar"); if (bar) bar.style.animationPlayState = imp.paused ? "paused" : "running"; if (!imp.paused){ impShow(imp.i); impLoop(); } }
   else if (a === "full"){ const el = document.querySelector(".tvimp"); if (el && el.requestFullscreen) el.requestFullscreen().catch(() => toast("Tu navegador no permitió la pantalla completa.")); }
 });
-// v270–v274: TV Redes muestra solo Superseis, Stock y Delimarket. Primero las tres juntas: seguidores (números bien grandes) →
-// últimas publicaciones de Instagram de las tres → este mes contra el anterior (letra grande). Después, por turno, cada marca:
-// su demográfico → sus publicaciones del mes en vertical 4:5 (como en Instagram), 10 por pantalla en grande (5 arriba y 5 abajo):
-// 1 a 10, 11 a 20 y, si hay más, el resto del mes en tamaño mediano (8 × 3). Y vuelve a empezar.
+// v270–v277: TV Redes muestra solo Superseis, Stock y Delimarket. Primero las tres juntas: seguidores (números bien grandes) →
+// últimas publicaciones de Instagram de las tres (4:5) → este mes contra el anterior (letra grande). Después, por turno, cada marca:
+// su demográfico → sus publicaciones del mes en vertical 4:5 (como en Instagram): las 3 más nuevas bien grandes con buena parte
+// del copy → las 10 siguientes (5 arriba y 5 abajo) → otras 10 → y el resto del mes en tamaño mediano (8 × 3). Y vuelve a empezar.
 const tvRedesBrands = () => IG_MAIN.filter(b => myBrands().includes(b));
-const TVP_PAGE = 10, TVP_MED = 24, TVP_GRID = { big:[5, 2], med:[8, 3] }; // columnas × filas
+const TVP_MED = 24;
+const TVP_PAGES = [{ k:"top", from:0, len:3, grid:[3, 1] }, { k:"big", from:3, len:10, grid:[5, 2] }, { k:"big", from:13, len:10, grid:[5, 2] }, { k:"med", from:23, len:TVP_MED, grid:[8, 3] }];
 function tvSlides(){ const bs = tvRedesBrands(); return [
   { title:"Seguidores por cuenta", cls:"tvfol", html:() => followersPanel(bs) },
   { title:"Últimas publicaciones de Instagram", html:() => lastPostsPanel(bs, true) },
@@ -4781,37 +4787,38 @@ function tvSlides(){ const bs = tvRedesBrands(); return [
   ...bs.flatMap((b, i) => { const o = tvPostsOf(b), N = o.list.length;
     return [
       { title:`Demográfico · ${b}`, html:() => tvBrandHero(b) + demoBlock(b, i) },
-      ...[0, 1, 2].filter(pg => pg === 0 || N > pg * TVP_PAGE).map(pg => ({ title:tvPostsTitle(b, o, pg), cls:"tvposts", html:() => tvPostsSlide(b, pg) })),
+      ...TVP_PAGES.map((pg, k) => k).filter(k => k === 0 || N > TVP_PAGES[k].from).map(k => ({ title:tvPostsTitle(b, o, k), cls:"tvposts", html:() => tvPostsSlide(b, k) })),
     ]; }),
 ]; }
-// Las publicaciones de Instagram del mes de una marca (de la más nueva a la más vieja). v276: si faltan para llenar la última
-// pantalla (10, 20 o 44 lugares), se completa con las últimas del mes anterior, marcadas con su mes (ej. los primeros días de
-// noviembre se ven las de octubre). Así nunca queda vacía.
+// Las publicaciones de Instagram del mes de una marca (de la más nueva a la más vieja). Si faltan para llenar la última pantalla
+// (13, 23 o 47 lugares: las 3 grandes, 10, otras 10 y 24 medianas), se completa con las últimas del mes anterior, marcadas con su mes (ej. los primeros días de noviembre
+// se ven las de octubre). Así nunca queda vacía (v276).
 function tvPostsOf(b){
-  const cur = igPosts(b, MONTH), n = cur.length, pm = prevMonth(MONTH);
-  const slots = n <= TVP_PAGE ? TVP_PAGE : n <= 2 * TVP_PAGE ? 2 * TVP_PAGE : n < 2 * TVP_PAGE + TVP_MED ? 2 * TVP_PAGE + TVP_MED : n;
+  const cur = igPosts(b, MONTH), n = cur.length, pm = prevMonth(MONTH), [, e1, e2, e3] = TVP_PAGES.map(p => p.from + p.len); // 3, 13, 23, 47
+  const slots = n <= e1 ? e1 : n <= e2 ? e2 : n < e3 ? e3 : n; // siempre las 3 grandes y al menos una pantalla de 10
   const prev = slots > n ? igPosts(b, pm).slice(0, slots - n).map(x => ({ ...x, _m:pm })) : [];
   return { n, pm, list:[...cur, ...prev] };
 }
 // Título de cada pantalla: la marca, qué publicaciones del mes son y cuántas del mes anterior completan.
-function tvPostsTitle(b, o, pg){
-  const from = pg * TVP_PAGE, to = pg < 2 ? Math.min(o.list.length, from + TVP_PAGE) : o.list.length, cur = Math.max(0, Math.min(o.n, to) - from), prev = (pg < 2 ? to : Math.min(to, from + TVP_MED)) - from - cur;
-  const what = !o.n ? `${monthName(MONTH)} todavía sin publicaciones` : pg === 2 ? `el resto de ${monthName(MONTH)} (${o.n - from})` : cur ? `${monthName(MONTH)} · ${from + 1} a ${from + cur} de ${o.n}` : "";
+function tvPostsTitle(b, o, k){
+  const pg = TVP_PAGES[k], from = pg.from, to = Math.min(o.list.length, from + pg.len), cur = Math.max(0, Math.min(o.n, to) - from), prev = to - from - cur;
+  const what = !o.n ? `${monthName(MONTH)} todavía sin publicaciones` : !cur ? "" : pg.k === "top" ? `${monthName(MONTH)} · ${cur === 1 ? "la más nueva" : `las ${cur} más nuevas`}`
+    : pg.k === "med" ? `el resto de ${monthName(MONTH)} (${o.n - from})` : `${monthName(MONTH)} · ${from + 1} a ${from + cur} de ${o.n}`;
   return `Publicaciones · <b style="color:${BRANDS[b]}">${b}</b>${what ? " · " + what : ""}${prev > 0 ? ` · ${cur ? "y " : ""}${prev} de ${monthName(o.pm)}` : ""}`;
 }
 // El copy de la publicación en una línea (sin saltos ni espacios de más).
 const capLine = x => (x.cap || "").replace(/\s+/g, " ").trim();
-// Página 0 y 1: 10 publicaciones en grande (5 arriba y 5 abajo), sin encabezado, la imagen 4:5 lo más grande posible, con fecha,
-// me gusta y alcance. Página 2: el resto del mes en tamaño mediano (8 × 3; si hay más, el último cuadro dice cuántas).
-// El tamaño exacto lo calcula tvPostsFit según el lugar que queda en la pantalla (sin recortar la imagen).
-function tvPostsSlide(b, pg = 0){
-  const { list } = tvPostsOf(b);
+// Cada pantalla: las 3 más nuevas bien grandes (3 × 1, con 5 líneas del copy), 10 en grande (5 × 2, 2 líneas del copy) o el resto
+// en mediano (8 × 3, 1 línea; si hay más, el último cuadro dice cuántas). Sin encabezado; la imagen 4:5 lo más grande posible,
+// con fecha, me gusta y alcance. El tamaño exacto lo calcula tvPostsFit según el lugar que queda en la pantalla.
+function tvPostsSlide(b, k = 0){
+  const { list } = tvPostsOf(b), pg = TVP_PAGES[k];
   if (!list.length) return `<div class="empty">Todavía no hay publicaciones de ${b}: llegan con la actualización diaria de Meta.</div>`;
-  const med = pg >= 2, rest = list.slice(pg * TVP_PAGE), more = med && rest.length > TVP_MED ? rest.length - TVP_MED + 1 : 0;
-  const shown = med ? (more ? rest.slice(0, TVP_MED - 1) : rest.slice(0, TVP_MED)) : rest.slice(0, TVP_PAGE);
-  const card = (x, k) => `<div class="tvpc${x._m ? " prev" : ""}" style="--k:${k}"><span class="pwrap">${pubThumb({ img:x.img, format:x.type }, "tvpi")}${reelBadge(x)}${x._m ? `<span class="tvpmes">${monthName(x._m)}</span>` : ""}</span><div class="tvpinfo"><div class="tvpm"><b>${dm(pyDate(x.ts))}</b><span>${ICO.heart}${dots(x.likes || 0)}</span>${!med && isNum(x.reach) ? `<span class="rch">${ICO.eye}${dots(x.reach)}</span>` : ""}</div><div class="tvpcap">${esc(capLine(x))}</div></div></div>`;
-  const [c, r] = TVP_GRID[med ? "med" : "big"];
-  return `<div class="tvpg${med ? " med" : ""}" data-cols="${c}" data-rows="${r}" style="--c:${c}">${shown.map(card).join("")}${more ? `<div class="tvpc more"><span class="pwrap"><b>+${more}</b><small>publicaciones más</small></span></div>` : ""}</div>`;
+  const med = pg.k === "med", rest = list.slice(pg.from), more = med && rest.length > pg.len ? rest.length - pg.len + 1 : 0;
+  const shown = more ? rest.slice(0, pg.len - 1) : rest.slice(0, pg.len);
+  const card = (x, i) => `<div class="tvpc${x._m ? " prev" : ""}" style="--k:${i}"><span class="pwrap">${pubThumb({ img:x.img, format:x.type }, "tvpi")}${reelBadge(x)}${x._m ? `<span class="tvpmes">${monthName(x._m)}</span>` : ""}</span><div class="tvpinfo"><div class="tvpm"><b>${dm(pyDate(x.ts))}</b><span>${ICO.heart}${dots(x.likes || 0)}</span>${pg.k === "top" ? `<span>${icon("message-circle")}${dots(x.comments || 0)}</span>` : ""}${!med && isNum(x.reach) ? `<span class="rch">${ICO.eye}${dots(x.reach)}</span>` : ""}</div><div class="tvpcap">${esc(capLine(x))}</div></div></div>`;
+  const [c, r] = pg.grid;
+  return `<div class="tvpg ${pg.k}" data-cols="${c}" data-rows="${r}" style="--c:${c}">${shown.map(card).join("")}${more ? `<div class="tvpc more"><span class="pwrap"><b>+${more}</b><small>publicaciones más</small></span></div>` : ""}</div>`;
 }
 // La imagen en 4:5 vertical, lo más grande que entra: el alto que deja cada fila (menos la línea de números) o el ancho de cada
 // columna, lo que sea más chico. Se recalcula al cambiar el tamaño de la ventana o la pantalla completa.
