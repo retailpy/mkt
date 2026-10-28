@@ -194,6 +194,10 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 ---
 
 ## 5. Otras cosas recientes (v137–v160)
+- **v286 · Verdes de terminado, copy de Impacto prolijo y estaciones (29/10/2026):**
+  - **Semanas de TV Team (solo en la pantalla):** verde = terminado. En Diseño, “Aprobado” (sigue diciendo Aprobado) va en verde fuerte (`TW_GREEN`), igual que “Publicado” de CM. En CM, Programado en verde clarito (`TW_LIGHT`), Publicado y Pautado en verde fuerte, y lo que antes salía verdoso sin estar terminado (revisión, listo) en amarillo (`twCmCol`).
+  - **TV Impacto · copy y números:** Meta guarda solo las primeras 300 letras del copy. `capText` lo pone en una sola tira y, si vino cortado, lo termina en una palabra entera con “…”; `impFit` lo acorta por palabras hasta que entra, siempre con “…”, sin renglones cortados por la mitad. `capTitle` hace lo mismo con el título (primer renglón, hasta 90 letras). Todas las miniaturas tienen el mismo ancho (también los reels), así el copy arranca alineado.
+  - **Calendario de 4 meses:** también marca el inicio de cada estación en Paraguay (`pySeasons`, equinoccios y solsticios calculados para cada año y pasados a la hora de Paraguay; 22/9 primavera y 21/12 verano en 2026), con su ícono y en la lista de cada mes.
 - **v285 · TV Team y TV Impacto (29/10/2026):**
   - **Semana de Diseño · General:** ya no quedan las tarjetas chiquitas apretadas arriba. `tvWeekFit` elige el tamaño (`data-z` de 6, grande, a 1, compacta) con el que entra el día más cargado y reparte el espacio que sobra entre las tarjetas (`--twgap`). En cada día van agrupadas por marca y con el nombre de pila del diseñador.
   - **Calendario de 4 meses:** números más tranquilos; en la casilla solo un ícono (bandera = feriado, torta = cumpleaños) y, al lado de cada mes, la lista `.mcev` con el día y qué es (“8 mar · Virgen de Caacupé · Feriado nacional”, “4 mié · Laura · Cumpleaños”).

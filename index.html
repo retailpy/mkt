@@ -2321,6 +2321,10 @@ html.tvkiosk .tvredes .tvcov,.tvredes:fullscreen .tvcov,.tvstage:fullscreen .tvc
 .mcd.hol .mci{color:#fca5a5}
 .mcd.bd{background:rgba(250,204,21,.18);box-shadow:inset 0 0 0 2px #facc15;color:#fff;font-weight:800}
 .mcd.bd .mci{color:#fde047}
+.mcd.est{background:rgba(56,189,248,.16);box-shadow:inset 0 0 0 2px #38bdf8;color:#fff;font-weight:800}
+.mcd.est .mci{color:#7dd3fc}
+.mcev li.est{--c:#38bdf8}
+.mcleg .le{color:#7dd3fc}
 .mcd.today .mci{color:#0f172a}
 .mcev{list-style:none;margin:0;padding:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:clamp(6px,1vh,12px);padding-top:clamp(18px,2.6vh,30px)}
 .mcev li{display:flex;align-items:center;gap:clamp(8px,.7vw,12px);padding:clamp(5px,.8vh,9px) clamp(8px,.7vw,12px);border-radius:12px;background:rgba(2,6,23,.45);border-left:4px solid var(--c)}
@@ -2340,7 +2344,7 @@ html.tvkiosk .tvredes .tvcov,.tvredes:fullscreen .tvcov,.tvstage:fullscreen .tvc
 .mcleg .lb{color:#fde68a}.mcleg svg{width:1.1em;height:1.1em}
 .mcd.wk{background:rgba(112,26,117,.16)}
 .mcd.past{color:#64748b}
-.mcd.past.hol,.mcd.past.bd{color:#cbd5e1;opacity:.7}
+.mcd.past.hol,.mcd.past.bd,.mcd.past.est{color:#cbd5e1;opacity:.7}
 .mcd.out{background:transparent}
 .mcd.today{position:relative;background:linear-gradient(135deg,#22d3ee,#0ea5e9);color:#0f172a;font-weight:900;animation:cvtoday 2.2s ease-in-out 1s infinite}
 @media (max-width:760px){.mcgrid{grid-template-columns:1fr;grid-template-rows:none}.mccal{grid-template-columns:1fr}.mcev{padding-top:10px}}
@@ -2586,8 +2590,7 @@ html.tvkiosk .tvimp .imphero .nm b,.tvimp:fullscreen .imphero .nm b{font-size:cl
 .impfx.big{grid-template-columns:minmax(0,1fr)}
 .impf{min-height:0;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:clamp(10px,1vw,18px);align-items:stretch;padding:clamp(6px,.9vh,10px);border:1px solid var(--line);border-left:5px solid var(--c);border-radius:16px;background:var(--panel);overflow:hidden;animation:cardin .55s cubic-bezier(.22,1,.36,1) both;animation-delay:calc(var(--k) * 60ms + 100ms)}
 .impf.top{border-color:rgba(250,204,21,.45);border-left-color:var(--c)}
-.impfi{position:relative;height:100%;aspect-ratio:4/5;border-radius:10px;overflow:hidden;background:var(--panel-2,#0f172a)}
-.impfi.reel{aspect-ratio:9/16}
+.impfi{position:relative;height:100%;aspect-ratio:4/5;flex:none;border-radius:10px;overflow:hidden;background:var(--panel-2,#0f172a)}
 .impfi .pthumb.impi{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:0;font-size:clamp(12px,1.8vh,20px)}
 .impfi .imprk{top:4px;left:4px;font-size:clamp(12px,1.9vh,22px)}
 .impf.top .imprk{background:#facc15;color:#0f172a}
@@ -2595,7 +2598,7 @@ html.tvkiosk .tvimp .imphero .nm b,.tvimp:fullscreen .imphero .nm b{font-size:cl
 .impfh{display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;font-size:clamp(11px,1.45vh,16px);color:var(--muted);font-weight:600}
 .impfh .bname{font-size:clamp(14px,2.1vh,24px)}
 .impfh .impmes{position:static}
-.impfc{flex:1;margin:0;min-height:0;font-size:clamp(13px,1.8vh,20px);line-height:1.3;color:#f1f5f9;white-space:pre-line;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--cl,3)}
+.impfc{flex:1;margin:0;min-height:0;font-size:clamp(13px,1.8vh,20px);line-height:1.35;color:#e2e8f0;overflow:hidden;overflow-wrap:anywhere}
 .impfn{display:flex;flex-direction:column;justify-content:center;gap:clamp(4px,.7vh,8px);min-width:clamp(150px,13vw,260px)}
 .impfn .hi{display:flex;align-items:baseline;gap:6px;color:#fcd34d;font-variant-numeric:tabular-nums}
 .impfn .hi svg{width:clamp(14px,2vh,22px);height:clamp(14px,2vh,22px);align-self:center}
@@ -4109,7 +4112,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v285";
+const APP_VER = "v286";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -4768,12 +4771,19 @@ function igPosts(b, month){
   }
   return out.sort((x, y) => y.ts.localeCompare(x.ts));
 }
+// v286: el copy sin cortes a la mitad. Meta guarda las primeras 300 letras: si vino cortado, termina en una palabra entera con “…”;
+// los renglones van en una sola tira. El título es el primer renglón (hasta 90 letras, también cortado en una palabra con “…”).
+const capTrim = t => t.replace(/[\s,;:.\-–—|·]+$/u, "") + "…";
+const capText = c => { const raw = String(c || ""), t = raw.split("\n").map(x => x.trim()).filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+  return [...raw].length >= 299 && t.includes(" ") ? capTrim(t.replace(/\s+\S*$/, "")) : t; };
+const capTitle = c => { const l = String(c || "").split("\n").map(x => x.trim()).find(Boolean) || "";
+  return [...l].length <= 90 ? l : capTrim([...l].slice(0, 90).join("").replace(/\s+\S*$/, "")); };
 function publicationsFor(month){
   const out = [], now = Date.now();
   socialBrands().forEach(b => igPosts(b, month).forEach(x => {
     const date = pyDate(x.ts);
     const inter = (x.likes || 0) + (x.comments || 0) + (x.saved || 0) + (x.shares || 0);
-    out.push({ brand:b, date, net:"IG", format:x.type || "Post", title:(x.cap || "").split("\n")[0].slice(0, 90) || "Publicación sin texto", cap:x.cap || "", cm:cmOfBrand(b), paid:false,
+    out.push({ brand:b, date, net:"IG", format:x.type || "Post", title:capTitle(x.cap) || "Publicación sin texto", cap:x.cap || "", cm:cmOfBrand(b), paid:false,
       reach:isNum(x.reach) ? x.reach : null, likes:x.likes, comments:x.comments, saved:x.saved, shares:x.shares, inter, img:x.img, link:x.link, age:Math.floor((now - new Date(x.ts).getTime()) / 864e5) });
   }));
   return out;
@@ -4931,7 +4941,7 @@ const impTab = (list, brandOn) => { const big = list.length <= 3, n = big ? list
   return `<div class="impfx${big ? " big" : ""}" style="--n:${n}">${list.map((p, k) => `<div class="impf${k < 3 ? " top" : ""}" style="--k:${k};--c:${BRANDS[p.brand]}">
     <div class="impfi${isReelPost({ type:p.format }) ? " reel" : ""}">${pubThumb(p, "impi")}<span class="imprk">${k + 1}</span></div>
     <div class="impfb"><div class="impfh">${brandOn ? `<span class="bname" style="--c:${BRANDS[p.brand]}"><i></i>${p.brand}</span>` : ""}<span>${esc(p.format)} · ${dm(p.date)}</span>${p._m ? `<span class="tvpmes impmes">${monthName(p._m)}</span>` : ""}</div>
-      <p class="impfc">${esc(p.cap || p.title)}</p></div>
+      <p class="impfc" data-full="${esc(capText(p.cap) || p.title)}">${esc(capText(p.cap) || p.title)}</p></div>
     <div class="impfn"><div class="hi">${ICO.eye}<b>${dots(pubScore(p))}</b><small>${isNum(p.reach) ? "alcance" : "interacciones"}</small></div>
       <ul><li>${ICO.heart}<b>${nn(p.likes || 0)}</b><small>me gusta</small></li><li>${icon("message-circle")}<b>${nn(p.comments || 0)}</b><small>comentarios</small></li><li>${icon("bookmark")}<b>${nn(p.saved)}</b><small>guardados</small></li><li>${icon("send")}<b>${nn(p.shares)}</b><small>compartidos</small></li></ul></div></div>`).join("")}</div>`; };
 function impSlide(sl){
@@ -4958,8 +4968,13 @@ function impSlide(sl){
 }
 // El alto de las imágenes (--ih): lo que deja cada fila, o lo que permite el ancho de la fila más ancha (los reels son más angostos).
 function impFit(){
-  // v285: en la de copy y números, el copy muestra todas las líneas que entran en su tarjeta
-  document.querySelectorAll("#impStage .impfc").forEach(c => { c.style.setProperty("--cl", 99); const lh = parseFloat(getComputedStyle(c).lineHeight) || 20; c.style.setProperty("--cl", Math.max(1, Math.floor((c.clientHeight + 1) / lh))); });
+  // v285/v286: en la de copy y números, el copy ocupa lo que entra en su tarjeta; si no entra entero, termina en una palabra con “…”
+  // (nunca un renglón cortado por la mitad).
+  document.querySelectorAll("#impStage .impfc").forEach(c => { const full = c.dataset.full || "", fits = () => c.scrollHeight <= c.clientHeight + 1;
+    c.textContent = full; if (fits()) return;
+    const w = full.replace(/…$/, "").split(" "); let lo = 0, hi = w.length;
+    while (lo < hi){ const mid = (lo + hi + 1) >> 1; c.textContent = capTrim(w.slice(0, mid).join(" ")); if (fits()) lo = mid; else hi = mid - 1; }
+    c.textContent = lo ? capTrim(w.slice(0, lo).join(" ")) : ""; });
   const g = document.querySelector("#impStage .impgrid"); if (!g) return;
   const rows = [...g.querySelectorAll(".improw")]; if (!rows.length) return;
   const gy = parseFloat(getComputedStyle(g).rowGap) || 0, gx = parseFloat(getComputedStyle(rows[0]).columnGap) || 0;
@@ -9049,15 +9064,19 @@ function tvTeamSlide(sl){
 // v270 · TV Team: la semana (lunes a domingo, hoy resaltado) de Diseño gráfico o de CM, como su calendario en la app.
 // Diseño: los pedidos de Diseño gráfico en su fecha de entrega, con el color de su etapa. CM: lo mismo que la Semana de la
 // Planificación de CM (publicaciones, historias, Canal de WhatsApp, videos, repetitivos y actividades), con el semáforo de su etapa.
+// v286: en las semanas de la TV, verde = terminado. Diseño: Aprobado (y Entregado) en verde fuerte. CM: Publicado (y Pautado)
+// en verde fuerte y Programado en verde clarito; lo demás que antes salía verdoso (revisión, listo) pasa a amarillo.
+const TW_GREEN = "#16a34a", TW_LIGHT = "#86efac";
+const twCmCol = st => { const lv = semLvl(st); return lv === 3 ? TW_GREEN : st === "Programado" ? TW_LIGHT : lv === 2 ? "#facc15" : SEM[lv]; };
 const tvWeekDays = (n = 7) => { const w = mondayOf(TODAY); return Array.from({ length:n }, (_, i) => addDays(w, i)); };
 function tvWeekItems(area){
   const days = tvWeekDays(), inR = d => !!d && d >= days[0] && d <= days[6], out = [];
   if (area === "Diseño"){
     jobs.filter(j => j.area === "Diseño" && !j.ex && j.status !== "Cancelado" && inR(j.due)).forEach(j => out.push({ date:j.due, brand:j.brand, brands:jobBrands(j), title:j.title, who:j.owner, st:j.status,
-      col:j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status] || "#94a3b8", k:DG_SEC[jobSection(j)], ic:isFin(j) ? "check" : "palette", done:isFin(j) }));
+      col:isFin(j) ? TW_GREEN : j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status] || "#94a3b8", k:DG_SEC[jobSection(j)], ic:isFin(j) ? "check" : "palette", done:isFin(j) }));
     return out.sort((a, b) => a.date.localeCompare(b.date) || !!a.done - !!b.done);
   }
-  const add = (x, time, brands) => { const lv = semLvl(x.status); out.push({ date:x.date, brand:x.brand, brands:brands || [x.brand], title:x.title, who:x.cm, st:x.status, col:SEM[lv], k:PLAN_SEC(x), ic:PLAN_ICO(x), time:time || "", done:lv === 3 }); };
+  const add = (x, time, brands) => { const lv = semLvl(x.status); out.push({ date:x.date, brand:x.brand, brands:brands || [x.brand], title:x.title, who:x.cm, st:x.status, col:twCmCol(x.status), k:PLAN_SEC(x), ic:PLAN_ICO(x), time:time || "", done:lv === 3 }); };
   posts.filter(p => !p.ex && inR(p.date)).forEach(p => add({ ...p }, p.time));
   CHANNEL_POSTS.filter(k => inR(k.date)).forEach(k => add({ ...k, canal:true }, k.time));
   jobs.filter(j => j.area === "CM" && j.status !== "Cancelado" && !j.ex && inR(j.due)).forEach(j => add({ vid:true, date:j.due, brand:j.brand, title:j.title, status:j.status, cm:j.owner }, "", jobBrands(j)));
@@ -9145,24 +9164,38 @@ function pyHolidays(y){
     [`${y}-05-14`]:"Independencia", [`${y}-05-15`]:"Independencia · Día de la Madre", [`${y}-06-12`]:"Paz del Chaco", [`${y}-08-15`]:"Fundación de Asunción",
     [`${y}-09-29`]:"Victoria de Boquerón", [`${y}-12-08`]:"Virgen de Caacupé", [`${y}-12-25`]:"Navidad" };
 }
+// v286: el inicio de cada estación en Paraguay (hemisferio sur): equinoccios y solsticios calculados para cada año (Meeus, cap. 27,
+// con sus correcciones; error de minutos) y pasados a la hora de Paraguay. Marzo = otoño, junio = invierno, septiembre = primavera
+// y diciembre = verano.
+const SEASON_T = [[485,324.96,1934.136],[203,337.23,32964.467],[199,342.08,20.186],[182,27.85,445267.112],[156,73.14,45036.886],[136,171.52,22518.443],[77,222.54,65928.934],[74,296.72,3034.906],[70,243.58,9037.513],[58,119.81,33718.147],[52,297.17,150.678],[50,21.02,2281.226],[45,247.54,29929.562],[44,325.15,31555.956],[29,60.93,4443.417],[18,155.12,67555.328],[17,288.79,4562.452],[16,198.04,62894.029],[14,199.76,31436.921],[12,95.39,14577.848],[12,287.11,31931.756],[12,320.81,34777.259],[9,227.73,1222.114],[8,15.45,16859.074]];
+function pySeasons(y){
+  const Y = (y - 2000) / 1000, rad = Math.PI / 180, P = [[2451623.80984,365242.37404,.05169,-.00411,-.00057],[2451716.56767,365241.62603,.00325,.00888,-.0003],[2451810.21715,365242.01767,-.11575,.00337,.00078],[2451900.05952,365242.74049,-.06223,-.00823,.00032]];
+  const names = ["Inicio del otoño","Inicio del invierno","Inicio de la primavera","Inicio del verano"], out = {};
+  P.forEach((c, k) => { const j0 = c[0] + c[1] * Y + c[2] * Y * Y + c[3] * Y ** 3 + c[4] * Y ** 4, T = (j0 - 2451545) / 36525, W = (35999.373 * T - 2.47) * rad;
+    const dl = 1 + .0334 * Math.cos(W) + .0007 * Math.cos(2 * W), S = SEASON_T.reduce((a, [A, B, C]) => a + A * Math.cos((B + C * T) * rad), 0);
+    out[pyDate((j0 + .00001 * S / dl - 2440587.5) * 864e5)] = names[k]; });
+  return out;
+}
+const SEASON_ICO = { "Inicio del otoño":"leaf", "Inicio del invierno":"snowflake", "Inicio de la primavera":"flower", "Inicio del verano":"sun" };
 const HOL_SHORT = { "Victoria de Boquerón":"Boquerón", "Virgen de Caacupé":"Caacupé", "Fundación de Asunción":"Fund. Asunción", "Independencia · Día de la Madre":"Día de la Madre", "Día del Trabajador":"Día del Trabajador" }; // para que entren en la casilla
 function tvMonthsSlide(dots){
   const today = pyDate(Date.now()), cur = today.slice(0, 7), months = [-1, 0, 1, 2].map(k => monthAdd(cur, k));
-  const hol = Object.assign({}, ...[...new Set(months.map(mv => +mv.slice(0, 4)))].map(pyHolidays)), bd = {};
+  const yrs = [...new Set(months.map(mv => +mv.slice(0, 4)))], hol = Object.assign({}, ...yrs.map(pyHolidays)), est = Object.assign({}, ...yrs.map(pySeasons)), bd = {};
   PEOPLE.filter(pp => pp.active !== false && pp.birthday && pp.role !== "TV").forEach(pp => { (bd[pp.birthday] = bd[pp.birthday] || []).push(pp.name.split(" ")[0]); });
   const cal = (mv, i) => { const [y, m] = mv.split("-").map(Number), lead = wdOf(mv + "-01"), days = new Date(y, m, 0).getDate(), cells = [];
     for (let k = 0; k < lead; k++) cells.push(`<span class="mcd out"></span>`);
     const ev = []; // v285: lo de cada día, escrito completo en la lista al lado del mes
-    for (let d = 1; d <= days; d++){ const ds = `${mv}-${String(d).padStart(2, "0")}`, wk = (lead + d - 1) % 7 >= 5, h = hol[ds], b = bd[ds.slice(5)], tip = [h, b && "Cumpleaños de " + b.join(", ")].filter(Boolean).join(" · ");
+    for (let d = 1; d <= days; d++){ const ds = `${mv}-${String(d).padStart(2, "0")}`, wk = (lead + d - 1) % 7 >= 5, h = hol[ds], b = bd[ds.slice(5)], e = est[ds], tip = [h, e, b && "Cumpleaños de " + b.join(", ")].filter(Boolean).join(" · ");
       if (h) ev.push({ d, ds, cls:"hol", t:h, s:"Feriado nacional", ic:"flag" });
+      if (e) ev.push({ d, ds, cls:"est", t:e, s:"Estación", ic:SEASON_ICO[e] });
       if (b) ev.push({ d, ds, cls:"bd", t:b.join(" y "), s:ds === today ? "¡Cumpleaños hoy!" : "Cumpleaños", ic:"cake" });
-      cells.push(`<span class="mcd${wk ? " wk" : ""}${ds < today ? " past" : ""}${ds === today ? " today" : ""}${h ? " hol" : ""}${b ? " bd" : ""}"${tip ? ` title="${esc(tip)}"` : ""}><b>${d}</b>${h || b ? `<i class="mci">${h ? icon("flag") : ""}${b ? icon("cake") : ""}</i>` : ""}</span>`); }
+      cells.push(`<span class="mcd${wk ? " wk" : ""}${ds < today ? " past" : ""}${ds === today ? " today" : ""}${h ? " hol" : ""}${e ? " est" : ""}${b ? " bd" : ""}"${tip ? ` title="${esc(tip)}"` : ""}><b>${d}</b>${h || b || e ? `<i class="mci">${h ? icon("flag") : ""}${e ? icon(SEASON_ICO[e]) : ""}${b ? icon("cake") : ""}</i>` : ""}</span>`); }
     while (cells.length % 7) cells.push(`<span class="mcd out"></span>`);
     const wdN = ds => ["lun","mar","mié","jue","vie","sáb","dom"][wdOf(ds)];
     return `<div class="mccal${mv === cur ? " cur" : mv < cur ? " prev" : ""}" style="--i:${i}"><div class="mch"><b>${MONTHS_ES[m - 1]}</b> ${y}${mv === cur ? "<em>este mes</em>" : ""}</div>
       <div class="mcg">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map((x, k) => `<span class="mcdh${k >= 5 ? " wk" : ""}">${x}</span>`).join("")}${cells.join("")}</div>
       <ul class="mcev">${ev.map(e => `<li class="${e.cls}${e.ds < today ? " past" : ""}"><span class="mcevd"><b>${e.d}</b><small>${wdN(e.ds)}</small></span><span class="mcevt">${icon(e.ic)}<b>${esc(e.t)}</b><small>${esc(e.s)}</small></span></li>`).join("") || `<li class="none">Sin feriados ni cumpleaños</li>`}</ul></div>`; };
-  return `<div class="ttslide mcslide"><div class="tthead"><b>📅 Calendario</b><span>${months.map(mv => mv === cur ? `<strong>${MONTHS_ES[+mv.slice(5) - 1]}</strong>` : MONTHS_ES[+mv.slice(5) - 1]).join(" · ")}</span><div class="mcleg"><span class="lh">${icon("flag")}Feriado nacional</span><span class="lb">${icon("cake")}Cumpleaños</span></div>${dots}</div>
+  return `<div class="ttslide mcslide"><div class="tthead"><b>📅 Calendario</b><span>${months.map(mv => mv === cur ? `<strong>${MONTHS_ES[+mv.slice(5) - 1]}</strong>` : MONTHS_ES[+mv.slice(5) - 1]).join(" · ")}</span><div class="mcleg"><span class="lh">${icon("flag")}Feriado nacional</span><span class="le">${icon("flower")}Inicio de estación</span><span class="lb">${icon("cake")}Cumpleaños</span></div>${dots}</div>
     <div class="mcgrid">${months.map(cal).join("")}</div></div>`;
 }
 // Lo de la semana de un CM (lo mismo que cuenta su carga, sin los traslados ni la atención de mensajes de cada día, que suman
