@@ -10,9 +10,9 @@
 const { ORDEN, cronOrUser, graph, brandPages, save, readMeta, today, tokenHint } = require("./_lib/meta");
 
 const FIELDS = "id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count";
-const FIRST_MONTH = "2026-09"; // la app arranca en septiembre 2026: antes no hay meses
+const FIRST_MONTH = "2026-08"; // la app arranca en septiembre 2026; agosto se trae una vez para TV Impacto (el mes en curso y los dos anteriores)
 const LATEST = 30;        // últimas publicaciones por marca
-const MAX_FETCH = 150;    // tope al traer el mes actual y el anterior
+const MAX_FETCH = 200;    // tope al traer el mes actual y el anterior (y, una sola vez, el de antes)
 const INSIGHT_DAYS = 45;  // alcance solo de las publicaciones recientes (el resto ya no cambia)
 const FRESH_DAYS = 10;    // después de 10 días, si ya se tenía el alcance, no se vuelve a pedir
 const KEEP_IMG = 9, KEEP_TOP = 15; // por marca y por mes: las últimas 9 con imagen + las 15 de más alcance
@@ -70,7 +70,9 @@ module.exports = async (req, res) => {
     const [{ byBrand }, old] = await Promise.all([brandPages(), readMeta("s:META_POSTS").catch(() => null)]);
     const prevData = old && typeof old === "object" ? old : {};
     const { at, month } = today(), prev = prevOf(month);
-    const months = [month, prev].filter(m => m >= FIRST_MONTH);
+    // El de antes del anterior (ej. agosto en octubre) se trae una sola vez, si todavía no está guardado: TV Impacto muestra el mes en
+    // curso y los dos anteriores. Después queda como los demás meses cerrados.
+    const back = prevOf(prev), months = [month, prev, ...(prevData["m:" + back] ? [] : [back])].filter(m => m >= FIRST_MONTH);
     // Lo que ya se sabía de cada publicación (para no volver a pedir el alcance de las que ya no cambian).
     const known = new Map();
     for (const [k, v] of Object.entries(prevData)){
@@ -94,7 +96,7 @@ module.exports = async (req, res) => {
         }
         const posts = await pool(media, 10, async (m) => {
           const t = new Date(m.timestamp).getTime(), k = known.get(m.id) || {};
-          const need = t >= since && (t >= fresh || k.reach == null);
+          const need = (t >= since && (t >= fresh || k.reach == null)) || (months.includes(back) && ym(m.timestamp) === back && !known.has(m.id)); // las del mes traído una vez: su alcance, una vez
           const ins = need ? await insights(m.id) : {};
           return {
             id: m.id, type: typeOf(m),
