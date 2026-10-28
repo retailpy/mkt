@@ -2296,6 +2296,39 @@ html.tvkiosk .tvcov,.tvpage:fullscreen .tvcov{min-height:calc(100vh - 12vh)} /* 
 html.tvkiosk .tvimp.cvon > .tvbar,html.tvkiosk .tvimp.cvon > .tvdots,.tvimp.cvon:fullscreen > .tvbar,.tvimp.cvon:fullscreen > .tvdots{display:none}
 .tvredes .tvcov{flex:1}
 html.tvkiosk .tvredes .tvcov,.tvredes:fullscreen .tvcov,.tvstage:fullscreen .tvcov{min-height:0}
+/* v282 · TV Team: calendario general (el mes anterior, el actual resaltado y los dos que vienen, en 2 × 2) */
+.mcslide{gap:clamp(6px,1vh,12px)}
+.mcslide .tthead b{font-size:clamp(16px,2.4vh,26px);letter-spacing:.08em}
+.mcslide .tthead > span{font-size:clamp(13px,1.8vh,20px);text-transform:capitalize}
+.mcslide .tthead > span strong{color:#67e8f9}
+.mcgrid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:clamp(10px,1.4vw,26px)}
+.mccal{display:flex;flex-direction:column;min-height:0;border:1px solid var(--line);background:var(--panel);border-radius:22px;padding:clamp(10px,1.6vh,20px) clamp(12px,1.2vw,22px);animation:cvfade .7s ease both;animation-delay:calc(var(--i) * 120ms)}
+.mccal.prev{opacity:.7}
+.mccal.cur{border:2px solid #22d3ee;background:linear-gradient(160deg,rgba(8,51,68,.6),var(--panel) 60%);box-shadow:0 0 0 1px rgba(34,211,238,.25),0 18px 50px rgba(34,211,238,.15)}
+.mch{display:flex;align-items:baseline;gap:10px;font-size:clamp(18px,3.2vh,38px);color:var(--muted);margin-bottom:clamp(6px,1vh,12px);line-height:1}
+.mch b{color:#fff;font-weight:900;text-transform:capitalize}
+.mch em{margin-left:auto;font-style:normal;font-size:.5em;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#0f172a;background:#22d3ee;border-radius:999px;padding:4px 12px}
+.mcg{flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:auto;grid-auto-rows:minmax(clamp(20px,4vh,56px),1fr);gap:clamp(3px,.5vh,7px)}
+.mcdh{text-align:center;font-size:clamp(10px,1.5vh,17px);font-weight:800;color:#67e8f9;letter-spacing:.08em;text-transform:uppercase}
+.mcdh.wk{color:#f0abfc}
+.mcd{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:0;overflow:hidden;border-radius:clamp(6px,1vh,12px);background:rgba(30,41,59,.5);font-size:clamp(13px,2.6vh,30px);font-weight:800;color:#e2e8f0;font-variant-numeric:tabular-nums;line-height:1}
+.mcd b{font-weight:inherit}
+.mcd small{display:block;text-align:center;width:100%;padding:0 4px;box-sizing:border-box;font-size:clamp(8px,1.15vh,13px);font-weight:700;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mcd small svg{width:1.1em;height:1.1em;vertical-align:-.18em;margin-right:3px}
+.mcd.hol{background:rgba(239,68,68,.22);box-shadow:inset 0 0 0 1px rgba(248,113,113,.55);color:#fecaca}
+.mcd .mch-h{color:#fca5a5}
+.mcd.bd{box-shadow:inset 0 0 0 1px rgba(250,204,21,.55)}
+.mcd .mch-b{color:#fde68a}
+.mcd.today .mch-h,.mcd.today .mch-b{color:#0f172a}
+.mcleg{display:flex;gap:14px;align-items:center;font-size:clamp(12px,1.6vh,18px);color:#cbd5e1}
+.mcleg span{display:inline-flex;align-items:center;gap:6px}
+.mcleg .lh i{width:.9em;height:.9em;border-radius:4px;background:rgba(239,68,68,.35);box-shadow:inset 0 0 0 1px #f87171}
+.mcleg .lb{color:#fde68a}.mcleg svg{width:1.1em;height:1.1em}
+.mcd.wk{background:rgba(112,26,117,.22)}
+.mcd.past{color:#64748b}
+.mcd.out{background:transparent}
+.mcd.today{position:relative;background:linear-gradient(135deg,#22d3ee,#0ea5e9);color:#0f172a;font-weight:900;animation:cvtoday 2.2s ease-in-out 1s infinite}
+@media (max-width:760px){.mcgrid{grid-template-columns:1fr;grid-template-rows:none}}
 /* v270 · TV Team: la semana de Diseño gráfico y la de CM */
 .tthead b .twb{font-style:normal;color:var(--c)}
 .twsum{display:flex;flex-wrap:wrap;gap:8px clamp(10px,1.2vw,22px);font-size:clamp(13px,1.8vh,20px);color:#cbd5e1}
@@ -3997,7 +4030,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v281";
+const APP_VER = "v282";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -8864,7 +8897,7 @@ function pGestionCM(){
 const TV_TEAM_MIN = 10;
 let tvTeam = { timer:null, clock:null, slideT:null, updated:"", i:0, paused:false };
 const TV_TEAM_SECS = 10;
-const TV_TEAM_BASE = [{ cover:true, icon:"📅", label:"Hoy" }, { team:true, icon:"👥", label:"Todo el equipo" }, { role:"Diseñador", area:"Diseño", icon:"🎨", label:"Diseño gráfico" }, { role:"CM", area:"CM", icon:"🎬", label:"Community managers" }];
+const TV_TEAM_BASE = [{ cover:true, icon:"📅", label:"Hoy" }, { months:true, icon:"📅", label:"Calendario" }, { team:true, icon:"👥", label:"Todo el equipo" }, { role:"Diseñador", area:"Diseño", icon:"🎨", label:"Diseño gráfico" }, { role:"CM", area:"CM", icon:"🎬", label:"Community managers" }];
 // v271: después, la semana de Diseño gráfico y la de CM, cada una dividida por marca: Superseis → Stock → Delimarket.
 // v273: solo esas tres (sin “Otras marcas”, pedido de Admin total).
 function tvTeamSlides(){
@@ -8900,6 +8933,7 @@ function tvTeamSlide(sl){
       <div class="more" hidden></div></div>`; };
   const dots = `<div class="ttdots">${tvTeamSlides().map((x, k) => `<button class="tvdot ${k === tvTeam.i ? "on" : ""}" data-ttgo="${k}" aria-label="${x.label}"></button>`).join("")}</div>`;
   if (sl.cover) return tvCoverSlide(dots);
+  if (sl.months) return tvMonthsSlide(dots);
   if (sl.week) return tvWeekSlide(sl, dots);
   if (sl.team) return `<div class="ttslide">
     <div class="ttsum one">${big("Carga del equipo completo <small>(Diseño + CM)</small>", team, tL, "all")}</div>
@@ -8980,6 +9014,34 @@ function tvCoverSlide(dots){
     </div>
   </div>`;
 }
+// v282 · Segunda pantalla de TV Team: el calendario general, cuatro meses a la vista (el anterior, el actual resaltado y los dos
+// que vienen), de lunes a domingo, con hoy marcado como en la portada.
+const monthAdd = (v, k) => { const [y, m] = v.split("-").map(Number), d = new Date(y, m - 1 + k, 1); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
+// v283: los feriados nacionales de Paraguay (fechas de la ley; Semana Santa según la Pascua de cada año) y los cumpleaños del equipo.
+// Si el Gobierno traslada un feriado por decreto, acá sigue saliendo en su fecha de siempre.
+function pyHolidays(y){
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30,
+    i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451), em = Math.floor((h + l - 7 * m + 114) / 31), ed = (h + l - 7 * m + 114) % 31 + 1;
+  const easter = `${y}-${String(em).padStart(2, "0")}-${String(ed).padStart(2, "0")}`;
+  return { [`${y}-01-01`]:"Año Nuevo", [`${y}-03-01`]:"Día de los Héroes", [addDays(easter, -3)]:"Jueves Santo", [addDays(easter, -2)]:"Viernes Santo", [`${y}-05-01`]:"Día del Trabajador",
+    [`${y}-05-14`]:"Independencia", [`${y}-05-15`]:"Independencia · Día de la Madre", [`${y}-06-12`]:"Paz del Chaco", [`${y}-08-15`]:"Fundación de Asunción",
+    [`${y}-09-29`]:"Victoria de Boquerón", [`${y}-12-08`]:"Virgen de Caacupé", [`${y}-12-25`]:"Navidad" };
+}
+const HOL_SHORT = { "Victoria de Boquerón":"Boquerón", "Virgen de Caacupé":"Caacupé", "Fundación de Asunción":"Fund. Asunción", "Independencia · Día de la Madre":"Día de la Madre", "Día del Trabajador":"Día del Trabajador" }; // para que entren en la casilla
+function tvMonthsSlide(dots){
+  const today = pyDate(Date.now()), cur = today.slice(0, 7), months = [-1, 0, 1, 2].map(k => monthAdd(cur, k));
+  const hol = Object.assign({}, ...[...new Set(months.map(mv => +mv.slice(0, 4)))].map(pyHolidays)), bd = {};
+  PEOPLE.filter(pp => pp.active !== false && pp.birthday && pp.role !== "TV").forEach(pp => { (bd[pp.birthday] = bd[pp.birthday] || []).push(pp.name.split(" ")[0]); });
+  const cal = (mv, i) => { const [y, m] = mv.split("-").map(Number), lead = wdOf(mv + "-01"), days = new Date(y, m, 0).getDate(), cells = [];
+    for (let k = 0; k < lead; k++) cells.push(`<span class="mcd out"></span>`);
+    for (let d = 1; d <= days; d++){ const ds = `${mv}-${String(d).padStart(2, "0")}`, wk = (lead + d - 1) % 7 >= 5, h = hol[ds], b = bd[ds.slice(5)], tip = [h, b && "Cumpleaños de " + b.join(", ")].filter(Boolean).join(" · ");
+      cells.push(`<span class="mcd${wk ? " wk" : ""}${ds < today ? " past" : ""}${ds === today ? " today" : ""}${h ? " hol" : ""}${b ? " bd" : ""}"${tip ? ` title="${esc(tip)}"` : ""}><b>${d}</b>${h ? `<small class="mch-h">${esc(HOL_SHORT[h] || h)}</small>` : ""}${b ? `<small class="mch-b">${icon("cake")}${esc(b.join(", "))}</small>` : ""}</span>`); }
+    while (cells.length % 7) cells.push(`<span class="mcd out"></span>`);
+    return `<div class="mccal${mv === cur ? " cur" : mv < cur ? " prev" : ""}" style="--i:${i}"><div class="mch"><b>${MONTHS_ES[m - 1]}</b> ${y}${mv === cur ? "<em>este mes</em>" : ""}</div>
+      <div class="mcg">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map((x, k) => `<span class="mcdh${k >= 5 ? " wk" : ""}">${x}</span>`).join("")}${cells.join("")}</div></div>`; };
+  return `<div class="ttslide mcslide"><div class="tthead"><b>📅 Calendario</b><span>${months.map(mv => mv === cur ? `<strong>${MONTHS_ES[+mv.slice(5) - 1]}</strong>` : MONTHS_ES[+mv.slice(5) - 1]).join(" · ")}</span><div class="mcleg"><span class="lh"><i></i>Feriado nacional</span><span class="lb">${icon("cake")}Cumpleaños</span></div>${dots}</div>
+    <div class="mcgrid">${months.map(cal).join("")}</div></div>`;
+}
 // Lo de la semana de un CM (lo mismo que cuenta su carga, sin los traslados ni la atención de mensajes de cada día, que suman
 // al % pero no son entregas) y cuántas terminó, cuántas están en proceso y cuántas sin empezar.
 const cmWeekTasks = pp => cmLoad(pp).all.filter(x => !x.trip && x.fn !== "mensajes");
@@ -8989,7 +9051,7 @@ function tvTeamShow(n){
   const sls = tvTeamSlides(); tvTeam.i = (n + sls.length) % sls.length;
   const wrap = document.querySelector("#content > div"); if (wrap) wrap.classList.remove("noanim"); // cada pantalla nueva se anima
   st.innerHTML = tvTeamSlide(sls[tvTeam.i]);
-  document.querySelector(".tvpage")?.classList.toggle("twon", !!sls[tvTeam.i].week); // v272: en las semanas, títulos de arriba chicos
+  document.querySelector(".tvpage")?.classList.toggle("twon", !!(sls[tvTeam.i].week || sls[tvTeam.i].months)); // v272: en las semanas (y el calendario), títulos de arriba chicos
   document.querySelector(".tvpage")?.classList.toggle("cvon", !!sls[tvTeam.i].cover); // v278: la portada trae su propia hora, clima y logos
   const bar = document.getElementById("ttBar"); if (bar){ bar.style.animation = "none"; void bar.offsetWidth; bar.style.animation = `tvt ${TV_TEAM_SECS}s linear both`; bar.style.animationPlayState = tvTeam.paused ? "paused" : "running"; }
   tvFit();
