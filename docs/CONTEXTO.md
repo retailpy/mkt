@@ -194,6 +194,11 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 ---
 
 ## 5. Otras cosas recientes (v137–v160)
+- **v287 · Fechas, temas y avisos de las TV (29/10/2026):** en **Pantallas TV** (`tvconf`), Admin total carga tres cosas, que se guardan en `s:TV_SCREENS.items` (la misma clave que ya leen todos y guarda solo Admin total; no hizo falta tocar la base):
+  - **Fecha importante** (ej. Semana Santa, Día del Padre; puede durar varios días): sale en el calendario de 4 meses de TV Team (estrella violeta, en la casilla y en la lista) y en “Temas y recordatorios”.
+  - **Tema del mes** (ej. Canastas navideñas, Corrida Superseis), con sus fechas (atajos: este mes, el que viene, en dos meses) y las TV donde sale: pantalla **“Temas y recordatorios”** con este mes y los dos que vienen (`tvTemasSoon`).
+  - **Aviso**, para las TV elegidas, del día que empieza al que termina: una pantalla **AVISO** grande en cada vuelta y una **franja roja arriba** en todas las pantallas de esa TV (`tvAvisoBar`).
+  - El aviso y los temas entran en la vuelta de cada TV justo después de la portada (`tvInfoSlides`, en TV Team, Redes e Impacto); si no hay nada cargado, las vueltas quedan como antes. En la app (sin TV elegida) se ve todo. Lo que ya pasó no sale. Se borra con el tachito (dos toques).
 - **v286 · Verdes de terminado, copy de Impacto prolijo y estaciones (29/10/2026):**
   - **Semanas de TV Team (solo en la pantalla):** verde = terminado. En Diseño, “Aprobado” (sigue diciendo Aprobado) va en verde fuerte (`TW_GREEN`), igual que “Publicado” de CM. En CM, Programado en verde clarito (`TW_LIGHT`), Publicado y Pautado en verde fuerte, y lo que antes salía verdoso sin estar terminado (revisión, listo) en amarillo (`twCmCol`).
   - **TV Impacto · copy y números:** Meta guarda solo las primeras 300 letras del copy. `capText` lo pone en una sola tira y, si vino cortado, lo termina en una palabra entera con “…”; `impFit` lo acorta por palabras hasta que entra, siempre con “…”, sin renglones cortados por la mitad. `capTitle` hace lo mismo con el título (primer renglón, hasta 90 letras). Todas las miniaturas tienen el mismo ancho (también los reels), así el copy arranca alineado.
