@@ -2247,11 +2247,11 @@ html.tvkiosk .tvcov,.tvpage:fullscreen .tvcov{min-height:calc(100vh - 12vh)} /* 
 .cv-date .cv-wd{display:block;font-size:clamp(18px,3.4vh,40px);font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#67e8f9}
 .cv-date b{display:block;font-size:clamp(34px,7.4vh,86px);font-weight:900;line-height:1.02;color:#fff;letter-spacing:-.01em}
 .cv-date .cv-y{display:block;font-size:clamp(14px,2.4vh,28px);color:var(--muted);margin-top:4px}
-.cv-clock b{display:block;font-size:clamp(56px,15vh,180px);font-weight:900;line-height:.95;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:-.02em;text-shadow:0 0 40px rgba(34,211,238,.25)}
+.cv-clock b{display:block;font-size:clamp(56px,15vh,180px);font-weight:400;line-height:.95;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:-.02em;text-shadow:0 0 40px rgba(34,211,238,.25)}
 .cv-clock small{display:block;font-size:clamp(12px,1.8vh,20px);color:var(--faint);margin-top:6px;letter-spacing:.08em;text-transform:uppercase}
 .cv-wx{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"i t" "d d";align-items:center;gap:clamp(6px,1.2vh,14px) clamp(12px,1.4vw,24px);padding:clamp(12px,2vh,24px) clamp(14px,1.6vw,28px);border-radius:22px;border:1px solid var(--line);background:linear-gradient(135deg,rgba(14,116,144,.25),var(--panel));animation:cvfade 1s ease .6s both}
 .cv-wxi{grid-area:i;width:clamp(56px,11vh,130px);height:clamp(56px,11vh,130px);color:#fcd34d}
-.cv-wxi .wxico{width:100%;height:100%;display:block}
+.cv-wxi .wxico{width:100%;height:100%;display:block;color:inherit}
 .cv-wxt{grid-area:t;display:flex;flex-direction:column}
 .cv-wxt b{font-size:clamp(40px,9vh,110px);font-weight:900;line-height:1;color:#fff}
 .cv-wxt span{font-size:clamp(14px,2.6vh,30px);color:#e2e8f0;font-weight:600}
@@ -2288,6 +2288,12 @@ html.tvkiosk .tvcov,.tvpage:fullscreen .tvcov{min-height:calc(100vh - 12vh)} /* 
 @keyframes cvtoday{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(34,211,238,.6),0 0 24px rgba(34,211,238,.5)}50%{transform:scale(1.08);box-shadow:0 0 0 10px rgba(34,211,238,0),0 0 44px rgba(34,211,238,.9)}}
 @keyframes cvring{0%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(1.35)}}
 @media (max-width:1000px){.cv-main{grid-template-columns:1fr}}
+/* v279 · la portada también es la primera pantalla de TV Redes y de TV Impacto: sin la franja de logos ni los títulos de arriba */
+.tvredes.cvon > .tvbrandrow{display:none!important}
+.tvredes.cvon .tvtitle{display:none}
+html.tvkiosk .tvimp.cvon > .tvbar,html.tvkiosk .tvimp.cvon > .tvdots,.tvimp.cvon:fullscreen > .tvbar,.tvimp.cvon:fullscreen > .tvdots{display:none}
+.tvredes .tvcov{flex:1}
+html.tvkiosk .tvredes .tvcov,.tvredes:fullscreen .tvcov,.tvstage:fullscreen .tvcov{min-height:0}
 /* v270 · TV Team: la semana de Diseño gráfico y la de CM */
 .tthead b .twb{font-style:normal;color:var(--c)}
 .twsum{display:flex;flex-wrap:wrap;gap:8px clamp(10px,1.2vw,22px);font-size:clamp(13px,1.8vh,20px);color:#cbd5e1}
@@ -3987,7 +3993,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v278";
+const APP_VER = "v279";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -4768,7 +4774,7 @@ const campStale = () => { const s = campSync(); return !s || (Date.now() - new D
 const impPubs = () => publicationsFor(impMonth());
 // v271: solo Superseis, Stock y Delimarket (como TV Redes), con las imágenes de las publicaciones bien grandes.
 const impBrands = () => IG_MAIN.filter(b => myBrands().includes(b));
-function impSlides(){ return [{ general:true, label:"Lo mejor de cada marca" }, ...impBrands().map(b => ({ brand:b, label:b }))]; }
+function impSlides(){ return [{ cover:true, label:"Hoy" }, { general:true, label:"Lo mejor de cada marca" }, ...impBrands().map(b => ({ brand:b, label:b }))]; } // v279: primero la portada (fecha, hora, clima y calendario)
 function impStatus(){
   const s = campSync();
   if (!s) return `<div class="impwarn">${icon("cloud-off")} <b>Datos no disponibles</b><span>Todavía no llegaron publicaciones desde Meta.</span></div>`;
@@ -4823,7 +4829,8 @@ function impShow(n){
   const st = document.getElementById("impStage"); if (!st) return;
   const sl = impSlides(); imp.i = (n + sl.length) % sl.length;
   const wrap = document.querySelector("#content > div"); if (wrap) wrap.classList.remove("noanim");
-  st.innerHTML = `<p class="tvtitle">${sl[imp.i].general ? "Lo mejor de cada marca" : "Top 10 · " + sl[imp.i].brand} · ${imp.i + 1} de ${sl.length}</p><div class="tvslide">${impSlide(sl[imp.i])}</div>`;
+  st.innerHTML = sl[imp.i].cover ? `<div class="tvslide">${tvCoverSlide("")}</div>` : `<p class="tvtitle">${sl[imp.i].general ? "Lo mejor de cada marca" : "Top 10 · " + sl[imp.i].brand} · ${imp.i + 1} de ${sl.length}</p><div class="tvslide">${impSlide(sl[imp.i])}</div>`;
+  st.closest(".tvredes")?.classList.toggle("cvon", !!sl[imp.i].cover);
   document.querySelectorAll("[data-impgo]").forEach((d, k) => d.classList.toggle("on", k === imp.i));
   impFit();
   const bar = document.getElementById("impBar"); if (bar){ bar.style.animation = "none"; void bar.offsetWidth; bar.style.animation = `tvt ${IMP_SECS}s linear both`; bar.style.animationPlayState = imp.paused ? "paused" : "running"; }
@@ -4845,6 +4852,7 @@ const tvRedesBrands = () => IG_MAIN.filter(b => myBrands().includes(b));
 const TVP_MED = 24;
 const TVP_PAGES = [{ k:"top", from:0, len:3, grid:[3, 1] }, { k:"big", from:3, len:10, grid:[5, 2] }, { k:"big", from:13, len:10, grid:[5, 2] }, { k:"med", from:23, len:TVP_MED, grid:[8, 3] }];
 function tvSlides(){ const bs = tvRedesBrands(); return [
+  { title:"Hoy", cover:true, html:() => tvCoverSlide("") }, // v279: primero la portada (fecha, hora, clima y calendario)
   { title:"Seguidores por cuenta", cls:"tvfol", html:() => followersPanel(bs) },
   { title:"Últimas publicaciones de Instagram", html:() => lastPostsPanel(bs, true) },
   { title:`Seguidores · ${monthName(MONTH)} contra ${monthName(prevMonth(MONTH))}`, cls:"tvcmp", html:() => followersTable(false, bs) },
@@ -4910,6 +4918,7 @@ function tvShow(n){
   const wrap = document.querySelector("#content > div"); if (wrap) wrap.classList.remove("noanim");
   st.innerHTML = `<div class="tvtimer"><i style="animation-duration:${TV_SECS}s;${tv.paused ? "animation-play-state:paused" : ""}"></i></div><p class="tvtitle">${slides[tv.i].title} · ${tv.i + 1} de ${slides.length}</p><div class="tvslide ${slides[tv.i].cls || ""}">${slides[tv.i].html()}</div>`;
   document.querySelectorAll(".tvdot").forEach((d, k) => d.classList.toggle("on", k === tv.i));
+  st.closest(".tvredes")?.classList.toggle("cvon", !!slides[tv.i].cover);
   tvPostsFit(); tvLastFit();
 }
 function tvStart(){ clearInterval(tv.timer); tv.timer = setInterval(() => { if (!tv.paused) tvShow(tv.i + 1); }, TV_SECS * 1000); }
