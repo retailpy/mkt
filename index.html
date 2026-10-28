@@ -12447,23 +12447,22 @@ const tvCfg = n => { const x = (TV_SCREENS || {})[n] || {}; return { v:TV_VIEWS.
 const tvView = v => TV_VIEWS.find(t => t[0] === v) || [v, v, "tv"];
 // v287 · Fechas, temas y avisos de las TV. Los carga Admin total en Pantallas TV y se guardan en s:TV_SCREENS.items:
 //   fecha → fecha importante (ej. Semana Santa, Día del Padre): en el calendario de 4 meses y en “Campañas y temas”.
-//   tema  → tema que no está en Planificación del mes (ej. Corrida Superseis), con sus fechas y las TV donde sale: en “Campañas y temas”.
+//   tema  → campaña o tema (ej. Navidad, Corrida Superseis), con sus fechas y las TV donde sale: en “Campañas y temas”.
 //   aviso → aviso para las TV elegidas, del día que empieza al que termina: el texto en la pantalla entera, una vez en cada vuelta,
 //           después de la portada (no es una alerta: sin sirena ni franja roja).
-const TVI_KIND = { fecha:["Fecha importante","star"], tema:["Tema del mes","sparkles"], aviso:["Aviso","megaphone"] };
+const TVI_KIND = { fecha:["Fecha importante","star"], tema:["Campaña o tema","sparkles"], aviso:["Aviso","megaphone"] };
 const tvItems = () => (Array.isArray(TV_SCREENS?.items) ? TV_SCREENS.items : []).filter(x => x && x.id && x.title && TVI_KIND[x.kind] && /^\d{4}-\d{2}-\d{2}$/.test(x.from || ""));
 const tviEnd = x => x.until && x.until >= x.from ? x.until : x.from;
 const tviForTv = x => x.kind === "fecha" || !tvKiosk || !Array.isArray(x.tvs) || !x.tvs.length || x.tvs.includes(tvKiosk); // en la app (sin TV elegida) se ve todo
 const tvAvisosNow = () => { const t = pyDate(Date.now()); return tvItems().filter(x => x.kind === "aviso" && tviForTv(x) && x.from <= t && tviEnd(x) >= t); };
-// “Campañas y temas”: las campañas de Planificación del mes y lo que se viene (con su ícono), los temas y las fechas importantes de
-// acá; de este mes y los dos que vienen. Cada cosa va en el mes en que empieza (o en este, si ya empezó) y lo que terminó no sale.
+// “Campañas y temas”: solo lo que Admin total carga acá en Pantallas TV (campañas o temas y fechas importantes), de este mes y los dos
+// que vienen. Cada cosa va en el mes en que empieza (o en este, si ya empezó) y lo que terminó no sale. v290: no toma nada solo de
+// Planificación del mes (todavía no está confirmado lo que hay ahí); el ícono sale del título (ej. Navidad → arbolito).
 function tvCampSoon(){
   const t = pyDate(Date.now()), cur = t.slice(0, 7), out = [0, 1, 2].map(k => ({ m:monthAdd(cur, k), items:[], fechas:[] }));
   const put = (x, list) => { if (!x.title || x.end < t) return; const g = x.start.slice(0, 7) < cur ? cur : x.start.slice(0, 7), col = out.find(o => o.m === g);
     if (col && !col[list].some(y => y.title.trim().toLowerCase() === x.title.trim().toLowerCase())) col[list].push(x); };
-  MONTH_CAMPAIGNS.forEach(c => put({ title:c.title, desc:c.desc || "", icon:campIcon(c), brands:campBrands(c), start:c.from || `${c.month}-01`, end:c.until || c.from || monthEnd(c.month) }, "items"));
-  UPCOMING.forEach(u => put({ title:u.title, desc:u.desc || "", icon:upIcon(u), brands:u.brands || [], start:upStart(u), end:upEnd(u) }, "items"));
-  tvItems().filter(x => x.kind === "tema" && tviForTv(x)).forEach(x => put({ title:x.title, desc:x.text || "", icon:"sparkles", brands:[], start:x.from, end:tviEnd(x) }, "items"));
+  tvItems().filter(x => x.kind === "tema" && tviForTv(x)).forEach(x => put({ title:x.title, desc:x.text || "", icon:pmGuessIcon(x.title, "Campaña") || "sparkles", brands:[], start:x.from, end:tviEnd(x) }, "items"));
   tvItems().filter(x => x.kind === "fecha").forEach(x => put({ title:x.title, start:x.from, end:tviEnd(x) }, "fechas"));
   out.forEach(o => ["items", "fechas"].forEach(k => o[k].sort((a, b) => a.start.localeCompare(b.start))));
   return out;
@@ -12528,7 +12527,7 @@ function pTvConf(){
   <div class="tvcgrid">${TV_N.map(n => { const c = tvCfg(n); return `<section class="panel tvccard"><header><b class="tvpn">TV ${n}</b><button type="button" class="btn sm" data-tvopen="${n}" title="Abre esta TV acá, como la ve el televisor">${icon("eye")} Ver</button></header>
     <label class="tvcname">Nombre (opcional)<input class="base" data-tvname="${n}" value="${esc(c.name)}" maxlength="40" placeholder="Ej.: Recepción, Oficina de Diseño" ${ed ? "" : "disabled"}></label>
     <div class="tvcopts" role="radiogroup" aria-label="Qué muestra la TV ${n}">${TV_VIEWS.map(([k, l, ic]) => `<label class="tvcopt${c.v === k ? " on" : ""}"><input type="radio" name="tvv${n}" value="${k}" data-tvview="${n}" ${c.v === k ? "checked" : ""} ${ed ? "" : "disabled"}>${icon(ic)}<span>${esc(l)}</span></label>`).join("")}</div>
-    <label class="tvcopt tvccamp${c.camp ? " on" : ""}"><input type="checkbox" data-tvcamp="${n}" ${c.camp ? "checked" : ""} ${ed ? "" : "disabled"}>${icon("megaphone")}<span>Al final de la vuelta: “Campañas y temas”</span></label></section>`; }).join("")}</div>
+    <label class="tvcopt tvccamp${c.camp ? " on" : ""}"><input type="checkbox" data-tvcamp="${n}" ${c.camp ? "checked" : ""} ${ed ? "" : "disabled"}>${icon("megaphone")}<span>Al final de la vuelta: “Campañas y temas” (lo cargado abajo)</span></label></section>`; }).join("")}</div>
   ${tvInfoAdmin(ed)}
   ${tvUserBox(ed)}`;
 }
@@ -12540,12 +12539,12 @@ function tvInfoAdmin(ed){
   const k = tvInfoUI.kind, [f0, u0] = tviDefaults(k), t = pyDate(Date.now()), all = tvItems(), st = x => tviEnd(x) < t ? "past" : x.from > t ? "next" : "now";
   const row = x => `<li class="tvir ${st(x)}"><span class="tvirk">${icon(TVI_KIND[x.kind][1])}</span><div><b>${esc(x.title)}</b>${x.text ? `<small>${esc(x.text)}</small>` : ""}<span>${esc(tviRange(x))}${x.kind === "fecha" ? " · en el calendario" : ` · ${x.tvs?.length && x.tvs.length < TV_N.length ? x.tvs.map(n => "TV " + n).join(", ") : "todas las TV"}`}${st(x) === "past" ? " · ya pasó" : st(x) === "now" ? (x.kind === "aviso" ? " · <em>en pantalla ahora</em>" : " · <em>ahora</em>") : ""}</span></div>
     ${ed ? `<button type="button" class="btn sm ghost" data-tvidel="${esc(x.id)}" title="Borrar">${icon("trash-2")}</button>` : ""}</li>`;
-  const grp = kind => { const l = all.filter(x => x.kind === kind).sort((a, b) => (st(a) === "past") - (st(b) === "past") || a.from.localeCompare(b.from)); return `<div class="tvig"><h3>${icon(TVI_KIND[kind][1])} ${kind === "fecha" ? "Fechas importantes" : kind === "tema" ? "Temas del mes" : "Avisos"} <small>${l.length || ""}</small></h3>${l.length ? `<ul>${l.map(row).join("")}</ul>` : `<p class="note">Nada cargado.</p>`}</div>`; };
+  const grp = kind => { const l = all.filter(x => x.kind === kind).sort((a, b) => (st(a) === "past") - (st(b) === "past") || a.from.localeCompare(b.from)); return `<div class="tvig"><h3>${icon(TVI_KIND[kind][1])} ${kind === "fecha" ? "Fechas importantes" : kind === "tema" ? "Campañas y temas" : "Avisos"} <small>${l.length || ""}</small></h3>${l.length ? `<ul>${l.map(row).join("")}</ul>` : `<p class="note">Nada cargado.</p>`}</div>`; };
   return `<section class="panel tviadm"><h2 class="pmh">${pmIco("calendar-heart")}Fechas, temas y avisos de las TV</h2>
-    <p class="note" style="margin:0">Al final de cada vuelta sale <b>“Campañas y temas”</b>: las campañas de <a href="#planmes" data-page="planmes">Planificación del mes</a> y lo que se viene, con su ícono, de este mes y los dos que vienen (en cada TV se elige arriba si sale). Acá podés sumar: <b>Fecha importante</b>, que sale también en el calendario de 4 meses (TV Team); <b>Tema del mes</b>, algo que no está en Planificación, en las TV que elijas. <b>Aviso</b>: en las TV que elijas, del día que empieza al que termina, el texto en la pantalla entera, una vez en cada vuelta.</p>
+    <p class="note" style="margin:0"><b>Campaña o tema</b> (ej. Navidad, Corrida Superseis): sale al final de cada vuelta en <b>“Campañas y temas”</b>, con un ícono según el título, en las TV que elijas, junto con lo de este mes y los dos que vienen (si no cargás nada, esa pantalla no sale). <b>Fecha importante</b>: sale en el calendario de 4 meses (TV Team) y en “Campañas y temas”. <b>Aviso</b>: en las TV que elijas, del día que empieza al que termina, el texto en la pantalla entera, una vez en cada vuelta.</p>
     ${ed ? `<div class="tviform">
       <div class="chips tvik" role="radiogroup" aria-label="Qué querés agregar">${Object.entries(TVI_KIND).map(([kk, [l, ic]]) => `<label class="tvcopt${k === kk ? " on" : ""}"><input type="radio" name="tvik" value="${kk}" data-tvikind ${k === kk ? "checked" : ""}>${icon(ic)}<span>${l}</span></label>`).join("")}</div>
-      <label>Título<input class="base" id="tviTitle" maxlength="80" value="${esc(tvInfoUI.title)}" placeholder="${k === "fecha" ? "Ej.: Semana Santa, Día del Padre" : k === "tema" ? "Ej.: Corrida Superseis" : "Ej.: Mañana inventario, llegar 7:30"}"></label>
+      <label>Título<input class="base" id="tviTitle" maxlength="80" value="${esc(tvInfoUI.title)}" placeholder="${k === "fecha" ? "Ej.: Semana Santa, Día del Padre" : k === "tema" ? "Ej.: Navidad, Canastas navideñas, Corrida Superseis" : "Ej.: Mañana inventario, llegar 7:30"}"></label>
       <label>Detalle (opcional)<textarea class="base" id="tviText" maxlength="240" rows="2" placeholder="Lo que haga falta recordar">${esc(tvInfoUI.text)}</textarea></label>
       <div class="tvidates"><label>${k === "fecha" ? "Fecha" : "Desde"}<input type="date" class="base" id="tviFrom" value="${f0}"></label><label>${k === "fecha" ? "Hasta (si dura varios días)" : "Hasta"}<input type="date" class="base" id="tviUntil" value="${u0}"></label>
         ${k === "tema" ? `<div class="chips"><button type="button" class="btn sm" data-tvimes="0">Este mes</button><button type="button" class="btn sm" data-tvimes="1">El mes que viene</button><button type="button" class="btn sm" data-tvimes="2">En dos meses</button></div>` : ""}</div>
@@ -12571,7 +12570,7 @@ document.addEventListener("click", e => {
     const item = { id:"tvi" + Date.now(), kind:k, title, text, from, until:until && until !== from ? until : "", tvs:k === "fecha" ? [] : tvs.length === TV_N.length ? [] : tvs, by:viewer.id, at:new Date().toISOString() };
     TV_SCREENS = { ...(TV_SCREENS || {}), items:[...tvItems(), item] }; window.RMH?.flushNow?.();
     tvInfoUI = { kind:k, title:"", text:"" }; render();
-    return toast(`${TVI_KIND[k][0]} agregado${k === "fecha" ? "a al calendario de las TV" : k === "tema" ? " a “Campañas y temas”" : ": sale en las TV elegidas " + tviRange(item)}.`); }
+    return toast(k === "fecha" ? "Fecha importante agregada al calendario de las TV." : k === "tema" ? `“${title}” se agregó a “Campañas y temas”.` : `Aviso agregado: sale en las TV elegidas ${tviRange(item)}.`); }
   const del = e.target.closest("[data-tvidel]"); if (del){
     if (viewer.role !== "Admin total" || window.RMH?.previewing) return;
     if (!confirmTap(del, "tvi:" + del.dataset.tvidel, "¿Borrar?")) return;
