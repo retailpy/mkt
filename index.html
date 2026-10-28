@@ -4272,7 +4272,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v291";
+const APP_VER = "v292";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -12471,7 +12471,8 @@ function tvCampSoon(){
 const tvCampOn = () => !tvKiosk || tvCfg(tvKiosk).camp; // en Pantallas TV se elige en qué TV sale
 // Las pantallas que se suman en la vuelta de cada TV: los avisos después de la portada y “Campañas y temas” al final.
 const tvAvisoSlides = () => tvAvisosNow().map(a => ({ info:"aviso", av:a.id, full:true, icon:"📢", label:"Aviso" }));
-const tvCampSlides = () => tvCampOn() && tvCampSoon().some(g => g.items.length || g.fechas.length) ? [{ info:"camp", icon:"📣", label:"Campañas y temas" }] : [];
+// v292: solo si hay al menos una campaña o tema guardado en Pantallas TV (las fechas importantes solas no alcanzan: ya están en el calendario).
+const tvCampSlides = () => tvCampOn() && tvCampSoon().some(g => g.items.length) ? [{ info:"camp", icon:"📣", label:"Campañas y temas" }] : [];
 const tviRange = x => { const e = tviEnd(x), d = v => `${+v.slice(8)} de ${MONTHS_ES[+v.slice(5, 7) - 1]}`;
   return e === x.from ? d(x.from) : x.from.slice(0, 7) === e.slice(0, 7) ? `del ${+x.from.slice(8)} al ${d(e)}` : `del ${d(x.from)} al ${d(e)}`; };
 // El aviso ocupa la pantalla entera (como la portada): arriba el logo y “Aviso”, en el medio el texto bien grande y abajo las fechas
