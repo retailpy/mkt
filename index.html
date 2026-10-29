@@ -6262,7 +6262,7 @@ function aprRow(x, c){
 }
 function aprBlock(first){
   if (!aprOn()) return "";
-  const gs = first === "cm" ? APR_GROUPS.slice().reverse() : APR_GROUPS, all = gs.flatMap(g => g[3].map(([k, l, c, f]) => ({ k, l, c, list:f().sort((a, b) => String(aprSince(a)).localeCompare(String(aprSince(b)))) })));
+  const gs = first === "cm" ? APR_GROUPS.slice().reverse() : APR_GROUPS, all = gs.flatMap(g => g[3].map(([k, l, c, f]) => ({ k, l, c, list:f().sort((a, b) => String(aprSince(a) || "9").localeCompare(String(aprSince(b) || "9"))) })));
   const tot = all.reduce((t, x) => t + x.list.length, 0), G = all.find(x => x.k === aprUI.g);
   const card = x => { const n = x.list.length, old = n ? aprSince(x.list[0]) : ""; return `<button type="button" class="pubst aprst${aprUI.g === x.k ? " on" : ""}${n ? "" : " zero"}" data-aprg="${x.k}" aria-pressed="${aprUI.g === x.k}" style="--c:${x.c}"><b class="num">${n}</b><span>${x.l}</span><small>${!n ? "nada para aprobar" : old ? `el más viejo: ${dm(old)}` : "esperando tu revisión"}</small></button>`; };
   return `<section class="panel aprbox" aria-label="Falta tu aprobación"><div class="aprh"><h2 class="pmh">${pmIco("badge-check")}Falta tu aprobación</h2><span class="aprtot${tot ? "" : " zero"}"><b class="num">${tot}</b> ${tot === 1 ? "cosa" : "cosas"} para revisar o aprobar</span></div>
