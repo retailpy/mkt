@@ -4272,7 +4272,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v292";
+const APP_VER = "v293";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -5176,7 +5176,7 @@ document.addEventListener("click", e => {
   const t = e.target.closest("[data-imp]"); if (!t) return; const a = t.dataset.imp;
   if (a === "next" || a === "prev"){ impShow(imp.i + (a === "next" ? 1 : -1)); impLoop(); }
   else if (a === "pause"){ imp.paused = !imp.paused; t.textContent = imp.paused ? "▶ Seguir" : "⏸ Pausar"; const bar = document.getElementById("impBar"); if (bar) bar.style.animationPlayState = imp.paused ? "paused" : "running"; if (!imp.paused){ impShow(imp.i); impLoop(); } }
-  else if (a === "full") tvGoFull(document.querySelector(".tvimp"));
+  else if (a === "full") tvGoFull("tvimpacto");
 });
 // v270–v277: TV Redes muestra solo Superseis, Stock y Delimarket. Primero las tres juntas: seguidores (números bien grandes) →
 // últimas publicaciones de Instagram de las tres (4:5) → este mes contra el anterior (letra grande). Después, por turno, cada marca:
@@ -12504,19 +12504,29 @@ function tviFit(){ const mg = document.querySelector(".mcgrid"); if (mg && inner
   g.querySelectorAll(".tvitm").forEach(m => { m.classList.remove("dense", "denser"); if (m.scrollHeight > m.clientHeight + 1) m.classList.add("dense"); if (m.scrollHeight > m.clientHeight + 1) m.classList.add("denser"); }); }
 const pyDateLong = () => { const t = pyDate(Date.now()); return `${new Intl.DateTimeFormat("es-PY", { timeZone:PY_TZ, weekday:"long" }).format(new Date())} ${+t.slice(8)} de ${MONTHS_ES[+t.slice(5, 7) - 1]}`.replace(/^./, c => c.toUpperCase()); };
 let tvKiosk = (() => { try { return TV_N.includes(+localStorage.getItem("rmh-tvkiosk")) ? +localStorage.getItem("rmh-tvkiosk") : 0; } catch { return 0; } })();
-const tvOn = () => !!tvKiosk && !!viewer && can(tvCfg(tvKiosk).v);
+// v293: tvSolo = una Vista TV abierta a pantalla completa dentro de la app desde su botón (sin número de TV, no queda guardada).
+let tvSolo = "";
+const tvOn = () => !!viewer && (tvKiosk ? can(tvCfg(tvKiosk).v) : !!tvSolo && can(tvSolo));
 // Pantalla completa del navegador entero (no la de un bloque, como el botón de cada Vista TV): así no se corta cuando la
 // pantalla se redibuja con datos nuevos. El aspecto es el mismo que el de la pantalla completa de cada vista (estilos tvkiosk).
 let tvWasFull = false;
-function tvFull(){ const d = document.documentElement; if (!document.fullscreenElement && d.requestFullscreen && document.fullscreenEnabled !== false) d.requestFullscreen().catch(() => {}); }
-// v290: los botones “Pantalla completa” de cada Vista TV. Si el aparato no deja (iPhone, o la app instalada en el iPad), dice cómo verla grande.
+// v293: “Pantalla completa” funciona siempre: la Vista TV ocupa toda la app (sin menú ni encabezados, con “Salir”) y además se
+// pide la pantalla completa del navegador. Si el aparato no la da (iPad o iPhone, sobre todo con la app instalada), igual queda
+// grande dentro de la app y se avisa una vez cómo esconder también las barras de Safari.
 const fsCan = () => !!document.documentElement.requestFullscreen && document.fullscreenEnabled !== false;
-const fsHelp = () => isInstalledApp() ? "En la app instalada ya se ve lo más grande que permite este aparato (la barra de arriba no se puede esconder)."
-  : /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "Este iPad/iPhone no deja poner pantalla completa desde el navegador. Tocá Compartir → “Agregar a pantalla de inicio” y abrí la app desde ese ícono: se ve sin las barras del navegador."
-  : "Tu navegador no permitió la pantalla completa.";
-function tvGoFull(el){ if (el && el.requestFullscreen && fsCan()) return el.requestFullscreen().catch(() => toast(fsHelp())); toast(fsHelp()); }
-function tvOpen(n){ tvKiosk = n; try { localStorage.setItem("rmh-tvkiosk", n); } catch {} tvFull(); render(); window.scrollTo(0, 0); }
-function tvExit(){ tvKiosk = 0; tvWasFull = false; try { localStorage.removeItem("rmh-tvkiosk"); } catch {} if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); page = isTV() ? "tvpant" : "tvconf"; render(); }
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+let fsTipShown = false;
+function tvFull(){
+  const d = document.documentElement;
+  if (!document.fullscreenElement && fsCan()) d.requestFullscreen().catch(() => document.body.requestFullscreen?.().catch(() => {}));
+  setTimeout(() => { if (document.fullscreenElement || fsTipShown || !tvOn()) return; fsTipShown = true;
+    toast(isInstalledApp() ? "Listo: la vista ocupa toda la pantalla de la app. Para salir, tocá la pantalla y “Salir”."
+      : isIOS() ? "Listo: la vista ocupa toda la pantalla. Para esconder también la barra de Safari: Compartir → “Agregar a pantalla de inicio” y abrí la app desde ese ícono."
+      : "Listo: la vista ocupa toda la pantalla de la app (el navegador no dejó esconder sus barras)."); }, 900);
+}
+function tvGoFull(view){ tvSolo = view; tvFull(); render(); window.scrollTo(0, 0); }
+function tvOpen(n){ tvKiosk = n; tvSolo = ""; try { localStorage.setItem("rmh-tvkiosk", n); } catch {} tvFull(); render(); window.scrollTo(0, 0); }
+function tvExit(){ const back = tvSolo; tvKiosk = 0; tvSolo = ""; tvWasFull = false; try { localStorage.removeItem("rmh-tvkiosk"); } catch {} if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); page = isTV() ? "tvpant" : back || "tvconf"; render(); }
 // Para el usuario TV: los cuatro botones, arriba el logo de Superseis, Delimarket y Stock y abajo “Cerrar sesión” (v270).
 const LOGOUT_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>';
 function pTvPant(){
@@ -12618,19 +12628,19 @@ function tvKioskUi(){
   let b = document.getElementById("tvKbar");
   if (!tvOn()){ b?.remove(); return; }
   const fresh = !b; if (!b){ b = document.createElement("div"); b.id = "tvKbar"; b.className = "tvkbar"; b.setAttribute("role", "toolbar"); b.setAttribute("aria-label", "Televisor"); document.body.appendChild(b); }
-  const c = tvCfg(tvKiosk);
-  b.innerHTML = `<span class="tvkn">TV ${tvKiosk}${c.name ? " · " + esc(c.name) : ""}</span>${document.fullscreenElement || (!fsCan() && isInstalledApp()) ? "" : `<button type="button" class="btn sm" data-tvfull>⛶ Pantalla completa</button>`}<button type="button" class="btn sm primary" data-tvexit>✕ Salir</button>`;
+  const c = tvKiosk ? tvCfg(tvKiosk) : { name:"" };
+  b.innerHTML = `<span class="tvkn">${tvKiosk ? `TV ${tvKiosk}${c.name ? " · " + esc(c.name) : ""}` : esc(tvView(tvSolo)[1])}</span>${document.fullscreenElement || !fsCan() ? "" : `<button type="button" class="btn sm" data-tvfull>⛶ Pantalla completa</button>`}<button type="button" class="btn sm primary" data-tvexit>✕ Salir</button>`;
   if (fresh) tvKbarShow();
 }
-["mousemove","touchstart","keydown"].forEach(t => document.addEventListener(t, () => { if (tvKiosk) tvKbarShow(); }, { passive:true }));
-document.addEventListener("fullscreenchange", () => { if (!tvKiosk) return;
+["mousemove","touchstart","keydown"].forEach(t => document.addEventListener(t, () => { if (tvKiosk || tvSolo) tvKbarShow(); }, { passive:true }));
+document.addEventListener("fullscreenchange", () => { if (!tvKiosk && !tvSolo) return;
   if (document.fullscreenElement) tvWasFull = true;
   else if (tvWasFull){ tvWasFull = false; tvExit(); return; } // se salió de la pantalla completa (Esc, control remoto o “Salir”): vuelve a los botones
   tvKioskUi(); });
 document.addEventListener("click", e => {
   const o = e.target.closest("[data-tvopen]"); if (o){ tvOpen(+o.dataset.tvopen); return; }
   if (e.target.closest("[data-tvexit]")){ tvExit(); return; }
-  if (e.target.closest("[data-tvfull]")){ if (fsCan()) tvFull(); else toast(fsHelp()); return; }
+  if (e.target.closest("[data-tvfull]")){ tvFull(); return; }
   if (e.target.closest("[data-tvlogout]")){ tvKiosk = 0; try { localStorage.removeItem("rmh-tvkiosk"); } catch {} document.getElementById("logout")?.click(); }
 });
 function pPerfil(){
@@ -14719,7 +14729,7 @@ function render(){
   render.goingBack = false; render.prevPage = page; render.prevFicha = jobUI.ficha; render.prevForm = jobUI.form;
   if (page === "perfil"){ page = "config"; cfgTab = "perfil"; } // Mi Perfil se edita solo en Configuración // y el de redes, dentro de Diseño para Redes
   if (!can(page)) page = isTV() ? "tvpant" : can("dashboard") ? "dashboard" : can("inicio") ? "inicio" : can("inbox") ? "inbox" : "perfil";
-  if (tvOn()){ const v = tvCfg(tvKiosk).v; if (page !== v) page = v; } // v266: un televisor muestra siempre lo que eligió Admin total (si lo cambia, se cambia solo)
+  if (tvOn()){ const v = tvKiosk ? tvCfg(tvKiosk).v : tvSolo; if (page !== v) page = v; } // v266: un televisor muestra siempre lo que eligió Admin total (si lo cambia, se cambia solo)
   document.documentElement.classList.toggle("tvrole", isTV()); document.documentElement.classList.toggle("tvkiosk", tvOn());
   if (isCalPage() && (brandFilter === "Todas" || brandFilter === "Materiales")) brandFilter = myGroups()[0]; // calendarios: una marca a la vez
   if (brandFilter === "Materiales") brandFilter = "Todas"; // Cartelería ahora es su propia sección
@@ -14889,13 +14899,13 @@ document.addEventListener("click", e => {
     else if (a === "pause"){ tvTeam.paused = !tvTeam.paused; tt.textContent = tvTeam.paused ? "▶ Seguir" : "⏸ Pausar"; const bar = document.getElementById("ttBar"); if (bar) bar.style.animationPlayState = tvTeam.paused ? "paused" : "running"; if (!tvTeam.paused){ tvTeamShow(tvTeam.i); tvTeamLoop(); } }
     return; }
   const t = e.target.closest("[data-tv],[data-tvgo],[data-tvteam]"); if (!t) return;
-  if (t.dataset.tvteam){ tvGoFull(document.querySelector(".tvpage")); return; }
+  if (t.dataset.tvteam){ tvGoFull("tv"); return; }
   if (t.dataset.tvgo){ tvShow(+t.dataset.tvgo); tvStart(); return; }
   const a = t.dataset.tv;
   if (a === "next"){ tvShow(tv.i + 1); tvStart(); }
   else if (a === "prev"){ tvShow(tv.i - 1); tvStart(); }
   else if (a === "pause"){ tv.paused = !tv.paused; t.textContent = tv.paused ? "▶ Seguir" : "⏸ Pausar"; const bar = document.querySelector(".tvtimer i"); if (bar) bar.style.animationPlayState = tv.paused ? "paused" : "running"; if (!tv.paused){ tvShow(tv.i); tvStart(); } }
-  else if (a === "full") tvGoFull(document.getElementById("tvStage"));
+  else if (a === "full") tvGoFull("tvredes");
 });
 document.addEventListener("click", e => {
   const t = e.target.closest("[data-dbrand]"); if (!t) return;
