@@ -3893,7 +3893,7 @@ const ROLE_DEFAULTS = {
   "CM": ROLE_CM,
   "Diseñador": ROLE_DESIGN,
   "Revisor": ["inbox"],
-  "Comercial": ["dashboard","comercial","pedcom"],
+  "Comercial": ["comercial","pedcom"],
   "TV": ["tvpant"],
 };
 const PEOPLE = [
@@ -3926,10 +3926,10 @@ const ROLES = ["Admin total","Admin","Diseñador","CM","Revisor","Comercial","TV
 // su cuenta y la guía. Sin chat, sin pedidos, sin datos del equipo: la base tampoco le deja leer otra cosa.
 const isRevisor = () => viewer?.role === "Revisor";
 const REVISOR_SEE = ["inbox","perfil","config","guia"];
-// Comercial (v242): los compradores (ej. Gisella Aquino). Dashboard (solo sus supermercados), las ofertas de Comercial y sus
-// Pedidos de activaciones. Sin chat, sin el equipo y sin nada del proceso de Diseño o CM: la base tampoco le deja leer otra cosa.
+// Comercial (v242): los compradores (ej. Gisella Aquino). Las ofertas de Comercial y sus Pedidos de activaciones (v297: sin
+// Dashboard; entra por Comercial). Sin chat, sin el equipo y sin nada del proceso de Diseño o CM: la base tampoco le deja leer otra cosa.
 const isComercial = () => viewer?.role === "Comercial";
-const COMERCIAL_SEE = ["dashboard","comercial","pedcom","perfil","config","guia"];
+const COMERCIAL_SEE = ["comercial","pedcom","perfil","config","guia"];
 // TV (v266): el usuario de los televisores de la oficina. Solo ve los botones TV 1 a TV 4 y la pantalla que Admin total eligió
 // para cada uno (Vista TV → Pantallas TV). Sin menú, sin chat y sin avisos emergentes; la base no le deja guardar nada más que su presencia.
 const isTV = () => viewer?.role === "TV";
@@ -3941,7 +3941,7 @@ const ROLE_INFO = {
   "Diseñador":"Ve todo menos Vista TV, los historiales, Pauta Meta Ads, el Informe mensual y Usuarios (esas son solo para Admin). Admin total puede sacarle o darle secciones. No ve los mensajes de las cuentas ni los reclamos.",
   "CM":"Ve todo menos Vista TV, los historiales, Pauta Meta Ads, el Informe mensual y Usuarios (esas son solo para Admin). Admin total puede sacarle o darle secciones.",
   "Revisor":"Para la revisión de Meta: solo Mensajes de las cuentas (mensajes, comentarios y menciones de Instagram y Facebook) y contestarlos. No ve el chat, los pedidos ni los datos del equipo.",
-  "Comercial":"Compradores: Dashboard de sus supermercados, las ofertas de Comercial y la hoja para pedir activaciones (con su calendario). No ve el chat, el equipo ni el proceso de Diseño o CM: solo sus pedidos y cuándo se publicaron.",
+  "Comercial":"Compradores: las ofertas de Comercial y la hoja para pedir activaciones (con su calendario). No ve el chat, el equipo ni el proceso de Diseño o CM: solo sus pedidos y cuándo se publicaron.",
   "TV":"Para los televisores de la oficina: solo ve los botones TV 1, TV 2, TV 3 y TV 4, y cada TV muestra la pantalla que Admin total eligió en Vista TV → Pantallas TV. No ve el menú, el chat ni nada más.",
 };
 let resetRequests = [];
@@ -4298,7 +4298,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v296";
+const APP_VER = "v297";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -5071,7 +5071,7 @@ function lastPostsPanel(bs, fill = false){ // fill (v276, TV): si una marca tien
   const rows = bs.map(b => ({ b, list:nine(b), h:META_POSTS[b]?.handle })).filter(r => r.list.length);
   return `<div class="panel flush${fill ? " tvlp" : ""}"><div class="panel-h cyan"><h2 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram</h2><div class="tag-row"><span class="tag">${monthLabel(MONTH)}</span><span class="tag">Fuente: Meta</span>${updTag(postsUpdated())}${rows.length > 1 ? `<button type="button" class="btn sm" data-lpfull="${esc(rows.map(r => r.b).join(","))}">${icon("maximize-2")} Ver todas en grande</button>` : ""}${metaBtn("publicaciones", "Publicaciones")}</div></div>
     <div class="panel-b">${rows.length ? rows.map(r => `<div class="lpost"><div class="lph">${brandTag(r.b)}${r.h ? `<span class="note">${esc(r.h)}</span>` : ""}<button type="button" class="btn sm lpbig" data-lpfull="${esc(rows.map(x => x.b).join(","))}" data-lpsel="${esc(r.b)}" title="Ver las 9 de ${esc(r.b)} en grande, con sus números">${icon("maximize-2")} Ver en grande</button></div><div class="lpgrid">${r.list.map(x => { const pp = { img:x.img, format:x.type };
-      return `<a class="lpitem" href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="${esc((x.cap || "").slice(0, 140))}"><span class="pwrap">${pubThumb(pp, "lg")}${reelBadge(x)}${x._m ? `<span class="tvpmes">${monthName(x._m)}</span>` : ""}</span><span class="lpmeta">${dm(pyDate(x.ts))} · ♥ ${dots(x.likes || 0)}</span></a>`; }).join("")}</div></div>`).join("")
+      return `<a class="lpitem" href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="${esc((x.cap || "").slice(0, 140))}"><span class="pwrap">${pubThumb(pp, "lg")}${reelBadge(x)}${x._m ? `<span class="tvpmes">${monthName(x._m)}</span>` : ""}</span><span class="lpmeta">${dm(pyDate(x.ts))}${fill ? "" : ` · ♥ ${dots(x.likes || 0)}`}</span></a>`; }).join("")}</div></div>`).join("")
       : `<div class="empty">${isFuture() ? `${monthLabel(MONTH)} todavía no empezó: acá van a salir sus publicaciones.` : `Todavía no hay publicaciones de ${monthName(MONTH)}: llegan con la actualización diaria de Meta.`}</div>`}
       ${rows.length && bs.some(b => !rows.some(r => r.b === b)) ? `<p class="note" style="margin:8px 0 0">Todavía sin publicaciones en ${monthName(MONTH)}: ${bs.filter(b => !rows.some(r => r.b === b)).join(", ")}${canMetaRefresh() ? " (tocá “Actualizar”)" : ""}.</p>` : ""}</div></div>`;
 }
@@ -5108,9 +5108,9 @@ const impBrands = () => IG_MAIN.filter(b => myBrands().includes(b));
 // cargadas no sale). En cada mes, lo mejor de cada marca y el top 10 de cada una; y después de cada pantalla de imágenes, otra con
 // esas mismas publicaciones, su copy y sus números (tab).
 const impMonths = () => { const m0 = impMonth(), m1 = prevMonth(m0); return [m0, m1, prevMonth(m1)].filter((m, k) => !k || publicationsFor(m).some(p => impBrands().includes(p.brand))); };
-function impSlides(){ // v279: primero la portada (fecha, hora, clima y calendario)
-  return [...(tvAllFirst() ? [{ cover:true, label:"Hoy" }] : []), ...tvAvisoSlides(), ...impMonths().flatMap(m => [{ general:true, m }, ...impBrands().map(b => ({ brand:b, m }))].flatMap(x => {
-    const l = `${x.general ? "Lo mejor de cada marca" : "Top 10 · " + x.brand} · ${monthName(m)}`; return [{ ...x, label:l }, { ...x, tab:true, label:l + " · copy y números" }]; })), ...tvCampSlides()];
+function impSlides(){ // v279: primero la portada (fecha, hora, clima y calendario); v297: sin “Lo mejor de cada marca”, solo el Top 10 de cada una
+  return [...(tvAllFirst() ? [{ cover:true, label:"Hoy" }] : []), ...tvAvisoSlides(), ...impMonths().flatMap(m => impBrands().map(b => ({ brand:b, m })).flatMap(x => {
+    const l = `Top 10 · ${x.brand} · ${monthName(m)}`; return [{ ...x, label:l }, { ...x, tab:true, label:l + " · copy y números" }]; })), ...tvCampSlides()];
 }
 function impStatus(){
   const s = campSync();
@@ -5139,11 +5139,6 @@ function impSlide(sl){
     <div class="impov">${brandOn ? `<span class="bname" style="--c:${BRANDS[p.brand]}"><i></i>${p.brand}</span>` : ""}<b class="impr">${ICO.eye}${dots(pubScore(p))}<small>${isNum(p.reach) ? "alcance" : "interacciones"}</small></b>
       <span class="impsub"><span>${ICO.heart}${dots(p.likes || 0)}</span><span>${icon("message-circle")}${dots(p.comments || 0)}</span><span>${dm(p.date)}</span></span>${brandOn ? `<span class="impt">${esc(p.title)}</span>` : ""}</div></div>`;
   const grid = (rows, gen) => `<div class="impgrid${gen ? " gen" : ""}">${rows.filter(r => r.length).map(r => `<div class="improw">${r.join("")}</div>`).join("")}</div>`;
-  if (sl.general){
-    const top = impBrands().map(b => best(pubs, b)[0] || best(prevPubs, b)[0]).filter(Boolean).sort((a, c) => !!a._m - !!c._m || pubScore(c) - pubScore(a));
-    return `<div class="impslide${sl.tab ? " imptabs" : ""}"><div class="imphead"><div class="it">${ICO.top}<div><b>Lo mejor de cada marca · <span class="impm">${ml}</span></b><span>La publicación de Instagram con más alcance (o interacciones) de Superseis, Stock y Delimarket${sl.tab ? " · su copy y sus números" : ""}</span></div></div></div>
-      ${top.length ? sl.tab ? impTab(top, true) : grid([top.map((p, k) => card(p, k, true))], true) : `<div class="empty">Todavía no hay publicaciones de ${monthName(m)} cargadas desde Meta.</div>`}</div>`;
-  }
   const b = sl.brand, f = folOf(b, folMonth(m)), fn = v => isNum(v) ? dots(v) : NO_DATA;
   const cur = best(pubs, b).slice(0, 10), list = [...cur, ...best(prevPubs, b).slice(0, 10 - cur.length)];
   const tot = k => cur.reduce((a, p) => a + (+p[k] || 0), 0), cards = list.map((p, k) => card(p, k, false));
@@ -5250,7 +5245,7 @@ function tvPostsSlide(b, k = 0){
   if (!list.length) return `<div class="empty">Todavía no hay publicaciones de ${b}: llegan con la actualización diaria de Meta.</div>`;
   const med = pg.k === "med", rest = list.slice(pg.from), more = med && rest.length > pg.len ? rest.length - pg.len + 1 : 0;
   const shown = more ? rest.slice(0, pg.len - 1) : rest.slice(0, pg.len);
-  const card = (x, i) => `<div class="tvpc${x._m ? " prev" : ""}" style="--k:${i}"><span class="pwrap">${pubThumb({ img:x.img, format:x.type }, "tvpi")}${reelBadge(x)}${x._m ? `<span class="tvpmes">${monthName(x._m)}</span>` : ""}</span><div class="tvpinfo"><div class="tvpm"><b>${dm(pyDate(x.ts))}</b><span>${ICO.heart}${dots(x.likes || 0)}</span>${pg.k === "top" ? `<span>${icon("message-circle")}${dots(x.comments || 0)}</span>` : ""}${!med && isNum(x.reach) ? `<span class="rch">${ICO.eye}${dots(x.reach)}</span>` : ""}</div><div class="tvpcap">${esc(capLine(x))}</div></div></div>`;
+  const card = (x, i) => `<div class="tvpc${x._m ? " prev" : ""}" style="--k:${i}"><span class="pwrap">${pubThumb({ img:x.img, format:x.type }, "tvpi")}${reelBadge(x)}${x._m ? `<span class="tvpmes">${monthName(x._m)}</span>` : ""}</span><div class="tvpinfo"><div class="tvpm"><b>${dm(pyDate(x.ts))}</b></div><div class="tvpcap">${esc(capLine(x))}</div></div></div>`;
   const [c, r] = pg.grid;
   return `<div class="tvpg ${pg.k}" data-cols="${c}" data-rows="${r}" style="--c:${c}">${shown.map(card).join("")}${more ? `<div class="tvpc more"><span class="pwrap"><b>+${more}</b><small>publicaciones más</small></span></div>` : ""}</div>`;
 }
@@ -13529,7 +13524,7 @@ const tbIcon = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 function renderTabbar(){
   const tb = document.getElementById("tabbar"); if (!tb) return;
   const work = isRevisor() ? ["inbox","Mensajes","messages-square"] : isDesigner() ? ["paneldg","Trabajo","layout-grid"] : viewer.role === "CM" ? ["panelcm","Trabajo","layout-grid"] : ["dashboard","Dashboard","layout-dashboard"];
-  const tabs = (isComercial() ? [["dashboard","Dashboard","layout-dashboard"],["pedcom","Mis pedidos","list-checks"]] : [["inicio","Inicio","house"],work,["mensajes","Chat","messages-square"]]).filter(([k]) => can(k));
+  const tabs = (isComercial() ? [["comercial","Comercial","tags"],["pedcom","Mis pedidos","list-checks"]] : [["inicio","Inicio","house"],work,["mensajes","Chat","messages-square"]]).filter(([k]) => can(k));
   const cnt = k => { const w = k === "paneldg" || k === "panelcm", n = k === "inicio" ? alerts().length : k === "mensajes" ? chatUnreadTotal() : k === "pedcom" ? pcBadgeN() : workPend(k);
     return n ? `<span class="tbc"${w ? ` title="${k === "paneldg" ? `${n} pedido${n === 1 ? "" : "s"} sin terminar` : `${n} pedido${n === 1 ? "" : "s"} sin abrir`}"` : ""}>${w ? "+" : ""}${n > 99 ? "99+" : n}</span>` : ""; };
   const open = document.querySelector(".side")?.classList.contains("open");
@@ -14761,7 +14756,7 @@ let navHist = [];
 const pageName = k => k === "inicio" ? "Inicio" : k === "config" ? "Configuración" : k === "mensajes" ? "Chat" : (SECTIONS.find(s => s.k === k) || {}).l || k;
 function backTo(){
   if (isRevisor()) return null; // el Revisor solo tiene Mensajes de las cuentas
-  const home = can("inicio") ? "inicio" : "dashboard", pk = panelOf(page);
+  const home = can("inicio") ? "inicio" : isComercial() ? "comercial" : "dashboard", pk = panelOf(page);
   if (page === home) return null;
   // Secciones principales del menú (Panel de Trabajo, Planificación, Carga, Tendencias, Dashboard…): Volver = Inicio.
   const top = SECTIONS.some(x => x.k === page && !x.hide) && !pk;
@@ -14807,7 +14802,7 @@ function render(){
   if (render.prevPage && page !== render.prevPage){ if (!render.goingBack){ navHist.push(render.prevPage); if (navHist.length > 30) navHist.shift(); } if (jobUI.ficha && jobUI.ficha === render.prevFicha) jobUI.ficha = null; if (jobUI.form && jobUI.form === render.prevForm) jobUI.form = null; }
   render.goingBack = false; render.prevPage = page; render.prevFicha = jobUI.ficha; render.prevForm = jobUI.form;
   if (page === "perfil"){ page = "config"; cfgTab = "perfil"; } // Mi Perfil se edita solo en Configuración // y el de redes, dentro de Diseño para Redes
-  if (!can(page)) page = isTV() ? "tvpant" : can("dashboard") ? "dashboard" : can("inicio") ? "inicio" : can("inbox") ? "inbox" : "perfil";
+  if (!can(page)) page = isTV() ? "tvpant" : can("dashboard") ? "dashboard" : can("inicio") ? "inicio" : isComercial() ? "comercial" : can("inbox") ? "inbox" : "perfil";
   if (tvOn()){ const v = tvKiosk ? tvCurView() : tvSolo; if (page !== v) page = v; } // v266: un televisor muestra siempre lo que eligió Admin total (si lo cambia, se cambia solo)
   document.documentElement.classList.toggle("tvrole", isTV()); document.documentElement.classList.toggle("tvkiosk", tvOn());
   if (isCalPage() && (brandFilter === "Todas" || brandFilter === "Materiales")) brandFilter = myGroups()[0]; // calendarios: una marca a la vez
@@ -14892,7 +14887,7 @@ document.addEventListener("click", e => {
   if (side.classList.contains("open") && e.target.closest(".side [data-page], .tabbar [data-page], #logout")){ side.classList.remove("open"); document.body.classList.remove("menuopen"); document.getElementById("menuBtn")?.setAttribute("aria-expanded", "false"); scrollTo(0, 0); }
 });
 function enterApp(){ try { if (localStorage.getItem("rmh-navreset") || !localStorage.getItem("rmh-navclosed2")) navResetFor(viewer.role); } catch {} setTimeout(seedExamples, 0); setTimeout(() => { const a = spawnRepeats(), b = spawnPostRepeats(); if (a || b) render(); }, 1500); loadPrefs(viewer); applyPrefs(); loadWeather(); presenceOnEnter(); viewer.last = "hoy " + new Date().toTimeString().slice(0,5);
-  const want = enterApp.done ? "" : START_PAGE; enterApp.done = true; page = PAGES[want] && can(want) ? want : isTV() ? "tvpant" : "dashboard"; render.lastKey = null; brandFilter = "Todas"; $("#login").hidden = true; $("#changeForm").hidden = true; $("#loginForm").hidden = false; $("#loginMsg").hidden = true; render(); toast(`${hello()}. Entraste como ${viewer.role}.`);
+  const want = enterApp.done ? "" : START_PAGE; enterApp.done = true; page = PAGES[want] && can(want) ? want : isTV() ? "tvpant" : isComercial() ? "comercial" : "dashboard"; render.lastKey = null; brandFilter = "Todas"; $("#login").hidden = true; $("#changeForm").hidden = true; $("#loginForm").hidden = false; $("#loginMsg").hidden = true; render(); toast(`${hello()}. Entraste como ${viewer.role}.`);
   if (notifOn() && notifSupported() && Notification.permission === "granted") pushSubscribe().then(ok => { if (ok && page === "config") render(); });
   const oc = new URLSearchParams(location.search).get("chat"); if (oc){ history.replaceState(null, "", location.pathname + "#mensajes"); openChatFrom(oc); }
   const og = new URLSearchParams(location.search).get("go"); if (og){ history.replaceState(null, "", location.pathname); goAlert(og); } }
