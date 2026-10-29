@@ -4190,6 +4190,7 @@ document.addEventListener("click", e => {
 // Cambia la etapa respetando el flujo: cuando la persona termina (boceto o trabajo de CM) le avisa a Admin total para revisar.
 function moveJob(j, to){
   if (!j || j.status === to || !stageOptions("job", j).includes(to)) return render();
+  if (viewer.role === "Admin total" && onHold(j) && !HOLD_ST.includes(to)){ render(); return openReactivate("job", j, to); } // v300: con la fecha nueva
   if (contCopy(j)){ if (rtUploading(document.getElementById("jCopy"))) return toast("Esperá que termine de subir la imagen del copy."); jcopyTake(j); } // lo escrito en la hoja del copy no se pierde
   if (viewer.role === "Admin total" && to === fixStage(j)){ render(); openFixModal(j); return; } // los cambios siempre van con mensaje
   if (viewer.role === "Admin total" && (to === "Aprobado" || (j.area === "CM" && to === "Programado")) && REVIEW_WAIT.includes(j.status)){ render(); return openApproveModal(j); }
@@ -4308,7 +4309,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v299";
+const APP_VER = "v300";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -6473,8 +6474,9 @@ document.addEventListener("click", e => {
   const [ref, to] = o.dataset.stageset.split("|"), [kind, id] = ref.split(":");
   if ((kind === "post" || kind === "canal") && copyLock(kind === "post" ? postById(id) : canalById(id), to)) return toast(copyLockMsg);
   if (kind === "post"){ const p = postById(id); if (!p || p.status === to) return;
+    if (onHold(p) && !HOLD_ST.includes(to)) return openReactivate("post", p, to); // v300: con la fecha nueva
     p.status = to; render(); toast(`“${p.title}” pasó a ${to}.`); return; }
-  if (kind === "canal"){ const k = canalById(id); if (!k || k.status === to) return; k.status = to; render(); toast(`“${k.title}” pasó a ${to}.`); return; }
+  if (kind === "canal"){ const k = canalById(id); if (!k || k.status === to) return; if (onHold(k) && !HOLD_ST.includes(to)) return openReactivate("canal", k, to); k.status = to; render(); toast(`“${k.title}” pasó a ${to}.`); return; }
   if (kind === "act"){ const a = actById(id); if (!a || a.status === to || !stageOptions("act", a).includes(to)) return; a.status = to; render(); window.RMH?.flushNow?.(); toast(`“${a.title}” pasó a ${to}.`); return; }
   if (kind === "rec"){ const x = recItem(id); if (!x || x.status === to || !stageOptions("rec", x).includes(to)) return;
     setRecSt(x.r, x.d, to); render(); window.RMH?.flushNow?.(); toast(`“${x.r.title}” del ${dm(x.d)} pasó a ${to}.`); return; }
@@ -6607,7 +6609,7 @@ const canalStatusCell = k => canEditPost() && stageOptions("canal", k).length ? 
 document.addEventListener("click", e => { const b = e.target.closest("[data-pedit]"); if (!b || e.target.closest("[data-stagemenu]")) return; const [kind, id] = b.dataset.pedit.split(":");
   if (kind === "canal") postUI.form = { mode:"edit", kind:"Canal", post:{ ...canalById(id) } }; else { const p = postById(id); postUI.form = { mode:"edit", kind:p.format === "Historia" ? "Historia" : "Feed", post:{ ...p } }; }
   render(); });
-document.addEventListener("change", e => { const k = e.target.closest("[data-kstatus]"); if (!k) return; const c = canalById(k.dataset.kstatus); if (!c || c.status === k.value) return; c.status = k.value; render(); toast(`“${c.title}” pasó a ${c.status}.`); });
+document.addEventListener("change", e => { const k = e.target.closest("[data-kstatus]"); if (!k) return; const c = canalById(k.dataset.kstatus); if (!c || c.status === k.value) return; if (onHold(c) && !HOLD_ST.includes(k.value)){ render(); return openReactivate("canal", c, k.value); } c.status = k.value; render(); toast(`“${c.title}” pasó a ${c.status}.`); });
 const gHead = (title, sub, ico) => `<div class="head"><div><h1 class="pmh">${pmIco(ico)}${title}</h1><p class="sub">${sub}</p></div><div class="chips">${refreshBtn()}${viewTabs(G_VIEWS, gView(), "data-gview")}</div></div>`;
 const gFilters = note => `<div class="head"><div class="chips">${brandChips()}${soloBtn()}</div>${note && !isViewOnly() && !isClosed() ? `<span class="note">${note}</span>` : ""}</div>`;
 // Gestión Redes (feed) y Gestión Historia.
@@ -7806,6 +7808,34 @@ const PROC_DESC = { "Pendiente":"Pedido cargado", "En proceso":"Trabajando", "Bo
   "Grabación":"Grabando", "Edición":"Editando", "Revisión":"Esperando la revisión", "Corrección":"Haciendo los cambios",
   "Aprobado":"Final del pedido", "Programado":"Listo para salir", "Publicado":"Publicado", "Pautado":"Con pauta" };
 const jobVersions = j => (j.changes || []).filter(c => c.kind === "boceto").length;
+// v300 · Al reanudar o reactivar algo que estaba en pausa o cancelado hay que poner la fecha nueva: la de publicación (en los videos y
+// las publicaciones es la del calendario) y, en Diseño y Contenidos, también la de entrega. Las publicaciones del pedido que todavía no
+// salieron pasan a la fecha nueva.
+const reaPub = (kind, x) => kind === "job" ? (x.area === "CM" ? x.due : x.pubDate || jobPubsOf(x)[0]?.date || "") : x.date;
+function openReactivate(kind, x, to){
+  document.getElementById("fixpop")?.remove();
+  const job = kind === "job", dg = job && x.area !== "CM", fut = d => d && d >= TODAY ? d : "", verb = x.status === PAUSE ? "Reanudar" : "Reactivar";
+  const w = document.createElement("div"); w.id = "fixpop"; w.className = "fixpop";
+  w.innerHTML = `<div class="fixbox" role="dialog" aria-modal="true" aria-labelledby="reah"><h2 id="reah">${verb}${job ? " el pedido" : " la publicación"}</h2><p class="note">${esc(x.title)} · estaba ${esc(x.status.toLowerCase())} · vuelve a <b>${esc(to)}</b></p>
+    <label>Nueva fecha de publicación *<input class="base" type="date" id="reaPub" min="${TODAY}" value="${esc(fut(reaPub(kind, x)))}"></label>
+    ${dg ? `<label>Nueva fecha límite (entrega del diseño) *<input class="base" type="date" id="reaDue" min="${TODAY}" value="${esc(fut(x.due))}"></label>` : ""}
+    <p class="perr" id="reaErr" hidden></p>
+    <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-reasend="${kind}|${esc(x.id)}|${esc(to)}">${icon("play")} ${verb}</button></div></div>`;
+  document.body.appendChild(w); w.querySelector("input").focus();
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-reasend]"); if (!b) return;
+  const [kind, id, to] = b.dataset.reasend.split("|"), x = kind === "job" ? jobById(id) : kind === "canal" ? canalById(id) : postById(id); if (!x || viewer.role !== "Admin total") return;
+  const pub = document.getElementById("reaPub")?.value || "", dueEl = document.getElementById("reaDue"), due = dueEl ? dueEl.value : "", err = t => { const el = document.getElementById("reaErr"); el.textContent = t; el.hidden = false; };
+  if (!pub || pub < TODAY) return err("Elegí la nueva fecha de publicación (de hoy en adelante).");
+  if (dueEl && (!due || due < TODAY)) return err("Elegí la nueva fecha de entrega del diseño (de hoy en adelante).");
+  if (dueEl && due > pub) return err("La entrega tiene que ser antes (o el mismo día) que la publicación.");
+  document.getElementById("fixpop")?.remove();
+  if (kind !== "job"){ x.date = pub; x.status = to; render(); window.RMH?.flushNow?.(); return toast(`“${x.title}” volvió a ${to}: se publica el ${dm(pub)}.`); }
+  if (x.area === "CM") x.due = pub;
+  else { x.due = due; x.pubDate = pub; jobPubsOf(x).filter(p => !["Publicado","Pautado"].includes(p.status)).forEach(p => { p.date = pub; }); }
+  setJobStatus(x, to); window.RMH?.flushNow?.();
+});
 // v299: Admin total lo pone En pausa, lo cancela o lo reanuda (vuelve a la etapa en que estaba).
 function jobHoldBar(j){
   const ops = stageOptions("job", j); if (viewer.role !== "Admin total" || !ops.includes(PAUSE)) return "";
@@ -14970,7 +15000,7 @@ function setJobStatus(j, st){
   if (st === VAL_COM) j.valFrom = prev; else if (prev === VAL_COM) delete j.valFrom; // para poder volver atrás
   if (HOLD_ST.includes(st)){ if (!HOLD_ST.includes(prev)) j.holdFrom = prev; } else delete j.holdFrom; // v299: para reanudarlo donde estaba
   if ((HOLD_ST.includes(st) || HOLD_ST.includes(prev)) && j.owner && j.owner !== viewer.name && !j.ex)
-    notify({ to:j.owner, type:"nota", job:j.id, who:viewer.name, text:st === PAUSE ? "Lo puso En pausa: por ahora no se trabaja." : st === CANCEL ? "Lo canceló: ya no se hace." : `Lo reanudó: sigue en ${st}.` });
+    notify({ to:j.owner, type:"nota", job:j.id, who:viewer.name, text:st === PAUSE ? "Lo puso En pausa: por ahora no se trabaja." : st === CANCEL ? "Lo canceló: ya no se hace." : `Lo reanudó: sigue en ${st}${j.area !== "CM" && j.due ? ` · entrega el ${dm(j.due)}` : ""}${(j.area === "CM" ? j.due : j.pubDate) ? ` · se publica el ${dm(j.area === "CM" ? j.due : j.pubDate)}` : ""}.` });
   if (j.status === "Aprobado" && !j.approved) j.approved = TODAY;
   const first = isFin(j) && !j.delivered;
   if (first) j.delivered = TODAY;
@@ -14986,6 +15016,7 @@ document.addEventListener("change", e => {
   if (pcm){ const p = postById(pcm.dataset.pcm); p.cm = pcm.value; render(); toast(`“${p.title}”: ahora lo hace ${firstName(p.cm)}.`); return; }
   const pst = e.target.closest("[data-pstatus]");
   if (pst){ const p = postById(pst.dataset.pstatus), to = pst.value;
+    if (onHold(p) && !HOLD_ST.includes(to)){ render(); return openReactivate("post", p, to); } // v300
     p.status = to; render(); toast(`“${p.title}” pasó a ${to}.`); return; }
   const jf = e.target.closest("[data-jf]"); if (jf){ jobUI[jf.dataset.jf] = jf.value; render(); return; }
   if (e.target.id === "jSearch"){ jobUI.q = e.target.value; render(); return; }
