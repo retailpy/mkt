@@ -3962,11 +3962,17 @@ const initials = n => n.split(" ").map(w => w[0]).slice(0,2).join("").toUpperCas
 function genPass(){ const a = "abcdefghjkmnpqrstuvwxyz", A = "ABCDEFGHJKMNPQRSTUVWXYZ", r = n => { const u = new Uint32Array(1); crypto.getRandomValues(u); return u[0] % n; };
   return A[r(A.length)] + a[r(a.length)] + a[r(a.length)] + "-" + String(1000 + r(9000)) + "-" + a[r(a.length)] + a[r(a.length)] + A[r(A.length)]; }
 const activeAdmins = () => PEOPLE.filter(p => p.active && p.role === "Admin total");
+// “Ver como” (vista previa de otra persona): Fede (Admin total), a cualquiera. v298: Alyssa (Admin total), solo a Gisella
+// (Comercial), para mostrar en una reunión cómo se carga un pedido de activación: el pedido de ejemplo no se guarda ni le llega a nadie.
+const VIEW_AS = { fede:null, alyssa:["gisella"] };
+const rmhMe = () => { try { return window.RMH?.me || ""; } catch { return ""; } }; // quién inició sesión (no cambia en “ver como”)
+const viewAsOk = id => { const me = rmhMe(), l = VIEW_AS[me]; return !!me && me in VIEW_AS && (id === me || !l || l.includes(id)); };
+const viewAsOpts = () => PEOPLE.filter(p => p.active && (!rmhMe() || viewAsOk(p.id))).map(p => `<option value="${p.id}">${p.name} — ${p.role}</option>`).join("");
 function refreshPeople(){
   DESIGNERS = PEOPLE.filter(p => p.role === "Diseñador" && p.active).map(p => p.name);
   const opts = PEOPLE.filter(p => p.active).map(p => `<option value="${p.id}">${p.name} — ${p.role}</option>`).join("");
   const v = document.getElementById("viewas"), l = document.getElementById("loginUser");
-  if (v) v.innerHTML = opts; if (l){ const cur = l.value; l.innerHTML = opts; if (cur) l.value = cur; }
+  if (v){ v.innerHTML = viewAsOpts(); v.dataset.me = rmhMe(); } if (l){ const cur = l.value; l.innerHTML = opts; if (cur) l.value = cur; }
 }
 let drag = null;
 document.addEventListener("click", e => { const b = e.target.closest("[data-jset]"); if (!b) return; e.stopPropagation(); const j = jobs.find(x => x.id === b.dataset.jset); if (j && stageOptions("job", j).includes(b.dataset.st)) moveJob(j, b.dataset.st); });
@@ -4298,7 +4304,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v297";
+const APP_VER = "v298";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -5108,9 +5114,12 @@ const impBrands = () => IG_MAIN.filter(b => myBrands().includes(b));
 // cargadas no sale). En cada mes, lo mejor de cada marca y el top 10 de cada una; y después de cada pantalla de imágenes, otra con
 // esas mismas publicaciones, su copy y sus números (tab).
 const impMonths = () => { const m0 = impMonth(), m1 = prevMonth(m0); return [m0, m1, prevMonth(m1)].filter((m, k) => !k || publicationsFor(m).some(p => impBrands().includes(p.brand))); };
+// v298: la TV 3 no pasa publicaciones (ni “Lo mejor de cada marca” ni el Top 10): solo la portada, los avisos y las campañas.
+// El Top 10 de cada marca sigue armado abajo: para volver a mostrarlo, IMP_POSTS = true.
+let IMP_POSTS = false;
 function impSlides(){ // v279: primero la portada (fecha, hora, clima y calendario); v297: sin “Lo mejor de cada marca”, solo el Top 10 de cada una
-  return [...(tvAllFirst() ? [{ cover:true, label:"Hoy" }] : []), ...tvAvisoSlides(), ...impMonths().flatMap(m => impBrands().map(b => ({ brand:b, m })).flatMap(x => {
-    const l = `Top 10 · ${x.brand} · ${monthName(m)}`; return [{ ...x, label:l }, { ...x, tab:true, label:l + " · copy y números" }]; })), ...tvCampSlides()];
+  return [...(tvAllFirst() ? [{ cover:true, label:"Hoy" }] : []), ...tvAvisoSlides(), ...(IMP_POSTS ? impMonths().flatMap(m => impBrands().map(b => ({ brand:b, m })).flatMap(x => {
+    const l = `Top 10 · ${x.brand} · ${monthName(m)}`; return [{ ...x, label:l }, { ...x, tab:true, label:l + " · copy y números" }]; })) : []), ...tvCampSlides()];
 }
 function impStatus(){
   const s = campSync();
@@ -5174,7 +5183,7 @@ addEventListener("resize", () => { if (page === "tvimpacto") impFit(); });
 document.addEventListener("fullscreenchange", () => { if (page === "tvimpacto") setTimeout(impFit, 60); });
 function pTVImpacto(){
   const n = impSlides().length;
-  return `<div class="tvredes tvimp">${tvBrandRow(true)}<div class="tvbar"><div><h1>Impacto en redes</h1><p class="sub">Publicaciones reales de Instagram de Superseis, Stock y Delimarket, del mes en curso y de los dos anteriores: primero la mejor de cada marca y después el top 10 de cada una, por alcance (o interacciones), con las imágenes grandes y después su copy y sus números. ${IMP_SECS} segundos cada pantalla.</p><div class="tag-row"><span class="tag">Fuente: Instagram (Meta)</span><span class="tag">Última actualización: ${campSync() ? metaWhen(campSync()) : "sin datos"}</span><span class="tag">Seguidores: ${META_FOLLOWERS.updated ? metaWhen(META_FOLLOWERS.updated) : "sin datos"}</span></div>${impStatus()}</div>
+  return `<div class="tvredes tvimp">${tvBrandRow(true)}<div class="tvbar"><div><h1>Impacto en redes</h1><p class="sub">${IMP_POSTS ? "Publicaciones reales de Instagram de Superseis, Stock y Delimarket, del mes en curso y de los dos anteriores: el top 10 de cada una, por alcance (o interacciones), con las imágenes grandes y después su copy y sus números." : "Por ahora sin publicaciones: la portada (fecha, hora, clima y calendario), los avisos y las campañas."} ${IMP_SECS} segundos cada pantalla.</p><div class="tag-row"><span class="tag">Fuente: Instagram (Meta)</span><span class="tag">Última actualización: ${campSync() ? metaWhen(campSync()) : "sin datos"}</span><span class="tag">Seguidores: ${META_FOLLOWERS.updated ? metaWhen(META_FOLLOWERS.updated) : "sin datos"}</span></div>${impStatus()}</div>
     <div class="chips"><button class="btn" data-imp="prev" aria-label="Anterior">‹</button><button class="btn" data-imp="pause">${imp.paused ? "▶ Seguir" : "⏸ Pausar"}</button><button class="btn" data-imp="next" aria-label="Siguiente">›</button><button class="btn primary" data-imp="full">⛶ Pantalla completa</button></div></div>
     <div class="tvdots">${impSlides().map((x, k) => `<button class="tvdot" data-impgo="${k}" aria-label="${x.label}" title="${x.label}"></button>`).join("")}</div>
     <div class="tvtimer"><i id="impBar"></i></div>
@@ -5190,7 +5199,7 @@ function impShow(n){
   impFit(); tviFit();
   const bar = document.getElementById("impBar"); if (bar){ bar.style.animation = "none"; void bar.offsetWidth; bar.style.animation = `tvt ${IMP_SECS}s linear both`; bar.style.animationPlayState = imp.paused ? "paused" : "running"; }
 }
-function impLoop(){ clearInterval(imp.t); imp.t = setInterval(() => { if (!imp.paused && page === "tvimpacto" && !tvAllEdge(1, imp.i, impSlides().length)) impShow(imp.i + 1); }, IMP_SECS * 1000); }
+function impLoop(){ clearInterval(imp.t); imp.t = setInterval(() => { if (!imp.paused && page === "tvimpacto" && impSlides().length > 1 && !tvAllEdge(1, imp.i, impSlides().length)) impShow(imp.i + 1); }, IMP_SECS * 1000); } // v298: con una sola pantalla (la portada) no se vuelve a armar cada 10 s
 function impStop(){ clearInterval(imp.t); imp.t = null; }
 document.addEventListener("click", e => {
   const g = e.target.closest("[data-impgo]"); if (g){ impShow(+g.dataset.impgo); impLoop(); return; }
@@ -12506,7 +12515,7 @@ const TV_N = [1,2,3,4], TV_DEF = { 1:"tv", 2:"tvredes", 3:"tvimpacto", 4:"tvall"
 // v295 · “Todo junto”: una TV pasa una vuelta entera de lo que muestra la TV 1, después la de la TV 2 y después la de la TV 3, y
 // vuelve a empezar. La portada y los avisos salen solo al principio, y “Campañas y temas” solo al final de todo.
 let tvAll = { cur:"" };
-const tvAllSeq = () => { const ok = v => v !== "tvall" && (!viewer || can(v)), l = [...new Set([1, 2, 3].map(n => tvCfg(n).v).filter(ok))]; return l.length ? l : ["tv","tvredes","tvimpacto"].filter(ok); };
+const tvAllSeq = () => { const ok = v => v !== "tvall" && (v !== "tvimpacto" || IMP_POSTS) && (!viewer || can(v)), l = [...new Set([1, 2, 3].map(n => tvCfg(n).v).filter(ok))]; return l.length ? l : ["tv","tvredes","tvimpacto"].filter(ok); };
 const tvAllOn = () => !!tvKiosk && tvCfg(tvKiosk).v === "tvall";
 const tvCurView = () => { const v = tvCfg(tvKiosk).v; if (v !== "tvall") return v; const q = tvAllSeq(); if (!q.includes(tvAll.cur)) tvAll.cur = q[0]; return tvAll.cur; };
 const tvAllFirst = () => !tvAllOn() || tvAll.cur === tvAllSeq()[0];
@@ -13255,13 +13264,14 @@ const pcStColor = p => (PC_ST[pcSt(p)] || PC_ST.Enviado).c;
 const pcPill = p => `<span class="pcst" style="--c:${pcStColor(p)}">${icon((PC_ST[pcSt(p)] || PC_ST.Enviado).ic)}${esc(pcStTxt(p))}</span>`;
 // En el menú: a Admin total, los pedidos que todavía no pasó; al comprador, sus pedidos publicados que no abrió.
 // Mensajes del pedido (v244): ida y vuelta entre Admin total y el comprador. Cada lado marca hasta cuándo leyó (rdCom / rdAt).
-const pcCanMsg = p => !window.RMH?.previewing && (viewer.role === "Admin total" || (isComercial() && p.by === viewer.id));
+const pcPrevOk = p => !window.RMH?.previewing || !!p?.demo; // v298: en “ver como”, solo el pedido de ejemplo (no se guarda)
+const pcCanMsg = p => pcPrevOk(p) && (viewer.role === "Admin total" || (isComercial() && p.by === viewer.id));
 const pcUnread = p => !p || !(p.msgs || []).length ? [] : isComercial() ? (p.by === viewer.id ? p.msgs.filter(m => m.by !== viewer.id && String(m.at) > String(p.rdCom || "")) : [])
   : viewer?.role === "Admin total" ? p.msgs.filter(m => m.by === p.by && String(m.at) > String(p.rdAt || "")) : [];
 // Comercial: un cambio de estado de su pedido que todavía no vio (stSeen guarda el último estado que vio).
 const pcStNew = p => isComercial() && p.by === viewer.id && pcSt(p) !== "Enviado" && p.stSeen !== pcSt(p) && !(p.st === "Publicado" && p.pubSeen);
 const pcBadgeN = () => isComercial() ? pcMine().filter(p => pcStNew(p) || pcUnread(p).length).length : viewer?.role === "Admin total" ? PEDIDOS_COM.filter(p => p.st === "Enviado" || pcUnread(p).length).length : 0;
-const pcCanEdit = p => !window.RMH?.previewing && ((isComercial() && p.by === viewer.id && ["Enviado", "Con modificaciones"].includes(pcSt(p))) || viewer.role === "Admin total");
+const pcCanEdit = p => pcPrevOk(p) && ((isComercial() && p.by === viewer.id && ["Enviado", "Con modificaciones"].includes(pcSt(p))) || viewer.role === "Admin total");
 const pcSeen = p => { if (!p || window.RMH?.previewing) return; if (pcStNew(p)) p.stSeen = pcSt(p);
   if (pcUnread(p).length) p[isComercial() ? "rdCom" : "rdAt"] = new Date().toISOString(); };
 // El pedido de Admin total para Diseño o CM: sale del pedido de Comercial. Cuando una de sus publicaciones queda Publicada
@@ -13355,7 +13365,7 @@ function pcDetail(p){
   const row = (k, v) => v ? `<dt>${k}</dt><dd>${v}</dd>` : "";
   const st = pcSt(p), fin = pcFinal(p), derive = at && !fin && !j, other = firstName(p.byName || "Comercial");
   return `<div class="jpage pcpage"><div class="jp-top"><button class="btn pback" type="button" data-pcback>${icon("arrow-left")} Volver</button></div>
-  <div class="jp-h"><span class="note">Pedido de activación · ${esc(p.byName || "Comercial")} · ${dm(String(p.at).slice(0, 10))}${!isComercial() && !at ? " · solo para ver" : ""}</span><h1 style="margin:4px 0 6px">${esc(p.title)}</h1>${pcPill(p)}</div>
+  <div class="jp-h">${p.demo ? `<span class="exbadge sm">Pedido de ejemplo (vista previa): no se guarda ni le llega a nadie</span> ` : ""}<span class="note">Pedido de activación · ${esc(p.byName || "Comercial")} · ${dm(String(p.at).slice(0, 10))}${!isComercial() && !at ? " · solo para ver" : ""}</span><h1 style="margin:4px 0 6px">${esc(p.title)}</h1>${pcPill(p)}</div>
   ${pcTrack(p)}
   ${at ? `<section class="panel pcact"><h2 class="pmh">${pmIco("list-checks")}Cambiar el estado</h2>
     ${fin ? `<p class="note" style="margin:0 0 10px">El pedido terminó como <b style="color:${pcStColor(p)}">${esc(st)}</b>. Si hace falta, lo podés volver a abrir.</p><div class="chips"><button type="button" class="btn" data-pcst="reabrir">${icon("refresh-cw")} Volver a abrir</button></div>`
@@ -13383,7 +13393,7 @@ const pcAsk = p => p.pedido === "Otro" ? p.pedOtro || "Otro" : p.pedido || "";
 function pcTable(list){
   const adm = !isComercial();
   return `<div class="tw pctw"><table><thead><tr><th>Pedido</th><th>Supermercado</th><th>Qué pide</th>${adm ? "<th>Comprador</th>" : ""}<th>Pedido el</th><th>Publicar el</th><th>Vigencia</th><th>Estado</th></tr></thead><tbody>
-    ${list.map(p => `<tr class="${pcSt(p) === "Finalizado" ? "pub" : pcSt(p) === "No ejecutable" ? "nox" : ""}" data-pcopen="${esc(p.id)}" role="button" tabindex="0" title="Tocá para ver el pedido"><td><b>${esc(p.title)}</b>${pcUnread(p).length ? ` <span class="pcnew">${icon("message-circle")} ${pcUnread(p).length}</span>` : (p.msgs || []).length ? ` <span class="pcnew old">${icon("message-circle")} ${p.msgs.length}</span>` : ""}${p.marcas ? `<small>${esc(p.marcas)}</small>` : ""}</td>
+    ${list.map(p => `<tr class="${pcSt(p) === "Finalizado" ? "pub" : pcSt(p) === "No ejecutable" ? "nox" : ""}" data-pcopen="${esc(p.id)}" role="button" tabindex="0" title="Tocá para ver el pedido"><td><b>${esc(p.title)}</b>${p.demo ? ` <span class="exbadge sm">Ejemplo · no se guarda</span>` : ""}${pcUnread(p).length ? ` <span class="pcnew">${icon("message-circle")} ${pcUnread(p).length}</span>` : (p.msgs || []).length ? ` <span class="pcnew old">${icon("message-circle")} ${p.msgs.length}</span>` : ""}${p.marcas ? `<small>${esc(p.marcas)}</small>` : ""}</td>
       <td><div class="chips" style="flex-wrap:nowrap">${(p.brands || []).map(brandTag).join("")}</div></td><td>${esc(pcAsk(p))}</td>${adm ? `<td>${esc(p.byName || "")}</td>` : ""}
       <td class="num">${p.at ? dm(String(p.at).slice(0, 10)) : ""}</td><td class="num"><b>${p.date ? dm(p.date) : "Sin fecha"}</b></td><td>${esc(pcRange(p))}</td><td>${pcPill(p)}</td></tr>`).join("")}
   </tbody></table></div>`;
@@ -13486,11 +13496,12 @@ document.addEventListener("submit", e => {
   if (f.mode === "new" && p.date < TODAY) return toast("La fecha de publicación ya pasó: elegí una de hoy en adelante.");
   if (p.from && p.until && p.until < p.from) return toast("La vigencia termina antes de empezar: revisá las fechas.");
   if (p.pedido !== "Otro") delete p.pedOtro;
-  if (f.mode === "new"){ PEDIDOS_COM.push({ ...p, by:viewer.id, byName:viewer.name, at:new Date().toISOString(), st:"Enviado" }); }
+  const demo = !!window.RMH?.previewing; // v298: en “ver como”, queda de ejemplo: se ve como lo vería el comprador, pero no se guarda ni le llega a nadie
+  if (f.mode === "new"){ PEDIDOS_COM.push({ ...p, by:viewer.id, byName:viewer.name, at:new Date().toISOString(), st:"Enviado", ...(demo ? { demo:true } : {}) }); }
   else { const cur = pcById(p.id); if (!cur || !pcCanEdit(cur)) return toast("Este pedido ya no se puede cambiar."); Object.assign(cur, p, { edAt:new Date().toISOString() }); }
   const m = p.date.slice(0, 7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m;
   pcUI.form = null; pcUI.open = null; pcUI.view = "tabla"; if (f.mode === "new") pcUI.tab = null; render(); window.RMH?.flushNow?.(); window.scrollTo(0, 0); // vuelve a la tabla, con el pedido como Enviado
-  toast(f.mode === "new" ? `Listo: tu pedido “${p.title}” le llegó a Marketing.` : "Cambios guardados.");
+  toast(demo ? `Pedido de ejemplo “${p.title}”: así le queda a ${firstName(viewer.name)}. Es vista previa: no se guarda ni le llega a nadie.` : f.mode === "new" ? `Listo: tu pedido “${p.title}” le llegó a Marketing.` : "Cambios guardados.");
 });
 // Admin total pasa el pedido: se abre el formulario de Diseño gráfico o de Gestión de Contenidos con lo del comprador.
 function pcToJob(p, area){
@@ -14812,7 +14823,8 @@ function render(){
   if ($("#login").hidden && location.hash.slice(1) !== page) history.replaceState(null, "", "#" + page); // al actualizar, vuelve a esta misma sección
   const ib = document.querySelector(".instbtn"); if (ib) ib.hidden = isInstalledApp();
   $("#whoami").textContent = nickOf(viewer) + " · " + viewer.role + (viewer.brands ? " · " + viewer.brands.join(", ") : "");
-  $("#viewas").value = viewer.id;
+  const vas = $("#viewas"); if (vas.dataset.me !== rmhMe()) refreshPeople(); // v298: Alyssa ve solo a Gisella
+  vas.value = viewer.id;
   const ro = isViewOnly() && ["calendario","calhistoria","calcanales","caldiseno","caldg","calcm","plan","pedidos","gestioncm","inicio"].includes(page) ? `<div class="ro">👁 Perfil Admin (control): ves todo el sitio y descargás informes, pero no modificás contenidos, usuarios ni configuración.</div>` : "";
   const avl = page === "inicio" ? avActiveFor(viewer).filter(a => !a.seen.includes(viewer.id)).sort((a, b) => ["Urgente","Importante","Informativo"].indexOf(a.level) - ["Urgente","Importante","Informativo"].indexOf(b.level)) : [];
   avMarkViewed(avl); const avb = avl.map(avBanner).join(""); // queda anotado que lo vio (Admin total lo ve en Avisos)
@@ -14876,9 +14888,7 @@ function render(){
 }
 
 refreshPeople();
-// “Ver como” (vista previa de otra persona): solo para Fede (Admin total). Alyssa y el resto no lo tienen.
-const viewAsOk = () => window.RMH?.me === "fede";
-$("#viewas").addEventListener("change", e => { if (!viewAsOk()){ e.target.value = viewer.id; return; } const id = e.target.value; RMH.viewAs(id, () => { viewer = PEOPLE.find(p => p.id === id); loadPrefs(viewer); applyPrefs(); brandFilter = "Todas"; render(); const na = (viewer.role === "Admin total" ? adminNotifs().length : myNotifs().length) + msgAlerts().length; toast(RMH.previewing ? `Vista previa como ${viewer.name} (${viewer.role}): lo que cambies no se guarda.` : `Volviste a tu usuario.${na ? ` 🔔 Tenés ${na} ${na === 1 ? "aviso nuevo" : "avisos nuevos"} en Alertas.` : ""}`); }); });
+$("#viewas").addEventListener("change", e => { if (!viewAsOk(e.target.value)){ e.target.value = viewer.id; return; } const id = e.target.value; RMH.viewAs(id, () => { viewer = PEOPLE.find(p => p.id === id); loadPrefs(viewer); applyPrefs(); brandFilter = "Todas"; render(); const na = (viewer.role === "Admin total" ? adminNotifs().length : myNotifs().length) + msgAlerts().length; toast(RMH.previewing ? `Vista previa como ${viewer.name} (${viewer.role}): lo que cambies no se guarda.` : `Volviste a tu usuario.${na ? ` 🔔 Tenés ${na} ${na === 1 ? "aviso nuevo" : "avisos nuevos"} en Alertas.` : ""}`); }); });
 
 // Menú del celular / iPad: se abre con el botón y se cierra al elegir una sección.
 document.addEventListener("click", e => {
