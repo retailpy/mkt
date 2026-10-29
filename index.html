@@ -792,6 +792,11 @@ html.tvkiosk .tvredes:not(.tvimp) > .tvbrandrow{padding:20px 32px 0;margin-botto
 .tvbr-logo{height:clamp(30px,4.6vh,50px);width:auto;background:#0f172a;border-radius:12px;padding:6px 10px;box-sizing:content-box}
 .tvbr-r{display:flex;align-items:center;gap:clamp(16px,2.2vw,36px)}
 .tvbr-brands{height:clamp(24px,3.8vh,42px);width:auto}
+/* v294 · tocar el costado de una Vista TV (tablet o celular): adelanta o vuelve, con una flechita que se ve un momento */
+.tvpage,.tvredes{touch-action:pan-y}
+.tvtap{position:fixed;top:50%;z-index:90;display:grid;place-items:center;width:clamp(56px,9vw,96px);height:clamp(56px,9vw,96px);margin-top:calc(clamp(56px,9vw,96px) / -2);border-radius:50%;background:rgba(2,6,23,.6);color:#fff;font-size:clamp(34px,6vw,64px);line-height:1;pointer-events:none;animation:tvtap .7s ease both}
+.tvtap.nx{right:clamp(12px,3vw,40px)}.tvtap.pv{left:clamp(12px,3vw,40px)}
+@keyframes tvtap{0%{opacity:0;transform:scale(.7)}25%{opacity:1;transform:scale(1)}100%{opacity:0}}
 /* v287 · pantallas Aviso y “Campañas y temas” */
 .tvislide{flex:1;min-height:0;display:flex;flex-direction:column;gap:clamp(8px,1.4vh,18px)}
 .tvislide .tthead b{font-size:clamp(18px,2.8vh,30px);letter-spacing:.08em}
@@ -4272,7 +4277,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v293";
+const APP_VER = "v294";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -14890,6 +14895,25 @@ document.addEventListener("change", e => {
   RMH.admin({ action:"set_role", person_id:pp.id, role:nr }).then(ok => { if (!ok){ render(); return; }
     pp.role = nr; pp.perms = new Set(ROLE_DEFAULTS[nr]); if (nr === "Admin total" || nr === "Admin") pp.brands = null; refreshPeople(); render();
     toast(`${pp.name} ahora es ${nr}. Sus permisos pasaron a los de ese rol.`); });
+});
+// v294 · En tablet, iPad o celular: tocar el costado derecho de una Vista TV pasa a la pantalla siguiente y el izquierdo vuelve a la
+// anterior (como las historias de Instagram); también deslizando el dedo hacia un costado. El tiempo de la pantalla vuelve a empezar.
+// Con el mouse no (en la compu están los botones ‹ ›); un toque en el medio no cambia nada.
+function tvStep(d){
+  if (page === "tv"){ tvTeamShow(tvTeam.i + d); tvTeamLoop(); }
+  else if (page === "tvredes"){ tvShow(tv.i + d); tvStart(); }
+  else if (page === "tvimpacto"){ impShow(imp.i + d); impLoop(); }
+  else return;
+  const h = document.createElement("div"); h.className = "tvtap " + (d > 0 ? "nx" : "pv"); h.textContent = d > 0 ? "›" : "‹"; document.body.appendChild(h); setTimeout(() => h.remove(), 700);
+}
+let tvTouch = null;
+document.addEventListener("pointerdown", e => { tvTouch = e.pointerType !== "mouse" && e.target.closest?.(".tvpage,.tvredes") ? { x:e.clientX, y:e.clientY, t:Date.now() } : null; }, { passive:true }); // toda la Vista TV, también los bordes
+document.addEventListener("pointerup", e => { const s = tvTouch; tvTouch = null; if (!s || e.pointerType === "mouse") return;
+  if (e.target.closest("a,button,input,select,textarea,label,.tvdot")) return;
+  const dx = e.clientX - s.x, dy = e.clientY - s.y;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) return tvStep(dx < 0 ? 1 : -1); // deslizó hacia un costado
+  if (Math.abs(dx) > 12 || Math.abs(dy) > 12 || Date.now() - s.t > 700) return; // estaba bajando la página o dejó el dedo apoyado
+  if (e.clientX < innerWidth * .3) tvStep(-1); else if (e.clientX > innerWidth * .7) tvStep(1);
 });
 document.addEventListener("click", e => {
   const tt = e.target.closest("[data-tt],[data-ttgo]");
