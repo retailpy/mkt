@@ -4309,7 +4309,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v300";
+const APP_VER = "v301";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -4434,6 +4434,14 @@ document.addEventListener("submit", e => {
 // las listas, los totales y la carga de trabajo; se ve en el cuadro “Cancelados” y se puede reactivar).
 const PAUSE = "En pausa", CANCEL = "Cancelado", HOLD_ST = [PAUSE, CANCEL];
 const onHold = x => HOLD_ST.includes(x?.status);
+// v301: al ponerlo en pausa (o cancelarlo) se guarda desde cuándo y dónde estaba, y a quien lo hace no le llega nada más de eso
+// (se apagan sus avisos pendientes): ya no es asunto suyo. Lo pausado se le recuerda solo a Admin total (en Tus alertas).
+function holdMark(x, prev, to){
+  if (!HOLD_ST.includes(to)){ delete x.holdFrom; delete x.holdAt; return; }
+  if (!HOLD_ST.includes(prev)){ x.holdFrom = prev; x.holdAt = TODAY; }
+  const who = x.owner || x.cm, post = !x.area; // publicación o canal: sin área
+  NOTIFS.forEach(n => { if (!n.read && n.to === who && (post ? n.post === x.id : n.job === x.id)) n.read = true; });
+}
 // Publicaciones de CM (feed, historias y Canal de WhatsApp): Pendiente → En proceso → Programado → Publicado → Pautado.
 const POST_STAGES = ["Pendiente","En proceso","Programado","Publicado","Pautado"];
 const POST_COLOR = { "Pendiente":"#334155","En proceso":"#eab308","Programado":"#f97316","Publicado":"#10b981","Pautado":"#d946ef",[PAUSE]:"#94a3b8",[CANCEL]:"#64748b" };
@@ -5920,7 +5928,7 @@ const myNotifs = () => NOTIFS.filter(n => n.to === viewer.name && !n.read && not
 // que llevan a ese documento, vengan de donde vengan (la ventana, la lista, el calendario). Admin total: las que le llegaron a él.
 function clearDocAlerts(go, postId){
   if (!viewer || window.RMH?.previewing) return;
-  const L = alerts().filter(a => a.go === go || (postId && a.post === postId)), g = alertsGone(); let add = false;
+  const L = alerts().filter(a => (a.go === go || (postId && a.post === postId)) && !a.key.startsWith("hold:")), g = alertsGone(); let add = false; // v301: el recordatorio de “en pausa” no se apaga al abrirlo (se quita con la x: vuelve al otro día)
   L.forEach(a => { if (a.key.startsWith("n:")){ const n = NOTIFS.find(x => x.id === +a.key.slice(2)); if (n) n.read = true; } else if (!a.key.startsWith("av:")){ g.add(a.key); add = true; } });
   NOTIFS.forEach(n => { if (!n.read && (n.to === viewer.name || (n.to === "admin" && viewer.role === "Admin total")) && (go === "job:" + n.job && !n.post || go === "pub:" + (n.canal ? "canal:" : "post:") + n.post)) n.read = true; });
   if (add) try { localStorage.setItem("rmh-agone-" + viewer.id, JSON.stringify([...g].slice(-300))); } catch {}
@@ -5964,6 +5972,9 @@ function alerts(){
   if (false && can("cumples")) bdayAlerts().forEach(({ pp, d }) => out.push({ go:"cumples", key:`bday:${pp.id}:${TODAY}`, sev: d === 0 ? "#ef4444" : "#f97316", rank:-2, ic:"cake", t:`${d === 0 ? `Hoy cumple años ${pp.name}` : `${d === 1 ? "Mañana" : `En ${d} días`} cumple años ${pp.name}`}`, m:bdayLabel(pp.birthday) }));
   avActiveFor(viewer).filter(a => !a.seen.includes(viewer.id)).forEach(a => out.push({ key:"av:" + a.id, sev:AV_LEVELS[a.level].c, rank:-8, ic:AV_LEVELS[a.level].ic, t:`Aviso: ${a.title}`, m:`${rclShort(a.text, 280)}${(a.imgs || []).length ? ` · 📷 ${a.imgs.length === 1 ? "1 foto" : a.imgs.length + " fotos"}` : ""} · ${avRange(a)}`, acts:`${can("avisos") && ((a.imgs || []).length || String(a.text || "").length > 280) ? `<button class="btn" data-page="avisos">Ver aviso</button>` : ""}<button class="btn" data-avok="${a.id}">Entendido</button>` }));
   out.push(...notifAlerts().filter(Boolean), ...msgAlerts(), ...pendingSurveys().map(sv => ({ sev:"#a78bfa", rank:-3, ic:"clipboard-list", t:`Encuesta para responder: ${sv.title}`, m:`${sv.qs.length} preguntas · te lleva 2 minutos`, acts:`<button class="btn primary" data-svopen="${sv.id}">Responder</button>` })));
+  if (viewer.role === "Admin total" && !isViewOnly()){ // v301: lo que está en pausa se le recuerda solo a Admin total
+    jobs.filter(j => j.status === PAUSE && !j.ex && seesJob(j)).forEach(j => out.push({ go:"job:" + j.id, key:"hold:" + j.id + ":" + TODAY, ic:"pause", sev:"#94a3b8", rank:90, t:`En pausa: ${j.title}`, m:`${areaName(j.area)} · ${jobBrands(j).join(" + ")} · ${firstName(j.owner)}${j.holdAt ? ` · desde el ${dm(j.holdAt)}` : ""}${j.holdFrom ? ` · estaba en ${j.holdFrom}` : ""} · tocá para reanudarlo` }));
+    [...posts.map(p => [p, "post"]), ...CHANNEL_POSTS.map(k => [k, "canal"])].filter(([p]) => p.status === PAUSE && !p.ex && seesBrand(p.brand)).forEach(([p, k]) => out.push({ go:"pub:" + k + ":" + p.id, key:"hold:" + k + p.id + ":" + TODAY, ic:"pause", sev:"#94a3b8", rank:90, t:`En pausa: ${p.title}`, m:`${k === "canal" ? "Canal de WhatsApp" : `${p.net || "IG"} ${p.format || "Post"}`} · ${p.brand} · ${firstName(p.cm || "")}${p.holdAt ? ` · desde el ${dm(p.holdAt)}` : ""} · tocá para reanudarla` })); }
   if (viewer.role === "Admin total") PEDIDOS_COM.filter(p => p.st === "Enviado").forEach(p => out.push({ go:"com:" + p.id, key:"pc:" + p.id, ic:"shopping-bag", sev:"#38bdf8", rank:-5, t:`Nuevo pedido de Comercial: ${p.title}`, m:`${p.byName} · ${pcBrandTxt(p)} · publicar el ${p.date ? dm(p.date) : "—"} · pasalo a Diseño gráfico o a un CM` }));
   if (viewer.role === "Admin total") resetRequests.forEach(id => { const pp = PEOPLE.find(x => x.id === id); if (pp) out.push({ go:"usuarios", sev:"#22d3ee", rank:-1, ic:"key-round", t:`${pp.name} pidió restablecer su contraseña`, m:"Andá a Usuarios y permisos → Restablecer contraseña" }); });
   if (satPeople().includes(viewer) && !isViewOnly()){ const n = satList(SAT_TURN[CURRENT_MONTH] || {}, viewer.id).length;
@@ -6182,6 +6193,8 @@ let panelAll = false;
 // Lo que esta persona tiene que terminar: sus pedidos sin finalizar (y, en CM, sus publicaciones del mes sin programar), por fecha.
 function panelMine(ar){
   const cm = ar === "cm", me = viewer.name, gone = alertsGone(), out = [];
+  jobs.filter(j => j.owner === me && jobGroup(j) === (cm ? "CM" : "Diseño") && seesJob(j) && j.status === PAUSE && !j.ex).forEach(j => // v301: tarea en pausa (nada que hacer)
+    out.push({ d:"9", go:"job:" + j.id, key:"pz:" + j.id + ":" + (j.holdAt || ""), ic:"pause", sev:"#94a3b8", t:`En pausa: ${j.title}`, m:`${j.brand} · ${j.piece} · Admin total lo puso en pausa${j.holdAt ? ` el ${dm(j.holdAt)}` : ""}: por ahora no hay que hacer nada` }));
   jobs.filter(j => j.owner === me && jobGroup(j) === (cm ? "CM" : "Diseño") && seesJob(j) && !isIdleJob(j) && !repLater(j)).sort((a, b) => a.due.localeCompare(b.due)).forEach(j => {
     const u = urgency(j), fix = j.status === fixStage(j);
     out.push({ d:j.due, go:"job:" + j.id, key:"pm:" + j.id + ":" + j.status, ic:fix ? "pencil" : u?.late ? "alarm-clock" : "clock", sev:u ? u.c : fix ? "#f97316" : "#94a3b8", t:`${fix ? "Cambios pendientes" : u?.late ? "Atrasado" : "Por terminar"}: ${j.title}`, m:`${j.brand} · ${j.piece} · entrega el ${dm(j.due)} · ${j.status}` }); });
@@ -6475,8 +6488,8 @@ document.addEventListener("click", e => {
   if ((kind === "post" || kind === "canal") && copyLock(kind === "post" ? postById(id) : canalById(id), to)) return toast(copyLockMsg);
   if (kind === "post"){ const p = postById(id); if (!p || p.status === to) return;
     if (onHold(p) && !HOLD_ST.includes(to)) return openReactivate("post", p, to); // v300: con la fecha nueva
-    p.status = to; render(); toast(`“${p.title}” pasó a ${to}.`); return; }
-  if (kind === "canal"){ const k = canalById(id); if (!k || k.status === to) return; if (onHold(k) && !HOLD_ST.includes(to)) return openReactivate("canal", k, to); k.status = to; render(); toast(`“${k.title}” pasó a ${to}.`); return; }
+    holdMark(p, p.status, to); p.status = to; render(); toast(`“${p.title}” pasó a ${to}.`); return; }
+  if (kind === "canal"){ const k = canalById(id); if (!k || k.status === to) return; if (onHold(k) && !HOLD_ST.includes(to)) return openReactivate("canal", k, to); holdMark(k, k.status, to); k.status = to; render(); toast(`“${k.title}” pasó a ${to}.`); return; }
   if (kind === "act"){ const a = actById(id); if (!a || a.status === to || !stageOptions("act", a).includes(to)) return; a.status = to; render(); window.RMH?.flushNow?.(); toast(`“${a.title}” pasó a ${to}.`); return; }
   if (kind === "rec"){ const x = recItem(id); if (!x || x.status === to || !stageOptions("rec", x).includes(to)) return;
     setRecSt(x.r, x.d, to); render(); window.RMH?.flushNow?.(); toast(`“${x.r.title}” del ${dm(x.d)} pasó a ${to}.`); return; }
@@ -6609,7 +6622,7 @@ const canalStatusCell = k => canEditPost() && stageOptions("canal", k).length ? 
 document.addEventListener("click", e => { const b = e.target.closest("[data-pedit]"); if (!b || e.target.closest("[data-stagemenu]")) return; const [kind, id] = b.dataset.pedit.split(":");
   if (kind === "canal") postUI.form = { mode:"edit", kind:"Canal", post:{ ...canalById(id) } }; else { const p = postById(id); postUI.form = { mode:"edit", kind:p.format === "Historia" ? "Historia" : "Feed", post:{ ...p } }; }
   render(); });
-document.addEventListener("change", e => { const k = e.target.closest("[data-kstatus]"); if (!k) return; const c = canalById(k.dataset.kstatus); if (!c || c.status === k.value) return; if (onHold(c) && !HOLD_ST.includes(k.value)){ render(); return openReactivate("canal", c, k.value); } c.status = k.value; render(); toast(`“${c.title}” pasó a ${c.status}.`); });
+document.addEventListener("change", e => { const k = e.target.closest("[data-kstatus]"); if (!k) return; const c = canalById(k.dataset.kstatus); if (!c || c.status === k.value) return; if (onHold(c) && !HOLD_ST.includes(k.value)){ render(); return openReactivate("canal", c, k.value); } holdMark(c, c.status, k.value); c.status = k.value; render(); toast(`“${c.title}” pasó a ${c.status}.`); });
 const gHead = (title, sub, ico) => `<div class="head"><div><h1 class="pmh">${pmIco(ico)}${title}</h1><p class="sub">${sub}</p></div><div class="chips">${refreshBtn()}${viewTabs(G_VIEWS, gView(), "data-gview")}</div></div>`;
 const gFilters = note => `<div class="head"><div class="chips">${brandChips()}${soloBtn()}</div>${note && !isViewOnly() && !isClosed() ? `<span class="note">${note}</span>` : ""}</div>`;
 // Gestión Redes (feed) y Gestión Historia.
@@ -7831,7 +7844,7 @@ document.addEventListener("click", e => {
   if (dueEl && (!due || due < TODAY)) return err("Elegí la nueva fecha de entrega del diseño (de hoy en adelante).");
   if (dueEl && due > pub) return err("La entrega tiene que ser antes (o el mismo día) que la publicación.");
   document.getElementById("fixpop")?.remove();
-  if (kind !== "job"){ x.date = pub; x.status = to; render(); window.RMH?.flushNow?.(); return toast(`“${x.title}” volvió a ${to}: se publica el ${dm(pub)}.`); }
+  if (kind !== "job"){ x.date = pub; holdMark(x, x.status, to); x.status = to; render(); window.RMH?.flushNow?.(); return toast(`“${x.title}” volvió a ${to}: se publica el ${dm(pub)}.`); }
   if (x.area === "CM") x.due = pub;
   else { x.due = due; x.pubDate = pub; jobPubsOf(x).filter(p => !["Publicado","Pautado"].includes(p.status)).forEach(p => { p.date = pub; }); }
   setJobStatus(x, to); window.RMH?.flushNow?.();
@@ -14998,8 +15011,8 @@ document.addEventListener("click", e => {
 function setJobStatus(j, st){
   const prev = j.status; if (prev === st) return; j.status = st;
   if (st === VAL_COM) j.valFrom = prev; else if (prev === VAL_COM) delete j.valFrom; // para poder volver atrás
-  if (HOLD_ST.includes(st)){ if (!HOLD_ST.includes(prev)) j.holdFrom = prev; } else delete j.holdFrom; // v299: para reanudarlo donde estaba
-  if ((HOLD_ST.includes(st) || HOLD_ST.includes(prev)) && j.owner && j.owner !== viewer.name && !j.ex)
+  holdMark(j, prev, st); // v299: para reanudarlo donde estaba; v301: sin más avisos a quien lo hace
+  if ((st === CANCEL || HOLD_ST.includes(prev)) && j.owner && j.owner !== viewer.name && !j.ex) // v301: poner en pausa ya no le avisa (le queda como tarea en pausa)
     notify({ to:j.owner, type:"nota", job:j.id, who:viewer.name, text:st === PAUSE ? "Lo puso En pausa: por ahora no se trabaja." : st === CANCEL ? "Lo canceló: ya no se hace." : `Lo reanudó: sigue en ${st}${j.area !== "CM" && j.due ? ` · entrega el ${dm(j.due)}` : ""}${(j.area === "CM" ? j.due : j.pubDate) ? ` · se publica el ${dm(j.area === "CM" ? j.due : j.pubDate)}` : ""}.` });
   if (j.status === "Aprobado" && !j.approved) j.approved = TODAY;
   const first = isFin(j) && !j.delivered;
@@ -15017,7 +15030,7 @@ document.addEventListener("change", e => {
   const pst = e.target.closest("[data-pstatus]");
   if (pst){ const p = postById(pst.dataset.pstatus), to = pst.value;
     if (onHold(p) && !HOLD_ST.includes(to)){ render(); return openReactivate("post", p, to); } // v300
-    p.status = to; render(); toast(`“${p.title}” pasó a ${to}.`); return; }
+    holdMark(p, p.status, to); p.status = to; render(); toast(`“${p.title}” pasó a ${to}.`); return; }
   const jf = e.target.closest("[data-jf]"); if (jf){ jobUI[jf.dataset.jf] = jf.value; render(); return; }
   if (e.target.id === "jSearch"){ jobUI.q = e.target.value; render(); return; }
   if (e.target.id === "jPiece" && jobUI.form && jobUI.form.job.area === "CM"){ const j = jobUI.form.job; readJobForm(j); vidDefaults(j); render(); if (j.piece === OTRO) document.getElementById("jOtro")?.focus(); return; }
