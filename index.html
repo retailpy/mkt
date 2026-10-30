@@ -3763,6 +3763,15 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .semchip.s4{background:#64748b}
 .ev[data-sem="4"],.plcal .pev[data-sem="4"]{opacity:.7}
 .jphold{margin-top:10px}
+/* v302 · Pedidos Comercial: quién se ocupa */
+.pcteam{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:12px}
+.pcwho{display:flex;align-items:center;gap:12px;border:1px solid var(--line-3);border-radius:14px;padding:10px 12px;min-width:0}
+.pcwho .avatar,.pcwho0{width:44px;height:44px;flex:none;border-radius:50%}
+.pcwho0{display:grid;place-items:center;background:var(--inner);color:var(--muted)}
+.pcwho div{display:flex;flex-direction:column;min-width:0}
+.pcwho span{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);font-weight:700}
+.pcwho b{font-size:15px;overflow:hidden;text-overflow:ellipsis}
+.pcwho small{color:var(--muted);font-size:12px}
 </style>
 
 <div class="login" id="login">
@@ -4309,7 +4318,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v301";
+const APP_VER = "v302";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -13350,10 +13359,23 @@ function pubBrandFix(){
   jobs.forEach(j => { if (j.area !== "Diseño" || !j.pubs?.length) return; const bs = jobBrands(j); if (bs.length !== 1) return;
     jobPubsOf(j).forEach(x => { if (x.fromJob === j.id && x.brand !== bs[0]) x.brand = bs[0]; }); });
 }
+// v302 · Quién se ocupa del pedido: en Diseño, el diseñador y la CM que lo publica; en Contenidos, la CM (lo arma y lo publica).
+// Se copia al pedido (p.team) desde la app de Admin total o del CM, porque el comprador no ve los trabajos de Diseño ni de CM.
+const pcTeamOf = j => { const who = n => n && n !== "Sin asignar" ? n : "";
+  return j.area === "Contenidos" ? { dg:"", cm:who(j.owner) } : { dg:who(j.owner), cm:who(j.pubCm || jobPubsOf(j)[0]?.cm) }; };
 function pcSync(){
   if (!viewer || !["Admin total", "CM"].includes(viewer.role) || window.RMH?.previewing || !PEDIDOS_COM.length) return;
-  PEDIDOS_COM.forEach(p => { if (pcFinal(p) || !p.job) return; const j = jobById(p.job);
-    if (j && jobPubsOf(j).some(x => ["Programado", "Publicado", "Pautado"].includes(x.status))) pcSetSt(p, "Finalizado"); });
+  PEDIDOS_COM.forEach(p => { if (!p.job) return; const j = jobById(p.job); if (!j) return;
+    const t = pcTeamOf(j); if ((p.team?.dg || "") !== t.dg || (p.team?.cm || "") !== t.cm) p.team = t;
+    if (!pcFinal(p) && jobPubsOf(j).some(x => ["Programado", "Publicado", "Pautado"].includes(x.status))) pcSetSt(p, "Finalizado"); });
+}
+function pcTeam(p){
+  const j = p.job && jobById(p.job), t = j ? pcTeamOf(j) : p.team || { dg:"", cm:"" }, cont = (j ? j.area : p.area) === "Contenidos", com = isComercial();
+  const who = (n, rol, what) => { const pp = PEOPLE.find(x => x.name === n);
+    return `<div class="pcwho">${pp ? avatarHTML(pp, "sm") : `<span class="pcwho0">${icon("user-round")}</span>`}<div><span>${rol}</span><b>${n ? esc(n) : "Todavía sin asignar"}</b><small>${n ? what : "Marketing lo asigna en estos días"}</small></div></div>`; };
+  const body = !p.job ? `<p class="note" style="margin:0">${pcFinal(p) ? "Este pedido no pasó a Diseño ni a CM." : `Cuando Marketing apruebe el pedido, acá ${com ? "vas a ver" : "se ve"} quién lo diseña y quién lo publica.`}</p>`
+    : `<div class="pcteam">${cont ? who(t.cm, "Community Manager", "Arma el contenido gráfico y lo publica") : who(t.dg, "Diseño gráfico", "Hace el diseño") + who(t.cm, "Community Manager", "Lo publica en las redes")}</div>`;
+  return `<section class="panel"><h2 class="pmh">${pmIco("users")}Quién se ocupa${com ? " de tu pedido" : ""}</h2>${body}</section>`;
 }
 // Ventanas emergentes: a Admin total, cada pedido nuevo; al comprador, cada pedido suyo que se publicó (un objeto fijo por pedido).
 function pcPopItems(){
@@ -13443,6 +13465,7 @@ function pcDetail(p){
   ${!isComercial() && j ? `<section class="panel"><h2 class="pmh">${pmIco("route")}Dónde está</h2><p style="margin:0 0 8px">${j.area === "Contenidos" ? "Gestión de Contenidos (CM)" : "Diseño gráfico"} · <b>${esc(j.title)}</b> · ${esc(j.owner || "Sin asignar")} · ${esc(j.status)}${jobPubsOf(j).length ? " · publicación: " + jobPubsOf(j).map(x => `${esc(x.cm || "")} ${dm(x.date)} (${esc(x.status)})`).join(", ") : ""}</p>
     <div class="chips"><button type="button" class="btn" data-pcjob="${esc(j.id)}">${icon("eye")} Ver el trabajo</button></div><p class="note" style="margin:8px 0 0">Pasa solo a Finalizado cuando el CM deja la publicación Programada, Publicada o Pautada.</p></section>` : ""}
   ${!isComercial() && p.job && !j ? `<p class="note">${icon("triangle-alert")} El trabajo que salió de este pedido ya no está (lo borraron).${at ? ` Podés volver a pasarlo:` : ""}</p>${at ? `<div class="chips"><button type="button" class="btn" data-pcderive="Diseño">${icon("palette")} Pasar a Diseño gráfico</button><button type="button" class="btn" data-pcderive="Contenidos">${icon("shapes")} Pasar a CM</button></div>` : ""}` : ""}
+  ${pcSt(p) === "No ejecutable" ? "" : pcTeam(p)}
   <section class="panel"><h2 class="pmh">${pmIco("clipboard-list")}El pedido</h2><dl class="pcdl">
     ${row("Supermercados", (p.brands || []).map(brandTag).join(" "))}${row("Marcas", esc(p.marcas || ""))}${row("Qué necesita", esc(p.pedido === "Otro" ? p.pedOtro || "Otro" : p.pedido || ""))}
     ${row("Publicar el", p.date ? `<b>${dm(p.date)}</b> (${["domingo","lunes","martes","miércoles","jueves","viernes","sábado"][new Date(p.date + "T12:00").getDay()]})` : "")}${row("Vigencia", esc(pcRange(p)))}${row("Cargado por", esc(p.byName || ""))}</dl></section>
@@ -13455,9 +13478,10 @@ function pcDetail(p){
 const pcAsk = p => p.pedido === "Otro" ? p.pedOtro || "Otro" : p.pedido || "";
 function pcTable(list){
   const adm = !isComercial();
-  return `<div class="tw pctw"><table><thead><tr><th>Pedido</th><th>Supermercado</th><th>Qué pide</th>${adm ? "<th>Comprador</th>" : ""}<th>Pedido el</th><th>Publicar el</th><th>Vigencia</th><th>Estado</th></tr></thead><tbody>
+  const team = p => { const t = (p.job && jobById(p.job) ? pcTeamOf(jobById(p.job)) : p.team) || {}; return [t.dg, t.cm].filter(Boolean).map(n => esc(n.split(" ")[0])).join(" · ") || (p.job ? "Sin asignar" : "—"); }; // v302
+  return `<div class="tw pctw"><table><thead><tr><th>Pedido</th><th>Supermercado</th><th>Qué pide</th>${adm ? "<th>Comprador</th>" : "<th>Quién lo hace</th>"}<th>Pedido el</th><th>Publicar el</th><th>Vigencia</th><th>Estado</th></tr></thead><tbody>
     ${list.map(p => `<tr class="${pcSt(p) === "Finalizado" ? "pub" : pcSt(p) === "No ejecutable" ? "nox" : ""}" data-pcopen="${esc(p.id)}" role="button" tabindex="0" title="Tocá para ver el pedido"><td><b>${esc(p.title)}</b>${p.demo ? ` <span class="exbadge sm">Ejemplo · no se guarda</span>` : ""}${pcUnread(p).length ? ` <span class="pcnew">${icon("message-circle")} ${pcUnread(p).length}</span>` : (p.msgs || []).length ? ` <span class="pcnew old">${icon("message-circle")} ${p.msgs.length}</span>` : ""}${p.marcas ? `<small>${esc(p.marcas)}</small>` : ""}</td>
-      <td><div class="chips" style="flex-wrap:nowrap">${(p.brands || []).map(brandTag).join("")}</div></td><td>${esc(pcAsk(p))}</td>${adm ? `<td>${esc(p.byName || "")}</td>` : ""}
+      <td><div class="chips" style="flex-wrap:nowrap">${(p.brands || []).map(brandTag).join("")}</div></td><td>${esc(pcAsk(p))}</td>${adm ? `<td>${esc(p.byName || "")}</td>` : `<td>${team(p)}</td>`}
       <td class="num">${p.at ? dm(String(p.at).slice(0, 10)) : ""}</td><td class="num"><b>${p.date ? dm(p.date) : "Sin fecha"}</b></td><td>${esc(pcRange(p))}</td><td>${pcPill(p)}</td></tr>`).join("")}
   </tbody></table></div>`;
 }
