@@ -3775,6 +3775,15 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 /* v303 · Pantalla TV (todo junto) */
 .tvpgrid.tvpone{grid-template-columns:minmax(0,1fr);width:min(520px,100%)}
 .tvjunto .tvjn{max-width:560px;margin:0}
+/* v304 · Comercial: check de cada fila (personal; la fila cargada queda en verde) */
+.cofck{all:unset;box-sizing:border-box;display:grid;place-items:center;flex:none;width:26px;height:26px;margin:0 4px 0 2px;border-radius:7px;border:2px solid #64748b;color:#fff;cursor:pointer;transition:background .15s,border-color .15s}
+.cofck:hover{border-color:#22c55e}.cofck:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.cofck.on{background:#16a34a;border-color:#16a34a}.cofck svg{width:17px;height:17px;stroke-width:3}
+.cof.ok{background:color-mix(in srgb,#16a34a 16%,transparent);box-shadow:inset 3px 0 0 #22c55e}
+.comvk{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:#86efac;margin-left:10px}.comvk svg{width:14px;height:14px}
+.comvkclr{margin-left:6px}
+.comckon>.comgh{flex-wrap:wrap;row-gap:6px}
+@media (max-width:640px){.comckon .cofm{padding-right:72px}.cofr>.cofck{position:absolute;top:8px;right:38px;margin:0}.comckon>.comgh .comvk{order:5;margin-left:0}.comckon>.comgh .comvkclr{order:6}}
 </style>
 
 <div class="login" id="login">
@@ -4322,7 +4331,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v303";
+const APP_VER = "v304";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -4956,6 +4965,7 @@ let META_DM = {}; // mensajes de Instagram que llegan en vivo (webhook de Meta �
 let META_IG_ACT = {}; // comentarios, comentarios en vivo y menciones de Instagram (webhook y /api/interacciones → s:META_IG_ACT)
 let META_DM_LOG = {}; // los últimos avisos de Meta a ese webhook y qué pasó con cada uno (sin el texto de los mensajes)
 let COMERCIAL = {}; // ofertas publicadas de cada quincena (las lee el servidor del Excel de Comercial en Drive)
+const COM_CHECKS = {}; // v304: los checks de cada persona en las filas de Comercial (comchk:<persona>; solo los ve quien los marcó)
 let INBOX_DONE = {}; // conversaciones marcadas a mano como contestadas: { id: { by, at } }
 // Quién contestó y cuándo (cualquier CM lo anota con “Contestado” o “Lo contesté yo”; al enviar desde la app queda solo).
 const ibWho = h => `${firstName(h.by || "") || "Alguien"} · ${inboxAge(h.at)}`;
@@ -14119,6 +14129,23 @@ const comGuide = k => COM_GUIDE[k] ? `<p class="comguide">${icon("info")}<span><
 // Producto, precios y descuento en texto, para pegar donde haga falta (un producto: una línea por dato; la lista: columnas).
 const comPcTxt = i => comPct(i);
 const comCopyTxt = i => [comName(i), comPvpTxt(i) && i.of !== i.pvp ? `Antes: ${comPvpTxt(i)}` : "", `Oferta: ${comOfTxt(i)}`, comPcTxt(i) ? `Descuento: ${comPcTxt(i)}` : ""].filter(Boolean).join("\n");
+// v304 · Check en cada fila: cada uno marca a mano la línea que ya cargó y la fila queda en verde. Es personal: se guarda en
+// comchk:<persona> y lo ve solo quien lo marcó (en cualquier dispositivo). Los compradores (rol Comercial) no lo tienen.
+const comChkOn = () => !!viewer && !isComercial() && !isTV() && !isRevisor();
+const comChkKey = (sh, i) => (sh?.name || "") + "|" + comKey(i);
+const comChks = fid => (COM_CHECKS[viewer.id] || {})[fid] || {};
+const comChkBtn = (fid, k, on) => `<button type="button" class="cofck${on ? " on" : ""}" role="checkbox" aria-checked="${on}" data-comck="${esc(fid)}" data-ck="${esc(k)}" title="${on ? "Ya la cargaste · tocá para desmarcar" : "Marcala cuando ya cargaste esta línea"}" aria-label="${on ? "Línea ya cargada" : "Marcar la línea como cargada"}">${on ? icon("check") : ""}</button>`;
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-comck]"); if (b && comChkOn()){ e.stopPropagation();
+    const all = COM_CHECKS[viewer.id] = COM_CHECKS[viewer.id] || {}, fid = b.dataset.comck, k = b.dataset.ck, m = all[fid] = all[fid] || {};
+    if (m[k]) delete m[k]; else m[k] = 1; if (!Object.keys(m).length) delete all[fid];
+    if (COMERCIAL.files) Object.keys(all).forEach(id => { if (!COMERCIAL.files[id]) delete all[id]; }); // las ofertas que ya no están
+    render(); window.RMH?.flushNow?.(); return; }
+  const c = e.target.closest("[data-comckclr]"); if (c && comChkOn()){ const fid = c.dataset.comckclr, sn = c.dataset.sn || "", all = COM_CHECKS[viewer.id] || {}, m = all[fid] || {};
+    if (!confirmTap(c, "comckclr:" + fid + sn, "¿Desmarcar todas? Tocá de nuevo")) return;
+    Object.keys(m).forEach(k => { if (k.startsWith(sn + "|")) delete m[k]; }); if (!Object.keys(m).length) delete all[fid];
+    render(); window.RMH?.flushNow?.(); toast("Listo: se desmarcaron las líneas de esta hoja."); }
+});
 const comCopyBtn = id => `<button type="button" class="cofcp" data-comcopy="${esc(id)}" title="Copiar todo: producto y precios" aria-label="Copiar todo: producto y precios">${icon("copy")}</button>`;
 // Cada dato por separado (producto, oferta, precio de antes y descuento): se toca y queda copiado tal como se ve, para pegarlo en la pieza.
 const comF = (txt, what, html, tag = "span") => { if (!txt) return tag === "span" ? html : `<${tag}>${html}</${tag}>`;
@@ -14165,12 +14192,13 @@ function pComercial(){
   const tapaCods = new Set(all.filter(i => i.flag === "Tapa" && i.cod).map(i => i.cod));
   const dupTapa = all.filter(i => i.flag !== "Tapa" && i.cod && tapaCods.has(i.cod) && !/tapa/i.test(i.sec || ""));
   const groupsTop = [["Tapa", "star", "tapa", all.filter(i => i.flag === "Tapa")], ["Redes", "smartphone", "redes", all.filter(i => i.flag === "Zócalo redes")], ["Destacados", "sparkles", "dest", all.filter(i => i.flag === "Destacar")]].filter(g => g[3].length);
-  const row = (i, k) => { const id = f.id + ":" + sheets.indexOf(sh) + ":" + k, open = comUI.open === id, pc = comPct(i);
-    return `<div class="cof${open ? " open" : ""}"><div class="cofr"><div class="cofb${nv ? " nv" : ""}" data-comopen="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">
+  const ckOn = comChkOn(), ckMap = ckOn ? comChks(f.id) : {}, ckN = ckOn ? sh.items.filter(i => ckMap[comChkKey(sh, i)]).length : 0; // v304
+  const row = (i, k) => { const id = f.id + ":" + sheets.indexOf(sh) + ":" + k, open = comUI.open === id, pc = comPct(i), ck = ckOn ? comChkKey(sh, i) : "", on = !!(ck && ckMap[ck]);
+    return `<div class="cof${open ? " open" : ""}${on ? " ok" : ""}"><div class="cofr"><div class="cofb${nv ? " nv" : ""}" data-comopen="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">
       <span class="cofm">${comFd(i)}${isNew(i) ? `<span class="cnew" title="Se sumó al Excel en la última actualización">Nuevo</span>` : ""}${i.flag ? comFlag(i) : ""}${comTemTag(i)}${i.vars?.length ? `<span class="cvars${comVarDif(i) ? " dif" : ""}">${icon("layers")}${i.vars.length + 1} variantes${comVarDif(i) ? " · con otro precio" : ""}</span>` : ""}</span>${nv ? `<span class="cofv" data-l="Novedad">${comNov(i)}</span>` : ""}
       <span class="cofn" data-l="Antes">${comPvpTxt(i) ? comFp(i, esc(comPvpTxt(i))) : ""}</span>
       <span class="cofo" data-l="Oferta">${comFo(i, esc(comOfTxt(i)))}</span>
-      <span class="cofd2" data-l="${pc ? "Descuento" : ""}">${pc ? comFc(i, comPctTag(pc, 1)) : ""}</span></div>${comCopyBtn(id)}</div>
+      <span class="cofd2" data-l="${pc ? "Descuento" : ""}">${pc ? comFc(i, comPctTag(pc, 1)) : ""}</span></div>${comCopyBtn(id)}${ck ? comChkBtn(f.id, ck, on) : ""}</div>
       ${open ? `<dl class="cofd">${[["Código", i.cod], ["Material", i.mat], ["Sector", comSent(i.sector)], ["Temática", comRaw(i.tem)], ["Reconocimiento", typeof i.rec === "number" ? gs(i.rec) : i.rec], ["Oferta negociada", i.neg], ["Proveedor", comNice(i.prov) + (i.nprov ? " · N.° " + i.nprov : "")], ["Subcategoría", comSent(i.sub)], ["Página del folleto", i.sec ? comSec(i.sec) : ""], ["Destacado", i.flag ? comFlagTxt(i) : ""], ["Novedad", i.nov], ["Descripción del sistema", i.dsis ? comNice(i.dsis) : ""]].filter(([, v]) => v && String(v).trim()).map(([l, v]) => `<dt>${l}</dt><dd>${esc(String(v))}</dd>`).join("")}</dl>${i.vars?.length ? `<div class="cofvar"><b>Mismo cuadro del folleto: ${i.vars.length + 1} variantes</b><ul>${[{ d:i.dsis || i.desc, cod:i.cod, mat:i.mat, pvp:i.pvp, of:i.of }, ...i.vars].map(v => `<li><span>${esc(comNice(v.d))}</span><small>${[v.cod && "Cód. " + v.cod, v.mat && "Mat. " + v.mat].filter(Boolean).map(esc).join(" · ")}</small>${comVarDif(i) ? `<small>${comPvpTxt(v) ? "Antes " + esc(comPvpTxt(v)) + " · " : ""}</small><em>${esc(comVarOf(v))}</em>` : ""}</li>`).join("")}</ul></div>` : ""}` : ""}</div>`; };
   const bySec = []; list.forEach(i => { const k = comSec(i.sec || i.sector); let g = bySec.find(x => x[0] === k); if (!g) bySec.push(g = [k, []]); g[1].push(i); });
   return head + `<div class="comper" role="group" aria-label="Quincena">${chips.map(x => { const st = comState(x); return `<button type="button" class="comchip s-${st} ${x.id === f.id ? "on" : ""}" data-comper="${x.id}" aria-pressed="${x.id === f.id}"><small>${icon(st === "vig" ? "circle-check" : st === "prox" ? "calendar-clock" : "history")}${comStName(st, x)}</small><b>${comRange(x)}</b></button>`; }).join("")}
@@ -14182,8 +14210,8 @@ function pComercial(){
       <div class="comsrc">${f.inDrive === false ? `<span class="comgone">${icon("file-x")} Ya no se encuentra el archivo original en Drive (los datos quedan guardados acá)</span>` : /^[\w-]{10,}$/.test(f.id) ? `<a class="btn sm" href="https://drive.google.com/file/d/${encodeURIComponent(f.id)}/view" target="_blank" rel="noopener">${icon("file-spreadsheet")} Ver Excel original</a>` : ""}<a class="btn sm" href="${comFolderUrl(comKeyOf(f), f.src)}" target="_blank" rel="noopener" title="Abre la carpeta de Drive con los Excel de las ofertas">${icon("folder-open")} Abrir carpeta en Drive</a>${f.backup?.url ? `<a class="btn sm" href="${esc(f.backup.url)}" target="_blank" rel="noopener">${icon("hard-drive")} Respaldo en Drive</a>` : ""}<span class="note">${icon("refresh-cw")} Revisado ${COMERCIAL.syncedAt ? inboxAge(COMERCIAL.syncedAt) : "—"}</span></div>
       ${COMERCIAL.backupScript === false && viewer.role === "Admin total" ? `<p class="note comwarn">${icon("info")} Para que el respaldo se guarde solo en Drive, actualizá el script de Google Drive en Configuración → Integraciones.</p>` : ""}${comFids(comUI.cat).includes(COM_FOLLETOS) && COMERCIAL.src?.[COM_FOLLETOS]?.old && viewer.role === "Admin total" ? `<p class="note comwarn">${icon("info")} Para leer los Excel FINAL de la carpeta «MKT - FOLLETOS», actualizá el script de Google Drive en Configuración → Integraciones.</p>` : ""}${comPending(comUI.cat)}</section>
     ${groupsTop.map(([t, ic, cls, items]) => `<section class="comgrp g-${cls}"><h3 class="comgh">${icon(ic)}<span>${t}</span><small>${items.length}</small></h3>${comGuide(cls)}${cls === "tapa" && dupTapa.length ? `<p class="comdup">${icon("triangle-alert")}<span><b>Revisar:</b> ${dupTapa.length === 1 ? "este producto de tapa también aparece" : "estos productos de tapa también aparecen"} adentro del folleto: ${dupTapa.map(i => `${esc(comName(i))} (${esc(comSec(i.sec || i.sector))})`).join(" · ")}.</span></p>` : ""}<div class="comtop">${items.slice(0, 24).map(i => { const si = sheets.findIndex(x => x.items.includes(i)); return comCard(i, si < 0 ? "" : f.id + ":" + si + ":" + sheets[si].items.indexOf(i)); }).join("")}</div></section>`).join("")}
-    <section class="comlist">
-      <h3 class="comgh" title="Tocá el producto, el precio o el descuento para copiarlo">${icon("list")}<span>Todas las ofertas</span><small>${all.length}</small>${list.length ? `<button type="button" class="btn sm comcpall" data-comcopyall title="Copia producto, precio de antes, oferta y descuento de lo que se ve (con el filtro), para pegar en Excel o en un texto">${icon("copy")} Copiar lista</button>` : ""}</h3>
+    <section class="comlist${ckOn ? " comckon" : ""}">
+      <h3 class="comgh" title="Tocá el producto, el precio o el descuento para copiarlo">${icon("list")}<span>Todas las ofertas</span><small>${all.length}</small>${ckOn ? `<span class="comvk" title="Las líneas que marcaste como cargadas (solo las ves vos)">${icon("check")} ${ckN} de ${sh.items.length} cargadas</span>${ckN ? `<button type="button" class="btn sm comvkclr" data-comckclr="${esc(f.id)}" data-sn="${esc(sh.name || "")}">Desmarcar todas</button>` : ""}` : ""}${list.length ? `<button type="button" class="btn sm comcpall" data-comcopyall title="Copia producto, precio de antes, oferta y descuento de lo que se ve (con el filtro), para pegar en Excel o en un texto">${icon("copy")} Copiar lista</button>` : ""}</h3>
       ${sheets.length > 1 ? `<div class="comtabs" role="tablist">${sheets.map((x, k) => `<button type="button" role="tab" class="${x === sh ? "on" : ""}" aria-selected="${x === sh}" data-comsheet="${k}">${esc(comSheetName(x, k, f))} <span>${x.items.length}</span></button>`).join("")}</div>` : ""}
       <div class="comfil"><input class="base" id="comQ" placeholder="Buscar producto, proveedor o código" value="${esc(comUI.q)}" autocomplete="off">
         <select class="base" data-comsec aria-label="Página"><option value="Todas">Todas las páginas</option>${secs.map(x => `<option ${x === comUI.sec ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>

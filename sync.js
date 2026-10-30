@@ -5,6 +5,7 @@
 //   s:<nombre>          compartida con todo el equipo
 //   notes:<persona>     bloc de notas (solo lo ve su dueño)
 //   prompts:<persona>   historial de prompts (solo lo ve su dueño)
+//   comchk:<persona>    checks de las filas de Comercial (v304; solo los ve su dueño)
 //   thread:<id>         conversación privada (solo la ven sus dos participantes)
 //   chat:<grupo>        mensajes de un grupo del Chat (solo los ven sus integrantes, según s:CHAT_GROUPS)
 // Encuestas y sugerencias (s:SURVEYS, s:SUGGESTIONS) solo las lee y guarda Admin total; los grupos los edita solo Admin total.
@@ -101,7 +102,7 @@ const RMH = (() => {
   const base = new Map(); // clave → { v: versión en el servidor, json: lo último que coincidió con el servidor }
 
   function localKeys(){
-    return [...Object.keys(SHARED).map(k => "s:" + k).filter(k => (isAT() || !ADMIN_ONLY.has(k)) && (isCMish() || !CM_ONLY.has(k)) && (isATCM() || !ATCM_ONLY.has(k))), "notes:" + me, "prompts:" + me,
+    return [...Object.keys(SHARED).map(k => "s:" + k).filter(k => (isAT() || !ADMIN_ONLY.has(k)) && (isCMish() || !CM_ONLY.has(k)) && (isATCM() || !ATCM_ONLY.has(k))), "notes:" + me, "prompts:" + me, "comchk:" + me,
       ...THREADS.filter(t => t.a === me || t.b === me).map(t => "thread:" + t.id),
       ...CHAT_GROUPS.filter(g => chatMember(g, { id:me, role:member?.role })).map(g => "chat:" + g.id)]; // siempre con quien inició sesión
   }
@@ -109,6 +110,7 @@ const RMH = (() => {
     if (key.startsWith("s:")) return SHARED[key.slice(2)][0]();
     if (key.startsWith("notes:")) return NOTES[me] || [];
     if (key.startsWith("prompts:")) return PROMPT_HISTORY[me] || [];
+    if (key.startsWith("comchk:")) return COM_CHECKS[me] || {};
     if (key.startsWith("chat:")){ const id = key.slice(5); return CHATS[id] || (CHATS[id] = { id, msgs:[], seen:{} }); }
     return THREADS.find(t => "thread:" + t.id === key);
   }
@@ -116,6 +118,7 @@ const RMH = (() => {
     if (key.startsWith("s:")){ const h = SHARED[key.slice(2)]; if (h) h[1](v); }
     else if (key.startsWith("notes:")){ if (key === "notes:" + me) NOTES[me] = v; }
     else if (key.startsWith("prompts:")){ if (key === "prompts:" + me) PROMPT_HISTORY[me] = v; }
+    else if (key.startsWith("comchk:")){ if (key === "comchk:" + me) COM_CHECKS[me] = v || {}; }
     else if (key.startsWith("chat:")) CHATS[key.slice(5)] = v;
     else if (key.startsWith("thread:")){ const i = THREADS.findIndex(t => "thread:" + t.id === key); if (i >= 0) THREADS[i] = v; else THREADS.push(v); }
   }
