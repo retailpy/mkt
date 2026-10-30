@@ -4130,6 +4130,7 @@ function openPub(ref){
 }
 // Aviso al CM: “Nueva publicación para vos”, con lo que hizo Diseño (o su contenido aprobado) ya cargado en su calendario.
 // v309 · Actividad de CM asignada (o te sumaron): qué, cuándo y con quién.
+const actSeen = a => { if (a && viewer && !window.RMH?.previewing) NOTIFS.forEach(n => { if (n.type === "act" && n.act === a.id && n.to === viewer.name) n.read = true; }); }; // abrirla ya es atenderla
 function actAlert(n){ const a = actById(n.act); if (!a) return null; const others = crewOf(a.owner, a).filter(x => x !== n.to);
   return { go:"act:" + a.id, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:actType(a.type).i, t:`Nueva actividad para vos: ${a.title}`,
     m:`${a.brand} · ${actType(a.type).t} · el ${dm(a.date)}${a.time ? " a las " + a.time : ""}${others.length ? ` · con ${others.map(firstName).join(" y ")}` : ""} · tocá para verla` }; }
@@ -6071,7 +6072,7 @@ function goAlert(go){
   go = String(go || "");
   if (go.startsWith("job:")){ const j = jobById(go.slice(4)); if (!j) return toast("No se encontró el pedido (quizás lo borraron)."); postUI.form = null; jobUI.form = null; jobUI.ficha = j.id; page = jobSection(j); if (!can(page)) page = "inicio"; }
   else if (go.startsWith("pub:")) return openPub(go.slice(4));
-  else if (go.startsWith("act:")){ const a = actById(go.slice(4)); if (!a) return toast("No se encontró la actividad (quizás la borraron)."); postUI.form = null; jobUI.form = null; jobUI.ficha = null; actUI.form = { mode:"edit", act:{ ...a } }; page = ["gcm", "calact", "gestioncm"].find(can) || page; }
+  else if (go.startsWith("act:")){ const a = actById(go.slice(4)); if (!a) return toast("No se encontró la actividad (quizás la borraron)."); postUI.form = null; jobUI.form = null; jobUI.ficha = null; actUI.form = { mode:"edit", act:{ ...a } }; actSeen(a); page = ["gcm", "calact", "gestioncm"].find(can) || page; }
   else if (go.startsWith("com:")){ postUI.form = null; jobUI.form = null; jobUI.ficha = null; pcUI.form = null; pcUI.open = go.slice(4); page = "pedcom"; pcSeen(pcById(pcUI.open)); }
   else if (go.startsWith("chat:")) return openChatFrom(go.slice(5));
   else if (go.startsWith("sug")) page = "sugerencias";
@@ -7215,7 +7216,7 @@ document.addEventListener("click", e => {
   if (k === "post"){ const p = postById(id); if (p){ postUI.form = { mode:"edit", kind:p.format === "Historia" ? "Historia" : "Feed", post:{ ...p } }; render(); window.scrollTo(0, 0); } return; }
   if (k === "canal"){ const c = canalById(id); if (c){ postUI.form = { mode:"edit", kind:"Canal", post:{ ...c } }; render(); window.scrollTo(0, 0); } return; }
   if (k === "job"){ jobUI.ficha = id; render(); window.scrollTo(0, 0); return; }
-  if (k === "act"){ const a = actById(id); if (a){ actUI.form = { mode:"edit", act:{ ...a } }; render(); window.scrollTo(0, 0); } return; }
+  if (k === "act"){ const a = actById(id); if (a){ actUI.form = { mode:"edit", act:{ ...a } }; actSeen(a); render(); window.scrollTo(0, 0); } return; }
   if (k === "rec"){ const [rid, d] = id.split("~"), r = RECURRING.find(x => x.id === +rid); if (r && canCreateJobs()){ recUI = { form:true, days:[...r.days], kind:r.kind, edit:r.id, noEnd:null, at:d }; render(); } }
 });
 document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("[data-cmopen]")){ e.preventDefault(); e.target.click(); } });
@@ -13198,7 +13199,7 @@ let jobPop = { items:[] };
 function jobPopCheck(){
   if (!viewer || !enterApp.done || !$("#login").hidden || window.RMH?.previewing || noPops()) return;
   const mine = [...myNotifs(), ...(viewer.role === "Admin total" ? adminNotifs().filter(n => ADMIN_POP.includes(n.type) && n.who !== viewer.name && (n.type !== "sug" || can("sugerencias"))) : [])]
-    .filter(n => JOBPOP[n.type] && !POP_LOCAL.includes(n.type) && (n.copy ? copyAlert(n) : (n.type !== "pub" || pubAlert(n)) && (n.type !== "listo" || !n.post || listoAlert(n)) && (!n.job || jobById(n.job))))
+    .filter(n => JOBPOP[n.type] && !POP_LOCAL.includes(n.type) && (n.copy ? copyAlert(n) : (n.type !== "pub" || pubAlert(n)) && (n.type !== "act" || actAlert(n)) && (n.type !== "listo" || !n.post || listoAlert(n)) && (!n.job || jobById(n.job))))
     .concat(avActiveFor(viewer).filter(a => !(a.seen || []).includes(viewer.id) && a.by !== viewer.id).map(a => avPopOf(a))) // avisos del equipo vigentes, sin “Entendido”
     .concat(avOkItems()) // a quien mandó un Aviso: cada persona que tocó “Entendido”
     .concat(pcPopItems()); // v242: Pedidos Comercial
