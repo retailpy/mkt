@@ -441,7 +441,8 @@ html.nomotion .picon{animation:none}
 :root[data-theme="light"] .prio.p-baja{--pt:#334155}:root[data-theme="light"] .prio.p-media{--pt:#0369a1}:root[data-theme="light"] .prio.p-alta{--pt:#c2410c}
 .procex{padding:14px 16px}.procex summary{display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none}.procex summary::-webkit-details-marker{display:none}.procex summary svg{width:18px;height:18px;color:#facc15}
 .repbadge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12.5px;font-weight:600;color:#c4b5fd;border:1px solid rgba(167,139,250,.45);background:rgba(139,92,246,.12)}.repbadge svg{width:13px;height:13px}
-.jrep{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px dashed var(--line-3);border-radius:14px}.jrep .chip.on{background:color-mix(in srgb,var(--cyan) 22%,transparent);border-color:var(--cyan)}.jrepu{max-width:240px}
+.jrep{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px dashed var(--line-3);border-radius:14px}
+.jalso{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px dashed var(--line-3);border-radius:14px}.jalso .jll{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.jalso .jll svg{width:16px;height:16px}.jalso .chip.on{background:color-mix(in srgb,var(--cyan) 22%,transparent);border-color:var(--cyan)}.jalsoro{display:flex;align-items:center;gap:6px}.jalsoro svg{width:15px;height:15px}.jrep .chip.on{background:color-mix(in srgb,var(--cyan) 22%,transparent);border-color:var(--cyan)}.jrepu{max-width:240px}
 .jlrow2{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:14px;border:1px solid var(--line-2);background:rgba(148,163,184,.06);color:var(--ink);text-decoration:none;transition:border-color .15s,background .15s}
 .jlrow2:hover,.jlrow2:focus-visible{border-color:var(--lc,var(--cyan));background:color-mix(in srgb,var(--lc,var(--cyan)) 10%,transparent)}
 .jlrow2 .jlic{width:42px;height:42px;flex:none;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,var(--lc,var(--cyan)) 18%,transparent);color:var(--lc,var(--cyan))}.jlrow2 .jlic svg{width:22px;height:22px}
@@ -4019,17 +4020,17 @@ let drag = null;
 document.addEventListener("click", e => { const b = e.target.closest("[data-jset]"); if (!b) return; e.stopPropagation(); const j = jobs.find(x => x.id === b.dataset.jset); if (j && stageOptions("job", j).includes(b.dataset.st)) moveJob(j, b.dataset.st); });
 // Diseñador: “Terminé mi etapa” / “Terminé las correcciones” → pasa a revisión y le llega el aviso a Admin total
 document.addEventListener("click", e => { const b = e.target.closest("[data-jdone]"); if (!b) return; e.stopPropagation();
-  const j = jobById(b.dataset.jdone); if (!j || j.owner !== viewer.name) return;
+  const j = jobById(b.dataset.jdone); if (!j || !hasJob(j, viewer.name)) return;
   moveJob(j, reviewStage(j)); });
 // v250: volver una etapa para atrás (si la pasó sin querer)
 document.addEventListener("click", e => { const b = e.target.closest("[data-jback]"); if (!b) return; e.stopPropagation();
-  const j = jobById(b.dataset.jback); if (!j || j.owner !== viewer.name || !designBack(j)) return; moveJob(j, designBack(j)); });
+  const j = jobById(b.dataset.jback); if (!j || !hasJob(j, viewer.name) || !designBack(j)) return; moveJob(j, designBack(j)); });
 // Diseñador: “Empezar” pasa el pedido de Pendiente a En proceso
 document.addEventListener("click", e => { const b = e.target.closest("[data-jstart]"); if (!b) return; e.stopPropagation();
-  const j = jobById(b.dataset.jstart); if (!j || j.owner !== viewer.name) return; moveJob(j, "En proceso"); });
+  const j = jobById(b.dataset.jstart); if (!j || !hasJob(j, viewer.name)) return; moveJob(j, "En proceso"); });
 // Diseñador: un diseño aprobado se marca como entregado
 document.addEventListener("click", e => { const b = e.target.closest("[data-jdeliver]"); if (!b) return; e.stopPropagation();
-  const j = jobById(b.dataset.jdeliver); if (!j || j.owner !== viewer.name || (j.area !== "CM" && j.status !== "Aprobado")) return; if (j.area === "CM") moveJob(j, j.status === "Publicado" ? "Pautado" : "Publicado"); });
+  const j = jobById(b.dataset.jdeliver); if (!j || !hasJob(j, viewer.name) || (j.area !== "CM" && j.status !== "Aprobado")) return; if (j.area === "CM") moveJob(j, j.status === "Publicado" ? "Pautado" : "Publicado"); });
 // Admin total: aprobar o pedir correcciones desde el aviso
 document.addEventListener("click", e => { const b = e.target.closest("[data-nact]"); if (!b) return;
   const n = NOTIFS.find(x => x.id === +b.dataset.nid);
@@ -4128,6 +4129,11 @@ function openPub(ref){
   location.hash = page; render(); window.scrollTo({ top:0, behavior:"smooth" });
 }
 // Aviso al CM: “Nueva publicación para vos”, con lo que hizo Diseño (o su contenido aprobado) ya cargado en su calendario.
+// v309 · Actividad de CM asignada (o te sumaron): qué, cuándo y con quién.
+const actSeen = a => { if (a && viewer && !window.RMH?.previewing) NOTIFS.forEach(n => { if (n.type === "act" && n.act === a.id && n.to === viewer.name) n.read = true; }); }; // abrirla ya es atenderla
+function actAlert(n){ const a = actById(n.act); if (!a) return null; const others = crewOf(a.owner, a).filter(x => x !== n.to);
+  return { go:"act:" + a.id, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:actType(a.type).i, t:`Nueva actividad para vos: ${a.title}`,
+    m:`${a.brand} · ${actType(a.type).t} · el ${dm(a.date)}${a.time ? " a las " + a.time : ""}${others.length ? ` · con ${others.map(firstName).join(" y ")}` : ""} · tocá para verla` }; }
 function pubAlert(n){
   const x = n.post ? (n.canal ? canalById(n.post) : postById(n.post)) : null, j = jobById(n.job);
   if (!x){ if (!j || !j.pubCm || n.post) return null; // asignada sin fecha todavía: lo que se sabe del pedido
@@ -4346,7 +4352,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v308";
+const APP_VER = "v309";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -4578,7 +4584,7 @@ const LOAD_FULL = 10; // puntos que se consideran “carga completa” (ajustabl
 const POST_PENDING = ["Pendiente","En proceso"];
 function loadOf(name){ const cp = PEOPLE.find(x => x.name === name && x.role === "CM");
   if (cp){ const c = cmLoad(cp); return { n:c.n, cm:true, min:c.min, avail:c.avail, pct:c.pct, missing:c.missing, next:c.week.next, pts:null }; } // CM: en %, sin puntos
-  const open = jobs.filter(j => j.owner === name && !isIdleJob(j)); const pp = posts.filter(p => p.cm === name && p.date.slice(0,7) === CURRENT_MONTH && POST_PENDING.includes(p.status)); const pts = open.reduce((a, j) => a + (CX_W[j.complexity] || 2), 0) + pp.length; return { n:open.length + pp.length, pts, pct:Math.round(pts / LOAD_FULL * 100) }; }
+  const open = jobs.filter(j => hasJob(j, name) && !isIdleJob(j)); const pp = posts.filter(p => hasPub(p, name) && p.date.slice(0,7) === CURRENT_MONTH && POST_PENDING.includes(p.status)); const pts = open.reduce((a, j) => a + (CX_W[j.complexity] || 2), 0) + pp.length; return { n:open.length + pp.length, pts, pct:Math.round(pts / LOAD_FULL * 100) }; }
 // Zonas (sobre la capacidad): 0-49 % verde = zona ideal · 50-79 % amarillo · 80-99 % naranja · 100 % o más rojo.
 const loadLevel = pct => pct >= 100 ? { c:"#ef4444", t:"Sobrecargado", k:"red" } : pct >= 80 ? { c:"#f97316", t:"Al límite", k:"orange" } : pct >= 50 ? { c:"#eab308", t:"Carga alta", k:"yellow" } : { c:"#10b981", t:"Zona ideal", k:"green" };
 // Carga de un grupo de personas: puntos sin finalizar sobre la capacidad (10 puntos por persona).
@@ -4703,25 +4709,25 @@ function cmPending(pp){
   const name = pp.name, wk = cmWeek(pp), end = wk.to, from = wk.from, items = [], add = (fn, t, x, left = t) => items.push({ fn, t, left, done:left === 0, ...x }); // solo lo de esa semana
   const vidJobs = jobs.filter(j => j.area === "CM" && !j.ex);
   const inVideo = id => vidJobs.some(j => j.post === id || j.pub?.id === id); // la publicación de un video ya está en su tiempo
-  posts.filter(p => p.cm === name && !p.ex && p.date >= from && p.date <= end && !onHold(p) && !inVideo(p.id)).forEach(p => {
+  posts.filter(p => hasPub(p, name) && !p.ex && p.date >= from && p.date <= end && !onHold(p) && !inVideo(p.id)).forEach(p => {
     const k = POST_TIME_KEY(p), t = cmTime(k); add(p.format === "Historia" ? "historias" : "redes", t, { title:p.title, brand:p.brand, date:p.date, st:p.status, what:p.format }, DONE_PUB.includes(p.status) ? 0 : t); });
-  CHANNEL_POSTS.filter(k => k.cm === name && k.date >= from && k.date <= end && !onHold(k)).forEach(k => { const t = cmTime("canal"); add("canal", t, { title:k.title, brand:k.brand, date:k.date, st:k.status, what:"Canal" }, DONE_PUB.includes(k.status) ? 0 : t); });
+  CHANNEL_POSTS.filter(k => hasPub(k, name) && k.date >= from && k.date <= end && !onHold(k)).forEach(k => { const t = cmTime("canal"); add("canal", t, { title:k.title, brand:k.brand, date:k.date, st:k.status, what:"Canal" }, DONE_PUB.includes(k.status) ? 0 : t); });
   // Repetitivos de la semana (desde el lunes)
   const mon = from;
   RECURRING.filter(r => r.owner === name).forEach(r => { for (let d = mon; d <= end; d = addDays(d, 1)){ if (!recOn(r, d)) continue; const st = recSt(r, d), dn = DONE_PUB.includes(st);
     if (r.kind === "Grabación"){ const v = cmTime("video"); add("videos", v, { title:r.title, brand:r.brand, date:d, st, what:"Grabación repetitiva" }, v === null ? null : dn ? 0 : v * vidLeft(st)); }
     else { const t = cmTime(r.kind === "Historia" ? "historia" : r.kind === "Canal" ? "canal" : "post"); add(r.kind === "Historia" ? "historias" : r.kind === "Canal" ? "canal" : "redes", t, { title:r.title, brand:r.brand, date:d, st, what:"Repetitivo" }, dn ? 0 : t); } } });
-  jobs.filter(j => j.area === "Contenidos" && !j.ex && j.owner === name && !onHold(j) && j.due >= from && j.due <= end).forEach(j => { const c = cmTime("contenido");
+  jobs.filter(j => j.area === "Contenidos" && !j.ex && hasJob(j, name) && !onHold(j) && j.due >= from && j.due <= end).forEach(j => { const c = cmTime("contenido");
     add("contenidos", c, { title:j.title, brand:j.brand, date:j.due, st:j.status, what:cmPiece(j) }, c === null ? null : isClosedJob(j) ? 0 : c * (CONT_LEFT[j.status] ?? 100) / 100); });
   // Videos: el tiempo completo y lo que falta según la etapa, más el traslado (una sola vez por visita compartida)
   const visits = new Set();
-  vidJobs.filter(j => j.owner === name && !onHold(j) && j.due >= from && j.due <= end).forEach(j => { const v = cmTime("video"); // los videos de esa semana
+  vidJobs.filter(j => hasJob(j, name) && !onHold(j) && j.due >= from && j.due <= end).forEach(j => { const v = cmTime("video"); // los videos de esa semana
     add("videos", v, { title:j.title, brand:j.brand, date:j.due, st:j.status, what:cmPiece(j) }, v === null ? null : v * vidLeft(j.status));
     if (j.traslado || j.visita){ const key = (j.visita || "").trim().toLowerCase() || "j:" + j.id; if (visits.has(key)) return; visits.add(key);
       const tr = j.traslado === "" || j.traslado === undefined ? null : +j.traslado;
       add("videos", tr, { title:`Traslado${j.visita ? ": " + j.visita : ""}`, brand:j.brand, date:j.due, st:"", what:"Traslado", trip:true }, ["Pendiente","Grabación"].includes(j.status) ? tr : 0); } });
   // Otras actividades (encuestas, fotos, DL, regalos, sorteos, vales): lo que falta según el estado (v220)
-  CM_ACTS.filter(a => a.owner === name && a.date >= from && a.date <= end).forEach(a => { const t = cmTime("actividad");
+  CM_ACTS.filter(a => hasJob(a, name) && a.date >= from && a.date <= end).forEach(a => { const t = cmTime("actividad");
     add("actividades", t, { title:a.title, brand:a.brand, date:a.date, st:a.status, what:actType(a.type).t }, t === null ? null : a.status === "Hecho" ? 0 : a.status === "En proceso" ? t / 2 : t); });
   // Mensajes: una responsabilidad por día de trabajo, con sus cuentas (no una tarea por mensaje)
   const acc = cmAccounts(pp);
@@ -4952,6 +4958,29 @@ jobs.forEach((j, i) => {
   j.link = j.link || ""; j.notes = j.notes || "";
 });
 const CM_NAMES = () => PEOPLE.filter(p => p.role === "CM" && p.active).map(p => p.name);
+// v309 · Varias personas de CM en un mismo trabajo (actividades, pedidos de CM y de Contenidos, publicaciones y Canal):
+// la responsable sigue en owner (pedidos y actividades) o en cm (publicaciones y Canal); las demás, en also (las elige
+// Admin total). Para cada una cuenta como propio: su panel, su carga, sus avisos, la TV y los informes por persona.
+const alsoOf = x => Array.isArray(x?.also) ? x.also.filter(n => n && n !== "Sin asignar") : [];
+const hasJob = (x, n) => !!x && !!n && (x.owner === n || alsoOf(x).includes(n)); // pedidos y actividades
+const hasPub = (x, n) => !!x && !!n && (x.cm === n || alsoOf(x).includes(n)); // publicaciones y Canal
+const crewOf = (main, x) => [...new Set([main, ...alsoOf(x)].filter(n => n && n !== "Sin asignar"))];
+const crewTxt = (main, x, f = firstName) => crewOf(main, x).map(f).join(" + ");
+const alsoCan = () => viewer?.role === "Admin total" && !isViewOnly() && !isClosed();
+function alsoBox(x, main){
+  const cur = alsoOf(x);
+  if (!alsoCan()) return cur.length ? `<p class="note jalsoro" style="grid-column:1/-1;margin:0">${icon("users")} También participan: <b>${cur.map(esc).join(", ")}</b></p>` : "";
+  return `<div class="jalso" style="grid-column:1/-1"><span class="jll">${icon("users")} También participan <span class="note">(opcional: otras personas de CM que hacen este trabajo junto con la responsable; a cada una le cuenta como propio)</span></span>
+    <div class="chips" data-alsobox>${[...new Set([...CM_NAMES(), ...cur])].map(n => { const on = cur.includes(n) && n !== main; return `<button type="button" class="chip${on ? " on" : ""}" data-also="${esc(n)}" aria-pressed="${on}"${n === main ? " hidden" : ""}>${esc(n)}</button>`; }).join("")}</div></div>`;
+}
+// Lo elegido queda en la hoja abierta (así no se pierde si se vuelve a dibujar) y sin la responsable.
+const alsoItem = box => { const id = box?.closest("form")?.id; return id === "jobForm" ? jobUI.form?.job : id === "postForm" ? postUI.form?.post : id === "actForm" ? actUI.form?.act : null; };
+const alsoSync = box => { const x = alsoItem(box); if (x) x.also = [...box.querySelectorAll("[data-also].on:not([hidden])")].map(b => b.dataset.also); };
+const alsoClean = (x, main) => { const l = alsoOf(x).filter(n => n !== main); if (l.length) x.also = [...new Set(l)]; else delete x.also; return x; };
+document.addEventListener("click", e => { const b = e.target.closest("[data-also]"); if (!b || !alsoCan()) return; const on = !b.classList.contains("on");
+  b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); alsoSync(b.closest("[data-alsobox]")); });
+document.addEventListener("change", e => { const s = e.target.closest("#jOwner,#poCm,#acOwner"); if (!s) return; const box = s.closest("form")?.querySelector("[data-alsobox]"); if (!box) return;
+  box.querySelectorAll("[data-also]").forEach(b => { const me = b.dataset.also === s.value; b.hidden = me; if (me){ b.classList.remove("on"); b.setAttribute("aria-pressed", false); } }); alsoSync(box); });
 const areaPeople = a => a === "Diseño" ? DESIGNERS : CM_NAMES(); // Videos y Contenidos: los CM
 let jobCounter = 150;
 const nextJobId = area => `${AREAS[area].prefix}-2026-${++jobCounter}`;
@@ -5476,7 +5505,8 @@ document.addEventListener("submit", e => { if (e.target.id !== "staffForm") retu
   if (d && d > new Date(2024, m, 0).getDate()){ toast(`${MONTHS_ES[m - 1]} tiene ${new Date(2024, m, 0).getDate()} días.`); return; }
   // Si cambia el nombre, se actualiza también donde figura como responsable.
   const old = pp.name;
-  if (old !== name){ jobs.forEach(j => { if (j.owner === old) j.owner = name; }); posts.forEach(p => { if (p.cm === old) p.cm = name; }); CHANNEL_POSTS.forEach(k => { if (k.cm === old) k.cm = name; }); RECURRING.forEach(r => { if (r.owner === old) r.owner = name; }); }
+  if (old !== name){ jobs.forEach(j => { if (j.owner === old) j.owner = name; }); posts.forEach(p => { if (p.cm === old) p.cm = name; }); CHANNEL_POSTS.forEach(k => { if (k.cm === old) k.cm = name; }); RECURRING.forEach(r => { if (r.owner === old) r.owner = name; });
+    [jobs, posts, CHANNEL_POSTS, CM_ACTS].forEach(L => L.forEach(x => { if (alsoOf(x).includes(old)) x.also = alsoOf(x).map(n => n === old ? name : n); })); } // v309
   const oldUser = pp.username || null;
   Object.assign(pp, { name, nick:v("sfNick") || null, cargo:v("sfCargo"), username:user || null, workPhone:v("sfWork"), email:v("sfMail"), phone:v("sfPhone"), phone2:v("sfPhone2") || null, personalEmail:v("sfMail2") || null, mainBrand:v("sfBrand") || null, quote:v("sfQuote") || null, skills:v("sfSkills").split(",").map(x => x.trim()).filter(Boolean), birthday:d ? String(m).padStart(2, "0") + "-" + String(d).padStart(2, "0") : null });
   staffEdit = null; render(); toast(`Guardado: los datos de ${name}.`);
@@ -5986,7 +6016,7 @@ function notifAlerts(){
     return { go:"job:" + j.id, key:"n:" + n.id, sev:"#a855f7", rank:-5, ic:"circle-check", t:`${n.who} ${n.fix ? "terminó las correcciones" : j.area === "CM" ? "terminó su trabajo" : contCopy(j) ? "terminó el boceto y el copy" : "terminó el boceto"}: ${j.title}`, m:`${j.brand} · ${j.piece} · listo para revisar${contCopy(j) ? " · " + jcopyShort(j) : ""} · ${dm(n.date)} ${n.time}${j.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}`,
       acts:`<button class="btn primary" data-nact="approve" data-nid="${n.id}">${j.area === "CM" ? "Aprobar" : "✓ Aprobar"}</button><button class="btn" data-nact="fix" data-nid="${n.id}">Pedir cambios</button><button class="btn" data-jficha="${j.id}">Ver pedido</button>` };
   });
-  return myNotifs().map(n => n.copy ? copyAlert(n) : n.type === "pub" ? pubAlert(n) : n.type === "nuevo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:"inbox", t:`Nuevo pedido para vos: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""} · fecha límite ${jobById(n.job) ? dm(jobById(n.job).due) : ""} · tocá para ver todo` }
+  return myNotifs().map(n => n.copy ? copyAlert(n) : n.type === "pub" ? pubAlert(n) : n.type === "act" ? actAlert(n) : n.type === "nuevo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:"inbox", t:`Nuevo pedido para vos: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""} · fecha límite ${jobById(n.job) ? dm(jobById(n.job).due) : ""} · tocá para ver todo` }
     : n.type === "listo" && n.post ? listoAlert(n)
     : n.type === "listo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#10b981", rank:-6, ic:"badge-check", t:`Diseño listo para tu grilla: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""}${jobById(n.job)?.designLink ? " · tiene el link del diseño" : ""} · sumalo a tu calendario` }
     : n.type === "nota" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#94a3b8", rank:-4, ic:"message-circle", t:`Admin total comentó en: ${jobById(n.job)?.title || ""}`, m:`“${n.text}” · ${dm(n.date)} ${n.time}` } : ({ go:"job:" + n.job, key:"n:" + n.id, sev:n.type === "approved" ? "#10b981" : "#f97316", rank:-5, ic:n.type === "approved" ? "badge-check" : "pencil", t:n.type === "approved" ? `Admin total aprobó tu ${jobDone(jobById(n.job) || {})}: ${jobById(n.job)?.title}` : `Admin total pidió cambios: ${jobById(n.job)?.title}`, m:`${n.type === "fix" && n.text ? `“${n.text}” · ` : ""}${dm(n.date)} ${n.time}${n.type === "fix" ? ` · cuando termines, tocá “${jobById(n.job)?.area === "CM" ? "Terminé las correcciones" : "Corrección realizada"}”` : ""}`, acts:`${n.type === "fix" ? `<button class="btn primary" data-jdone="${n.job}">✓ ${jobById(n.job)?.area === "CM" ? "Terminé las correcciones" : "Corrección realizada"}</button>` : ""}<button class="btn" data-jficha="${n.job}">Ver pedido</button>` }));
@@ -5994,14 +6024,14 @@ function notifAlerts(){
 function alerts(){
   const out = [];
   if (!isDesigner()){
-    posts.filter(p => seesBrand(p.brand) && p.cm === viewer.name).forEach(p => { // solo lo que está a tu nombre
+    posts.filter(p => seesBrand(p.brand) && hasPub(p, viewer.name)).forEach(p => { // solo lo que está a tu nombre
       const u = postUrgency(p);
       if (u) out.push({ d:p.date, post:p.id, go:p.format === "Historia" ? "calhistoria" : "calendario", ic:u.late ? "alarm-clock" : "calendar-clock", sev:u.c, rank: u.late ? 0 : daysTo(p.date) + 1, t:`Post: ${u.t.toLowerCase()}: ${p.title}`, m:`${p.brand} · ${p.cm} · publicación ${dm(p.date)} · está en ${p.status}` });
     });
   }
-  jobs.filter(j => seesJob(j) && !isFin(j) && (j.owner === viewer.name || (j.owner === "Sin asignar" && canCreateJobs()))).forEach(j => { // alertas personales: lo tuyo (y, para quien asigna, lo que falta asignar)
+  jobs.filter(j => seesJob(j) && !isFin(j) && (hasJob(j, viewer.name) || (j.owner === "Sin asignar" && canCreateJobs()))).forEach(j => { // alertas personales: lo tuyo (y, para quien asigna, lo que falta asignar)
     const u = urgency(j);
-    if (u && j.owner === viewer.name) out.push({ go:"job:" + j.id, ic:u.late ? "alarm-clock" : "clock", sev:u.c, rank: u.late ? 0 : daysTo(j.due) + 1, t:`${u.t}: ${j.title}`, m:`${j.brand} · ${j.owner} · entrega el ${dm(j.due)}` });
+    if (u && hasJob(j, viewer.name)) out.push({ go:"job:" + j.id, ic:u.late ? "alarm-clock" : "clock", sev:u.c, rank: u.late ? 0 : daysTo(j.due) + 1, t:`${u.t}: ${j.title}`, m:`${j.brand} · ${j.owner} · entrega el ${dm(j.due)}` });
     if (j.owner === "Sin asignar") out.push({ go:"job:" + j.id, ic:"user-round-x", sev:"var(--warn)", t:`Pedido sin asignar: ${j.title}`, m:`${j.brand} · falta elegir diseñador` });
   });
   if (can("pauta")){
@@ -6042,6 +6072,7 @@ function goAlert(go){
   go = String(go || "");
   if (go.startsWith("job:")){ const j = jobById(go.slice(4)); if (!j) return toast("No se encontró el pedido (quizás lo borraron)."); postUI.form = null; jobUI.form = null; jobUI.ficha = j.id; page = jobSection(j); if (!can(page)) page = "inicio"; }
   else if (go.startsWith("pub:")) return openPub(go.slice(4));
+  else if (go.startsWith("act:")){ const a = actById(go.slice(4)); if (!a) return toast("No se encontró la actividad (quizás la borraron)."); postUI.form = null; jobUI.form = null; jobUI.ficha = null; actUI.form = { mode:"edit", act:{ ...a } }; actSeen(a); page = ["gcm", "calact", "gestioncm"].find(can) || page; }
   else if (go.startsWith("com:")){ postUI.form = null; jobUI.form = null; jobUI.ficha = null; pcUI.form = null; pcUI.open = go.slice(4); page = "pedcom"; pcSeen(pcById(pcUI.open)); }
   else if (go.startsWith("chat:")) return openChatFrom(go.slice(5));
   else if (go.startsWith("sug")) page = "sugerencias";
@@ -6232,19 +6263,19 @@ let panelAll = false;
 // Lo que esta persona tiene que terminar: sus pedidos sin finalizar (y, en CM, sus publicaciones del mes sin programar), por fecha.
 function panelMine(ar){
   const cm = ar === "cm", me = viewer.name, gone = alertsGone(), out = [];
-  jobs.filter(j => j.owner === me && jobGroup(j) === (cm ? "CM" : "Diseño") && seesJob(j) && j.status === PAUSE && !j.ex).forEach(j => // v301: tarea en pausa (nada que hacer)
+  jobs.filter(j => hasJob(j, me) && jobGroup(j) === (cm ? "CM" : "Diseño") && seesJob(j) && j.status === PAUSE && !j.ex).forEach(j => // v301: tarea en pausa (nada que hacer)
     out.push({ d:"9", go:"job:" + j.id, key:"pz:" + j.id + ":" + (j.holdAt || ""), ic:"pause", sev:"#94a3b8", t:`En pausa: ${j.title}`, m:`${j.brand} · ${j.piece} · Admin total lo puso en pausa${j.holdAt ? ` el ${dm(j.holdAt)}` : ""}: por ahora no hay que hacer nada` }));
-  jobs.filter(j => j.owner === me && jobGroup(j) === (cm ? "CM" : "Diseño") && seesJob(j) && !isIdleJob(j) && !repLater(j)).sort((a, b) => a.due.localeCompare(b.due)).forEach(j => {
+  jobs.filter(j => hasJob(j, me) && jobGroup(j) === (cm ? "CM" : "Diseño") && seesJob(j) && !isIdleJob(j) && !repLater(j)).sort((a, b) => a.due.localeCompare(b.due)).forEach(j => {
     const u = urgency(j), fix = j.status === fixStage(j);
     out.push({ d:j.due, go:"job:" + j.id, key:"pm:" + j.id + ":" + j.status, ic:fix ? "pencil" : u?.late ? "alarm-clock" : "clock", sev:u ? u.c : fix ? "#f97316" : "#94a3b8", t:`${fix ? "Cambios pendientes" : u?.late ? "Atrasado" : "Por terminar"}: ${j.title}`, m:`${j.brand} · ${j.piece} · entrega el ${dm(j.due)} · ${j.status}` }); });
-  if (cm) visiblePosts().filter(p => p.cm === me && !["Programado","Publicado","Pautado"].includes(p.status) && !onHold(p) && !repLater(p)).sort((a, b) => a.date.localeCompare(b.date)).forEach(p => {
+  if (cm) visiblePosts().filter(p => hasPub(p, me) && !["Programado","Publicado","Pautado"].includes(p.status) && !onHold(p) && !repLater(p)).sort((a, b) => a.date.localeCompare(b.date)).forEach(p => {
     const late = p.date < TODAY;
     out.push({ go:p.format === "Historia" ? "calhistoria" : "calendario", key:"pp:" + p.id + ":" + p.status, ic:late ? "alarm-clock" : p.format === "Historia" ? "smartphone" : "image", sev:late ? "#ef4444" : p.date === TODAY ? "#f97316" : "#94a3b8", t:`${late ? "Atrasada" : "Por publicar"}: ${p.title}`, m:`${p.brand} · ${p.net} ${p.format} · ${dm(p.date)} · ${p.status}` }); });
   return out.filter(a => !gone.has(a.key)).sort((a, b) => String(a.d || "").localeCompare(String(b.d || "")));
 }
 // Panel de Trabajo: íconos grandes de un solo color, con qué trabajos hay en cada categoría y, debajo, lo que tengo que terminar.
 function panelStats(){
-  const pj = jobs.filter(j => seesJob(j) && !isIdleJob(j) && (!ownsJobs() || j.owner === viewer.name));
+  const pj = jobs.filter(j => seesJob(j) && !isIdleJob(j) && (!ownsJobs() || hasJob(j, viewer.name)));
   const jm = list => { const n = list.length, l = list.filter(j => urgency(j)?.late).length; return n ? `${n} ${n === 1 ? "activo" : "activos"}${l ? ` · <em>${l} ${l === 1 ? "atrasado" : "atrasados"}</em>` : ""}` : "Sin pedidos activos"; };
   const vp = visiblePosts(), pm = list => { const n = list.length, d = list.filter(isDone).length; return n ? `${d} de ${n} publicados` : "Nada cargado este mes"; };
   const canales = typeof visibleCanales === "function" ? visibleCanales().filter(k => String(k.date || "").slice(0, 7) === MONTH) : [];
@@ -6277,7 +6308,7 @@ function dgTable(list){
   return `<div class="dgtblbar"><label>Ordenar por <select class="base sm" data-dgsortsel>${DG_SORTS.map(([k, l]) => `<option value="${k}" ${k === sort ? "selected" : ""}>${l}</option>`).join("")}</select></label>
     <button type="button" class="btn sm" data-dgdir title="Dar vuelta el orden">${icon(dir > 0 ? "chevron-down" : "chevron-up")} ${dirTxt}</button><span class="note">${L.length} ${L.length === 1 ? "trabajo" : "trabajos"}</span></div>
   <div class="tw"><table class="dgtbl"><thead><tr>${th("title", "Trabajo")}${th("brand", "Marca")}${th("piece", "Tipo")}<th>Sección</th>${th("requester", "Solicitante")}${th("owner", "Responsable")}${th("req", "Pedido")}${th("due", "Fecha límite")}<th>Etapa</th></tr></thead><tbody>
-    ${L.map(j => `<tr><td><button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button></td><td>${jobBrandTags(j)}</td><td>${jobPieceTag(j)}</td><td>${esc(DG_SEC[jobSection(j)] || "")}</td><td>${esc(j.requester || "—")}</td><td>${esc(j.owner)}</td><td class="num">${j.requestDate ? dm(j.requestDate) : "—"}</td><td class="num">${dm(j.due)}</td><td>${pill(j.status, JOB_COLOR[j.status] || "#94a3b8")}</td></tr>`).join("") || `<tr><td colspan="9" class="empty">No hay trabajos en esta etapa.</td></tr>`}
+    ${L.map(j => `<tr><td><button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button></td><td>${jobBrandTags(j)}</td><td>${jobPieceTag(j)}</td><td>${esc(DG_SEC[jobSection(j)] || "")}</td><td>${esc(j.requester || "—")}</td><td>${esc(crewOf(j.owner, j).join(" + ") || j.owner)}</td><td class="num">${j.requestDate ? dm(j.requestDate) : "—"}</td><td class="num">${dm(j.due)}</td><td>${pill(j.status, JOB_COLOR[j.status] || "#94a3b8")}</td></tr>`).join("") || `<tr><td colspan="9" class="empty">No hay trabajos en esta etapa.</td></tr>`}
   </tbody></table></div>`;
 }
 document.addEventListener("click", e => {
@@ -6349,7 +6380,7 @@ function pPanel(ar){
       return `<button type="button" class="picon" data-page="${x.k}" style="--i:${i}" aria-label="Abrir ${esc(x.t)}${open.length ? ` (${open.length} pedido${open.length === 1 ? "" : "s"} a tu nombre sin terminar)` : ""}"><span class="pring" aria-hidden="true">${icon(x.i)}${badge}</span><b>${x.t}</b><small>${x.d}</small><span class="pmeta">${st[x.k] || ""}</span></button>`; }).join("");
   const al = panelMine(ar), shown = panelAll ? al : al.slice(0, 5);
   const area = dg ? "Diseño" : "CM", mineOnly = ownsJobs();
-  const scope = jobs.filter(j => jobGroup(j) === area && seesJob(j) && (!mineOnly || j.owner === viewer.name));
+  const scope = jobs.filter(j => jobGroup(j) === area && seesJob(j) && (!mineOnly || hasJob(j, viewer.name)));
   const done = scope.filter(j => isFin(j) && jobMonth(j) === MONTH && !j.ex).sort((a, b) => String(b.delivered || b.approved || b.due).localeCompare(String(a.delivered || a.approved || a.due)));
   const doneShown = panelDoneAll ? done : done.slice(0, 5);
   const doneList = done.length ? `<div class="list">${doneShown.map(j => `<div class="row arow ago" data-ago="job:${j.id}" role="button" tabindex="0"><span class="aico" style="--c:#10b981">${icon("circle-check")}</span><div class="grow"><div class="t">${esc(j.title)}</div><div class="m">${esc(jobBrands(j).join(" + "))} · ${esc(j.piece)} · terminado el ${dm(j.delivered || j.approved || j.due)}${mineOnly ? "" : ` · ${esc(firstName(j.owner))}`}</div></div>${pill(j.status, JOB_COLOR[j.status])}</div>`).join("")}</div>` : `<div class="empty">Todavía no hay trabajos terminados en ${monthName(MONTH)}.</div>`;
@@ -6372,7 +6403,7 @@ const cmPanStart = () => viewer?.role === "Admin total" && myGroups().includes("
 const cmPanB = () => { const b = cmPanBrand || cmPanStart(); return b === "Todas" || myGroups().includes(b) ? b : "Todas"; };
 document.addEventListener("click", e => { const b = e.target.closest("[data-cmpanbrand]"); if (b){ cmPanBrand = b.dataset.cmpanbrand; render(); } });
 function pPanelCM(){
-  const work = cmWork(), mine = work.filter(x => !x.done && x.who === viewer.name), late = work.filter(x => cmLate(x) && (!ownsJobs() || x.who === viewer.name)).length;
+  const work = cmWork(), mine = work.filter(x => !x.done && cmIn(x, viewer.name)), late = work.filter(x => cmLate(x) && (!ownsJobs() || cmIn(x, viewer.name))).length;
   const wk = mondayOf(TODAY), wkN = work.filter(x => x.date >= wk && x.date <= addDays(wk, 6)).length;
   const gNew = [...myJobsOpen("gestioncm"), ...myJobsOpen("contenidos")], gUnseen = gNew.filter(isUnseenJob).length + myNewPubs().length, gOpen = gNew.length + myNewPubs().length;
   const meta = { gcm:`${mine.length ? `${mine.length} ${mine.length === 1 ? "pendiente tuyo" : "pendientes tuyos"}` : "Nada pendiente a tu nombre"}${late ? ` · <em>${late} ${late === 1 ? "atrasado" : "atrasados"}</em>` : ""}`,
@@ -6396,12 +6427,12 @@ document.addEventListener("click", e => { if (e.target.closest("[data-panelall]"
 function pInicio(){
   const first = apodoOf(viewer);
   if (isDesigner()){
-    const mine = jobs.filter(j => j.owner === viewer.name && !isFin(j) && j.status !== CANCEL).sort((a,b) => a.due.localeCompare(b.due));
+    const mine = jobs.filter(j => hasJob(j, viewer.name) && !isFin(j) && j.status !== CANCEL).sort((a,b) => a.due.localeCompare(b.due));
     const late = mine.filter(j => daysTo(j.due) < 0).length;
     const lateJobs = mine.filter(j => urgency(j)?.late), soon = mine.filter(j => { const u = urgency(j); return u && !u.late && daysTo(j.due) <= 1; });
     const banner = lateJobs.length || soon.length ? `<div class="panel alarm-banner"><span class="urg late" style="--u:#ef4444">${ALARM_SVG}Alarma</span><div><b>${lateJobs.length ? `Tenés ${lateJobs.length} ${lateJobs.length === 1 ? "trabajo atrasado" : "trabajos atrasados"}` : ""}${lateJobs.length && soon.length ? " y " : ""}${soon.length ? `${soon.length} para entregar ${soon.length === 1 ? "mañana u hoy" : "entre hoy y mañana"}` : ""}.</b> <span>La alarma queda encendida hasta que se marque como entregado.</span></div></div>` : "";
     return `${prioStrip()}${helloHead("Tus trabajos de diseño, ordenados por fecha de entrega.")}${banner}${inicioAlertsPanel()}
-    ${kpiRow(progStats(jobs.filter(j => j.owner === viewer.name)))}
+    ${kpiRow(progStats(jobs.filter(j => hasJob(j, viewer.name))))}
     <div class="panel"><div class="head" style="margin-bottom:14px"><h2 style="margin:0" class="pmh">${pmIco("list-checks")}Mis trabajos</h2>${URG_LEGEND}</div>${mine.length ? `<div class="list">${mine.map(j => jobRow(j)).join("")}</div>` : `<div class="empty">No tenés trabajos pendientes.</div>`}</div>
     ${progressPanel("team")}
     ${progressPanel("people")}`;
@@ -6417,14 +6448,14 @@ function pInicio(){
   const title = hello();
   let banner = "";
   if (viewer.role === "CM"){
-    const minePosts = posts.filter(p => p.cm === viewer.name);
+    const minePosts = posts.filter(p => hasPub(p, viewer.name));
     const lateP = minePosts.filter(p => postUrgency(p)?.late), soonP = minePosts.filter(p => { const u = postUrgency(p); return u && !u.late && daysTo(p.date) <= 1; });
     if (lateP.length || soonP.length) banner = `<div class="panel alarm-banner"><span class="urg late" style="--u:#ef4444">${ALARM_SVG}Alarma</span><div><b>${lateP.length ? `Tenés ${lateP.length} ${lateP.length === 1 ? "posteo atrasado" : "posteos atrasados"}` : ""}${lateP.length && soonP.length ? " y " : ""}${soonP.length ? `${soonP.length} para publicar entre hoy y mañana` : ""}.</b> <span>La alarma sigue hasta que el posteo quede programado o publicado.</span></div></div>`;
   }
   return `${prioStrip()}${helloHead(`${monthLabel(MONTH)} · ${viewer.brands ? "tus calendarios: " + viewer.brands.map(g => g === "Otros" ? "Otras marcas" : g).join(", ") : "todas las marcas del grupo"}`)}${banner}${inicioAlertsPanel()}${aprBlock("all")}
-  ${kpiRow(progStats(isAdminAny() ? jobs : jobs.filter(j => j.owner === viewer.name)))}
+  ${kpiRow(progStats(isAdminAny() ? jobs : jobs.filter(j => hasJob(j, viewer.name))))}
   ${isAdminAny() ? progressPanel("team") : ""}
-    ${viewer.role === "CM" ? (() => { const mine = jobs.filter(j => j.owner === viewer.name && !isIdleJob(j)).sort((a,b) => a.due.localeCompare(b.due)); return `<div class="panel"><div class="head" style="margin-bottom:14px"><h2 style="margin:0" class="pmh">${pmIco("clapperboard")}Mis trabajos de CM</h2>${URG_LEGEND}</div>${mine.length ? `<div class="list">${mine.map(j => jobRow(j)).join("")}</div>` : `<div class="empty">No tenés trabajos abiertos.</div>`}</div>`; })() : ""}
+    ${viewer.role === "CM" ? (() => { const mine = jobs.filter(j => hasJob(j, viewer.name) && !isIdleJob(j)).sort((a,b) => a.due.localeCompare(b.due)); return `<div class="panel"><div class="head" style="margin-bottom:14px"><h2 style="margin:0" class="pmh">${pmIco("clapperboard")}Mis trabajos de CM</h2>${URG_LEGEND}</div>${mine.length ? `<div class="list">${mine.map(j => jobRow(j)).join("")}</div>` : `<div class="empty">No tenés trabajos abiertos.</div>`}</div>`; })() : ""}
   ${isAdminAny() ? "" : progressPanel("team")}
   <div class="grid">
     <div class="panel"><h2 class="pmh">${pmIco("calendar-days")}${weekTitle}</h2>${week.length ? `<div class="list wklist">${week.map(p => `<div class="row iopen${postUrgStyle(p)}" data-iopen="post:${esc(p.id)}" role="button" tabindex="0" title="Tocá para ver la publicación"><span class="date">${dm(p.date)}</span><div class="grow"><div class="t">${esc(p.title)}</div><div class="m">${brandTag(p.brand)} · <span class="net">${p.net}</span> ${p.format}</div></div><div class="wkb">${postUrgBadge(p)}${postPill(p)}</div></div>`).join("")}</div>` : `<div class="empty">${isClosed() ? "Se cumplió todo el plan." : "Nada programado."}</div>`}</div>
@@ -6569,6 +6600,7 @@ function alertSrc(a){
   if (k.startsWith("av:")) return "avisos";
   if (g.startsWith("job:")){ const j = jobById(g.slice(4)); return j && j.area !== "Diseño" ? "gestion" : "pedidos"; }
   if (g.startsWith("pub:")) return "calendario";
+  if (g.startsWith("act:")) return "gestion";
   if (g === "calendario" || g === "calhistoria") return "calendario";
   if (g === "pauta") return "pautas";
   if (["cumples","sabados","usuarios","planmes"].includes(g)) return "equipo";
@@ -6636,7 +6668,7 @@ const cmView = {};
 const gView = () => cmView[page] || "calendario"; // Planificación arranca en el mes entero; Semana es un botón (v260)
 document.addEventListener("click", e => { const v = e.target.closest("[data-gview]"); if (v){ cmView[page] = v.dataset.gview; render(); } });
 const G_VIEWS = [["calendario","Calendario","calendar-days"],["tabla","Tabla","table-2"],["tablero","Tablero","kanban"]];
-const soloPost = p => !soloYo || p.cm === viewer.name;
+const soloPost = p => !soloYo || hasPub(p, viewer.name);
 const soloRec = r => !soloYo || r.owner === viewer.name;
 const CH_ICO = { "Canal de WhatsApp":"message-circle", "WhatsApp":"message-circle" };
 const stColor = st => POST_COLOR[st] === "#334155" ? "#94a3b8" : POST_COLOR[st];
@@ -6707,9 +6739,9 @@ function pCalHistoria(){ return pCalCM("Historia"); }
 function cmPlanMonth(){
   const canalesMes = visibleCanales().filter(k => k.date.slice(0, 7) === MONTH).map(k => ({ ...k, canal:true }));
   const vidsAll = visibleJobs().filter(j => j.area === "CM" && j.status !== "Cancelado" && j.due.slice(0, 7) === MONTH)
-    .map(j => ({ vid:true, id:j.id, date:j.due, brand:j.brand, title:j.title, status:j.status, cm:j.owner, piece:cmPiece(j), job:j }));
+    .map(j => ({ vid:true, id:j.id, date:j.due, brand:j.brand, title:j.title, status:j.status, cm:j.owner, also:alsoOf(j), piece:cmPiece(j), job:j }));
   const recsAll = []; { const rl = recVisible(); for (let d = 1; d <= lastDay(MONTH); d++){ const c = MONTH + "-" + String(d).padStart(2, "0"); rl.filter(r => recOn(r, c)).forEach(r => recsAll.push({ rec:true, id:r.id + "|" + c, sid:r.id + "~" + c, date:c, brand:r.brand, title:r.title, cm:r.owner, r, status:recSt(r, c) })); } }
-  const actsAll = CM_ACTS.filter(a => seesBrand(a.brand) && inFilter(a.brand) && String(a.date).slice(0, 7) === MONTH).map(a => ({ act:true, id:a.id, date:a.date, brand:a.brand, title:a.title, status:a.status, cm:a.owner, a }));
+  const actsAll = CM_ACTS.filter(a => seesBrand(a.brand) && inFilter(a.brand) && String(a.date).slice(0, 7) === MONTH).map(a => ({ act:true, id:a.id, date:a.date, brand:a.brand, title:a.title, status:a.status, cm:a.owner, also:alsoOf(a), a }));
   return { canalesMes, vidsAll, recsAll, actsAll, all:[...visiblePosts(), ...canalesMes, ...vidsAll, ...recsAll, ...actsAll] };
 }
 // Resumen: todo lo de CM del mes, por etapa de su proceso, y lo que está con retraso. En el Panel, cada cuadro lleva a Planificación.
@@ -6725,12 +6757,12 @@ function cmPlanSummary(all, go){
 function pPlan(){
   const calOnly = page === "calcm", view = calOnly ? gView() : planUI.view;
   // Plan de posteo: todo lo de CM del mes junto: feed, historias, Canal de WhatsApp, videos (pedidos a CM) y repetitivos.
-  const byCm = x => cmUI.cm === "Todos" || x === cmUI.cm;
+  const byCm = x => cmUI.cm === "Todos" || hasPub(x, cmUI.cm); // v309: también lo de quienes participan
   const { canalesMes, vidsAll, recsAll, actsAll, all } = cmPlanMonth();
-  const vids = vidsAll.filter(x => byCm(x.cm) && soloMine(x.job) && cmStOk(x));
-  const recs = recsAll.filter(x => byCm(x.cm) && soloRec(x.r) && cmStOk(x));
-  const acts = actsAll.filter(x => byCm(x.cm) && soloPost(x) && cmStOk(x));
-  const vp = [...cmPosts(), ...canalesMes.filter(k => byCm(k.cm) && cmStOk(k))].filter(soloPost);
+  const vids = vidsAll.filter(x => byCm(x) && soloMine(x.job) && cmStOk(x));
+  const recs = recsAll.filter(x => byCm(x) && soloRec(x.r) && cmStOk(x));
+  const acts = actsAll.filter(x => byCm(x) && soloPost(x) && cmStOk(x));
+  const vp = [...cmPosts(), ...canalesMes.filter(k => byCm(k) && cmStOk(k))].filter(soloPost);
   const items = [...vp, ...vids, ...recs, ...acts].sort((a, b) => a.date.localeCompare(b.date) || (a.r?.time || "").localeCompare(b.r?.time || ""));
   const names = [...new Set([...all.map(p => p.cm), ...CM_NAMES()])].filter(Boolean).sort();
   const summary = cmPlanSummary(all);
@@ -6745,7 +6777,7 @@ function pPlan(){
     if (x.vid) return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${esc(firstName(x.cm || ""))}</td><td style="white-space:nowrap">${icon("clapperboard")} ${esc(x.piece)}</td><td style="min-width:190px">${canCreateJobs() ? `<button type="button" class="linkish" data-jedit="${x.id}">${esc(x.title)}</button>` : `<b style="color:#fff">${esc(x.title)}</b>`}</td><td><span class="note">—</span></td><td><div class="chips" style="flex-wrap:nowrap">${stageOptions("job", x.job).length ? `<button type="button" class="semchip s${semLvl(x.status)}" data-stagemenu="job:${x.id}" title="Etapa: ${esc(x.status)} · tocá para cambiarla">${esc(x.status)} ▾</button>` : pill(x.status, JOB_COLOR[x.status])}${urgBadge(x.job)}</div></td><td><span class="note">—</span></td></tr>`;
     if (x.canal) return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${esc(firstName(x.cm || ""))}</td><td style="white-space:nowrap">${icon("message-circle")} Canal de WhatsApp</td><td style="min-width:190px">${tema(x, "canal")}</td><td><span class="note">—</span></td><td>${canalStatusCell(x)}</td><td><span class="note">—</span></td></tr>`;
     const lbl = canEditPost() && { "En proceso":"Programar", "Programado":"Marcar publicado", "Publicado":"Pautar" }[x.status];
-    return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${canEditPost() ? `<select class="base sm" data-pcm="${x.id}" aria-label="CM de ${esc(x.title)}">${[...new Set([...CM_NAMES(), x.cm].filter(Boolean))].map(n => `<option value="${esc(n)}" ${n === x.cm ? "selected" : ""}>${esc(firstName(n))}</option>`).join("")}</select>` : esc(firstName(x.cm))}</td><td style="white-space:nowrap">${icon(x.format === "Historia" ? "smartphone" : "image")} <span class="net">${x.net}</span> ${x.format}</td><td style="min-width:190px">${tema(x, "post")}${x.carried ? `<span class="carried">↩ Arrastrado de ${x.carried}</span>` : ""}</td><td style="white-space:nowrap">${postDesignCell(x)}</td><td><div class="chips" style="flex-wrap:nowrap">${postStatusCell(x)}${postUrgBadge(x)}</div></td><td>${lbl ? `<button class="btn" data-adv-post="${x.id}">${lbl}</button>` : `<span class="note">—</span>`}</td></tr>`;
+    return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${canEditPost() ? `<select class="base sm" data-pcm="${x.id}" aria-label="CM de ${esc(x.title)}">${[...new Set([...CM_NAMES(), x.cm].filter(Boolean))].map(n => `<option value="${esc(n)}" ${n === x.cm ? "selected" : ""}>${esc(firstName(n))}</option>`).join("")}</select>${alsoOf(x).length ? `<small class="note"> + ${esc(alsoOf(x).map(firstName).join(" + "))}</small>` : ""}` : esc(crewTxt(x.cm, x))}</td><td style="white-space:nowrap">${icon(x.format === "Historia" ? "smartphone" : "image")} <span class="net">${x.net}</span> ${x.format}</td><td style="min-width:190px">${tema(x, "post")}${x.carried ? `<span class="carried">↩ Arrastrado de ${x.carried}</span>` : ""}</td><td style="white-space:nowrap">${postDesignCell(x)}</td><td><div class="chips" style="flex-wrap:nowrap">${postStatusCell(x)}${postUrgBadge(x)}</div></td><td>${lbl ? `<button class="btn" data-adv-post="${x.id}">${lbl}</button>` : `<span class="note">—</span>`}</td></tr>`;
   };
   return `<div class="head"><div><h1 class="pmh">${pmIco(calOnly ? "calendar-days" : "list-checks")}${calOnly ? "Planificación · Temario" : "Plan de posteo"}</h1><p class="sub">${calOnly ? (view === "semana" ? `Semana del ${weekLabel(planWk())}` : monthLabel(MONTH)) + " · todo lo de CM junto: publicaciones, historias, WhatsApp, videos, repetitivos y actividades." : `${monthLabel(MONTH)} · todo lo de CM del mes, junto: feed (posts, carruseles y reels), historias, Canal de WhatsApp, videos y repetitivos. Cargalo desde acá o desde cada Gestión.`}</p></div>${calOnly ? `<div class="chips">${cmLoadBtn()}${viewTabs(PLAN_VIEWS, view, "data-gview")}</div>` : viewTabs([["calendario","Calendario","calendar-days"],["tabla","Tabla","table-2"],["tablero","Tablero","kanban"]], planUI.view, "data-plview")}</div>
   ${isClosed() ? `<div class="ro">${icon("lock")} ${monthLabel(MONTH)} está cerrado: se puede consultar, pero no modificar. Lo que no se cumplió pasó al mes siguiente como “arrastrado”.</div>` : ""}
@@ -6827,7 +6859,7 @@ function planEv(x){ const st = x.status, lv = semLvl(st), col = SEM[lv];
     return `<div class="pev" data-sem="${lv}" style="--sem:${col}"${x.rec || x.act ? "" : calDrag(sk, x.id)}${act} title="${PLAN_SEC(x)}: ${esc(x.title)} · ${x.brand} · ${x.act ? actType(x.a.type).t : x.rec ? "repetitivo " + x.r.time : x.vid ? x.piece : x.canal ? "Canal de WhatsApp" : x.net + " " + x.format} · ${st} · ${esc(x.cm || "")}"><i style="background:${BRANDS[x.brand]}"></i><span>${icon(PLAN_ICO(x))} <b class="evk">${PLAN_SEC(x)}:</b> ${esc(x.title)}</span>${can2 ? `<button type="button" class="pst" data-stagemenu="${sk}:${sid}" style="--c:${col}" title="Cambiar la etapa">${st} ▾</button>` : `<em style="--c:${col}">${st}</em>`}${x.cm ? `<small class="pwho">${icon("user-round")} ${esc(firstName(x.cm))}</small>` : ""}${!x.rec && !x.vid && !x.canal && it?.fromJob && !jobApproved(jobById(it.fromJob)) ? `<small class="pwait">🎨 Diseño en proceso</small>` : ""}${!x.rec && !x.vid && it?.fromJob ? `<small class="pcopy ${it.copySt || "none"}">${it.time ? `🕒 ${esc(it.time)} · ` : ""}${it.noCopy ? "🚫 Sin copy" : { rev:"✍️ Copy por aprobar", fix:"✏️ Corregir copy", ok:"✅ Copy aprobado" }[it.copySt] || "✍️ Falta el copy"}</small>` : ""}</div>`; }
 const planDay = (c, items) => remOn(c).map(remPev).join("") + inflOn(c).map(inflPev).join("") + items.filter(x => x.date === c).map(planEv).join("");
 function planCal(items){
-  const byCm = x => cmUI.cm === "Todos" || x.cm === cmUI.cm;
+  const byCm = x => cmUI.cm === "Todos" || hasPub(x, cmUI.cm);
   const out = [...calOutPosts(), ...calOutCanales().map(k => ({ ...k, canal:true }))].filter(x => byCm(x) && soloPost(x) && cmStOk(x));
   items = [...items, ...out];
   return `<div class="plcal">${calGrid(c => planDay(c, items), canEditPost())}</div>
@@ -7138,11 +7170,11 @@ let actUI = { form:null };
 // videos, contenidos y actividades. done = terminado (publicado, aprobado o hecho); los cancelados no se muestran.
 function cmWork(){
   const out = [], ok = x => !x.ex && !repLater(x) && x.status !== CANCEL; // v299: lo cancelado no se muestra
-  posts.filter(p => ok(p) && seesBrand(p.brand)).forEach(p => out.push({ k:"post", id:p.id, it:p, act:"pub", date:p.date, time:p.time || "", brand:p.brand, title:p.title, who:p.cm || "", status:p.status, done:isDone(p) }));
-  CHANNEL_POSTS.filter(c => ok(c) && seesBrand(c.brand)).forEach(c => out.push({ k:"canal", id:c.id, it:c, act:"pub", date:c.date, time:c.time || "", brand:c.brand, title:c.title, who:c.cm || "", status:c.status, done:c.status === "Publicado" }));
-  jobs.filter(j => (j.area === "CM" || j.area === "Contenidos") && ok(j) && seesJob(j) && j.status !== "Cancelado").forEach(j => out.push({ k:"job", id:j.id, it:j, act:j.area === "CM" ? "video" : "graf", date:j.due || "", time:j.pubTime || "", brand:j.brand, title:j.title, who:j.owner || "", status:j.status,
+  posts.filter(p => ok(p) && seesBrand(p.brand)).forEach(p => out.push({ k:"post", id:p.id, it:p, act:"pub", date:p.date, time:p.time || "", brand:p.brand, title:p.title, who:p.cm || "", crew:crewOf(p.cm, p), status:p.status, done:isDone(p) }));
+  CHANNEL_POSTS.filter(c => ok(c) && seesBrand(c.brand)).forEach(c => out.push({ k:"canal", id:c.id, it:c, act:"pub", date:c.date, time:c.time || "", brand:c.brand, title:c.title, who:c.cm || "", crew:crewOf(c.cm, c), status:c.status, done:c.status === "Publicado" }));
+  jobs.filter(j => (j.area === "CM" || j.area === "Contenidos") && ok(j) && seesJob(j) && j.status !== "Cancelado").forEach(j => out.push({ k:"job", id:j.id, it:j, act:j.area === "CM" ? "video" : "graf", date:j.due || "", time:j.pubTime || "", brand:j.brand, title:j.title, who:j.owner || "", crew:crewOf(j.owner, j), status:j.status,
     done:j.area === "CM" ? ["Publicado","Pautado"].includes(j.status) : isFin(j) }));
-  CM_ACTS.filter(a => seesBrand(a.brand)).forEach(a => out.push({ k:"act", id:a.id, it:a, act:a.type, date:a.date, time:a.time || "", brand:a.brand, title:a.title, who:a.owner || "", status:a.status, done:a.status === "Hecho" }));
+  CM_ACTS.filter(a => seesBrand(a.brand)).forEach(a => out.push({ k:"act", id:a.id, it:a, act:a.type, date:a.date, time:a.time || "", brand:a.brand, title:a.title, who:a.owner || "", crew:crewOf(a.owner, a), status:a.status, done:a.status === "Hecho" }));
   return out;
 }
 // Repetitivos de esas fechas (para los calendarios), con la etapa de cada día.
@@ -7153,7 +7185,9 @@ const cmFmt = x => x.k === "post" ? ({ Historia:"STORY", Reel:"REEL", Carrusel:"
 const cmIco = x => x.k === "post" && x.it.format === "Historia" ? "smartphone" : x.k === "canal" ? "message-circle" : x.k === "rec" ? "repeat" : actType(x.act).i;
 const cmWhere = x => x.k === "canal" ? x.it.channel || "Canal de WhatsApp" : x.k === "post" ? x.it.net || "IG" : x.k === "job" ? (x.act === "video" ? cmPiece(x.it) : "Gestión de Contenidos") : x.k === "rec" ? "Repetitivo" : actType(x.act).t;
 const cmStKind = x => x.k === "job" ? "job" : x.k;
-const cmMine = x => !soloYo || x.who === viewer.name;
+const cmIn = (x, n) => x.who === n || (x.crew || []).includes(n); // v309: la responsable o alguien que también participa
+const cmWho = x => (x.crew?.length > 1 ? x.crew.join(" + ") : x.who) || "Sin asignar";
+const cmMine = x => !soloYo || cmIn(x, viewer.name);
 // Plataformas (filas del calendario, como el Excel). X, YouTube y LinkedIn aparecen cuando hay algo cargado ahí.
 const CM_PLATS = [["igfb","Instagram / Facebook","instagram"],["tiktok","TikTok","music"],["canal","Canal de WhatsApp","message-circle"],["x","X","at-sign"],["yt","YouTube","youtube"],["in","LinkedIn","briefcase"],["interno","Canal interno","megaphone"],["otras","Otras actividades","list-todo"]];
 const CM_PLAT_FIXED = ["igfb","tiktok","canal","x","yt","in"]; // v222: todas las redes de Superseis y Stock, siempre a la vista
@@ -7174,7 +7208,7 @@ function cmStage(x, small){
 // Copy de las publicaciones que salen de un diseño aprobado (como en Planificación).
 const cmCopyTxt = x => x.k === "post" && x.it.fromJob ? (x.it.noCopy ? "Sin copy" : { rev:"Copy por aprobar", fix:"Corregir copy", ok:copyConfOf(x.it) ? "Copy confirmado" : "Copy aprobado" }[copyStOf(x.it)] || (copyDraft(x.it) ? "Copy cargado sin mandar" : "Falta el copy")) : "";
 const cmLate = x => !x.done && !HOLD_ST.includes(x.status) && x.date && x.date < TODAY;
-const cmNew = x => x.k === "job" ? x.it.owner === viewer.name && isUnseenJob(x.it) : (x.k === "post" || x.k === "canal") && x.it.fromJob && x.it.cm === viewer.name && !x.it.seenBy?.[viewer.id] && !["Programado","Publicado","Pautado"].includes(x.it.status);
+const cmNew = x => x.k === "job" ? hasJob(x.it, viewer.name) && isUnseenJob(x.it) : (x.k === "post" || x.k === "canal") && x.it.fromJob && hasPub(x.it, viewer.name) && !x.it.seenBy?.[viewer.id] && !["Programado","Publicado","Pautado"].includes(x.it.status);
 // Abrir el trabajo completo: la misma hoja de siempre (publicación, pedido o actividad).
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-cmopen]"); if (!b || e.target.closest("[data-stagemenu], #stagepop")) return;
@@ -7182,7 +7216,7 @@ document.addEventListener("click", e => {
   if (k === "post"){ const p = postById(id); if (p){ postUI.form = { mode:"edit", kind:p.format === "Historia" ? "Historia" : "Feed", post:{ ...p } }; render(); window.scrollTo(0, 0); } return; }
   if (k === "canal"){ const c = canalById(id); if (c){ postUI.form = { mode:"edit", kind:"Canal", post:{ ...c } }; render(); window.scrollTo(0, 0); } return; }
   if (k === "job"){ jobUI.ficha = id; render(); window.scrollTo(0, 0); return; }
-  if (k === "act"){ const a = actById(id); if (a){ actUI.form = { mode:"edit", act:{ ...a } }; render(); window.scrollTo(0, 0); } return; }
+  if (k === "act"){ const a = actById(id); if (a){ actUI.form = { mode:"edit", act:{ ...a } }; actSeen(a); render(); window.scrollTo(0, 0); } return; }
   if (k === "rec"){ const [rid, d] = id.split("~"), r = RECURRING.find(x => x.id === +rid); if (r && canCreateJobs()){ recUI = { form:true, days:[...r.days], kind:r.kind, edit:r.id, noEnd:null, at:d }; render(); } }
 });
 document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("[data-cmopen]")){ e.preventDefault(); e.target.click(); } });
@@ -7242,7 +7276,7 @@ function actForm(){
         <label style="grid-column:1/-1">Detalles <span class="note">(opcional)</span><textarea class="base" id="acNotes" rows="3" placeholder="Ej.: a quiénes, dónde, qué llevar o qué hay que tener en cuenta.">${esc(a.notes || "")}</textarea></label>
       </div></section>
       <section class="jfs"><h3><i>2</i>Quién y para cuándo</h3><div class="jfg">
-        <label>Responsable *<select class="base" id="acOwner">${opt(CM_NAMES(), a.owner)}</select></label>
+        <label>Responsable *<select class="base" id="acOwner">${opt(CM_NAMES(), a.owner)}</select></label>${alsoBox(a, a.owner)}
         <label>Fecha *<input class="base" type="date" id="acDate" value="${esc(a.date)}" required></label>
         <label>Hora <span class="note">(opcional)</span><input class="base" type="time" id="acTime" value="${esc(a.time || "")}"></label>
       </div></section>
@@ -7268,9 +7302,12 @@ document.addEventListener("submit", e => {
   const f = actUI.form, v = id => document.getElementById(id).value, title = v("acTitle").trim(), date = v("acDate");
   if (!title || !date) return toast("Completá el título y la fecha.");
   if (!MONTHS_APP.some(x => x.v === date.slice(0, 7))) return toast(`La fecha (${dm(date)}) está fuera de los meses de la app. Revisá la fecha.`);
-  const data = { type:v("acType"), brand:v("acBrand"), title, owner:v("acOwner"), date, time:v("acTime"), status:v("acStatus"), notes:v("acNotes").trim() };
+  const data = { type:v("acType"), brand:v("acBrand"), title, owner:v("acOwner"), also:alsoClean({ also:f.act.also }, v("acOwner")).also, date, time:v("acTime"), status:v("acStatus"), notes:v("acNotes").trim() };
   let a = f.mode === "edit" ? actById(f.act.id) : null;
+  const prevAlso = a ? [a.owner, ...alsoOf(a)] : [viewer.name];
   if (a) Object.assign(a, data); else { a = { id:f.act.id, ...data, byId:viewer.id, by:viewer.name, at:TODAY }; if (actById(a.id)) a.id = "A" + Date.now().toString(36); CM_ACTS.push(a); }
+  if (!a.also) delete a.also;
+  crewOf(a.owner, a).filter(n => !prevAlso.includes(n) && n !== viewer.name).forEach(n => notify({ to:n, type:"act", act:a.id })); // v309: a quien le asignan la actividad (o la suman)
   actUI.form = null; render(); window.RMH?.flushNow?.(); toast(`${f.mode === "edit" ? "Guardado" : "Cargado"}: “${a.title}” el ${dm(a.date)}.`);
 });
 
@@ -7300,7 +7337,7 @@ function pGestCM(){
   const late = done ? 0 : list.filter(cmLate).length;
   const row = x => { const nw = !done && cmNew(x), cp = cmCopyTxt(x);
     return `<tr class="${cmLate(x) ? "late" : ""}"><td><button type="button" class="linkish gtitle" data-cmopen="${x.k}:${esc(x.id)}" title="Ver el trabajo completo">${esc(x.title || "(sin título)")}</button>${nw ? ` <span class="gnew">Nuevo</span>` : ""}${cp ? `<small class="gcopy">${esc(cp)}</small>` : ""}</td>
-      <td><span class="gfmt">${icon(cmIco(x))} ${esc(cmFmt(x))}</span><small class="gwhere">${esc(cmWhere(x))}</small></td><td>${brandTag(x.brand)}</td><td>${esc(x.who || "Sin asignar")}</td>
+      <td><span class="gfmt">${icon(cmIco(x))} ${esc(cmFmt(x))}</span><small class="gwhere">${esc(cmWhere(x))}</small></td><td>${brandTag(x.brand)}</td><td>${esc(cmWho(x))}</td>
       <td class="num gdate">${cmLate(x) ? icon("alarm-clock") + " " : ""}${x.date ? `${WEEKDAYS[wdOf(x.date)].slice(0, 3)} ${dm(x.date)}` : "—"}${x.time ? `<small>${esc(x.time)} h</small>` : ""}</td><td>${cmStage(x)}</td></tr>`; };
   const body = groups.length ? groups.map(g => `<tr class="ggroup"><th colspan="6">${icon(g.t.i)} ${esc(g.t.t)} <span>${g.items.length}</span></th></tr>${g.items.map(row).join("")}`).join("")
     : `<tr><td colspan="6" class="empty">${filt && base.length ? `No hay trabajos con esos filtros. <button type="button" class="btn sm" data-gcmclear>Limpiar filtros</button>` : done ? `No hay trabajos aprobados ${soloYo ? "tuyos " : ""}en ${monthName(mon)}.` : `${icon("check")} No hay pedidos pendientes${soloYo ? " a tu nombre" : ""}.`}</td></tr>`;
@@ -7338,7 +7375,7 @@ function cmCard(x, mini){
     ${x.brand && !caOneBrand() ? `<div class="ac-br">${esc(x.brand)}</div>` : ""}
     <div class="ac-k">${icon(cmIco(x))}<b>${esc(cmFmt(x))}</b></div>
     <div class="ac-t">${esc(x.title || "(sin título)")}</div>
-    ${mini ? "" : `<div class="ac-m">${icon("user-round")}<span>${esc(x.who || "Sin asignar")}</span></div>${x.time ? `<div class="ac-m">${icon("clock")}<span>${esc(x.time)} h</span></div>` : ""}${cp ? `<div class="ac-m ac-cp">${icon("pencil-line")}<span>${esc(cp)}</span></div>` : ""}`}
+    ${mini ? "" : `<div class="ac-m">${icon(x.crew?.length > 1 ? "users" : "user-round")}<span>${esc(cmWho(x))}</span></div>${x.time ? `<div class="ac-m">${icon("clock")}<span>${esc(x.time)} h</span></div>` : ""}${cp ? `<div class="ac-m ac-cp">${icon("pencil-line")}<span>${esc(cp)}</span></div>` : ""}`}
     <div class="ac-s">${cmStage(x, true)}</div></div>`;
 }
 function calActSync(){
@@ -7409,10 +7446,10 @@ function planWeekItems(byCm){
   const from = planWk(), to = addDays(from, 6), inR = d => !!d && d >= from && d <= to, out = [], days = Array.from({ length:7 }, (_, i) => addDays(from, i));
   posts.filter(p => !p.ex && seesBrand(p.brand) && inFilter(p.brand) && inR(p.date)).forEach(p => out.push(p));
   CHANNEL_POSTS.filter(k => seesBrand(k.brand) && inFilter(k.brand) && inR(k.date)).forEach(k => out.push({ ...k, canal:true }));
-  jobs.filter(j => j.area === "CM" && j.status !== "Cancelado" && !j.ex && seesJob(j) && jobBrands(j).some(inFilter) && inR(j.due)).forEach(j => out.push({ vid:true, id:j.id, date:j.due, brand:j.brand, title:j.title, status:j.status, cm:j.owner, piece:cmPiece(j), job:j }));
+  jobs.filter(j => j.area === "CM" && j.status !== "Cancelado" && !j.ex && seesJob(j) && jobBrands(j).some(inFilter) && inR(j.due)).forEach(j => out.push({ vid:true, id:j.id, date:j.due, brand:j.brand, title:j.title, status:j.status, cm:j.owner, also:alsoOf(j), piece:cmPiece(j), job:j }));
   recVisible().forEach(r => days.forEach(c => { if (recOn(r, c)) out.push({ rec:true, id:r.id + "|" + c, sid:r.id + "~" + c, date:c, brand:r.brand, title:r.title, cm:r.owner, r, status:recSt(r, c) }); }));
-  CM_ACTS.filter(a => seesBrand(a.brand) && inFilter(a.brand) && inR(a.date)).forEach(a => out.push({ act:true, id:a.id, date:a.date, brand:a.brand, title:a.title, status:a.status, cm:a.owner, a }));
-  return out.filter(x => byCm(x.cm) && soloPost(x) && cmStOk(x)).sort((a, b) => a.date.localeCompare(b.date) || (a.time || a.a?.time || a.r?.time || "").localeCompare(b.time || b.a?.time || b.r?.time || ""));
+  CM_ACTS.filter(a => seesBrand(a.brand) && inFilter(a.brand) && inR(a.date)).forEach(a => out.push({ act:true, id:a.id, date:a.date, brand:a.brand, title:a.title, status:a.status, cm:a.owner, also:alsoOf(a), a }));
+  return out.filter(x => byCm(x) && soloPost(x) && cmStOk(x)).sort((a, b) => a.date.localeCompare(b.date) || (a.time || a.a?.time || a.r?.time || "").localeCompare(b.time || b.a?.time || b.r?.time || ""));
 }
 const planWeek = items => weekGrid(c => planDay(c, items), canEditPost());
 function weekGrid(dayFn, addable){
@@ -7425,13 +7462,13 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-plwk
   planUI.wk = k === 0 ? mondayOf(TODAY) : addDays(planWk(), 7 * k); const m = addDays(planUI.wk, 3).slice(0, 7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m; render(); });
 let jobUI = { area:"Todos", view:"calendario", status:"Activos", owner:"Todos", prio:"Todas", q:"", form:null };
 const canCreateJobs = () => viewer.role === "Admin total" && !isClosed(); // cargar, editar y borrar pedidos: solo Admin total
-const canChangeStatus = j => !isClosed() && !isViewOnly() && (viewer.role === "Admin total" || viewer.role === "CM" || j.owner === viewer.name);
+const canChangeStatus = j => !isClosed() && !isViewOnly() && (viewer.role === "Admin total" || viewer.role === "CM" || hasJob(j, viewer.name));
 // v239 · Contenidos gráficos: el CM carga los suyos (queda como responsable), los lleva por las etapas de Diseño gráfico
 // (le avisa a Admin total en Boceto finalizado y Corrección realizada) y, al aprobarse, los publica él mismo.
 const cmOwnCont = () => viewer?.role === "CM" && !isClosed() && !isViewOnly() && can("contenidos");
 const canNewJob = A => canCreateJobs() || (A === "Contenidos" && cmOwnCont());
-const canEditJob = j => canCreateJobs() || (!!j && j.area === "Contenidos" && cmOwnCont() && j.owner === viewer.name && !isFin(j));
-const canDelJob = j => (canCreateJobs() && viewer.role === "Admin total") || (!!j && j.area === "Contenidos" && cmOwnCont() && j.owner === viewer.name && j.byId === viewer.id && !isFin(j)); // el CM borra lo que cargó él (hasta que se aprueba)
+const canEditJob = j => canCreateJobs() || (!!j && j.area === "Contenidos" && cmOwnCont() && hasJob(j, viewer.name) && !isFin(j));
+const canDelJob = j => (canCreateJobs() && viewer.role === "Admin total") || (!!j && j.area === "Contenidos" && cmOwnCont() && hasJob(j, viewer.name) && j.byId === viewer.id && !isFin(j)); // el CM borra lo que cargó él (hasta que se aprueba)
 const CONT_NEW_ST = ["Pendiente","En proceso","Boceto finalizado"]; // el CM puede cargarlo ya terminado (Boceto finalizado) y le avisa a Admin total
 const jobArea = () => page === "gestioncm" ? "CM" : page === "contenidos" ? "Contenidos" : "Diseño";
 // En el formulario de Admin total: si el pedido espera revisión, aprobar o pedir cambios; y el historial de revisiones.
@@ -7451,7 +7488,7 @@ function jobReviewBox(j){
 // Cadena de cambios: cada boceto entregado, cada pedido de cambios, los mensajes de ida y vuelta y el cierre, en orden.
 function jobChain(j, input = true){
   const list = j.changes || [], who = n => { const pp = PEOPLE.find(x => x.name === n); return pp ? nickOf(pp) : n ? firstName(n) : "Admin total"; };
-  const canWrite = input && !isViewOnly() && !isClosed() && (viewer.role === "Admin total" || j.owner === viewer.name) && !isFin(j);
+  const canWrite = input && !isViewOnly() && !isClosed() && (viewer.role === "Admin total" || hasJob(j, viewer.name)) && !isFin(j);
   let round = 0, ver = 0;
   const item = c => {
     if (c.ok) return `<li class="ev ok"><span>${icon("badge-check")} Aprobado · ${who(c.by)} · ${dm(c.date)} ${c.time}${j.finalLink ? ` · <a href="${esc(j.finalLink)}" target="_blank" rel="noopener">ver resultado</a>` : ""}</span></li>`;
@@ -7518,7 +7555,7 @@ function rtSetBg(ed, c){
 // Lo que se guarda de la hoja: el fondo elegido + el texto limpio.
 const rtHtml = ed => cleanRich((ed.dataset.bg ? `<!--bg:${ed.dataset.bg}-->` : "") + ed.innerHTML);
 const RT_COLORS = [["#000000","Negro"],["#ffffff","Blanco"],["#6b7280","Gris"],["#1f2937","Gris oscuro"],["#dc2626","Rojo"],["#ea580c","Naranja"],["#facc15","Amarillo"],["#16a34a","Verde"],["#2563eb","Azul"],["#0ea5e9","Celeste"],["#7c3aed","Violeta"],["#db2777","Rosa"]];
-const canEditBrief = j => !isViewOnly() && !isClosedJob(j) && (viewer.role === "Admin total" || j.owner === viewer.name);
+const canEditBrief = j => !isViewOnly() && !isClosedJob(j) && (viewer.role === "Admin total" || hasJob(j, viewer.name));
 // Editor reutilizable (en la página del pedido y en el formulario de crear/editar).
 // Texto de ejemplo (en gris) que se ve en la hoja en blanco hasta que se empieza a escribir.
 const BRIEF_PH = { "Contenidos":"Ejemplo:\nQUÉ PIEZA: historia de Stock con las ofertas del finde.\nTEXTO QUE VA: “Ofertas del finde” · precios del Excel de Comercial.\nFORMATO: historia 1080×1920.\nOBSERVACIONES: usar la plantilla de ofertas de siempre.", "Diseño":"Ejemplo:\nOBJETIVO: anunciar la canasta navideña con 20% OFF y llevar gente a la tienda.\nTEXTO QUE VA EN LA PIEZA:\n• Título: Tu Navidad, completa\n• Subtítulo: Canasta navideña con 20% OFF\n• Legal: Válido del 1 al 24 de diciembre o hasta agotar stock.\nFORMATO Y MEDIDAS: post 1080×1350 y una historia 1080×1920.\nREFERENCIAS: campaña de Navidad del año pasado (link en Material adjunto).\nOBSERVACIONES: que se lea bien el 20%. Usar el logo nuevo.",
@@ -7541,7 +7578,7 @@ function rtEditor(id, html, ph){
 }
 // Quién puede cambiar el texto y los bocetos del pedido: el responsable y Admin total. Los demás lo ven (hoja blanca, solo lectura).
 function jobPermNote(j, what){
-  const own = j.owner && j.owner !== "Sin asignar" ? firstName(j.owner) : "", mine = j.owner === viewer.name, at = viewer.role === "Admin total";
+  const own = j.owner && j.owner !== "Sin asignar" ? firstName(j.owner) : "", mine = hasJob(j, viewer.name), at = viewer.role === "Admin total";
   if (isClosedJob(j) && (at || mine)) return `${icon("lock")} El pedido ya terminó: ${what} queda guardado así.`;
   return mine ? `${icon("pencil")} Lo ven todos. Lo pueden cambiar solo vos (responsable) y Admin total.`
     : at ? `${icon("pencil")} Lo ven todos. Lo pueden cambiar solo ${own ? own + " (responsable) y " : ""}vos (Admin total).`
@@ -7908,7 +7945,7 @@ function jobProcess(j){
 // Material adjunto: archivos guardados en el bucket privado "material" (cada pedido en su carpeta) + los links.
 const linkLabel = l => { try { const u = new URL(l); const h = u.hostname.replace(/^www\./, ""); return ({ "drive.google.com":"Google Drive", "docs.google.com":"Google Docs", "canva.com":"Canva", "figma.com":"Figma", "wetransfer.com":"WeTransfer", "we.tl":"WeTransfer", "dropbox.com":"Dropbox", "onedrive.live.com":"OneDrive" })[h] || h; } catch { return String(l).slice(0, 40); } };
 const fileSize = n => n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB";
-const canAttach = j => !isViewOnly() && !isClosed() && (viewer.role === "Admin total" || canCreateJobs() || j.owner === viewer.name);
+const canAttach = j => !isViewOnly() && !isClosed() && (viewer.role === "Admin total" || canCreateJobs() || hasJob(j, viewer.name));
 function filesBlock(j, edit){
   const fl = j.files || [];
   return `<div class="jfnotes"><span>Archivos adjuntos</span>${fl.length ? `<div class="jfiles">${fl.map((f, i) => `<div class="jfile"><span class="jfic">${icon(/^image\//.test(f.t) ? "image" : /pdf/.test(f.t) ? "file-text" : "file")}</span><div class="grow"><b>${esc(f.n)}</b><small>${fileSize(f.s || 0)} · ${esc(firstName(f.by || ""))} · ${dm(String(f.at || "").slice(0, 10))}</small></div>
@@ -7947,7 +7984,7 @@ document.addEventListener("click", async e => {
 const BK_MAX = 10 * 1048576, bkBusy = {};
 const bkKind = t => /^image\//.test(t || "") ? "img" : /pdf/.test(t || "") ? "pdf" : "file";
 const bkDrive = id => `https://drive.google.com/file/d/${encodeURIComponent(id)}/view`;
-const canDelBk = (b, j) => !isViewOnly() && !isClosed() && (viewer.role === "Admin total" || (j?.owner === viewer.name && b.by === viewer.name));
+const canDelBk = (b, j) => !isViewOnly() && !isClosed() && (viewer.role === "Admin total" || (hasJob(j, viewer.name) && b.by === viewer.name));
 function bocetoBlock(j){
   const list = (j.bocetos || []).slice().reverse(), ed = canAttach(j), last = list[0];
   const view = (b, cls = "") => bkKind(b.t) === "file" ? `<a class="bkfile ${cls}" href="${bkDrive(b.id)}" target="_blank" rel="noopener">${icon("file")}<b>${esc(b.n)}</b><small>Abrir en Drive</small></a>`
@@ -8116,7 +8153,7 @@ function jobChatBtns(j, about = "el pedido"){
   if (!viewer || sinChat(viewer) || isViewOnly() || window.RMH?.previewing) return "";
   const act = pp => pp && pp.active !== false && !sinChat(pp) && pp.id !== viewer.id;
   const owner = PEOPLE.find(pp => pp.name === j.owner), by = PEOPLE.find(pp => pp.id === j.byId);
-  const to = j.owner === viewer.name ? [by && act(by) ? by : null, ...PEOPLE.filter(pp => pp.role === "Admin total")].filter(act) : [owner].filter(act);
+  const to = hasJob(j, viewer.name) ? [by && act(by) ? by : null, ...PEOPLE.filter(pp => pp.role === "Admin total")].filter(act) : [owner].filter(act);
   return [...new Map(to.map(pp => [pp.id, pp])).values()].slice(0, 2).map(pp => `<button type="button" class="btn primary jchatbtn" data-chatwith="${esc(pp.id)}" data-chatabout="${esc(j.title)}" data-chatpre="${esc(about)}">${icon("message-circle")} Chatear con ${esc(nickOf(pp))}</button>`).join("");
 }
 // ----- Video editado (pedidos de CM): bien destacado arriba de la ficha. Se sube directo a Google Drive, a la carpeta
@@ -8247,7 +8284,7 @@ function jobFicha(){
       <div class="jfgrid">${row(jobBrands(j).length > 1 ? "Marcas" : "Marca", jobBrandTags(j))}${j.area === "Diseño" && j.pubCm && !jobApproved(j) && seesPubDate() ? row("Lo publica", `${cmSwapSel(j, "pub") || esc(j.pubCm)} · ${j.pubDate ? `el ${dm(j.pubDate)}` : "fecha sin definir"} <span class="note">(ya le llegó; la ruta de la compartida la ve al aprobarse)</span>`) : j.area === "Diseño" && jobApproved(j) && canSwapPub(j) ? row("Lo publica", `${cmSwapSel(j, "pub")} <span class="note">(si no está disponible, pasáselo a otro CM: le llega el aviso)</span>`) : ""}${row("Tipo de trabajo", esc((j.area === "Diseño" && dgCatOf(j) ? dgCatOf(j) + " · " : "") + cmPiece(j)))}${row("Trabajo solicitado", esc(j.title))}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}${j.piece === OTRO && j.otro ? `<div style="grid-column:1/-1"><span>Actividades</span><b>${esc(j.otro)}</b></div>` : ""}</div>
       ${j.notes ? `<div class="jfnotes"><span>Observaciones</span><p>${esc(j.notes)}</p></div>` : ""}</section>
     <section class="panel jp-sec"><h2 class="pmh">${pmIco("users")}<i class="jpn">2</i>Quién y para cuándo</h2>
-      <div class="jfgrid"><div><span>Quién lo pidió</span><b>${esc(j.requester || "Sin indicar")}</b></div>${row("Responsable", (j.area !== "Diseño" && cmSwapSel(j, "owner")) || esc(j.owner))}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", prioTag(j.priority))}${row("Complejidad", esc(j.complexity))}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}${j.approvedBy ? row("Aprobó", `${icon("badge-check")} ${esc(j.approvedBy)}${j.approved ? " · " + dm(j.approved) : ""}`) : ""}</div>${seesPubDate() ? pubInfo(j) : ""}</section>
+      <div class="jfgrid"><div><span>Quién lo pidió</span><b>${esc(j.requester || "Sin indicar")}</b></div>${row("Responsable", (j.area !== "Diseño" && cmSwapSel(j, "owner")) || esc(j.owner))}${alsoOf(j).length ? row("También participan", esc(alsoOf(j).join(", "))) : ""}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", prioTag(j.priority))}${row("Complejidad", esc(j.complexity))}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}${j.approvedBy ? row("Aprobó", `${icon("badge-check")} ${esc(j.approvedBy)}${j.approved ? " · " + dm(j.approved) : ""}`) : ""}</div>${seesPubDate() ? pubInfo(j) : ""}</section>
     ${jobBriefSection(j)}
     ${jobCopyBlock(j)}
     ${j.area === "CM" ? videoBlock(j) : ""}
@@ -8352,7 +8389,7 @@ function jobForm(){
       </div></section>
       <section class="jfs"><h3><i>2</i>Quién y para cuándo</h3><div class="jfg">
       <label>Solicitante *<select class="base" id="jRequester">${opt(SOLICITANTES, j.requester)}</select></label>
-      ${own ? `<label>Responsable *<select class="base" disabled><option>${esc(viewer.name)}</option></select></label>` : `<label>Responsable (de cualquier marca) *<select class="base" id="jOwner">${area === "Diseño" ? opt([...new Set(["Sin asignar", ...areaPeople(area), j.owner])], j.owner) : cmOwnerOpts([...new Set(["Sin asignar", ...areaPeople(area), j.owner])], j.owner)}</select></label>${area === "Diseño" ? "" : cmSuggestNote("jOwner", j.owner)}`}
+      ${own ? `<label>Responsable *<select class="base" disabled><option>${esc(viewer.name)}</option></select></label>` : `<label>Responsable (de cualquier marca) *<select class="base" id="jOwner">${area === "Diseño" ? opt([...new Set(["Sin asignar", ...areaPeople(area), j.owner])], j.owner) : cmOwnerOpts([...new Set(["Sin asignar", ...areaPeople(area), j.owner])], j.owner)}</select></label>${area === "Diseño" ? "" : cmSuggestNote("jOwner", j.owner) + alsoBox(j, j.owner)}`}
       <label>Fecha de solicitud *<input class="base" type="date" id="jReq" value="${j.requestDate}" required></label>
       <label >Fecha límite *<input class="base" type="date" id="jDue" value="${j.due}" required></label>
       ${area === "Diseño" ? jobPubCmBox(j) : ""}
@@ -8404,14 +8441,14 @@ const repText = r => r?.days?.length ? (r.days.length === 7 ? "Todos los días" 
 function spawnRepeats(){
   if (!viewer || isClosed() || isViewOnly()) return 0;
   let n = 0;
-  jobs.filter(t => t.rep?.days?.length && !t.ex && !t.repOf && (viewer.role === "Admin total" || t.owner === viewer.name)).forEach(t => {
+  jobs.filter(t => t.rep?.days?.length && !t.ex && !t.repOf && (viewer.role === "Admin total" || hasJob(t, viewer.name))).forEach(t => {
     for (let k = 0; k <= REP_AHEAD; k++){
       const d = addDays(TODAY, k), wd = (new Date(d + "T12:00").getDay() + 6) % 7;
       if (d <= t.due || !t.rep.days.includes(wd) || (t.rep.until && d > t.rep.until) || !MONTHS_APP.some(m => m.v === d.slice(0,7))) continue;
       const id = `${t.id}-R${d.slice(2).replace(/-/g, "")}`; if (jobs.some(x => x.id === id)) continue;
       jobs.push({ id, area:t.area, title:t.title, brand:t.brand, ...(Array.isArray(t.brands) ? { brands:[...t.brands] } : {}), piece:t.piece, ...(t.cat ? { cat:t.cat } : {}), owner:t.owner, requester:t.requester, requestDate:TODAY, due:d, status:"Pendiente", priority:t.priority, complexity:t.complexity,
-        brief:t.brief, share:t.share || "", shares:shareList(t).map(x => ({ ...x })), drive:t.drive || "", canva:t.canva || "", links:jobLinks(t).slice(), xlinks:(t.xlinks || []).map(x => ({ ...x })), designLink:"", link:t.link || "", notes:t.notes || "", post:null, repOf:t.id });
-      if (t.owner && t.owner !== "Sin asignar" && t.owner !== viewer.name) notify({ to:t.owner, type:"nuevo", job:id });
+        brief:t.brief, share:t.share || "", shares:shareList(t).map(x => ({ ...x })), drive:t.drive || "", canva:t.canva || "", links:jobLinks(t).slice(), xlinks:(t.xlinks || []).map(x => ({ ...x })), designLink:"", link:t.link || "", notes:t.notes || "", post:null, repOf:t.id, ...(alsoOf(t).length ? { also:alsoOf(t) } : {}) });
+      crewOf(t.owner, t).filter(nm => nm !== viewer.name).forEach(nm => notify({ to:nm, type:"nuevo", job:id }));
       n++;
     }
   });
@@ -8441,7 +8478,7 @@ function jobTable(list){
   const at = canCreateJobs() || list.some(j => canEditJob(j)), showOwner = !pedMine(), showReq = viewer.role === "Admin total";
   const cols = 7 + (showOwner ? 1 : 0) + (showReq ? 1 : 0) + (at ? 1 : 0);
   return `<div class="tw"><table><thead><tr><th>Trabajo solicitado</th><th>Marca</th><th>Tipo</th><th>Fecha límite</th><th>Estado</th><th>Prioridad</th><th>Solicitante</th>${showOwner ? "<th>Responsable</th>" : ""}${showReq ? "<th>Solicitud</th>" : ""}${at ? "<th></th>" : ""}</tr></thead><tbody>
-    ${list.map(j => `<tr><td>${j.ex ? `<span class="exbadge sm">Ejemplo</span> ` : ""}<button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button>${j.link ? ` <a class="link-post" href="${esc(j.link)}" target="_blank" rel="noopener">${icon("link")} brief</a>` : ""}</td><td>${jobBrandTags(j)}</td><td>${jobPieceTag(j)}</td><td><div class="chips" style="flex-wrap:nowrap"><span class="num">${dm(j.due)}</span>${urgBadge(j)}</div></td><td>${jobStatusCell(j)}</td><td>${prioTag(j.priority)}</td><td>${esc(j.requester)}</td>${showOwner ? `<td>${esc(j.owner)}</td>` : ""}${showReq ? `<td class="num">${dm(j.requestDate)}</td>` : ""}${at ? `<td>${jobActions(j)}</td>` : ""}</tr>`).join("") || `<tr><td colspan="${cols}" class="empty">No hay pedidos.</td></tr>`}
+    ${list.map(j => `<tr><td>${j.ex ? `<span class="exbadge sm">Ejemplo</span> ` : ""}<button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button>${j.link ? ` <a class="link-post" href="${esc(j.link)}" target="_blank" rel="noopener">${icon("link")} brief</a>` : ""}</td><td>${jobBrandTags(j)}</td><td>${jobPieceTag(j)}</td><td><div class="chips" style="flex-wrap:nowrap"><span class="num">${dm(j.due)}</span>${urgBadge(j)}</div></td><td>${jobStatusCell(j)}</td><td>${prioTag(j.priority)}</td><td>${esc(j.requester)}</td>${showOwner ? `<td>${esc(crewOf(j.owner, j).join(" + ") || j.owner)}</td>` : ""}${showReq ? `<td class="num">${dm(j.requestDate)}</td>` : ""}${at ? `<td>${jobActions(j)}</td>` : ""}</tr>`).join("") || `<tr><td colspan="${cols}" class="empty">No hay pedidos.</td></tr>`}
   </tbody></table></div>`;
 }
 function jobBoard(list, A){
@@ -8516,13 +8553,13 @@ function cmReport(pp){
   const name = pp.name, M = MONTH, inM = d => String(d || "").slice(0, 7) === M, rows = [];
   const pub = (fn, x, kind) => { const done = DONE_PUB.includes(x.status), late = !done && x.date < TODAY, onTime = done && x.doneAt ? x.doneAt <= x.date : null;
     rows.push({ fn, title:x.title, brand:x.brand, date:x.date, st:x.status, kind, done, late, onTime }); };
-  posts.filter(p => p.cm === name && !p.ex && inM(p.date)).forEach(p => pub(p.format === "Historia" ? "historias" : "redes", p, p.format));
-  CHANNEL_POSTS.filter(k => k.cm === name && inM(k.date)).forEach(k => pub("canal", k, "Canal"));
+  posts.filter(p => hasPub(p, name) && !p.ex && inM(p.date)).forEach(p => pub(p.format === "Historia" ? "historias" : "redes", p, p.format));
+  CHANNEL_POSTS.filter(k => hasPub(k, name) && inM(k.date)).forEach(k => pub("canal", k, "Canal"));
   RECURRING.filter(r => r.owner === name).forEach(r => { for (let d = M + "-01"; inM(d) && d <= TODAY; d = addDays(d, 1)){ if (!recOn(r, d)) continue; const st = recSt(r, d), done = DONE_PUB.includes(st);
     rows.push({ fn:r.kind === "Historia" ? "historias" : r.kind === "Canal" ? "canal" : r.kind === "Grabación" ? "videos" : "redes", title:r.title, brand:r.brand, date:d, st, kind:"Repetitivo", done, late:!done && d < TODAY, onTime:null }); } });
-  jobs.filter(j => !j.ex && j.owner === name && (j.area === "CM" || j.area === "Contenidos") && j.status !== "Cancelado" && jobMonth(j) === M).forEach(j => { const done = isFin(j), dd = j.delivered || j.approved;
+  jobs.filter(j => !j.ex && hasJob(j, name) && (j.area === "CM" || j.area === "Contenidos") && j.status !== "Cancelado" && jobMonth(j) === M).forEach(j => { const done = isFin(j), dd = j.delivered || j.approved;
     rows.push({ fn:j.area === "CM" ? "videos" : "contenidos", title:j.title, brand:j.brand, date:j.due, st:j.status, kind:cmPiece(j), done, late:!done && j.due < TODAY, onTime:done && dd ? dd <= j.due : null }); });
-  CM_ACTS.filter(a => a.owner === name && inM(a.date)).forEach(a => { const done = a.status === "Hecho"; rows.push({ fn:"actividades", title:a.title, brand:a.brand, date:a.date, st:a.status, kind:actType(a.type).t, done, late:!done && a.date < TODAY, onTime:null }); });
+  CM_ACTS.filter(a => hasJob(a, name) && inM(a.date)).forEach(a => { const done = a.status === "Hecho"; rows.push({ fn:"actividades", title:a.title, brand:a.brand, date:a.date, st:a.status, kind:actType(a.type).t, done, late:!done && a.date < TODAY, onTime:null }); });
   // Mensajes: los días con atención registrada (o “sin consultas”) y lo que se anotó
   const days = []; for (let d = M + "-01"; inM(d) && d <= TODAY; d = addDays(d, 1)){ const day = cmDay(pp, wdOf(d)); if (day ? day.min : wdOf(d) < 5) days.push(d); }
   const reg = days.map(d => dutyOf(pp, d)).filter(Boolean), sum = k => reg.reduce((a, x) => a + (+x[k] || 0), 0);
@@ -8623,7 +8660,7 @@ function jobDeliveryCal(list, A = "Diseño", week = false){
 let cartUI = { cartel:"calendario", web:"calendario", pantallas:"calendario", get view(){ return this[SEC_PIECES[page] ? page : "cartel"]; }, set view(v){ this[SEC_PIECES[page] ? page : "cartel"] = v; } };
 // “Solo yo”: en las gestiones de Diseño gráfico y CM muestra solo lo tuyo (se recuerda en este dispositivo).
 let soloYo = (() => { try { return localStorage.getItem("rmh-soloyo") === "1"; } catch { return false; } })();
-const soloMine = j => !soloYo || j.owner === viewer.name || j.ex;
+const soloMine = j => !soloYo || hasJob(j, viewer.name) || j.ex;
 const soloBtn = () => `<button type="button" class="chip solo ${soloYo ? "on" : ""}" data-soloyo aria-pressed="${soloYo}" title="Mostrar solo lo que tenés a tu nombre">${icon("user-round")} Solo yo</button>`;
 document.addEventListener("click", e => { const b = e.target.closest("[data-soloset]"); if (!b) return; soloYo = b.dataset.soloset === "1"; try { localStorage.setItem("rmh-soloyo", soloYo ? "1" : "0"); } catch {} render(); });
 document.addEventListener("click", e => { if (!e.target.closest("[data-soloyo]")) return; soloYo = !soloYo; try { localStorage.setItem("rmh-soloyo", soloYo ? "1" : "0"); } catch {} render(); });
@@ -8640,7 +8677,7 @@ let pedView = "tabla";
 document.addEventListener("click", e => { const b = e.target.closest("[data-pedview]"); if (b){ pedView = b.dataset.pedview; render(); } });
 function pedList(A){
   const cart = MAT_SECS.includes(page), soc = page === "pedidos";
-  return jobs.filter(j => j.area === A && (seesJob(j) || j.ex) && jobMonth(j) === MONTH && j.status !== "Cancelado" && (!cart || inMatPage(j)) && (!soc || !isMaterial(j)) && (!pedMine() || j.owner === viewer.name || j.ex))
+  return jobs.filter(j => j.area === A && (seesJob(j) || j.ex) && jobMonth(j) === MONTH && j.status !== "Cancelado" && (!cart || inMatPage(j)) && (!soc || !isMaterial(j)) && (!pedMine() || hasJob(j, viewer.name) || j.ex))
     .sort((a, b) => !!b.ex - !!a.ex || a.due.localeCompare(b.due)); // el ejemplo, primero
 }
 const pedScopeChips = A => ownsJobs() ? `<div class="chips pedscope"><button type="button" class="chip ${pedMine() ? "on" : ""}" data-pedscope="mine">${icon("user-round")} Mis pedidos</button><button type="button" class="chip ${pedMine() ? "" : "on"}" data-pedscope="team">${icon("users")} Todo el equipo de ${A === "Diseño" ? "Diseño gráfico" : "CM"}</button></div>` : "";
@@ -8726,7 +8763,7 @@ function pPedidos(){
 /* ---------- Gestión CM: publicaciones (fecha de publicación y estado) + tareas de CM ---------- */
 let cmUI = { tview:"calendario", st:"Todos", cm:"Todos" };
 const canEditPost = () => !isClosed() && !isViewOnly() && !isDesigner();
-function cmPosts(){ return visiblePosts().filter(p => (cmUI.cm === "Todos" || p.cm === cmUI.cm) && cmStOk(p)).sort((a, b) => a.date.localeCompare(b.date)); }
+function cmPosts(){ return visiblePosts().filter(p => (cmUI.cm === "Todos" || hasPub(p, cmUI.cm)) && cmStOk(p)).sort((a, b) => a.date.localeCompare(b.date)); }
 function postDesignCell(p){
   const j = jobs.find(x => x.post === p.id);
   if (j) return `<span class="note">${icon("palette")} ${esc(firstName(j.owner))} · ${pill(j.status, JOB_COLOR[j.status])}</span>`;
@@ -8857,12 +8894,12 @@ function copyLogList(p){
 const contCopy = j => !!j && j.area === "Contenidos";
 const jcopyHas = j => !!copyPlain(j).trim() || /<img/i.test(j.copy || "");
 const jcopyOk = j => !!j.noCopy || !!j.copyConf || jcopyHas(j);
-const jcopyEdit = j => contCopy(j) && !isClosed() && !isViewOnly() && !isFin(j) && (viewer.role === "Admin total" || (j.owner === viewer.name && !j.copyConf && ["Pendiente","En proceso","En corrección"].includes(j.status)));
+const jcopyEdit = j => contCopy(j) && !isClosed() && !isViewOnly() && !isFin(j) && (viewer.role === "Admin total" || (hasJob(j, viewer.name) && !j.copyConf && ["Pendiente","En proceso","En corrección"].includes(j.status)));
 function jcopyTake(j){ const ed = document.getElementById("jCopy"); if (ed && ed.isContentEditable && ed.dataset.dirty && jcopyEdit(j)){ j.copy = rtHtml(ed); j.copyBg = ""; delete ed.dataset.dirty; } }
 const jcopyShort = j => j.noCopy ? "no lleva copy" : j.copyConf ? "copy confirmado por Admin total" : jcopyHas(j) ? `copy: “${rclShort(copyPlain(j), 120)}”` : "sin copy";
 function jobCopyBlock(j){
   if (!contCopy(j)) return "";
-  const at = viewer.role === "Admin total", ed = jcopyEdit(j), mine = j.owner === viewer.name, fin = isFin(j), wait = REVIEW_WAIT.includes(j.status), id = esc(j.id);
+  const at = viewer.role === "Admin total", ed = jcopyEdit(j), mine = hasJob(j, viewer.name), fin = isFin(j), wait = REVIEW_WAIT.includes(j.status), id = esc(j.id);
   const st = j.noCopy ? `${icon("ban")} No lleva copy: se publica sin copy` : j.copyConf ? `${icon("badge-check")} Copy confirmado por Admin total${mine && !at ? ": no lo tenés que escribir, solo publicarlo" : ""}`
     : fin ? `${icon("badge-check")} Copy aprobado junto con el diseño` : wait ? `${icon("hourglass")} Copy enviado con el boceto: Admin total lo revisa junto con el diseño`
     : `${icon("file-text")} ${mine ? "Escribí el copy acá: se manda junto con el diseño cuando tocás “Boceto finalizado” (o “Corrección realizada”)" : `${esc(firstName(j.owner))} escribe el copy y lo manda junto con el diseño`}`;
@@ -8891,7 +8928,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-jcp]
 // Hoja de la CM para una publicación que viene de Diseño gráfico: solo el copy, el día y la hora, y la etapa.
 // (Sin “¿Se repite?”, sin el texto del pedido, sin la ruta repetida, sin prioridad ni cambios de Diseño.)
 function pubCopyForm(f, p, dj, canal, real, chat){
-  const at = viewer.role === "Admin total", mine = p.cm === viewer.name, st = copyStOf(p), stages = canal ? CANAL_STAGES : POST_STAGES, cur = stages.indexOf(p.status);
+  const at = viewer.role === "Admin total", mine = hasPub(p, viewer.name), st = copyStOf(p), stages = canal ? CANAL_STAGES : POST_STAGES, cur = stages.indexOf(p.status);
   const edit = canEditPost() && (at || (mine && st !== "rev" && st !== "ok"));
   const hid = (id, v) => `<input type="hidden" id="${id}" value="${esc(v ?? "")}">`;
   const last = [...(p.copyLog || [])].reverse().find(c => c.k === "fix");
@@ -8942,9 +8979,9 @@ function postForm(){
       ${f.kind === "Historia" ? `<label>Formato<input class="base" value="Historia" readonly></label>` : `<label>Formato *<select class="base" id="poFormat">${opt(f.mode === "edit" ? FEED_FORMATS : [...FEED_FORMATS, POST_HIST], p.format === "Historia" ? "Post" : p.format)}</select></label>`}`;
   const chat = real ? jobChatBtns({ owner:real.cm, byId:real.byId, title:real.title }, "la publicación") : "";
   const dj = p.fromJob && jobById(p.fromJob);
-  if (real && real.fromJob && real.cm === viewer.name && !real.seenBy?.[viewer.id] && !window.RMH?.previewing){ real.seenBy = { ...(real.seenBy || {}), [viewer.id]:1 };
+  if (real && real.fromJob && hasPub(real, viewer.name) && !real.seenBy?.[viewer.id] && !window.RMH?.previewing){ real.seenBy = { ...(real.seenBy || {}), [viewer.id]:1 };
     NOTIFS.forEach(n => { if (n.type === "pub" && n.post === real.id && n.to === viewer.name) n.read = true; }); setTimeout(renderNav, 0); }
-  if (real && real.cm === viewer.name && !window.RMH?.previewing && NOTIFS.some(n => n.copy && n.type === "listo" && n.post === real.id && n.to === viewer.name && !n.read)){
+  if (real && hasPub(real, viewer.name) && !window.RMH?.previewing && NOTIFS.some(n => n.copy && n.type === "listo" && n.post === real.id && n.to === viewer.name && !n.read)){
     NOTIFS.forEach(n => { if (n.copy && n.type === "listo" && n.post === real.id && n.to === viewer.name) n.read = true; }); setTimeout(renderNav, 0); }
   if (dj) return pubCopyForm(f, p, dj, canal, real, chat); // v214: a la CM, solo el copy, el día y la hora (y la ruta, arriba)
   const fromDesign = "";
@@ -8960,7 +8997,7 @@ function postForm(){
       </div></section>
       <section class="jfs"><h3><i>2</i>Quién y para cuándo</h3><div class="jfg">
         <label>Solicitante *<select class="base" id="poReq">${opt(SOLICITANTES, p.requester || "Marketing")}</select></label>
-        <label>CM responsable (de cualquier marca) *<select class="base" id="poCm">${cmOwnerOpts([...new Set([...CM_NAMES(), p.cm].filter(Boolean))], p.cm)}</select></label>${canCreateJobs() ? cmSuggestNote("poCm", p.cm) : ""}
+        <label>CM responsable (de cualquier marca) *<select class="base" id="poCm">${cmOwnerOpts([...new Set([...CM_NAMES(), p.cm].filter(Boolean))], p.cm)}</select></label>${canCreateJobs() ? cmSuggestNote("poCm", p.cm) : ""}${alsoBox(p, p.cm)}
         <label>Fecha de publicación *<input class="base" type="date" id="poDate" value="${p.date}" required></label>
         <label>Hora de publicación <span class="note">(opcional)</span><input class="base" type="time" id="poTime" value="${esc(p.time || "")}"></label>
         ${p.repOf || p.fromJob ? "" : moreDaysBox(f)}
@@ -9052,15 +9089,15 @@ document.addEventListener("click", e => {
   const b = e.target.closest("[data-cpsend],[data-cpok],[data-cpfix],[data-cpreopen],[data-cpfixsend],[data-cpnone],[data-cpconf]"); if (!b) return;
   const d = b.dataset, p = copyByRef(d.cpsend || d.cpok || d.cpfix || d.cpreopen || d.cpfixsend || d.cpnone || d.cpconf); if (!p) return toast("No se encontró la publicación (quizás la borraron).");
   if (!canEditPost()) return;
-  if (d.cpsend){ if (p.cm !== viewer.name) return; return copySend(p); }
-  if (d.cpnone){ if (p.cm !== viewer.name && viewer.role !== "Admin total") return; copyTake(p); p.noCopy = !p.noCopy; copyLogAdd(p, p.noCopy ? "none" : "has");
+  if (d.cpsend){ if (!hasPub(p, viewer.name)) return; return copySend(p); }
+  if (d.cpnone){ if (!hasPub(p, viewer.name) && viewer.role !== "Admin total") return; copyTake(p); p.noCopy = !p.noCopy; copyLogAdd(p, p.noCopy ? "none" : "has");
     if (p.noCopy){ if (p.copySt === "rev" || p.copySt === "fix") p.copySt = ""; copyNotifsRead(p, n => n.to === "admin" || n.to === p.cm); }
     copySync(p); render(); window.RMH?.flushNow?.(); return toast(p.noCopy ? "Listo: no lleva copy. Se puede programar y publicar sin la aprobación del copy." : "Listo: lleva copy. Escribilo y tocá “Copy boceto finalizado”."); }
   if (d.cpok) return copyApprove(p);
   if (d.cpconf) return copyConfirm(p);
   if (d.cpfix) return openCopyFixModal(p);
   if (d.cpfixsend){ const t = document.getElementById("cpFixText")?.value.trim(); if (!t){ document.getElementById("cpFixErr").hidden = false; return; } document.getElementById("fixpop")?.remove(); return copyFix(p, t); }
-  if (d.cpreopen && p.cm === viewer.name){ copyTake(p); p.copySt = ""; p.copyConf = false; copyLogAdd(p, "edit"); if (["Programado"].includes(p.status)) p.status = "En proceso"; copySync(p); render(); toast("Podés cambiar el copy: cuando termines, mandalo de nuevo a Admin total."); }
+  if (d.cpreopen && hasPub(p, viewer.name)){ copyTake(p); p.copySt = ""; p.copyConf = false; copyLogAdd(p, "edit"); if (["Programado"].includes(p.status)) p.status = "En proceso"; copySync(p); render(); toast("Podés cambiar el copy: cuando termines, mandalo de nuevo a Admin total."); }
 });
 // Avisos del copy (en Tus alertas y en la ventana emergente).
 function copyAlert(n){
@@ -9144,9 +9181,10 @@ document.addEventListener("submit", e => {
   if (f.mode !== "edit" && !(f.brands || []).length){ toast("Elegí al menos una marca."); return; }
   const net0 = f.kind === "Canal" ? "" : $("#poNet")?.value || "", skipNet = f.mode === "edit" || !net0 ? [] : f.brands.filter(b => !netFit(b, net0));
   if (skipNet.length){ f.brands = f.brands.filter(b => !skipNet.includes(b)); if (!f.brands.length){ toast(`${skipNet.join(", ")} no ${skipNet.length === 1 ? "tiene" : "tienen"} ${net0}. Elegí otra red.`); return; } document.getElementById("poBrand").value = f.brands[0]; }
-  const was = f.mode === "edit" ? (f.kind === "Canal" ? canalById(f.post.id) : postById(f.post.id)) : null;
+  const was = f.mode === "edit" ? (f.kind === "Canal" ? canalById(f.post.id) : postById(f.post.id)) : null, prevCrew = was ? crewOf(was.cm, was) : [];
+  const alsoNotify = (x, canal) => alsoOf(x).filter(n => !prevCrew.includes(n) && n !== viewer.name).forEach(n => notify({ to:n, type:"pub", post:x.id, canal })); // v309: a quien suman
   if (copyLock(was || f.post, $("#poStatus").value) && $("#poStatus").value !== was?.status){ toast(copyLockMsg); return; }
-  const d = f.post, common = { date, brand:$("#poBrand").value, title, cm:$("#poCm").value, status:$("#poStatus").value, notes:$("#poNotes").value.trim(), requester:d.requester || "Marketing",
+  const d = f.post, common = { date, brand:$("#poBrand").value, title, cm:$("#poCm").value, also:alsoClean({ also:d.also }, $("#poCm").value).also, status:$("#poStatus").value, notes:$("#poNotes").value.trim(), requester:d.requester || "Marketing",
     brief:d.brief || "", canva:d.canva || "", drive:d.drive || "", canvaN:d.canvaN || "", driveN:d.driveN || "", xlinks:d.xlinks || [], links:d.links || [], cmFiles:d.cmFiles || [],
     ...(d.time !== undefined ? { time:d.time || "" } : {}), ...(d.copy !== undefined ? { copy:d.copy, copyBg:d.copyBg || "" } : {}) };
   const dj0 = d.fromJob && jobById(d.fromJob); // Admin total cambió el día o la hora: el pedido de Diseño queda igual (si tiene una sola publicación)
@@ -9162,7 +9200,7 @@ document.addEventListener("submit", e => {
     let k = f.mode === "edit" ? canalById(f.post.id) : null;
     if (k) Object.assign(k, data); else { k = { ...f.post, ...data }; CHANNEL_POSTS.push(k); }
     extraBrands.forEach(b => { const x = { ...f.post, ...data, brand:b, id:"K" + (Math.max(0, ...CHANNEL_POSTS.map(c => +(String(c.id).match(/^K?(\d+)$/) || [])[1] || 0)) + 1) }; CHANNEL_POSTS.push(x); setRep(x); });
-    setRep(k); if (f.mode === "edit") syncRepCopies(k, true); const dk = cloneOnDays([k, ...CHANNEL_POSTS.filter(x => x !== k && x.title === k.title && x.date === k.date && extraBrands.includes(x.brand))], f.moreDays || [], true);
+    setRep(k); alsoNotify(k, true); if (f.mode === "edit") syncRepCopies(k, true); const dk = cloneOnDays([k, ...CHANNEL_POSTS.filter(x => x !== k && x.title === k.title && x.date === k.date && extraBrands.includes(x.brand))], f.moreDays || [], true);
     const extra = repMsg(k) + (extraBrands.length ? ` También para ${extraBrands.join(", ")}.` : "") + (dk.length ? ` También el ${(f.moreDays || []).map(dm).join(", ")}.` : ""); delete k.nRep;
     postUI.form = null; const m = date.slice(0,7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m;
     render(); window.RMH?.flushNow?.(); toast(`${f.mode === "edit" ? "Guardado" : "Cargado"}: “${k.title}” en ${k.channel} el ${dm(k.date)}.${extra}`); return;
@@ -9175,7 +9213,7 @@ document.addEventListener("submit", e => {
   if (p) Object.assign(p, data); else { p = { ...f.post, ...data }; posts.push(p); }
   const more = [];
   (f.mode === "edit" ? [] : f.brands || []).forEach((b, i) => (both ? ["Post", "Historia"] : [data.format]).forEach((fm, k) => { if (!i && !k) return; const nb = netFit(b, $("#poNet").value) || data.net; const x = { ...f.post, ...data, brand:b, net:fm === "Historia" ? storyNet(nb) : nb, format:fm, id:nextPostId() }; posts.push(x); setRep(x); more.push(x); }));
-  setRep(p); if (f.mode === "edit") syncRepCopies(p, false); const dp = cloneOnDays([p, ...more], f.moreDays || [], false);
+  setRep(p); alsoNotify(p, false); if (f.mode === "edit") syncRepCopies(p, false); const dp = cloneOnDays([p, ...more], f.moreDays || [], false);
   const extra = (dp.length ? ` También el ${(f.moreDays || []).map(dm).join(", ")} (${dp.length} más).` : "") + repMsg(p) + (more.length ? ` Se cargaron ${more.length + 1} en total (${[p, ...more].map(x => `${x.brand} ${x.format}`).join(", ")}).` : "") + (skipNet.length ? ` ${skipNet.join(", ")} no ${skipNet.length === 1 ? "tiene" : "tienen"} ${data.net}: no se ${skipNet.length === 1 ? "cargó" : "cargaron"}.` : ""); delete p.nRep;
   const ask = !!document.getElementById("poAskDesign")?.checked;
   postUI.form = null;
@@ -9200,13 +9238,13 @@ const repPostDays = () => Math.max(REP_AHEAD, daysTo(addDays(mondayOf(TODAY), 13
 function spawnPostRepeats(){
   if (!viewer || isClosed() || isViewOnly() || isDesigner()) return 0;
   let n = 0, ahead = repPostDays();
-  [[posts, false], [CHANNEL_POSTS, true]].forEach(([list, canal]) => list.filter(t => t.rep?.days?.length && !t.repOf && (viewer.role === "Admin total" || t.cm === viewer.name)).forEach(t => {
+  [[posts, false], [CHANNEL_POSTS, true]].forEach(([list, canal]) => list.filter(t => t.rep?.days?.length && !t.repOf && (viewer.role === "Admin total" || hasPub(t, viewer.name))).forEach(t => {
     for (let k = 0; k <= ahead; k++){
       const d = addDays(TODAY, k), wd = (new Date(d + "T12:00").getDay() + 6) % 7;
       if (d <= t.date || !t.rep.days.includes(wd) || (t.rep.until && d > t.rep.until) || !MONTHS_APP.some(m => m.v === d.slice(0,7))) continue;
       const id = `${t.id}-R${d.slice(2).replace(/-/g, "")}`; if (list.some(x => x.id === id || (x.repOf === t.id && x.date === d))) continue;
       const c = { id, date:d, status:"Pendiente", repOf:t.id, brand:t.brand, title:t.title, cm:t.cm, requester:t.requester || "Marketing", notes:t.notes || "", brief:t.brief || "",
-        canva:t.canva || "", drive:t.drive || "", canvaN:t.canvaN || "", driveN:t.driveN || "", xlinks:(t.xlinks || []).map(x => ({ ...x })), links:(t.links || []).slice(), byId:t.byId };
+        canva:t.canva || "", drive:t.drive || "", canvaN:t.canvaN || "", driveN:t.driveN || "", xlinks:(t.xlinks || []).map(x => ({ ...x })), links:(t.links || []).slice(), byId:t.byId, ...(alsoOf(t).length ? { also:alsoOf(t) } : {}) };
       list.push(canal ? { ...c, channel:t.channel } : { ...c, net:t.net, format:t.format, carried:null });
       n++;
     }
@@ -9220,6 +9258,7 @@ function syncRepCopies(t, canal){
   const L = canal ? CHANNEL_POSTS : posts, ok = x => !!t.rep?.days?.length && x.date > t.date && t.rep.days.includes(wdOf(x.date)) && (!t.rep.until || x.date <= t.rep.until);
   for (let i = L.length - 1; i >= 0; i--){ const x = L[i]; if (x.repOf !== t.id || x.status !== "Pendiente" || x.date < TODAY) continue;
     if (!ok(x)){ L.splice(i, 1); NOTIFS.forEach(n => { if (n.post === x.id) n.read = true; }); continue; }
+    if (alsoOf(t).length) x.also = alsoOf(t); else delete x.also; // v309
     Object.assign(x, { brand:t.brand, title:t.title, cm:t.cm, requester:t.requester || "Marketing", notes:t.notes || "", brief:t.brief || "", canva:t.canva || "", drive:t.drive || "",
       canvaN:t.canvaN || "", driveN:t.driveN || "", xlinks:(t.xlinks || []).map(y => ({ ...y })), links:(t.links || []).slice() }, canal ? { channel:t.channel } : { net:t.net, format:t.format }); }
 }
@@ -9353,7 +9392,7 @@ function pGestionCM(){
     ${recurringList()}${recDrawer()}`;
   // Igual que Gestión Redes, Historia y Canal: Calendario (predeterminado), Tablero y Tabla, con el proceso de los videos.
   const view = gView(), calName = brandFilter === "Todas" ? "Todas las marcas" : brandFilter === "Otros" ? "Otras marcas" : brandFilter;
-  const list = jobs.filter(j => j.area === "CM" && (seesJob(j) || j.ex) && jobBrands(j).some(inFilter) && jobMonth(j) === MONTH && j.status !== "Cancelado" && (!pedMine() || j.owner === viewer.name || j.ex)).sort((a, b) => !!b.ex - !!a.ex || a.due.localeCompare(b.due));
+  const list = jobs.filter(j => j.area === "CM" && (seesJob(j) || j.ex) && jobBrands(j).some(inFilter) && jobMonth(j) === MONTH && j.status !== "Cancelado" && (!pedMine() || hasJob(j, viewer.name) || j.ex)).sort((a, b) => !!b.ex - !!a.ex || a.due.localeCompare(b.due));
   const head = gHead(`Gestión de Video${view === "calendario" ? " · " + calName : ""}`, `${monthLabel(MONTH)} · los videos de cada día, para redes y para pantallas, con su proceso hasta que se publican y se pautan.`, "clapperboard");
   const adds = canCreateJobs() ? calAdds([['data-jnew', "clapperboard", "Cargar gestión de video", "Qué video, para qué marca, quién lo hace y para cuándo."], ['data-cmtv="repetitivos"', "repeat", "Repetitivos", "Lo que se repite ciertos días de la semana."]]) : "";
   const proc = `<div class="legend">${CM_STAGES.map(st => `<span><span class="sw" style="background:${SEM[semLvl(st)]}"></span>${st}</span>`).join("")}</div>`;
@@ -9388,9 +9427,9 @@ function tvTeamSlide(sl){
   // actividades y mensajes del día, con lo que ya terminaron; antes solo contaban los pedidos de video.
   const cmSt = sl.area === "CM" ? cmTaskStats(ppl.flatMap(cmWeekTasks)) : null;
   const big = (title, st, L, cls, txt) => { const lv = lvOf(L); return `<div class="ttbar ${cls}"><div class="tth"><b>${title}</b><em style="color:${lv.c}">${pctHTML(L)} <small>${lv.t}</small></em></div>${ltrack(L)}<div class="ttm"><span>${txt || `<i>${L.n}</i> trabajos sin finalizar`}</span><span class="g"><i>${st.fin}</i> finalizadas</span><span><i>${st.proc}</i> en proceso</span><span class="r"><i>${st.pend}</i> pendientes</span></div></div>`; };
-  const card = (pp, k) => { const cmT = pp.role === "CM" ? cmWeekTasks(pp) : null, st = cmT ? cmTaskStats(cmT) : progStats(jobs.filter(j => j.owner === pp.name)), L = loadStats([pp.name]), lv = lvOf(L);
+  const card = (pp, k) => { const cmT = pp.role === "CM" ? cmWeekTasks(pp) : null, st = cmT ? cmTaskStats(cmT) : progStats(jobs.filter(j => hasJob(j, pp.name))), L = loadStats([pp.name]), lv = lvOf(L);
     const open = cmT ? cmT.filter(x => !x.done).sort((a, b2) => a.date.localeCompare(b2.date)).map(x => ({ title:x.title, brand:x.brand, due:x.date, status:x.st || "Pendiente" }))
-      : jobs.filter(j => j.owner === pp.name && !isIdleJob(j)).sort((a,b2) => a.due.localeCompare(b2.due));
+      : jobs.filter(j => hasJob(j, pp.name) && !isIdleJob(j)).sort((a,b2) => a.due.localeCompare(b2.due));
     const kd = cmT ? CM_KIND[cmKind(pp)] : null;
     return `<div class="tvp tc${kd && cmKind(pp) === "cm" ? " cmmsg" : ""}" style="--k:${k}"><div class="top">${avatarHTML(pp)}<div class="who"><b>${esc(pp.name)}</b><span>${kd ? `${kd[0]} · ` : ""}${open.length} ${open.length === 1 ? "tarea abierta" : "tareas abiertas"}</span></div></div>
       <div class="pline">${ltrack(L)}<div class="pct" style="color:${lv.c}">${pctHTML(L)}</div></div>
@@ -9437,13 +9476,13 @@ function tvWeekItems(area){
       if (inR(j.due)) out.push(x); out.push(...twDev(j, days, x)); });
     return out.sort((a, b) => a.date.localeCompare(b.date) || !!a.done - !!b.done);
   }
-  const add = (x, time, brands) => { const lv = semLvl(x.status); out.push({ date:x.date, brand:x.brand, brands:brands || [x.brand], title:x.title, who:x.cm, st:x.status, col:twCmCol(x.status), k:PLAN_SEC(x), ic:PLAN_ICO(x), time:time || "", done:lv === 3 }); };
+  const add = (x, time, brands) => { const lv = semLvl(x.status); out.push({ date:x.date, brand:x.brand, brands:brands || [x.brand], title:x.title, who:x.cm, crew:crewOf(x.cm, x), st:x.status, col:twCmCol(x.status), k:PLAN_SEC(x), ic:PLAN_ICO(x), time:time || "", done:lv === 3 }); };
   posts.filter(p => !p.ex && p.status !== CANCEL && inR(p.date)).forEach(p => add({ ...p }, p.time));
   CHANNEL_POSTS.filter(k => k.status !== CANCEL && inR(k.date)).forEach(k => add({ ...k, canal:true }, k.time));
-  jobs.filter(j => j.area === "CM" && j.status !== "Cancelado" && !j.ex).forEach(j => { const n = out.length; add({ vid:true, date:j.due, brand:j.brand, title:j.title, status:j.status, cm:j.owner }, "", jobBrands(j));
+  jobs.filter(j => j.area === "CM" && j.status !== "Cancelado" && !j.ex).forEach(j => { const n = out.length; add({ vid:true, date:j.due, brand:j.brand, title:j.title, status:j.status, cm:j.owner, also:alsoOf(j) }, "", jobBrands(j));
     const x = { ...out.pop(), id:j.id, job:true }; if (inR(j.due)) out.splice(n, 0, x); out.push(...twDev(j, days, x)); });
   RECURRING.forEach(r => days.forEach(c => { if (recOn(r, c)) add({ rec:true, r, date:c, brand:r.brand, title:r.title, cm:r.owner, status:recSt(r, c) }, r.time); }));
-  CM_ACTS.filter(a => inR(a.date)).forEach(a => add({ act:true, a, date:a.date, brand:a.brand, title:a.title, status:a.status, cm:a.owner }, a.time));
+  CM_ACTS.filter(a => inR(a.date)).forEach(a => add({ act:true, a, date:a.date, brand:a.brand, title:a.title, status:a.status, cm:a.owner, also:alsoOf(a) }, a.time));
   return out.sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || ""));
 }
 // v284: la de Diseño gráfico es de lunes a viernes (lo que vence el sábado o el domingo sale el viernes, con su día). En la
@@ -9457,11 +9496,12 @@ function tvWeekSlide(sl, dots){
   // v308: en las semanas por marca, cada pedido sale también los días que se está haciendo, con una tarjeta chica “En desarrollo”
   // (y para cuándo es); el día de la entrega sale su tarjeta de siempre, con “Entrega”. En la General no, para que entre todo.
   const devs = sl.all ? [] : all.filter(x => x.dev && !items.some(y => y.id === x.id && y.date === x.date)).sort((a, b) => !!a.done - !!b.done || a.due.localeCompare(b.due));
+  const twWho = x => x.crew?.length > 1 ? x.crew.map(n => String(n).split(" ")[0]).join(" + ") : ""; // v309: varias personas
   const dueTxt = d => `${["dom","lun","mar","mié","jue","vie","sáb"][new Date(d + "T12:00:00").getDay()]} ${+d.slice(8)}${d.slice(0, 7) === TODAY.slice(0, 7) ? "" : "/" + +d.slice(5, 7)}`;
   const done = items.filter(x => x.done).length;
   const sts = [...new Set(items.map(x => x.st))].map(st => ({ st, n:items.filter(x => x.st === st).length, col:items.find(x => x.st === st).col }));
-  const card = (x, k) => `<div class="twc${x.done ? " done" : ""}" style="--b:${BRANDS[x.brand] || "#64748b"};--s:${x.col};--k:${k}"><b>${esc(x.title)}</b><div class="twm"><span class="twst">${esc(x.st)}</span><small>${icon(x.ic)}${x.job && !sl.all ? `<i class="twent">Entrega</i> · ` : ""}${x.wkd ? `<i class="twwk">para el ${["sáb","dom"][wk7.indexOf(x.wkd) - 5]} ${+x.wkd.slice(8)}</i> · ` : ""}${sl.all ? x.bn.map(b => `<i class="twbn" style="--c:${BRANDS[b]}">${esc(b)}</i>`).join(" + ") + " · " + (x.who ? esc(String(x.who).split(" ")[0]) + " · " : "") + esc(x.k) : `${x.time ? esc(x.time) + " · " : ""}${esc(x.k)}${x.who ? " · " + esc(firstName(x.who)) : ""}`}</small></div></div>`;
-  const devCard = (x, k) => `<div class="twc twdev${x.done ? " done" : ""}" style="--b:${BRANDS[x.brand] || "#64748b"};--k:${k}"><b>${esc(x.title)}</b><small>${icon(x.done ? "check" : "hourglass")}<i>${x.done ? "Ya terminado" : "En desarrollo"}</i> · entrega ${dueTxt(x.due)}${x.who ? " · " + esc(String(x.who).split(" ")[0]) : ""}</small></div>`;
+  const card = (x, k) => `<div class="twc${x.done ? " done" : ""}" style="--b:${BRANDS[x.brand] || "#64748b"};--s:${x.col};--k:${k}"><b>${esc(x.title)}</b><div class="twm"><span class="twst">${esc(x.st)}</span><small>${icon(x.ic)}${x.job && !sl.all ? `<i class="twent">Entrega</i> · ` : ""}${x.wkd ? `<i class="twwk">para el ${["sáb","dom"][wk7.indexOf(x.wkd) - 5]} ${+x.wkd.slice(8)}</i> · ` : ""}${sl.all ? x.bn.map(b => `<i class="twbn" style="--c:${BRANDS[b]}">${esc(b)}</i>`).join(" + ") + " · " + (x.who ? esc(twWho(x) || String(x.who).split(" ")[0]) + " · " : "") + esc(x.k) : `${x.time ? esc(x.time) + " · " : ""}${esc(x.k)}${x.who ? " · " + esc(twWho(x) || firstName(x.who)) : ""}`}</small></div></div>`;
+  const devCard = (x, k) => `<div class="twc twdev${x.done ? " done" : ""}" style="--b:${BRANDS[x.brand] || "#64748b"};--k:${k}"><b>${esc(x.title)}</b><small>${icon(x.done ? "check" : "hourglass")}<i>${x.done ? "Ya terminado" : "En desarrollo"}</i> · entrega ${dueTxt(x.due)}${x.who ? " · " + esc(twWho(x) || String(x.who).split(" ")[0]) : ""}</small></div>`;
   return `<div class="ttslide twslide${sl.all ? ' twall" data-z="1' : ""}">
     <div class="tthead"><b>${sl.icon} Semana de ${sl.week === "CM" ? "CM" : "Diseño gráfico"} · <i class="twb" style="--c:${sl.all ? "#fff" : BRANDS[sl.brand] || "#94a3b8"}">${sl.all ? "General" : esc(sl.brand)}</i></b><span>${dg ? "lunes a viernes · " : ""}${weekLabel(days[0], days.length)}${sl.all ? ` · ${IG_MAIN.map(b => `<i class="twbn" style="--c:${BRANDS[b]}">${esc(b)} ${items.filter(x => x.bn.includes(b)).length}</i>`).join(" ")}` : ""} · ${items.length} ${items.length === 1 ? "trabajo" : "trabajos"}${items.length ? ` · ${done} ${sl.week === "CM" ? "listos" : "terminados"}` : ""}</span>${sts.length ? `<div class="twsum">${sts.map(x => `<span style="--s:${x.col}"><i></i>${esc(x.st)} <strong>${x.n}</strong></span>`).join("")}</div>` : ""}${dots}</div>
     <div class="twgrid" style="--cols:${days.length}">${days.map((d, i) => { const l = items.filter(x => x.date === d);
@@ -9626,7 +9666,7 @@ function histTable(list, emptyMsg){
   return `<div class="tw"><table class="htable"><thead><tr><th>Qué hay que hacer</th><th>Marca</th><th>Tipo</th><th>Quién lo pidió</th><th>Responsable</th><th>Fecha límite</th><th>Terminado</th><th>Estado</th><th class="r">Cambios</th></tr></thead><tbody>
   ${list.map(j => { const fin = isFin(j), end = j.delivered || j.due, late = fin ? end > j.due : j.due < TODAY, c = nCh(j);
     const ended = fin ? `${dm(end)} ${late ? `<span class="down">(atrasado)</span>` : `<span class="up">a tiempo</span>`}` : late ? `<span class="down">Atrasado</span>` : `<span class="note">—</span>`;
-    return `<tr><td><button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button></td><td>${jobBrandTags(j)}</td><td>${jobPieceTag(j)}</td><td>${esc(j.requester || "—")}</td><td>${esc(j.owner)}</td><td class="num">${dm(j.due)}</td><td class="num" style="white-space:nowrap">${ended}</td><td>${pill(j.status, JOB_COLOR[j.status])}</td><td class="r num">${c ? c : `<span class="note">—</span>`}</td></tr>`; }).join("") || `<tr><td colspan="9" class="empty">${emptyMsg}</td></tr>`}
+    return `<tr><td><button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button></td><td>${jobBrandTags(j)}</td><td>${jobPieceTag(j)}</td><td>${esc(j.requester || "—")}</td><td>${esc(crewOf(j.owner, j).join(" + ") || j.owner)}</td><td class="num">${dm(j.due)}</td><td class="num" style="white-space:nowrap">${ended}</td><td>${pill(j.status, JOB_COLOR[j.status])}</td><td class="r num">${c ? c : `<span class="note">—</span>`}</td></tr>`; }).join("") || `<tr><td colspan="9" class="empty">${emptyMsg}</td></tr>`}
   </tbody></table></div>`;
 }
 function pHistorial(){
@@ -9656,8 +9696,8 @@ document.addEventListener("click", e => { if (e.target.closest("[data-hclear]"))
   const c = e.target.closest("[data-hcmtab]"); if (c){ histCmTab = c.dataset.hcmtab; render(); } });
 function pHistorialCM(){
   const POST_OK = ["Publicado","Pautado"], ok = histCmTab === "ok";
-  const pubsM = posts.filter(p => p.date.slice(0,7) === MONTH && seesBrand(p.brand) && p.status !== "Cancelado" && (viewer.role !== "CM" || p.cm === viewer.name));
-  const tasksM = jobs.filter(j => !j.ex && j.area === "CM" && j.status !== "Cancelado" && jobMonth(j) === MONTH && seesJob(j) && (viewer.role !== "CM" || j.owner === viewer.name));
+  const pubsM = posts.filter(p => p.date.slice(0,7) === MONTH && seesBrand(p.brand) && p.status !== "Cancelado" && (viewer.role !== "CM" || hasPub(p, viewer.name)));
+  const tasksM = jobs.filter(j => !j.ex && j.area === "CM" && j.status !== "Cancelado" && jobMonth(j) === MONTH && seesJob(j) && (viewer.role !== "CM" || hasJob(j, viewer.name)));
   const pubs = pubsM.filter(p => POST_OK.includes(p.status) === ok).sort((a, b) => a.date.localeCompare(b.date));
   const tasks = tasksM.filter(j => isFin(j) === ok).sort((a, b) => ok ? (a.delivered || a.due).localeCompare(b.delivered || b.due) : a.due.localeCompare(b.due));
   const nOk = pubsM.filter(p => POST_OK.includes(p.status)).length + tasksM.filter(isFin).length, nAll = pubsM.length + tasksM.length;
@@ -9666,7 +9706,7 @@ function pHistorialCM(){
   return `<div><h1>Historial CM</h1><p class="sub">Publicaciones${mine} y pedidos de CM de ${monthName(MONTH)}. Arriba lo pendiente; lo ya aprobado (publicado, pautado o terminado) va aparte, en “Aprobados”.</p></div>
   ${histTabs(nAll - nOk, nOk, ok ? "ok" : "pend", "data-hcmtab")}
   <div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("megaphone")}${ok ? "Publicaciones" + mine + " publicadas o pautadas" : "Publicaciones" + mine + " pendientes"} (${pubs.length})</h2></div><div class="tw" style="border:0;border-radius:0"><table><thead><tr><th>Publicación</th><th>Marca</th><th>CM</th><th>Red · formato</th><th>Tema</th><th>Estado</th></tr></thead><tbody>
-  ${pubs.map(p => `<tr><td class="num" style="white-space:nowrap">${dm(p.date)}${pubLate(p)}</td><td>${brandTag(p.brand)}</td><td>${esc(p.cm)}</td><td style="white-space:nowrap"><span class="net">${p.net}</span> ${p.format}</td><td>${esc(p.title)}</td><td>${pill(p.status, POST_COLOR[p.status])}</td></tr>`).join("") || `<tr><td colspan="6" class="empty">${ok ? "Todavía no hay publicaciones hechas este mes." : "No hay publicaciones pendientes este mes."}</td></tr>`}
+  ${pubs.map(p => `<tr><td class="num" style="white-space:nowrap">${dm(p.date)}${pubLate(p)}</td><td>${brandTag(p.brand)}</td><td>${esc(crewOf(p.cm, p).join(" + ") || p.cm)}</td><td style="white-space:nowrap"><span class="net">${p.net}</span> ${p.format}</td><td>${esc(p.title)}</td><td>${pill(p.status, POST_COLOR[p.status])}</td></tr>`).join("") || `<tr><td colspan="6" class="empty">${ok ? "Todavía no hay publicaciones hechas este mes." : "No hay publicaciones pendientes este mes."}</td></tr>`}
   </tbody></table></div></div>
   <div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("clapperboard")}${ok ? "Pedidos de CM terminados" : "Pedidos de CM pendientes"} (${tasks.length})</h2></div><div style="border:0">${histTable(tasks, ok ? "Sin pedidos de CM terminados todavía." : "No hay pedidos de CM pendientes este mes.")}</div></div>`;
 }
@@ -9973,7 +10013,8 @@ const REPORT_TABS = [
 const TW_KINDS = [["dg", "Pedidos de Diseño gráfico", "palette"], ["pub", "Publicaciones (posts, carruseles y reels)", "image"], ["hist", "Historias", "smartphone"], ["canal", "Canal de WhatsApp", "message-circle"], ["vid", "Videos y trabajos de CM", "clapperboard"], ["cont", "Gestión de Contenidos", "shapes"], ["act", "Actividades (fotos, coberturas…)", "camera"], ["rec", "Repetitivos", "repeat"]];
 const TW_SHORT = { dg:"Diseño", pub:"Publicaciones", hist:"Historias", canal:"Canal", vid:"Videos", cont:"Contenidos", act:"Actividades", rec:"Repetitivos" };
 function teamWork(m = MONTH){
-  const out = [], add = (k, it, who, date, done, title, brand, st, from) => out.push({ k, it, who:who && who !== "Sin asignar" ? who : "Sin asignar", date:date || "", done, title:title || "(sin título)", brand:brand || "", st:st || "", from:from || "" });
+  const out = [], add = (k, it, who, date, done, title, brand, st, from) => { const crew = crewOf(who, it); // v309: si lo hacen varias, cuenta para cada una (y una vez en el equipo)
+    out.push({ k, it, who:crew[0] || "Sin asignar", crew:crew.length ? crew : ["Sin asignar"], date:date || "", done, title:title || "(sin título)", brand:brand || "", st:st || "", from:from || "" }); };
   jobs.filter(j => !j.ex && j.status !== CANCEL && seesJob(j) && jobMonth(j) === m).forEach(j => add(j.area === "Diseño" ? "dg" : j.area === "CM" ? "vid" : "cont", j, j.owner, j.due, isFin(j), j.title, jobBrands(j).join(" + "), j.status, j.com ? "Pedido de Comercial" : ""));
   posts.filter(p => !p.ex && p.status !== CANCEL && seesBrand(p.brand) && String(p.date || "").slice(0, 7) === m).forEach(p => add(p.format === "Historia" ? "hist" : "pub", p, p.cm, p.date, isDone(p), p.title, p.brand, p.status, p.fromJob || ""));
   CHANNEL_POSTS.filter(k => k.status !== CANCEL && seesBrand(k.brand) && String(k.date || "").slice(0, 7) === m).forEach(k => add("canal", k, k.cm, k.date, k.status === "Publicado", k.title, k.brand, k.status, k.fromJob || ""));
@@ -9984,17 +10025,17 @@ function teamWork(m = MONTH){
 function repEquipo(){
   const w = teamWork(), pw = teamWork(prevMonth(MONTH)), done = w.filter(x => x.done).length, dgN = w.filter(x => x.k === "dg").length, pc = (a, b) => b ? Math.round(a / b * 100) : 0;
   const kinds = TW_KINDS.filter(([k]) => w.some(x => x.k === k) || ["dg", "pub", "hist", "canal", "vid", "cont"].includes(k));
-  const people = [...new Set(w.map(x => x.who))].map(n => { const l = w.filter(x => x.who === n); return { n, pp:PEOPLE.find(p => p.name === n), l, d:l.filter(x => x.done).length }; })
+  const people = [...new Set(w.flatMap(x => x.crew))].map(n => { const l = w.filter(x => x.crew.includes(n)); return { n, pp:PEOPLE.find(p => p.name === n), l, d:l.filter(x => x.done).length }; })
     .sort((a, b) => (a.n === "Sin asignar") - (b.n === "Sin asignar") || b.l.length - a.l.length);
   const two = w.filter(x => x.k === "dg" && jobPubsOf(x.it).length), twoPubs = w.filter(x => (x.k === "pub" || x.k === "hist" || x.k === "canal") && x.from && jobById(x.from)?.area === "Diseño").length;
-  const kn = k => (TW_KINDS.find(x => x[0] === k) || [k, k])[1];
+  const kn = k => (TW_KINDS.find(x => x[0] === k) || [k, k])[1], shared = w.filter(x => x.crew.length > 1).length;
   return `<div class="grid kpis">
     <div class="panel kpi"><div class="l">Trabajos del equipo</div><div class="n">${w.length}</div>${cmpTxt(w.length, pw.length)}</div>
     <div class="panel kpi"><div class="l">Terminados</div><div class="n ${pc(done, w.length) >= 80 ? "up" : "warn"}">${done}</div><div class="d">el ${pc(done, w.length)}% del total</div></div>
     <div class="panel kpi"><div class="l">Diseño gráfico</div><div class="n">${dgN}</div><div class="d">pedidos de diseño</div></div>
     <div class="panel kpi"><div class="l">Community Manager</div><div class="n">${w.length - dgN}</div><div class="d">publicaciones, canal, videos, contenidos y actividades</div></div>
   </div>
-  <p class="note twnote">${icon("info")}<span>Cada trabajo cuenta una vez, a nombre de quien lo hace. Un pedido que pasa por Diseño y después lo publica la CM son <b>dos trabajos</b>: el diseño (del diseñador) y la publicación (de la CM). Este mes, <b>${two.length}</b> ${two.length === 1 ? "pedido de Diseño tuvo" : "pedidos de Diseño tuvieron"} publicación de CM (<b>${twoPubs}</b> ${twoPubs === 1 ? "publicación" : "publicaciones"} que salieron de un diseño). No cuentan los ejemplos ni lo cancelado.</span></p>
+  <p class="note twnote">${icon("info")}<span>Cada trabajo cuenta una vez, a nombre de quien lo hace. Un pedido que pasa por Diseño y después lo publica la CM son <b>dos trabajos</b>: el diseño (del diseñador) y la publicación (de la CM). Este mes, <b>${two.length}</b> ${two.length === 1 ? "pedido de Diseño tuvo" : "pedidos de Diseño tuvieron"} publicación de CM (<b>${twoPubs}</b> ${twoPubs === 1 ? "publicación" : "publicaciones"} que salieron de un diseño).${shared ? ` <b>${shared}</b> ${shared === 1 ? "trabajo lo hicieron" : "trabajos los hicieron"} varias personas juntas: en “Por persona” suman para cada una, pero en el total del equipo cuentan una sola vez.` : ""} No cuentan los ejemplos ni lo cancelado.</span></p>
   <div class="panel"><h2>Por tipo de trabajo</h2><div class="tw"><table><thead><tr><th>Tipo de trabajo</th><th class="r">Trabajos</th><th class="r">Terminados</th><th class="r">Sin terminar</th><th class="r">${monthName(prevMonth(MONTH))}</th></tr></thead><tbody>
     ${kinds.map(([k, l]) => { const c = w.filter(x => x.k === k), d = c.filter(x => x.done).length; return `<tr><td>${icon(TW_KINDS.find(x => x[0] === k)[2])} ${l}</td><td class="r num"><b>${c.length}</b></td><td class="r num">${d}</td><td class="r num">${c.length - d}</td><td class="r num">${pw.filter(x => x.k === k).length}</td></tr>`; }).join("")}
     <tr class="twtot"><td><b>Total del equipo</b></td><td class="r num"><b>${w.length}</b></td><td class="r num"><b>${done}</b></td><td class="r num"><b>${w.length - done}</b></td><td class="r num"><b>${pw.length}</b></td></tr>
@@ -10004,7 +10045,7 @@ function repEquipo(){
     <tr class="twtot"><td><b>Total del equipo</b></td><td></td>${kinds.map(([k]) => `<td class="r num"><b>${w.filter(y => y.k === k).length}</b></td>`).join("")}<td class="r num"><b>${w.length}</b></td><td class="r num"><b>${done}</b></td><td class="r num"><b>${pc(done, w.length)}%</b></td></tr>
   </tbody></table></div></div>
   <details class="panel twall"><summary><h2>Todos los trabajos del mes</h2><span class="note">${w.length} · tocá para ver la lista completa</span></summary><div class="tw"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Trabajo</th><th>Marca</th><th>Quién lo hace</th><th>Estado</th><th>Sale del pedido</th></tr></thead><tbody>
-    ${w.slice().sort((a, b) => String(a.date).localeCompare(String(b.date)) || a.k.localeCompare(b.k)).map(x => `<tr><td class="num">${x.date ? dm(x.date) : "—"}</td><td>${esc(TW_SHORT[x.k])}</td><td>${esc(x.title)}</td><td>${esc(x.brand)}</td><td>${esc(x.who)}</td><td>${esc(x.st)}${x.done ? " ✓" : ""}</td><td>${esc(x.from)}</td></tr>`).join("")}
+    ${w.slice().sort((a, b) => String(a.date).localeCompare(String(b.date)) || a.k.localeCompare(b.k)).map(x => `<tr><td class="num">${x.date ? dm(x.date) : "—"}</td><td>${esc(TW_SHORT[x.k])}</td><td>${esc(x.title)}</td><td>${esc(x.brand)}</td><td>${esc(x.crew.join(" + "))}</td><td>${esc(x.st)}${x.done ? " ✓" : ""}</td><td>${esc(x.from)}</td></tr>`).join("")}
   </tbody></table></div></details>`;
 }
 function cmpTxt(now, before, fmt = dots){
@@ -10051,14 +10092,14 @@ function repCM(){
       return `<tr><td>${brandTag(b)}</td><td class="r num">${c.length}</td><td class="r num">${d.length}</td><td class="r num">${pa.length}</td><td style="min-width:180px"><div class="bar" style="grid-template-columns:1fr 44px"><div class="tr"><div class="fl" style="width:${pc}%"></div></div><span class="v">${pc}%</span></div></td></tr>`; }).join("")}
   </tbody></table></div>
   <div class="tw"><table><thead><tr><th>CM</th><th>Marcas</th><th class="r">Posteos a cargo</th><th class="r">Publicados</th><th class="r">Pautados</th><th class="r">Pedidos de diseño</th><th class="r">${isClosed() ? "No cumplidos" : "Pendientes"}</th><th>Cumplimiento</th></tr></thead><tbody>
-    ${CM_NAMES().filter(n => cur.some(p => p.cm === n)).map(n => { const c = cur.filter(p => p.cm === n), d = c.filter(isDone), pa = c.filter(p => p.status === "Pautado"), pc = c.length ? Math.round(d.length / c.length * 100) : 0;
+    ${CM_NAMES().filter(n => cur.some(p => hasPub(p, n))).map(n => { const c = cur.filter(p => hasPub(p, n)), d = c.filter(isDone), pa = c.filter(p => p.status === "Pautado"), pc = c.length ? Math.round(d.length / c.length * 100) : 0;
       const pj = jobs.filter(j => j.post && c.some(p => p.id === j.post)).length;
       return `<tr><td><b style="color:#fff">${n}</b></td><td>${[...new Set(c.map(p => p.brand))].map(brandTag).join(" ")}</td><td class="r num">${c.length}</td><td class="r num">${d.length}</td><td class="r num">${pa.length}</td><td class="r num">${pj}</td><td class="r num ${c.length - d.length ? "warn" : ""}">${c.length - d.length}</td><td style="min-width:160px"><div class="bar" style="grid-template-columns:1fr 44px"><div class="tr"><div class="fl" style="width:${pc}%"></div></div><span class="v">${pc}%</span></div></td></tr>`; }).join("")}
   </tbody></table></div>
   ${(() => { const cj = jobs.filter(j => !j.ex && j.area === "CM" && j.status !== "Cancelado" && seesJob(j) && jobMonth(j) === MONTH);
-    const people = CM_NAMES().filter(n => cj.some(j => j.owner === n));
+    const people = CM_NAMES().filter(n => cj.some(j => hasJob(j, n)));
     return `<div class="tw"><table><thead><tr><th>Trabajos de CM (videos, copys, pauta…)</th><th class="r">A cargo</th><th class="r">Finalizados</th><th class="r">A tiempo</th><th class="r">Atrasados</th><th class="r">En curso</th></tr></thead><tbody>
-    ${people.map(n => { const d = cj.filter(j => j.owner === n), e = d.filter(j => isFin(j)), t = e.filter(j => j.delivered <= j.due), late = d.filter(j => urgency(j)?.late).length;
+    ${people.map(n => { const d = cj.filter(j => hasJob(j, n)), e = d.filter(j => isFin(j)), t = e.filter(j => j.delivered <= j.due), late = d.filter(j => urgency(j)?.late).length;
       return `<tr><td><b style="color:#fff">${n}</b></td><td class="r num">${d.length}</td><td class="r num">${e.length}</td><td class="r num up">${t.length}</td><td class="r num ${late ? "down" : ""}">${(e.length - t.length) + late}</td><td class="r num">${d.length - e.length}</td></tr>`; }).join("") || `<tr><td colspan="6" class="empty">Sin trabajos de CM este mes.</td></tr>`}
     </tbody></table></div>`; })()}
   <div class="panel"><h2>${isClosed() ? "No cumplidos (pasaron al mes siguiente como arrastrados)" : isFuture() ? "Plan del mes" : "Pendientes al día de hoy"}</h2>
@@ -10195,7 +10236,7 @@ function monthData(){
       const pct = pc(done.length, due.length);
       if (!due.length) cmP.push(`Community Manager tiene ${n(cur.length, "posteo planificado", "posteos planificados")}; todavía ninguno llegó a su fecha.`);
       else cmP.push(`Community Manager ${live ? "lleva" : "cumplió"} el <b>${pct}%</b> del plan de posteo: ${dots(done.length)} de ${n(due.length, "posteo", "posteos")}${live ? " con fecha hasta hoy" : ""} ${done.length === 1 ? "quedó" : "quedaron"} publicados o pautados${live && cur.length > due.length ? ` (y faltan ${dots(cur.length - due.length)} más en el resto del mes)` : ""}.`);
-      const per = CM_NAMES().map(c => { const l = due.filter(p => p.cm === c); return { c, n:l.length, p:pc(l.filter(isDone).length, l.length) }; }).filter(x => x.n >= 3).sort((a, b) => a.p - b.p);
+      const per = CM_NAMES().map(c => { const l = due.filter(p => hasPub(p, c)); return { c, n:l.length, p:pc(l.filter(isDone).length, l.length) }; }).filter(x => x.n >= 3).sort((a, b) => a.p - b.p);
       if (per.length > 1 && per[0].p < per[per.length - 1].p) cmP.push(`Por persona va de ${per[per.length - 1].p}% (${esc(firstName(per[per.length - 1].c))}) a ${per[0].p}% (${esc(firstName(per[0].c))}).`);
       if (pend.length){
         cmP.push(live ? `${pend.length === 1 ? "Hay un posteo vencido" : `Hay ${n(pend.length, "posteo vencido", "posteos vencidos")}`} sin publicar.` : `${pend.length === 1 ? "Un posteo no se cumplió y pasó" : `${dots(pend.length)} posteos no se cumplieron y pasaron`} al mes siguiente.`);
@@ -10410,7 +10451,7 @@ function pUsuarios(){
   const acc = id => userUI.accts?.[id];
   const rows = PEOPLE.map(pp => {
     const me = pp.id === viewer.id;
-    const openJobs = jobs.filter(j => j.owner === pp.name && !isFin(j)).length;
+    const openJobs = jobs.filter(j => hasJob(j, pp.name) && !isFin(j)).length;
     const a = acc(pp.id), noAcc = at && userUI.accts && !me && (!a || !a.account);
     const estado = !pp.active ? pill("Desactivado","#334155") : noAcc ? pill("Sin acceso todavía","#64748b") : pp.mustChange || (a && a.account && !a.signedIn) ? pill("Debe cambiar contraseña","#eab308") : pill("Activo","#10b981");
     const acts = userUI.confirm === pp.id
@@ -13133,7 +13174,7 @@ function localNotify(n){
 // emergente animada (como la de WhatsApp Web), suena un sonido (uno para lo nuevo y otro para la corrección) y, si la app
 // está abierta pero en otra pestaña o ventana, llega el aviso de la compu o del celular. Con la app cerrada, el aviso llega
 // por push (chat-push). Cada dispositivo recuerda qué avisos ya mostró (rmh-jobpop-<persona>) para no repetirlos.
-const JOBPOP = { nuevo:{ k:"new", t:"Nuevo trabajo para vos", ic:"inbox", c:"#22d3ee" }, pub:{ k:"new", t:"Nueva publicación para vos", ic:"calendar-days", c:"#10b981" },
+const JOBPOP = { nuevo:{ k:"new", t:"Nuevo trabajo para vos", ic:"inbox", c:"#22d3ee" }, pub:{ k:"new", t:"Nueva publicación para vos", ic:"calendar-days", c:"#10b981" }, act:{ k:"new", t:"Nueva actividad para vos", ic:"camera", c:"#22d3ee" },
   listo:{ k:"new", t:"Diseño aprobado: listo para publicar", ic:"badge-check", c:"#10b981" }, fix:{ k:"fix", t:"Te pidieron una corrección", ic:"pencil", c:"#f97316" },
   review:{ k:"new", t:"Boceto listo para revisar", ic:"circle-check", c:"#a855f7" }, // review: a Admin total, cuando el diseñador o la CM termina (o termina las correcciones)
   // v228: todo lo que avisa tiene ventana: aprobado, comentario, sugerencia, falla de Drive, avisos del equipo, mensajes del chat y alertas
@@ -13158,7 +13199,7 @@ let jobPop = { items:[] };
 function jobPopCheck(){
   if (!viewer || !enterApp.done || !$("#login").hidden || window.RMH?.previewing || noPops()) return;
   const mine = [...myNotifs(), ...(viewer.role === "Admin total" ? adminNotifs().filter(n => ADMIN_POP.includes(n.type) && n.who !== viewer.name && (n.type !== "sug" || can("sugerencias"))) : [])]
-    .filter(n => JOBPOP[n.type] && !POP_LOCAL.includes(n.type) && (n.copy ? copyAlert(n) : (n.type !== "pub" || pubAlert(n)) && (n.type !== "listo" || !n.post || listoAlert(n)) && (!n.job || jobById(n.job))))
+    .filter(n => JOBPOP[n.type] && !POP_LOCAL.includes(n.type) && (n.copy ? copyAlert(n) : (n.type !== "pub" || pubAlert(n)) && (n.type !== "act" || actAlert(n)) && (n.type !== "listo" || !n.post || listoAlert(n)) && (!n.job || jobById(n.job))))
     .concat(avActiveFor(viewer).filter(a => !(a.seen || []).includes(viewer.id) && a.by !== viewer.id).map(a => avPopOf(a))) // avisos del equipo vigentes, sin “Entendido”
     .concat(avOkItems()) // a quien mandó un Aviso: cada persona que tocó “Entendido”
     .concat(pcPopItems()); // v242: Pedidos Comercial
@@ -13204,9 +13245,9 @@ function alertPopItems(){
 // a Admin total, lo de todo el equipo. Sale al abrir la app y otra vez a la tarde (desde las 14 h) si sigue pendiente;
 // cada dispositivo recuerda lo que ya mostró (rmh-duepop-<persona>).
 const duePopJobs = () => !viewer || isViewOnly() || isComercial() ? [] : jobs.filter(j => !j.ex && seesJob(j) && urgency(j) && daysTo(j.due) <= 0
-  && (j.owner === viewer.name ? !REVIEW_WAIT.includes(j.status) : viewer.role === "Admin total")).sort((a, b) => a.due.localeCompare(b.due));
+  && (hasJob(j, viewer.name) ? !REVIEW_WAIT.includes(j.status) : viewer.role === "Admin total")).sort((a, b) => a.due.localeCompare(b.due));
 const duePopPosts = () => !viewer || isViewOnly() || isDesigner() || isComercial() ? [] : posts.filter(p => !p.ex && seesBrand(p.brand) && postUrgency(p) && daysTo(p.date) <= 0
-  && (p.cm === viewer.name || viewer.role === "Admin total")).sort((a, b) => a.date.localeCompare(b.date));
+  && (hasPub(p, viewer.name) || viewer.role === "Admin total")).sort((a, b) => a.date.localeCompare(b.date));
 const dueSlot = () => +new Intl.DateTimeFormat("en-GB", { timeZone:"America/Asuncion", hour:"2-digit", hourCycle:"h23" }).format(new Date()) >= 14 ? "pm" : "am";
 function duePopItems(){
   if (!jobPop.t0 || Date.now() - jobPop.t0 < 3000) return []; // como las alertas: cuando la app terminó de abrir
@@ -13241,9 +13282,9 @@ function jobPopInfo(n){
     if (n.demo) return { ...P, go:"", t:dueTitle(d), c:dueColor(d), ask:dueAsk(d), title:"Ejemplo: Cartel de góndola ofertas del finde", m:`Stock · Cartelería · tenía que entregarse el ${dm(addDays(TODAY, d))} · En proceso` };
     if (n.post){ const p = postById(n.post);
       return { ...P, go:p ? "pub:post:" + p.id : "", t:dueTitle(d, true), c:dueColor(d), ask:dueAsk(d), title:p?.title || "",
-        m:p ? `${p.brand} · ${p.format} · ${d >= 0 ? "se publica hoy" + (p.time ? ` a las ${p.time} h` : "") : "tenía que publicarse el " + dm(p.date)} · ${p.status}${p.cm !== viewer.name ? " · " + (p.cm || "sin CM asignada") : ""}` : "" }; }
+        m:p ? `${p.brand} · ${p.format} · ${d >= 0 ? "se publica hoy" + (p.time ? ` a las ${p.time} h` : "") : "tenía que publicarse el " + dm(p.date)} · ${p.status}${!hasPub(p, viewer.name) ? " · " + (crewOf(p.cm, p).join(" + ") || "sin CM asignada") : ""}` : "" }; }
     return { ...P, go:j ? "job:" + j.id : "", t:dueTitle(d), c:dueColor(d), ask:dueAsk(d), title:j?.title || "",
-      m:j ? `${jobBrands(j).join(" + ")} · ${cmPiece(j)} · ${d >= 0 ? "se entrega hoy" : "tenía que entregarse el " + dm(j.due)} · ${j.status}${j.owner !== viewer.name ? ` · ${j.owner === "Sin asignar" ? "sin asignar" : j.owner}` : ""}` : "" }; }
+      m:j ? `${jobBrands(j).join(" + ")} · ${cmPiece(j)} · ${d >= 0 ? "se entrega hoy" : "tenía que entregarse el " + dm(j.due)} · ${j.status}${!hasJob(j, viewer.name) ? ` · ${j.owner === "Sin asignar" ? "sin asignar" : crewOf(j.owner, j).join(" + ")}` : ""}` : "" }; }
   if (n.demo) return n.type === "chat" ? { ...P, go:"", t:"Team MKT", title:"Ejemplo: ¿Ya está lista la historia del finde?", m:"" }
     : { ...P, go:"", title:n.type === "fix" ? "Ejemplo: Post Día de la Madre" : "Ejemplo: Historia ofertas del finde", m:n.type === "fix" ? "“Cambiar la foto principal y agrandar el precio”" : "Superseis · Historia · fecha límite " + dm(addDays(TODAY, 2)) };
   if (n.type === "commsg"){ const p = pcById(n.ped), m = (p?.msgs || []).find(x => x.id === n.msg);
@@ -13263,6 +13304,7 @@ function jobPopInfo(n){
   if (n.copy){ const a = copyAlert(n), p = n.canal ? canalById(n.post) : postById(n.post);
     return { ...P, go:a?.go || "", title:p?.title || "", t:n.type === "review" ? (n.fix ? "Copy corregido para aprobar" : "Copy listo para aprobar") : n.type === "fix" ? "Te pidieron corregir el copy" : n.conf ? "Copy confirmado por Admin total" : "Copy aprobado: listo para publicar", ic:n.type === "review" || n.type === "fix" ? "file-text" : P.ic,
       m:!p ? "" : n.type === "review" ? `${firstName(n.who || p.cm)} escribió el copy · ${p.brand} · publicar el ${pubWhen(p)}${p.copy ? ` · “${rclShort(copyPlain(p), 140)}”` : ""}` : n.type === "fix" ? (n.text ? `“${rclShort(String(n.text), 160)}”` : p.brand) : `${p.brand} · publicalo el ${pubWhen(p)}${n.conf ? " · no lo tenés que escribir" : ""}` }; }
+  if (n.type === "act"){ const a = actAlert(n); return { ...P, go:a?.go || "", title:a ? a.t.replace(/^Nueva actividad para vos: /, "") : "", m:a?.m || "" }; }
   if (n.type === "pub" || (n.type === "listo" && n.post)){ const a = n.type === "pub" ? pubAlert(n) : listoAlert(n); return { ...P, go:a?.go || "", title:a ? a.t.replace(/^(Nueva publicación para vos|Diseño aprobado, listo para publicar): /, "") : "", m:a ? a.m.replace(/ · tocá para verla$/, "") : "" }; }
   const brands = j ? jobBrands(j).join(" + ") : "";
   if (n.type === "nota") return { ...P, go:j ? "job:" + j.id : "", title:j?.title || "", t:n.to === "admin" ? `${firstName(n.who || "") || "Alguien"} comentó en un trabajo` : "Admin total comentó en tu trabajo", m:n.text ? `“${rclShort(String(n.text), 160)}”` : brands };
@@ -13275,7 +13317,7 @@ function jobPopInfo(n){
       : `${brands} · ${j ? cmPiece(j) : ""}${j?.due ? " · fecha límite " + dm(j.due) : ""}${j?.requester ? " · pidió " + j.requester : ""}` };
 }
 const jpBtnTxt = (n, x) => n.type === "chat" ? "Responder" : n.type === "avok" ? "Ver quién lo leyó" : n.sum ? "Ver Panel de Trabajo" : x.go === "calcm" ? "Ver en Planificación" : n.type === "pub" || n.post ? "Ver publicación" : n.type === "fix" ? "Ver la corrección"
-  : n.type === "sug" ? "Ver sugerencia" : n.type === "drive" ? "Ver Integraciones" : n.type === "alerta" ? "Ver" : "Ver pedido";
+  : n.type === "sug" ? "Ver sugerencia" : n.type === "drive" ? "Ver Integraciones" : n.type === "alerta" ? "Ver" : n.type === "act" ? "Ver actividad" : "Ver pedido";
 function jobPopShow(){
   let el = document.getElementById("jobpop");
   if (!jobPop.items.length){ if (el && !el.classList.contains("out")){ el.classList.add("out"); setTimeout(() => { if (!jobPop.items.length) el.remove(); }, 260); } return; }
@@ -13459,7 +13501,8 @@ function pubBrandFix(){
 // v302 · Quién se ocupa del pedido: en Diseño, el diseñador y la CM que lo publica; en Contenidos, la CM (lo arma y lo publica).
 // Se copia al pedido (p.team) desde la app de Admin total o del CM, porque el comprador no ve los trabajos de Diseño ni de CM.
 const pcTeamOf = j => { const who = n => n && n !== "Sin asignar" ? n : "";
-  return j.area === "Contenidos" ? { dg:"", cm:who(j.owner) } : { dg:who(j.owner), cm:who(j.pubCm || jobPubsOf(j)[0]?.cm) }; };
+  const pub = jobPubsOf(j)[0], crew = (n, x) => crewOf(n, x).join(" + "); // v309: si lo hacen varias CM, salen todas
+  return j.area === "Contenidos" ? { dg:"", cm:crew(j.owner, j) } : { dg:who(j.owner), cm:pub && alsoOf(pub).length ? crew(pub.cm, pub) : who(j.pubCm || pub?.cm) }; };
 function pcSync(){
   if (!viewer || !["Admin total", "CM"].includes(viewer.role) || window.RMH?.previewing || !PEDIDOS_COM.length) return;
   PEDIDOS_COM.forEach(p => { if (!p.job) return; const j = jobById(p.job); if (!j) return;
@@ -13826,10 +13869,10 @@ const inboxPend = () => can("inbox") ? inboxBrands().reduce((n, b) => n + inboxC
 // Botonera del costado: solo la carga de trabajo de la persona (los mensajes se avisan dentro del Panel de Trabajo).
 // Cuenta sus pedidos nuevos o con cambios que todavía no abrió; al abrir la hoja del pedido deja de contar.
 const seenSig = j => `${j.status}|${(j.changes || []).length}`;
-const markSeen = j => { if (!j || !viewer || j.owner !== viewer.name || window.RMH?.previewing) return; const sig = seenSig(j);
+const markSeen = j => { if (!j || !viewer || !hasJob(j, viewer.name) || window.RMH?.previewing) return; const sig = seenSig(j);
   if (j.seenBy?.[viewer.id] !== sig){ j.seenBy = { ...(j.seenBy || {}), [viewer.id]:sig }; setTimeout(renderNav, 0); } }; // el menú se dibuja antes que la ficha: se actualiza enseguida
 const isUnseenJob = j => ["Pendiente", "En corrección", "Corrección"].includes(j.status) && j.seenBy?.[viewer.id] !== seenSig(j);
-const myJobsPend = area => viewer ? jobs.filter(j => !j.ex && !repLater(j) && j.owner === viewer.name && jobGroup(j) === (area === "CM" ? "CM" : "Diseño") && isUnseenJob(j)).length : 0;
+const myJobsPend = area => viewer ? jobs.filter(j => !j.ex && !repLater(j) && hasJob(j, viewer.name) && jobGroup(j) === (area === "CM" ? "CM" : "Diseño") && isUnseenJob(j)).length : 0;
 // Botón Panel de Trabajo. Diseño gráfico: cuenta los pedidos a tu nombre sin terminar (no se apaga al abrirlos, sigue hasta
 // que se aprueban o se cancelan). CM: cuenta los pedidos nuevos o con cambios que todavía no abriste (se apaga al abrirlos).
 // En los dos, el botón late mientras haya alguno sin abrir.
@@ -13841,12 +13884,12 @@ const workNew = k => k === "paneldg" ? myJobsPend("Diseño") : k === "panelcm" ?
 const PUB_SECS = ["calendario","calhistoria","calcanales"];
 const pubSec = (x, canal) => canal ? "calcanales" : x.format === "Historia" ? "calhistoria" : "calendario";
 const myNewPubs = k => !viewer ? [] : [...posts.map(x => [x, false]), ...CHANNEL_POSTS.map(x => [x, true])]
-  .filter(([x, canal]) => x.fromJob && x.cm === viewer.name && !x.seenBy?.[viewer.id] && !["Programado","Publicado","Pautado"].includes(x.status) && (!k || pubSec(x, canal) === k)).map(([x]) => x);
+  .filter(([x, canal]) => x.fromJob && hasPub(x, viewer.name) && !x.seenBy?.[viewer.id] && !["Programado","Publicado","Pautado"].includes(x.status) && (!k || pubSec(x, canal) === k)).map(([x]) => x);
 const newPubTxt = k => { const n = myNewPubs(k).length; return n ? ` · <em>${n} ${n === 1 ? "nueva para vos" : "nuevas para vos"}</em>` : ""; };
 // Adentro del Panel de Trabajo: los pedidos a tu nombre sin terminar de cada sección (Redes Sociales, Cartelería, Web,
 // Pantallas, Videos). El número queda hasta que el pedido se aprueba, se termina o se cancela.
 const JOB_SECS = ["pedidos","cartel","web","pantallas","gestioncm","contenidos"];
-const myJobsOpen = k => viewer ? jobs.filter(j => !j.ex && !repLater(j) && j.owner === viewer.name && jobSection(j) === k && !isIdleJob(j)) : [];
+const myJobsOpen = k => viewer ? jobs.filter(j => !j.ex && !repLater(j) && hasJob(j, viewer.name) && jobSection(j) === k && !isIdleJob(j)) : [];
 const navBadge = k => { if (k === "pedcom"){ const n = pcBadgeN(); return n ? `<span class="count ibc" title="${isComercial() ? `${n} pedido${n === 1 ? "" : "s"} con novedades (publicado o mensaje nuevo)` : `${n} pedido${n === 1 ? "" : "s"} de Comercial sin pasar o con mensaje nuevo`}">+${n > 99 ? 99 : n}</span>` : ""; }
   const n = workPend(k), nw = workNew(k);
   const t = k === "paneldg" ? `${n} pedido${n === 1 ? "" : "s"} de diseño a tu nombre sin terminar${nw ? ` (${nw} sin abrir)` : ""}` : `${n} pedido${n === 1 ? "" : "s"} nuevo${n === 1 ? "" : "s"} o con cambios para vos, sin abrir`;
@@ -15142,6 +15185,7 @@ document.addEventListener("click", e => {
     if (pp.role === "Admin total" && pp.active && activeAdmins().length <= 1){ toast("No podés quitar al último Admin total activo."); userUI.confirm = null; render(); return; }
     RMH.admin({ action:"remove", person_id:pp.id }).then(ok => { if (!ok) return;
       let n = 0; jobs.forEach(j => { if (j.owner === pp.name && !isFin(j)){ j.owner = "Sin asignar"; n++; } });
+      [jobs, posts, CHANNEL_POSTS, CM_ACTS].forEach(L => L.forEach(x => { if (alsoOf(x).includes(pp.name)){ x.also = alsoOf(x).filter(y => y !== pp.name); if (!x.also.length) delete x.also; } })); // v309
       PEOPLE.splice(PEOPLE.indexOf(pp), 1); resetRequests = resetRequests.filter(x => x !== pp.id); userUI.confirm = null; refreshPeople(); render();
       toast(`${pp.name} fue quitado de la app.${n ? ` ${n} ${n === 1 ? "trabajo quedó" : "trabajos quedaron"} sin asignar.` : ""}`); }); }
   else if (d.ucopy){ navigator.clipboard?.writeText(d.ucopy).then(() => toast("Contraseña copiada."), () => toast("No se pudo copiar: seleccionala y copiala a mano.")); }
@@ -15290,12 +15334,14 @@ document.addEventListener("submit", e => {
     if (own){ j.owner = viewer.name; delete j.rep; j.status = f.mode === "edit" ? jobById(j.id).status : CONT_NEW_ST.includes(j.status) ? j.status : "Pendiente"; }
     if (!j.repOf && !own){ const ru = document.getElementById("jRepUntil")?.value || ""; if (f.repDays?.length) j.rep = { days:[...f.repDays], until:ru }; else delete j.rep; }
     if (isFin(j) && !j.delivered) j.delivered = TODAY;
-    const prevOwner = f.mode === "edit" ? jobById(j.id)?.owner : null;
+    const prevOwner = f.mode === "edit" ? jobById(j.id)?.owner : null, prevAlso = f.mode === "edit" ? alsoOf(jobById(j.id)) : [];
+    if (j.area === "Diseño") delete j.also; else alsoClean(j, j.owner);
     const prevPubCm = f.mode === "edit" ? jobById(j.id)?.pubCm || jobPubsOf(jobById(j.id))[0]?.cm || "" : "";
-    if (f.mode === "edit"){ Object.assign(jobs.find(x => x.id === j.id), j); } else { if (!j.byId) j.byId = viewer.id; jobs.push(j); } // byId: quién lo cargó (para el chat del pedido)
+    if (f.mode === "edit"){ const live = jobs.find(x => x.id === j.id); Object.assign(live, j); if (!j.also) delete live.also; } else { if (!j.byId) j.byId = viewer.id; jobs.push(j); } // byId: quién lo cargó (para el chat del pedido)
     if (f.mode !== "edit" && j.com) pcLinkJob(j); // v242: el pedido de Comercial queda En curso (v246)
     if (j.area === "Diseño" && (j.pubCm || prevPubCm)) syncJobPubs(jobById(j.id), prevPubCm);
     if (j.owner && j.owner !== "Sin asignar" && j.owner !== prevOwner && j.owner !== viewer.name) notify({ to:j.owner, type:"nuevo", job:j.id }); // le llega el aviso a quien lo tiene que hacer
+    alsoOf(j).filter(n => !prevAlso.includes(n) && n !== prevOwner && n !== viewer.name).forEach(n => notify({ to:n, type:"nuevo", job:j.id })); // v309: también a quienes se suman
     // v239: el CM lo carga ya terminado → igual que al tocar “Boceto finalizado”: versión 1 y aviso a Admin total para revisar
     if (own && f.mode !== "edit" && j.status === "Boceto finalizado"){ if (!j.noCopy && !j.copyConf) copyLogAdd(j, "send"); (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), kind:"boceto", by:viewer.name, fix:false, link:j.designLink || "" }); notify({ to:"admin", type:"review", job:j.id, who:viewer.name, fix:false }); }
     // Lo que se carga se ve enseguida: va a su sección, su mes y su marca (y sin filtros que lo escondan).
@@ -15304,7 +15350,7 @@ document.addEventListener("submit", e => {
     if (page === "gestioncm" && cmUI.tview === "repetitivos") cmUI.tview = "calendario";
     jobUI.status = isFin(j) ? "Todos" : "Activos";
     jobUI.owner = "Todos"; jobUI.prio = "Todas"; jobUI.q = "";
-    if (soloYo && j.owner !== viewer.name) soloYo = false;
+    if (soloYo && !hasJob(j, viewer.name)) soloYo = false;
     if (brandFilter !== "Todas" && groupOf(j.brand) !== brandFilter || isCalPage()) brandFilter = groupOf(j.brand);
     const nRep = j.rep ? spawnRepeats() : 0;
     jobUI.form = null; render(); window.RMH?.flushNow?.(); // se guarda ya: así le llega enseguida a quien lo tiene que hacer
