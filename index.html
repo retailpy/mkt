@@ -3784,6 +3784,12 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .comvkclr{margin-left:6px}
 .comckon>.comgh{flex-wrap:wrap;row-gap:6px}
 @media (max-width:640px){.comckon .cofm{padding-right:72px}.cofr>.cofck{position:absolute;top:8px;right:38px;margin:0}.comckon>.comgh .comvk{order:5;margin-left:0}.comckon>.comgh .comvkclr{order:6}}
+/* v307 · Informe mensual: Trabajo del equipo */
+.twnote{margin:4px 0 0;display:flex;gap:8px;align-items:flex-start}.twnote svg{flex:none;width:16px;height:16px;margin-top:2px;color:var(--cyan)}
+tr.twtot td{border-top:2px solid var(--line-3)}
+.twper th{letter-spacing:.04em;padding:12px 8px}.twper td{padding:10px 8px}.twper th:first-child,.twper td:first-child{padding-left:14px;min-width:170px}.twper th:last-child,.twper td:last-child{padding-right:14px}.twper td:nth-child(2){white-space:nowrap}
+.twall summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.twall summary::-webkit-details-marker{display:none}.twall summary h2{margin:0}.twall[open] summary h2{margin-bottom:12px}
+td svg{width:15px;height:15px;vertical-align:-2px;color:var(--cyan)}
 </style>
 
 <div class="login" id="login">
@@ -4332,7 +4338,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v306";
+const APP_VER = "v307";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -9931,13 +9937,55 @@ function topReach(bs){
   <h2 class="icoh up" style="margin:0 0 -8px">${ICO.up}Top 10 · mayor alcance</h2>${pubTable(top)}`}`;
 }
 const MONTH_ABBR_ES = v => MONTHS_ES[+v.slice(5,7)-1].slice(0,3);
-let reportTab = "diseno";
+let reportTab = "equipo"; // v307: arranca por “Trabajo del equipo”
 let reportBrand = "Superseis";
 const REPORT_TABS = [
+  { k:"equipo", ic:"users", l:"Trabajo del equipo", file:"Trabajo_del_equipo", perm:"reportes", d:"Todo el trabajo del mes, por persona y por tipo: pedidos de Diseño, publicaciones, historias, Canal de WhatsApp, videos, contenidos y actividades." },
   { k:"diseno", ic:"palette", l:"Diseño gráfico", file:"Diseno_grafico", perm:"pedidos", d:"Pedidos del mes, entregados, % a tiempo, detalle por diseñador y por tipo de pieza." },
   { k:"cm", ic:"clapperboard", l:"Community Manager", file:"CM", perm:"plan", d:"Cumplimiento del plan de posteo por marca y por CM, pedidos a CM (videos, copys, pauta) y lo que quedó pendiente." },
   { k:"redes", ic:"smartphone", l:"Redes sociales", file:"Redes_sociales", perm:"redes", d:"Seguidores y crecimiento por marca, top por alcance, audiencia (ciudades, edades, género) y la pauta de Meta Ads." },
 ];
+// v307 · Trabajo del equipo: TODO lo del mes, cada trabajo una vez y a nombre de quien lo hace. Un pedido que pasa por Diseño y
+// después lo publica la CM son dos trabajos: el diseño (del diseñador) y la publicación (de la CM). Mes: el de los pedidos
+// (jobMonth: la entrega, o la aprobación si ya terminó) y el de la fecha de cada publicación, canal, actividad o repetitivo.
+// No cuentan los ejemplos ni lo cancelado.
+const TW_KINDS = [["dg", "Pedidos de Diseño gráfico", "palette"], ["pub", "Publicaciones (posts, carruseles y reels)", "image"], ["hist", "Historias", "smartphone"], ["canal", "Canal de WhatsApp", "message-circle"], ["vid", "Videos y trabajos de CM", "clapperboard"], ["cont", "Gestión de Contenidos", "shapes"], ["act", "Actividades (fotos, coberturas…)", "camera"], ["rec", "Repetitivos", "repeat"]];
+const TW_SHORT = { dg:"Diseño", pub:"Publicaciones", hist:"Historias", canal:"Canal", vid:"Videos", cont:"Contenidos", act:"Actividades", rec:"Repetitivos" };
+function teamWork(m = MONTH){
+  const out = [], add = (k, it, who, date, done, title, brand, st, from) => out.push({ k, it, who:who && who !== "Sin asignar" ? who : "Sin asignar", date:date || "", done, title:title || "(sin título)", brand:brand || "", st:st || "", from:from || "" });
+  jobs.filter(j => !j.ex && j.status !== CANCEL && seesJob(j) && jobMonth(j) === m).forEach(j => add(j.area === "Diseño" ? "dg" : j.area === "CM" ? "vid" : "cont", j, j.owner, j.due, isFin(j), j.title, jobBrands(j).join(" + "), j.status, j.com ? "Pedido de Comercial" : ""));
+  posts.filter(p => !p.ex && p.status !== CANCEL && seesBrand(p.brand) && String(p.date || "").slice(0, 7) === m).forEach(p => add(p.format === "Historia" ? "hist" : "pub", p, p.cm, p.date, isDone(p), p.title, p.brand, p.status, p.fromJob || ""));
+  CHANNEL_POSTS.filter(k => k.status !== CANCEL && seesBrand(k.brand) && String(k.date || "").slice(0, 7) === m).forEach(k => add("canal", k, k.cm, k.date, k.status === "Publicado", k.title, k.brand, k.status, k.fromJob || ""));
+  CM_ACTS.filter(a => seesBrand(a.brand) && String(a.date || "").slice(0, 7) === m).forEach(a => add("act", a, a.owner, a.date, a.status === "Hecho", a.title, a.brand, a.status));
+  RECURRING.filter(r => seesBrand(r.brand)).forEach(r => { for (let d = 1; d <= lastDay(m); d++){ const c = m + "-" + String(d).padStart(2, "0"); if (recOn(r, c)){ const st = recSt(r, c); add("rec", r, r.owner, c, ["Publicado", "Pautado", "Hecho"].includes(st), r.title, r.brand, st); } } });
+  return out;
+}
+function repEquipo(){
+  const w = teamWork(), pw = teamWork(prevMonth(MONTH)), done = w.filter(x => x.done).length, dgN = w.filter(x => x.k === "dg").length, pc = (a, b) => b ? Math.round(a / b * 100) : 0;
+  const kinds = TW_KINDS.filter(([k]) => w.some(x => x.k === k) || ["dg", "pub", "hist", "canal", "vid", "cont"].includes(k));
+  const people = [...new Set(w.map(x => x.who))].map(n => { const l = w.filter(x => x.who === n); return { n, pp:PEOPLE.find(p => p.name === n), l, d:l.filter(x => x.done).length }; })
+    .sort((a, b) => (a.n === "Sin asignar") - (b.n === "Sin asignar") || b.l.length - a.l.length);
+  const two = w.filter(x => x.k === "dg" && jobPubsOf(x.it).length), twoPubs = w.filter(x => (x.k === "pub" || x.k === "hist" || x.k === "canal") && x.from && jobById(x.from)?.area === "Diseño").length;
+  const kn = k => (TW_KINDS.find(x => x[0] === k) || [k, k])[1];
+  return `<div class="grid kpis">
+    <div class="panel kpi"><div class="l">Trabajos del equipo</div><div class="n">${w.length}</div>${cmpTxt(w.length, pw.length)}</div>
+    <div class="panel kpi"><div class="l">Terminados</div><div class="n ${pc(done, w.length) >= 80 ? "up" : "warn"}">${done}</div><div class="d">el ${pc(done, w.length)}% del total</div></div>
+    <div class="panel kpi"><div class="l">Diseño gráfico</div><div class="n">${dgN}</div><div class="d">pedidos de diseño</div></div>
+    <div class="panel kpi"><div class="l">Community Manager</div><div class="n">${w.length - dgN}</div><div class="d">publicaciones, canal, videos, contenidos y actividades</div></div>
+  </div>
+  <p class="note twnote">${icon("info")}<span>Cada trabajo cuenta una vez, a nombre de quien lo hace. Un pedido que pasa por Diseño y después lo publica la CM son <b>dos trabajos</b>: el diseño (del diseñador) y la publicación (de la CM). Este mes, <b>${two.length}</b> ${two.length === 1 ? "pedido de Diseño tuvo" : "pedidos de Diseño tuvieron"} publicación de CM (<b>${twoPubs}</b> ${twoPubs === 1 ? "publicación" : "publicaciones"} que salieron de un diseño). No cuentan los ejemplos ni lo cancelado.</span></p>
+  <div class="panel"><h2>Por tipo de trabajo</h2><div class="tw"><table><thead><tr><th>Tipo de trabajo</th><th class="r">Trabajos</th><th class="r">Terminados</th><th class="r">Sin terminar</th><th class="r">${monthName(prevMonth(MONTH))}</th></tr></thead><tbody>
+    ${kinds.map(([k, l]) => { const c = w.filter(x => x.k === k), d = c.filter(x => x.done).length; return `<tr><td>${icon(TW_KINDS.find(x => x[0] === k)[2])} ${l}</td><td class="r num"><b>${c.length}</b></td><td class="r num">${d}</td><td class="r num">${c.length - d}</td><td class="r num">${pw.filter(x => x.k === k).length}</td></tr>`; }).join("")}
+    <tr class="twtot"><td><b>Total del equipo</b></td><td class="r num"><b>${w.length}</b></td><td class="r num"><b>${done}</b></td><td class="r num"><b>${w.length - done}</b></td><td class="r num"><b>${pw.length}</b></td></tr>
+  </tbody></table></div></div>
+  <div class="panel"><h2>Por persona</h2><div class="tw"><table class="twper"><thead><tr><th>Persona</th><th>Área</th>${kinds.map(([k]) => `<th class="r">${TW_SHORT[k]}</th>`).join("")}<th class="r">Total</th><th class="r">Terminados</th><th class="r">%</th></tr></thead><tbody>
+    ${people.map(x => `<tr><td><b style="color:#fff">${esc(x.n)}</b></td><td>${x.pp ? esc(cargoOf(x.pp)) : "—"}</td>${kinds.map(([k]) => { const n = x.l.filter(y => y.k === k).length; return `<td class="r num">${n || ""}</td>`; }).join("")}<td class="r num"><b>${x.l.length}</b></td><td class="r num">${x.d}</td><td class="r num">${pc(x.d, x.l.length)}%</td></tr>`).join("")}
+    <tr class="twtot"><td><b>Total del equipo</b></td><td></td>${kinds.map(([k]) => `<td class="r num"><b>${w.filter(y => y.k === k).length}</b></td>`).join("")}<td class="r num"><b>${w.length}</b></td><td class="r num"><b>${done}</b></td><td class="r num"><b>${pc(done, w.length)}%</b></td></tr>
+  </tbody></table></div></div>
+  <details class="panel twall"><summary><h2>Todos los trabajos del mes</h2><span class="note">${w.length} · tocá para ver la lista completa</span></summary><div class="tw"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Trabajo</th><th>Marca</th><th>Quién lo hace</th><th>Estado</th><th>Sale del pedido</th></tr></thead><tbody>
+    ${w.slice().sort((a, b) => String(a.date).localeCompare(String(b.date)) || a.k.localeCompare(b.k)).map(x => `<tr><td class="num">${x.date ? dm(x.date) : "—"}</td><td>${esc(TW_SHORT[x.k])}</td><td>${esc(x.title)}</td><td>${esc(x.brand)}</td><td>${esc(x.who)}</td><td>${esc(x.st)}${x.done ? " ✓" : ""}</td><td>${esc(x.from)}</td></tr>`).join("")}
+  </tbody></table></div></details>`;
+}
 function cmpTxt(now, before, fmt = dots){
   if (!before) return `<div class="cmp note">sin dato del mes anterior</div>`;
   const d = (now - before) / before * 100;
@@ -10138,6 +10186,8 @@ function monthData(){
     if (cj.length){ const lj = cj.filter(j => urgency(j)?.late).length;
       cmP.push(`Además ${live ? "tiene" : "tuvo"} ${n(cj.length, "trabajo")} de videos, copys o pauta: ${dots(cj.filter(isFin).length)} ${cj.filter(isFin).length === 1 ? "terminado" : "terminados"}${lj ? ` y ${lj} ${lj === 1 ? "atrasado" : "atrasados"}` : ""}.`); }
   }
+  if (can("reportes") || can("pedidos") || can("plan")){ const tw = teamWork(), td = tw.filter(x => x.done).length, tdg = tw.filter(x => x.k === "dg").length; // v307: todo el trabajo del equipo
+    if (tw.length) t.push([`En total, el equipo ${live ? "lleva" : "tuvo"} ${n(tw.length, "trabajo")} en ${monthName(MONTH)}: ${dots(tdg)} de Diseño gráfico y ${dots(tw.length - tdg)} de Community Manager (publicaciones, historias, Canal de WhatsApp, videos, contenidos y actividades); ${live ? "ya terminó" : "terminó"} ${dots(td)}. El detalle por persona está en “Trabajo del equipo”.`]); }
   t.push(...[dg, cmP].filter(x => x.length));
   if (t.length) secs.push({ ic:"users", h:"El equipo", s:t });
   // ---- En resumen ----
@@ -10239,7 +10289,7 @@ function pReportes(){
   const tabs = REPORT_TABS.filter(t => can(t.perm));
   if (!tabs.find(t => t.k === reportTab)) reportTab = tabs[0] ? tabs[0].k : "diseno";
   const estado = isClosed() ? "🔒 Mes cerrado · datos fijos" : isFuture() ? "En planificación" : `En curso · cierra el ${lastDay(MONTH)}/${MONTH.slice(5)}`;
-  const body = { diseno:repDiseno, cm:repCM, redes:() => repAlcance() + lastPostsPanel(IG_MAIN) + (can("pauta") ? `<h2 style="margin:8px 0 -8px" class="pmh">${pmIco("megaphone")}Pauta en Meta Ads</h2>` + repPauta() : "") }[reportTab];
+  const body = { equipo:repEquipo, diseno:repDiseno, cm:repCM, redes:() => repAlcance() + lastPostsPanel(IG_MAIN) + (can("pauta") ? `<h2 style="margin:8px 0 -8px" class="pmh">${pmIco("megaphone")}Pauta en Meta Ads</h2>` + repPauta() : "") }[reportTab];
   const cur = tabs.find(t => t.k === reportTab);
   return `<div class="repwrap"><div class="panel flush"><div class="panel-h cyan">
       <div class="head"><div><h2 class="pmh">${pmIco("file-bar-chart")}Informe mensual · ${monthLabel(MONTH)}</h2>
