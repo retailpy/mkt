@@ -2478,6 +2478,14 @@ html.tvkiosk .tvpage.twon > .tvbrandrow .tvclock{display:block}.tvpage.twon:full
    el título en una línea y la etapa al lado del resto, así entran muchas más actividades por día */
 .twbn{font-style:normal;font-weight:800;color:var(--c)}
 .twwk{font-style:normal;font-weight:800;color:#fde68a}
+/* v308: tarjeta chica “En desarrollo” (los días que se trabaja un pedido antes de su entrega) */
+.twc.twdev{border-style:dashed;border-left:3px solid var(--b);background:rgba(15,23,42,.35);padding:clamp(3px,.55vh,7px) clamp(7px,.6vw,11px);gap:2px}
+.twc.twdev > b{font-size:clamp(11px,1.45vh,16px);font-weight:600;color:#cbd5e1;-webkit-line-clamp:1}
+.twdev small{display:flex;align-items:center;gap:4px;font-size:clamp(9px,1.2vh,13px);color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.twdev small svg{width:1em;height:1em;flex:none}
+.twdev small i{font-style:normal;font-weight:700;color:#a5b4fc}
+.twdev.done{opacity:.55}.twdev.done small i{color:#86efac}
+.twent{font-style:normal;font-weight:800;color:#fde68a}
 .tthead > span .twbn{margin-left:.5em}
 /* v285 · la “General” elige el tamaño de las tarjetas según el día más cargado (data-z: 6 grande, 5 como las de cada marca,
    4 a 1 con la etapa al lado del resto y cada vez más chicas) y reparte el espacio que sobra entre ellas (--twgap), así no
@@ -4338,7 +4346,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v307";
+const APP_VER = "v308";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -9416,17 +9424,24 @@ function tvTeamSlide(sl){
 const TW_GREEN = "#16a34a", TW_LIGHT = "#7dd3fc";
 const twCmCol = st => { const lv = semLvl(st); return lv === 3 ? TW_GREEN : st === "Programado" ? TW_LIGHT : lv === 2 ? "#facc15" : SEM[lv]; };
 const tvWeekDays = (n = 7) => { const w = mondayOf(TODAY); return Array.from({ length:n }, (_, i) => addDays(w, i)); };
+// v308: los días en que se está haciendo un pedido: desde que se cargó hasta el día antes de su entrega (si se terminó antes,
+// hasta el día antes de terminarlo), solo de lunes a viernes. En pausa o cancelado no suma días.
+const twDevDays = (j, days) => { if (!j.requestDate || onHold(j) || j.status === "Cancelado") return []; const end = isFin(j) && j.delivered && j.delivered < j.due ? j.delivered : j.due;
+  return days.slice(0, 5).filter(d => d >= j.requestDate && d < end); };
+const twDev = (j, days, x) => twDevDays(j, days).map(d => ({ ...x, id:j.id, date:d, due:j.due, dev:true, time:"" }));
 function tvWeekItems(area){
   const days = tvWeekDays(), inR = d => !!d && d >= days[0] && d <= days[6], out = [];
   if (area === "Diseño"){
-    jobs.filter(j => j.area === "Diseño" && !j.ex && j.status !== "Cancelado" && inR(j.due)).forEach(j => out.push({ date:j.due, brand:j.brand, brands:jobBrands(j), title:j.title, who:j.owner, st:j.status,
-      col:isFin(j) ? TW_GREEN : j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status] || "#94a3b8", k:DG_SEC[jobSection(j)], ic:isFin(j) ? "check" : "palette", done:isFin(j) }));
+    jobs.filter(j => j.area === "Diseño" && !j.ex && j.status !== "Cancelado").forEach(j => { const x = { id:j.id, job:true, date:j.due, brand:j.brand, brands:jobBrands(j), title:j.title, who:j.owner, st:j.status,
+      col:isFin(j) ? TW_GREEN : j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status] || "#94a3b8", k:DG_SEC[jobSection(j)], ic:isFin(j) ? "check" : "palette", done:isFin(j) };
+      if (inR(j.due)) out.push(x); out.push(...twDev(j, days, x)); });
     return out.sort((a, b) => a.date.localeCompare(b.date) || !!a.done - !!b.done);
   }
   const add = (x, time, brands) => { const lv = semLvl(x.status); out.push({ date:x.date, brand:x.brand, brands:brands || [x.brand], title:x.title, who:x.cm, st:x.status, col:twCmCol(x.status), k:PLAN_SEC(x), ic:PLAN_ICO(x), time:time || "", done:lv === 3 }); };
   posts.filter(p => !p.ex && p.status !== CANCEL && inR(p.date)).forEach(p => add({ ...p }, p.time));
   CHANNEL_POSTS.filter(k => k.status !== CANCEL && inR(k.date)).forEach(k => add({ ...k, canal:true }, k.time));
-  jobs.filter(j => j.area === "CM" && j.status !== "Cancelado" && !j.ex && inR(j.due)).forEach(j => add({ vid:true, date:j.due, brand:j.brand, title:j.title, status:j.status, cm:j.owner }, "", jobBrands(j)));
+  jobs.filter(j => j.area === "CM" && j.status !== "Cancelado" && !j.ex).forEach(j => { const n = out.length; add({ vid:true, date:j.due, brand:j.brand, title:j.title, status:j.status, cm:j.owner }, "", jobBrands(j));
+    const x = { ...out.pop(), id:j.id, job:true }; if (inR(j.due)) out.splice(n, 0, x); out.push(...twDev(j, days, x)); });
   RECURRING.forEach(r => days.forEach(c => { if (recOn(r, c)) add({ rec:true, r, date:c, brand:r.brand, title:r.title, cm:r.owner, status:recSt(r, c) }, r.time); }));
   CM_ACTS.filter(a => inR(a.date)).forEach(a => add({ act:true, a, date:a.date, brand:a.brand, title:a.title, status:a.status, cm:a.owner }, a.time));
   return out.sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || ""));
@@ -9435,17 +9450,23 @@ function tvWeekItems(area){
 // “General” (sl.all) van las tres marcas juntas, cada tarjeta con el color y el nombre de su marca.
 function tvWeekSlide(sl, dots){
   const dg = sl.week === "Diseño", days = tvWeekDays(dg ? 5 : 7), last = days[days.length - 1], wk7 = tvWeekDays();
-  const items = tvWeekItems(sl.week).filter(x => sl.all ? x.brands.some(b => IG_MAIN.includes(b)) : x.brands.includes(sl.brand))
+  const all = tvWeekItems(sl.week).filter(x => sl.all ? x.brands.some(b => IG_MAIN.includes(b)) : x.brands.includes(sl.brand));
+  const items = all.filter(x => !x.dev)
     .map(x => ({ ...x, brand:sl.all ? (IG_MAIN.includes(x.brand) ? x.brand : x.brands.find(b => IG_MAIN.includes(b))) : sl.brand, bn:IG_MAIN.filter(b => x.brands.includes(b)), wkd:x.date > last ? x.date : "", date:x.date > last ? last : x.date }));
   if (sl.all) items.sort((a, b) => a.date.localeCompare(b.date) || IG_MAIN.indexOf(a.brand) - IG_MAIN.indexOf(b.brand) || !!a.done - !!b.done); // v285: en cada día, agrupadas por marca
+  // v308: en las semanas por marca, cada pedido sale también los días que se está haciendo, con una tarjeta chica “En desarrollo”
+  // (y para cuándo es); el día de la entrega sale su tarjeta de siempre, con “Entrega”. En la General no, para que entre todo.
+  const devs = sl.all ? [] : all.filter(x => x.dev && !items.some(y => y.id === x.id && y.date === x.date)).sort((a, b) => !!a.done - !!b.done || a.due.localeCompare(b.due));
+  const dueTxt = d => `${["dom","lun","mar","mié","jue","vie","sáb"][new Date(d + "T12:00:00").getDay()]} ${+d.slice(8)}${d.slice(0, 7) === TODAY.slice(0, 7) ? "" : "/" + +d.slice(5, 7)}`;
   const done = items.filter(x => x.done).length;
   const sts = [...new Set(items.map(x => x.st))].map(st => ({ st, n:items.filter(x => x.st === st).length, col:items.find(x => x.st === st).col }));
-  const card = (x, k) => `<div class="twc${x.done ? " done" : ""}" style="--b:${BRANDS[x.brand] || "#64748b"};--s:${x.col};--k:${k}"><b>${esc(x.title)}</b><div class="twm"><span class="twst">${esc(x.st)}</span><small>${icon(x.ic)}${x.wkd ? `<i class="twwk">para el ${["sáb","dom"][wk7.indexOf(x.wkd) - 5]} ${+x.wkd.slice(8)}</i> · ` : ""}${sl.all ? x.bn.map(b => `<i class="twbn" style="--c:${BRANDS[b]}">${esc(b)}</i>`).join(" + ") + " · " + (x.who ? esc(String(x.who).split(" ")[0]) + " · " : "") + esc(x.k) : `${x.time ? esc(x.time) + " · " : ""}${esc(x.k)}${x.who ? " · " + esc(firstName(x.who)) : ""}`}</small></div></div>`;
+  const card = (x, k) => `<div class="twc${x.done ? " done" : ""}" style="--b:${BRANDS[x.brand] || "#64748b"};--s:${x.col};--k:${k}"><b>${esc(x.title)}</b><div class="twm"><span class="twst">${esc(x.st)}</span><small>${icon(x.ic)}${x.job && !sl.all ? `<i class="twent">Entrega</i> · ` : ""}${x.wkd ? `<i class="twwk">para el ${["sáb","dom"][wk7.indexOf(x.wkd) - 5]} ${+x.wkd.slice(8)}</i> · ` : ""}${sl.all ? x.bn.map(b => `<i class="twbn" style="--c:${BRANDS[b]}">${esc(b)}</i>`).join(" + ") + " · " + (x.who ? esc(String(x.who).split(" ")[0]) + " · " : "") + esc(x.k) : `${x.time ? esc(x.time) + " · " : ""}${esc(x.k)}${x.who ? " · " + esc(firstName(x.who)) : ""}`}</small></div></div>`;
+  const devCard = (x, k) => `<div class="twc twdev${x.done ? " done" : ""}" style="--b:${BRANDS[x.brand] || "#64748b"};--k:${k}"><b>${esc(x.title)}</b><small>${icon(x.done ? "check" : "hourglass")}<i>${x.done ? "Ya terminado" : "En desarrollo"}</i> · entrega ${dueTxt(x.due)}${x.who ? " · " + esc(String(x.who).split(" ")[0]) : ""}</small></div>`;
   return `<div class="ttslide twslide${sl.all ? ' twall" data-z="1' : ""}">
     <div class="tthead"><b>${sl.icon} Semana de ${sl.week === "CM" ? "CM" : "Diseño gráfico"} · <i class="twb" style="--c:${sl.all ? "#fff" : BRANDS[sl.brand] || "#94a3b8"}">${sl.all ? "General" : esc(sl.brand)}</i></b><span>${dg ? "lunes a viernes · " : ""}${weekLabel(days[0], days.length)}${sl.all ? ` · ${IG_MAIN.map(b => `<i class="twbn" style="--c:${BRANDS[b]}">${esc(b)} ${items.filter(x => x.bn.includes(b)).length}</i>`).join(" ")}` : ""} · ${items.length} ${items.length === 1 ? "trabajo" : "trabajos"}${items.length ? ` · ${done} ${sl.week === "CM" ? "listos" : "terminados"}` : ""}</span>${sts.length ? `<div class="twsum">${sts.map(x => `<span style="--s:${x.col}"><i></i>${esc(x.st)} <strong>${x.n}</strong></span>`).join("")}</div>` : ""}${dots}</div>
     <div class="twgrid" style="--cols:${days.length}">${days.map((d, i) => { const l = items.filter(x => x.date === d);
       return `<div class="twcol${d === TODAY ? " today" : d < TODAY ? " past" : ""}"><div class="twh"><b>${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"][i]} ${+d.slice(8)}</b>${d === TODAY ? "<span>hoy</span>" : ""}<em>${l.length || ""}</em></div>
-        <div class="twl">${l.map(card).join("") || `<div class="twempty">Nada para este día</div>`}<div class="twmore" hidden></div></div></div>`; }).join("")}</div>
+        <div class="twl">${l.map(card).join("")}${devs.filter(x => x.date === d).map((x, j) => devCard(x, l.length + j)).join("")}${l.length || devs.some(x => x.date === d) ? "" : `<div class="twempty">Nada para este día</div>`}<div class="twmore" hidden></div></div></div>`; }).join("")}</div>
   </div>`;
 }
 // La semana ocupa justo lo que queda de pantalla; en cada día se ven las tarjetas que entran y abajo “+ N más”.
