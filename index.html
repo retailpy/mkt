@@ -45,6 +45,24 @@ button{cursor:pointer}
 /* Logo alargado arriba de las páginas (el cuadrado va en la barra lateral) */
 .brandbar{display:flex;align-items:center;gap:16px;max-width:1280px;margin:0 auto;padding:22px 24px 0;box-sizing:border-box}
 .brandlogos{height:34px;width:auto}
+.gsbtn{margin-left:auto;display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 12px;border-radius:12px;border:1px solid var(--line-2);background:rgba(15,23,42,.6);color:var(--muted);font:inherit;font-size:14px;cursor:pointer}
+.gsbtn:hover{border-color:var(--cyan);color:#fff}.gsbtn svg{width:17px;height:17px}.gsbtn kbd{font:600 11px/1 inherit;border:1px solid var(--line-3);border-radius:6px;padding:3px 5px;color:var(--faint)}
+.gsbtn:not([hidden]) + .bclock{margin-left:4px}
+@media (max-width:900px){.gsbtn span,.gsbtn kbd{display:none}.gsbtn{padding:0 10px}}
+.gspop{position:fixed;inset:0;z-index:9000;background:rgba(2,6,23,.72);backdrop-filter:blur(3px);display:flex;justify-content:center;align-items:flex-start;padding:7vh 16px 16px}
+.gsbox{width:min(860px,100%);max-height:84vh;display:flex;flex-direction:column;gap:10px;background:var(--panel,#0b1222);border:1px solid var(--line-2);border-radius:20px;padding:14px;box-shadow:0 30px 60px -10px rgba(0,0,0,.6)}
+.gshead{display:flex;align-items:center;gap:10px}.gshead > svg{width:20px;height:20px;color:var(--cyan);flex:none}.gshead input{flex:1;font-size:16px;height:44px}
+.gsarea,.gsst{flex-wrap:wrap;gap:6px}.gsst .chip i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gc);margin-right:2px}.gsst .chip span{opacity:.7;font-size:.9em}
+.gsarea .chip.on,.gsst .chip.on{background:color-mix(in srgb,var(--cyan) 22%,transparent);border-color:var(--cyan);color:#fff}
+.gsn{margin:2px 2px 0}.gslist{overflow:auto;display:flex;flex-direction:column;gap:6px;min-height:0;padding-right:2px}
+.gsrow{display:flex;align-items:center;gap:10px;text-align:left;width:100%;padding:10px 12px;border:1px solid var(--line-2);border-radius:14px;background:rgba(2,6,23,.45);color:inherit;font:inherit;cursor:pointer}
+.gsrow:hover,.gsrow:focus-visible{border-color:var(--cyan);background:rgba(34,211,238,.06)}.gsrow.first{border-color:color-mix(in srgb,var(--cyan) 50%,var(--line-2))}
+.gsid{flex:none;font:700 11px/1 ui-monospace,monospace;color:#67e8f9;background:rgba(34,211,238,.1);border-radius:8px;padding:5px 7px;min-width:52px;text-align:center}
+.gsmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.gsmain b{color:#fff;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gsmain small{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gsmain mark{background:rgba(250,204,21,.3);color:#fff;border-radius:3px;padding:0 1px}
+.gsst1{flex:none;font-size:11.5px;font-weight:800;color:#0f172a;background:var(--gc,#94a3b8);border-radius:999px;padding:3px 9px;white-space:nowrap}
+.gshead input{background:rgba(2,6,23,.7)}
+@media (max-width:640px){.gsid{display:none}.gspop{padding-top:3vh}.gsbox{max-height:92vh}.gsarea,.gsst{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.gsarea .chip,.gsst .chip{flex:none}}
 .bclock{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-size:17px;color:var(--muted);font-variant-numeric:tabular-nums}
 .bclock svg{width:19px;height:19px}
 .bclock b{color:var(--ink);font-weight:700}
@@ -3853,7 +3871,7 @@ td svg{width:15px;height:15px;vertical-align:-2px;color:var(--cyan)}
       <button class="logout" id="logout" type="button">Cerrar sesión</button>
     </div>
   </aside>
-  <div class="main"><header class="brandbar"><img class="logo-wide" src="logo-wide.png" alt="Retail MKT Hub" data-page="inicio" role="button" tabindex="0" title="Ir a Inicio" style="cursor:pointer"><span class="bclock" title="Hora de Paraguay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><b data-clock></b></span><div class="sthere topst" id="topSt"></div><img class="brandlogos" src="marcas.png" alt="Superseis · Delimarket · Stock"></header><main class="content" id="content"></main></div>
+  <div class="main"><header class="brandbar"><img class="logo-wide" src="logo-wide.png" alt="Retail MKT Hub" data-page="inicio" role="button" tabindex="0" title="Ir a Inicio" style="cursor:pointer"><button type="button" class="gsbtn" id="gsBtn" data-gsopen hidden title="Buscar pedidos (Ctrl+K)" aria-label="Buscar pedidos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Buscar pedidos</span><kbd>Ctrl K</kbd></button><span class="bclock" title="Hora de Paraguay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><b data-clock></b></span><div class="sthere topst" id="topSt"></div><img class="brandlogos" src="marcas.png" alt="Superseis · Delimarket · Stock"></header><main class="content" id="content"></main></div>
 </div>
 <nav class="tabbar" id="tabbar" aria-label="Accesos rápidos"></nav>
 <div class="toast" id="toast" hidden></div>
@@ -4366,7 +4384,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v312";
+const APP_VER = "v313";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -6081,6 +6099,72 @@ document.addEventListener("click", e => {
   const x = e.target.closest("[data-adis]"); if (x){ e.stopPropagation(); dismissAlert(x.dataset.adis); return; }
   const r = e.target.closest(".arow[data-ago]"); if (!r || e.target.closest("button,a,select,input")) return;
   goAlert(r.dataset.ago);
+});
+// v313 · Buscador de pedidos (la lupa de arriba, o Ctrl+K): busca por palabras en todos los meses y en todo lo que cada uno puede ver
+// (pedidos de Diseño gráfico, CM y Contenidos, publicaciones, Canal de WhatsApp, actividades y pedidos de Comercial), también lo
+// cancelado y lo que está en pausa, con filtros por estado y por tipo. Tocar un resultado lo abre.
+let gsUI = { open:false, q:"", st:"Todos", area:"Todas", list:null };
+const GS_ST = [["Todos", ""], ["En proceso", "#f59e0b"], ["Pendiente", "#ef4444"], ["En pausa", "#94a3b8"], ["Cancelado", "#64748b"], ["Terminado", "#16a34a"]];
+const GS_AREAS = ["Todas", "Diseño gráfico", "CM", "Contenidos", "Publicaciones", "Canal de WhatsApp", "Actividades", "Pedidos Comercial"];
+const gsCan = () => !!viewer && viewer.role !== "TV" && !isComercial();
+const gsNorm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+const gsTxt = h => String(h || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&[a-z]+;/g, " ");
+const gsGroup = (st, done) => st === CANCEL || st === "No ejecutable" ? "Cancelado" : st === PAUSE ? "En pausa" : done ? "Terminado" : st === "Pendiente" || st === "Enviado" ? "Pendiente" : "En proceso";
+function gsBuild(){
+  const out = [], add = (x, words) => out.push({ ...x, grp:gsGroup(x.st, x.done), hay:gsNorm([x.id, x.title, x.brand, x.who, x.area, x.st, ...words].join(" ")) });
+  jobs.filter(j => !j.ex && seesJob(j)).forEach(j => add({ go:"job:" + j.id, id:j.id, title:j.title, brand:jobBrands(j).join(" + "), area:j.area === "Diseño" ? "Diseño gráfico" : j.area === "CM" ? "CM" : "Contenidos",
+    who:crewOf(j.owner, j).join(" + ") || "Sin asignar", st:j.status, done:isFin(j), date:j.due || "" }, [j.piece, j.requester, j.notes, gsTxt(j.brief), gsTxt(j.copy), j.com ? "comercial" : "", j.actCom ? "activacion comercial" : ""]));
+  posts.filter(p => !p.ex && seesBrand(p.brand)).forEach(p => add({ go:"pub:post:" + p.id, id:p.id, title:p.title, brand:p.brand, area:"Publicaciones", who:crewOf(p.cm, p).join(" + "), st:p.status, done:isDone(p), date:p.date || "", sub:[p.format, p.net].filter(Boolean).join(" · ") },
+    [p.format, p.net, p.notes, p.requester, gsTxt(p.brief), gsTxt(p.copy), p.fromJob]));
+  CHANNEL_POSTS.filter(c => seesBrand(c.brand)).forEach(c => add({ go:"pub:canal:" + c.id, id:c.id, title:c.title, brand:c.brand, area:"Canal de WhatsApp", who:crewOf(c.cm, c).join(" + "), st:c.status, done:c.status === "Publicado", date:c.date || "", sub:c.channel || "" },
+    [c.channel, c.notes, gsTxt(c.copy), c.fromJob]));
+  CM_ACTS.filter(a => seesBrand(a.brand)).forEach(a => add({ go:"act:" + a.id, id:a.id, title:a.title, brand:a.brand, area:"Actividades", who:crewOf(a.owner, a).join(" + "), st:a.status, done:a.status === "Hecho", date:a.date || "", sub:actType(a.type).t }, [actType(a.type).t, a.notes]));
+  if (can("pedcom")) PEDIDOS_COM.filter(p => !p.demo).forEach(p => add({ go:"com:" + p.id, id:p.id, title:p.title, brand:(p.brands || []).join(" + "), area:"Pedidos Comercial", who:p.byName || "", st:p.st || "Enviado", done:p.st === "Finalizado", date:p.date || "" }, [p.marcas, p.pedido, gsTxt(p.brief)]));
+  return out;
+}
+function gsResults(){
+  const words = gsNorm(gsUI.q).split(/\s+/).filter(Boolean), L = gsUI.list || (gsUI.list = gsBuild());
+  const r = L.filter(x => (gsUI.st === "Todos" || x.grp === gsUI.st) && (gsUI.area === "Todas" || x.area === gsUI.area) && words.every(w => x.hay.includes(w)));
+  const score = x => (words.length && gsNorm(x.id) === words.join(" ") ? 100 : 0) + words.filter(w => gsNorm(x.title).includes(w)).length * 10;
+  return r.sort((a, b) => score(b) - score(a) || String(b.date).localeCompare(String(a.date)));
+}
+// Resalta las palabras buscadas en el título (sin importar tildes ni mayúsculas).
+const gsMark = t => { const n = gsNorm(t); if (n.length !== t.length) return esc(t); const on = new Array(t.length).fill(false);
+  gsNorm(gsUI.q).split(/\s+/).filter(w => w.length > 1).forEach(w => { for (let i = n.indexOf(w); i >= 0; i = n.indexOf(w, i + w.length)) for (let k = i; k < i + w.length; k++) on[k] = true; });
+  let s = "", open = false; for (let i = 0; i < t.length; i++){ if (on[i] !== open){ s += on[i] ? "<mark>" : "</mark>"; open = on[i]; } s += esc(t[i]); } return s + (open ? "</mark>" : ""); };
+function gsResHTML(){
+  const r = gsResults(), L = gsUI.list, cnt = st => L.filter(x => (st === "Todos" || x.grp === st) && (gsUI.area === "Todas" || x.area === gsUI.area) && gsNorm(gsUI.q).split(/\s+/).filter(Boolean).every(w => x.hay.includes(w))).length;
+  const chips = `<div class="chips gsst" role="group" aria-label="Estado">${GS_ST.map(([k, c]) => `<button type="button" class="chip${gsUI.st === k ? " on" : ""}" data-gsst="${k}" aria-pressed="${gsUI.st === k}"${c ? ` style="--gc:${c}"` : ""}>${c ? "<i></i>" : ""}${k} <span>${cnt(k)}</span></button>`).join("")}</div>`;
+  const rows = r.slice(0, 80).map((x, k) => { const c = (GS_ST.find(s => s[0] === x.grp) || [])[1];
+    return `<button type="button" class="gsrow${k ? "" : " first"}" data-gsgo="${esc(x.go)}"><span class="gsid">${esc(x.id)}</span><span class="gsmain"><b>${gsMark(x.title || "(sin título)")}</b><small>${esc(x.area)}${x.sub ? " · " + esc(x.sub) : ""} · ${esc(x.brand || "—")} · ${esc(x.who || "Sin asignar")}${x.date ? " · " + dm(x.date) + "/" + x.date.slice(2, 4) : ""}</small></span><span class="gsst1" style="--gc:${c}">${esc(x.st)}</span></button>`; }).join("");
+  return `${chips}<div class="gsn note">${r.length ? `${r.length} ${r.length === 1 ? "resultado" : "resultados"}${r.length > 80 ? " (se muestran los primeros 80: sumá otra palabra)" : ""}` : gsUI.q.trim() ? "No hay nada con esas palabras. Probá con otra o cambiá el filtro." : "Escribí una palabra: título, marca, persona, número de pedido (ej.: D-120), tipo de pieza…"}</div><div class="gslist">${rows}</div>`;
+}
+function gsShow(){
+  let el = document.getElementById("gsPop");
+  if (!gsUI.open){ el?.remove(); return; }
+  if (!el){ el = document.createElement("div"); el.id = "gsPop"; el.className = "gspop"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Buscar pedidos"); document.body.appendChild(el);
+    el.innerHTML = `<div class="gsbox"><div class="gshead">${icon("search")}<input type="search" class="base" id="gsQ" placeholder="Buscar pedidos: palabra, marca, persona o número…" autocomplete="off" value="${esc(gsUI.q)}"><button type="button" class="btn" data-gsclose aria-label="Cerrar">Esc</button></div>
+      <div class="chips gsarea" role="group" aria-label="Tipo">${GS_AREAS.map(a => `<button type="button" class="chip${gsUI.area === a ? " on" : ""}" data-gsarea="${a}" aria-pressed="${gsUI.area === a}">${a}</button>`).join("")}</div><div id="gsRes"></div></div>`;
+    setTimeout(() => el.querySelector("#gsQ")?.focus(), 30); }
+  el.querySelectorAll("[data-gsarea]").forEach(b => { const on = b.dataset.gsarea === gsUI.area; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); });
+  el.querySelector("#gsRes").innerHTML = gsResHTML(); if (window.lucide) lucide.createIcons();
+}
+const gsOpen = () => { if (!gsCan()) return; gsUI.open = true; gsUI.list = null; gsShow(); };
+const gsClose = () => { gsUI.open = false; gsShow(); };
+document.addEventListener("input", e => { if (e.target.id !== "gsQ") return; gsUI.q = e.target.value; gsShow(); });
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-gsopen]")){ gsOpen(); return; }
+  if (!gsUI.open) return;
+  if (e.target.closest("[data-gsclose]") || e.target.id === "gsPop"){ gsClose(); return; }
+  const st = e.target.closest("[data-gsst]"); if (st){ gsUI.st = st.dataset.gsst; gsShow(); return; }
+  const ar = e.target.closest("[data-gsarea]"); if (ar){ gsUI.area = ar.dataset.gsarea; gsShow(); return; }
+  const go = e.target.closest("[data-gsgo]"); if (go){ gsClose(); goAlert(go.dataset.gsgo); }
+});
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k" && gsCan()){ e.preventDefault(); gsUI.open ? document.getElementById("gsQ")?.focus() : gsOpen(); return; }
+  if (!gsUI.open) return;
+  if (e.key === "Escape"){ gsClose(); return; }
+  if (e.key === "Enter" && e.target.id === "gsQ"){ const f = document.querySelector("#gsPop .gsrow.first"); if (f){ e.preventDefault(); f.click(); } }
 });
 // Ir a donde está un aviso (job:ID, pub:post:ID, una página…). Lo usan la lista de avisos, la ventana emergente y la notificación del sistema.
 function goAlert(go){
@@ -15298,6 +15382,7 @@ function stickBottom(cm){
 }
 function render(){
   stampPubDone(); pcSync(); pubBrandFix(); nameFix();
+  { const gb = document.getElementById("gsBtn"); if (gb) gb.hidden = !gsCan(); if (gsUI.open && !gsCan()) gsClose(); } // v313: la lupa de pedidos
   if (page !== render.planPage){ if (render.planForced) brandFilter = "Todas"; render.planForced = false; render.planPage = page;
     if (render.planBrandNext && ["calcm","plan"].includes(page)){ brandFilter = render.planBrandNext; render.planForced = true; } // v265: desde el Panel de CM, con la marca del Panel
     else if (planSuperFirst()){ brandFilter = "Superseis"; render.planForced = true; } } // al salir, las demás secciones siguen con todas
