@@ -91,6 +91,11 @@ Necesita el **script de Drive versión 8** (con el 7 esa carpeta queda “falta 
 
 Carpeta de respaldos: `1A_WCm2AkSN9H6GdNazCk-9L4ngoaNWfZ` (el Excel de cada quincena **de Superseis**, en la carpeta del mes y año; como antes).
 
+**Check de cada fila (v304):** en la lista, cada persona del equipo (no el rol Comercial) tiene una casilla al costado de cada fila
+(`comChkBtn`, `data-comck`): la marca cuando ya cargó esa línea y la fila queda en verde (`.cof.ok`); arriba, “N de M cargadas” y
+“Desmarcar todas” (`data-comckclr`). Es personal: `COM_CHECKS[persona][idDelArchivo][hoja|cod|desc] = 1`, guardado en la clave
+`comchk:<persona>` (solo la lee y la cambia su dueño; `sync.js` y `private.can_access_state`). No toca `s:COMERCIAL`.
+
 ## 2. Cómo viajan los datos
 
 ```

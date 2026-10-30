@@ -3763,6 +3763,27 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .semchip.s4{background:#64748b}
 .ev[data-sem="4"],.plcal .pev[data-sem="4"]{opacity:.7}
 .jphold{margin-top:10px}
+/* v302 · Pedidos Comercial: quién se ocupa */
+.pcteam{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:12px}
+.pcwho{display:flex;align-items:center;gap:12px;border:1px solid var(--line-3);border-radius:14px;padding:10px 12px;min-width:0}
+.pcwho .avatar,.pcwho0{width:44px;height:44px;flex:none;border-radius:50%}
+.pcwho0{display:grid;place-items:center;background:var(--inner);color:var(--muted)}
+.pcwho div{display:flex;flex-direction:column;min-width:0}
+.pcwho span{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);font-weight:700}
+.pcwho b{font-size:15px;overflow:hidden;text-overflow:ellipsis}
+.pcwho small{color:var(--muted);font-size:12px}
+/* v303 · Pantalla TV (todo junto) */
+.tvpgrid.tvpone{grid-template-columns:minmax(0,1fr);width:min(520px,100%)}
+.tvjunto .tvjn{max-width:560px;margin:0}
+/* v304 · Comercial: check de cada fila (personal; la fila cargada queda en verde) */
+.cofck{all:unset;box-sizing:border-box;display:grid;place-items:center;flex:none;width:26px;height:26px;margin:0 4px 0 2px;border-radius:7px;border:2px solid #64748b;color:#fff;cursor:pointer;transition:background .15s,border-color .15s}
+.cofck:hover{border-color:#22c55e}.cofck:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.cofck.on{background:#16a34a;border-color:#16a34a}.cofck svg{width:17px;height:17px;stroke-width:3}
+.cof.ok{background:color-mix(in srgb,#16a34a 16%,transparent);box-shadow:inset 3px 0 0 #22c55e}
+.comvk{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:#86efac;margin-left:10px}.comvk svg{width:14px;height:14px}
+.comvkclr{margin-left:6px}
+.comckon>.comgh{flex-wrap:wrap;row-gap:6px}
+@media (max-width:640px){.comckon .cofm{padding-right:72px}.cofr>.cofck{position:absolute;top:8px;right:38px;margin:0}.comckon>.comgh .comvk{order:5;margin-left:0}.comckon>.comgh .comvkclr{order:6}}
 </style>
 
 <div class="login" id="login">
@@ -3878,6 +3899,7 @@ const SECTIONS = [
   { g:"Vista TV", k:"tvredes", l:"Vista TV Redes", i:"monitor-play" },
   { g:"Vista TV", k:"tvimpacto", l:"TV Impacto Redes", i:"trophy" },
   { g:"Vista TV", k:"tvconf", l:"Pantallas TV", i:"monitor" }, // v266: qué muestra cada televisor (TV 1 a TV 4)
+  { g:"Vista TV", k:"tvjunto", l:"Pantalla TV (todo junto)", i:"layers", virtual:true }, // v303: Admin ve la vuelta entera de las TV 1, 2 y 3 (como la TV 4)
   { g:"Vista TV", k:"tvpant", l:"Televisores", i:"tv", hide:true }, // v266: los botones TV 1 a TV 4 (lo que ve el usuario TV)
   { g:"Admin", k:"usuarios", l:"Usuarios y permisos", i:"shield-check" },
   { g:"Equipo", k:"staff", l:"Team MKT", i:"users" },
@@ -4309,7 +4331,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v300";
+const APP_VER = "v304";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -4434,6 +4456,14 @@ document.addEventListener("submit", e => {
 // las listas, los totales y la carga de trabajo; se ve en el cuadro “Cancelados” y se puede reactivar).
 const PAUSE = "En pausa", CANCEL = "Cancelado", HOLD_ST = [PAUSE, CANCEL];
 const onHold = x => HOLD_ST.includes(x?.status);
+// v301: al ponerlo en pausa (o cancelarlo) se guarda desde cuándo y dónde estaba, y a quien lo hace no le llega nada más de eso
+// (se apagan sus avisos pendientes): ya no es asunto suyo. Lo pausado se le recuerda solo a Admin total (en Tus alertas).
+function holdMark(x, prev, to){
+  if (!HOLD_ST.includes(to)){ delete x.holdFrom; delete x.holdAt; return; }
+  if (!HOLD_ST.includes(prev)){ x.holdFrom = prev; x.holdAt = TODAY; }
+  const who = x.owner || x.cm, post = !x.area; // publicación o canal: sin área
+  NOTIFS.forEach(n => { if (!n.read && n.to === who && (post ? n.post === x.id : n.job === x.id)) n.read = true; });
+}
 // Publicaciones de CM (feed, historias y Canal de WhatsApp): Pendiente → En proceso → Programado → Publicado → Pautado.
 const POST_STAGES = ["Pendiente","En proceso","Programado","Publicado","Pautado"];
 const POST_COLOR = { "Pendiente":"#334155","En proceso":"#eab308","Programado":"#f97316","Publicado":"#10b981","Pautado":"#d946ef",[PAUSE]:"#94a3b8",[CANCEL]:"#64748b" };
@@ -4935,6 +4965,7 @@ let META_DM = {}; // mensajes de Instagram que llegan en vivo (webhook de Meta �
 let META_IG_ACT = {}; // comentarios, comentarios en vivo y menciones de Instagram (webhook y /api/interacciones → s:META_IG_ACT)
 let META_DM_LOG = {}; // los últimos avisos de Meta a ese webhook y qué pasó con cada uno (sin el texto de los mensajes)
 let COMERCIAL = {}; // ofertas publicadas de cada quincena (las lee el servidor del Excel de Comercial en Drive)
+const COM_CHECKS = {}; // v304: los checks de cada persona en las filas de Comercial (comchk:<persona>; solo los ve quien los marcó)
 let INBOX_DONE = {}; // conversaciones marcadas a mano como contestadas: { id: { by, at } }
 // Quién contestó y cuándo (cualquier CM lo anota con “Contestado” o “Lo contesté yo”; al enviar desde la app queda solo).
 const ibWho = h => `${firstName(h.by || "") || "Alguien"} · ${inboxAge(h.at)}`;
@@ -5836,7 +5867,7 @@ const ONLY_ADMINS = ["historial","historialcm","pauta","reportes"]; // Historial
 // Lo que cada uno puede cambiar lo sigue decidiendo su rol (cargar pedidos, editar posteos, mover fechas…).
 const ALL_SEE = () => ["comercial","paneldg","panelcm","caldg","calcm","cargadiseno","cargacm","ideas","redes","plan", ...PANEL_DESIGN.map(x => x.k), ...[...PANEL_CM, ...PANEL_CM_MORE].map(x => x.k).filter(k => !CM_PRIVATE.includes(k))];
 const CM_PRIVATE = ["inbox","reclamos","escraches"]; // datos de clientes: solo Admin total, Admin y CM
-const canAdmin = key => ALL_SEE().includes(key) ? true : CM_PRIVATE.includes(key) ? ["Admin total","Admin","CM"].includes(viewer.role) : key === "encuestas" || key === "sugerencias" ? viewer.id === "fede" && viewer.role === "Admin total" : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "gcm" || key === "calact" ? CM_GEST.some(k => can(k)) : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : ONLY_AT.includes(key) ? viewer.role === "Admin total" : ONLY_ADMINS.includes(key) ? isAdminAny() && viewer.perms.has(key) : ["bienvenida","sabados","avisos","perfil","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
+const canAdmin = key => ALL_SEE().includes(key) ? true : CM_PRIVATE.includes(key) ? ["Admin total","Admin","CM"].includes(viewer.role) : key === "encuestas" || key === "sugerencias" ? viewer.id === "fede" && viewer.role === "Admin total" : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "gcm" || key === "calact" ? CM_GEST.some(k => can(k)) : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : key === "tvjunto" ? true : ONLY_AT.includes(key) ? viewer.role === "Admin total" || (["tv","tvredes","tvimpacto"].includes(key) && tvSolo === "tvall") : ONLY_ADMINS.includes(key) ? isAdminAny() && viewer.perms.has(key) : ["bienvenida","sabados","avisos","perfil","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
 // Admin total y Admin: todo como antes. Las demás personas (CM, Diseñador): solo lo que Admin total les habilitó en Usuarios y permisos.
 const MEMBER_ALWAYS = ["bienvenida","perfil","config","guia"]; // la bienvenida (beta) y su cuenta: entrar a su perfil, cambiar la contraseña y la ayuda
 const canMember = key => ONLY_AT.includes(key) || ONLY_ADMINS.includes(key) ? false : MEMBER_ALWAYS.includes(key) ? true
@@ -5920,7 +5951,7 @@ const myNotifs = () => NOTIFS.filter(n => n.to === viewer.name && !n.read && not
 // que llevan a ese documento, vengan de donde vengan (la ventana, la lista, el calendario). Admin total: las que le llegaron a él.
 function clearDocAlerts(go, postId){
   if (!viewer || window.RMH?.previewing) return;
-  const L = alerts().filter(a => a.go === go || (postId && a.post === postId)), g = alertsGone(); let add = false;
+  const L = alerts().filter(a => (a.go === go || (postId && a.post === postId)) && !a.key.startsWith("hold:")), g = alertsGone(); let add = false; // v301: el recordatorio de “en pausa” no se apaga al abrirlo (se quita con la x: vuelve al otro día)
   L.forEach(a => { if (a.key.startsWith("n:")){ const n = NOTIFS.find(x => x.id === +a.key.slice(2)); if (n) n.read = true; } else if (!a.key.startsWith("av:")){ g.add(a.key); add = true; } });
   NOTIFS.forEach(n => { if (!n.read && (n.to === viewer.name || (n.to === "admin" && viewer.role === "Admin total")) && (go === "job:" + n.job && !n.post || go === "pub:" + (n.canal ? "canal:" : "post:") + n.post)) n.read = true; });
   if (add) try { localStorage.setItem("rmh-agone-" + viewer.id, JSON.stringify([...g].slice(-300))); } catch {}
@@ -5964,6 +5995,9 @@ function alerts(){
   if (false && can("cumples")) bdayAlerts().forEach(({ pp, d }) => out.push({ go:"cumples", key:`bday:${pp.id}:${TODAY}`, sev: d === 0 ? "#ef4444" : "#f97316", rank:-2, ic:"cake", t:`${d === 0 ? `Hoy cumple años ${pp.name}` : `${d === 1 ? "Mañana" : `En ${d} días`} cumple años ${pp.name}`}`, m:bdayLabel(pp.birthday) }));
   avActiveFor(viewer).filter(a => !a.seen.includes(viewer.id)).forEach(a => out.push({ key:"av:" + a.id, sev:AV_LEVELS[a.level].c, rank:-8, ic:AV_LEVELS[a.level].ic, t:`Aviso: ${a.title}`, m:`${rclShort(a.text, 280)}${(a.imgs || []).length ? ` · 📷 ${a.imgs.length === 1 ? "1 foto" : a.imgs.length + " fotos"}` : ""} · ${avRange(a)}`, acts:`${can("avisos") && ((a.imgs || []).length || String(a.text || "").length > 280) ? `<button class="btn" data-page="avisos">Ver aviso</button>` : ""}<button class="btn" data-avok="${a.id}">Entendido</button>` }));
   out.push(...notifAlerts().filter(Boolean), ...msgAlerts(), ...pendingSurveys().map(sv => ({ sev:"#a78bfa", rank:-3, ic:"clipboard-list", t:`Encuesta para responder: ${sv.title}`, m:`${sv.qs.length} preguntas · te lleva 2 minutos`, acts:`<button class="btn primary" data-svopen="${sv.id}">Responder</button>` })));
+  if (viewer.role === "Admin total" && !isViewOnly()){ // v301: lo que está en pausa se le recuerda solo a Admin total
+    jobs.filter(j => j.status === PAUSE && !j.ex && seesJob(j)).forEach(j => out.push({ go:"job:" + j.id, key:"hold:" + j.id + ":" + TODAY, ic:"pause", sev:"#94a3b8", rank:90, t:`En pausa: ${j.title}`, m:`${areaName(j.area)} · ${jobBrands(j).join(" + ")} · ${firstName(j.owner)}${j.holdAt ? ` · desde el ${dm(j.holdAt)}` : ""}${j.holdFrom ? ` · estaba en ${j.holdFrom}` : ""} · tocá para reanudarlo` }));
+    [...posts.map(p => [p, "post"]), ...CHANNEL_POSTS.map(k => [k, "canal"])].filter(([p]) => p.status === PAUSE && !p.ex && seesBrand(p.brand)).forEach(([p, k]) => out.push({ go:"pub:" + k + ":" + p.id, key:"hold:" + k + p.id + ":" + TODAY, ic:"pause", sev:"#94a3b8", rank:90, t:`En pausa: ${p.title}`, m:`${k === "canal" ? "Canal de WhatsApp" : `${p.net || "IG"} ${p.format || "Post"}`} · ${p.brand} · ${firstName(p.cm || "")}${p.holdAt ? ` · desde el ${dm(p.holdAt)}` : ""} · tocá para reanudarla` })); }
   if (viewer.role === "Admin total") PEDIDOS_COM.filter(p => p.st === "Enviado").forEach(p => out.push({ go:"com:" + p.id, key:"pc:" + p.id, ic:"shopping-bag", sev:"#38bdf8", rank:-5, t:`Nuevo pedido de Comercial: ${p.title}`, m:`${p.byName} · ${pcBrandTxt(p)} · publicar el ${p.date ? dm(p.date) : "—"} · pasalo a Diseño gráfico o a un CM` }));
   if (viewer.role === "Admin total") resetRequests.forEach(id => { const pp = PEOPLE.find(x => x.id === id); if (pp) out.push({ go:"usuarios", sev:"#22d3ee", rank:-1, ic:"key-round", t:`${pp.name} pidió restablecer su contraseña`, m:"Andá a Usuarios y permisos → Restablecer contraseña" }); });
   if (satPeople().includes(viewer) && !isViewOnly()){ const n = satList(SAT_TURN[CURRENT_MONTH] || {}, viewer.id).length;
@@ -6182,6 +6216,8 @@ let panelAll = false;
 // Lo que esta persona tiene que terminar: sus pedidos sin finalizar (y, en CM, sus publicaciones del mes sin programar), por fecha.
 function panelMine(ar){
   const cm = ar === "cm", me = viewer.name, gone = alertsGone(), out = [];
+  jobs.filter(j => j.owner === me && jobGroup(j) === (cm ? "CM" : "Diseño") && seesJob(j) && j.status === PAUSE && !j.ex).forEach(j => // v301: tarea en pausa (nada que hacer)
+    out.push({ d:"9", go:"job:" + j.id, key:"pz:" + j.id + ":" + (j.holdAt || ""), ic:"pause", sev:"#94a3b8", t:`En pausa: ${j.title}`, m:`${j.brand} · ${j.piece} · Admin total lo puso en pausa${j.holdAt ? ` el ${dm(j.holdAt)}` : ""}: por ahora no hay que hacer nada` }));
   jobs.filter(j => j.owner === me && jobGroup(j) === (cm ? "CM" : "Diseño") && seesJob(j) && !isIdleJob(j) && !repLater(j)).sort((a, b) => a.due.localeCompare(b.due)).forEach(j => {
     const u = urgency(j), fix = j.status === fixStage(j);
     out.push({ d:j.due, go:"job:" + j.id, key:"pm:" + j.id + ":" + j.status, ic:fix ? "pencil" : u?.late ? "alarm-clock" : "clock", sev:u ? u.c : fix ? "#f97316" : "#94a3b8", t:`${fix ? "Cambios pendientes" : u?.late ? "Atrasado" : "Por terminar"}: ${j.title}`, m:`${j.brand} · ${j.piece} · entrega el ${dm(j.due)} · ${j.status}` }); });
@@ -6475,8 +6511,8 @@ document.addEventListener("click", e => {
   if ((kind === "post" || kind === "canal") && copyLock(kind === "post" ? postById(id) : canalById(id), to)) return toast(copyLockMsg);
   if (kind === "post"){ const p = postById(id); if (!p || p.status === to) return;
     if (onHold(p) && !HOLD_ST.includes(to)) return openReactivate("post", p, to); // v300: con la fecha nueva
-    p.status = to; render(); toast(`“${p.title}” pasó a ${to}.`); return; }
-  if (kind === "canal"){ const k = canalById(id); if (!k || k.status === to) return; if (onHold(k) && !HOLD_ST.includes(to)) return openReactivate("canal", k, to); k.status = to; render(); toast(`“${k.title}” pasó a ${to}.`); return; }
+    holdMark(p, p.status, to); p.status = to; render(); toast(`“${p.title}” pasó a ${to}.`); return; }
+  if (kind === "canal"){ const k = canalById(id); if (!k || k.status === to) return; if (onHold(k) && !HOLD_ST.includes(to)) return openReactivate("canal", k, to); holdMark(k, k.status, to); k.status = to; render(); toast(`“${k.title}” pasó a ${to}.`); return; }
   if (kind === "act"){ const a = actById(id); if (!a || a.status === to || !stageOptions("act", a).includes(to)) return; a.status = to; render(); window.RMH?.flushNow?.(); toast(`“${a.title}” pasó a ${to}.`); return; }
   if (kind === "rec"){ const x = recItem(id); if (!x || x.status === to || !stageOptions("rec", x).includes(to)) return;
     setRecSt(x.r, x.d, to); render(); window.RMH?.flushNow?.(); toast(`“${x.r.title}” del ${dm(x.d)} pasó a ${to}.`); return; }
@@ -6609,7 +6645,7 @@ const canalStatusCell = k => canEditPost() && stageOptions("canal", k).length ? 
 document.addEventListener("click", e => { const b = e.target.closest("[data-pedit]"); if (!b || e.target.closest("[data-stagemenu]")) return; const [kind, id] = b.dataset.pedit.split(":");
   if (kind === "canal") postUI.form = { mode:"edit", kind:"Canal", post:{ ...canalById(id) } }; else { const p = postById(id); postUI.form = { mode:"edit", kind:p.format === "Historia" ? "Historia" : "Feed", post:{ ...p } }; }
   render(); });
-document.addEventListener("change", e => { const k = e.target.closest("[data-kstatus]"); if (!k) return; const c = canalById(k.dataset.kstatus); if (!c || c.status === k.value) return; if (onHold(c) && !HOLD_ST.includes(k.value)){ render(); return openReactivate("canal", c, k.value); } c.status = k.value; render(); toast(`“${c.title}” pasó a ${c.status}.`); });
+document.addEventListener("change", e => { const k = e.target.closest("[data-kstatus]"); if (!k) return; const c = canalById(k.dataset.kstatus); if (!c || c.status === k.value) return; if (onHold(c) && !HOLD_ST.includes(k.value)){ render(); return openReactivate("canal", c, k.value); } holdMark(c, c.status, k.value); c.status = k.value; render(); toast(`“${c.title}” pasó a ${c.status}.`); });
 const gHead = (title, sub, ico) => `<div class="head"><div><h1 class="pmh">${pmIco(ico)}${title}</h1><p class="sub">${sub}</p></div><div class="chips">${refreshBtn()}${viewTabs(G_VIEWS, gView(), "data-gview")}</div></div>`;
 const gFilters = note => `<div class="head"><div class="chips">${brandChips()}${soloBtn()}</div>${note && !isViewOnly() && !isClosed() ? `<span class="note">${note}</span>` : ""}</div>`;
 // Gestión Redes (feed) y Gestión Historia.
@@ -7831,7 +7867,7 @@ document.addEventListener("click", e => {
   if (dueEl && (!due || due < TODAY)) return err("Elegí la nueva fecha de entrega del diseño (de hoy en adelante).");
   if (dueEl && due > pub) return err("La entrega tiene que ser antes (o el mismo día) que la publicación.");
   document.getElementById("fixpop")?.remove();
-  if (kind !== "job"){ x.date = pub; x.status = to; render(); window.RMH?.flushNow?.(); return toast(`“${x.title}” volvió a ${to}: se publica el ${dm(pub)}.`); }
+  if (kind !== "job"){ x.date = pub; holdMark(x, x.status, to); x.status = to; render(); window.RMH?.flushNow?.(); return toast(`“${x.title}” volvió a ${to}: se publica el ${dm(pub)}.`); }
   if (x.area === "CM") x.due = pub;
   else { x.due = due; x.pubDate = pub; jobPubsOf(x).filter(p => !["Publicado","Pautado"].includes(p.status)).forEach(p => { p.date = pub; }); }
   setJobStatus(x, to); window.RMH?.flushNow?.();
@@ -12566,8 +12602,8 @@ const TV_N = [1,2,3,4], TV_DEF = { 1:"tv", 2:"tvredes", 3:"tvimpacto", 4:"tvall"
 // vuelve a empezar. La portada y los avisos salen solo al principio, y “Campañas y temas” solo al final de todo.
 let tvAll = { cur:"" };
 const tvAllSeq = () => { const ok = v => v !== "tvall" && (v !== "tvimpacto" || IMP_POSTS) && (!viewer || can(v)), l = [...new Set([1, 2, 3].map(n => tvCfg(n).v).filter(ok))]; return l.length ? l : ["tv","tvredes","tvimpacto"].filter(ok); };
-const tvAllOn = () => !!tvKiosk && tvCfg(tvKiosk).v === "tvall";
-const tvCurView = () => { const v = tvCfg(tvKiosk).v; if (v !== "tvall") return v; const q = tvAllSeq(); if (!q.includes(tvAll.cur)) tvAll.cur = q[0]; return tvAll.cur; };
+const tvAllOn = () => tvKiosk ? tvCfg(tvKiosk).v === "tvall" : tvSolo === "tvall"; // v303: también “todo junto” en la app
+const tvCurView = () => { const v = tvKiosk ? tvCfg(tvKiosk).v : tvSolo; if (v !== "tvall") return v; const q = tvAllSeq(); if (!q.includes(tvAll.cur)) tvAll.cur = q[0]; return tvAll.cur; };
 const tvAllFirst = () => !tvAllOn() || tvAll.cur === tvAllSeq()[0];
 const tvAllLast = () => !tvAllOn() || tvAll.cur === tvAllSeq().slice(-1)[0];
 // Al llegar al final (o al principio, para atrás) de una vista, pasa a la siguiente (o a la anterior, en su última pantalla).
@@ -12638,8 +12674,8 @@ function tviFit(){ const mg = document.querySelector(".mcgrid"); if (mg && inner
 const pyDateLong = () => { const t = pyDate(Date.now()); return `${new Intl.DateTimeFormat("es-PY", { timeZone:PY_TZ, weekday:"long" }).format(new Date())} ${+t.slice(8)} de ${MONTHS_ES[+t.slice(5, 7) - 1]}`.replace(/^./, c => c.toUpperCase()); };
 let tvKiosk = (() => { try { return TV_N.includes(+localStorage.getItem("rmh-tvkiosk")) ? +localStorage.getItem("rmh-tvkiosk") : 0; } catch { return 0; } })();
 // v293: tvSolo = una Vista TV abierta a pantalla completa dentro de la app desde su botón (sin número de TV, no queda guardada).
-let tvSolo = "";
-const tvOn = () => !!viewer && (tvKiosk ? can(tvCurView()) : !!tvSolo && can(tvSolo));
+var tvSolo = ""; // var: los permisos lo miran (v303) y se pueden pedir antes de llegar acá
+const tvOn = () => !!viewer && (tvKiosk ? can(tvCurView()) : !!tvSolo && can(tvCurView()));
 // Pantalla completa del navegador entero (no la de un bloque, como el botón de cada Vista TV): así no se corta cuando la
 // pantalla se redibuja con datos nuevos. El aspecto es el mismo que el de la pantalla completa de cada vista (estilos tvkiosk).
 let tvWasFull = false;
@@ -12657,15 +12693,22 @@ function tvFull(){
       : isIOS() ? "Listo: la vista ocupa toda la pantalla. Para esconder también la barra de Safari: Compartir → “Agregar a pantalla de inicio” y abrí la app desde ese ícono."
       : "Listo: la vista ocupa toda la pantalla de la app (el navegador no dejó esconder sus barras)."); }, 900);
 }
-function tvGoFull(view){ tvSolo = view; tvFull(); render(); window.scrollTo(0, 0); }
+function tvGoFull(view){ tvSolo = view; tvAll = { cur:"" }; tvFull(); render(); window.scrollTo(0, 0); }
 function tvOpen(n){ tvKiosk = n; tvSolo = ""; tvAll = { cur:"" }; try { localStorage.setItem("rmh-tvkiosk", n); } catch {} tvFull(); render(); window.scrollTo(0, 0); }
-function tvExit(){ const back = tvSolo; tvKiosk = 0; tvSolo = ""; tvWasFull = false; try { localStorage.removeItem("rmh-tvkiosk"); } catch {} if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); page = isTV() ? "tvpant" : back || "tvconf"; render(); }
+function tvExit(){ const back = tvSolo; tvKiosk = 0; tvSolo = ""; tvWasFull = false; try { localStorage.removeItem("rmh-tvkiosk"); } catch {} if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); page = isTV() ? "tvpant" : back === "tvall" ? "tvjunto" : back || "tvconf"; render(); }
 // Para el usuario TV: los cuatro botones, arriba el logo de Superseis, Delimarket y Stock y abajo “Cerrar sesión” (v270).
 const LOGOUT_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>';
 function pTvPant(){
   return `<div class="tvpant"><img class="tvpmarcas" src="marcas.png" alt="Superseis · Delimarket · Stock"><div class="tvpgrid">${TV_N.map(n => `<button type="button" class="tvpbtn" data-tvopen="${n}" aria-label="TV ${n}: ${esc(tvView(tvCfg(n).v)[1])}"><span class="tvpn">TV ${n}</span></button>`).join("")}</div>
   ${isTV() ? `<button type="button" class="btn tvplogout" data-tvlogout>${LOGOUT_SVG}Cerrar sesión</button>` : ""}</div>`;
 }
+// v303 · “Pantalla TV (todo junto)”: Admin (y Admin total) ve en la app, a pantalla completa, la vuelta entera de lo que muestran
+// la TV 1, la TV 2 y la TV 3 (como la TV 4). Es lo único de Vista TV que tiene Admin.
+function pTvJunto(){
+  return `<div class="tvpant tvjunto"><img class="tvpmarcas" src="marcas.png" alt="Superseis · Delimarket · Stock"><div class="tvpgrid tvpone"><button type="button" class="tvpbtn" data-tvjunto aria-label="Ver todo junto: TV 1, TV 2 y TV 3"><span class="tvpn">Todo junto</span><small>${icon("layers")} TV 1 → TV 2 → TV 3</small></button></div>
+  <p class="note tvjn">Pasa una vuelta entera de lo que muestran la TV 1, la TV 2 y la TV 3, y vuelve a empezar. En la tablet o el celular, tocá los costados para adelantar o volver. “Salir” (arriba a la derecha) para terminar.</p></div>`;
+}
+document.addEventListener("click", e => { if (e.target.closest("[data-tvjunto]") && can("tvjunto")) tvGoFull("tvall"); });
 function pTvConf(){
   const ed = viewer.role === "Admin total" && !window.RMH?.previewing;
   return `<div class="head"><div><h1 class="pmh">${pmIco("monitor")}Pantallas TV</h1><p class="sub">Qué muestra cada televisor de la oficina. En cada TV se entra con el usuario de rol <b>TV</b>, se toca TV 1, TV 2, TV 3 o TV 4 y queda mostrando lo que elijas acá. Si lo cambiás, el televisor se cambia solo en unos segundos.</p></div></div>
@@ -13337,10 +13380,23 @@ function pubBrandFix(){
   jobs.forEach(j => { if (j.area !== "Diseño" || !j.pubs?.length) return; const bs = jobBrands(j); if (bs.length !== 1) return;
     jobPubsOf(j).forEach(x => { if (x.fromJob === j.id && x.brand !== bs[0]) x.brand = bs[0]; }); });
 }
+// v302 · Quién se ocupa del pedido: en Diseño, el diseñador y la CM que lo publica; en Contenidos, la CM (lo arma y lo publica).
+// Se copia al pedido (p.team) desde la app de Admin total o del CM, porque el comprador no ve los trabajos de Diseño ni de CM.
+const pcTeamOf = j => { const who = n => n && n !== "Sin asignar" ? n : "";
+  return j.area === "Contenidos" ? { dg:"", cm:who(j.owner) } : { dg:who(j.owner), cm:who(j.pubCm || jobPubsOf(j)[0]?.cm) }; };
 function pcSync(){
   if (!viewer || !["Admin total", "CM"].includes(viewer.role) || window.RMH?.previewing || !PEDIDOS_COM.length) return;
-  PEDIDOS_COM.forEach(p => { if (pcFinal(p) || !p.job) return; const j = jobById(p.job);
-    if (j && jobPubsOf(j).some(x => ["Programado", "Publicado", "Pautado"].includes(x.status))) pcSetSt(p, "Finalizado"); });
+  PEDIDOS_COM.forEach(p => { if (!p.job) return; const j = jobById(p.job); if (!j) return;
+    const t = pcTeamOf(j); if ((p.team?.dg || "") !== t.dg || (p.team?.cm || "") !== t.cm) p.team = t;
+    if (!pcFinal(p) && jobPubsOf(j).some(x => ["Programado", "Publicado", "Pautado"].includes(x.status))) pcSetSt(p, "Finalizado"); });
+}
+function pcTeam(p){
+  const j = p.job && jobById(p.job), t = j ? pcTeamOf(j) : p.team || { dg:"", cm:"" }, cont = (j ? j.area : p.area) === "Contenidos", com = isComercial();
+  const who = (n, rol, what) => { const pp = PEOPLE.find(x => x.name === n);
+    return `<div class="pcwho">${pp ? avatarHTML(pp, "sm") : `<span class="pcwho0">${icon("user-round")}</span>`}<div><span>${rol}</span><b>${n ? esc(n) : "Todavía sin asignar"}</b><small>${n ? what : "Marketing lo asigna en estos días"}</small></div></div>`; };
+  const body = !p.job ? `<p class="note" style="margin:0">${pcFinal(p) ? "Este pedido no pasó a Diseño ni a CM." : `Cuando Marketing apruebe el pedido, acá ${com ? "vas a ver" : "se ve"} quién lo diseña y quién lo publica.`}</p>`
+    : `<div class="pcteam">${cont ? who(t.cm, "Community Manager", "Arma el contenido gráfico y lo publica") : who(t.dg, "Diseño gráfico", "Hace el diseño") + who(t.cm, "Community Manager", "Lo publica en las redes")}</div>`;
+  return `<section class="panel"><h2 class="pmh">${pmIco("users")}Quién se ocupa${com ? " de tu pedido" : ""}</h2>${body}</section>`;
 }
 // Ventanas emergentes: a Admin total, cada pedido nuevo; al comprador, cada pedido suyo que se publicó (un objeto fijo por pedido).
 function pcPopItems(){
@@ -13430,6 +13486,7 @@ function pcDetail(p){
   ${!isComercial() && j ? `<section class="panel"><h2 class="pmh">${pmIco("route")}Dónde está</h2><p style="margin:0 0 8px">${j.area === "Contenidos" ? "Gestión de Contenidos (CM)" : "Diseño gráfico"} · <b>${esc(j.title)}</b> · ${esc(j.owner || "Sin asignar")} · ${esc(j.status)}${jobPubsOf(j).length ? " · publicación: " + jobPubsOf(j).map(x => `${esc(x.cm || "")} ${dm(x.date)} (${esc(x.status)})`).join(", ") : ""}</p>
     <div class="chips"><button type="button" class="btn" data-pcjob="${esc(j.id)}">${icon("eye")} Ver el trabajo</button></div><p class="note" style="margin:8px 0 0">Pasa solo a Finalizado cuando el CM deja la publicación Programada, Publicada o Pautada.</p></section>` : ""}
   ${!isComercial() && p.job && !j ? `<p class="note">${icon("triangle-alert")} El trabajo que salió de este pedido ya no está (lo borraron).${at ? ` Podés volver a pasarlo:` : ""}</p>${at ? `<div class="chips"><button type="button" class="btn" data-pcderive="Diseño">${icon("palette")} Pasar a Diseño gráfico</button><button type="button" class="btn" data-pcderive="Contenidos">${icon("shapes")} Pasar a CM</button></div>` : ""}` : ""}
+  ${pcSt(p) === "No ejecutable" ? "" : pcTeam(p)}
   <section class="panel"><h2 class="pmh">${pmIco("clipboard-list")}El pedido</h2><dl class="pcdl">
     ${row("Supermercados", (p.brands || []).map(brandTag).join(" "))}${row("Marcas", esc(p.marcas || ""))}${row("Qué necesita", esc(p.pedido === "Otro" ? p.pedOtro || "Otro" : p.pedido || ""))}
     ${row("Publicar el", p.date ? `<b>${dm(p.date)}</b> (${["domingo","lunes","martes","miércoles","jueves","viernes","sábado"][new Date(p.date + "T12:00").getDay()]})` : "")}${row("Vigencia", esc(pcRange(p)))}${row("Cargado por", esc(p.byName || ""))}</dl></section>
@@ -13442,9 +13499,10 @@ function pcDetail(p){
 const pcAsk = p => p.pedido === "Otro" ? p.pedOtro || "Otro" : p.pedido || "";
 function pcTable(list){
   const adm = !isComercial();
-  return `<div class="tw pctw"><table><thead><tr><th>Pedido</th><th>Supermercado</th><th>Qué pide</th>${adm ? "<th>Comprador</th>" : ""}<th>Pedido el</th><th>Publicar el</th><th>Vigencia</th><th>Estado</th></tr></thead><tbody>
+  const team = p => { const t = (p.job && jobById(p.job) ? pcTeamOf(jobById(p.job)) : p.team) || {}; return [t.dg, t.cm].filter(Boolean).map(n => esc(n.split(" ")[0])).join(" · ") || (p.job ? "Sin asignar" : "—"); }; // v302
+  return `<div class="tw pctw"><table><thead><tr><th>Pedido</th><th>Supermercado</th><th>Qué pide</th>${adm ? "<th>Comprador</th>" : "<th>Quién lo hace</th>"}<th>Pedido el</th><th>Publicar el</th><th>Vigencia</th><th>Estado</th></tr></thead><tbody>
     ${list.map(p => `<tr class="${pcSt(p) === "Finalizado" ? "pub" : pcSt(p) === "No ejecutable" ? "nox" : ""}" data-pcopen="${esc(p.id)}" role="button" tabindex="0" title="Tocá para ver el pedido"><td><b>${esc(p.title)}</b>${p.demo ? ` <span class="exbadge sm">Ejemplo · no se guarda</span>` : ""}${pcUnread(p).length ? ` <span class="pcnew">${icon("message-circle")} ${pcUnread(p).length}</span>` : (p.msgs || []).length ? ` <span class="pcnew old">${icon("message-circle")} ${p.msgs.length}</span>` : ""}${p.marcas ? `<small>${esc(p.marcas)}</small>` : ""}</td>
-      <td><div class="chips" style="flex-wrap:nowrap">${(p.brands || []).map(brandTag).join("")}</div></td><td>${esc(pcAsk(p))}</td>${adm ? `<td>${esc(p.byName || "")}</td>` : ""}
+      <td><div class="chips" style="flex-wrap:nowrap">${(p.brands || []).map(brandTag).join("")}</div></td><td>${esc(pcAsk(p))}</td>${adm ? `<td>${esc(p.byName || "")}</td>` : `<td>${team(p)}</td>`}
       <td class="num">${p.at ? dm(String(p.at).slice(0, 10)) : ""}</td><td class="num"><b>${p.date ? dm(p.date) : "Sin fecha"}</b></td><td>${esc(pcRange(p))}</td><td>${pcPill(p)}</td></tr>`).join("")}
   </tbody></table></div>`;
 }
@@ -13566,7 +13624,7 @@ function pcToJob(p, area){
   jobUI.ficha = null; jobUI.form = { mode:"new", job }; render(); window.scrollTo(0, 0);
   toast(`Completá lo que falte y tocá Guardar: queda en ${area === "Contenidos" ? "Gestión de Contenidos" : "Diseño gráfico"}.`);
 }
-const PAGES = { tvpant:pTvPant, tvconf:pTvConf, postext:pPlanTxt, pedcom:pPedCom, gcm:pGestCM, calact:pCalAct, contenidos:pContenidos, escraches:pEscraches, bienvenida:pBienvenida, ideas:pIdeas, inbox:pInbox, reclamos:pReclamos, noticias:pNoticias, comercial:pComercial, tendg:() => pTend("dg"), tencm:() => pTend("cm"), paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), caldg:pCalDG, calcm:pPlan, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, aviso:pAviso, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
+const PAGES = { tvpant:pTvPant, tvjunto:pTvJunto, tvconf:pTvConf, postext:pPlanTxt, pedcom:pPedCom, gcm:pGestCM, calact:pCalAct, contenidos:pContenidos, escraches:pEscraches, bienvenida:pBienvenida, ideas:pIdeas, inbox:pInbox, reclamos:pReclamos, noticias:pNoticias, comercial:pComercial, tendg:() => pTend("dg"), tencm:() => pTend("cm"), paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), caldg:pCalDG, calcm:pPlan, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, aviso:pAviso, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
 
 /* ---------- render ---------- */
 // Barra de pestañas abajo (celular), como en cualquier app: lo que más usa cada rol + “Más” para el menú completo.
@@ -14071,6 +14129,23 @@ const comGuide = k => COM_GUIDE[k] ? `<p class="comguide">${icon("info")}<span><
 // Producto, precios y descuento en texto, para pegar donde haga falta (un producto: una línea por dato; la lista: columnas).
 const comPcTxt = i => comPct(i);
 const comCopyTxt = i => [comName(i), comPvpTxt(i) && i.of !== i.pvp ? `Antes: ${comPvpTxt(i)}` : "", `Oferta: ${comOfTxt(i)}`, comPcTxt(i) ? `Descuento: ${comPcTxt(i)}` : ""].filter(Boolean).join("\n");
+// v304 · Check en cada fila: cada uno marca a mano la línea que ya cargó y la fila queda en verde. Es personal: se guarda en
+// comchk:<persona> y lo ve solo quien lo marcó (en cualquier dispositivo). Los compradores (rol Comercial) no lo tienen.
+const comChkOn = () => !!viewer && !isComercial() && !isTV() && !isRevisor();
+const comChkKey = (sh, i) => (sh?.name || "") + "|" + comKey(i);
+const comChks = fid => (COM_CHECKS[viewer.id] || {})[fid] || {};
+const comChkBtn = (fid, k, on) => `<button type="button" class="cofck${on ? " on" : ""}" role="checkbox" aria-checked="${on}" data-comck="${esc(fid)}" data-ck="${esc(k)}" title="${on ? "Ya la cargaste · tocá para desmarcar" : "Marcala cuando ya cargaste esta línea"}" aria-label="${on ? "Línea ya cargada" : "Marcar la línea como cargada"}">${on ? icon("check") : ""}</button>`;
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-comck]"); if (b && comChkOn()){ e.stopPropagation();
+    const all = COM_CHECKS[viewer.id] = COM_CHECKS[viewer.id] || {}, fid = b.dataset.comck, k = b.dataset.ck, m = all[fid] = all[fid] || {};
+    if (m[k]) delete m[k]; else m[k] = 1; if (!Object.keys(m).length) delete all[fid];
+    if (COMERCIAL.files) Object.keys(all).forEach(id => { if (!COMERCIAL.files[id]) delete all[id]; }); // las ofertas que ya no están
+    render(); window.RMH?.flushNow?.(); return; }
+  const c = e.target.closest("[data-comckclr]"); if (c && comChkOn()){ const fid = c.dataset.comckclr, sn = c.dataset.sn || "", all = COM_CHECKS[viewer.id] || {}, m = all[fid] || {};
+    if (!confirmTap(c, "comckclr:" + fid + sn, "¿Desmarcar todas? Tocá de nuevo")) return;
+    Object.keys(m).forEach(k => { if (k.startsWith(sn + "|")) delete m[k]; }); if (!Object.keys(m).length) delete all[fid];
+    render(); window.RMH?.flushNow?.(); toast("Listo: se desmarcaron las líneas de esta hoja."); }
+});
 const comCopyBtn = id => `<button type="button" class="cofcp" data-comcopy="${esc(id)}" title="Copiar todo: producto y precios" aria-label="Copiar todo: producto y precios">${icon("copy")}</button>`;
 // Cada dato por separado (producto, oferta, precio de antes y descuento): se toca y queda copiado tal como se ve, para pegarlo en la pieza.
 const comF = (txt, what, html, tag = "span") => { if (!txt) return tag === "span" ? html : `<${tag}>${html}</${tag}>`;
@@ -14117,12 +14192,13 @@ function pComercial(){
   const tapaCods = new Set(all.filter(i => i.flag === "Tapa" && i.cod).map(i => i.cod));
   const dupTapa = all.filter(i => i.flag !== "Tapa" && i.cod && tapaCods.has(i.cod) && !/tapa/i.test(i.sec || ""));
   const groupsTop = [["Tapa", "star", "tapa", all.filter(i => i.flag === "Tapa")], ["Redes", "smartphone", "redes", all.filter(i => i.flag === "Zócalo redes")], ["Destacados", "sparkles", "dest", all.filter(i => i.flag === "Destacar")]].filter(g => g[3].length);
-  const row = (i, k) => { const id = f.id + ":" + sheets.indexOf(sh) + ":" + k, open = comUI.open === id, pc = comPct(i);
-    return `<div class="cof${open ? " open" : ""}"><div class="cofr"><div class="cofb${nv ? " nv" : ""}" data-comopen="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">
+  const ckOn = comChkOn(), ckMap = ckOn ? comChks(f.id) : {}, ckN = ckOn ? sh.items.filter(i => ckMap[comChkKey(sh, i)]).length : 0; // v304
+  const row = (i, k) => { const id = f.id + ":" + sheets.indexOf(sh) + ":" + k, open = comUI.open === id, pc = comPct(i), ck = ckOn ? comChkKey(sh, i) : "", on = !!(ck && ckMap[ck]);
+    return `<div class="cof${open ? " open" : ""}${on ? " ok" : ""}"><div class="cofr"><div class="cofb${nv ? " nv" : ""}" data-comopen="${esc(id)}" role="button" tabindex="0" aria-expanded="${open}">
       <span class="cofm">${comFd(i)}${isNew(i) ? `<span class="cnew" title="Se sumó al Excel en la última actualización">Nuevo</span>` : ""}${i.flag ? comFlag(i) : ""}${comTemTag(i)}${i.vars?.length ? `<span class="cvars${comVarDif(i) ? " dif" : ""}">${icon("layers")}${i.vars.length + 1} variantes${comVarDif(i) ? " · con otro precio" : ""}</span>` : ""}</span>${nv ? `<span class="cofv" data-l="Novedad">${comNov(i)}</span>` : ""}
       <span class="cofn" data-l="Antes">${comPvpTxt(i) ? comFp(i, esc(comPvpTxt(i))) : ""}</span>
       <span class="cofo" data-l="Oferta">${comFo(i, esc(comOfTxt(i)))}</span>
-      <span class="cofd2" data-l="${pc ? "Descuento" : ""}">${pc ? comFc(i, comPctTag(pc, 1)) : ""}</span></div>${comCopyBtn(id)}</div>
+      <span class="cofd2" data-l="${pc ? "Descuento" : ""}">${pc ? comFc(i, comPctTag(pc, 1)) : ""}</span></div>${comCopyBtn(id)}${ck ? comChkBtn(f.id, ck, on) : ""}</div>
       ${open ? `<dl class="cofd">${[["Código", i.cod], ["Material", i.mat], ["Sector", comSent(i.sector)], ["Temática", comRaw(i.tem)], ["Reconocimiento", typeof i.rec === "number" ? gs(i.rec) : i.rec], ["Oferta negociada", i.neg], ["Proveedor", comNice(i.prov) + (i.nprov ? " · N.° " + i.nprov : "")], ["Subcategoría", comSent(i.sub)], ["Página del folleto", i.sec ? comSec(i.sec) : ""], ["Destacado", i.flag ? comFlagTxt(i) : ""], ["Novedad", i.nov], ["Descripción del sistema", i.dsis ? comNice(i.dsis) : ""]].filter(([, v]) => v && String(v).trim()).map(([l, v]) => `<dt>${l}</dt><dd>${esc(String(v))}</dd>`).join("")}</dl>${i.vars?.length ? `<div class="cofvar"><b>Mismo cuadro del folleto: ${i.vars.length + 1} variantes</b><ul>${[{ d:i.dsis || i.desc, cod:i.cod, mat:i.mat, pvp:i.pvp, of:i.of }, ...i.vars].map(v => `<li><span>${esc(comNice(v.d))}</span><small>${[v.cod && "Cód. " + v.cod, v.mat && "Mat. " + v.mat].filter(Boolean).map(esc).join(" · ")}</small>${comVarDif(i) ? `<small>${comPvpTxt(v) ? "Antes " + esc(comPvpTxt(v)) + " · " : ""}</small><em>${esc(comVarOf(v))}</em>` : ""}</li>`).join("")}</ul></div>` : ""}` : ""}</div>`; };
   const bySec = []; list.forEach(i => { const k = comSec(i.sec || i.sector); let g = bySec.find(x => x[0] === k); if (!g) bySec.push(g = [k, []]); g[1].push(i); });
   return head + `<div class="comper" role="group" aria-label="Quincena">${chips.map(x => { const st = comState(x); return `<button type="button" class="comchip s-${st} ${x.id === f.id ? "on" : ""}" data-comper="${x.id}" aria-pressed="${x.id === f.id}"><small>${icon(st === "vig" ? "circle-check" : st === "prox" ? "calendar-clock" : "history")}${comStName(st, x)}</small><b>${comRange(x)}</b></button>`; }).join("")}
@@ -14134,8 +14210,8 @@ function pComercial(){
       <div class="comsrc">${f.inDrive === false ? `<span class="comgone">${icon("file-x")} Ya no se encuentra el archivo original en Drive (los datos quedan guardados acá)</span>` : /^[\w-]{10,}$/.test(f.id) ? `<a class="btn sm" href="https://drive.google.com/file/d/${encodeURIComponent(f.id)}/view" target="_blank" rel="noopener">${icon("file-spreadsheet")} Ver Excel original</a>` : ""}<a class="btn sm" href="${comFolderUrl(comKeyOf(f), f.src)}" target="_blank" rel="noopener" title="Abre la carpeta de Drive con los Excel de las ofertas">${icon("folder-open")} Abrir carpeta en Drive</a>${f.backup?.url ? `<a class="btn sm" href="${esc(f.backup.url)}" target="_blank" rel="noopener">${icon("hard-drive")} Respaldo en Drive</a>` : ""}<span class="note">${icon("refresh-cw")} Revisado ${COMERCIAL.syncedAt ? inboxAge(COMERCIAL.syncedAt) : "—"}</span></div>
       ${COMERCIAL.backupScript === false && viewer.role === "Admin total" ? `<p class="note comwarn">${icon("info")} Para que el respaldo se guarde solo en Drive, actualizá el script de Google Drive en Configuración → Integraciones.</p>` : ""}${comFids(comUI.cat).includes(COM_FOLLETOS) && COMERCIAL.src?.[COM_FOLLETOS]?.old && viewer.role === "Admin total" ? `<p class="note comwarn">${icon("info")} Para leer los Excel FINAL de la carpeta «MKT - FOLLETOS», actualizá el script de Google Drive en Configuración → Integraciones.</p>` : ""}${comPending(comUI.cat)}</section>
     ${groupsTop.map(([t, ic, cls, items]) => `<section class="comgrp g-${cls}"><h3 class="comgh">${icon(ic)}<span>${t}</span><small>${items.length}</small></h3>${comGuide(cls)}${cls === "tapa" && dupTapa.length ? `<p class="comdup">${icon("triangle-alert")}<span><b>Revisar:</b> ${dupTapa.length === 1 ? "este producto de tapa también aparece" : "estos productos de tapa también aparecen"} adentro del folleto: ${dupTapa.map(i => `${esc(comName(i))} (${esc(comSec(i.sec || i.sector))})`).join(" · ")}.</span></p>` : ""}<div class="comtop">${items.slice(0, 24).map(i => { const si = sheets.findIndex(x => x.items.includes(i)); return comCard(i, si < 0 ? "" : f.id + ":" + si + ":" + sheets[si].items.indexOf(i)); }).join("")}</div></section>`).join("")}
-    <section class="comlist">
-      <h3 class="comgh" title="Tocá el producto, el precio o el descuento para copiarlo">${icon("list")}<span>Todas las ofertas</span><small>${all.length}</small>${list.length ? `<button type="button" class="btn sm comcpall" data-comcopyall title="Copia producto, precio de antes, oferta y descuento de lo que se ve (con el filtro), para pegar en Excel o en un texto">${icon("copy")} Copiar lista</button>` : ""}</h3>
+    <section class="comlist${ckOn ? " comckon" : ""}">
+      <h3 class="comgh" title="Tocá el producto, el precio o el descuento para copiarlo">${icon("list")}<span>Todas las ofertas</span><small>${all.length}</small>${ckOn ? `<span class="comvk" title="Las líneas que marcaste como cargadas (solo las ves vos)">${icon("check")} ${ckN} de ${sh.items.length} cargadas</span>${ckN ? `<button type="button" class="btn sm comvkclr" data-comckclr="${esc(f.id)}" data-sn="${esc(sh.name || "")}">Desmarcar todas</button>` : ""}` : ""}${list.length ? `<button type="button" class="btn sm comcpall" data-comcopyall title="Copia producto, precio de antes, oferta y descuento de lo que se ve (con el filtro), para pegar en Excel o en un texto">${icon("copy")} Copiar lista</button>` : ""}</h3>
       ${sheets.length > 1 ? `<div class="comtabs" role="tablist">${sheets.map((x, k) => `<button type="button" role="tab" class="${x === sh ? "on" : ""}" aria-selected="${x === sh}" data-comsheet="${k}">${esc(comSheetName(x, k, f))} <span>${x.items.length}</span></button>`).join("")}</div>` : ""}
       <div class="comfil"><input class="base" id="comQ" placeholder="Buscar producto, proveedor o código" value="${esc(comUI.q)}" autocomplete="off">
         <select class="base" data-comsec aria-label="Página"><option value="Todas">Todas las páginas</option>${secs.map(x => `<option ${x === comUI.sec ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>
@@ -14864,7 +14940,7 @@ function render(){
   render.goingBack = false; render.prevPage = page; render.prevFicha = jobUI.ficha; render.prevForm = jobUI.form;
   if (page === "perfil"){ page = "config"; cfgTab = "perfil"; } // Mi Perfil se edita solo en Configuración // y el de redes, dentro de Diseño para Redes
   if (!can(page)) page = isTV() ? "tvpant" : can("dashboard") ? "dashboard" : can("inicio") ? "inicio" : isComercial() ? "comercial" : can("inbox") ? "inbox" : "perfil";
-  if (tvOn()){ const v = tvKiosk ? tvCurView() : tvSolo; if (page !== v) page = v; } // v266: un televisor muestra siempre lo que eligió Admin total (si lo cambia, se cambia solo)
+  if (tvOn()){ const v = tvCurView(); if (page !== v) page = v; } // v266: un televisor muestra siempre lo que eligió Admin total (si lo cambia, se cambia solo)
   document.documentElement.classList.toggle("tvrole", isTV()); document.documentElement.classList.toggle("tvkiosk", tvOn());
   if (isCalPage() && (brandFilter === "Todas" || brandFilter === "Materiales")) brandFilter = myGroups()[0]; // calendarios: una marca a la vez
   if (brandFilter === "Materiales") brandFilter = "Todas"; // Cartelería ahora es su propia sección
@@ -14883,7 +14959,7 @@ function render(){
   const demo = window.RMH?.previewing ? `<div class="panel demo">${icon("info")}<div><b>Vista previa como ${esc(viewer.name)}.</b> <span>Lo que cambies acá no se guarda. Volvé a tu usuario en “ver como” (abajo a la izquierda).</span></div></div>` : "";
   const i = MONTHS_APP.findIndex(m => m.v === MONTH);
   const est = isClosed() ? pill("🔒 Cerrado", "#334155") : isFuture() ? pill("En planificación", "#d946ef") : "";
-  const bar = ["tvpant","tvconf","gcm","calact","usuarios","config","tv","perfil","staff","tvredes","tvimpacto","sugerencias","mensajes","inbox","noticias","notas","prompts","guia","avisos","tendg","tencm","ideas"].includes(page) || (page === "pedcom" && (pcUI.form || pcUI.open || pcUI.view !== "calendario")) ? "" : `<div class="monthbar"><div class="mb-c"><b>${monthLabel(MONTH)}</b>${est}</div><div class="mb-n"><button class="btn" data-month="-1" ${i === 0 ? "disabled" : ""}>‹ Anterior</button><button class="btn" data-month="1" ${i === MONTHS_APP.length-1 ? "disabled" : ""}>Siguiente ›</button></div></div>`;
+  const bar = ["tvpant","tvjunto","tvconf","gcm","calact","usuarios","config","tv","perfil","staff","tvredes","tvimpacto","sugerencias","mensajes","inbox","noticias","notas","prompts","guia","avisos","tendg","tencm","ideas"].includes(page) || (page === "pedcom" && (pcUI.form || pcUI.open || pcUI.view !== "calendario")) ? "" : `<div class="monthbar"><div class="mb-c"><b>${monthLabel(MONTH)}</b>${est}</div><div class="mb-n"><button class="btn" data-month="-1" ${i === 0 ? "disabled" : ""}>‹ Anterior</button><button class="btn" data-month="1" ${i === MONTHS_APP.length-1 ? "disabled" : ""}>Siguiente ›</button></div></div>`;
   const viewKey = [page, MONTH, viewer.id, calCM, reportTab, redesBrand, brandFilter, jobUI.view, cmUI.tview, cartUI.view, soloYo].join("|");
   if (animate0(page)) { jobUI.owner = "Todos"; jobUI.q = ""; if (!stagesOf(jobArea()).includes(jobUI.status)) jobUI.status = jobUI.status === "Todos" ? "Todos" : "Activos"; }
   const animate = viewKey !== render.lastKey; render.lastKey = viewKey; if (animate) render.visit = (render.visit || 0) + 1;
@@ -14998,8 +15074,8 @@ document.addEventListener("click", e => {
 function setJobStatus(j, st){
   const prev = j.status; if (prev === st) return; j.status = st;
   if (st === VAL_COM) j.valFrom = prev; else if (prev === VAL_COM) delete j.valFrom; // para poder volver atrás
-  if (HOLD_ST.includes(st)){ if (!HOLD_ST.includes(prev)) j.holdFrom = prev; } else delete j.holdFrom; // v299: para reanudarlo donde estaba
-  if ((HOLD_ST.includes(st) || HOLD_ST.includes(prev)) && j.owner && j.owner !== viewer.name && !j.ex)
+  holdMark(j, prev, st); // v299: para reanudarlo donde estaba; v301: sin más avisos a quien lo hace
+  if ((st === CANCEL || HOLD_ST.includes(prev)) && j.owner && j.owner !== viewer.name && !j.ex) // v301: poner en pausa ya no le avisa (le queda como tarea en pausa)
     notify({ to:j.owner, type:"nota", job:j.id, who:viewer.name, text:st === PAUSE ? "Lo puso En pausa: por ahora no se trabaja." : st === CANCEL ? "Lo canceló: ya no se hace." : `Lo reanudó: sigue en ${st}${j.area !== "CM" && j.due ? ` · entrega el ${dm(j.due)}` : ""}${(j.area === "CM" ? j.due : j.pubDate) ? ` · se publica el ${dm(j.area === "CM" ? j.due : j.pubDate)}` : ""}.` });
   if (j.status === "Aprobado" && !j.approved) j.approved = TODAY;
   const first = isFin(j) && !j.delivered;
@@ -15017,7 +15093,7 @@ document.addEventListener("change", e => {
   const pst = e.target.closest("[data-pstatus]");
   if (pst){ const p = postById(pst.dataset.pstatus), to = pst.value;
     if (onHold(p) && !HOLD_ST.includes(to)){ render(); return openReactivate("post", p, to); } // v300
-    p.status = to; render(); toast(`“${p.title}” pasó a ${to}.`); return; }
+    holdMark(p, p.status, to); p.status = to; render(); toast(`“${p.title}” pasó a ${to}.`); return; }
   const jf = e.target.closest("[data-jf]"); if (jf){ jobUI[jf.dataset.jf] = jf.value; render(); return; }
   if (e.target.id === "jSearch"){ jobUI.q = e.target.value; render(); return; }
   if (e.target.id === "jPiece" && jobUI.form && jobUI.form.job.area === "CM"){ const j = jobUI.form.job; readJobForm(j); vidDefaults(j); render(); if (j.piece === OTRO) document.getElementById("jOtro")?.focus(); return; }
