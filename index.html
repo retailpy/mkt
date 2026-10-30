@@ -4332,7 +4332,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v305";
+const APP_VER = "v306";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -6294,7 +6294,7 @@ function dgPanelBlock(scope){
 let aprUI = { g:null };
 const aprOn = () => viewer?.role === "Admin total" && !window.RMH?.previewing;
 const aprJobs = f => () => jobs.filter(j => !j.ex && j.status !== "Cancelado" && seesJob(j) && f(j));
-const aprCopies = () => [...posts, ...CHANNEL_POSTS].filter(p => p.copySt === "rev" && !p.noCopy && seesBrand(p.brand));
+const aprCopies = () => [...posts, ...CHANNEL_POSTS].filter(p => (p.copySt === "rev" || copyDraft(p)) && !p.noCopy && seesBrand(p.brand)); // v306: también los cargados sin mandar
 const APR_GROUPS = [
   ["dg", "Diseño gráfico", "palette", [
     ["dgbof", "Bocetos finalizados", JOB_COLOR["Boceto finalizado"], aprJobs(j => j.area === "Diseño" && j.status === "Boceto finalizado")],
@@ -6306,22 +6306,22 @@ const APR_GROUPS = [
     ["cmcopy", "Copys de publicaciones", "#a855f7", aprCopies],
     ["cmvid", "Videos", "#f97316", aprJobs(j => j.area === "CM" && REVIEW_WAIT.includes(j.status))]]]];
 // Desde cuándo espera: el día que lo mandaron a revisión (el boceto, la corrección, el video o el copy).
-const aprSince = x => x.copySt ? (x.copyLog || []).filter(c => c.k === "send").pop()?.date || "" : (x.changes || []).filter(c => c.kind === "boceto").pop()?.date || x.requestDate || x.due;
+const aprSince = x => x.copySt || copyDraft(x) ? (x.copyLog || []).filter(c => c.k === "send").pop()?.date || "" : (x.changes || []).filter(c => c.kind === "boceto").pop()?.date || x.requestDate || x.due;
 const aprWait = d => { if (!d) return ""; const n = -daysTo(d); return n > 1 ? ` · <em>hace ${n} días</em>` : n === 1 ? " · desde ayer" : " · desde hoy"; };
 function aprRow(x, c){
-  if (x.copySt){ const ref = copyRef(x), where = x.channel ? "Canal de WhatsApp" : `${x.net || "IG"} ${x.format || "Post"}`;
-    return `<div class="row arow ago aprrow" data-ago="pub:${esc(ref)}" role="button" tabindex="0" title="Abrir la publicación"><span class="aico" style="--c:${c}">${icon("file-text")}</span><div class="grow"><div class="t">${esc(x.title)}</div><div class="m">${esc(firstName(x.cm || ""))} · ${esc(x.brand)} · ${esc(where)} · publicar el ${pubWhen(x)}${aprWait(aprSince(x))}</div>${x.copy ? `<div class="aprcp">“${esc(rclShort(copyPlain(x), 140))}”</div>` : ""}</div>
+  if (x.copySt || copyDraft(x)){ const ref = copyRef(x), where = x.channel ? "Canal de WhatsApp" : `${x.net || "IG"} ${x.format || "Post"}`;
+    return `<div class="row arow ago aprrow" data-ago="pub:${esc(ref)}" role="button" tabindex="0" title="Abrir la publicación"><span class="aico" style="--c:${c}">${icon("file-text")}</span><div class="grow"><div class="t">${esc(x.title)}</div><div class="m">${esc(firstName(x.cm || ""))} · ${esc(x.brand)} · ${esc(where)} · publicar el ${pubWhen(x)}${copyDraft(x) ? " · <em>cargado, sin mandar</em>" : aprWait(aprSince(x))}</div>${x.copy ? `<div class="aprcp">“${esc(rclShort(copyPlain(x), 140))}”</div>` : ""}</div>
       <div class="chips aprbtns"><button type="button" class="btn sm primary" data-cpok="${esc(ref)}">✓ Aprobar copy</button><button type="button" class="btn sm" data-cpfix="${esc(ref)}">Pedir corrección</button></div></div>`; }
   return `<div class="row arow ago aprrow" data-ago="job:${esc(x.id)}" role="button" tabindex="0" title="Abrir el pedido"><span class="aico" style="--c:${c}">${icon(x.area === "CM" ? "clapperboard" : contCopy(x) ? "layers" : "image")}</span><div class="grow"><div class="t">${esc(x.title)}</div><div class="m">${esc(jobBrands(x).join(" + "))} · ${esc(cmPiece(x))} · ${esc(firstName(x.owner))}${aprWait(aprSince(x))}${x.rounds ? ` · ronda de correcciones ${x.rounds}` : ""}</div></div>
     <div class="chips aprbtns">${pill(x.status, JOB_COLOR[x.status] || "#94a3b8")}<button type="button" class="btn sm primary" data-jrev="approve:${esc(x.id)}">✓ Aprobar</button><button type="button" class="btn sm" data-jrev="fix:${esc(x.id)}">Pedir cambios</button></div></div>`;
 }
-function aprBlock(first){
+function aprBlock(first){ // v306: "dg" = solo Diseño gráfico (su Panel), "cm" = solo CM (su Panel), "all" = las dos (Inicio)
   if (!aprOn()) return "";
-  const gs = first === "cm" ? APR_GROUPS.slice().reverse() : APR_GROUPS, all = gs.flatMap(g => g[3].map(([k, l, c, f]) => ({ k, l, c, list:f().sort((a, b) => String(aprSince(a) || "9").localeCompare(String(aprSince(b) || "9"))) })));
+  const gs = first === "all" ? APR_GROUPS : APR_GROUPS.filter(g => g[0] === first), all = gs.flatMap(g => g[3].map(([k, l, c, f]) => ({ k, l, c, list:f().sort((a, b) => String(aprSince(a) || "9").localeCompare(String(aprSince(b) || "9"))) })));
   const tot = all.reduce((t, x) => t + x.list.length, 0), G = all.find(x => x.k === aprUI.g);
   const card = x => { const n = x.list.length, old = n ? aprSince(x.list[0]) : ""; return `<button type="button" class="pubst aprst${aprUI.g === x.k ? " on" : ""}${n ? "" : " zero"}" data-aprg="${x.k}" aria-pressed="${aprUI.g === x.k}" style="--c:${x.c}"><b class="num">${n}</b><span>${x.l}</span><small>${!n ? "nada para aprobar" : old ? `el más viejo: ${dm(old)}` : "esperando tu revisión"}</small></button>`; };
   return `<section class="panel aprbox" aria-label="Falta tu aprobación"><div class="aprh"><h2 class="pmh">${pmIco("badge-check")}Falta tu aprobación</h2><span class="aprtot${tot ? "" : " zero"}"><b class="num">${tot}</b> ${tot === 1 ? "cosa" : "cosas"} para revisar o aprobar</span></div>
-    <p class="note aprsub">${icon("lock")} Solo lo ve Admin total. Todo lo que espera tu revisión, de cualquier mes. Tocá un cuadro para ver la lista.</p>
+    <p class="note aprsub">${icon("lock")} Solo lo ve Admin total. ${first === "all" ? "Todo lo que espera tu revisión (Diseño gráfico y CM)" : first === "cm" ? "Lo de CM que espera tu revisión (lo de Diseño gráfico está en su Panel)" : "Lo de Diseño gráfico que espera tu revisión (lo de CM está en su Panel)"}, de cualquier mes. Tocá un cuadro para ver la lista.</p>
     ${gs.map(([gk, gl, gi, items]) => `<div class="aprg"><h3>${icon(gi)} ${gl}</h3><div class="pubsum aprsum">${items.map(([k]) => card(all.find(x => x.k === k))).join("")}</div></div>`).join("")}
     ${G ? `<div class="aprlist"><div class="head"><h3>${esc(G.l)} <span class="note">${G.list.length} · lo más viejo primero</span></h3><button type="button" class="btn sm" data-aprg="${G.k}">${icon("x")} Cerrar</button></div>${G.list.length ? `<div class="list">${G.list.map(x => aprRow(x, G.c)).join("")}</div>` : `<div class="empty">${icon("check")} No hay nada esperando en esta etapa.</div>`}</div>` : ""}</section>`;
 }
@@ -6407,7 +6407,7 @@ function pInicio(){
     const lateP = minePosts.filter(p => postUrgency(p)?.late), soonP = minePosts.filter(p => { const u = postUrgency(p); return u && !u.late && daysTo(p.date) <= 1; });
     if (lateP.length || soonP.length) banner = `<div class="panel alarm-banner"><span class="urg late" style="--u:#ef4444">${ALARM_SVG}Alarma</span><div><b>${lateP.length ? `Tenés ${lateP.length} ${lateP.length === 1 ? "posteo atrasado" : "posteos atrasados"}` : ""}${lateP.length && soonP.length ? " y " : ""}${soonP.length ? `${soonP.length} para publicar entre hoy y mañana` : ""}.</b> <span>La alarma sigue hasta que el posteo quede programado o publicado.</span></div></div>`;
   }
-  return `${prioStrip()}${helloHead(`${monthLabel(MONTH)} · ${viewer.brands ? "tus calendarios: " + viewer.brands.map(g => g === "Otros" ? "Otras marcas" : g).join(", ") : "todas las marcas del grupo"}`)}${banner}${inicioAlertsPanel()}
+  return `${prioStrip()}${helloHead(`${monthLabel(MONTH)} · ${viewer.brands ? "tus calendarios: " + viewer.brands.map(g => g === "Otros" ? "Otras marcas" : g).join(", ") : "todas las marcas del grupo"}`)}${banner}${inicioAlertsPanel()}${aprBlock("all")}
   ${kpiRow(progStats(isAdminAny() ? jobs : jobs.filter(j => j.owner === viewer.name)))}
   ${isAdminAny() ? progressPanel("team") : ""}
     ${viewer.role === "CM" ? (() => { const mine = jobs.filter(j => j.owner === viewer.name && !isIdleJob(j)).sort((a,b) => a.due.localeCompare(b.due)); return `<div class="panel"><div class="head" style="margin-bottom:14px"><h2 style="margin:0" class="pmh">${pmIco("clapperboard")}Mis trabajos de CM</h2>${URG_LEGEND}</div>${mine.length ? `<div class="list">${mine.map(j => jobRow(j)).join("")}</div>` : `<div class="empty">No tenés trabajos abiertos.</div>`}</div>`; })() : ""}
@@ -7158,7 +7158,7 @@ function cmStage(x, small){
   return n ? `<button type="button" class="semchip s${lv}${small ? " sm" : ""}" data-stagemenu="${sk}:${x.id}" title="Etapa: ${esc(x.status)} · tocá para cambiarla">${esc(x.status)} ▾</button>` : `<span class="semchip s${lv}${small ? " sm" : ""}">${esc(x.status)}</span>`;
 }
 // Copy de las publicaciones que salen de un diseño aprobado (como en Planificación).
-const cmCopyTxt = x => x.k === "post" && x.it.fromJob ? (x.it.noCopy ? "Sin copy" : { rev:"Copy por aprobar", fix:"Corregir copy", ok:copyConfOf(x.it) ? "Copy confirmado" : "Copy aprobado" }[copyStOf(x.it)] || "Falta el copy") : "";
+const cmCopyTxt = x => x.k === "post" && x.it.fromJob ? (x.it.noCopy ? "Sin copy" : { rev:"Copy por aprobar", fix:"Corregir copy", ok:copyConfOf(x.it) ? "Copy confirmado" : "Copy aprobado" }[copyStOf(x.it)] || (copyDraft(x.it) ? "Copy cargado sin mandar" : "Falta el copy")) : "";
 const cmLate = x => !x.done && !HOLD_ST.includes(x.status) && x.date && x.date < TODAY;
 const cmNew = x => x.k === "job" ? x.it.owner === viewer.name && isUnseenJob(x.it) : (x.k === "post" || x.k === "canal") && x.it.fromJob && x.it.cm === viewer.name && !x.it.seenBy?.[viewer.id] && !["Programado","Publicado","Pautado"].includes(x.it.status);
 // Abrir el trabajo completo: la misma hoja de siempre (publicación, pedido o actividad).
@@ -8807,9 +8807,12 @@ const copyByRef = ref => { const [k, id] = String(ref).split(":"); return k === 
 // v224: lo que ya estaba publicado antes del circuito del copy (sin copySt) cuenta como “Copy confirmado” (solo se muestra así; no cambia los datos).
 const copyOld = p => !!p?.fromJob && !p.copySt && !p.noCopy && ["Publicado","Pautado"].includes(p.status);
 const copyStOf = p => copyOld(p) ? "ok" : p?.copySt || "";
+// v306: la CM escribió el copy pero no tocó “Copy boceto finalizado”: ya está cargado (no “falta”); Admin total lo puede aprobar igual.
+const copyDraft = p => !!p?.fromJob && !p.noCopy && !copyStOf(p) && (!!copyPlain(p).trim() || /<img/i.test(p.copy || ""));
 const copyConfOf = p => copyOld(p) || !!p?.copyConf;
 const copyStText = p => copyOld(p) ? `${icon("badge-check")} Copy confirmado: ya está publicada` : p.noCopy ? `${icon("ban")} No lleva copy: se publica sin copy, no hace falta la aprobación` : ({ rev:`${icon("hourglass")} Esperando que Admin total apruebe el copy`, fix:`${icon("pencil")} Admin total pidió corregir el copy`, ok:`${icon("badge-check")} ${p.copyConf ? "Copy confirmado por Admin total" : "Copy aprobado"}${p.copyBy ? (p.copyConf ? ` (${esc(firstName(p.copyBy))})` : " por " + esc(firstName(p.copyBy))) : ""}: publicalo el ${pubWhen(p)}` }[p.copySt]
-  || `${icon("file-text")} ${p.cm === viewer?.name ? "Escribí el copy y tocá “Copy boceto finalizado” para que Admin total lo revise" : `${esc(firstName(p.cm || "La CM"))} todavía no mandó el copy`}`);
+  || (copyDraft(p) ? `${icon("file-text")} ${p.cm === viewer?.name ? "Copy cargado: tocá “Copy boceto finalizado” para mandárselo a Admin total" : `${esc(firstName(p.cm || "La CM"))} ya cargó el copy, pero no lo mandó a aprobar${viewer?.role === "Admin total" ? ": lo podés aprobar igual" : ""}`}`
+  : `${icon("file-text")} ${p.cm === viewer?.name ? "Escribí el copy y tocá “Copy boceto finalizado” para que Admin total lo revise" : `${esc(firstName(p.cm || "La CM"))} todavía no mandó el copy`}`));
 // v217: la hoja del copy es la misma hoja tipo Word del pedido (letra, colores, fondo, listas, imágenes) + emojis.
 // Lo que se guarda es HTML (con el fondo al principio, como el texto del pedido). Los copys de v214 eran texto plano.
 const copyIsRich = s => /<[a-z!]/i.test(String(s || ""));
@@ -8880,7 +8883,7 @@ function pubCopyForm(f, p, dj, canal, real, chat){
   const last = [...(p.copyLog || [])].reverse().find(c => c.k === "fix");
   const none = !!p.noCopy, canNone = !!real && canEditPost() && (at || mine) && st !== "ok"; // “No lleva copy” (ej.: una historia): sin hoja ni aprobación
   const noneBtn = canNone ? `<button type="button" class="chip cpnone${none ? " on" : ""}" data-cpnone="${esc(copyRef(real))}" aria-pressed="${none}">${icon("ban")} No lleva copy</button>` : none ? "" : "";
-  const acts = none || !real || !canEditPost() ? "" : at && st === "rev" ? `<button type="button" class="btn" data-cpfix="${esc(copyRef(real))}">${icon("pencil")} Pedir corrección</button><button type="button" class="btn primary" data-cpok="${esc(copyRef(real))}">${icon("check")} Aprobar copy</button>`
+  const acts = none || !real || !canEditPost() ? "" : at && (st === "rev" || copyDraft(p)) ? `<button type="button" class="btn" data-cpfix="${esc(copyRef(real))}">${icon("pencil")} Pedir corrección</button><button type="button" class="btn primary" data-cpok="${esc(copyRef(real))}">${icon("check")} Aprobar copy</button>`
     : at && (st === "" || st === "fix") ? `<button type="button" class="btn primary" data-cpconf="${esc(copyRef(real))}">${icon("badge-check")} Copy confirmado</button>`
     : mine && (st === "" || st === "fix") ? `<button type="button" class="btn primary" data-cpsend="${esc(copyRef(real))}">${icon("send")} ${st === "fix" ? "Copy corregido · boceto finalizado" : "Copy boceto finalizado"}</button>`
     : mine && st === "ok" && !copyOld(p) ? `<button type="button" class="btn" data-cpreopen="${esc(copyRef(real))}">${icon("pencil")} Cambiar el copy</button>` : "";
