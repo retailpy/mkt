@@ -3796,6 +3796,9 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 /* v307 · Informe mensual: Trabajo del equipo */
 .twnote{margin:4px 0 0;display:flex;gap:8px;align-items:flex-start}.twnote svg{flex:none;width:16px;height:16px;margin-top:2px;color:var(--cyan)}
 tr.twtot td{border-top:2px solid var(--line-3)}
+/* v311 · Análisis y recomendaciones */
+.ana{display:flex;flex-direction:column;gap:16px}.anabh{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 -4px}.anabh .note{font-weight:400;font-size:13px}
+.ana td.up{color:#4ade80}.ana td.down{color:#f87171}.ana td a{color:#67e8f9}.ana .tw td{vertical-align:top}.ana .tw td:not(.num){min-width:120px}
 .twper th{letter-spacing:.04em;padding:12px 8px}.twper td{padding:10px 8px}.twper th:first-child,.twper td:first-child{padding-left:14px;min-width:170px}.twper th:last-child,.twper td:last-child{padding-right:14px}.twper td:nth-child(2){white-space:nowrap}
 .twall summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.twall summary::-webkit-details-marker{display:none}.twall summary h2{margin:0}.twall[open] summary h2{margin-bottom:12px}
 td svg{width:15px;height:15px;vertical-align:-2px;color:var(--cyan)}
@@ -4352,7 +4355,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v310";
+const APP_VER = "v311";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -10006,6 +10009,7 @@ const REPORT_TABS = [
   { k:"diseno", ic:"palette", l:"Diseño gráfico", file:"Diseno_grafico", perm:"pedidos", d:"Pedidos del mes, entregados, % a tiempo, detalle por diseñador y por tipo de pieza." },
   { k:"cm", ic:"clapperboard", l:"Community Manager", file:"CM", perm:"plan", d:"Cumplimiento del plan de posteo por marca y por CM, pedidos a CM (videos, copys, pauta) y lo que quedó pendiente." },
   { k:"redes", ic:"smartphone", l:"Redes sociales", file:"Redes_sociales", perm:"redes", d:"Seguidores y crecimiento por marca, top por alcance, audiencia (ciudades, edades, género) y la pauta de Meta Ads." },
+  { k:"analisis", ic:"lightbulb", l:"Análisis y recomendaciones", file:"Analisis_y_recomendaciones", perm:"redes", d:"Qué funcionó en Instagram según Meta (alcance, compartidos, guardados), por marca y las tres juntas: contenidos, formatos, días, horarios, cuántas publicaciones por día y los errores que bajan el alcance." },
 ];
 // v307 · Trabajo del equipo: TODO lo del mes, cada trabajo una vez y a nombre de quien lo hace. Un pedido que pasa por Diseño y
 // después lo publica la CM son dos trabajos: el diseño (del diseñador) y la publicación (de la CM). Mes: el de los pedidos
@@ -10048,6 +10052,163 @@ function repEquipo(){
   <details class="panel twall"><summary><h2>Todos los trabajos del mes</h2><span class="note">${w.length} · tocá para ver la lista completa</span></summary><div class="tw"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Trabajo</th><th>Marca</th><th>Quién lo hace</th><th>Estado</th><th>Sale del pedido</th></tr></thead><tbody>
     ${w.slice().sort((a, b) => String(a.date).localeCompare(String(b.date)) || a.k.localeCompare(b.k)).map(x => `<tr><td class="num">${x.date ? dm(x.date) : "—"}</td><td>${esc(TW_SHORT[x.k])}</td><td>${esc(x.title)}</td><td>${esc(x.brand)}</td><td>${esc(x.crew.join(" + "))}</td><td>${esc(x.st)}${x.done ? " ✓" : ""}</td><td>${esc(x.from)}</td></tr>`).join("")}
   </tbody></table></div></details>`;
+}
+// v311 · Análisis y recomendaciones (como lo haría una CM especializada): con las publicaciones reales de Instagram del mes
+// (Meta: alcance, me gusta, comentarios, compartidos y guardados), por marca y para las tres juntas. Qué tipo de contenido y qué
+// formato llegaron a más gente, qué días y horarios rindieron, cuántas publicaciones por día conviene hacer y los errores que bajan
+// el alcance (ráfagas de publicaciones, la misma pieza repetida, varias promos del mismo día por separado). Las publicaciones con
+// menos de 3 días no entran en las comparaciones: su alcance todavía está creciendo.
+const ANA_MATURE = 3;
+const ANA_DOW = ["lunes","martes","miércoles","jueves","viernes","sábado","domingo"];
+const ANA_BANDS = [["Mañana (antes de las 12)", h => h < 12], ["Mediodía (12 a 15 h)", h => h >= 12 && h < 15], ["Tarde (15 a 19 h)", h => h >= 15 && h < 19], ["Noche (19 h en adelante)", h => h >= 19]];
+const ANA_CATS = [["Sorteos", /sorteo|concurso/], ["Promos con coleccionables", /coleccionable|bellagio/],
+  ["Folleto de ofertas (quincenal o del finde)", /quincenal|ofertas de fin de semana|destacados ya|folleto/],
+  ["Ferias, festivales y degustaciones", /festival|feria|degustaci|show de|especiales para degustar|choripan|choripán|empanada|chipa|s[áa]ndwich/],
+  ["Beneficios (cupones y reintegros)", /cup[óo]n|reintegro|beneficio/], ["Temporada (Halloween, Navidad…)", /halloween|navidad|navideñ|temporada/],
+  ["Descuentos por categoría", /\d+ ?%|descuento|especial de|especial d[íi]a|2x1|3x2/], ["Producto estrella y precio", /imbatible|precio|nuevo ingreso|lleg[óo]|nueva forma|por solo/],
+  ["Marca y entretenimiento", /./]];
+const anaCat = cap => ANA_CATS.find(([, re]) => re.test(String(cap || "").toLowerCase()))[0];
+const anaMed = l => { if (!l.length) return 0; const s = [...l].sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const anaPct = (a, b) => b ? Math.round((a - b) / b * 100) : 0;
+const anaPF = new Intl.DateTimeFormat("en-CA", { timeZone:"America/Asuncion", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", hour12:false, weekday:"short" });
+const anaLocal = ts => { const p = Object.fromEntries(anaPF.formatToParts(new Date(ts)).map(x => [x.type, x.value])), h = +p.hour % 24;
+  return { date:`${p.year}-${p.month}-${p.day}`, h, hm:`${String(h).padStart(2, "0")}:${p.minute}`, dow:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].indexOf(p.weekday) }; };
+const anaTitle = c => { const t = capTitle(c).replace(/^[^\p{L}\p{N}¡¿]+/u, ""), f = t.split(/(?<=[!?.])\s/)[0] || t; return !f ? "(sin texto)" : [...f].length <= 60 ? f : capTrim([...f].slice(0, 60).join("").replace(/\s+\S*$/, "")); };
+const anaKey = cap => String(cap || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9ñ ]+/g, " ").split(/\s+/).filter(w => w.length > 2).slice(0, 6).join(" ");
+function anaRows(b, month = MONTH){
+  const ref = Math.min(Date.now(), Date.parse(META_POSTS.updated || "") || Date.now());
+  const L = igPosts(b, month).filter(x => isNum(x.reach) && x.reach > 0).map(x => { const lo = anaLocal(x.ts), eng = (x.likes || 0) + (x.comments || 0) + (x.shares || 0) + (x.saved || 0);
+    return { ...x, b, ...lo, t:Date.parse(x.ts), cat:anaCat(x.cap), fmt:x.type || "Post", eng, er:eng / x.reach, shr:(x.shares || 0) / x.reach, age:(ref - Date.parse(x.ts)) / 864e5, key:anaKey(x.cap), title:anaTitle(x.cap) }; })
+    .sort((x, y) => x.t - y.t);
+  L.forEach((x, i) => { x.nday = L.filter(y => y.date === x.date).length; x.prev = L[i - 1] || null; x.gap = x.prev ? (x.t - x.prev.t) / 36e5 : 999; x.mature = x.age >= ANA_MATURE; });
+  return L;
+}
+// Lo que dicen los números de una marca (o de varias juntas): medianas, mejores días, horarios, contenidos y los errores del mes.
+function anaStats(L){
+  const M = L.filter(x => x.mature), base = M.length ? M : L, med = l => anaMed(l.map(x => x.reach)), org = base.filter(x => x.cat !== "Sorteos");
+  const group = (keyF, list = base) => { const g = new Map(); list.forEach(x => { const k = keyF(x); if (!g.has(k)) g.set(k, []); g.get(k).push(x); }); return [...g].map(([k, l]) => ({ k, l, n:l.length, med:med(l), sh:anaMed(l.map(x => x.shares || 0)), sv:anaMed(l.map(x => x.saved || 0)), shr:anaMed(l.map(x => x.shr)), er:anaMed(l.filter(x => x.cat !== "Sorteos").map(x => x.er)) })); };
+  const pick = (l, min = 2) => { const ok = l.filter(x => x.n >= min); return (ok.length ? ok : l).sort((a, b) => b.med - a.med); };
+  const cats = group(x => x.cat).sort((a, b) => b.med - a.med), fmts = group(x => x.fmt).sort((a, b) => b.med - a.med);
+  const days = ANA_DOW.map((d, i) => ({ k:d, i, l:base.filter(x => x.dow === i) })).map(x => ({ ...x, n:x.l.length, med:med(x.l) }));
+  const bands = ANA_BANDS.map(([k, f]) => { const l = base.filter(x => f(x.h)); return { k, l, n:l.length, med:med(l) }; });
+  const perDay = [["1 por día", x => x.nday === 1], ["2 por día", x => x.nday === 2], ["3 o más por día", x => x.nday >= 3]].map(([k, f]) => { const l = base.filter(f); return { k, l, n:l.length, days:new Set(l.map(x => x.date)).size, med:med(l) }; });
+  const gaps = [["Menos de 1 hora", x => x.gap < 1], ["De 1 a 4 horas", x => x.gap >= 1 && x.gap < 4], ["4 horas o más (o el primero del día)", x => x.gap >= 4]].map(([k, f]) => { const l = base.filter(f); return { k, l, n:l.length, med:med(l) }; });
+  // Errores: ráfagas (otra publicación a menos de 1 h), días con 3 o más, la misma pieza repetida, y varias promos del mismo día por separado.
+  const bursts = L.filter(x => x.prev && x.gap < 1 && x.prev.date === x.date && x.prev.b === x.b);
+  const crowded = [...new Set(L.map(x => x.b + "|" + x.date))].map(k => L.filter(x => x.b + "|" + x.date === k)).filter(l => l.length >= 3);
+  const reps = [...new Set(L.map(x => x.b + "|" + x.key))].map(k => L.filter(x => x.b + "|" + x.key === k)).filter(l => l.length >= 2 && l[0].key);
+  const sameDayReps = reps.filter(l => new Set(l.map(x => x.date)).size < l.length), laterReps = reps.filter(l => l.length >= 2 && l[l.length - 1].mature && new Set(l.map(x => x.date)).size === l.length);
+  const splitPromos = crowded.concat([...new Set(L.map(x => x.b + "|" + x.date))].map(k => L.filter(x => x.b + "|" + x.date === k)).filter(l => l.length === 2))
+    .map(l => l.filter(x => /Descuentos|Ferias|Temporada/.test(x.cat))).filter(l => l.length >= 2);
+  return { L, M, base, n:L.length, nm:M.length, recent:L.length - M.length, med:med(base), sum:L.reduce((a, x) => a + x.reach, 0), er:anaMed(org.map(x => x.er)), shr:anaMed(org.map(x => x.shr)),
+    cats, fmts, days, bands, perDay, gaps, bursts, crowded, sameDayReps, laterReps, splitPromos, bestCat:pick(cats.filter(c => c.k !== "Sorteos"))[0], worstCat:pick(cats.filter(c => c.k !== "Sorteos")).slice(-1)[0], sorteos:cats.find(c => c.k === "Sorteos"), bestFmt:pick(fmts)[0],
+    bestDays:pick(days.filter(d => d.n)).slice(0, 2), emptyDays:days.filter(d => !d.n), bestBand:pick(bands.filter(x => x.n))[0], topShare:[...org].sort((a, b) => b.shr - a.shr)[0] };
+}
+const anaFew = d => d.n < 4 ? " — pocos datos, tomalo con cuidado" : "";
+const anaWorstBurst = l => [...l].sort((a, b) => a.reach / a.prev.reach - b.reach / b.prev.reach)[0]; // la ráfaga en la que más perdió la segunda
+const anaBurstTxt = x => x.reach < x.prev.reach * .8 ? "Se tapan entre ellas: Instagram suele mostrarle solo una a la misma persona." : "Esta vez las dos llegaron bien, pero es un riesgo: Instagram suele mostrarle solo una a la misma persona.";
+const anaDM = x => `${+x.date.slice(8)}/${+x.date.slice(5, 7)}`;
+// Cuántas publicaciones del feed por día: cuentas chicas (alcance mediano de menos de 1.500 personas), 1; las demás, 2, salvo que
+// los días con 2 hayan rendido bastante menos que los días con 1. Siempre separadas, y las historias para recordar.
+function anaPerDay(s){
+  const one = s.perDay[0], two = s.perDay[1], three = s.perDay[2], small = s.med < 1500;
+  const max = small || (one.n >= 2 && two.n >= 2 && two.med < one.med * .8) ? 1 : 2;
+  const why = [three.n && (one.n || two.n) ? `Los días con 3 o más publicaciones, cada una llegó a ${dots(three.med)} personas (mediana), contra ${dots(anaMed([...one.l, ...two.l].map(x => x.reach)))} cuando hubo 1 o 2 (${anaPct(three.med, anaMed([...one.l, ...two.l].map(x => x.reach)))} %).` : "",
+    one.n && two.n ? `Con 1 publicación en el día: ${dots(one.med)} personas cada una; con 2: ${dots(two.med)} (${anaPct(two.med, one.med) > 0 ? "+" : ""}${anaPct(two.med, one.med)} %).` : "",
+    small ? `Es una cuenta chica (cada publicación llega a unas ${dots(s.med)} personas): Instagram le muestra pocas publicaciones por día a la misma gente, así que más piezas el mismo día se reparten el mismo público.` : ""].filter(Boolean).join(" ");
+  return { max, txt:`<b>${max === 1 ? "1 publicación por día en el feed" : "Hasta 2 publicaciones por día en el feed"}</b>${max === 1 ? " (2 solo en un día de activación grande, separadas 5 horas o más)" : ", separadas 4 a 5 horas (ej.: 11:00 y 19:30)"}; las historias no compiten con el feed: 3 a 6 por día para recordar la promo. ${why}` };
+}
+function anaRecs(s, b){
+  const pd = anaPerDay(s), r = [["Cuántas por día", pd.txt]];
+  if (s.bursts.length){ const x = anaWorstBurst(s.bursts); r.push(["Separación", `Nunca dos publicaciones del feed con menos de 3 a 4 horas. Este mes hubo ${s.bursts.length} ${s.bursts.length === 1 ? "publicación subida" : "publicaciones subidas"} a menos de 1 hora de otra (ej.: ${anaDM(x)} a las ${x.prev.hm} y ${x.hm}: ${dots(x.prev.reach)} y ${dots(x.reach)} personas). ${anaBurstTxt(x)}`]); }
+  else r.push(["Separación", "Mantener 4 horas o más entre publicaciones del feed: este mes no hubo ráfagas."]);
+  if (s.bestDays.length) r.push(["Mejores días", `${s.bestDays.map(d => `<b>${d.k}</b> (${dots(d.med)} personas por publicación, ${d.n} ${d.n === 1 ? "publicación" : "publicaciones"}${anaFew(d)})`).join(" y ")}.${s.emptyDays.length ? ` Casi no se usó: ${s.emptyDays.map(d => d.k).join(", ")}; ahí hay menos competencia: probalos con reels o contenido de marca.` : ""}`]);
+  if (s.bestBand) r.push(["Mejor horario", `<b>${s.bestBand.k}</b>: ${dots(s.bestBand.med)} personas por publicación (${s.bestBand.n} ${s.bestBand.n === 1 ? "publicación" : "publicaciones"}). Los reels rinden más de 18 a 21 h, cuando la gente está en el celular.`]);
+  if (s.bestCat) r.push(["Contenido que más llega", `<b>${s.bestCat.k}</b> (${dots(s.bestCat.med)} personas, ${s.bestCat.n} ${s.bestCat.n === 1 ? "publicación" : "publicaciones"}).${s.topShare ? ` Lo más compartido: “${esc(s.topShare.title)}” (${anaDM(s.topShare)}): ${dots(s.topShare.shares || 0)} veces, ${(s.topShare.shr * 100).toFixed(1)} de cada 100 que lo vieron; lo que se comparte llega a gente que todavía no sigue la cuenta.` : ""}`]);
+  if (s.worstCat && s.worstCat !== s.bestCat) r.push(["Contenido que menos rinde", `<b>${s.worstCat.k}</b> (${dots(s.worstCat.med)} personas). Probá pasarlo a reel o carrusel con una portada fuerte (precio grande, producto en primer plano) o sumarlo a otra pieza en vez de publicarlo solo.`]);
+  if (s.bestFmt){ const f2 = s.fmts.filter(f => f !== s.bestFmt).sort((a, b) => b.med - a.med)[0], close = f2 && f2.med >= s.bestFmt.med * .9;
+    r.push(["Formato", `<b>${s.bestFmt.k}</b> es el que más llega (${dots(s.bestFmt.med)} personas por publicación). ${s.fmts.map(f => `${f.k}: ${dots(f.med)}`).join(" · ")}.${close ? " Las diferencias son chicas: en esta cuenta pesa más el contenido que el formato." : ""}`]); }
+  if (s.sorteos) r.push(["Sorteos", `Llegaron a ${dots(s.sorteos.med)} personas (lo normal de la marca: ${dots(s.med)}), pero casi toda la interacción es por la mecánica (comentar y etiquetar). Sirven para sumar seguidores: no más de 1 por mes por marca, con un premio ligado a lo que se vende.`]);
+  r.push(["Activaciones (descuentos, ferias, promos)", `Una sola publicación principal en el feed 2 o 3 días antes (carrusel o reel, de 18 a 21 h), historias con cuenta regresiva el día anterior y el mismo día, y un reel de cómo se vivió después. Si hay varias promos el mismo día, juntalas en un carrusel (hasta 20 fotos) en vez de publicarlas por separado.`]);
+  return r;
+}
+function anaErrors(s){
+  const e = [];
+  if (s.bursts.length){ const x = anaWorstBurst(s.bursts);
+    e.push(["Publicaciones en ráfaga", `${s.bursts.length} ${s.bursts.length === 1 ? "publicación salió" : "publicaciones salieron"} a menos de 1 hora de otra. Ej.: ${anaDM(x)}, “${esc(x.prev.title)}” (${x.prev.hm}, ${dots(x.prev.reach)} personas) y “${esc(x.title)}” (${x.hm}, ${dots(x.reach)}). ${anaBurstTxt(x)}`, "Separar 4 horas o más, o juntarlas en un carrusel."]); }
+  const spDays = new Set(s.splitPromos.map(l => l[0].b + l[0].date)); // si ya sale como “varias promos por separado”, no se repite
+  const many = (l, what) => l.length > 1 ? `${l.length} ${what}: ${l.map(x => anaDM(x[0])).join(", ")}. El más cargado, ` : "";
+  const cr = s.crowded.filter(l => !spDays.has(l[0].b + l[0].date)).sort((a, b) => b.length - a.length);
+  if (cr.length){ const l = cr[0]; e.push(["Muchas publicaciones el mismo día", `${many(cr, "días")}${anaDM(l[0])}: ${l.length} publicaciones (${l.map(x => `${x.hm} → ${dots(x.reach)}`).join(" · ")}).${l.some(x => !x.mature) ? " (Algunas todavía están sumando alcance.)" : ""}`, "Máximo 1 o 2 en el feed; lo demás, en historias."]); }
+  s.sameDayReps.forEach(l => e.push(["La misma pieza repetida el mismo día", `“${esc(l[0].title)}”: ${l.length} veces (${l.map(x => `${anaDM(x)} ${x.hm} → ${dots(x.reach)}`).join(" · ")}).`, "Una sola publicación (carrusel con todas las páginas) y fijarla en el perfil o en destacadas."]));
+  s.laterReps.forEach(l => { const a = l[0], z = l[l.length - 1], p = anaPct(z.reach, a.reach); if (p > -15) return;
+    e.push(["La misma pieza vuelta a publicar", `“${esc(a.title)}”: ${anaDM(a)} → ${dots(a.reach)} personas; ${anaDM(z)} → ${dots(z.reach)} (${p} %).`, "Si se repite la promo, cambiar la pieza o el formato (de imagen a reel) y esperar 2 semanas o más."]); });
+  const sp = [...s.splitPromos].sort((a, b) => b.length - a.length);
+  if (sp.length){ const l = sp[0]; e.push(["Varias promos del mismo día por separado", `${many(sp, "días")}${anaDM(l[0])}: ${l.map(x => `${x.hm} “${esc(x.title)}” (${dots(x.reach)})`).join(", ")}.${l.some(x => !x.mature) ? " (Algunas todavía están sumando alcance.)" : ""}`, "Un carrusel “Este finde en …” con todas las promos, y cada una en una historia."]); }
+  if (s.recent) e.push(["Para tener en cuenta (no es un error)", `${s.recent} ${s.recent === 1 ? "publicación tiene" : "publicaciones tienen"} menos de ${ANA_MATURE} días: su alcance todavía sube y no entran en las comparaciones.`, "Mirarlas de nuevo en unos días."]);
+  return e;
+}
+// Misma promo en dos marcas del grupo, el mismo día y casi a la misma hora: le hablan a parte del mismo público y compiten entre ellas.
+function anaCross(all){
+  const out = [], words = x => new Set(String(x.cap || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter(w => w.length >= 5));
+  all.forEach((x, i) => all.slice(i + 1).forEach(y => { if (x.b === y.b || x.date !== y.date || Math.abs(x.t - y.t) > 3 * 36e5) return; const a = words(x), c = words(y), n = [...a].filter(w => c.has(w)).length;
+    if (n >= 4 && n / Math.min(a.size, c.size) >= .3) out.push([x, y]); }));
+  return out;
+}
+const ANA_TXT = /^(Fecha|Día|Formato|Tipo|Publicación|Tema|Recomendación|Error|Qué|Cuándo|Horario|Marca|Contenido|Mejor|Cuántas|Separación)/; // columnas de texto (las demás son números)
+const anaTbl = (h, rows) => `<div class="tw"><table><thead><tr>${h.map(x => `<th${ANA_TXT.test(x) ? "" : ' class="r"'}>${x}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+const anaCmp = (v, base) => { const p = anaPct(v, base); return !base || !v ? `<td class="r note">—</td>` : `<td class="r num ${p >= 10 ? "up" : p <= -10 ? "down" : ""}">${p > 0 ? "+" : ""}${p} %</td>`; };
+function anaBrand(b, s){
+  if (!s.n) return `<section class="ana"><h2 class="pmh anabh">${brandTag(b)}</h2><div class="panel"><div class="empty">Todavía no hay publicaciones de Instagram de ${esc(b)} en ${monthName(MONTH)} (se traen de Meta todos los días).</div></div></section>`;
+  const t = (h2, body) => `<div class="panel"><h2>${esc(b)} · ${h2}</h2>${body}</div>`, row = c => `<tr>${c.join("")}</tr>`, td = v => `<td class="r num">${v}</td>`;
+  const pd = anaPerDay(s), err = anaErrors(s);
+  return `<section class="ana"><h2 class="pmh anabh">${brandTag(b)}<span class="note">${s.n} publicaciones de Instagram en ${monthName(MONTH)}${s.recent ? ` · ${s.nm} con el alcance ya asentado (3 días o más)` : ""}</span></h2>
+  <div class="grid kpis">
+    <div class="panel kpi"><div class="l">Alcance por publicación</div><div class="n">${dots(s.med)}</div><div class="d">personas (mediana) · ${dots(s.sum)} en el mes</div></div>
+    <div class="panel kpi"><div class="l">Interacción</div><div class="n">${(s.er * 100).toFixed(1)} %</div><div class="d">me gusta, comentarios, compartidos y guardados sobre el alcance (sin sorteos)</div></div>
+    <div class="panel kpi"><div class="l">Compartidos</div><div class="n">${(s.shr * 100).toFixed(2)} %</div><div class="d">de cada 100 que lo vieron, cuántos lo compartieron</div></div>
+    <div class="panel kpi"><div class="l">Recomendado por día</div><div class="n">${pd.max}</div><div class="d">${pd.max === 1 ? "publicación" : "publicaciones"} en el feed + historias</div></div>
+  </div>
+  ${t("Qué funcionó", anaTbl(["Fecha", "Día y hora", "Formato", "Tipo de contenido", "Publicación", "Alcance", "Compartidos", "Guardados"], [...s.L].sort((x, y) => y.reach - x.reach).slice(0, 5).map(x => row([`<td class="num">${anaDM(x)}</td>`, `<td>${ANA_DOW[x.dow]} ${x.hm}</td>`, `<td>${esc(x.fmt)}</td>`, `<td>${esc(x.cat)}</td>`, `<td>${x.link ? `<a href="${esc(x.link)}" target="_blank" rel="noopener">${esc(x.title)}</a>` : esc(x.title)}</td>`, td(dots(x.reach)), td(dots(x.shares || 0)), td(dots(x.saved || 0))]))))}
+  ${t("Contenidos", anaTbl(["Tipo de contenido", "Publicaciones", "Alcance (mediana)", "Compartidos (mediana)", "Guardados (mediana)", "Contra la marca"], s.cats.map(c => row([`<td>${esc(c.k)}</td>`, td(c.n), td(dots(c.med)), td(dots(c.sh)), td(dots(c.sv)), anaCmp(c.med, s.med)]))))}
+  ${t("Formatos", anaTbl(["Formato", "Publicaciones", "Alcance (mediana)", "Interacción", "Contra la marca"], s.fmts.map(f => row([`<td>${esc(f.k)}</td>`, td(f.n), td(dots(f.med)), td((f.er * 100).toFixed(1) + " %"), anaCmp(f.med, s.med)]))))}
+  ${t("Días", anaTbl(["Día", "Publicaciones", "Alcance (mediana)", "Contra la marca"], s.days.map(d => row([`<td>${d.k}</td>`, td(d.n || "—"), td(d.n ? dots(d.med) : "—"), d.n ? anaCmp(d.med, s.med) : `<td class="r note">sin publicaciones</td>`]))))}
+  ${t("Horarios", anaTbl(["Horario", "Publicaciones", "Alcance (mediana)", "Contra la marca"], s.bands.map(d => row([`<td>${d.k}</td>`, td(d.n || "—"), td(d.n ? dots(d.med) : "—"), d.n ? anaCmp(d.med, s.med) : `<td class="r note">—</td>`]))))}
+  ${t("Publicaciones por día", anaTbl(["Cuántas ese día", "Días", "Publicaciones", "Alcance de cada una (mediana)", "Contra 1 por día"], s.perDay.map(d => row([`<td>${d.k}</td>`, td(d.days || "—"), td(d.n || "—"), td(d.n ? dots(d.med) : "—"), d.n && s.perDay[0].n ? anaCmp(d.med, s.perDay[0].med) : `<td class="r note">—</td>`]))) + anaTbl(["Separación con la anterior", "Publicaciones", "Alcance (mediana)", "Contra la marca"], s.gaps.map(d => row([`<td>${d.k}</td>`, td(d.n || "—"), td(d.n ? dots(d.med) : "—"), d.n ? anaCmp(d.med, s.med) : `<td class="r note">—</td>`]))))}
+  ${t("Recomendaciones", anaTbl(["Tema", "Recomendación"], anaRecs(s, b).map(([k, v]) => row([`<td><b>${k}</b></td>`, `<td>${v}</td>`]))))}
+  ${err.length ? t("Errores que bajan el alcance", anaTbl(["Error", "Qué pasó en el mes", "Qué hacer"], err.map(([k, v, w]) => row([`<td><b>${k}</b></td>`, `<td>${v}</td>`, `<td>${w}</td>`])))) : ""}
+  </section>`;
+}
+function repAnalisis(){
+  const bs = IG_MAIN.filter(b => socialBrands().includes(b)), S = bs.map(b => [b, anaStats(anaRows(b))]), has = S.filter(([, s]) => s.n);
+  if (!has.length) return `<div class="panel"><div class="empty">Todavía no hay publicaciones de Instagram de ${monthName(MONTH)} para analizar (se traen de Meta todos los días).</div></div>`;
+  // Las tres juntas: cada publicación contra lo normal de su marca (alcance / mediana de la marca), porque las cuentas tienen tamaños
+  // muy distintos (Delimarket llega a cientos de personas y Superseis a miles): así se comparan contenidos, días y cantidades.
+  const all = anaStats(has.flatMap(([, s]) => s.L.map(x => ({ ...x, raw:x.reach, reach:x.reach / (s.med || 1) }))).sort((x, y) => x.t - y.t)), cross = anaCross(has.flatMap(([, s]) => s.L).sort((x, y) => x.t - y.t));
+  const vs = v => `${v >= 1 ? "+" : "−"}${Math.abs(Math.round((v - 1) * 100))} %`, vsTd = v => `<td class="r num ${v >= 1.1 ? "up" : v <= .9 ? "down" : ""}">${vs(v)}</td>`;
+  const pd12 = anaMed([...all.perDay[0].l, ...all.perDay[1].l].map(x => x.reach));
+  const wb = all.bursts.filter(x => x.age >= 1.5 && x.reach <= .8).sort((x, y) => x.reach - y.reach)[0]; // la ráfaga que peor le fue (contra lo normal de su marca; con 2 días ya casi no sube)
+  const row = c => `<tr>${c.join("")}</tr>`, td = v => `<td class="r num">${v}</td>`;
+  const plan = [["2 o 3 días antes", "1 publicación principal en el feed (carrusel o reel) con la promo, la fecha, el lugar y el precio grande, de 18 a 21 h."], ["El día anterior", "Historias con cuenta regresiva y sticker de recordatorio; volver a compartir la publicación en historias."],
+    ["El mismo día", "3 a 6 historias (en vivo, el producto, cómo llegar); nada más en el feed salvo que sea un reel del evento."], ["Después", "Un reel o carrusel de cómo se vivió (gente, platos, ganadores): suma alcance para la próxima."],
+    ["Si hay varias promos", "Un solo carrusel “Este finde en …” con todas, y cada promo en su historia. No 3 o 4 publicaciones seguidas."]];
+  const week = [["Lunes", "Folleto de ofertas de la semana (1 carrusel con todas las páginas)."], ["Martes", "Reel de marca o de producto (día poco usado: menos competencia)."], ["Miércoles", "Reel de producto estrella con precio (descubrimiento: es lo que más se comparte)."],
+    ["Jueves", "Anuncio de las activaciones del finde (ferias, degustaciones, descuentos), de 18 a 21 h."], ["Viernes", "Historias recordando el finde; 1 publicación solo si hay una promo nueva."], ["Sábado", "Historias en vivo de las ferias y degustaciones."], ["Domingo", "Reel o carrusel de recetas o del finde (contenido para guardar)."]];
+  return `<p class="note twnote">${icon("info")}<span>Análisis de las publicaciones de Instagram de ${monthName(MONTH)} con los datos de Meta (alcance, me gusta, comentarios, compartidos y guardados). Se compara con la <b>mediana</b> (la publicación del medio), así un viral o un sorteo no distorsionan. Las que tienen menos de ${ANA_MATURE} días no entran en las comparaciones porque su alcance todavía sube. Si una publicación tuvo pauta paga, su alcance es mayor: tomalo en cuenta al comparar.</span></p>
+  ${S.map(([b, s]) => anaBrand(b, s)).join("")}
+  <section class="ana"><h2 class="pmh anabh">${icon("layers")} Las tres marcas juntas<span class="note">estrategia común para Superseis, Stock y Delimarket</span></h2>
+  <div class="panel"><h2>Las tres marcas · Comparación</h2>${anaTbl(["Marca", "Publicaciones", "Alcance (mediana)", "Interacción", "Compartidos", "Mejor contenido", "Mejor formato", "Por día"], has.map(([b, s]) => row([`<td>${brandTag(b)}</td>`, td(s.n), td(dots(s.med)), td((s.er * 100).toFixed(1) + " %"), td((s.shr * 100).toFixed(2) + " %"), `<td>${esc(s.bestCat?.k || "—")}</td>`, `<td>${esc(s.bestFmt?.k || "—")}</td>`, td(anaPerDay(s).max)])))}</div>
+  <div class="panel"><h2>Las tres marcas · Contenidos</h2>${anaTbl(["Tipo de contenido", "Publicaciones", "Contra lo normal de su marca", "Compartidos cada 100 que lo vieron"], all.cats.map(c => row([`<td>${esc(c.k)}</td>`, td(c.n), vsTd(c.med), td((c.shr * 100).toFixed(1))])))}<p class="note" style="margin:10px 0 0">Cada publicación se compara con lo que suele alcanzar su propia marca (la mediana del mes), porque las cuentas tienen tamaños muy distintos.</p></div>
+  <div class="panel"><h2>Las tres marcas · Días</h2>${anaTbl(["Día", "Publicaciones", "Contra lo normal de su marca"], all.days.map(d => row([`<td>${d.k}</td>`, td(d.n || "—"), d.n ? vsTd(d.med) : `<td class="r note">sin publicaciones</td>`])))}</div>
+  <div class="panel"><h2>Las tres marcas · Estrategia</h2>${anaTbl(["Tema", "Recomendación"], [
+    ["Menos es más", `Entre las tres marcas se publicaron ${all.n} piezas en el feed. ${all.perDay[2].n ? `Los días en que una marca subió 3 o más, cada publicación rindió ${vs(all.perDay[2].med)} contra lo normal de su marca (con 1 o 2 por día: ${vs(pd12)}). ` : ""}${wb ? `${all.perDay[2].n && Math.abs(all.perDay[2].med - pd12) < .1 ? "En promedio la diferencia es chica; el daño está en las ráfagas: " : "Donde más se nota es en las ráfagas: "}${anaDM(wb)}, ${esc(wb.b)} a las ${wb.hm} (a minutos de otra) llegó a ${dots(wb.raw)} personas, ${vs(wb.reach)} de lo normal de la marca. ` : ""}Conviene menos piezas y mejor pensadas: una por idea, con portada fuerte, y separadas.`],
+    ["Lo que más llega", `${all.bestCat ? `<b>${esc(all.bestCat.k)}</b> (${vs(all.bestCat.med)} sobre lo normal de su marca)` : "—"}${all.bestFmt ? `, y en formato <b>${esc(all.bestFmt.k)}</b> (${vs(all.bestFmt.med)})` : ""}. Los reels de descubrimiento (producto nuevo + precio) son los que más se comparten: llegan a gente que todavía no sigue la cuenta.`],
+    ["Lo que menos rinde", all.worstCat ? `<b>${esc(all.worstCat.k)}</b> (${vs(all.worstCat.med)} contra lo normal de su marca). Si es para una feria o degustación, el objetivo es que la gente vaya: 1 anuncio fuerte + historias + pauta chica geolocalizada cerca del local.` : "—"],
+    ["Misma promo en varias marcas", cross.length ? `${cross.length === 1 ? "Hubo 1 caso" : `Hubo ${cross.length} casos`} de la misma promo en dos marcas casi a la misma hora (ej.: ${anaDM(cross[0][0])}, ${esc(cross[0][0].b)} ${cross[0][0].hm} y ${esc(cross[0][1].b)} ${cross[0][1].hm}). Le hablan a parte del mismo público: escalonalas (otro día u otro horario) y adaptá el mensaje a cada marca.` : "No hubo la misma promo en dos marcas a la misma hora: bien."],
+    ["Días", all.bestDays.length ? `Con los datos de ${monthName(MONTH)}, los días que más rindieron fueron ${all.bestDays.map(d => `<b>${d.k}</b> (${vs(d.med)}, ${d.n} ${d.n === 1 ? "publicación" : "publicaciones"}${anaFew(d)})`).join(" y ")}.${all.emptyDays.length ? ` Casi no se usó: ${all.emptyDays.map(d => d.k).join(", ")}.` : ""} La mayoría de lo publicado se concentra en jueves y viernes: repartir en la semana evita que las promos compitan entre sí.` : "—"]].map(([k, v]) => row([`<td><b>${k}</b></td>`, `<td>${v}</td>`])))}</div>
+  <div class="panel"><h2>Las tres marcas · Plan de activación</h2>${anaTbl(["Cuándo", "Qué publicar"], plan.map(([k, v]) => row([`<td><b>${k}</b></td>`, `<td>${v}</td>`])))}</div>
+  <div class="panel"><h2>Las tres marcas · Semana sugerida</h2>${anaTbl(["Día", "Qué publicar"], week.map(([k, v]) => row([`<td><b>${k}</b></td>`, `<td>${v}</td>`])))}<p class="note" style="margin:10px 0 0">Una base para reordenar los días de publicación; se ajusta mes a mes con estos mismos números.</p></div>
+  </section>`;
 }
 function cmpTxt(now, before, fmt = dots){
   if (!before) return `<div class="cmp note">sin dato del mes anterior</div>`;
@@ -10352,7 +10513,7 @@ function pReportes(){
   const tabs = REPORT_TABS.filter(t => can(t.perm));
   if (!tabs.find(t => t.k === reportTab)) reportTab = tabs[0] ? tabs[0].k : "diseno";
   const estado = isClosed() ? "🔒 Mes cerrado · datos fijos" : isFuture() ? "En planificación" : `En curso · cierra el ${lastDay(MONTH)}/${MONTH.slice(5)}`;
-  const body = { equipo:repEquipo, diseno:repDiseno, cm:repCM, redes:() => repAlcance() + lastPostsPanel(IG_MAIN) + (can("pauta") ? `<h2 style="margin:8px 0 -8px" class="pmh">${pmIco("megaphone")}Pauta en Meta Ads</h2>` + repPauta() : "") }[reportTab];
+  const body = { equipo:repEquipo, diseno:repDiseno, cm:repCM, analisis:repAnalisis, redes:() => repAlcance() + lastPostsPanel(IG_MAIN) + (can("pauta") ? `<h2 style="margin:8px 0 -8px" class="pmh">${pmIco("megaphone")}Pauta en Meta Ads</h2>` + repPauta() : "") }[reportTab];
   const cur = tabs.find(t => t.k === reportTab);
   return `<div class="repwrap"><div class="panel flush"><div class="panel-h cyan">
       <div class="head"><div><h2 class="pmh">${pmIco("file-bar-chart")}Informe mensual · ${monthLabel(MONTH)}</h2>
