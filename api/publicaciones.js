@@ -1,10 +1,10 @@
 // Publicaciones de Instagram de cada marca (las mismas cuentas que Seguidores). Guarda en app_state → s:META_POSTS:
 //   { "updated": "...",
-//     "Stock": { "handle": "@...", "posts": [ { id, type, cap, img, link, ts, likes, comments, reach, saved, shares } ] },   ← las últimas 30
+//     "Stock": { "handle": "@...", "posts": [ { id, type, cap, img, link, ts, likes, comments, reach, saved, shares, views } ] },   ← las últimas 30
 //     "m:2026-09": { "Stock": [ ... ], ... }, "m:2026-10": { ... }, ... }                                                    ← archivo de cada mes
-// Cada mes muestra sus publicaciones: las últimas 9 con imagen (reels incluidos) y el top por alcance. El archivo de cada mes guarda solo eso
-// (para que la app cargue liviana) y queda guardado aunque pasen los meses; las imágenes de los meses viejos se renuevan acá
-// porque las de Instagram vencen a los pocos días (por eso corre todos los días).
+// El archivo de cada mes guarda todas las publicaciones del mes (v311: antes solo las últimas 9 con imagen y las 15 de más alcance; el
+// Análisis y recomendaciones y el Informe Comercial necesitan todas), con un tope de 80 por marca. Queda guardado aunque pasen los
+// meses; las imágenes de los meses viejos se renuevan acá porque las de Instagram vencen a los pocos días (por eso corre todos los días).
 //
 // Probar sin guardar:  /api/publicaciones?dry=1&secret=EL_CRON_SECRET
 const { ORDEN, cronOrUser, graph, brandPages, save, readMeta, today, tokenHint } = require("./_lib/meta");
@@ -15,12 +15,11 @@ const LATEST = 30;        // últimas publicaciones por marca
 const MAX_FETCH = 200;    // tope al traer el mes actual y el anterior (y, una sola vez, el de antes)
 const INSIGHT_DAYS = 45;  // alcance solo de las publicaciones recientes (el resto ya no cambia)
 const FRESH_DAYS = 10;    // después de 10 días, si ya se tenía el alcance, no se vuelve a pedir
-const KEEP_IMG = 9, KEEP_TOP = 15; // por marca y por mes: las últimas 9 con imagen + las 15 de más alcance
+const KEEP_MONTH = 80; // por marca y por mes: todas (tope de seguridad)
 
 const ym = ts => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date(ts)).slice(0, 7);
 const prevOf = m => { const [y, n] = m.split("-").map(Number); return n === 1 ? `${y - 1}-12` : `${y}-${String(n - 1).padStart(2, "0")}`; };
-const hasImg = p => !!p.img; // incluye los reels: se muestran con su portada
-const score = p => p.reach ?? ((p.likes || 0) + (p.comments || 0) + (p.saved || 0) + (p.shares || 0));
+
 const typeOf = m => m.media_product_type === "REELS" ? "Reel" : m.media_type === "CAROUSEL_ALBUM" ? "Carrusel" : m.media_type === "VIDEO" ? "Video" : "Post";
 const imgOf = m => m.thumbnail_url || (m.media_type === "VIDEO" ? null : m.media_url) || null;
 
@@ -32,6 +31,12 @@ async function insights(id){
     return out;
   } catch (e){ return {}; } // algunas publicaciones (ej. muy viejas) no tienen métricas
 }
+// v312: las vistas (reproducciones / veces que se mostró) van en una consulta aparte: si Meta no las da para alguna publicación,
+// no se pierde el alcance de las demás métricas.
+async function viewsOf(id){
+  try { const j = await graph(`/${id}/insights`, { metric: "views" }); const m = (j.data || [])[0]; return m ? m.values?.[0]?.value ?? m.total_value?.value ?? null : null; }
+  catch (e){ return null; }
+}
 
 async function pool(items, n, fn){
   const out = []; let i = 0;
@@ -39,13 +44,9 @@ async function pool(items, n, fn){
   return out;
 }
 
-// Lo que se guarda de cada mes: las últimas 9 con imagen y las de más alcance (sin repetir).
+// Lo que se guarda de cada mes: todas las publicaciones, de la más nueva a la más vieja (hasta 80 por marca).
 function monthPick(list){
-  const byTs = [...list].sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
-  const keep = new Map();
-  byTs.filter(hasImg).slice(0, KEEP_IMG).forEach(p => keep.set(p.id, p));
-  [...list].sort((a, b) => score(b) - score(a)).slice(0, KEEP_TOP).forEach(p => keep.set(p.id, p));
-  return [...keep.values()].sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+  return [...list].sort((a, b) => String(b.ts).localeCompare(String(a.ts))).slice(0, KEEP_MONTH);
 }
 
 // Imágenes y me gusta nuevos para publicaciones ya guardadas (meses viejos): de a 50 por consulta.
@@ -97,13 +98,13 @@ module.exports = async (req, res) => {
         const posts = await pool(media, 10, async (m) => {
           const t = new Date(m.timestamp).getTime(), k = known.get(m.id) || {};
           const need = (t >= since && (t >= fresh || k.reach == null)) || (months.includes(back) && ym(m.timestamp) === back && !known.has(m.id)); // las del mes traído una vez: su alcance, una vez
-          const ins = need ? await insights(m.id) : {};
+          const [ins, views] = need ? await Promise.all([insights(m.id), viewsOf(m.id)]) : [{}, null];
           return {
             id: m.id, type: typeOf(m),
             cap: Array.from(String(m.caption || "")).slice(0, 300).join(""), // por letras: no corta emojis
             img: imgOf(m), link: m.permalink, ts: m.timestamp,
             likes: m.like_count ?? null, comments: m.comments_count ?? null,
-            reach: ins.reach ?? k.reach ?? null, saved: ins.saved ?? k.saved ?? null, shares: ins.shares ?? k.shares ?? null,
+            reach: ins.reach ?? k.reach ?? null, saved: ins.saved ?? k.saved ?? null, shares: ins.shares ?? k.shares ?? null, views: views ?? k.views ?? null,
           };
         });
         payload[b] = { handle: p.handle, posts: posts.slice(0, LATEST) };
