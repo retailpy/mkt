@@ -3772,6 +3772,9 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .pcwho span{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);font-weight:700}
 .pcwho b{font-size:15px;overflow:hidden;text-overflow:ellipsis}
 .pcwho small{color:var(--muted);font-size:12px}
+/* v303 · Pantalla TV (todo junto) */
+.tvpgrid.tvpone{grid-template-columns:minmax(0,1fr);width:min(520px,100%)}
+.tvjunto .tvjn{max-width:560px;margin:0}
 </style>
 
 <div class="login" id="login">
@@ -3887,6 +3890,7 @@ const SECTIONS = [
   { g:"Vista TV", k:"tvredes", l:"Vista TV Redes", i:"monitor-play" },
   { g:"Vista TV", k:"tvimpacto", l:"TV Impacto Redes", i:"trophy" },
   { g:"Vista TV", k:"tvconf", l:"Pantallas TV", i:"monitor" }, // v266: qué muestra cada televisor (TV 1 a TV 4)
+  { g:"Vista TV", k:"tvjunto", l:"Pantalla TV (todo junto)", i:"layers", virtual:true }, // v303: Admin ve la vuelta entera de las TV 1, 2 y 3 (como la TV 4)
   { g:"Vista TV", k:"tvpant", l:"Televisores", i:"tv", hide:true }, // v266: los botones TV 1 a TV 4 (lo que ve el usuario TV)
   { g:"Admin", k:"usuarios", l:"Usuarios y permisos", i:"shield-check" },
   { g:"Equipo", k:"staff", l:"Team MKT", i:"users" },
@@ -4318,7 +4322,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v302";
+const APP_VER = "v303";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -5853,7 +5857,7 @@ const ONLY_ADMINS = ["historial","historialcm","pauta","reportes"]; // Historial
 // Lo que cada uno puede cambiar lo sigue decidiendo su rol (cargar pedidos, editar posteos, mover fechas…).
 const ALL_SEE = () => ["comercial","paneldg","panelcm","caldg","calcm","cargadiseno","cargacm","ideas","redes","plan", ...PANEL_DESIGN.map(x => x.k), ...[...PANEL_CM, ...PANEL_CM_MORE].map(x => x.k).filter(k => !CM_PRIVATE.includes(k))];
 const CM_PRIVATE = ["inbox","reclamos","escraches"]; // datos de clientes: solo Admin total, Admin y CM
-const canAdmin = key => ALL_SEE().includes(key) ? true : CM_PRIVATE.includes(key) ? ["Admin total","Admin","CM"].includes(viewer.role) : key === "encuestas" || key === "sugerencias" ? viewer.id === "fede" && viewer.role === "Admin total" : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "gcm" || key === "calact" ? CM_GEST.some(k => can(k)) : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : ONLY_AT.includes(key) ? viewer.role === "Admin total" : ONLY_ADMINS.includes(key) ? isAdminAny() && viewer.perms.has(key) : ["bienvenida","sabados","avisos","perfil","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
+const canAdmin = key => ALL_SEE().includes(key) ? true : CM_PRIVATE.includes(key) ? ["Admin total","Admin","CM"].includes(viewer.role) : key === "encuestas" || key === "sugerencias" ? viewer.id === "fede" && viewer.role === "Admin total" : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "gcm" || key === "calact" ? CM_GEST.some(k => can(k)) : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : key === "tvjunto" ? true : ONLY_AT.includes(key) ? viewer.role === "Admin total" || (["tv","tvredes","tvimpacto"].includes(key) && tvSolo === "tvall") : ONLY_ADMINS.includes(key) ? isAdminAny() && viewer.perms.has(key) : ["bienvenida","sabados","avisos","perfil","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
 // Admin total y Admin: todo como antes. Las demás personas (CM, Diseñador): solo lo que Admin total les habilitó en Usuarios y permisos.
 const MEMBER_ALWAYS = ["bienvenida","perfil","config","guia"]; // la bienvenida (beta) y su cuenta: entrar a su perfil, cambiar la contraseña y la ayuda
 const canMember = key => ONLY_AT.includes(key) || ONLY_ADMINS.includes(key) ? false : MEMBER_ALWAYS.includes(key) ? true
@@ -12588,8 +12592,8 @@ const TV_N = [1,2,3,4], TV_DEF = { 1:"tv", 2:"tvredes", 3:"tvimpacto", 4:"tvall"
 // vuelve a empezar. La portada y los avisos salen solo al principio, y “Campañas y temas” solo al final de todo.
 let tvAll = { cur:"" };
 const tvAllSeq = () => { const ok = v => v !== "tvall" && (v !== "tvimpacto" || IMP_POSTS) && (!viewer || can(v)), l = [...new Set([1, 2, 3].map(n => tvCfg(n).v).filter(ok))]; return l.length ? l : ["tv","tvredes","tvimpacto"].filter(ok); };
-const tvAllOn = () => !!tvKiosk && tvCfg(tvKiosk).v === "tvall";
-const tvCurView = () => { const v = tvCfg(tvKiosk).v; if (v !== "tvall") return v; const q = tvAllSeq(); if (!q.includes(tvAll.cur)) tvAll.cur = q[0]; return tvAll.cur; };
+const tvAllOn = () => tvKiosk ? tvCfg(tvKiosk).v === "tvall" : tvSolo === "tvall"; // v303: también “todo junto” en la app
+const tvCurView = () => { const v = tvKiosk ? tvCfg(tvKiosk).v : tvSolo; if (v !== "tvall") return v; const q = tvAllSeq(); if (!q.includes(tvAll.cur)) tvAll.cur = q[0]; return tvAll.cur; };
 const tvAllFirst = () => !tvAllOn() || tvAll.cur === tvAllSeq()[0];
 const tvAllLast = () => !tvAllOn() || tvAll.cur === tvAllSeq().slice(-1)[0];
 // Al llegar al final (o al principio, para atrás) de una vista, pasa a la siguiente (o a la anterior, en su última pantalla).
@@ -12660,8 +12664,8 @@ function tviFit(){ const mg = document.querySelector(".mcgrid"); if (mg && inner
 const pyDateLong = () => { const t = pyDate(Date.now()); return `${new Intl.DateTimeFormat("es-PY", { timeZone:PY_TZ, weekday:"long" }).format(new Date())} ${+t.slice(8)} de ${MONTHS_ES[+t.slice(5, 7) - 1]}`.replace(/^./, c => c.toUpperCase()); };
 let tvKiosk = (() => { try { return TV_N.includes(+localStorage.getItem("rmh-tvkiosk")) ? +localStorage.getItem("rmh-tvkiosk") : 0; } catch { return 0; } })();
 // v293: tvSolo = una Vista TV abierta a pantalla completa dentro de la app desde su botón (sin número de TV, no queda guardada).
-let tvSolo = "";
-const tvOn = () => !!viewer && (tvKiosk ? can(tvCurView()) : !!tvSolo && can(tvSolo));
+var tvSolo = ""; // var: los permisos lo miran (v303) y se pueden pedir antes de llegar acá
+const tvOn = () => !!viewer && (tvKiosk ? can(tvCurView()) : !!tvSolo && can(tvCurView()));
 // Pantalla completa del navegador entero (no la de un bloque, como el botón de cada Vista TV): así no se corta cuando la
 // pantalla se redibuja con datos nuevos. El aspecto es el mismo que el de la pantalla completa de cada vista (estilos tvkiosk).
 let tvWasFull = false;
@@ -12679,15 +12683,22 @@ function tvFull(){
       : isIOS() ? "Listo: la vista ocupa toda la pantalla. Para esconder también la barra de Safari: Compartir → “Agregar a pantalla de inicio” y abrí la app desde ese ícono."
       : "Listo: la vista ocupa toda la pantalla de la app (el navegador no dejó esconder sus barras)."); }, 900);
 }
-function tvGoFull(view){ tvSolo = view; tvFull(); render(); window.scrollTo(0, 0); }
+function tvGoFull(view){ tvSolo = view; tvAll = { cur:"" }; tvFull(); render(); window.scrollTo(0, 0); }
 function tvOpen(n){ tvKiosk = n; tvSolo = ""; tvAll = { cur:"" }; try { localStorage.setItem("rmh-tvkiosk", n); } catch {} tvFull(); render(); window.scrollTo(0, 0); }
-function tvExit(){ const back = tvSolo; tvKiosk = 0; tvSolo = ""; tvWasFull = false; try { localStorage.removeItem("rmh-tvkiosk"); } catch {} if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); page = isTV() ? "tvpant" : back || "tvconf"; render(); }
+function tvExit(){ const back = tvSolo; tvKiosk = 0; tvSolo = ""; tvWasFull = false; try { localStorage.removeItem("rmh-tvkiosk"); } catch {} if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); page = isTV() ? "tvpant" : back === "tvall" ? "tvjunto" : back || "tvconf"; render(); }
 // Para el usuario TV: los cuatro botones, arriba el logo de Superseis, Delimarket y Stock y abajo “Cerrar sesión” (v270).
 const LOGOUT_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>';
 function pTvPant(){
   return `<div class="tvpant"><img class="tvpmarcas" src="marcas.png" alt="Superseis · Delimarket · Stock"><div class="tvpgrid">${TV_N.map(n => `<button type="button" class="tvpbtn" data-tvopen="${n}" aria-label="TV ${n}: ${esc(tvView(tvCfg(n).v)[1])}"><span class="tvpn">TV ${n}</span></button>`).join("")}</div>
   ${isTV() ? `<button type="button" class="btn tvplogout" data-tvlogout>${LOGOUT_SVG}Cerrar sesión</button>` : ""}</div>`;
 }
+// v303 · “Pantalla TV (todo junto)”: Admin (y Admin total) ve en la app, a pantalla completa, la vuelta entera de lo que muestran
+// la TV 1, la TV 2 y la TV 3 (como la TV 4). Es lo único de Vista TV que tiene Admin.
+function pTvJunto(){
+  return `<div class="tvpant tvjunto"><img class="tvpmarcas" src="marcas.png" alt="Superseis · Delimarket · Stock"><div class="tvpgrid tvpone"><button type="button" class="tvpbtn" data-tvjunto aria-label="Ver todo junto: TV 1, TV 2 y TV 3"><span class="tvpn">Todo junto</span><small>${icon("layers")} TV 1 → TV 2 → TV 3</small></button></div>
+  <p class="note tvjn">Pasa una vuelta entera de lo que muestran la TV 1, la TV 2 y la TV 3, y vuelve a empezar. En la tablet o el celular, tocá los costados para adelantar o volver. “Salir” (arriba a la derecha) para terminar.</p></div>`;
+}
+document.addEventListener("click", e => { if (e.target.closest("[data-tvjunto]") && can("tvjunto")) tvGoFull("tvall"); });
 function pTvConf(){
   const ed = viewer.role === "Admin total" && !window.RMH?.previewing;
   return `<div class="head"><div><h1 class="pmh">${pmIco("monitor")}Pantallas TV</h1><p class="sub">Qué muestra cada televisor de la oficina. En cada TV se entra con el usuario de rol <b>TV</b>, se toca TV 1, TV 2, TV 3 o TV 4 y queda mostrando lo que elijas acá. Si lo cambiás, el televisor se cambia solo en unos segundos.</p></div></div>
@@ -13603,7 +13614,7 @@ function pcToJob(p, area){
   jobUI.ficha = null; jobUI.form = { mode:"new", job }; render(); window.scrollTo(0, 0);
   toast(`Completá lo que falte y tocá Guardar: queda en ${area === "Contenidos" ? "Gestión de Contenidos" : "Diseño gráfico"}.`);
 }
-const PAGES = { tvpant:pTvPant, tvconf:pTvConf, postext:pPlanTxt, pedcom:pPedCom, gcm:pGestCM, calact:pCalAct, contenidos:pContenidos, escraches:pEscraches, bienvenida:pBienvenida, ideas:pIdeas, inbox:pInbox, reclamos:pReclamos, noticias:pNoticias, comercial:pComercial, tendg:() => pTend("dg"), tencm:() => pTend("cm"), paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), caldg:pCalDG, calcm:pPlan, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, aviso:pAviso, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
+const PAGES = { tvpant:pTvPant, tvjunto:pTvJunto, tvconf:pTvConf, postext:pPlanTxt, pedcom:pPedCom, gcm:pGestCM, calact:pCalAct, contenidos:pContenidos, escraches:pEscraches, bienvenida:pBienvenida, ideas:pIdeas, inbox:pInbox, reclamos:pReclamos, noticias:pNoticias, comercial:pComercial, tendg:() => pTend("dg"), tencm:() => pTend("cm"), paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), caldg:pCalDG, calcm:pPlan, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, aviso:pAviso, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
 
 /* ---------- render ---------- */
 // Barra de pestañas abajo (celular), como en cualquier app: lo que más usa cada rol + “Más” para el menú completo.
@@ -14901,7 +14912,7 @@ function render(){
   render.goingBack = false; render.prevPage = page; render.prevFicha = jobUI.ficha; render.prevForm = jobUI.form;
   if (page === "perfil"){ page = "config"; cfgTab = "perfil"; } // Mi Perfil se edita solo en Configuración // y el de redes, dentro de Diseño para Redes
   if (!can(page)) page = isTV() ? "tvpant" : can("dashboard") ? "dashboard" : can("inicio") ? "inicio" : isComercial() ? "comercial" : can("inbox") ? "inbox" : "perfil";
-  if (tvOn()){ const v = tvKiosk ? tvCurView() : tvSolo; if (page !== v) page = v; } // v266: un televisor muestra siempre lo que eligió Admin total (si lo cambia, se cambia solo)
+  if (tvOn()){ const v = tvCurView(); if (page !== v) page = v; } // v266: un televisor muestra siempre lo que eligió Admin total (si lo cambia, se cambia solo)
   document.documentElement.classList.toggle("tvrole", isTV()); document.documentElement.classList.toggle("tvkiosk", tvOn());
   if (isCalPage() && (brandFilter === "Todas" || brandFilter === "Materiales")) brandFilter = myGroups()[0]; // calendarios: una marca a la vez
   if (brandFilter === "Materiales") brandFilter = "Todas"; // Cartelería ahora es su propia sección
@@ -14920,7 +14931,7 @@ function render(){
   const demo = window.RMH?.previewing ? `<div class="panel demo">${icon("info")}<div><b>Vista previa como ${esc(viewer.name)}.</b> <span>Lo que cambies acá no se guarda. Volvé a tu usuario en “ver como” (abajo a la izquierda).</span></div></div>` : "";
   const i = MONTHS_APP.findIndex(m => m.v === MONTH);
   const est = isClosed() ? pill("🔒 Cerrado", "#334155") : isFuture() ? pill("En planificación", "#d946ef") : "";
-  const bar = ["tvpant","tvconf","gcm","calact","usuarios","config","tv","perfil","staff","tvredes","tvimpacto","sugerencias","mensajes","inbox","noticias","notas","prompts","guia","avisos","tendg","tencm","ideas"].includes(page) || (page === "pedcom" && (pcUI.form || pcUI.open || pcUI.view !== "calendario")) ? "" : `<div class="monthbar"><div class="mb-c"><b>${monthLabel(MONTH)}</b>${est}</div><div class="mb-n"><button class="btn" data-month="-1" ${i === 0 ? "disabled" : ""}>‹ Anterior</button><button class="btn" data-month="1" ${i === MONTHS_APP.length-1 ? "disabled" : ""}>Siguiente ›</button></div></div>`;
+  const bar = ["tvpant","tvjunto","tvconf","gcm","calact","usuarios","config","tv","perfil","staff","tvredes","tvimpacto","sugerencias","mensajes","inbox","noticias","notas","prompts","guia","avisos","tendg","tencm","ideas"].includes(page) || (page === "pedcom" && (pcUI.form || pcUI.open || pcUI.view !== "calendario")) ? "" : `<div class="monthbar"><div class="mb-c"><b>${monthLabel(MONTH)}</b>${est}</div><div class="mb-n"><button class="btn" data-month="-1" ${i === 0 ? "disabled" : ""}>‹ Anterior</button><button class="btn" data-month="1" ${i === MONTHS_APP.length-1 ? "disabled" : ""}>Siguiente ›</button></div></div>`;
   const viewKey = [page, MONTH, viewer.id, calCM, reportTab, redesBrand, brandFilter, jobUI.view, cmUI.tview, cartUI.view, soloYo].join("|");
   if (animate0(page)) { jobUI.owner = "Todos"; jobUI.q = ""; if (!stagesOf(jobArea()).includes(jobUI.status)) jobUI.status = jobUI.status === "Todos" ? "Todos" : "Activos"; }
   const animate = viewKey !== render.lastKey; render.lastKey = viewKey; if (animate) render.visit = (render.visit || 0) + 1;
