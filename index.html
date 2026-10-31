@@ -3826,6 +3826,9 @@ tr.twtot td{border-top:2px solid var(--line-3)}
 .comcard img{width:96px;height:96px;object-fit:cover;border-radius:12px;flex:none}.comcard > div{display:flex;flex-direction:column;gap:4px;min-width:0}.comcard b{color:#fff}.comcard p{margin:0;font-size:12.5px;color:var(--muted)}
 .comcard a{font-size:11px;color:#67e8f9;word-break:break-all}.comnums{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:11px;color:var(--muted)}.comnums i{font-style:normal;font-weight:800;color:#fff;margin-right:3px;font-size:13px}
 /* v314 · Análisis de redes (corto y visual) */
+.aread{border-color:rgba(34,211,238,.35);background:linear-gradient(180deg,rgba(34,211,238,.07),rgba(34,211,238,.02))}.aread h2{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:18px}.aread h2 svg{width:20px;height:20px;color:#fde68a}
+.aread ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:7px}.aread li{font-size:15px;line-height:1.45;color:#e2e8f0}.aread li b{color:#fff}
+.aexp{display:flex;gap:8px;align-items:flex-start;margin:0 0 12px;font-size:14px;line-height:1.45;color:#cbd5e1;padding:10px 12px;border-radius:12px;background:rgba(148,163,184,.08)}.aexp svg{width:16px;height:16px;flex:none;margin-top:2px;color:#67e8f9}
 .anab{flex-wrap:wrap;gap:8px}.anab .chip i{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--bc);margin-right:2px}.anab .chip.on{background:color-mix(in srgb,var(--cyan) 22%,transparent);border-color:var(--cyan);color:#fff}
 .anahead{margin:4px 0 0}.ana2{display:flex;flex-direction:column;gap:16px}
 .asec h2{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:18px}.asec h2 i{font-style:normal;display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:rgba(34,211,238,.14);color:#67e8f9;font-size:14px;font-weight:800}
@@ -4404,7 +4407,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v314";
+const APP_VER = "v315";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -10208,6 +10211,8 @@ const anaW = (s, n = 12) => { const w = String(s || "").trim().split(/\s+/); ret
 const ANA_FEW = `<span class="afew">pocos datos</span>`;
 const anaGroup = (L, keyF) => { const g = new Map(); L.forEach(x => { const k = keyF(x); if (k == null || k === "") return; if (!g.has(k)) g.set(k, []); g.get(k).push(x); }); return g; };
 let anaSel = ""; // marca que se está viendo (o "todas")
+let repBackTab = "equipo"; // v315: el informe que se estaba viendo antes de abrir el Análisis (para “Volver a los informes”)
+document.addEventListener("click", e => { if (!e.target.closest("[data-repback]")) return; reportTab = repBackTab && repBackTab !== "analisis" ? repBackTab : "equipo"; render(); window.scrollTo({ top:0, behavior:"smooth" }); });
 // Publicaciones de Instagram de una marca en el mes, con su día y hora de Paraguay, su tipo de contenido y si es activación.
 function anaRows(b, month = MONTH, flagged = new Set()){
   const ref = Math.min(Date.now(), Date.parse(META_POSTS.updated || "") || Date.now());
@@ -10263,18 +10268,22 @@ function anaLife(b){
 function anaActDays(d){
   const G = [["1", n => n === 1], ["2", n => n === 2], ["3", n => n === 3], ["4 a 5", n => n >= 4 && n <= 5], ["6 o más", n => n >= 6]];
   const days = [...anaGroup(d.M.filter(x => x.act), x => x.date).values()];
-  const rows = G.map(([k, f]) => { const ds = days.filter(l => f(l.length)); return { k, days:ds.length, per:anaMed(ds.flat().map(x => x.reach)), tot:anaMed(ds.map(l => l.reduce((a, x) => a + x.reach, 0))), few:ds.length < 3 }; });
-  const g1 = rows[0], rec = g1.few ? null : rows.filter(r => !r.few && r.per >= g1.per * .7).sort((a, b) => b.tot - a.tot)[0] || null;
+  const rows = G.map(([k, f]) => { const ds = days.filter(l => f(l.length)); return { k, days:ds.length, per:anaMed(ds.flat().map(x => x.reach)), few:ds.length < 3 }; });
+  // v315: se recomienda por cuántas personas ven CADA publicación (no por la suma del día: más promos suman más, pero cada una llega a
+  // menos gente). Recomendado: la menor cantidad por día cuyo alcance por publicación queda a 10 % o menos del mejor grupo con datos.
+  const g1 = rows[0], ok = rows.filter(r => !r.few), best = ok.reduce((m, r) => r.per > (m?.per || 0) ? r : m, null);
+  const rec = g1.few || !best ? null : ok.find(r => r.per >= best.per * .9) || null;
   return { rows, g1, rec };
 }
 function anaS5(a){
   const { rows, g1, rec } = a;
-  const more = rows.filter(r => r !== g1 && r.days), line = rec?.k === "1" ? `${dots(rec.per)} personas cada una${more.length && more.every(r => r.few) ? " · con más por día, pocos datos" : ""}` : rec ? `${dots(rec.tot)} personas por día · ${dots(rec.per)} cada publicación` : "";
+  const more = rows.filter(r => r !== g1 && r.days), line = rec ? `${dots(rec.per)} personas ven cada una${rec.k === "1" && more.length && more.every(r => r.few) ? " · con más por día, pocos datos" : ""}` : "";
   const big = rec ? anaCard(`${rec.k}`, `Recomendado: ${rec.k} ${rec.k === "1" ? "activación" : "activaciones"} por día`, line, "g")
     : anaCard("—", "Recomendado: pocos datos", "Menos de 3 días con una sola activación");
-  return `<div class="grid kpis arec">${big}</div>
-    <div class="tw"><table><thead><tr><th>Activaciones en el día</th><th class="r">Días</th><th class="r">Alcance por publicación</th><th class="r">Alcance total del día</th></tr></thead><tbody>
-    ${rows.map(r => `<tr class="${rec === r ? "arow" : ""}"><td>${r.k}${r.days && r.few ? " " + ANA_FEW : ""}</td><td class="r num">${r.days || "—"}</td>${r.days ? `<td class="r num s-${r === g1 || g1.few || r.few ? "n" : anaSem(anaPct(r.per, g1.per))}">${dots(r.per)}${r !== g1 && !g1.few ? ` <small>${anaP(anaPct(r.per, g1.per))}</small>` : ""}</td><td class="r num">${dots(r.tot)}</td>` : `<td class="r note">—</td><td class="r note">—</td>`}</tr>`).join("")}
+  return `<p class="aexp">${icon("info")}<span>En Instagram orgánico, tus seguidores ven solo parte de lo que subís: con 6 promos el mismo día, <b>cada una llega a menos gente</b>.</span></p>
+    <div class="grid kpis arec">${big}</div>
+    <div class="tw"><table><thead><tr><th>Activaciones en el día</th><th class="r">Días</th><th class="r">Personas que vieron cada una</th><th class="r">Contra 1 por día</th></tr></thead><tbody>
+    ${rows.map(r => `<tr class="${rec === r ? "arow" : ""}"><td>${r.k}${r.days && r.few ? " " + ANA_FEW : ""}</td><td class="r num">${r.days || "—"}</td>${r.days ? `<td class="r num${r.few ? " note" : ""}">${dots(r.per)}</td>${r === g1 || g1.few || r.few ? `<td class="r note">—</td>` : `<td class="r num s-${anaSem(anaPct(r.per, g1.per))}">${anaP(anaPct(r.per, g1.per))}</td>`}` : `<td class="r note">—</td><td class="r note">—</td>`}</tr>`).join("")}
     </tbody></table></div>`;
 }
 // 6 · Ranking de días y franjas (barras contra la mediana de la marca); en verde los 2 mejores con 5 o más publicaciones.
@@ -10296,8 +10305,21 @@ function anaActions(d, errs, a){
   best(fmts, f => `Priorizar ${f.k}: rinde ${anaP(f.vs)} sobre la mediana`);
   best(dows, x => `Llevar lo más importante al ${x.k}: ${anaP(x.vs)} sobre la mediana`);
   best(bands, x => `Publicar a la ${x.k.toLowerCase()} (${x.r}): ${anaP(x.vs)} sobre la mediana`);
-  if (a.rec) out.push({ w:a.rec.k === "1" ? 0 : 1, t:`${a.rec.k === "1" ? "Mantener 1 activación por día" : `Publicar ${a.rec.k} activaciones por día`}: ${dots(a.rec.tot)} personas por día` });
+  if (a.rec) out.push({ w:a.rec.k === "1" ? 0 : 1, t:`${a.rec.k === "1" ? "Subir 1 activación por día" : `No pasar de ${a.rec.k} activaciones por día`}: cada una llega a ${dots(a.rec.per)} personas` });
   return out.sort((p, q) => q.w - p.w).slice(0, 3);
+}
+// v315 · Lectura rápida: pocas frases que dicen qué muestran los números (todo sale de los datos del mes).
+function anaRead(d, errs, a, best){
+  const L = [], cats = [...anaGroup(d.M, x => x.cat)].map(([k, l]) => ({ k, n:l.length, vs:d.vsOf(l) })).filter(c => c.n >= ANA_MIN && c.k !== "Sorteos").sort((p, q) => q.vs - p.vs);
+  L.push(`Cada publicación llegó, en el medio, a <b>${dots(d.med)} personas</b>: esa es la vara para comparar.`);
+  L.push(cats[0] && cats[0].vs >= 15 ? `Lo que más rinde: <b>${esc(cats[0].k)}</b>, ${anaP(cats[0].vs)} sobre lo normal de la marca.` : `Lo que más llegó: “${esc(anaW(best.title, 8))}” (${anaDM(best)}), <b>${dots(best.reach)} personas</b>.`);
+  L.push(errs[0] ? `Lo que más alcance hizo perder: ${esc(errs[0].what.charAt(0).toLowerCase() + errs[0].what.slice(1))} (“${esc(anaW(errs[0].x.title, 6))}”, ${anaDM(errs[0].x)}): <b class="s-r">${anaP(errs[0].p)}</b>.` : "Ningún error bajó el alcance este mes.");
+  const m = a.rows.filter(r => r !== a.g1 && !r.few && r.days);
+  L.push(a.g1.few ? "Promos: todavía hay pocos días para comparar cuántas por día conviene subir."
+    : `Promos: con 1 por día, cada una llegó a <b>${dots(a.g1.per)} personas</b>${m.length ? `; ${m.map(r => `con ${r.k}, a ${dots(r.per)} (${anaP(anaPct(r.per, a.g1.per))})`).join("; ")}` : "; con más por día todavía hay pocos días para comparar"}.`);
+  L.push(a.rec ? `Recomendación: <b>${a.rec.k} ${a.rec.k === "1" ? "activación" : "activaciones"} por día</b>, separadas, y lo demás en historias: más promos el mismo día no suman, se reparten el mismo público.` : "Recomendación: pocos datos todavía; mientras tanto, menos promos por día para que cada una llegue a más gente.");
+  if (d.recent) L.push(`<span class="note">${d.recent} ${d.recent === 1 ? "publicación" : "publicaciones"} de los últimos 3 días todavía no cuentan (su alcance sigue subiendo).</span>`);
+  return `<div class="panel aread"><h2>${icon("lightbulb")} Lectura rápida</h2><ul>${L.map(x => `<li>${x}</li>`).join("")}</ul></div>`;
 }
 function anaBrandView(d, cross){
   if (!d.L.length) return `<div class="panel"><div class="empty">Todavía no hay publicaciones de Instagram de ${esc(d.b)} en ${monthName(MONTH)} (se traen de Meta todos los días).</div></div>`;
@@ -10306,7 +10328,7 @@ function anaBrandView(d, cross){
   const cats = [...anaGroup(d.M, x => x.cat)].sort((p, q) => q[1].length - p[1].length);
   const dows = ANA_DOW.map((k, i) => { const l = d.M.filter(x => x.dow === i); return { k, n:l.length, vs:d.vsOf(l) }; });
   const bands = ANA_BANDS.map(([k, r, f]) => { const l = d.M.filter(x => f(x.h)); return { k:`${k} · ${r}`, n:l.length, vs:d.vsOf(l) }; });
-  return `
+  return `${anaRead(d, errs, a, best)}
   ${anaSec(1, "Resumen", `<div class="grid kpis">${anaCard(dots(d.M.reduce((s, x) => s + x.reach, 0)), "Alcance total del mes", `suma de ${d.M.length} publicaciones`)}${anaCard(dots(d.med), "Alcance mediano por publicación", "la publicación del medio: la vara para comparar")}${anaCard(dots(best.reach), "Mejor publicación", `${anaDM(best)} · ${anaW(best.title, 8)}`, anaSem(best.vs))}${anaCard(d.M.length, "Publicaciones analizadas", d.recent ? `+ ${d.recent} con menos de 3 días, sin analizar todavía` : "todas con el alcance ya asentado")}</div>`)}
   ${anaSec(2, "Top 3 errores del mes", errs.length ? `<div class="aerrs">${errs.map(e => `<div class="aerr"><b>${anaP(e.p)}</b><div><strong>${esc(e.what)} → ${anaP(e.p)} alcance → ${esc(e.fix)}</strong><span>${anaDM(e.x)} · ${dots(e.lost)} personas menos${e.n > 1 ? ` · pasó ${e.n} veces` : ""}</span></div></div>`).join("")}</div>`
     : `<div class="aok">${icon("check")} <b>Ningún error bajó el alcance este mes</b><span class="note">lo que se publicó seguido o repetido no rindió menos</span></div>`)}
@@ -10314,14 +10336,19 @@ function anaBrandView(d, cross){
   ${anaSec(4, "Mejor día por categoría", `<div class="tw"><table><thead><tr><th>Categoría</th><th>Mejor día</th><th class="r">Alcance vs mediana de la marca</th><th class="r">Publicaciones</th></tr></thead><tbody>${cats.map(([c, l]) => {
       const bd = [...anaGroup(l, x => x.dow)].filter(([, g]) => g.length >= 3).map(([i, g]) => ({ i, n:g.length, vs:d.vsOf(g) })).sort((p, q) => q.vs - p.vs)[0];
       return `<tr><td>${esc(c)}</td>${bd ? `<td><b>${ANA_DOW[bd.i]}</b></td><td class="r num s-${anaSem(bd.vs)}">${anaP(bd.vs)}</td><td class="r num">${bd.n}</td>` : `<td>${ANA_FEW}</td><td class="r note">—</td><td class="r num">${l.length}</td>`}</tr>`; }).join("")}</tbody></table></div>`, "Solo días con 3 o más publicaciones de esa categoría.")}
-  ${anaSec(5, "¿Cuántas activaciones comerciales por día?", anaS5(a), "Activación: ofertas, descuentos, folleto, beneficios, coleccionables, ferias, degustaciones. Total del día: suma del alcance de cada una.")}
+  ${anaSec(5, "¿Cuántas activaciones comerciales por día?", anaS5(a), "Activación: ofertas, descuentos, folleto, beneficios, coleccionables, ferias, degustaciones.")}
   ${anaSec(6, "Mejores días y horarios", `<div class="arank"><div><h3>Días</h3>${anaRank(d, dows)}</div><div><h3>Horarios</h3>${anaRank(d, bands)}</div></div>`, "Contra la mediana de la marca. En verde, los 2 mejores con 5 o más publicaciones.")}
   ${anaSec(7, "3 acciones para el próximo mes", acts.length ? `<ol class="aacts">${acts.map(x => `<li>${esc(x.t)}</li>`).join("")}</ol>${acts.length < 3 ? `<p class="note" style="margin:10px 0 0">No hay más acciones con datos suficientes (grupos de 5 o más publicaciones).</p>` : ""}` : `<p class="note">No hay acciones con datos suficientes este mes (grupos de 5 o más publicaciones).</p>`)}`;
 }
 function anaAllView(D, cross){
   const has = D.filter(d => d.M.length), er = d => anaMed(d.M.filter(x => x.cat !== "Sorteos").map(x => x.er)), mc = d => { const c = [...anaGroup(d.M, x => x.cat)].map(([k, l]) => ({ k, n:l.length, vs:d.vsOf(l) })).filter(c => c.n >= ANA_MIN && c.k !== "Sorteos").sort((p, q) => q.vs - p.vs)[0]; return c ? `${esc(c.k)} <small class="s-${anaSem(c.vs)}">${anaP(c.vs)}</small>` : ANA_FEW; };
   const vsOf = x => { const d = D.find(y => y.b === x.b); return d?.med ? anaPct(x.reach, d.med) : 0; };
-  return `${anaSec("A", "Comparación de las marcas", `<div class="tw"><table><thead><tr><th>Marca</th><th class="r">Publicaciones</th><th class="r">Alcance mediano</th><th class="r">Interacción</th><th>Mejor categoría (vs su mediana)</th><th class="r">Recomendado por día</th></tr></thead><tbody>${has.map(d => { const a = anaActDays(d);
+  const recs = has.map(d => [d.b, anaActDays(d).rec]);
+  const read = [`Cada marca se mide contra lo suyo: ${has.map(d => `${esc(d.b)} <b>${dots(d.med)}</b>`).join(", ")} personas por publicación (en el medio).`,
+    cross.length ? `Hubo <b>${cross.length}</b> ${cross.length === 1 ? "promo igual" : "promos iguales"} en dos marcas a menos de 2 horas: compiten por parte del mismo público.` : "No hubo promos iguales en dos marcas a la misma hora.",
+    `Recomendado por día: ${recs.map(([b, r]) => `${esc(b)} ${r ? `<b>${r.k}</b>` : "pocos datos"}`).join(", ")} ${recs.every(([, r]) => r?.k === "1") ? "activación" : "activaciones"}.`];
+  return `<div class="panel aread"><h2>${icon("lightbulb")} Lectura rápida</h2><ul>${read.map(x => `<li>${x}</li>`).join("")}</ul></div>
+  ${anaSec("A", "Comparación de las marcas", `<div class="tw"><table><thead><tr><th>Marca</th><th class="r">Publicaciones</th><th class="r">Alcance mediano</th><th class="r">Interacción</th><th>Mejor categoría (vs su mediana)</th><th class="r">Recomendado por día</th></tr></thead><tbody>${has.map(d => { const a = anaActDays(d);
       return `<tr><td>${brandTag(d.b)}</td><td class="r num">${d.M.length}</td><td class="r num">${dots(d.med)}</td><td class="r num">${(er(d) * 100).toFixed(1).replace(".", ",")} %</td><td>${mc(d)}</td><td class="r num">${a.rec ? `${a.rec.k} ${a.rec.k === "1" ? "activación" : "activaciones"}` : ANA_FEW}</td></tr>`; }).join("")}</tbody></table></div>`, "Cada marca se compara contra su propia mediana: los tamaños de cuenta son muy distintos.")}
   ${anaSec("B", "Promos iguales en 2 o más marcas", `<div class="grid kpis">${anaCard(cross.length, "Promos iguales a menos de 2 horas", cross.length ? "compiten por parte del mismo público" : "no hubo superposiciones este mes", cross.length ? "r" : "g")}</div>${cross.length ? `<div class="tw"><table><thead><tr><th>Fecha</th><th>Promo</th><th>Marca y hora</th><th class="r">Alcance</th><th class="r">vs su mediana</th><th>Marca y hora</th><th class="r">Alcance</th><th class="r">vs su mediana</th></tr></thead><tbody>${cross.map(([x, y]) =>
       `<tr><td class="num">${anaDM(x)}</td><td>${esc(anaW(x.title, 8))}</td><td>${esc(x.b)} ${x.hm}</td><td class="r num">${dots(x.reach)}</td><td class="r num s-${anaSem(vsOf(x))}">${anaP(vsOf(x))}</td><td>${esc(y.b)} ${y.hm}</td><td class="r num">${dots(y.reach)}</td><td class="r num s-${anaSem(vsOf(y))}">${anaP(vsOf(y))}</td></tr>`).join("")}</tbody></table></div>` : ""}`)}`;
@@ -10714,10 +10741,10 @@ function pReportes(){
         <div class="tag-row"><span class="tag">${estado}</span><span class="tag">Período 01/${MONTH.slice(5)} – ${lastDay(MONTH)}/${MONTH.slice(5)}</span><span class="tag">${viewer.brands ? "Marcas: " + viewer.brands.join(", ") : "Todas las marcas"}</span></div></div>
         <div class="chips">${tabs.some(t => t.k === "analisis") ? `<button class="btn primary anago" data-rtab="analisis">${icon("trending-up")} Análisis</button>` : ""}${viewer.role === "Admin total" && MONTH === CURRENT_MONTH ? `<button class="btn" data-close>${icon("lock")} Cerrar ${monthName(MONTH)}</button>` : ""}</div>
       </div></div></div>
-  <h2 style="margin:0 0 -10px" class="pmh repdlh">${pmIco("download")}Informes</h2>
+  ${reportTab === "analisis" ? "" : `<h2 style="margin:0 0 -10px" class="pmh repdlh">${pmIco("download")}Informes</h2>
   <div class="replist">${tabs.map(t => `<article class="panel repcard ${reportTab === t.k ? "on" : ""}"><header><span class="ric">${icon(t.ic)}</span><div><h3>${repTitle(t)}</h3><span class="note">${monthLabel(MONTH)}</span></div></header><p>${t.d}</p>
-    <div class="chips"><button class="btn ${reportTab === t.k ? "primary" : ""}" data-rtab="${t.k}">${icon("eye")} ${reportTab === t.k ? "Viendo" : "Ver"}</button><button class="btn" data-dl="${t.k}|xlsx">${icon("download")} Excel</button><button class="btn" data-dl="${t.k}|pdf">${icon("download")} PDF</button></div></article>`).join("")}</div>
-  ${cur ? `<div class="head"><h2 style="margin:0" class="pmh">${pmIco(cur.ic)}${repTitle(cur)} · ${monthLabel(MONTH)}</h2><div class="chips"><button class="btn primary" data-dl="${cur.k}|xlsx">${icon("download")} Descargar Excel</button><button class="btn" data-dl="${cur.k}|pdf">${icon("download")} Descargar PDF</button></div></div>` : ""}
+    <div class="chips"><button class="btn ${reportTab === t.k ? "primary" : ""}" data-rtab="${t.k}">${icon("eye")} ${reportTab === t.k ? "Viendo" : "Ver"}</button><button class="btn" data-dl="${t.k}|xlsx">${icon("download")} Excel</button><button class="btn" data-dl="${t.k}|pdf">${icon("download")} PDF</button></div></article>`).join("")}</div>`}
+  ${cur ? `<div class="head"><h2 style="margin:0" class="pmh">${pmIco(cur.ic)}${repTitle(cur)} · ${monthLabel(MONTH)}</h2><div class="chips">${cur.k === "analisis" ? `<button class="btn" data-repback>${icon("arrow-left")} Volver a los informes</button>` : ""}<button class="btn primary" data-dl="${cur.k}|xlsx">${icon("download")} Descargar Excel</button><button class="btn" data-dl="${cur.k}|pdf">${icon("download")} Descargar PDF</button></div></div>` : ""}
   <div class="repbody" id="repBody">${tabs.length ? body() : `<div class="panel"><div class="empty">No tenés informes habilitados.</div></div>`}</div>
   ${reportTab === "analisis" ? "" : monthAnalysis()}
   <p class="note repfoot">Cada informe se descarga por separado, con el análisis del mes incluido: en Excel (una hoja por cada tabla) o en PDF listo para mandar (se abre la ventana de imprimir: elegí “Guardar como PDF”). Cada persona descarga solo lo que tiene permitido ver.</p></div>`;
@@ -15759,7 +15786,7 @@ document.addEventListener("click", e => {
   if (!t) return;
   if (["calendario","calhistoria","calcanales"].includes(t.dataset.page) && brandFilter === "Todas") brandFilter = myGroups()[0];
   if (t.dataset.month){ const i = MONTHS_APP.findIndex(m => m.v === MONTH) + Number(t.dataset.month); if (MONTHS_APP[i]){ MONTH = MONTHS_APP[i].v; render(); } }
-  else if (t.dataset.rtab){ reportTab = t.dataset.rtab; render(); if (t.classList.contains("anago")) document.querySelector("#repBody")?.closest(".repwrap")?.querySelector(".repbody")?.previousElementSibling?.scrollIntoView({ behavior:"smooth", block:"start" }); } // v314: el botón “Análisis” lleva directo a la vista
+  else if (t.dataset.rtab){ if (t.dataset.rtab === "analisis" && reportTab !== "analisis") repBackTab = reportTab; reportTab = t.dataset.rtab; render(); if (t.classList.contains("anago")) document.querySelector("#repBody")?.closest(".repwrap")?.querySelector(".repbody")?.previousElementSibling?.scrollIntoView({ behavior:"smooth", block:"start" }); } // v314: el botón “Análisis” lleva directo a la vista
   else if (t.dataset.rbrand){ reportBrand = t.dataset.rbrand; render(); }
   else if (t.dataset.dl){ const [k, kind] = t.dataset.dl.split("|"); downloadReport(k, kind); }
   else if (t.dataset.close !== undefined){ toast(`En la app real, esto deja ${monthName(MONTH)} fijo: se puede consultar pero ya no modificar.`); }
