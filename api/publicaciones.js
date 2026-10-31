@@ -1,7 +1,9 @@
 // Publicaciones de Instagram de cada marca (las mismas cuentas que Seguidores). Guarda en app_state → s:META_POSTS:
 //   { "updated": "...",
 //     "Stock": { "handle": "@...", "posts": [ { id, type, cap, img, link, ts, likes, comments, reach, saved, shares, views } ] },   ← las últimas 30
-//     "m:2026-09": { "Stock": [ ... ], ... }, "m:2026-10": { ... }, ... }                                                    ← archivo de cada mes
+//     "m:2026-09": { "Stock": [ ... ], ... }, "m:2026-10": { ... }, ...                                                      ← archivo de cada mes
+//     "track": { since, live: { id: { b, ts, cap, pts:[[horas, alcance], …] } }, done: { id: { b, ts, cap, f, d1, d2, d3, d7, t90 } } } }
+//                                                          ← v314: vida útil (alcance acumulado de cada publicación en sus primeros 14 días)
 // El archivo de cada mes guarda todas las publicaciones del mes (v311: antes solo las últimas 9 con imagen y las 15 de más alcance; el
 // Análisis y recomendaciones y el Informe Comercial necesitan todas), con un tope de 80 por marca. Queda guardado aunque pasen los
 // meses; las imágenes de los meses viejos se renuevan acá porque las de Instagram vencen a los pocos días (por eso corre todos los días).
@@ -14,9 +16,39 @@ const FIRST_MONTH = "2026-08"; // la app arranca en septiembre 2026; agosto se t
 const LATEST = 30;        // últimas publicaciones por marca
 const MAX_FETCH = 200;    // tope al traer el mes actual y el anterior (y, una sola vez, el de antes)
 const INSIGHT_DAYS = 45;  // alcance solo de las publicaciones recientes (el resto ya no cambia)
-const FRESH_DAYS = 10;    // después de 10 días, si ya se tenía el alcance, no se vuelve a pedir
+const FRESH_DAYS = 15;    // después de 15 días, si ya se tenía el alcance, no se vuelve a pedir (v314: antes 10; la vida útil mide 14)
 const KEEP_MONTH = 80; // por marca y por mes: todas (tope de seguridad)
 
+// v314 · Vida útil: en cada corrida (2 por día) se anota el alcance acumulado de cada publicación de las marcas principales
+// mientras tiene 15 días o menos. Al pasar los 14 días se resume: alcance final (a los 14 días), qué parte tenía a las
+// 24, 48, 72 y 168 horas (entre dos anotaciones, en línea recta) y en cuántos días llegó al 90 %. Los resúmenes se
+// guardan 120 días. Si a una publicación le falta la primera anotación (dentro de las primeras 24 h) o no llegó a los 14
+// días, no se resume (no se inventa).
+const TRACK_BRANDS = ["Superseis", "Stock", "Delimarket"], TRACK_DAYS = 15, TRACK_FINAL_H = 336, TRACK_KEEP_DAYS = 120;
+const curveAt = (pts, h) => { const P = [[0, 0], ...pts]; for (let i = 1; i < P.length; i++){ if (P[i][0] >= h){ const [h0, r0] = P[i - 1], [h1, r1] = P[i]; return h1 === h0 ? r1 : r0 + (r1 - r0) * (h - h0) / (h1 - h0); } } return null; };
+function trackSummary(pts){
+  if (!pts.length || pts[0][0] > 24 || pts[pts.length - 1][0] < TRACK_FINAL_H) return null;
+  const f = curveAt(pts, TRACK_FINAL_H); if (!f || f <= 0) return null;
+  const at = h => Math.round(Math.min(1, Math.max(0, curveAt(pts, h) / f)) * 1000) / 1000;
+  const P = [[0, 0], ...pts]; let t90 = null;
+  for (let i = 1; i < P.length && t90 === null; i++) if (P[i][1] >= .9 * f){ const [h0, r0] = P[i - 1], [h1, r1] = P[i]; t90 = (r1 === r0 ? h1 : h0 + (h1 - h0) * (.9 * f - r0) / (r1 - r0)) / 24; }
+  return { f: Math.round(f), d1: at(24), d2: at(48), d3: at(72), d7: at(168), t90: t90 === null ? null : Math.round(t90 * 2) / 2 };
+}
+function trackUpdate(prev, seen, nowMs){
+  const t = prev && typeof prev === "object" ? prev : {}, live = { ...(t.live || {}) }, done = { ...(t.done || {}) };
+  for (const p of seen){
+    const h = Math.round((nowMs - Date.parse(p.ts)) / 36e5 * 10) / 10; if (h < 0 || h > TRACK_DAYS * 24 || done[p.id]) continue;
+    const e = live[p.id] || { b: p.b, ts: p.ts, cap: Array.from(String(p.cap || "")).slice(0, 120).join(""), pts: [] }, last = e.pts[e.pts.length - 1];
+    if (last && h - last[0] < 1) e.pts[e.pts.length - 1] = [h, p.reach]; else e.pts.push([h, p.reach]);
+    live[p.id] = e;
+  }
+  for (const [id, e] of Object.entries(live)){ // las que ya pasaron los 15 días: se resumen (o se descartan si les falta un tramo)
+    if ((nowMs - Date.parse(e.ts)) / 36e5 <= TRACK_DAYS * 24) continue;
+    const s = trackSummary(e.pts); if (s) done[id] = { b: e.b, ts: e.ts, cap: e.cap, ...s }; delete live[id];
+  }
+  for (const [id, e] of Object.entries(done)) if (nowMs - Date.parse(e.ts) > TRACK_KEEP_DAYS * 864e5) delete done[id];
+  return { since: t.since || new Date(nowMs).toISOString(), live, done };
+}
 const ym = ts => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date(ts)).slice(0, 7);
 const prevOf = m => { const [y, n] = m.split("-").map(Number); return n === 1 ? `${y - 1}-12` : `${y}-${String(n - 1).padStart(2, "0")}`; };
 
@@ -62,7 +94,7 @@ async function refreshMedia(ids){
   return out;
 }
 
-module.exports = async (req, res) => {
+const handler = async (req, res) => {
   const who = await cronOrUser(req); // el cron o el botón “Actualizar” de la app (Admin total, Admin o CM)
   if (!who) return res.status(401).json({ ok: false, error: "No autorizado: falta ?secret= o es incorrecto" });
   if (!process.env.META_TOKEN){ console.error("ERROR: falta la variable META_TOKEN en Vercel"); return res.status(500).json({ ok: false, error: "Falta la variable META_TOKEN en Vercel" }); }
@@ -80,7 +112,7 @@ module.exports = async (req, res) => {
       if (k.startsWith("m:")) Object.values(v || {}).forEach(list => (list || []).forEach(p => p?.id && known.set(p.id, p)));
       else (v?.posts || []).forEach(p => p?.id && known.set(p.id, p));
     }
-    const payload = { updated: at }, summary = {}, monthsOut = Object.fromEntries(months.map(m => ["m:" + m, {}]));
+    const payload = { updated: at }, summary = {}, monthsOut = Object.fromEntries(months.map(m => ["m:" + m, {}])), seen = [];
     const since = Date.now() - INSIGHT_DAYS * 864e5, fresh = Date.now() - FRESH_DAYS * 864e5, oldest = months[months.length - 1];
     // Todas las marcas a la vez; si una falla, se guardan las demás.
     await Promise.all(ORDEN.map(async (b) => {
@@ -108,12 +140,15 @@ module.exports = async (req, res) => {
           };
         });
         payload[b] = { handle: p.handle, posts: posts.slice(0, LATEST) };
+        if (TRACK_BRANDS.includes(b)) posts.forEach(x => { if (typeof x.reach === "number" && Date.now() - Date.parse(x.ts) <= TRACK_DAYS * 864e5) seen.push({ b, id: x.id, ts: x.ts, cap: x.cap, reach: x.reach }); });
         for (const m of months){ const list = posts.filter(x => ym(x.ts) === m); if (list.length) monthsOut["m:" + m][b] = monthPick(list); }
         summary[b] = { ultimas: Math.min(posts.length, LATEST), ...Object.fromEntries(months.map(m => [m, posts.filter(x => ym(x.ts) === m).length])) };
       } catch (e){ summary[b] = "error: " + e.message; payload[b] = { handle: p.handle, posts: prevData[b]?.posts || [], err: e.message };
         for (const m of months){ const keep = prevData["m:" + m]?.[b]; if (keep) monthsOut["m:" + m][b] = keep; } } // si falla, el mes guardado queda como estaba
     }));
     Object.assign(payload, monthsOut);
+    payload.track = trackUpdate(prevData.track, seen, Date.now()); // v314: vida útil
+    summary.vidaUtil = { midiendo: Object.keys(payload.track.live).length, resumidas: Object.keys(payload.track.done).length, desde: payload.track.since };
     // Meses ya cerrados (más viejos que el anterior): quedan como estaban, con las imágenes renovadas.
     const archived = Object.keys(prevData).filter(k => k.startsWith("m:") && k.slice(2) >= FIRST_MONTH && !months.includes(k.slice(2)));
     if (archived.length){
@@ -133,3 +168,6 @@ module.exports = async (req, res) => {
     return res.status(500).json({ ok: false, error: e.message, hint: tokenHint(e) });
   }
 };
+module.exports = handler;
+module.exports.trackUpdate = trackUpdate; // para probarlo sin llamar a Meta
+module.exports.trackSummary = trackSummary;
