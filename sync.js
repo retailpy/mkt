@@ -450,7 +450,7 @@ const RMH = (() => {
   // ---------- en uso o no ----------
   // La app está "en uso" si se ve en pantalla y alguien la tocó (mouse, teclado o toque) en los últimos 10 minutos.
   // Los televisores (rol TV) cuentan siempre como en uso. Si no está en uso (pestaña de fondo, compu o celular que
-  // quedó prendido sin nadie), se revisa cada 1 minuto en vez de cada 10 s, y las colecciones grandes que escriben los
+  // quedó prendido sin nadie), se revisa cada 2 minutos, y las colecciones grandes que escriben los
   // servidores (READONLY de más de 30 KB: publicaciones y mensajes de Meta, Comercial, referentes…) no se bajan con
   // cada cambio: esperan a que vuelva alguien y se traen en ese momento. Lo del equipo (pedidos, notificaciones,
   // publicaciones, avisos, chat) sigue llegando en vivo igual: de eso dependen el sonido, el título que titila y las
@@ -461,19 +461,22 @@ const RMH = (() => {
   const heavy = k => READONLY.has(k) && (base.get(k)?.json?.length || 0) > HEAVY;
   function activity(){ const was = inUse(); lastAct = Date.now(); if (!was && inUse()) catchUp(); } // volvió alguien: se trae lo que quedó esperando
   ["pointerdown", "pointermove", "keydown", "wheel", "touchstart", "scroll"].forEach(ev => addEventListener(ev, activity, { passive:true, capture:true }));
-  let channel = null;
+  // En vivo (v315): se escucha public.app_state_ver, que lleva solo la clave y la versión de cada cambio (unos bytes).
+  // Antes se escuchaba app_state y Supabase mandaba la fila entera (hasta 700 KB) a cada app abierta en cada cambio.
+  let channel = null, rtOk = false;
   function subscribe(){
-    channel = sb.channel("app_state").on("postgres_changes", { event:"*", schema:"public", table:"app_state" }, async p => {
+    channel = sb.channel("app_state").on("postgres_changes", { event:"*", schema:"public", table:"app_state_ver" }, async p => {
       const key = p.new?.key; if (!key || previewing || !wantedFn()(key)) return;
       if ((base.get(key)?.v || 0) >= (p.new.version || 0)) return;
       if (heavy(key) && !inUse()) return; // grande, de los servidores y sin nadie mirando: se baja cuando vuelva alguien (catchUp)
       const { data: row } = await sb.from("app_state").select("key, data, version").eq("key", key).maybeSingle();
       if (row && applyRow(row)) scheduleRender([key]);
-    }).subscribe(status => { if (status === "SUBSCRIBED") catchUp(); }); // al (re)conectar se trae lo que llegó mientras tanto
+    }).subscribe(status => { rtOk = status === "SUBSCRIBED"; if (rtOk) catchUp(); }); // al (re)conectar se trae lo que llegó mientras tanto
   }
   // La conexión en vivo se corta (celular bloqueado, pestaña en segundo plano, wifi, sesión renovada) y lo que llega
-  // durante el corte no se repite. Por eso, además, se revisa qué cambió: cada 10 s con la app en uso (cada 1 min si
-  // no), al volver a la app y al volver internet.
+  // durante el corte no se repite. Por eso, además, se revisa qué cambió: con la app en uso, cada 30 s si el en vivo
+  // anda (es solo un respaldo) y cada 10 s si está cortado; sin nadie usándola, cada 2 min; y siempre al volver a la
+  // app y al volver internet.
   let catching = null, catchingFull = false; // si ya se está revisando, el que pide “Actualizar” espera a que termine esa revisión
   function catchUp(){
     if (!ready || previewing) return Promise.resolve();
@@ -501,7 +504,8 @@ const RMH = (() => {
       if (changed.length) scheduleRender(changed);
     } catch (e) { console.warn("catchUp", e); }
   }
-  setInterval(() => { if (inUse() || Date.now() - lastPoll >= 60e3) catchUp(); }, 10000);
+  const pollEvery = () => !inUse() ? 120e3 : rtOk ? 30e3 : 10e3;
+  setInterval(() => { if (Date.now() - lastPoll >= pollEvery() - 500) catchUp(); }, 5000);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible"){ lastAct = Date.now(); catchUp(); } });
   addEventListener("online", () => catchUp());
   addEventListener("focus", () => { lastAct = Date.now(); catchUp(); });
