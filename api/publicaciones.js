@@ -5,8 +5,9 @@
 //     "track": { since, live: { id: { b, ts, cap, pts:[[horas, alcance], …] } }, done: { id: { b, ts, cap, f, d1, d2, d3, d7, t90 } } } }
 //                                                          ← v314: vida útil (alcance acumulado de cada publicación en sus primeros 14 días)
 // El archivo de cada mes guarda todas las publicaciones del mes (v311: antes solo las últimas 9 con imagen y las 15 de más alcance; el
-// Análisis y recomendaciones y el Informe Comercial necesitan todas), con un tope de 80 por marca. Queda guardado aunque pasen los
+// Análisis y recomendaciones y el Informe Comercial necesitan todas), con un tope por marca (KEEP_MONTH). Queda guardado aunque pasen los
 // meses; las imágenes de los meses viejos se renuevan acá porque las de Instagram vencen a los pocos días (por eso corre todos los días).
+// v316: el tope sube a 250 por marca y por mes (y a 400 lo que se trae): con 80, Superseis perdía los primeros días del mes.
 //
 // Probar sin guardar:  /api/publicaciones?dry=1&secret=EL_CRON_SECRET
 const { ORDEN, cronOrUser, graph, brandPages, save, readMeta, today, tokenHint } = require("./_lib/meta");
@@ -14,10 +15,10 @@ const { ORDEN, cronOrUser, graph, brandPages, save, readMeta, today, tokenHint }
 const FIELDS = "id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count";
 const FIRST_MONTH = "2026-08"; // la app arranca en septiembre 2026; agosto se trae una vez para TV Impacto (el mes en curso y los dos anteriores)
 const LATEST = 30;        // últimas publicaciones por marca
-const MAX_FETCH = 200;    // tope al traer el mes actual y el anterior (y, una sola vez, el de antes)
+const MAX_FETCH = 400;    // tope al traer el mes actual y el anterior (y, una sola vez, el de antes); v316: antes 200 (Superseis sube ~4 por día)
 const INSIGHT_DAYS = 45;  // alcance solo de las publicaciones recientes (el resto ya no cambia)
 const FRESH_DAYS = 15;    // después de 15 días, si ya se tenía el alcance, no se vuelve a pedir (v314: antes 10; la vida útil mide 14)
-const KEEP_MONTH = 80; // por marca y por mes: todas (tope de seguridad)
+const KEEP_MONTH = 250; // por marca y por mes: todas (tope de seguridad; v316: antes 80 y Superseis lo pasaba)
 
 // v314 · Vida útil: en cada corrida (2 por día) se anota el alcance acumulado de cada publicación de las marcas principales
 // mientras tiene 15 días o menos. Al pasar los 14 días se resume: alcance final (a los 14 días), qué parte tenía a las
