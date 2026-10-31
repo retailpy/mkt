@@ -106,8 +106,12 @@ const RMH = (() => {
       ...THREADS.filter(t => t.a === me || t.b === me).map(t => "thread:" + t.id),
       ...CHAT_GROUPS.filter(g => chatMember(g, { id:me, role:member?.role })).map(g => "chat:" + g.id)]; // siempre con quien inició sesión
   }
+  // Las filas que esta persona usa: sus colecciones, sus charlas y sus grupos de chat. Las demás (claves viejas que el
+  // código ya no conoce, como s:OBJ_PROPOSALS, o que puede leer pero no usa, como s:PLAN_TXT para Diseño) no se bajan.
+  // Antes se intentaban aplicar en cada revisión, fallaban (o no quedaban anotadas) y se volvían a bajar cada 10 s.
+  function wantedFn(){ const keys = new Set(localKeys()); return k => k.startsWith("thread:") || k.startsWith("chat:") || keys.has(k); }
   function getLocal(key){
-    if (key.startsWith("s:")) return SHARED[key.slice(2)][0]();
+    if (key.startsWith("s:")){ const h = SHARED[key.slice(2)]; return h ? h[0]() : undefined; }
     if (key.startsWith("notes:")) return NOTES[me] || [];
     if (key.startsWith("prompts:")) return PROMPT_HISTORY[me] || [];
     if (key.startsWith("comchk:")) return COM_CHECKS[me] || {};
@@ -317,13 +321,83 @@ const RMH = (() => {
     base.set(key, { v:row.version, json:C(row.data) });
     return true;
   }
+  // ---------- copia en el dispositivo ----------
+  // Lo último que vino de la base queda guardado en este dispositivo (IndexedDB, aparte para cada usuario). Al abrir o
+  // recargar la app se pide solo la lista de versiones (unos KB) y se bajan únicamente las colecciones que cambiaron
+  // desde la última vez. Antes se bajaba la tabla entera (más de 3 MB) cada vez que alguien abría o recargaba la app.
+  // Si el navegador no deja usar IndexedDB (modo privado, por ejemplo), se baja todo como antes. Al cerrar sesión se borra.
+  const cache = (() => {
+    const DB = "rmh-cache", ST = "rows";
+    let dbp = null;
+    const open = () => dbp || (dbp = new Promise((res, rej) => {
+      if (!window.indexedDB) return rej(new Error("sin IndexedDB"));
+      const t = setTimeout(() => rej(new Error("IndexedDB no responde")), 3000);
+      const r = indexedDB.open(DB, 1);
+      r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains(ST)) r.result.createObjectStore(ST, { keyPath:"id" }); };
+      r.onsuccess = () => { clearTimeout(t); res(r.result); };
+      r.onerror = () => { clearTimeout(t); rej(r.error); };
+    }).catch(e => { dbp = null; throw e; }));
+    const range = uid => IDBKeyRange.bound(uid + "|", uid + "|\uffff");
+    const done = tx => new Promise((res, rej) => { tx.oncomplete = () => res(); tx.onerror = tx.onabort = () => rej(tx.error); });
+    return {
+      // clave → { v, json } de lo guardado para este usuario
+      async read(uid){
+        const db = await open(), req = db.transaction(ST).objectStore(ST).getAll(range(uid));
+        const rows = await new Promise((res, rej) => { req.onsuccess = () => res(req.result || []); req.onerror = () => rej(req.error); });
+        return new Map(rows.filter(r => r && typeof r.json === "string").map(r => [r.key, { v:r.v, json:r.json }]));
+      },
+      async write(uid, puts, dels){
+        const db = await open(), tx = db.transaction(ST, "readwrite"), st = tx.objectStore(ST);
+        puts.forEach(([key, v, json]) => st.put({ id:uid + "|" + key, key, v, json }));
+        dels.forEach(key => st.delete(uid + "|" + key));
+        return done(tx);
+      },
+      async clear(uid){ const db = await open(), tx = db.transaction(ST, "readwrite"); tx.objectStore(ST).delete(range(uid)); return done(tx); },
+    };
+  })();
+  const cached = new Map(); // clave → versión que quedó guardada en el dispositivo
+  let caching = null, cacheOff = false; // cacheOff: este navegador no deja guardar la copia (no se reintenta)
+  // Copia al dispositivo lo que cambió en la base desde la última vez (la base de cada clave, no lo que falta guardar).
+  function saveCache(){
+    const uid = member?.user_id;
+    if (!ready || previewing || !uid || cacheOff || caching) return caching || Promise.resolve();
+    const puts = [], dels = [];
+    base.forEach((b, k) => { if (b.v > 0 && cached.get(k) !== b.v) puts.push([k, b.v, b.json]); });
+    cached.forEach((v, k) => { if (!(base.get(k)?.v > 0)) dels.push(k); });
+    if (!puts.length && !dels.length) return Promise.resolve();
+    caching = cache.write(uid, puts, dels)
+      .then(() => { puts.forEach(([k, v]) => cached.set(k, v)); dels.forEach(k => cached.delete(k)); })
+      .catch(e => { cacheOff = true; console.warn("saveCache", e); })
+      .finally(() => { caching = null; });
+    return caching;
+  }
+  setInterval(saveCache, 30000);
+  addEventListener("pagehide", () => saveCache());
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") saveCache(); });
+
   async function loadAll(){
-    const { data, error } = await sb.from("app_state").select("key, data, version");
+    // 1) La lista de lo que hay en la base, solo clave y versión. 2) Lo que ya está en el dispositivo con la misma
+    // versión se usa de ahí. 3) Se baja solo lo que falta o cambió.
+    const { data: list, error } = await sb.from("app_state").select("key, version");
     if (error) throw error;
+    let saved = new Map();
+    try { saved = await cache.read(member.user_id); } catch (e){ cacheOff = true; console.warn("cache", e); }
+    const wanted = wantedFn(), data = [], need = [];
+    list.filter(r => wanted(r.key)).forEach(r => {
+      const c = saved.get(r.key);
+      if (c && c.v === r.version){ try { data.push({ key:r.key, version:c.v, data:JSON.parse(c.json) }); return; } catch (e) {} }
+      need.push(r.key);
+    });
+    for (let i = 0; i < need.length; i += 50){
+      const { data: rows, error: e2 } = await sb.from("app_state").select("key, data, version").in("key", need.slice(i, i + 50));
+      if (e2) throw e2;
+      data.push(...(rows || []));
+    }
+    cached.clear(); saved.forEach((c, k) => cached.set(k, c.v)); // lo que quedó en el dispositivo: saveCache ordena el resto
     base.clear();
     THREADS = []; // solo las conversaciones que vienen del servidor
     data.sort((a, b) => (a.key.startsWith("s:") ? 0 : 1) - (b.key.startsWith("s:") ? 0 : 1)); // primero los grupos, después sus mensajes
-    data.forEach(row => { if (row.key.startsWith("thread:") || row.key.startsWith("chat:") || localKeys().includes(row.key)) applyRow(row); });
+    data.forEach(row => { if (row.key.startsWith("thread:") || row.key.startsWith("chat:") || localKeys().includes(row.key)){ try { applyRow(row); } catch (e){ console.warn("loadAll", row.key, e); } } });
     // Las que todavía no están en la base: su base es el valor inicial (versión 0). Así, si otra persona la crea
     // mientras tanto, lo que se cargó acá se combina en vez de perderse.
     localKeys().forEach(k => { if (!base.has(k) && getLocal(k) !== undefined) base.set(k, { v:0, json:C(enc(getLocal(k))) }); });
@@ -373,43 +447,68 @@ const RMH = (() => {
       ch.subscribe(status => { if (status === "SUBSCRIBED") ch.track({ since }); });
     } catch (e){ console.error(e); }
   }
-  let channel = null;
+  // ---------- en uso o no ----------
+  // La app está "en uso" si se ve en pantalla y alguien la tocó (mouse, teclado o toque) en los últimos 10 minutos.
+  // Los televisores (rol TV) cuentan siempre como en uso. Si no está en uso (pestaña de fondo, compu o celular que
+  // quedó prendido sin nadie), se revisa cada 2 minutos, y las colecciones grandes que escriben los
+  // servidores (READONLY de más de 30 KB: publicaciones y mensajes de Meta, Comercial, referentes…) no se bajan con
+  // cada cambio: esperan a que vuelva alguien y se traen en ese momento. Lo del equipo (pedidos, notificaciones,
+  // publicaciones, avisos, chat) sigue llegando en vivo igual: de eso dependen el sonido, el título que titila y las
+  // ventanas emergentes cuando la app está de fondo.
+  const IDLE_MS = 10 * 60e3, HEAVY = 30000;
+  let lastAct = Date.now(), lastPoll = 0;
+  const inUse = () => document.visibilityState === "visible" && (member?.role === "TV" || Date.now() - lastAct < IDLE_MS);
+  const heavy = k => READONLY.has(k) && (base.get(k)?.json?.length || 0) > HEAVY;
+  function activity(){ const was = inUse(); lastAct = Date.now(); if (!was && inUse()) catchUp(); } // volvió alguien: se trae lo que quedó esperando
+  ["pointerdown", "pointermove", "keydown", "wheel", "touchstart", "scroll"].forEach(ev => addEventListener(ev, activity, { passive:true, capture:true }));
+  // En vivo (v315): se escucha public.app_state_ver, que lleva solo la clave y la versión de cada cambio (unos bytes).
+  // Antes se escuchaba app_state y Supabase mandaba la fila entera (hasta 700 KB) a cada app abierta en cada cambio.
+  let channel = null, rtOk = false;
   function subscribe(){
-    channel = sb.channel("app_state").on("postgres_changes", { event:"*", schema:"public", table:"app_state" }, async p => {
-      const key = p.new?.key; if (!key || previewing) return;
+    channel = sb.channel("app_state").on("postgres_changes", { event:"*", schema:"public", table:"app_state_ver" }, async p => {
+      const key = p.new?.key; if (!key || previewing || !wantedFn()(key)) return;
       if ((base.get(key)?.v || 0) >= (p.new.version || 0)) return;
+      if (heavy(key) && !inUse()) return; // grande, de los servidores y sin nadie mirando: se baja cuando vuelva alguien (catchUp)
       const { data: row } = await sb.from("app_state").select("key, data, version").eq("key", key).maybeSingle();
       if (row && applyRow(row)) scheduleRender([key]);
-    }).subscribe(status => { if (status === "SUBSCRIBED") catchUp(); }); // al (re)conectar se trae lo que llegó mientras tanto
+    }).subscribe(status => { rtOk = status === "SUBSCRIBED"; if (rtOk) catchUp(); }); // al (re)conectar se trae lo que llegó mientras tanto
   }
   // La conexión en vivo se corta (celular bloqueado, pestaña en segundo plano, wifi, sesión renovada) y lo que llega
-  // durante el corte no se repite. Por eso, además, se revisa qué cambió: cada 10 s, al volver a la app y al volver internet.
-  let catching = null; // si ya se está revisando, el que pide “Actualizar” espera a que termine esa revisión
+  // durante el corte no se repite. Por eso, además, se revisa qué cambió: con la app en uso, cada 30 s si el en vivo
+  // anda (es solo un respaldo) y cada 10 s si está cortado; sin nadie usándola, cada 2 min; y siempre al volver a la
+  // app y al volver internet.
+  let catching = null, catchingFull = false; // si ya se está revisando, el que pide “Actualizar” espera a que termine esa revisión
   function catchUp(){
     if (!ready || previewing) return Promise.resolve();
-    if (catching) return catching;
-    catching = catchUpNow().finally(() => { catching = null; });
+    const full = inUse();
+    if (catching && (catchingFull || !full)) return catching;
+    if (catching) return catching.then(() => catchUp()); // la revisión en curso dejó lo grande para después: se completa
+    lastPoll = Date.now(); catchingFull = full;
+    catching = catchUpNow(full).finally(() => { catching = null; });
     return catching;
   }
-  async function catchUpNow(){
+  async function catchUpNow(full){
     try {
       const { data, error } = await sb.from("app_state").select("key, version");
       if (error && isAuthErr(error)) lostSession();
       if (error || !Array.isArray(data)) return;
-      const stale = data.filter(r => (base.get(r.key)?.v || 0) < r.version).map(r => r.key);
+      const wanted = wantedFn();
+      const stale = data.filter(r => wanted(r.key) && (base.get(r.key)?.v || 0) < r.version && (full || !heavy(r.key))).map(r => r.key);
       if (!stale.length) return;
       const changed = [];
       for (let i = 0; i < stale.length; i += 50){
         const { data: rows } = await sb.from("app_state").select("key, data, version").in("key", stale.slice(i, i + 50));
-        (rows || []).forEach(r => { if (applyRow(r)) changed.push(r.key); });
+        // Si una fila falla, las demás se aplican igual (antes una sola cortaba la revisión y todo se volvía a bajar).
+        (rows || []).forEach(r => { try { if (applyRow(r)) changed.push(r.key); } catch (e){ console.warn("catchUp", r.key, e); } });
       }
       if (changed.length) scheduleRender(changed);
     } catch (e) { console.warn("catchUp", e); }
   }
-  setInterval(catchUp, 10000);
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") catchUp(); });
+  const pollEvery = () => !inUse() ? 120e3 : rtOk ? 30e3 : 10e3;
+  setInterval(() => { if (Date.now() - lastPoll >= pollEvery() - 500) catchUp(); }, 5000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible"){ lastAct = Date.now(); catchUp(); } });
   addEventListener("online", () => catchUp());
-  addEventListener("focus", () => catchUp());
+  addEventListener("focus", () => { lastAct = Date.now(); catchUp(); });
   // La sesión se renueva cada hora: la conexión en vivo tiene que usar el token nuevo.
   try { sb.auth.onAuthStateChange((ev, s) => {
     if (s?.access_token && sb.realtime?.setAuth) sb.realtime.setAuth(s.access_token);
@@ -452,7 +551,7 @@ const RMH = (() => {
     viewer = pp; viewer.role = m.role; viewer.mustChange = false; viewer.active = true;
     const restored = restorePending(); // lo que no se llegó a guardar la vez anterior (sesión cortada o página cerrada)
     document.querySelectorAll('label[for="viewas"], #viewas').forEach(el => el.hidden = m.role !== "Admin total" || !(typeof VIEW_AS === "object" && me in VIEW_AS)); // “ver como”: Fede (a cualquiera) y Alyssa (solo a Gisella, v298)
-    ready = true; subscribe(); presence(); enterApp();
+    ready = true; subscribe(); presence(); enterApp(); setTimeout(saveCache, 3000);
     if (restored) setTimeout(() => { try { toast(`Se recuperó lo que habías cargado sin guardar (${restored === 1 ? "1 sección" : restored + " secciones"}). Ya se está guardando.`); } catch (e) {} }, 1200);
     checkClock(); if (!clockTimer) clockTimer = setInterval(checkClock, 30 * 60e3);
   }
@@ -504,6 +603,7 @@ const RMH = (() => {
     // Al salir, este dispositivo deja de recibir los mensajes de esta persona.
     try { const reg = await navigator.serviceWorker?.getRegistration(), sub = await reg?.pushManager?.getSubscription(); if (sub) await sb.from("push_subs").delete().eq("endpoint", sub.endpoint); } catch (e) {}
     try { localStorage.setItem("rmh-navreset", "1"); } catch (e) {} // al volver a entrar, el menú arranca con General y el área de la persona abiertos
+    try { if (member?.user_id) await cache.clear(member.user_id); } catch (e) {} // la copia de los datos no queda en el dispositivo
     await sb.auth.signOut({ scope:"local" }); location.reload();
   });
 

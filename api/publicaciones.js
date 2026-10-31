@@ -19,6 +19,10 @@ const MAX_FETCH = 400;    // tope al traer el mes actual y el anterior (y, una s
 const INSIGHT_DAYS = 45;  // alcance solo de las publicaciones recientes (el resto ya no cambia)
 const FRESH_DAYS = 15;    // después de 15 días, si ya se tenía el alcance, no se vuelve a pedir (v314: antes 10; la vida útil mide 14)
 const KEEP_MONTH = 250; // por marca y por mes: todas (tope de seguridad; v316: antes 80 y Superseis lo pasaba)
+// v317 · Para no gastar de más en Supabase (egress: cada app baja este archivo cuando cambia): solo las marcas principales
+// guardan TODAS sus publicaciones, y solo de los últimos 3 meses (lo que usa el Análisis); y la imagen va solo en las que se
+// muestran (las últimas 9 y las 15 de más alcance de cada mes). Las demás marcas y los meses más viejos, compactos como antes.
+const KEEP_IMG = 9, KEEP_TOP = 15, FULL_MONTHS = 3;
 
 // v314 · Vida útil: en cada corrida (2 por día) se anota el alcance acumulado de cada publicación de las marcas principales
 // mientras tiene 15 días o menos. Al pasar los 14 días se resume: alcance final (a los 14 días), qué parte tenía a las
@@ -77,10 +81,20 @@ async function pool(items, n, fn){
   return out;
 }
 
-// Lo que se guarda de cada mes: todas las publicaciones, de la más nueva a la más vieja (hasta 80 por marca).
-function monthPick(list){
-  return [...list].sort((a, b) => String(b.ts).localeCompare(String(a.ts))).slice(0, KEEP_MONTH);
+const hasImg = p => !!p.img; // incluye los reels: se muestran con su portada
+const score = p => p.reach ?? ((p.likes || 0) + (p.comments || 0) + (p.saved || 0) + (p.shares || 0));
+const byTsDesc = l => [...l].sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+// Compacto: las últimas 9 con imagen y las 15 de más alcance (sin repetir).
+function compact(list){
+  const keep = new Map();
+  byTsDesc(list).filter(hasImg).slice(0, KEEP_IMG).forEach(p => keep.set(p.id, p));
+  [...list].sort((a, b) => score(b) - score(a)).slice(0, KEEP_TOP).forEach(p => keep.set(p.id, p));
+  return byTsDesc([...keep.values()]);
 }
+// Completo: todas (hasta 250), con imagen solo las que se muestran (las del compacto).
+function full(list){ const shown = new Set(compact(list).map(p => p.id)); return byTsDesc(list).slice(0, KEEP_MONTH).map(p => shown.has(p.id) ? p : (({ img, ...rest }) => rest)(p)); }
+const fullWindow = cur => { let m = cur; for (let i = 1; i < FULL_MONTHS; i++) m = prevOf(m); return m; }; // el mes más viejo que va completo
+const monthPick = (list, b, m, cur) => (TRACK_BRANDS.includes(b) && m >= fullWindow(cur) ? full : compact)(list);
 
 // Imágenes y me gusta nuevos para publicaciones ya guardadas (meses viejos): de a 50 por consulta.
 async function refreshMedia(ids){
@@ -142,7 +156,7 @@ const handler = async (req, res) => {
         });
         payload[b] = { handle: p.handle, posts: posts.slice(0, LATEST) };
         if (TRACK_BRANDS.includes(b)) posts.forEach(x => { if (typeof x.reach === "number" && Date.now() - Date.parse(x.ts) <= TRACK_DAYS * 864e5) seen.push({ b, id: x.id, ts: x.ts, cap: x.cap, reach: x.reach }); });
-        for (const m of months){ const list = posts.filter(x => ym(x.ts) === m); if (list.length) monthsOut["m:" + m][b] = monthPick(list); }
+        for (const m of months){ const list = posts.filter(x => ym(x.ts) === m); if (list.length) monthsOut["m:" + m][b] = monthPick(list, b, m, month); }
         summary[b] = { ultimas: Math.min(posts.length, LATEST), ...Object.fromEntries(months.map(m => [m, posts.filter(x => ym(x.ts) === m).length])) };
       } catch (e){ summary[b] = "error: " + e.message; payload[b] = { handle: p.handle, posts: prevData[b]?.posts || [], err: e.message };
         for (const m of months){ const keep = prevData["m:" + m]?.[b]; if (keep) monthsOut["m:" + m][b] = keep; } } // si falla, el mes guardado queda como estaba
@@ -153,11 +167,11 @@ const handler = async (req, res) => {
     // Meses ya cerrados (más viejos que el anterior): quedan como estaban, con las imágenes renovadas.
     const archived = Object.keys(prevData).filter(k => k.startsWith("m:") && k.slice(2) >= FIRST_MONTH && !months.includes(k.slice(2)));
     if (archived.length){
-      const ids = [...new Set(archived.flatMap(k => Object.values(prevData[k] || {}).flatMap(list => (list || []).map(p => p.id))))];
+      const ids = [...new Set(archived.flatMap(k => Object.values(prevData[k] || {}).flatMap(list => (list || []).filter(hasImg).map(p => p.id))))]; // v317: solo las que llevan imagen
       const fresh2 = await refreshMedia(ids).catch(() => ({}));
       for (const k of archived){
-        payload[k] = Object.fromEntries(Object.entries(prevData[k] || {}).map(([b, list]) => [b, (list || []).map(p => { const f = fresh2[p.id];
-          return f ? { ...p, img: imgOf(f) || p.img, likes: f.like_count ?? p.likes, comments: f.comments_count ?? p.comments } : p; })]));
+        payload[k] = Object.fromEntries(Object.entries(prevData[k] || {}).map(([b, list]) => [b, monthPick((list || []).map(p => { const f = fresh2[p.id];
+          return f && p.img ? { ...p, img: imgOf(f) || p.img, likes: f.like_count ?? p.likes, comments: f.comments_count ?? p.comments } : p; }), b, k.slice(2), month)])); // v317: los meses viejos quedan compactos
       }
       summary.archivo = archived.map(k => k.slice(2));
     }
@@ -172,3 +186,4 @@ const handler = async (req, res) => {
 module.exports = handler;
 module.exports.trackUpdate = trackUpdate; // para probarlo sin llamar a Meta
 module.exports.trackSummary = trackSummary;
+module.exports.monthPick = monthPick;
