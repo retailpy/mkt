@@ -4517,7 +4517,7 @@ function dragNav(btn){
   if (dragNav.btn === btn) return; clearTimeout(dragNav.t); document.querySelectorAll(".dragnav").forEach(x => x.classList.remove("dragnav")); dragNav.btn = btn;
   if (!btn || btn.disabled) return;
   const to = MONTHS_APP[MONTHS_APP.findIndex(m => m.v === MONTH) + Number(btn.dataset.month)];
-  if (!to || to.v < CURRENT_MONTH) return; // a un mes cerrado no se mueve nada
+  if (!to || (to.v < CURRENT_MONTH && !monthOpenN(to.v))) return; // a un mes cerrado (sin nada pendiente) no se mueve nada
   btn.classList.add("dragnav");
   dragNav.t = setTimeout(() => { MONTH = to.v; dragNav.btn = null; render(); dragMonthsBar(); }, 650);
 }
@@ -4546,7 +4546,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v324";
+const APP_VER = "v325";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -4636,7 +4636,7 @@ const REM_PL = ["lunes","martes","miércoles","jueves","viernes","sábados","dom
 const remDays = r => r.days.length === 7 ? "todos los días" : "los " + r.days.slice().sort().map(d => REM_PL[d]).join(", ").replace(/, ([^,]*)$/, " y $1");
 const remEv = r => `<div class="ev rem" title="Recordatorio: ${esc(remTxt(r))} (${remDays(r)})"><span>${icon("alarm-clock")} ${esc(remTxt(r))}</span></div>`;
 const remPev = r => `<div class="pev rem" title="Recordatorio: ${esc(remTxt(r))} (${remDays(r)})"><i></i><span>⏰ ${esc(remTxt(r))}</span></div>`;
-const canRem = () => ["Admin total", "CM"].includes(viewer?.role) && !isClosed();
+const canRem = () => ["Admin total", "CM"].includes(viewer?.role) && !isLocked();
 let remUI = { edit:null, days:null };
 // Planificación de CM: los pedidos de Diseño ya asignados a una CM que todavía no se aprobaron (con fecha o sin definir).
 function dgOnTheWay(){
@@ -4721,7 +4721,7 @@ function semLvl(st){
   return 0;
 }
 // Los repetitivos los marca como publicados el CM (o Admin total).
-const canMarkRec = () => !isViewOnly() && !isClosed() && (viewer.role === "Admin total" || viewer.role === "CM");
+const canMarkRec = () => !isViewOnly() && !isLocked() && (viewer.role === "Admin total" || viewer.role === "CM");
 // Etapa de un repetitivo en una fecha: tocándola se elige la siguiente, dentro del proceso de su tipo.
 const recChip = (r, d) => { const st = recSt(r, d), l = semLvl(st), txt = `${l === 3 ? icon("check") + " " : ""}${st}`;
   return canMarkRec() ? `<button type="button" class="semchip s${l}" data-stagemenu="rec:${r.id}~${d}" title="Etapa: ${st} · tocá para cambiarla">${txt} ▾</button>` : `<span class="semchip s${l}">${txt}</span>`; };
@@ -4733,8 +4733,8 @@ const isFin = j => FIN_STATES.includes(j.status) || (j.status === "Aprobado" && 
 const isClosedJob = j => isFin(j) || j.status === "Cancelado";
 // v323 · En un mes pasado (cerrado) lo terminado o cancelado queda fijo, pero los pedidos que siguen abiertos se pueden seguir
 // trabajando (etapas, hoja de texto, adjuntos, links, copy, aprobar, editar y cambiar la fecha) hasta que se terminen o cancelen.
-const jobOpenPast = j => isClosed() && !!j && !isClosedJob(j);
-const jobLocked = j => isClosed() && !jobOpenPast(j);
+const jobOpenPast = j => isClosed() && !isLocked() && !!j && !isClosedJob(j);
+const jobLocked = j => isLocked(); // v325: igual que todo el mes
 const isIdleJob = j => isClosedJob(j) || j.status === PAUSE; // v299: en pausa tampoco cuenta como pendiente (sin alarmas ni carga)
 // Gestión Diseño y Gestión CM: mismo sistema para Diseño y CM (como Creative Flow), cada área con sus tipos de trabajo.
 const areaName = a => a === "Diseño" ? "Diseño gráfico" : a === "Contenidos" ? "Gestión de Contenidos" : a;
@@ -5066,7 +5066,20 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 // v285: un mes de antes que arrancara la app (ej. agosto 2026, que muestra TV Impacto) también sale con su nombre.
 const monthLabel = v => MONTHS_APP.find(m => m.v === v)?.l || (/^\d{4}-\d{2}$/.test(v) ? MONTHS_ES[+v.slice(5) - 1].replace(/^./, c => c.toUpperCase()) + " " + v.slice(0, 4) : v);
 const monthName = v => monthLabel(v).split(" ")[0].toLowerCase();
-const isClosed = () => MONTH < CURRENT_MONTH;
+const isClosed = () => MONTH < CURRENT_MONTH; // mes pasado (para los informes y lo que se muestra)
+// v325 · Un mes pasado queda fijo recién cuando no le queda nada sin terminar. Mientras tenga trabajos abiertos (pedidos,
+// publicaciones, historias, Canal o actividades) se trabaja exactamente igual que en el mes en curso, para todos (CM,
+// diseñadores, Admin…), aunque ya se esté en el mes siguiente u otro. Los permisos usan isLocked(); los informes, isClosed().
+function monthOpenN(m = MONTH){
+  const c = monthOpenN.c; if (c && c.m === m && Date.now() - c.t < 1500) return c.n;
+  const inM = d => String(d || "").slice(0, 7) === m; let n = 0;
+  jobs.forEach(j => { if (!j.ex && jobMonth(j) === m && !isClosedJob(j)) n++; });
+  posts.forEach(x => { if (!x.ex && inM(x.date) && x.status !== CANCEL && !isDone(x)) n++; });
+  CHANNEL_POSTS.forEach(x => { if (!x.ex && inM(x.date) && x.status !== CANCEL && x.status !== "Publicado") n++; });
+  CM_ACTS.forEach(a => { if (inM(a.date) && a.status !== "Hecho" && a.status !== CANCEL) n++; });
+  monthOpenN.c = { m, t:Date.now(), n }; return n;
+}
+const isLocked = () => isClosed() && !monthOpenN();
 const isFuture = () => MONTH > CURRENT_MONTH;
 const prevMonth = v => { const [y,m] = v.split("-").map(Number); const d = new Date(y, m-2, 1); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0"); };
 const lastDay = v => { const [y,m] = v.split("-").map(Number); return new Date(y, m, 0).getDate(); };
@@ -5175,7 +5188,7 @@ const hasJob = (x, n) => !!x && !!n && (x.owner === n || alsoOf(x).includes(n));
 const hasPub = (x, n) => !!x && !!n && (x.cm === n || alsoOf(x).includes(n)); // publicaciones y Canal
 const crewOf = (main, x) => [...new Set([main, ...alsoOf(x)].filter(n => n && n !== "Sin asignar"))];
 const crewTxt = (main, x, f = firstName) => crewOf(main, x).map(f).join(" + ");
-const alsoCan = () => viewer?.role === "Admin total" && !isViewOnly() && !isClosed();
+const alsoCan = () => viewer?.role === "Admin total" && !isViewOnly() && !isLocked();
 function alsoBox(x, main){
   const cur = alsoOf(x);
   if (!alsoCan()) return cur.length ? `<p class="note jalsoro" style="grid-column:1/-1;margin:0">${icon("users")} También participan: <b>${cur.map(esc).join(", ")}</b></p>` : "";
@@ -5850,7 +5863,7 @@ const usd = n => "US$ " + (Number(n) || 0).toLocaleString("es-PY", { minimumFrac
 const k = n => n >= 1e6 ? (n/1e6).toFixed(2).replace(".", ",") + " M" : (n/1000).toFixed(1).replace(".", ",") + "k";
 const dm = d => d.slice(8,10) + "/" + d.slice(5,7);
 const daysTo = d => Math.round((new Date(d+"T12:00") - new Date(TODAY+"T12:00")) / 86400000);
-const postPill = p => isClosed() && !isDone(p) ? pill("No cumplido", "#ef4444") : pill(p.status, POST_COLOR[p.status]);
+const postPill = p => isLocked() && !isDone(p) ? pill("No cumplido", "#ef4444") : pill(p.status, POST_COLOR[p.status]);
 // Cómo quiere que la llamen: lo elige cada persona en Mi perfil; si no eligió, el primer nombre.
 // Con tener un email alcanza: el de la empresa o, si no tiene, el personal.
 const mainEmail = pp => pp.email || pp.personalEmail || "";
@@ -6526,11 +6539,11 @@ function nowCard(){
 const tickClock = () => { document.querySelectorAll("[data-clock]").forEach(el => el.textContent = clockNow()); document.querySelectorAll("[data-date]").forEach(el => el.textContent = dateNow()); };
 setInterval(tickClock, 10000); tickClock();
 const helloHead = sub => `<div class="hellohead"><div class="hh-l"><h1>${helloHTML()}</h1><p class="sub">${sub}</p><p class="motto">“${esc(dailyPhrase())}”</p></div>${nowCard()}</div>`;
-// v323 · En un mes pasado: aviso de que lo terminado queda fijo y los pedidos abiertos se pueden seguir trabajando.
+// v325 · En un mes pasado con trabajos sin terminar: aviso de que se sigue trabajando igual que siempre.
 function pastOpenNote(area){
-  if (!isClosed()) return "";
+  if (!isClosed() || isLocked()) return "";
   const n = jobs.filter(j => jobGroup(j) === area && seesJob(j) && !j.ex && jobMonth(j) === MONTH && !isClosedJob(j)).length;
-  return n ? `<p class="note pastopen">${icon("lock-open")}<span>${monthLabel(MONTH)} está cerrado: lo terminado queda fijo. ${n === 1 ? "El pedido que sigue sin terminar se puede" : `Los <b>${n}</b> pedidos que siguen sin terminar se pueden`} seguir trabajando (cambiar la etapa, ${n === 1 ? "editarlo o pasarle" : "editarlos o pasarles"} la fecha a ${monthName(CURRENT_MONTH)}) hasta que se termine${n === 1 ? "" : "n"}.</span></p>` : "";
+  return n ? `<p class="note pastopen">${icon("lock-open")}<span>${monthLabel(MONTH)} ya pasó, pero ${n === 1 ? "tiene <b>1</b> pedido sin terminar" : `tiene <b>${n}</b> pedidos sin terminar`}: se sigue trabajando igual que siempre (etapas, bocetos, hoja, links, editar o pasar la fecha a ${monthName(CURRENT_MONTH)}) hasta terminarlo${n === 1 ? "" : "s"}. El mes queda fijo cuando no queda nada pendiente.</span></p>` : "";
 }
 // ---------- Panel de Trabajo: acceso visual a las áreas de trabajo que ya existen (no copia páginas ni datos) ----------
 // Arriba, lo más urgente (de las mismas alertas de Inicio y los pedidos actuales); abajo, tarjetas que llevan a cada página de siempre.
@@ -6806,7 +6819,7 @@ const DESIGN_BACK = { "En proceso":"Pendiente", "Boceto finalizado":"En proceso"
 // v261: desde “Validado por comercial” se vuelve a la etapa en la que estaba (por si se marcó sin querer).
 const designBack = j => j.status === VAL_COM ? (j.valFrom || "Boceto finalizado") : DESIGN_BACK[j.status];
 function stageOptions(kind, it){
-  if (!it || isViewOnly() || (isClosed() && !(kind === "job" && jobOpenPast(it)))) return []; // v323: un pedido abierto de un mes pasado sigue cambiando de etapa
+  if (!it || isViewOnly() || isLocked()) return []; // v325: un mes pasado con trabajos sin terminar sigue como el mes en curso
   const at = viewer.role === "Admin total", hold = at ? HOLD_ST : [];
   if (onHold(it) && !at && kind !== "act" && kind !== "rec") return []; // v299: en pausa o cancelado, solo Admin total lo reanuda
   if (kind === "post") return canEditPost() ? [...POST_STAGES, ...hold] : [];
@@ -6939,14 +6952,14 @@ document.addEventListener("pointerdown", e => {
 // Mover en el calendario: el CM y el Admin total arrastran un posteo o una entrega a otro día.
 // Para pasarlo a otro mes: soltarlo en los días grises del borde, o mantenerlo sobre “‹ Anterior” / “Siguiente ›”.
 const canCalMove = () => !isViewOnly() && !isDesigner();
-const calDateOk = d => !!d && d.slice(0,7) >= CURRENT_MONTH && MONTHS_APP.some(m => m.v === d.slice(0,7));
+const calDateOk = d => !!d && (d.slice(0,7) >= CURRENT_MONTH || monthOpenN(d.slice(0,7)) > 0) && MONTHS_APP.some(m => m.v === d.slice(0,7)); // v325: un mes pasado con cosas sin terminar, también
 function calDrag(kind, id){
   if (!canCalMove()) return "";
   const it = kind === "post" ? postById(id) : kind === "canal" ? canalById(id) : jobs.find(x => x.id === id);
   const d = kind === "job" ? it.due : it.date;
   return calDateOk(d) ? ` draggable="true" data-drag="${kind}:${id}"` : ""; // también los aprobados/finalizados
 }
-const calHint = () => canCalMove() && !isClosed() ? `<p class="draghint">Tocá un contenido para abrirlo y editarlo${CM_CAL_KIND[page] ? "" : ", o tocá un día para cargar uno nuevo en esa fecha"}. Arrastrá un posteo o una entrega a otro día para cambiar la fecha; para pasarlo a otro mes, soltalo en los días grises o dejalo un momento sobre “‹ Anterior” / “Siguiente ›”.</p>` : "";
+const calHint = () => canCalMove() && !isLocked() ? `<p class="draghint">Tocá un contenido para abrirlo y editarlo${CM_CAL_KIND[page] ? "" : ", o tocá un día para cargar uno nuevo en esa fecha"}. Arrastrá un posteo o una entrega a otro día para cambiar la fecha; para pasarlo a otro mes, soltalo en los días grises o dejalo un momento sobre “‹ Anterior” / “Siguiente ›”.</p>` : "";
 // v246: los días del mes anterior o siguiente que se ven en el calendario (ej.: domingo 1/11 en la última fila de octubre)
 // también muestran sus publicaciones; antes quedaban vacíos y parecía que el domingo no se había cargado.
 const calOutPosts = () => { const cs = calCells(), a = cs[0], b = cs[cs.length - 1];
@@ -6954,7 +6967,7 @@ const calOutPosts = () => { const cs = calCells(), a = cs[0], b = cs[cs.length -
 const calOutCanales = () => { const cs = calCells(), a = cs[0], b = cs[cs.length - 1];
   return visibleCanales().filter(k => k.date >= a && k.date <= b && k.date.slice(0, 7) !== MONTH); };
 function calGrid(render, addable = false){
-  return `<div class="calw${addable && !isClosed() ? " addable" : ""}"><div class="cal">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => `<div class="dh">${d}</div>`).join("")}
+  return `<div class="calw${addable && !isLocked() ? " addable" : ""}"><div class="cal">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => `<div class="dh">${d}</div>`).join("")}
   ${calCells().map(c => { const inner = render(c), wd = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][new Date(c + "T12:00").getDay()];
     return `<div class="d ${c.slice(0,7) !== MONTH ? "out" : ""} ${c === TODAY ? "today" : ""} ${inner ? "" : "emptyday"}" data-cdrop="${c}"><span class="dn">${+c.slice(8)}</span><span class="dwk">${wd}</span>${inner}</div>`; }).join("")}</div></div>`;
 }
@@ -6993,7 +7006,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-pedi
   render(); });
 document.addEventListener("change", e => { const k = e.target.closest("[data-kstatus]"); if (!k) return; const c = canalById(k.dataset.kstatus); if (!c || c.status === k.value) return; if (onHold(c) && !HOLD_ST.includes(k.value)){ render(); return openReactivate("canal", c, k.value); } holdMark(c, c.status, k.value); c.status = k.value; render(); toast(`“${c.title}” pasó a ${c.status}.`); });
 const gHead = (title, sub, ico) => `<div class="head"><div><h1 class="pmh">${pmIco(ico)}${title}</h1><p class="sub">${sub}</p></div><div class="chips">${refreshBtn()}${viewTabs(G_VIEWS, gView(), "data-gview")}</div></div>`;
-const gFilters = note => `<div class="head"><div class="chips">${brandChips()}${soloBtn()}</div>${note && !isViewOnly() && !isClosed() ? `<span class="note">${note}</span>` : ""}</div>`;
+const gFilters = note => `<div class="head"><div class="chips">${brandChips()}${soloBtn()}</div>${note && !isViewOnly() && !isLocked() ? `<span class="note">${note}</span>` : ""}</div>`;
 // Gestión Redes (feed) y Gestión Historia.
 function pCalCM(kind){
   const hist = kind === "Historia", view = gView(), vp = visiblePosts().filter(p => (hist ? p.format === "Historia" : p.format !== "Historia") && soloPost(p)).sort((a, b) => a.date.localeCompare(b.date));
@@ -7013,7 +7026,7 @@ function pCalCM(kind){
 let sureKey = "", sureAt = 0;
 function confirmTap(el, key, label){ if (sureKey === key && Date.now() - sureAt < 8000){ sureKey = ""; return true; } sureKey = key; sureAt = Date.now(); el.textContent = label; return false; }
 // En las Gestiones de CM no se carga: todo se carga en Planificación (ahí está “¿Se repite?”). Acá se ve, se edita y se mueve.
-const planLoadNote = what => canEditPost() && can("calcm") && !isClosed() ? `<div class="caladds"><button type="button" class="caladd" data-page="calcm"><span class="cmplus">${icon("calendar-days")}</span><span><b>Cargar en Planificación</b><small>Las ${what} se cargan en Planificación (también las que se repiten). Acá se ven y se editan.</small></span></button></div>` : "";
+const planLoadNote = what => canEditPost() && can("calcm") && !isLocked() ? `<div class="caladds"><button type="button" class="caladd" data-page="calcm"><span class="cmplus">${icon("calendar-days")}</span><span><b>Cargar en Planificación</b><small>Las ${what} se cargan en Planificación (también las que se repiten). Acá se ven y se editan.</small></span></button></div>` : "";
 // Botones para cargar, aparte y con borde (distintos de los filtros de marca).
 const calAdds = items => items.length ? `<div class="caladds">${items.map(([attr, ic, t, d]) => `<button type="button" class="caladd" ${attr}><span class="cmplus">${icon(ic)}</span><span><b>${t}</b><small>${d}</small></span></button>`).join("")}</div>` : "";
 // Lo de otras marcas (fuera de Superseis, Stock y Delimarket) se dibuja solo con el borde de su color.
@@ -7078,7 +7091,7 @@ function pPlan(){
     return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${canEditPost() ? `<select class="base sm" data-pcm="${x.id}" aria-label="CM de ${esc(x.title)}">${[...new Set([...CM_NAMES(), x.cm].filter(Boolean))].map(n => `<option value="${esc(n)}" ${n === x.cm ? "selected" : ""}>${esc(firstName(n))}</option>`).join("")}</select>${alsoOf(x).length ? `<small class="note"> + ${esc(alsoOf(x).map(firstName).join(" + "))}</small>` : ""}` : esc(crewTxt(x.cm, x))}</td><td style="white-space:nowrap">${icon(x.format === "Historia" ? "smartphone" : "image")} <span class="net">${x.net}</span> ${x.format}</td><td style="min-width:190px">${tema(x, "post")}${x.carried ? `<span class="carried">↩ Arrastrado de ${x.carried}</span>` : ""}</td><td style="white-space:nowrap">${postDesignCell(x)}</td><td><div class="chips" style="flex-wrap:nowrap">${postStatusCell(x)}${postUrgBadge(x)}</div></td><td>${lbl ? `<button class="btn" data-adv-post="${x.id}">${lbl}</button>` : `<span class="note">—</span>`}</td></tr>`;
   };
   return `<div class="head"><div><h1 class="pmh">${pmIco(calOnly ? "calendar-days" : "list-checks")}${calOnly ? "Planificación · Temario" : "Plan de posteo"}</h1><p class="sub">${calOnly ? (view === "semana" ? `Semana del ${weekLabel(planWk())}` : monthLabel(MONTH)) + " · todo lo de CM junto: publicaciones, historias, WhatsApp, videos, repetitivos y actividades." : `${monthLabel(MONTH)} · todo lo de CM del mes, junto: feed (posts, carruseles y reels), historias, Canal de WhatsApp, videos y repetitivos. Cargalo desde acá o desde cada Gestión.`}</p></div>${calOnly ? `<div class="chips">${cmLoadBtn()}${viewTabs(PLAN_VIEWS, view, "data-gview")}</div>` : viewTabs([["calendario","Calendario","calendar-days"],["tabla","Tabla","table-2"],["tablero","Tablero","kanban"]], planUI.view, "data-plview")}</div>
-  ${isClosed() ? `<div class="ro">${icon("lock")} ${monthLabel(MONTH)} está cerrado: se puede consultar, pero no modificar. Lo que no se cumplió pasó al mes siguiente como “arrastrado”.</div>` : ""}
+  ${isClosed() && !isLocked() ? `<p class="note pastopen">${icon("lock-open")}<span>${monthLabel(MONTH)} ya pasó, pero tiene <b>${monthOpenN()}</b> ${monthOpenN() === 1 ? "trabajo" : "trabajos"} sin terminar: se sigue trabajando igual que siempre hasta terminarlos.</span></p>` : ""}${isLocked() ? `<div class="ro">${icon("lock")} ${monthLabel(MONTH)} está cerrado: se puede consultar, pero no modificar. Lo que no se cumplió pasó al mes siguiente como “arrastrado”.</div>` : ""}
   ${calOnly ? "" : calAdds(canEditPost() ? [['data-pnew="Feed"', "image", "Cargar publicación", "Post, carrusel o reel para el feed."], ['data-pnew="Historia"', "smartphone", "Cargar historia", "Una historia en su fecha."], ['data-pnew="Canal"', "message-circle", "Cargar para el Canal de WhatsApp", "Un contenido para el canal."], ...(canCreateJobs() && can("gestioncm") ? [['data-plvid', "clapperboard", "Cargar gestión de video", "Video para redes o para pantallas, con su fecha."]] : [])] : [])}
   ${summary}${filters}${calOnly ? "" : CM_PROC_LEGEND()}
   ${calOnly ? dgOnTheWay() : ""}
@@ -7100,7 +7113,7 @@ document.addEventListener("click", e => { const v = e.target.closest("[data-plvi
 document.addEventListener("click", e => {
   if (!(CM_CAL_KIND[page] || page === "gestioncm") || gView() !== "calendario") return;
   const cell = !e.target.closest(".ev, .pev, button, a, select, input, [data-jficha], [data-open]") && e.target.closest(".calw [data-cdrop]"); if (!cell) return;
-  const d = cell.dataset.cdrop; if (!calDateOk(d) || !canEditPost() || !can("calcm") || isClosed()) return;
+  const d = cell.dataset.cdrop; if (!calDateOk(d) || !canEditPost() || !can("calcm") || isLocked()) return;
   page = "calcm"; render();
   const c2 = document.querySelector(`.plcal .calw [data-cdrop="${d}"]`); if (c2) dayMenu(c2, d, [["Feed","image","Publicación (post, carrusel o reel)"],["Historia","smartphone","Historia"],["Canal","message-circle","Canal de WhatsApp"], ...jobDayOpts(), ...actDayOpts()]);
 });
@@ -7784,17 +7797,17 @@ const planWeek = items => weekGrid(c => planDay(c, items), canEditPost());
 function weekGrid(dayFn, addable){
   const wk = planWk(), days = Array.from({ length:7 }, (_, i) => addDays(wk, i)), prevOk = addDays(wk, -1) >= APP_FIRST(), nextOk = addDays(wk, 7) <= APP_LAST();
   return `<div class="head plwknav"><b>${icon("calendar-range")} Semana del ${weekLabel(wk)}</b><div class="chips"><button type="button" class="btn sm" data-plwk="-1" ${prevOk ? "" : "disabled"}>‹ Semana anterior</button>${wk === mondayOf(TODAY) ? "" : `<button type="button" class="btn sm" data-plwk="0">Esta semana</button>`}<button type="button" class="btn sm" data-plwk="1" ${nextOk ? "" : "disabled"}>Semana siguiente ›</button></div></div>
-  <div class="plcal plweek"><div class="calw${addable && !isClosed() ? " addable" : ""}"><div class="cal">${days.map((c, i) => `<div class="dh">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"][i]} ${+c.slice(8)}</div>`).join("")}
+  <div class="plcal plweek"><div class="calw${addable && !isLocked() ? " addable" : ""}"><div class="cal">${days.map((c, i) => `<div class="dh">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"][i]} ${+c.slice(8)}</div>`).join("")}
     ${days.map(c => { const inner = dayFn(c); return `<div class="d ${c === TODAY ? "today" : ""} ${inner ? "" : "emptyday"}" data-cdrop="${c}">${inner}</div>`; }).join("")}</div></div></div>`;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-plwk]"); if (!b) return; const k = +b.dataset.plwk;
   planUI.wk = k === 0 ? mondayOf(TODAY) : addDays(planWk(), 7 * k); const m = addDays(planUI.wk, 3).slice(0, 7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m; render(); });
 let jobUI = { area:"Todos", view:"calendario", status:"Activos", owner:"Todos", prio:"Todas", q:"", form:null };
-const canCreateJobs = () => viewer.role === "Admin total" && !isClosed(); // cargar, editar y borrar pedidos: solo Admin total
+const canCreateJobs = () => viewer.role === "Admin total" && !isLocked(); // cargar, editar y borrar pedidos: solo Admin total
 const canChangeStatus = j => !jobLocked(j) && !isViewOnly() && (viewer.role === "Admin total" || viewer.role === "CM" || hasJob(j, viewer.name));
 // v239 · Contenidos gráficos: el CM carga los suyos (queda como responsable), los lleva por las etapas de Diseño gráfico
 // (le avisa a Admin total en Boceto finalizado y Corrección realizada) y, al aprobarse, los publica él mismo.
-const cmOwnCont = () => viewer?.role === "CM" && !isClosed() && !isViewOnly() && can("contenidos");
+const cmOwnCont = () => viewer?.role === "CM" && !isLocked() && !isViewOnly() && can("contenidos");
 const cmOwnContJ = j => viewer?.role === "CM" && !jobLocked(j) && !isViewOnly() && can("contenidos"); // v323: también un contenido abierto de un mes pasado
 const canNewJob = A => canCreateJobs() || (A === "Contenidos" && cmOwnCont());
 const canEditJob = j => canCreateJobs() || (viewer.role === "Admin total" && jobOpenPast(j)) || (!!j && j.area === "Contenidos" && cmOwnContJ(j) && hasJob(j, viewer.name) && !isFin(j));
@@ -8489,7 +8502,7 @@ function jobChatBtns(j, about = "el pedido"){
 // ----- Video editado (pedidos de CM): bien destacado arriba de la ficha. Se sube directo a Google Drive, a la carpeta
 // del mes con el año (dentro de la carpeta de videos), o se pega el link. Queda en el pedido para todos. -----
 let vidUp = null; // { job, pct, name } mientras sube
-const canVideo = () => !isViewOnly() && !isClosed() && ["Admin total", "CM"].includes(viewer.role);
+const canVideo = () => !isViewOnly() && !isLocked() && ["Admin total", "CM"].includes(viewer.role);
 function videoBlock(j){
   const ed = canVideo(), up = vidUp && vidUp.job === j.id, when = j.videoAt ? pyParts(j.videoAt) : null;
   return `<section class="panel jp-sec vidbox${j.videoLink ? " ok" : ""}"><h2 class="pmh">${pmIco("clapperboard")}Link del video editado</h2>
@@ -8507,7 +8520,7 @@ function videoBlock(j){
 // Los suben los CM y Admin total; los ven todos. Quitar de la lista: quien lo subió o Admin total (el archivo sigue en Drive). -----
 const cmUp = {}; // clave → { pct, name, n, i } mientras sube
 const cmFileTarget = key => key === "form" ? postUI.form?.post : key.startsWith("job:") ? jobById(key.slice(4)) : null;
-const canDelCmFile = f => !isViewOnly() && !isClosed() && (viewer.role === "Admin total" || f.by === viewer.name);
+const canDelCmFile = f => !isViewOnly() && !isLocked() && (viewer.role === "Admin total" || f.by === viewer.name);
 // v251: al subir desde una publicación ya cargada el archivo quedaba dos veces (el formulario y la publicación comparten la lista)
 // y la X sacaba solo una copia. Se muestra una vez por archivo, y si alguna copia está sacada, está sacada.
 const cmFilesLive = it => { const all = it?.cmFiles || [], gone = new Set(all.filter(f => f.del).map(f => f.id)), seen = new Set();
@@ -8840,7 +8853,7 @@ function pCarga(A){
 let cargaUI = { tab:"semana", cfg:false, open:{} };
 const cmPeople = () => PEOPLE.filter(pp => pp.active && pp.role === "CM");
 const DAY_SHORT = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
-const canCfgLoad = () => viewer.role === "Admin total" && !isClosed();
+const canCfgLoad = () => viewer.role === "Admin total" && !isLocked();
 function cmLoadCard(pp){
   const L = cmLoad(pp), lv = lvOf({ ...L, cm:true }), acc = cmAccounts(pp), duty = dutyOf(pp, TODAY), open = cargaUI.open[pp.id];
   const fnRow = ([k, l, ic]) => { const b = L.by[k]; if (!b.n) return ""; return `<div class="clfn"><span>${icon(ic)} ${l}</span><b>${b.n}</b><span class="note">${b.min ? "≈ " + fmtMin(b.min) : ""}${b.unk ? `${b.min ? " · " : ""}${b.unk} sin estimar` : ""}${b.done ? ` · ${b.done === b.n ? "todo hecho ✓" : b.done + " hecho" + (b.done === 1 ? "" : "s")}` : ""}</span></div>`; };
@@ -8956,14 +8969,14 @@ document.addEventListener("submit", e => { if (e.target.id !== "clOffForm") retu
 function msgDutyBox(){
   const pp = viewer.role === "CM" ? viewer : null, today = cmPeople().filter(x => cmAccounts(x).length);
   if (!pp && !isAdminAny()) return "";
-  const mine = pp && cmAccounts(pp).length ? (() => { const d = dutyOf(pp, TODAY), edit = !isClosed();
+  const mine = pp && cmAccounts(pp).length ? (() => { const d = dutyOf(pp, TODAY), edit = !isLocked();
     return `<div class="mduty"><div class="grow"><b>${icon("inbox")} Tu atención de hoy · ${esc(cmAccounts(pp).join(", "))}</b><small>${d ? (d.st === "none" ? "Registrado: sin consultas." : `Registrado: atendido${d.n ? ` · ${d.n} conversaciones` : ""}${d.res ? ` · ${d.res} resueltas` : ""}${d.der ? ` · ${d.der} derivadas` : ""}.`) : "Una sola responsabilidad por día (no una tarea por mensaje). Cuando termines, registralo."}</small></div>
       ${edit ? `<div class="mdacts"><label>Atendidas<input class="base sm" type="number" min="0" id="mdN" value="${esc(d?.n || "")}"></label><label>Resueltas<input class="base sm" type="number" min="0" id="mdRes" value="${esc(d?.res || "")}"></label><label>Derivadas<input class="base sm" type="number" min="0" id="mdDer" value="${esc(d?.der || "")}"></label>
         <button type="button" class="btn primary sm" data-mduty="ok">${icon("check")} Atendí los mensajes</button><button type="button" class="btn sm" data-mduty="none">Sin consultas</button>${d ? `<button type="button" class="btn sm" data-mduty="undo">Deshacer</button>` : ""}</div>` : ""}</div>`; })() : "";
   const team = isAdminAny() && today.length ? `<div class="mdteam">${today.map(x => { const d = dutyOf(x, TODAY); return `<span class="chip${d ? " on" : ""}">${esc(x.name)}: ${d ? (d.st === "none" ? "sin consultas" : `atendido${d.n ? ` (${d.n})` : ""}`) : "sin registrar"}</span>`; }).join("")}</div>` : "";
   return mine || team ? `<section class="panel mdbox">${mine}${team ? `<p class="note" style="margin:${mine ? "10px" : 0} 0 6px">Atención de mensajes de hoy (${dm(TODAY)}):</p>${team}` : ""}</section>` : "";
 }
-document.addEventListener("click", e => { const b = e.target.closest("[data-mduty]"); if (!b || viewer.role !== "CM" || isClosed()) return;
+document.addEventListener("click", e => { const b = e.target.closest("[data-mduty]"); if (!b || viewer.role !== "CM" || isLocked()) return;
   const k = viewer.id + "|" + TODAY, act = b.dataset.mduty, num = id => Math.max(0, Math.round(+(document.getElementById(id)?.value || 0))) || 0;
   if (act === "undo"){ const m = { ...MSG_DUTY }; delete m[k]; MSG_DUTY = m; render(); toast("Registro de hoy quitado."); return; }
   MSG_DUTY = { ...MSG_DUTY, [k]:{ st:act, n:act === "ok" ? num("mdN") : 0, res:act === "ok" ? num("mdRes") : 0, der:act === "ok" ? num("mdDer") : 0, at:new Date().toISOString() } };
@@ -9095,7 +9108,7 @@ function pPedidos(){
 }
 /* ---------- Gestión CM: publicaciones (fecha de publicación y estado) + tareas de CM ---------- */
 let cmUI = { tview:"calendario", st:"Todos", cm:"Todos" };
-const canEditPost = () => !isClosed() && !isViewOnly() && !isDesigner();
+const canEditPost = () => !isLocked() && !isViewOnly() && !isDesigner();
 function cmPosts(){ return visiblePosts().filter(p => (cmUI.cm === "Todos" || hasPub(p, cmUI.cm)) && cmStOk(p)).sort((a, b) => a.date.localeCompare(b.date)); }
 function postDesignCell(p){
   const j = jobs.find(x => x.post === p.id);
@@ -9468,7 +9481,7 @@ function copyAlert(n){
 // 5 · Cambios pedidos de una publicación: quién los pidió, qué hay que cambiar y los comentarios, en orden.
 function postChain(p, canal){
   const list = p.changes || [], who = n => { const pp = PEOPLE.find(x => x.name === n); return pp ? nickOf(pp) : n ? firstName(n) : "Admin total"; };
-  const canWrite = !isViewOnly() && !isClosed() && canEditPost(), rounds = list.filter(c => !c.kind).length;
+  const canWrite = !isViewOnly() && !isLocked() && canEditPost(), rounds = list.filter(c => !c.kind).length;
   let r = 0;
   const item = c => { const me = c.by === viewer.name;
     if (c.kind === "nota") return `<li class="msg ${me ? "me" : ""}"><div class="bub"><b>${esc(who(c.by))}</b><p>${esc(c.text)}</p><span>${dm(c.date)} ${c.time}</span></div></li>`;
@@ -9752,7 +9765,7 @@ function pGestionCM(){
   const adds = canCreateJobs() ? calAdds([['data-jnew', "clapperboard", "Cargar gestión de video", "Qué video, para qué marca, quién lo hace y para cuándo."], ['data-cmtv="repetitivos"', "repeat", "Repetitivos", "Lo que se repite ciertos días de la semana."]]) : "";
   const proc = `<div class="legend">${CM_STAGES.map(st => `<span><span class="sw" style="background:${SEM[semLvl(st)]}"></span>${st}</span>`).join("")}</div>`;
   const body = view === "calendario" ? jobDeliveryCal(list, "CM") : view === "tablero" ? proc + jobBoard(list, "CM") : jobTable(list);
-  return `${head}${adds}${pedScopeChips("CM")}<div class="head"><div class="chips">${brandChips()}</div>${!isViewOnly() && !isClosed() ? `<span class="note">${view === "tablero" ? "Tocá una tarjeta para cambiar su etapa · el lápiz para editar" : view === "tabla" ? "Tocá el trabajo para ver el pedido completo" : ""}</span>` : ""}</div>${body}${jobForm()}${recDrawer()}`;
+  return `${head}${adds}${pedScopeChips("CM")}<div class="head"><div class="chips">${brandChips()}</div>${!isViewOnly() && !isLocked() ? `<span class="note">${view === "tablero" ? "Tocá una tarjeta para cambiar su etapa · el lápiz para editar" : view === "tabla" ? "Tocá el trabajo para ver el pedido completo" : ""}</span>` : ""}</div>${body}${jobForm()}${recDrawer()}`;
 }
 const TV_TEAM_MIN = 10;
 let tvTeam = { timer:null, clock:null, slideT:null, updated:"", i:0, paused:false };
@@ -10074,7 +10087,7 @@ const satPeople = () => PEOPLE.filter(pp => pp.active && ["Diseñador","CM","Adm
 const satList = (map, id) => { const v = map[id]; return (Array.isArray(v) ? v : v ? [v] : []).filter(Boolean).sort(); };
 const satSet = (map, id, arr) => { const a = [...new Set(arr.filter(Boolean))].sort(); if (a.length) map[id] = a; else delete map[id]; };
 function saturdaysOf(m){ const out = []; for (let d = 1; d <= lastDay(m); d++){ const x = `${m}-${String(d).padStart(2, "0")}`; if (new Date(x + "T12:00").getDay() === 6) out.push(x); } return out; }
-const canSetSat = pp => !isClosed() && !isViewOnly() && (viewer.role === "Admin total" || pp.id === viewer.id);
+const canSetSat = pp => !isLocked() && !isViewOnly() && (viewer.role === "Admin total" || pp.id === viewer.id);
 const satDays = l => l.map(dm).join(", ").replace(/, ([^,]*)$/, " y $1");
 function pSabados(){
   const sats = saturdaysOf(MONTH), ppl = satPeople(), map = (SAT_TURN[MONTH] = SAT_TURN[MONTH] || {});
@@ -10129,7 +10142,7 @@ let PAUTA_PLAN = [
   { id:10, month:"2026-08", brand:"Delimarket", amount:110, cur:"USD", campaign:"Delivery express · mensajes", by:"miguel", date:"2026-08-13", rating:3 },
 ];
 let pautaUI = { tab:"informe" }; // arranca en el Informe de Meta Ads
-const canEditPauta = () => !isViewOnly() && !isDesigner() && !isClosed();
+const canEditPauta = () => !isViewOnly() && !isDesigner() && !isLocked();
 const pautaTabs = () => `<div class="head"><div><h1>Pauta Meta Ads</h1><p class="sub">El <b>informe</b> es lo que corrió en Meta Ads: cada pauta con su imagen, de inicio a fin, con lo invertido y sus resultados. El <b>plan</b> es lo que se organiza internamente, con el límite del mes.</p></div>
   <div class="chips"><button class="chip ${pautaUI.tab === "informe" ? "on" : ""}" data-ptab="informe">Informe Meta Ads</button><button class="chip ${pautaUI.tab === "plan" ? "on" : ""}" data-ptab="plan">Plan de pauta</button></div></div>`;
 // Color de la barra (igual que en Plan Contenidos): celeste < 50 % · naranja 50-89 % · verde 90-100 % · rojo si se pasa del límite.
@@ -10171,7 +10184,7 @@ function pPautaPlan(){
     <label>Monto (US$)<input class="base" id="paAmount" inputmode="decimal" placeholder="Ej.: 150 o 99,50" required><span class="note">Disponible: ${usd(left)}</span></label>
     <label class="wide">Campaña o sobre qué es<input class="base" id="paCampaign" placeholder="Ej.: Semana del vino · mensajes" required></label>
     <button class="btn primary" type="submit">Agregar pauta</button></form>` : `<p class="note" style="margin:0">Ya se cargó todo el presupuesto de ${monthName(MONTH)} (${usd(budget)}). Para agregar otra, borrá o achicá una de las que están.</p>`}</div>`
-    : `<div class="ro">👁 Podés ver el plan de pauta, pero no cargarlo ni editarlo${isClosed() ? ` (${monthLabel(MONTH)} está cerrado)` : ""}.</div>`}
+    : `<div class="ro">👁 Podés ver el plan de pauta, pero no cargarlo ni editarlo${isLocked() ? ` (${monthLabel(MONTH)} está cerrado)` : ""}.</div>`}
   <div class="pautagrid">${rows.map(r => `<div class="panel pcard" style="--c:${BRANDS[r.b]}"><div class="pch"><span class="bname" style="--c:${BRANDS[r.b]}"><i></i>${r.b}</span><span class="pill" style="--c:#0f172a;--t:#fff;border-color:var(--line-3)">${usd(r.total)}</span></div>
       <p class="note" style="margin:4px 0 8px">${r.list.length} ${r.list.length === 1 ? "pauta" : "pautas"} · ${budget ? Math.round(r.total / budget * 100) : 0}% del presupuesto · gastado real ${usd(r.real)}</p>
       <div class="plist2">${r.list.map(item).join("") || `<p class="note">Sin pautas cargadas.</p>`}</div></div>`).join("") || `<div class="panel"><div class="empty">Todavía no hay pautas cargadas en ${monthName(MONTH)}.</div></div>`}</div>
@@ -15254,7 +15267,7 @@ const escSector = t => { const f = rclFold(t); return (ESC_SECTOR_RX.find(([, re
 const ESC_NETS = ["Instagram","Facebook","TikTok","X (Twitter)","Otra"];
 const ESC_ST = ["Sin resolver","Respondido","Resuelto","Derivado"];
 let escUI = { brand:"Todas", sector:"Todos", word:"", sbrand:"Superseis", form:false, open:null };
-const canEsc = () => can("escraches") && !isViewOnly() && !isClosed();
+const canEsc = () => can("escraches") && !isViewOnly() && !isLocked();
 // Los escraches del mes: los automáticos (Instagram) y los cargados, con sus marcas (sector, estado, “no es escrache”).
 function escAll(month = MONTH){
   if (!can("escraches") && !can("reclamos")) return [];
@@ -15898,7 +15911,7 @@ function render(){
   const bdays = (page === "inicio" || (page === "dashboard" && !isComercial()) ? bdayParty() : "") + (page === "inicio" && can("cumples") ? bdayAlerts().filter(x => x.d > 0).map(({ pp, d }) => `<div class="panel bday" style="--u:#f97316"><div class="ic">${CAKE_SVG}</div><div><b>${d === 1 ? "Mañana" : `En ${d} días`} cumple años ${esc(pp.name)}</b> <span>${esc(pp.cargo || pp.role)} · ${bdayLabel(pp.birthday)}</span></div></div>`).join("") : "");
   const demo = window.RMH?.previewing ? `<div class="panel demo">${icon("info")}<div><b>Vista previa como ${esc(viewer.name)}.</b> <span>Lo que cambies acá no se guarda. Volvé a tu usuario en “ver como” (abajo a la izquierda).</span></div></div>` : "";
   const i = MONTHS_APP.findIndex(m => m.v === MONTH);
-  const est = isClosed() ? pill("🔒 Cerrado", "#334155") : isFuture() ? pill("En planificación", "#d946ef") : "";
+  const est = isClosed() ? (isLocked() ? pill("🔒 Cerrado", "#334155") : pill(`🔓 ${monthOpenN()} sin terminar`, "#0e7490")) : isFuture() ? pill("En planificación", "#d946ef") : "";
   const bar = ["tvpant","tvjunto","tvconf","gcm","calact","usuarios","config","tv","perfil","staff","tvredes","tvimpacto","sugerencias","mensajes","inbox","noticias","notas","prompts","guia","avisos","tendg","tencm","ideas"].includes(page) || (page === "pedcom" && (pcUI.form || pcUI.open || pcUI.view !== "calendario")) ? "" : `<div class="monthbar"><div class="mb-c"><b>${monthLabel(MONTH)}</b>${est}</div><div class="mb-n"><button class="btn" data-month="-1" ${i === 0 ? "disabled" : ""}>‹ Anterior</button><button class="btn" data-month="1" ${i === MONTHS_APP.length-1 ? "disabled" : ""}>Siguiente ›</button></div></div>`;
   const viewKey = [page, MONTH, viewer.id, calCM, reportTab, redesBrand, brandFilter, jobUI.view, cmUI.tview, cartUI.view, soloYo].join("|");
   if (animate0(page)) { jobUI.owner = "Todos"; jobUI.q = ""; if (!stagesOf(jobArea()).includes(jobUI.status)) jobUI.status = jobUI.status === "Todos" ? "Todos" : "Activos"; }
