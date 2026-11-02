@@ -4546,7 +4546,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v323";
+const APP_VER = "v324";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -7624,7 +7624,7 @@ document.addEventListener("submit", e => {
 });
 
 // ---------- Gestión de Comunicación y Marketing: la tabla de pedidos pendientes (o los aprobados), por actividad ----------
-let gcmUI = { done:false, month:null, brand:"", type:"", ord:"", day:"", dayPick:"" }; // v263: filtro por marca y por tipo, y orden por fecha (ord: "" = el de siempre, "asc" o "desc")
+let gcmUI = { done:false, month:null, brand:"", type:"", ord:"", day:"", dayPick:"", st:"" }; // v324: st = estado ("" todos, "__late" atrasados, o la etapa) // v263: filtro por marca y por tipo, y orden por fecha (ord: "" = el de siempre, "asc" o "desc")
 // v321 · Filtro por fecha: "" (todas) · "hoy" · "manana" · "semana" (lunes a domingo de esta semana) · o una fecha "AAAA-MM-DD".
 const gcmDayOk = x => { const d = gcmUI.day; if (!d) return true; if (!x.date) return false;
   if (d === "hoy") return x.date === TODAY; if (d === "manana") return x.date === addDays(TODAY, 1);
@@ -7635,20 +7635,24 @@ const gcmType = x => x.k === "canal" ? "CANAL" : cmFmt(x);
 function pGestCM(){
   const done = gcmUI.done, mon = gcmUI.month || CURRENT_MONTH;
   const all = cmWork().filter(cmMine), base = done ? all.filter(x => x.done && x.date.slice(0, 7) === mon) : all.filter(x => !x.done);
-  const list = base.filter(x => (!gcmUI.brand || x.brand === gcmUI.brand) && (!gcmUI.type || gcmType(x) === gcmUI.type) && gcmDayOk(x));
+  const stOk = x => !gcmUI.st || (gcmUI.st === "__late" ? cmLate(x) : x.status === gcmUI.st); // v324: filtro por estado
+  const list = base.filter(x => (!gcmUI.brand || x.brand === gcmUI.brand) && (!gcmUI.type || gcmType(x) === gcmUI.type) && gcmDayOk(x) && stOk(x));
   const mi = MONTHS_APP.findIndex(m => m.v === mon);
   const asc = gcmUI.ord ? gcmUI.ord === "asc" : !done; // pendientes: lo más próximo primero · aprobados: lo último primero
   const dk = x => x.date || (asc ? "9999" : "0000"); // sin fecha, siempre al final
   const sortF = (a, b) => (asc ? 1 : -1) * (dk(a).localeCompare(dk(b)) || (a.time || "99").localeCompare(b.time || "99"));
   const bOrd = Object.keys(BRANDS), bi = b => bOrd.includes(b) ? bOrd.indexOf(b) : 99, cnt = f => base.filter(f).length;
   const brands = [...new Set([...base.map(x => x.brand), gcmUI.brand].filter(Boolean))].sort((a, b) => bi(a) - bi(b) || a.localeCompare(b));
-  const types = GCM_TYPES.filter(([k]) => k === gcmUI.type || base.some(x => gcmType(x) === k)), filt = !!(gcmUI.brand || gcmUI.type || gcmUI.day);
+  const types = GCM_TYPES.filter(([k]) => k === gcmUI.type || base.some(x => gcmType(x) === k)), filt = !!(gcmUI.brand || gcmUI.type || gcmUI.day || gcmUI.st);
+  const stIdx = s => { const i = PLAN_STAGES.indexOf(s); return i >= 0 ? i : 50; }, sts = [...new Set([...base.map(x => x.status), ...(gcmUI.st && gcmUI.st !== "__late" ? [gcmUI.st] : [])].filter(Boolean))].sort((a, b) => stIdx(a) - stIdx(b) || a.localeCompare(b));
+  const nLate = done ? 0 : base.filter(cmLate).length;
   const pick = /^\d{4}-\d{2}-\d{2}$/.test(gcmUI.day), wk = mondayOf(TODAY), dLab = d => `${WEEKDAYS[wdOf(d)].slice(0, 3)} ${dm(d)}`;
   const dOpts = [["hoy", `Hoy · ${dLab(TODAY)}`, x => x.date === TODAY], ["manana", `Mañana · ${dLab(addDays(TODAY, 1))}`, x => x.date === addDays(TODAY, 1)],
     ["semana", `Esta semana · ${dm(wk)} al ${dm(addDays(wk, 6))}`, x => x.date >= wk && x.date <= addDays(wk, 6)]];
   const fil = `<div class="gcmfil" role="group" aria-label="Filtros de la tabla">
     <label class="gfil"><span>${icon("tag")} Marca</span><select class="base" data-gcmf="brand"><option value="">Todas las marcas (${base.length})</option>${brands.map(b => `<option value="${esc(b)}" ${b === gcmUI.brand ? "selected" : ""}>${esc(b)} (${cnt(x => x.brand === b)})</option>`).join("")}</select></label>
     <label class="gfil"><span>${icon("shapes")} Tipo</span><select class="base" data-gcmf="type"><option value="">Todos los tipos (${base.length})</option>${types.map(([k, l]) => `<option value="${esc(k)}" ${k === gcmUI.type ? "selected" : ""}>${esc(l)} (${cnt(x => gcmType(x) === k)})</option>`).join("")}</select></label>
+    <label class="gfil"><span>${icon("list-checks")} Estado</span><select class="base" data-gcmf="st"><option value="">Todos los estados (${base.length})</option>${sts.map(s => `<option value="${esc(s)}" ${s === gcmUI.st ? "selected" : ""}>${esc(s)} (${cnt(x => x.status === s)})</option>`).join("")}${nLate || gcmUI.st === "__late" ? `<option value="__late" ${gcmUI.st === "__late" ? "selected" : ""}>Atrasados (${nLate})</option>` : ""}</select></label>
     <label class="gfil gday"><span>${icon("calendar-days")} Fecha</span><span class="gdayrow"><select class="base" data-gcmf="day"><option value="">Todas las fechas (${base.length})</option>${dOpts.map(([k, l, f]) => `<option value="${k}" ${gcmUI.day === k ? "selected" : ""}>${esc(l)} (${cnt(f)})</option>`).join("")}<option value="fecha" ${pick ? "selected" : ""}>${pick ? `${esc(dLab(gcmUI.day))} (${cnt(x => x.date === gcmUI.day)})` : "Elegir una fecha…"}</option></select>${pick ? `<input type="date" class="base" data-gcmday value="${esc(gcmUI.day)}" aria-label="Elegir la fecha">` : ""}</span></label>
     <button type="button" class="btn sm gord" data-gcmord="${asc ? "desc" : "asc"}" title="Cambiar el orden por fecha">${icon(asc ? "arrow-up-narrow-wide" : "arrow-down-wide-narrow")} Fecha: ${asc ? "ascendente (más antigua primero)" : "descendente (más nueva primero)"}</button>
     ${filt ? `<button type="button" class="btn sm" data-gcmclear>${icon("x")} Limpiar filtros</button>` : ""}
@@ -7670,9 +7674,9 @@ function pGestCM(){
   <div class="tw gcmtw"><table class="gcmtbl"><thead><tr><th>Trabajo</th><th>Qué es</th><th>Marca</th><th>Responsable</th><th>${done ? "Fecha" : "Para cuándo"}</th><th>Estado</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 document.addEventListener("click", e => {
-  if (e.target.closest("[data-gcmdone]")){ gcmUI.done = !gcmUI.done; gcmUI.ord = ""; if (gcmUI.done) gcmUI.month = gcmUI.month || CURRENT_MONTH; render(); return; }
+  if (e.target.closest("[data-gcmdone]")){ gcmUI.done = !gcmUI.done; gcmUI.ord = ""; gcmUI.st = ""; /* v324: los estados de pendientes y aprobados son distintos */ if (gcmUI.done) gcmUI.month = gcmUI.month || CURRENT_MONTH; render(); return; }
   const o = e.target.closest("[data-gcmord]"); if (o){ gcmUI.ord = o.dataset.gcmord; render(); return; }
-  if (e.target.closest("[data-gcmclear]")){ gcmUI.brand = gcmUI.type = gcmUI.day = ""; render(); return; }
+  if (e.target.closest("[data-gcmclear]")){ gcmUI.brand = gcmUI.type = gcmUI.day = gcmUI.st = ""; render(); return; }
   const m = e.target.closest("[data-gcmmon]"); if (m){ const i = MONTHS_APP.findIndex(x => x.v === (gcmUI.month || CURRENT_MONTH)) + +m.dataset.gcmmon; if (MONTHS_APP[i]){ gcmUI.month = MONTHS_APP[i].v; render(); } }
 });
 document.addEventListener("change", e => {
