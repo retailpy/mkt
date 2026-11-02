@@ -83,6 +83,9 @@ const RMH = (() => {
     INFLUENCERS:[() => INFLUENCERS, v => { INFLUENCERS = Array.isArray(v) ? v : []; }], // cumpleaños de influencers de las marcas (solo Admin total y CM)
     ESCRACHES:[() => ESCRACHES, v => { ESCRACHES = Array.isArray(v) ? v : []; }], // Búsqueda de Escraches: los cargados y las marcas (solo Admin total, Admin y CM)
     PEDIDOS_COM:[() => PEDIDOS_COM, v => { PEDIDOS_COM = Array.isArray(v) ? v : []; }], // v242: pedidos de activaciones de Comercial (los compradores)
+    AGENTS:[() => AGENTS, v => { AGENTS = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v326: entrenamiento y skills de los agentes (Oficina de Agentes)
+    AGENT_CHAT:[() => AGENT_CHAT, v => { AGENT_CHAT = Array.isArray(v) ? v : []; }], // v326: las charlas con los agentes
+    CRONOGRAMA:[() => CRONOGRAMA, v => { CRONOGRAMA = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v326: Cronograma de Acciones (lo cambia Admin total)
     TV_SCREENS:[() => TV_SCREENS, v => { TV_SCREENS = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v266: qué muestra cada televisor (TV 1 a TV 4); lo cambia Admin total
   };
   // Claves que solo existen para Admin total (la base no se las deja leer ni guardar al resto).
@@ -93,16 +96,19 @@ const RMH = (() => {
   // Claves que solo leen y guardan Admin total y CM (Admin, no): los cumpleaños de influencers.
   const ATCM_ONLY = new Set(["s:INFLUENCERS", "s:PLAN_TXT"]);
   const isATCM = () => ["Admin total", "CM"].includes(member?.role);
+  // Claves que solo usan Admin total y Admin (v326: la Oficina de Agentes): las demás personas no las bajan.
+  const ADM_ONLY = new Set(["s:AGENTS", "s:AGENT_CHAT", "s:CRONOGRAMA"]); // solo Admin total y Admin (también en la base)
+  const isAdm = () => ["Admin total", "Admin"].includes(member?.role);
   // Claves que todos leen pero solo Admin total guarda. (Los grupos de chat los crea cualquiera: la base controla
   // que cada uno cambie solo los suyos.)
-  const ADMIN_WRITE = new Set(["s:TV_SCREENS"]);
+  const ADMIN_WRITE = new Set(["s:TV_SCREENS", "s:CRONOGRAMA"]); // v326: el Cronograma de Acciones lo mira Admin y lo cambia Admin total
   const isAT = () => member?.role === "Admin total";
 
   let me = null, member = null, previewing = false, ready = false;
   const base = new Map(); // clave → { v: versión en el servidor, json: lo último que coincidió con el servidor }
 
   function localKeys(){
-    return [...Object.keys(SHARED).map(k => "s:" + k).filter(k => (isAT() || !ADMIN_ONLY.has(k)) && (isCMish() || !CM_ONLY.has(k)) && (isATCM() || !ATCM_ONLY.has(k))), "notes:" + me, "prompts:" + me, "comchk:" + me,
+    return [...Object.keys(SHARED).map(k => "s:" + k).filter(k => (isAT() || !ADMIN_ONLY.has(k)) && (isCMish() || !CM_ONLY.has(k)) && (isATCM() || !ATCM_ONLY.has(k)) && (isAdm() || !ADM_ONLY.has(k))), "notes:" + me, "prompts:" + me, "comchk:" + me,
       ...THREADS.filter(t => t.a === me || t.b === me).map(t => "thread:" + t.id),
       ...CHAT_GROUPS.filter(g => chatMember(g, { id:me, role:member?.role })).map(g => "chat:" + g.id)]; // siempre con quien inició sesión
   }
