@@ -97,6 +97,9 @@ module.exports = async (req, res) => {
     return res.status(200).json({ ok: true, text: text || "(No me salió una respuesta. Probá de nuevo.)", cut: r.stop_reason === "max_tokens", model: r.model,
       usage: { in: r.usage?.input_tokens || 0, out: r.usage?.output_tokens || 0 } });
   } catch (e) {
+    // Se terminó el saldo o el límite de gasto que se puso en console.anthropic.com (Settings → Limits).
+    if (e instanceof Anthropic.APIError && [400, 402, 403, 429].includes(e.status) && /credit balance|usage limit|spend(ing)? limit|regain access|billing|quota/i.test(e.message || ""))
+      return res.status(429).json({ ok: false, code: "limit", error: "Por ahora se terminó el saldo o el límite de gasto de Claude. ¡Nos vemos mañana! 👋 (Admin total lo puede ampliar en console.anthropic.com → Settings → Limits.)" });
     if (e instanceof Anthropic.AuthenticationError) return res.status(503).json({ ok: false, code: "nokey", error: "La clave de Claude cargada en Vercel no es válida (o se dio de baja)." });
     if (e instanceof Anthropic.PermissionDeniedError) return res.status(503).json({ ok: false, code: "nokey", error: "La clave de Claude no tiene permiso para este modelo." });
     if (e instanceof Anthropic.RateLimitError) return res.status(429).json({ ok: false, error: "Hay muchos pedidos a la vez: esperá unos segundos y probá de nuevo." });

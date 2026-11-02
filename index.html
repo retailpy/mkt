@@ -1143,6 +1143,8 @@ html.light .ofscene image{filter:none}
 .agquick{gap:6px}.agquick .chip{font-size:12.5px}
 .agform{display:flex;gap:8px;align-items:flex-end}.agform textarea{flex:1;min-width:0;resize:vertical}
 .ofErr{display:flex;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid rgba(217,89,38,.45);background:rgba(217,89,38,.1);font-size:13px;color:#fed7aa}.ofErr svg{width:18px;height:18px;flex:none}.ofErr b{color:#fff}
+.ofErr.bye{border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.08);color:#cffafe}.ofErr.bye p{margin:6px 0 0;color:#e2e8f0}
+.oflim b{color:#fff}.oflim svg{width:15px;height:15px}.oflim input{width:62px;padding:3px 6px;font-size:13px;text-align:center}
 .ofErr ol{margin:8px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px;color:#e2e8f0}.ofErr code{background:rgba(2,6,23,.6);padding:1px 6px;border-radius:6px}
 .oflab{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}.oflab textarea{resize:vertical}
 .oflessons,.ofskills{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
@@ -14809,9 +14811,16 @@ const CLAUDIA_RULE = { emojis:["Usá emojis con medida (2 o 3).", "No uses emoji
 const agSkillTexts = id => { const d = AG[id], c = agCfg(id), out = [];
   d.skills.forEach(([k, n]) => { const on = agSkillOn(id, k); if (id === "claudia"){ const t = CLAUDIA_RULE[k]?.[on ? 0 : 1]; if (t) out.push(t); } else if (on) out.push(n); });
   (c.custom || []).forEach(s => out.push(`${s.name}: ${s.text}`)); return out; };
+// Límite de respuestas por día entre los tres agentes (predeterminado 40; Admin total lo cambia arriba de la oficina).
+// Se cuenta en s:AGENTS (_uso: día y cuántas; _limite: el número elegido). Al llegar: “¡Nos vemos mañana!”.
+const AG_LIMIT_DEF = 40;
+const agDay = () => pyDate(Date.now());
+const agLimit = () => { const n = Math.round(+AGENTS._limite?.n); return n >= 1 ? Math.min(n, 500) : AG_LIMIT_DEF; };
+const agUsed = () => AGENTS._uso?.d === agDay() ? +AGENTS._uso.n || 0 : 0;
 async function agSend(id, text){
   const d = AG[id]; text = String(text || "").trim(); if (!d || !text || ofUI.busy) return;
   if (id === "claudia" && /esta publicación/i.test(text) && !ofUI.post) return toast("Elegí primero la publicación (arriba del chat).");
+  if (agUsed() >= agLimit()){ ofUI.err = `Por hoy ya usamos las ${agLimit()} respuestas del día entre los tres agentes. ¡Nos vemos mañana! 👋`; ofUI.errCode = "limit"; render(); agScroll(); return; }
   AGENT_CHAT.push({ id:agId(), a:id, r:"user", t:text.slice(0, 4000), by:viewer.name, at:new Date().toISOString() });
   ofUI.busy = id; ofUI.err = ""; ofUI.errCode = ""; render(); agScroll();
   const c = agCfg(id), hist = agMsgs(id).slice(-12).map(m => ({ role:m.r, content:m.t }));
@@ -14823,6 +14832,7 @@ async function agSend(id, text){
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.ok) throw Object.assign(new Error(j.error || "No se pudo hablar con el agente. Probá de nuevo."), { code:j.code || "" });
     AGENT_CHAT.push({ id:agId(), a:id, r:"assistant", t:String(j.text || "").slice(0, 12000), by:d.name, at:new Date().toISOString() });
+    AGENTS._uso = { d:agDay(), n:agUsed() + 1 };
   } catch (e){ ofUI.err = e.message || String(e); ofUI.errCode = e.code || ""; }
   const mine = agMsgs(id); if (mine.length > 80){ const drop = new Set(mine.slice(0, mine.length - 80).map(m => m.id)); AGENT_CHAT = AGENT_CHAT.filter(m => !drop.has(m.id)); } // las últimas 80 de cada agente
   ofUI.busy = ""; render(); agScroll(); window.RMH?.flushNow?.();
@@ -14946,14 +14956,15 @@ function ofPanelAgent(a){
     ${at ? `<form id="agSkillForm" class="ofskform" data-ag="${a.id}"><h4>Sumar una skill</h4><input class="base" name="n" maxlength="60" placeholder="Nombre (ej.: Tono de Navidad)" required><textarea class="base" name="t" rows="3" maxlength="1200" placeholder="Qué tiene que saber o hacer (ej.: En diciembre, mencioná la canasta navideña y el aguinaldo.)" required></textarea><button type="submit" class="btn primary">${icon("plus")} Sumar skill</button></form>` : ""}`;
   const posts14 = a.id === "claudia" ? posts.filter(p => !p.ex && !isDone(p) && p.status !== CANCEL && seesBrand(p.brand) && p.date >= addDays(TODAY, -3) && p.date <= addDays(TODAY, 21)).sort((x, y) => x.date.localeCompare(y.date) || String(x.time || "").localeCompare(String(y.time || ""))).slice(0, 80) : [];
   const pick = a.id === "claudia" ? `<label class="oflab">Publicación<select class="base" data-agpost><option value="">— Elegí una publicación —</option>${posts14.map(p => `<option value="${esc(p.id)}" ${p.id === ofUI.post ? "selected" : ""}>${dm(p.date)} · ${esc(p.brand)} · ${esc(p.format || "Post")} · ${esc(agPlain(p.title).slice(0, 50))}</option>`).join("")}</select></label>` : "";
-  const nokey = ofUI.errCode === "nokey";
+  const nokey = ofUI.errCode === "nokey", bye = ofUI.errCode === "limit";
   return `${head}${pick}
     <div class="agmsgs" aria-live="polite">${msgs.length ? "" : `<div class="agmsg a hello"><div class="agtxt"><p>${esc(a.hello)}</p></div></div>`}${msgs.map(m => m.r === "user"
       ? `<div class="agmsg u"><div class="agtxt"><p>${esc(m.t)}</p></div><small>${esc(firstName(m.by || ""))}</small></div>`
       : `<div class="agmsg a${m.ok ? " liked" : ""}"><div class="agtxt">${agMd(m.t)}</div><div class="agacts"><button type="button" class="btn sm" data-agcopy="${esc(m.id)}">${icon("copy")} Copiar</button><button type="button" class="btn sm${m.ok ? " on" : ""}" data-agok="${esc(m.id)}">${icon("thumbs-up")} ${m.ok ? "Le gustó" : "Así está bien"}</button><button type="button" class="btn sm" data-agfix="${esc(m.id)}">${icon("pencil")} Corregir</button></div>
         ${ofUI.fix === m.id ? `<form class="agfix" id="agFixForm" data-ag="${a.id}"><input class="base" name="t" maxlength="500" placeholder="¿Qué tiene que hacer distinto? (ej.: más corto, sin emojis, el precio primero)" required autofocus><button type="submit" class="btn primary sm">Enseñarle</button></form>` : ""}</div>`).join("")}
       ${busy ? `<div class="agmsg a typing"><div class="agtxt"><p>${esc(a.name)} está pensando<span class="dots"><i></i><i></i><i></i></span></p></div></div>` : ""}</div>
-    ${ofUI.err && !busy ? `<div class="ofErr${nokey ? " key" : ""}">${icon("triangle-alert")}<div><b>${esc(ofUI.err)}</b>${nokey ? `<ol><li>Entrá a <b>console.anthropic.com</b> con la cuenta de la empresa → <b>API Keys</b> → <b>Create Key</b> y copiala. <b>No la pegues en ningún chat.</b></li><li>Entrá a <b>vercel.com</b> → el proyecto <b>mkt</b> → <b>Settings</b> → <b>Environment Variables</b> → <b>Add</b>: nombre <code>ANTHROPIC_API_KEY</code>, valor: la clave, en <b>Production</b> y <b>Preview</b> → <b>Save</b>.</li><li>En <b>Deployments</b>, tocá los tres puntos del último → <b>Redeploy</b>. Listo: volvé a escribirle.</li></ol>` : ""}</div></div>` : ""}
+    ${ofUI.err && !busy && bye ? `<div class="ofErr bye">${icon("hand")}<div><b>${esc(ofUI.err)}</b>${at && /respuestas del día/.test(ofUI.err) ? `<p>Si hace falta hoy, subí el número en “Respuestas por día”, arriba de la oficina.</p>` : ""}</div></div>` : ""}
+    ${ofUI.err && !busy && !bye ? `<div class="ofErr${nokey ? " key" : ""}">${icon("triangle-alert")}<div><b>${esc(ofUI.err)}</b>${nokey ? `<ol><li>Entrá a <b>console.anthropic.com</b> con la cuenta de la empresa → <b>API Keys</b> → <b>Create Key</b> y copiala. <b>No la pegues en ningún chat.</b></li><li>Entrá a <b>vercel.com</b> → el proyecto <b>mkt</b> → <b>Settings</b> → <b>Environment Variables</b> → <b>Add</b>: nombre <code>ANTHROPIC_API_KEY</code>, valor: la clave, en <b>Production</b> y <b>Preview</b> → <b>Save</b>.</li><li>En <b>Deployments</b>, tocá los tres puntos del último → <b>Redeploy</b>. Listo: volvé a escribirle.</li></ol>` : ""}</div></div>` : ""}
     <div class="chips agquick">${a.quick.map(q => `<button type="button" class="chip" data-agq="${esc(q)}" ${busy ? "disabled" : ""}>${icon("sparkles")} ${esc(q)}</button>`).join("")}</div>
     <form id="agForm" class="agform" data-ag="${a.id}"><textarea class="base" name="t" rows="2" maxlength="4000" placeholder="Escribile a ${esc(a.name)}…" ${busy ? "disabled" : ""}></textarea><button type="submit" class="btn primary" ${busy ? "disabled" : ""} aria-label="Enviar">${icon("send")}</button></form>
     ${at && msgs.length ? `<button type="button" class="btn sm ofclear" data-agclear="${a.id}">${icon("trash-2")} Borrar la charla</button>` : ""}`;
@@ -14967,7 +14978,7 @@ function pOficina(){
   if (!ofCan()) return `<div class="panel"><div class="empty">La Oficina de Agentes la ven solo Admin total y Admin.</div></div>`;
   const on = PEOPLE.filter(pp => pp.active !== false && ONLINE[pp.id]).length;
   return `<div class="head ofhead"><div><h1 class="pmh">${pmIco("building-2")}Oficina de Agentes</h1><p class="sub">El equipo real y los agentes de IA trabajando juntos. Tocá un escritorio para ver qué hace cada uno, o un agente para hablarle, entrenarlo y darle skills.</p></div>
-    <div class="oflegend"><span><i style="background:#22c55e"></i>${on} conectados</span><span><i style="background:#f59e0b"></i>trabajan juntos esta semana</span><span><i style="background:#d95926"></i>con atrasos</span></div></div>
+    <div class="oflegend"><span class="oflim" title="Respuestas de los agentes hoy (entre los tres) y el límite del día">${icon("bot")} Hoy: <b>${agUsed()}</b> de ${viewer.role === "Admin total" ? `<input type="number" class="base" min="1" max="500" step="1" data-aglim value="${agLimit()}" aria-label="Respuestas por día">` : `<b>${agLimit()}</b>`} respuestas por día</span><span><i style="background:#22c55e"></i>${on} conectados</span><span><i style="background:#f59e0b"></i>trabajan juntos esta semana</span><span><i style="background:#d95926"></i>con atrasos</span></div></div>
     <div class="ofwrap${ofUI.sel ? " sel" : ""}"><div class="ofscroll">${ofScene()}</div>${ofPanel()}</div>
     <div class="ofagents">${AG_DEF.map(a => `<button type="button" class="panel ofag" data-ofc="a:${a.id}" style="--c:${a.color}"><span class="ofbot" style="background:${a.color}">${icon("bot")}</span><span><b>${esc(a.name)}</b><small>${esc(a.role)}</small></span><em>${agMsgs(a.id).length ? agMsgs(a.id).length + " mensajes" : "Nueva"}</em></button>`).join("")}</div>`;
 }
@@ -14988,6 +14999,7 @@ document.addEventListener("click", e => {
 document.addEventListener("keydown", e => { if (page !== "oficina") return; const g = e.target.closest?.("[data-ofc]"); if (g && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); g.dispatchEvent(new MouseEvent("click", { bubbles:true })); }
   if (e.key === "Enter" && !e.shiftKey && e.target.matches?.("#agForm textarea")){ e.preventDefault(); e.target.form.requestSubmit(); } });
 document.addEventListener("change", e => { if (page !== "oficina") return; const t = e.target;
+  if (t.matches("[data-aglim]") && viewer.role === "Admin total"){ const n = Math.round(+t.value); if (n >= 1 && n <= 500){ AGENTS._limite = { n, by:viewer.name, at:new Date().toISOString() }; if (ofUI.errCode === "limit" && agUsed() < n){ ofUI.err = ""; ofUI.errCode = ""; } render(); toast(`Límite: ${n} respuestas por día.`); } else { t.value = agLimit(); toast("Poné un número de 1 a 500."); } return; }
   if (t.matches("[data-agtrain]") && viewer.role === "Admin total"){ agCfgW(t.dataset.agtrain).train = t.value.slice(0, 6000); toast("Guardado: lo va a tener en cuenta desde la próxima respuesta."); return; }
   if (t.matches("[data-agskill]") && viewer.role === "Admin total"){ const [id, k] = t.dataset.agskill.split(":"); agCfgW(id).skills[k] = t.checked; return; }
   if (t.matches("[data-agpost]")){ ofUI.post = t.value; return; } });
