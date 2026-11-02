@@ -1143,6 +1143,13 @@ html.light .ofscene image{filter:none}
 .agquick{gap:6px}.agquick .chip{font-size:12.5px}
 .agform{display:flex;gap:8px;align-items:flex-end}.agform textarea{flex:1;min-width:0;resize:vertical}
 .ofErr{display:flex;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid rgba(217,89,38,.45);background:rgba(217,89,38,.1);font-size:13px;color:#fed7aa}.ofErr svg{width:18px;height:18px;flex:none}.ofErr b{color:#fff}
+.agplan{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:14px;border:1px solid rgba(34,211,238,.45);background:rgba(34,211,238,.07);font-size:13.5px;color:#e2e8f0}
+.agplan > b{display:flex;align-items:center;gap:8px;color:#fff;font-size:14.5px}.agplan > b svg{width:18px;height:18px;color:#67e8f9}
+.agplan a.btn{text-decoration:none}.agplan textarea{font-family:inherit}
+.agplan ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:3px}.agplan .chips{gap:6px}
+.agplan details summary{cursor:pointer;font-size:12.5px;color:var(--muted)}.agplan details textarea{margin-top:6px;width:100%;font-size:12px}
+.ofmode{flex-wrap:wrap}.ofmode b{color:#fff}.ofmode .chip{font-size:12.5px;padding:4px 10px}.ofmode .chip.on{border-color:var(--cyan);color:#fff;background:color-mix(in srgb,var(--cyan) 18%,transparent)}
+.ofErr .btn{margin-top:8px}
 .ofErr.bye{border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.08);color:#cffafe}.ofErr.bye p{margin:6px 0 0;color:#e2e8f0}
 .oflim b{color:#fff}.oflim svg{width:15px;height:15px}.oflim input{width:62px;padding:3px 6px;font-size:13px;text-align:center}
 .ofErr ol{margin:8px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px;color:#e2e8f0}.ofErr code{background:rgba(2,6,23,.6);padding:1px 6px;border-radius:6px}
@@ -4672,7 +4679,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v326";
+const APP_VER = "v327";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -14817,22 +14824,27 @@ const AG_LIMIT_DEF = 40;
 const agDay = () => pyDate(Date.now());
 const agLimit = () => { const n = Math.round(+AGENTS._limite?.n); return n >= 1 ? Math.min(n, 500) : AG_LIMIT_DEF; };
 const agUsed = () => AGENTS._uso?.d === agDay() ? +AGENTS._uso.n || 0 : 0;
+// v327 · Modo de respuesta: "plan" (predeterminado, sin costo extra: la app arma el pedido, se pega en claude.ai con el plan
+// de la persona y la respuesta se pega de vuelta) o "api" (automático, con la cuenta de Claude: se paga por uso).
+const agMode = () => AGENTS._modo === "api" ? "api" : "plan";
 async function agSend(id, text){
   const d = AG[id]; text = String(text || "").trim(); if (!d || !text || ofUI.busy) return;
   if (id === "claudia" && /esta publicación/i.test(text) && !ofUI.post) return toast("Elegí primero la publicación (arriba del chat).");
-  if (agUsed() >= agLimit()){ ofUI.err = `Por hoy ya usamos las ${agLimit()} respuestas del día entre los tres agentes. ¡Nos vemos mañana! 👋`; ofUI.errCode = "limit"; render(); agScroll(); return; }
-  AGENT_CHAT.push({ id:agId(), a:id, r:"user", t:text.slice(0, 4000), by:viewer.name, at:new Date().toISOString() });
-  ofUI.busy = id; ofUI.err = ""; ofUI.errCode = ""; render(); agScroll();
+  const plan = agMode() === "plan";
+  if (!plan && agUsed() >= agLimit()){ ofUI.err = `Por hoy ya usamos las ${agLimit()} respuestas del día entre los tres agentes. ¡Nos vemos mañana! 👋`; ofUI.errCode = "limit"; render(); agScroll(); return; }
+  const mid = agId(); AGENT_CHAT.push({ id:mid, a:id, r:"user", t:text.slice(0, 4000), by:viewer.name, at:new Date().toISOString() });
+  ofUI.busy = id; ofUI.err = ""; ofUI.errCode = ""; ofUI.plan = null; render(); agScroll();
   const c = agCfg(id), hist = agMsgs(id).slice(-12).map(m => ({ role:m.r, content:m.t }));
   try {
     const tok = await window.RMH?.token?.();
     const r = await fetch("/api/agente", { method:"POST", headers:{ "Content-Type":"application/json", ...(tok ? { Authorization:"Bearer " + tok } : {}) },
-      body:JSON.stringify({ agent:id, messages:hist, context:agContext(id), train:c.train || "", skills:agSkillTexts(id), lessons:(c.lessons || []).map(l => l.text),
+      body:JSON.stringify({ agent:id, ...(plan ? { mode:"prompt" } : {}), messages:hist, context:agContext(id), train:c.train || "", skills:agSkillTexts(id), lessons:(c.lessons || []).map(l => l.text),
         liked:agMsgs(id).filter(m => m.r === "assistant" && m.ok).slice(-3).map(m => m.t) }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.ok) throw Object.assign(new Error(j.error || "No se pudo hablar con el agente. Probá de nuevo."), { code:j.code || "" });
-    AGENT_CHAT.push({ id:agId(), a:id, r:"assistant", t:String(j.text || "").slice(0, 12000), by:d.name, at:new Date().toISOString() });
-    AGENTS._uso = { d:agDay(), n:agUsed() + 1 };
+    if (plan){ if (!j.prompt) throw new Error("No se pudo armar el pedido. Probá de nuevo."); ofUI.plan = { a:id, mid, prompt:String(j.prompt) }; }
+    else { AGENT_CHAT.push({ id:agId(), a:id, r:"assistant", t:String(j.text || "").slice(0, 12000), by:d.name, at:new Date().toISOString() });
+    AGENTS._uso = { d:agDay(), n:agUsed() + 1 }; }
   } catch (e){ ofUI.err = e.message || String(e); ofUI.errCode = e.code || ""; }
   const mine = agMsgs(id); if (mine.length > 80){ const drop = new Set(mine.slice(0, mine.length - 80).map(m => m.id)); AGENT_CHAT = AGENT_CHAT.filter(m => !drop.has(m.id)); } // las últimas 80 de cada agente
   ofUI.busy = ""; render(); agScroll(); window.RMH?.flushNow?.();
@@ -14962,9 +14974,14 @@ function ofPanelAgent(a){
       ? `<div class="agmsg u"><div class="agtxt"><p>${esc(m.t)}</p></div><small>${esc(firstName(m.by || ""))}</small></div>`
       : `<div class="agmsg a${m.ok ? " liked" : ""}"><div class="agtxt">${agMd(m.t)}</div><div class="agacts"><button type="button" class="btn sm" data-agcopy="${esc(m.id)}">${icon("copy")} Copiar</button><button type="button" class="btn sm${m.ok ? " on" : ""}" data-agok="${esc(m.id)}">${icon("thumbs-up")} ${m.ok ? "Le gustó" : "Así está bien"}</button><button type="button" class="btn sm" data-agfix="${esc(m.id)}">${icon("pencil")} Corregir</button></div>
         ${ofUI.fix === m.id ? `<form class="agfix" id="agFixForm" data-ag="${a.id}"><input class="base" name="t" maxlength="500" placeholder="¿Qué tiene que hacer distinto? (ej.: más corto, sin emojis, el precio primero)" required autofocus><button type="submit" class="btn primary sm">Enseñarle</button></form>` : ""}</div>`).join("")}
-      ${busy ? `<div class="agmsg a typing"><div class="agtxt"><p>${esc(a.name)} está pensando<span class="dots"><i></i><i></i><i></i></span></p></div></div>` : ""}</div>
+      ${busy ? `<div class="agmsg a typing"><div class="agtxt"><p>${agMode() === "plan" ? "Preparando el pedido para Claude" : esc(a.name) + " está pensando"}<span class="dots"><i></i><i></i><i></i></span></p></div></div>` : ""}</div>
+    ${ofUI.plan?.a === a.id && !busy ? `<div class="agplan"><b>${icon("clipboard-list")} Listo para pasárselo a Claude</b>
+      <ol><li>Tocá <b>Copiar para Claude</b>.</li><li>Tocá <b>Abrir Claude</b>, pegalo en un chat nuevo y envialo.</li><li>Copiá lo que responda y pegalo acá abajo.</li></ol>
+      <div class="chips"><button type="button" class="btn primary" data-agpcopy>${icon("copy")} Copiar para Claude</button><a class="btn" href="https://claude.ai/new" target="_blank" rel="noopener">${icon("external-link")} Abrir Claude</a><button type="button" class="btn" data-agpcancel>Cancelar</button></div>
+      <details><summary>Ver el texto (si no se copia solo)</summary><textarea class="base" rows="6" readonly data-agptext>${esc(ofUI.plan.prompt)}</textarea></details>
+      <form id="agPasteForm" class="agform" data-ag="${a.id}"><textarea class="base" name="t" rows="4" maxlength="12000" placeholder="Pegá acá la respuesta de Claude" required></textarea><button type="submit" class="btn primary">${icon("save")} Guardar</button></form></div>` : ""}
     ${ofUI.err && !busy && bye ? `<div class="ofErr bye">${icon("hand")}<div><b>${esc(ofUI.err)}</b>${at && /respuestas del día/.test(ofUI.err) ? `<p>Si hace falta hoy, subí el número en “Respuestas por día”, arriba de la oficina.</p>` : ""}</div></div>` : ""}
-    ${ofUI.err && !busy && !bye ? `<div class="ofErr${nokey ? " key" : ""}">${icon("triangle-alert")}<div><b>${esc(ofUI.err)}</b>${nokey ? `<ol><li>Entrá a <b>console.anthropic.com</b> con la cuenta de la empresa → <b>API Keys</b> → <b>Create Key</b> y copiala. <b>No la pegues en ningún chat.</b></li><li>Entrá a <b>vercel.com</b> → el proyecto <b>mkt</b> → <b>Settings</b> → <b>Environment Variables</b> → <b>Add</b>: nombre <code>ANTHROPIC_API_KEY</code>, valor: la clave, en <b>Production</b> y <b>Preview</b> → <b>Save</b>.</li><li>En <b>Deployments</b>, tocá los tres puntos del último → <b>Redeploy</b>. Listo: volvé a escribirle.</li></ol>` : ""}</div></div>` : ""}
+    ${ofUI.err && !busy && !bye ? `<div class="ofErr${nokey ? " key" : ""}">${icon("triangle-alert")}<div><b>${esc(ofUI.err)}</b>${nokey ? `<ol><li>Entrá a <b>console.anthropic.com</b> con la cuenta de la empresa → <b>API Keys</b> → <b>Create Key</b> y copiala. <b>No la pegues en ningún chat.</b></li><li>Entrá a <b>vercel.com</b> → el proyecto <b>mkt</b> → <b>Settings</b> → <b>Environment Variables</b> → <b>Add</b>: nombre <code>ANTHROPIC_API_KEY</code>, valor: la clave, en <b>Production</b> y <b>Preview</b> → <b>Save</b>.</li><li>En <b>Deployments</b>, tocá los tres puntos del último → <b>Redeploy</b>. Listo: volvé a escribirle.</li></ol>${at ? `<button type="button" class="btn sm" data-agmode="plan">${icon("clipboard-list")} Mientras tanto, usar con mi plan (copiar y pegar)</button>` : ""}` : ""}</div></div>` : ""}
     <div class="chips agquick">${a.quick.map(q => `<button type="button" class="chip" data-agq="${esc(q)}" ${busy ? "disabled" : ""}>${icon("sparkles")} ${esc(q)}</button>`).join("")}</div>
     <form id="agForm" class="agform" data-ag="${a.id}"><textarea class="base" name="t" rows="2" maxlength="4000" placeholder="Escribile a ${esc(a.name)}…" ${busy ? "disabled" : ""}></textarea><button type="submit" class="btn primary" ${busy ? "disabled" : ""} aria-label="Enviar">${icon("send")}</button></form>
     ${at && msgs.length ? `<button type="button" class="btn sm ofclear" data-agclear="${a.id}">${icon("trash-2")} Borrar la charla</button>` : ""}`;
@@ -14978,7 +14995,9 @@ function pOficina(){
   if (!ofCan()) return `<div class="panel"><div class="empty">La Oficina de Agentes la ven solo Admin total y Admin.</div></div>`;
   const on = PEOPLE.filter(pp => pp.active !== false && ONLINE[pp.id]).length;
   return `<div class="head ofhead"><div><h1 class="pmh">${pmIco("building-2")}Oficina de Agentes</h1><p class="sub">El equipo real y los agentes de IA trabajando juntos. Tocá un escritorio para ver qué hace cada uno, o un agente para hablarle, entrenarlo y darle skills.</p></div>
-    <div class="oflegend"><span class="oflim" title="Respuestas de los agentes hoy (entre los tres) y el límite del día">${icon("bot")} Hoy: <b>${agUsed()}</b> de ${viewer.role === "Admin total" ? `<input type="number" class="base" min="1" max="500" step="1" data-aglim value="${agLimit()}" aria-label="Respuestas por día">` : `<b>${agLimit()}</b>`} respuestas por día</span><span><i style="background:#22c55e"></i>${on} conectados</span><span><i style="background:#f59e0b"></i>trabajan juntos esta semana</span><span><i style="background:#d95926"></i>con atrasos</span></div></div>
+    <div class="oflegend">${(at => { const plan = agMode() === "plan";
+      return `<span class="ofmode">${icon("bot")} Respuestas: ${at ? `<button type="button" class="chip${plan ? " on" : ""}" data-agmode="plan" title="Sin costo extra: se pega en claude.ai con el plan">Con el plan de Claude (copiar y pegar)</button><button type="button" class="chip${plan ? "" : " on"}" data-agmode="api" title="Responden solos en la app: se paga aparte, por uso">Automáticas (cuenta de Claude)</button>` : `<b>${plan ? "con el plan de Claude (copiar y pegar)" : "automáticas"}</b>`}</span>`
+        + (plan ? "" : `<span class="oflim" title="Respuestas de los agentes hoy (entre los tres) y el límite del día">Hoy: <b>${agUsed()}</b> de ${at ? `<input type="number" class="base" min="1" max="500" step="1" data-aglim value="${agLimit()}" aria-label="Respuestas por día">` : `<b>${agLimit()}</b>`} respuestas por día</span>`); })(viewer.role === "Admin total")}<span><i style="background:#22c55e"></i>${on} conectados</span><span><i style="background:#f59e0b"></i>trabajan juntos esta semana</span><span><i style="background:#d95926"></i>con atrasos</span></div></div>
     <div class="ofwrap${ofUI.sel ? " sel" : ""}"><div class="ofscroll">${ofScene()}</div>${ofPanel()}</div>
     <div class="ofagents">${AG_DEF.map(a => `<button type="button" class="panel ofag" data-ofc="a:${a.id}" style="--c:${a.color}"><span class="ofbot" style="background:${a.color}">${icon("bot")}</span><span><b>${esc(a.name)}</b><small>${esc(a.role)}</small></span><em>${agMsgs(a.id).length ? agMsgs(a.id).length + " mensajes" : "Nueva"}</em></button>`).join("")}</div>`;
 }
@@ -14988,6 +15007,10 @@ document.addEventListener("click", e => {
   const q = t.closest("[data-agq]"); if (q){ const g = t.closest("[data-ofc]"); if (g && g.dataset.ofc !== ofUI.sel){ ofUI.sel = g.dataset.ofc; ofUI.tab = "chat"; } const id = (ofUI.sel || "").slice(2); if (AG[id]){ ofUI.tab = "chat"; agSend(id, q.dataset.agq); } return; }
   const o = t.closest("[data-ofc]"); if (o){ if (ofUI.sel !== o.dataset.ofc){ ofUI.sel = o.dataset.ofc; ofUI.tab = "chat"; ofUI.err = ""; ofUI.fix = ""; } render(); agScroll(); return; }
   if (t.closest("[data-ofclose]")){ ofUI.sel = ""; render(); return; }
+  const md = t.closest("[data-agmode]"); if (md && viewer.role === "Admin total"){ AGENTS._modo = md.dataset.agmode === "api" ? "api" : "plan"; ofUI.err = ""; ofUI.errCode = ""; ofUI.plan = null; render(); toast(agMode() === "plan" ? "Los agentes arman el pedido y vos lo pegás en Claude (sin costo extra)." : "Los agentes responden solos con la cuenta de Claude (se paga por uso)."); return; }
+  if (t.closest("[data-agpcopy]") && ofUI.plan){ const done = () => { toast("Copiado. Ahora tocá “Abrir Claude” y pegalo."); }, fail = () => { const d = document.querySelector(".agplan details"); if (d){ d.open = true; const x = d.querySelector("textarea"); x.focus(); x.select(); } toast("No se pudo copiar solo: copiá el texto de abajo."); };
+    try { navigator.clipboard ? navigator.clipboard.writeText(ofUI.plan.prompt).then(done, fail) : fail(); } catch (er){ fail(); } return; }
+  if (t.closest("[data-agpcancel]") && ofUI.plan){ const mid = ofUI.plan.mid; AGENT_CHAT = AGENT_CHAT.filter(m => m.id !== mid); ofUI.plan = null; render(); return; }
   const tb = t.closest("[data-oftab]"); if (tb){ ofUI.tab = tb.dataset.oftab; render(); if (ofUI.tab === "chat") agScroll(); return; }
   const ok = t.closest("[data-agok]"); if (ok){ const m = AGENT_CHAT.find(x => x.id === ok.dataset.agok); if (m){ m.ok = !m.ok; render(); } return; }
   const fx = t.closest("[data-agfix]"); if (fx){ ofUI.fix = ofUI.fix === fx.dataset.agfix ? "" : fx.dataset.agfix; render(); setTimeout(() => document.querySelector("#agFixForm input")?.focus(), 30); return; }
@@ -15004,6 +15027,10 @@ document.addEventListener("change", e => { if (page !== "oficina") return; const
   if (t.matches("[data-agskill]") && viewer.role === "Admin total"){ const [id, k] = t.dataset.agskill.split(":"); agCfgW(id).skills[k] = t.checked; return; }
   if (t.matches("[data-agpost]")){ ofUI.post = t.value; return; } });
 document.addEventListener("submit", e => { if (page !== "oficina") return; const f = e.target;
+  if (f.id === "agPasteForm"){ e.preventDefault(); const id = f.dataset.ag, d = AG[id], t = (f.querySelector("textarea").value || "").trim(); if (!d || !t) return;
+    AGENT_CHAT.push({ id:agId(), a:id, r:"assistant", t:t.slice(0, 12000), by:d.name, at:new Date().toISOString(), plan:true }); ofUI.plan = null;
+    const mine = agMsgs(id); if (mine.length > 80){ const drop = new Set(mine.slice(0, mine.length - 80).map(m => m.id)); AGENT_CHAT = AGENT_CHAT.filter(m => !drop.has(m.id)); }
+    render(); agScroll(); toast("Respuesta guardada. Si querés, marcala “Así está bien” o corregila para que aprenda."); window.RMH?.flushNow?.(); return; }
   if (f.id === "agForm"){ e.preventDefault(); const v = f.t.value; f.t.value = ""; agSend(f.dataset.ag, v); return; }
   if (f.id === "agFixForm"){ e.preventDefault(); const v = f.t.value.trim(); if (!v) return; agCfgW(f.dataset.ag).lessons.push({ id:agId(), text:v.slice(0, 500), by:viewer.name, at:new Date().toISOString() }); ofUI.fix = ""; render(); toast("Aprendido: lo va a tener en cuenta desde ahora."); return; }
   if (f.id === "agSkillForm" && viewer.role === "Admin total"){ e.preventDefault(); const n = f.n.value.trim(), t = f.t.value.trim(); if (!n || !t) return; agCfgW(f.dataset.ag).custom.push({ id:agId(), name:n.slice(0, 60), text:t.slice(0, 1200) }); render(); toast(`Skill “${n}” sumada.`); } });
