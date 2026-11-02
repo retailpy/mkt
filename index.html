@@ -728,7 +728,7 @@ b.comf{display:block}.comfw{white-space:nowrap}b.comf svg{display:inline;vertica
 }
 /* v266 · Televisores: el usuario TV no ve el menú; un televisor (TV 1 a TV 4) muestra solo su pantalla, a lo ancho */
 html.tvrole .side,html.tvrole .brandbar,html.tvrole .tabbar,html.tvrole .navshow,html.tvrole .pcrumb,
-html.tvkiosk .side,html.tvkiosk .brandbar,html.tvkiosk .tabbar,html.tvkiosk .navshow,html.tvkiosk .pcrumb,html.tvkiosk #updBar{display:none !important}
+html.tvkiosk .side,html.tvkiosk .brandbar,html.tvkiosk .tabbar,html.tvkiosk .navshow,html.tvkiosk .pcrumb,html.tvkiosk #updBar,html.tvkiosk #updDone{display:none !important}
 html.tvrole .main,html.tvkiosk .main{margin:0 !important;padding:0 !important;max-width:none !important}
 html.tvkiosk #content{max-width:none !important;margin:0 !important;padding:0 !important}
 html.tvkiosk #content > div{gap:0 !important}
@@ -1992,6 +1992,8 @@ html.light .pbdot{filter:invert(1) hue-rotate(180deg)}
 /* Aviso de versión nueva */
 #updBar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));z-index:140;display:flex;align-items:center;gap:12px;padding:10px 10px 10px 16px;border:1px solid var(--cyan);border-radius:14px;background:var(--panel);color:var(--ink);box-shadow:0 12px 32px -12px rgba(0,0,0,.7);font-size:14px;font-weight:600;max-width:calc(100% - 32px);width:max-content}
 @media (max-width:767px){#updBar{bottom:calc(84px + env(safe-area-inset-bottom))}}
+#updDone{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));z-index:140;display:flex;align-items:center;gap:12px;padding:10px 10px 10px 16px;border:1px solid rgba(52,211,153,.55);border-radius:16px;background:#062e22;color:#d1fae5;box-shadow:0 18px 40px -12px rgba(0,0,0,.7);font-size:14px;max-width:calc(100vw - 24px)}
+#updDone b{color:#fff}@media (max-width:767px){#updDone{bottom:calc(84px + env(safe-area-inset-bottom))}}
 /* Procesos de CM a la vista (Planificación y Plan de posteo) */
 .cmproc{display:flex;flex-direction:column;gap:6px;padding:12px 16px;border:1px solid var(--line-2);border-radius:14px}
 .cmproc>div{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
@@ -4545,7 +4547,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v321";
+const APP_VER = "v322";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -4569,6 +4571,16 @@ function showUpdateBar(){
   document.body.appendChild(b);
   b.querySelector("#updGo").addEventListener("click", () => { b.querySelector("#updGo").disabled = true; Promise.resolve(window.RMH?.flushNow?.()).catch(() => {}).finally(() => location.reload()); });
 }
+// v322 · Al entrar con una versión nueva, la app ya abre actualizada (por eso no sale “Actualizar”): se avisa una vez que
+// se actualizó, así se nota igual que antes. Se compara con la última versión que se abrió en este dispositivo.
+function showUpdatedNote(){
+  let prev = null; try { prev = localStorage.getItem("rmh-ver"); localStorage.setItem("rmh-ver", APP_VER); } catch (e) { return; }
+  if (!prev || prev === APP_VER || document.getElementById("updBar") || document.getElementById("updDone")) return;
+  const b = document.createElement("div"); b.id = "updDone"; b.setAttribute("role", "status");
+  b.innerHTML = `<span>✓ La app se actualizó a la versión <b>${APP_VER}</b>.</span><button type="button" class="btn sm" aria-label="Cerrar">Listo</button>`;
+  document.body.appendChild(b); const bye = () => b.remove(); b.querySelector("button").addEventListener("click", bye); setTimeout(bye, 9000);
+}
+window.addEventListener("load", () => setTimeout(showUpdatedNote, 1500));
 refreshPeople();
 // Cumpleaños: se guarda solo día y mes (MM-DD), nunca el año.
 const MONTHS_ES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
