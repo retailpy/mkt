@@ -321,6 +321,57 @@ const RMH = (() => {
     base.set(key, { v:row.version, json:C(row.data) });
     return true;
   }
+  // ---------- solo lo que cambió (v320) ----------
+  // Cuando cambia una colección grande, la base anota solo lo que cambió respecto de la versión anterior
+  // (public.app_state_delta, migración 20261102120000_solo_los_cambios.sql). Si este dispositivo tiene la versión
+  // anterior, pide esos pasos (unos KB) y los aplica, en vez de bajar la fila entera (s:posts, 214 KB, se bajaba ~580
+  // veces por día). Si falta algún paso, si algo no coincide (largo, ids) o si falla, baja la fila entera como antes.
+  const DELTA_MIN = 8000, DELTA_MAX = 40;
+  let deltaOff = false; // la base todavía no tiene la tabla (o no la deja leer): no se vuelve a intentar en esta sesión
+  /*DELTA*/function applyDelta(cur, d){
+    const isO = x => !!x && typeof x === "object" && !Array.isArray(x), K = x => JSON.stringify(x);
+    if (!isO(d)) return null;
+    if (d.t === "o"){ // objeto: claves nuevas o cambiadas, y claves borradas
+      if (!isO(cur) || !isO(d.ch) || !Array.isArray(d.rm)) return null;
+      const out = { ...cur }; d.rm.forEach(k => { delete out[k]; }); Object.assign(out, d.ch);
+      return Object.keys(out).length === d.n ? out : null;
+    }
+    if (d.t !== "a" || !Array.isArray(cur) || !Array.isArray(d.ch) || !Array.isArray(d.rm)) return null;
+    // Cada elemento por su id; si el id se repite, la segunda vez es [id, 1], la tercera [id, 2]… (igual que la base).
+    const okId = x => isO(x) && (typeof x.id === "string" || typeof x.id === "number"), seen = new Map(), m = new Map(), ci = [];
+    for (const x of cur){ if (!okId(x)) return null; const n = seen.get(K(x.id)) || 0; seen.set(K(x.id), n + 1); const k = K(n ? [x.id, n] : x.id); ci.push(k); m.set(k, x); }
+    const rm = new Set(d.rm.map(K)); rm.forEach(k => m.delete(k));
+    for (let j = 0; j < d.ch.length; j++){ const x = d.ch[j], n = Array.isArray(d.co) ? d.co[j] || 0 : 0; if (!okId(x)) return null; m.set(K(n ? [x.id, n] : x.id), x); }
+    let ids = null;
+    if (Array.isArray(d.ord)) ids = d.ord.map(K);
+    else if (Array.isArray(d.add) && (d.pos === "head" || d.pos === "tail")){
+      const add = d.add.map(K), addS = new Set(add), kept = ci.filter(k => !rm.has(k) && !addS.has(k));
+      ids = d.pos === "head" ? [...add, ...kept] : [...kept, ...add];
+    }
+    if (!ids || ids.length !== d.n || ids.length !== m.size || new Set(ids).size !== ids.length) return null;
+    const out = ids.map(k => m.get(k));
+    return out.some(x => x === undefined) ? null : out;
+  }/*FIN DELTA*/
+  // La fila de una clave en la versión "to", armada con los pasos anotados desde "from" ({ v, json }); null si no se puede.
+  async function deltaRow(key, to, from){
+    if (deltaOff || !from || !(from.v > 0) || !(to > from.v) || to - from.v > DELTA_MAX || (from.json?.length || 0) < DELTA_MIN) return null;
+    try {
+      const { data: ds, error } = await sb.from("app_state_delta").select("version, d").eq("key", key).gt("version", from.v).lte("version", to).order("version");
+      if (error){ if (/PGRST20[0-9]|42P01|42501|does not exist|schema cache|permission/i.test(`${error.code || ""} ${error.message || ""}`)) deltaOff = true; return null; }
+      if (!Array.isArray(ds) || ds.length !== to - from.v || ds.some((r, i) => r.version !== from.v + i + 1)) return null;
+      let cur = JSON.parse(from.json);
+      for (const r of ds){ cur = applyDelta(cur, r.d); if (cur === null) return null; }
+      deltaStats.hits++; return { key, version:to, data:cur };
+    } catch (e){ console.warn("delta", key, e); return null; }
+  }
+  const deltaStats = { hits:0, full:0 }; // para revisar desde la consola: RMH.deltaStats
+  // Lo último de una clave: con los pasos si se puede; si no, la fila entera.
+  async function getRow(key, to){
+    const r = await deltaRow(key, to, base.get(key)); if (r) return r;
+    deltaStats.full++;
+    const { data: row } = await sb.from("app_state").select("key, data, version").eq("key", key).maybeSingle();
+    return row;
+  }
   // ---------- copia en el dispositivo ----------
   // Lo último que vino de la base queda guardado en este dispositivo (IndexedDB, aparte para cada usuario). Al abrir o
   // recargar la app se pide solo la lista de versiones (unos KB) y se bajan únicamente las colecciones que cambiaron
@@ -388,6 +439,12 @@ const RMH = (() => {
       if (c && c.v === r.version){ try { data.push({ key:r.key, version:c.v, data:JSON.parse(c.json) }); return; } catch (e) {} }
       need.push(r.key);
     });
+    // v320: lo que está en el dispositivo con una versión anterior se completa con los pasos anotados.
+    const vers = new Map(list.map(r => [r.key, r.version]));
+    const viaDelta = await Promise.all(need.map(k => deltaRow(k, vers.get(k), saved.get(k))));
+    viaDelta.forEach(r => { if (r) data.push(r); });
+    const rest = need.filter((k, i) => !viaDelta[i]); deltaStats.full += rest.length;
+    need.length = 0; need.push(...rest);
     for (let i = 0; i < need.length; i += 50){
       const { data: rows, error: e2 } = await sb.from("app_state").select("key, data, version").in("key", need.slice(i, i + 50));
       if (e2) throw e2;
@@ -469,7 +526,7 @@ const RMH = (() => {
       const key = p.new?.key; if (!key || previewing || !wantedFn()(key)) return;
       if ((base.get(key)?.v || 0) >= (p.new.version || 0)) return;
       if (heavy(key) && !inUse()) return; // grande, de los servidores y sin nadie mirando: se baja cuando vuelva alguien (catchUp)
-      const { data: row } = await sb.from("app_state").select("key, data, version").eq("key", key).maybeSingle();
+      const row = await getRow(key, p.new.version); // v320: solo lo que cambió, si se puede
       if (row && applyRow(row)) scheduleRender([key]);
     }).subscribe(status => { rtOk = status === "SUBSCRIBED"; if (rtOk) catchUp(); }); // al (re)conectar se trae lo que llegó mientras tanto
   }
@@ -495,9 +552,13 @@ const RMH = (() => {
       const wanted = wantedFn();
       const stale = data.filter(r => wanted(r.key) && (base.get(r.key)?.v || 0) < r.version && (full || !heavy(r.key))).map(r => r.key);
       if (!stale.length) return;
-      const changed = [];
-      for (let i = 0; i < stale.length; i += 50){
-        const { data: rows } = await sb.from("app_state").select("key, data, version").in("key", stale.slice(i, i + 50));
+      const changed = [], vers = new Map(data.map(r => [r.key, r.version]));
+      // v320: primero, solo lo que cambió (por pasos); lo que no se puede así, la fila entera.
+      const viaDelta = await Promise.all(stale.map(k => deltaRow(k, vers.get(k), base.get(k))));
+      viaDelta.forEach(r => { if (r) try { if (applyRow(r)) changed.push(r.key); } catch (e){ console.warn("catchUp", r.key, e); } });
+      const rest = stale.filter((k, i) => !viaDelta[i]); deltaStats.full += rest.length;
+      for (let i = 0; i < rest.length; i += 50){
+        const { data: rows } = await sb.from("app_state").select("key, data, version").in("key", rest.slice(i, i + 50));
         // Si una fila falla, las demás se aplican igual (antes una sola cortaba la revisión y todo se volvía a bajar).
         (rows || []).forEach(r => { try { if (applyRow(r)) changed.push(r.key); } catch (e){ console.warn("catchUp", r.key, e); } });
       }
@@ -629,6 +690,7 @@ const RMH = (() => {
     // Notificaciones push del chat: clave pública del servidor y los dispositivos de cada persona.
     // Guarda ya (sin esperar el segundo de pausa): los mensajes del chat salen al instante.
     flushNow(){ return flush(); },
+    deltaStats, // v320: cuántas veces se bajó solo lo que cambió (hits) y cuántas la fila entera (full)
     // GIFs y stickers (función "integraciones" de Supabase: las claves quedan en el servidor).
     async integ(body){
       if (previewing && !["gifs", "stickers", "preview_send", "tendencias"].includes(body.action)) return { ok:false, error:"No disponible en la vista previa" };
