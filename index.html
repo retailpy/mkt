@@ -4545,7 +4545,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v321";
+const APP_VER = "v322";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -4559,16 +4559,27 @@ if ("serviceWorker" in navigator && location.protocol === "https:" && window.top
   }).catch(() => {});
   // Se publicó una versión nueva: se avisa con un botón (no se recarga sola, así no se pierde lo que se está escribiendo).
   navigator.serviceWorker.addEventListener("controllerchange", () => { if (!hadCtrl) return;
-    if ((document.visibilityState === "hidden" || (typeof tvOn === "function" && tvOn())) && safeToReload()) return location.reload(); // los televisores (v266) se actualizan solos
-    showUpdateBar(); document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && safeToReload()) Promise.resolve(window.RMH?.flushNow?.()).catch(() => {}).finally(() => location.reload()); }); });
+    if ((document.visibilityState === "hidden" || (typeof tvOn === "function" && tvOn())) && safeToReload()) return updReload(); // los televisores (v266) se actualizan solos
+    showUpdateBar(); document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && safeToReload()) Promise.resolve(window.RMH?.flushNow?.()).catch(() => {}).finally(() => updReload()); }); });
 });
 function showUpdateBar(){
   if (document.getElementById("updBar")) return;
   const b = document.createElement("div"); b.id = "updBar"; b.setAttribute("role", "status");
   b.innerHTML = '<span>Hay una versión nueva de la app.</span><button type="button" class="btn primary sm" id="updGo">Actualizar</button>';
   document.body.appendChild(b);
-  b.querySelector("#updGo").addEventListener("click", () => { b.querySelector("#updGo").disabled = true; Promise.resolve(window.RMH?.flushNow?.()).catch(() => {}).finally(() => location.reload()); });
+  b.querySelector("#updGo").addEventListener("click", () => { b.querySelector("#updGo").disabled = true; Promise.resolve(window.RMH?.flushNow?.()).catch(() => {}).finally(() => updReload()); });
 }
+const updReload = () => { try { sessionStorage.setItem("rmh-upd-reload", "1"); } catch (e) {} location.reload(); }; // al volver a cargar, ya está actualizada: no se avisa otra vez
+// v322 · Al entrar después de que se publicó una versión nueva, la app ya abre con la nueva y el cambio del service worker
+// pasa antes de terminar de cargar, así que “controllerchange” no llegaba a avisar. Como antes, sale el aviso
+// “Hay una versión nueva de la app · Actualizar”: se compara con la última versión abierta en este dispositivo.
+// Si se acaba de tocar Actualizar (o se recargó sola), no se repite.
+function checkNewVersion(){
+  let prev = null, just = false;
+  try { prev = localStorage.getItem("rmh-ver"); localStorage.setItem("rmh-ver", APP_VER); just = sessionStorage.getItem("rmh-upd-reload") === "1"; sessionStorage.removeItem("rmh-upd-reload"); } catch (e) { return; }
+  if (prev && prev !== APP_VER && !just) showUpdateBar();
+}
+window.addEventListener("load", () => setTimeout(checkNewVersion, 1200));
 refreshPeople();
 // Cumpleaños: se guarda solo día y mes (MM-DD), nunca el año.
 const MONTHS_ES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
