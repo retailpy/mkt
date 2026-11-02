@@ -4410,7 +4410,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v317";
+const APP_VER = "v318";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -6481,7 +6481,7 @@ const aprWait = d => { if (!d) return ""; const n = -daysTo(d); return n > 1 ? `
 function aprRow(x, c){
   if (x.copySt || copyDraft(x)){ const ref = copyRef(x), where = x.channel ? "Canal de WhatsApp" : `${x.net || "IG"} ${x.format || "Post"}`;
     return `<div class="row arow ago aprrow" data-ago="pub:${esc(ref)}" role="button" tabindex="0" title="Abrir la publicación"><span class="aico" style="--c:${c}">${icon("file-text")}</span><div class="grow"><div class="t">${esc(x.title)}</div><div class="m">${esc(firstName(x.cm || ""))} · ${esc(x.brand)} · ${esc(where)} · publicar el ${pubWhen(x)}${copyDraft(x) ? " · <em>cargado, sin mandar</em>" : aprWait(aprSince(x))}</div>${x.copy ? `<div class="aprcp">“${esc(rclShort(copyPlain(x), 140))}”</div>` : ""}</div>
-      <div class="chips aprbtns"><button type="button" class="btn sm primary" data-cpok="${esc(ref)}">✓ Aprobar copy</button><button type="button" class="btn sm" data-cpfix="${esc(ref)}">Pedir corrección</button></div></div>`; }
+      <div class="chips aprbtns">${(n => n > 1 ? `<button type="button" class="btn sm primary" data-cpokall="${esc(ref)}">✓ Aprobar en todas (${n})</button><button type="button" class="btn sm" data-cpok="${esc(ref)}">Solo esta</button>` : `<button type="button" class="btn sm primary" data-cpok="${esc(ref)}">✓ Aprobar copy</button>`)(copyAllOf(x).n)}<button type="button" class="btn sm" data-cpfix="${esc(ref)}">Pedir corrección</button></div></div>`; }
   return `<div class="row arow ago aprrow" data-ago="job:${esc(x.id)}" role="button" tabindex="0" title="Abrir el pedido"><span class="aico" style="--c:${c}">${icon(x.area === "CM" ? "clapperboard" : contCopy(x) ? "layers" : "image")}</span><div class="grow"><div class="t">${esc(x.title)}</div><div class="m">${esc(jobBrands(x).join(" + "))} · ${esc(cmPiece(x))} · ${esc(firstName(x.owner))}${aprWait(aprSince(x))}${x.rounds ? ` · ronda de correcciones ${x.rounds}` : ""}</div></div>
     <div class="chips aprbtns">${pill(x.status, JOB_COLOR[x.status] || "#94a3b8")}<button type="button" class="btn sm primary" data-jrev="approve:${esc(x.id)}">✓ Aprobar</button><button type="button" class="btn sm" data-jrev="fix:${esc(x.id)}">Pedir cambios</button></div></div>`;
 }
@@ -7030,7 +7030,11 @@ function ptSet(d, patch){
   for (const k of ["bg","fg"]) if (!x[k]) delete x[k];
 }
 // v251 · formato dentro de la celda: negrita, tamaño de letra, lista numerada y checklist. Se guarda solo lo permitido.
-const PT_TAGS = { B:"b", STRONG:"b", I:"i", EM:"i", U:"u", BR:"br", DIV:"div", P:"div", OL:"ol", UL:"ul", LI:"li", FONT:"font" };
+const PT_TAGS = { B:"b", STRONG:"b", I:"i", EM:"i", U:"u", BR:"br", DIV:"div", P:"div", OL:"ol", UL:"ul", LI:"li", FONT:"font", SPAN:"span" };
+// v318 · color de letra y de fondo de lo marcado (como en Word): solo colores válidos.
+const PT_COL = /^(#[0-9a-f]{3,8}|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*[\d.]+\s*)?\))$/i;
+const ptStyle = n => { const c = n.style?.color || (n.tagName === "FONT" ? n.getAttribute("color") : ""), b = n.style?.backgroundColor || "";
+  return [PT_COL.test(c || "") ? `color:${c}` : "", PT_COL.test(b || "") && !/rgba\([^)]*,\s*0\s*\)/.test(b) ? `background-color:${b}` : ""].filter(Boolean).join(";"); };
 function ptClean(html){
   const box = document.createElement("div"); box.innerHTML = html || "";
   const walk = el => [...el.childNodes].map(n => {
@@ -7039,6 +7043,9 @@ function ptClean(html){
     const t = PT_TAGS[n.tagName], inner = walk(n);
     if (!t) return inner;
     if (t === "br") return "<br>";
+    const st = t === "span" || t === "font" ? ptStyle(n) : "";
+    if (t === "span") return st ? `<span style="${st}">${inner}</span>` : inner;
+    if (t === "font" && st){ const z = /^[1-7]$/.test(n.getAttribute("size") || "") ? n.getAttribute("size") : ""; return z ? `<font size="${z}"><span style="${st}">${inner}</span></font>` : `<span style="${st}">${inner}</span>`; }
     const a = t === "font" && /^[1-7]$/.test(n.getAttribute("size") || "") ? ` size="${n.getAttribute("size")}"` : t === "ul" && n.classList.contains("ptchk") ? ` class="ptchk"` : t === "li" && n.dataset.ok ? ` data-ok="1"` : "";
     return t === "font" && !a ? inner : `<${t}${a}>${inner}</${t}>`;
   }).join("");
@@ -7065,6 +7072,7 @@ function pPlanTxt(){
     <button type="button" class="btn sm" data-ptcolor="clear:">${icon("eraser")} Quitar colores</button>
     <span class="ptfmts" role="group" aria-label="Formato del texto">${PT_FMT.map(([k, i, l]) => `<button type="button" class="btn sm ib" data-ptfmt="${k}" title="${l}" aria-label="${l}">${icon(i)}</button>`).join("")}</span><span class="note ptsel">${ptSelTxt()}</span>${ptUndo ? `<button type="button" class="btn sm ptundo" data-ptundo>${icon("undo-2")} Deshacer ${ptUndo.k || "pegado"}</button>` : ""}
     ${ptCan() ? `<span class="ptmulti" id="ptMulti">${ptMultiIn()}</span>` : ""}</div>
+  <p class="note ptpastetip">${icon("highlighter")} <b>Pintar palabras:</b> marcá con el mouse (o el dedo) las palabras o líneas de un día y tocá un color de <b>Fondo</b> o de <b>Letra</b>: se pinta solo lo marcado (por ejemplo, en verde lo que ya se publicó). Sin marcar nada, se pinta el cuadro entero. “Quitar colores” saca el color de lo marcado.</p>
   <p class="note ptpastetip">${icon("clipboard-paste")} Podés copiar varias celdas de la hoja de Excel o Google Sheets y pegarlas acá: tocá el cuadro donde empieza (por ejemplo, el lunes de Instagram / Facebook) y pegá con Ctrl+V. Cada celda va a su día y a su red.
     Para elegir varios cuadros: “Seleccionar todo”, arrastrá con el mouse de uno a otro, Shift + clic (de un cuadro hasta otro) o Ctrl + clic (sumar uno); en el celular, “Seleccionar varios”. Después: “Copiar” (Ctrl+C) y, en otra semana, tocá el cuadro donde empieza y “Pegar” (Ctrl+V); “Copiar a la semana siguiente”; “Borrar texto” (Suprimir) o un color.</p>
   ${ptWeeks().map(w => ptGridWeek(w, work)).join("")}`;
@@ -7280,6 +7288,12 @@ document.addEventListener("click", e => {
   const li = e.target.closest?.(".pttx ul.ptchk > li");
   if (li && ptCan() && e.clientX < li.getBoundingClientRect().left + 2){ li.toggleAttribute("data-ok"); if (li.hasAttribute("data-ok")) li.dataset.ok = "1"; ptSave(li.closest("[data-pttx]")); return; }
   const b = e.target.closest("[data-ptcolor]");
+  // v318 · con palabras marcadas adentro de un día, el color va solo a lo marcado (como en Word); si no, al cuadro entero
+  if (b && ptCan()){ const sel = getSelection(), inEd = n => (n?.nodeType === 1 ? n : n?.parentElement)?.closest?.("[data-pttx]"), ed = sel && sel.rangeCount && !sel.isCollapsed ? inEd(sel.anchorNode) : null;
+    if (ed && inEd(sel.focusNode) === ed){ const [kind, c] = b.dataset.ptcolor.split(":");
+      if (kind === "clear"){ ed.querySelectorAll("span[style],font[color]").forEach(x => { if (!sel.containsNode(x, true)) return; x.style.color = ""; x.style.backgroundColor = ""; x.removeAttribute("color"); }); }
+      else { document.execCommand("styleWithCSS", false, true); document.execCommand(kind === "bg" ? "hiliteColor" : "foreColor", false, kind === "bg" && c === "#ffffff" ? "transparent" : c); document.execCommand("styleWithCSS", false, false); }
+      ptSave(ed); window.RMH?.flushNow?.(); return; } }
   if (b){ if (!ptCan()) return; const tg = ptSelSet.size > 1 ? [...ptSelSet] : ptCell ? [ptCell] : []; if (!tg.length) return toast("Tocá primero un cuadro del calendario.");
     const [kind, c] = b.dataset.ptcolor.split(":"); // v264: con varios elegidos, se pintan todos
     tg.forEach(cell => { ptSet(cell, kind === "clear" ? { bg:"", fg:"" } : { [kind]:c === "#ffffff" && kind === "bg" ? "" : c });
@@ -9062,8 +9076,9 @@ function pubCopyForm(f, p, dj, canal, real, chat){
   const last = [...(p.copyLog || [])].reverse().find(c => c.k === "fix");
   const none = !!p.noCopy, canNone = !!real && canEditPost() && (at || mine) && st !== "ok"; // “No lleva copy” (ej.: una historia): sin hoja ni aprobación
   const noneBtn = canNone ? `<button type="button" class="chip cpnone${none ? " on" : ""}" data-cpnone="${esc(copyRef(real))}" aria-pressed="${none}">${icon("ban")} No lleva copy</button>` : none ? "" : "";
-  const acts = none || !real || !canEditPost() ? "" : at && (st === "rev" || copyDraft(p)) ? `<button type="button" class="btn" data-cpfix="${esc(copyRef(real))}">${icon("pencil")} Pedir corrección</button><button type="button" class="btn primary" data-cpok="${esc(copyRef(real))}">${icon("check")} Aprobar copy</button>`
-    : at && (st === "" || st === "fix") ? `<button type="button" class="btn primary" data-cpconf="${esc(copyRef(real))}">${icon("badge-check")} Copy confirmado</button>`
+  const all = at && real ? copyAllOf(real) : { n:0, list:[] }, allTxt = all.n > 1 ? ` en todas (${all.list.map(copyWhere).join(" + ")})` : ""; // v318
+  const acts = none || !real || !canEditPost() ? "" : at && (st === "rev" || copyDraft(p)) ? `<button type="button" class="btn" data-cpfix="${esc(copyRef(real))}">${icon("pencil")} Pedir corrección</button><button type="button" class="btn${all.n > 1 ? "" : " primary"}" data-cpok="${esc(copyRef(real))}">${icon("check")} Aprobar copy${all.n > 1 ? " de esta" : ""}</button>${all.n > 1 ? `<button type="button" class="btn primary" data-cpokall="${esc(copyRef(real))}">${icon("check-check")} Aprobar copy${allTxt}</button>` : ""}`
+    : at && (st === "" || st === "fix") ? `<button type="button" class="btn${all.n > 1 ? "" : " primary"}" data-cpconf="${esc(copyRef(real))}">${icon("badge-check")} Copy confirmado${all.n > 1 ? " en esta" : ""}</button>${all.n > 1 ? `<button type="button" class="btn primary" data-cpconfall="${esc(copyRef(real))}">${icon("check-check")} Copy confirmado${allTxt}</button>` : ""}`
     : mine && (st === "" || st === "fix") ? `<button type="button" class="btn primary" data-cpsend="${esc(copyRef(real))}">${icon("send")} ${st === "fix" ? "Copy corregido · boceto finalizado" : "Copy boceto finalizado"}</button>`
     : mine && st === "ok" && !copyOld(p) ? `<button type="button" class="btn" data-cpreopen="${esc(copyRef(real))}">${icon("pencil")} Cambiar el copy</button>` : "";
   const what = canal ? "Canal de WhatsApp · Community Manager" : f.kind === "Historia" ? "Historia · Community Manager" : "Publicación · Community Manager";
@@ -9180,6 +9195,25 @@ function copySend(p){
   notify({ to:"admin", type:"review", copy:true, fix, post:p.id, canal:!!p.channel, who:viewer.name });
   copySync(p); render(); window.RMH?.flushNow?.(); toast("Copy boceto finalizado: le llegó a Admin total para revisarlo. Te avisamos cuando lo apruebe o pida cambios.");
 }
+// v318 · Un mismo trabajo en varias publicaciones (feed, historia, Canal…): las del mismo pedido de Diseño, o las que se cargaron
+// juntas (mismo tema y mismo día). Admin total aprueba (o confirma) el copy de todas de una vez: las que esperan aprobación con su
+// propio copy, y las que todavía no tienen copy reciben el mismo.
+const copySibs = p => { if (!p) return []; const t = gsNorm(p.title).trim();
+  return [...posts, ...CHANNEL_POSTS].filter(x => !x.ex && x.status !== CANCEL && !x.noCopy && (p.fromJob ? x.fromJob === p.fromJob : !x.fromJob && x.date === p.date && gsNorm(x.title).trim() === t)); };
+const copyHas = x => !!copyPlain(x).trim() || /<img/i.test(x.copy || "");
+function copyAllOf(p){ const S = copySibs(p), pend = S.filter(x => x.copySt === "rev" || copyDraft(x)), empty = S.filter(x => !pend.includes(x) && !copyStOf(x) && !copyHas(x));
+  const rk = x => x.channel ? 2 : x.format === "Historia" ? 1 : 0, list = [...new Set([p, ...pend, ...empty])].sort((a, b) => rk(a) - rk(b)); return { list, empty, n:list.length }; } // feed, historia y canal
+const copyWhere = x => x.channel ? "Canal" : x.format || "Post";
+function copyApproveAll(p, conf){
+  if (viewer.role !== "Admin total" || !p) return; if (document.getElementById("poCopy")) copyTake(p);
+  if (!copyHas(p)) return toast("Escribí el copy antes de aprobarlo para todas.");
+  const { list, empty } = copyAllOf(p);
+  list.forEach(x => { if (empty.includes(x)){ x.copy = p.copy; x.copyBg = p.copyBg || ""; }
+    Object.assign(x, { copySt:"ok", copyBy:viewer.name }, conf ? { copyConf:true, noCopy:false } : {}); copyLogAdd(x, conf ? "conf" : "ok", empty.includes(x) ? `mismo copy que ${copyWhere(p)}` : undefined);
+    copyNotifsRead(x, n => n.to === "admin" || (n.to === x.cm && n.type === "fix")); notify({ to:x.cm, type:"listo", copy:true, ...(conf ? { conf:true } : {}), post:x.id, canal:!!x.channel }); copySync(x); });
+  render(); window.RMH?.flushNow?.();
+  toast(`Copy ${conf ? "confirmado" : "aprobado"} en ${list.length} publicaciones (${list.map(copyWhere).join(", ")}). Le avisamos a ${[...new Set(list.map(x => firstName(x.cm)))].join(" y ")}.`);
+}
 function copyApprove(p){
   if (viewer.role !== "Admin total" || !p) return; if (document.getElementById("poCopy")) copyTake(p);
   p.copySt = "ok"; p.copyBy = viewer.name; copyLogAdd(p, "ok"); copyNotifsRead(p, n => n.to === "admin" || (n.to === p.cm && n.type === "fix"));
@@ -9215,8 +9249,9 @@ function openCopyFixModal(p){
   document.body.appendChild(w); w.querySelector("textarea").focus();
 }
 document.addEventListener("click", e => {
-  const b = e.target.closest("[data-cpsend],[data-cpok],[data-cpfix],[data-cpreopen],[data-cpfixsend],[data-cpnone],[data-cpconf]"); if (!b) return;
-  const d = b.dataset, p = copyByRef(d.cpsend || d.cpok || d.cpfix || d.cpreopen || d.cpfixsend || d.cpnone || d.cpconf); if (!p) return toast("No se encontró la publicación (quizás la borraron).");
+  const b = e.target.closest("[data-cpsend],[data-cpok],[data-cpfix],[data-cpreopen],[data-cpfixsend],[data-cpnone],[data-cpconf],[data-cpokall],[data-cpconfall]"); if (!b) return;
+  const d = b.dataset, p = copyByRef(d.cpsend || d.cpok || d.cpfix || d.cpreopen || d.cpfixsend || d.cpnone || d.cpconf || d.cpokall || d.cpconfall); if (!p) return toast("No se encontró la publicación (quizás la borraron).");
+  if (d.cpokall || d.cpconfall){ e.stopPropagation(); return copyApproveAll(p, !!d.cpconfall); }
   if (!canEditPost()) return;
   if (d.cpsend){ if (!hasPub(p, viewer.name)) return; return copySend(p); }
   if (d.cpnone){ if (!hasPub(p, viewer.name) && viewer.role !== "Admin total") return; copyTake(p); p.noCopy = !p.noCopy; copyLogAdd(p, p.noCopy ? "none" : "has");
