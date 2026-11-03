@@ -201,4 +201,5 @@ Excel en Drive ──(Apps Script de Google, cuenta retailmarketingpy)──► 
 
 **Excel sin «.xlsx» en el nombre (v254):** un archivo de las carpetas se toma como Excel por el nombre (.xlsx/.xls/.xlsm) o por el tipo de archivo de Drive (`MIME_PLANILLA`). Pasó con «FDS S6 23/10/2026 AL 25/10/2026.» y «FDS DELI 23/10/26 AL 25/10/2026.».
 
+- **v337 · Oficina de Agentes:** el puesto de datos **Comercial** (zona Datos de la oficina) solo **lee** `s:COMERCIAL` (con `comAllOf`, `comState`, `comName`, `comOfTxt`) y `PEDIDOS_COM` (`pcSt`, `pcRange`, `pcBrandTxt`) para responder qué ofertas están vigentes, qué va para redes y qué pedidos hay para publicar. Si cambiás esos nombres, revisá `ofComData`/`ofComOn` en `index.html`.
 - **v312 · Activación Comercial:** los pedidos que carga Comercial quedan marcados solos como **Activación Comercial** (se puede destildar en la hoja del pedido) y sus publicaciones entran en el **Informe Comercial** (Informe mensual, solo Admin total y Admin), con el alcance y los demás números de Instagram, para mandar en PDF.
