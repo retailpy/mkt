@@ -4706,7 +4706,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v334";
+const APP_VER = "v335";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -14960,6 +14960,7 @@ function clCopy(p, ref, o, k){
 function agRobotClaudia(text){
   const p = ofUI.post ? postById(ofUI.post) : null, q = String(text || "").trim();
   if (!p) return { t:"Elegí primero la publicación de la lista (arriba del chat) y te armo el copy con el tono de su marca." };
+  if (/historia/i.test(String(p.format || ""))) return { t:"Las historias no llevan copy. Elegí un post, carrusel, reel o Canal de WhatsApp y te lo armo." };
   const cmd = /^(escrib[ií] el copy de esta publicaci[oó]n|dame \d+ opciones de copy|hacelo m[aá]s corto y con m[aá]s energ[ií]a)$/i.test(q);
   const o = { short:/corto|breve/i.test(q), energy:/energ|buena onda|con onda/i.test(q), noEmo:/sin emoji/i.test(q), noTag:/sin hashtag/i.test(q), n:Math.min(3, +(q.match(/(\d)\s*opcion/i) || [])[1] || (/opciones/i.test(q) ? 3 : 1)) };
   const ref = cmd || /^(hacelo|dame|escrib|otra|de nuevo|otra vez)/i.test(q) ? "" : q.replace(/^(referencia|ref|datos|info)\s*:\s*/i, "");
@@ -15594,7 +15595,7 @@ function ofPanelAgent(a){
     <ul class="ofskills">${a.skills.map(([k, n]) => `<li><label><input type="checkbox" data-agskill="${a.id}:${k}" ${agSkillOn(a.id, k) ? "checked" : ""} ${at ? "" : "disabled"}> ${esc(n)}</label></li>`).join("")}
     ${(c.custom || []).map(s => `<li class="cus"><span><b>${esc(s.name)}</b><small>${esc(s.text)}</small></span>${at ? `<button type="button" class="btn sm ib" data-agskdel="${a.id}:${esc(s.id)}" title="Quitar" aria-label="Quitar">${icon("x")}</button>` : ""}</li>`).join("")}</ul>
     ${at ? `<form id="agSkillForm" class="ofskform" data-ag="${a.id}"><h4>Sumar una skill</h4><input class="base" name="n" maxlength="60" placeholder="Nombre (ej.: Tono de Navidad)" required><textarea class="base" name="t" rows="3" maxlength="1200" placeholder="Qué tiene que saber o hacer (ej.: En diciembre, mencioná la canasta navideña y el aguinaldo.)" required></textarea><button type="submit" class="btn primary">${icon("plus")} Sumar skill</button></form>` : ""}`;
-  const posts14 = a.id === "claudia" ? posts.filter(p => !p.ex && !isDone(p) && p.status !== CANCEL && seesBrand(p.brand) && p.date >= addDays(TODAY, -3) && p.date <= addDays(TODAY, 21)).sort((x, y) => x.date.localeCompare(y.date) || String(x.time || "").localeCompare(String(y.time || ""))).slice(0, 80) : [];
+  const posts14 = a.id === "claudia" ? posts.filter(p => !p.ex && !isDone(p) && p.status !== CANCEL && !/historia/i.test(String(p.format || "")) && seesBrand(p.brand) && p.date >= addDays(TODAY, -3) && p.date <= addDays(TODAY, 21)).sort((x, y) => x.date.localeCompare(y.date) || String(x.time || "").localeCompare(String(y.time || ""))).slice(0, 80) : [];
   const pick = a.id === "claudia" ? `<label class="oflab">Publicación<select class="base" data-agpost><option value="">— Elegí una publicación —</option>${posts14.map(p => `<option value="${esc(p.id)}" ${p.id === ofUI.post ? "selected" : ""}>${dm(p.date)} · ${esc(p.brand)} · ${esc(p.format || "Post")} · ${esc(agPlain(p.title).slice(0, 50))}</option>`).join("")}</select></label>` : "";
   const nokey = ofUI.errCode === "nokey", bye = ofUI.errCode === "limit";
   const sant = a.id === "santiago" ? (() => { const d = x => pyDate(x.at), t = PROMPT_LOG.filter(x => d(x) === TODAY).length, w = PROMPT_LOG.filter(x => d(x) >= addDays(TODAY, -6)).length, m = PROMPT_LOG.filter(x => d(x).slice(0, 7) === MONTH).length;
@@ -15790,11 +15791,12 @@ document.addEventListener("submit", e => { if (page !== "cronograma" || e.target
 // v334 · Generador de copy: se cargan los textos del creativo (cada lámina del carrusel, o el texto de la pieza) y los datos que
 // tiene que decir, y ClaudIA (el robot de la app) arma el copy con el Manual de Redes Sociales y el tono de la marca. Lo usan
 // Admin total, Admin y CM. Cada copy deja una anotación sin nombres (s:COPY_LOG) para que en la oficina se vea a ClaudIA trabajando.
-const CG_FMTS = ["Post", "Carrusel", "Reel", "Historia", "Canal de WhatsApp"];
+const CG_FMTS = ["Post", "Carrusel", "Reel", "Canal de WhatsApp"]; // las historias no llevan copy
+const cgIsStory = p => /historia/i.test(String(p?.format || ""));
 const cgUI = { post:"", brand:"Superseis", fmt:"Post", title:"", slides:["", ""], piece:"", data:"", out:[], miss:[], n:0 };
 const cgCan = () => ["Admin total", "Admin", "CM"].includes(viewer?.role);
-const cgFmtOf = f => { const x = String(f || "").toLowerCase(); return /carrusel/.test(x) ? "Carrusel" : /reel|video/.test(x) ? "Reel" : /historia/.test(x) ? "Historia" : /canal|whatsapp/.test(x) ? "Canal de WhatsApp" : "Post"; };
-const cgPosts = () => posts.filter(p => !p.ex && !isDone(p) && p.status !== CANCEL && seesBrand(p.brand) && p.date >= addDays(TODAY, -3) && p.date <= addDays(TODAY, 30)).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 80);
+const cgFmtOf = f => { const x = String(f || "").toLowerCase(); return /carrusel/.test(x) ? "Carrusel" : /reel|video/.test(x) ? "Reel" : /canal|whatsapp/.test(x) ? "Canal de WhatsApp" : "Post"; };
+const cgPosts = () => posts.filter(p => !p.ex && !isDone(p) && p.status !== CANCEL && !cgIsStory(p) && seesBrand(p.brand) && p.date >= addDays(TODAY, -3) && p.date <= addDays(TODAY, 30)).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 80);
 const cgPost = () => cgUI.post ? postById(cgUI.post) : null;
 const cgCanSave = p => !!p && canEditPost() && copyStOf(p) !== "ok" && (viewer.role !== "CM" || cmIn(p, viewer.name) || p.cm === viewer.name);
 function pCopys(){
@@ -15807,7 +15809,7 @@ function pCopys(){
       ${cgUI.out.map((t, i) => `<div class="cgout">${cgUI.out.length > 1 ? `<b class="cgn">Opción ${i + 1}</b>` : ""}<div class="agtxt">${agMd(t)}</div><div class="chips"><button type="button" class="btn sm" data-cgcopy="${i}">${icon("copy")} Copiar</button>${cgCanSave(P) ? `<button type="button" class="btn sm" data-cgsave="${i}">${icon("save")} Guardar en la publicación</button>` : ""}</div></div>`).join("")}
       ${cgUI.miss.length ? `<p class="note">${icon("triangle-alert")} Falta confirmar: ${esc(cgUI.miss.join(" y "))}. Completalo en “Datos que tiene que decir”.</p>` : ""}
       <p class="note">Si no te convence, tocá de nuevo “Armar el copy” o “3 opciones”: cada vez sale distinto.${cgUI.brand === "Delimarket" ? " Delimarket va sin emojis, sobrio y elegante." : cgUI.brand === "Stock" ? " Stock va con buena onda." : ""}</p></div>` : "";
-  return `<div class="head"><div><h1 class="pmh">${pmIco("pen-line")}Generador de copy</h1><p class="sub">Cargá los textos del creativo (cada lámina del carrusel o el texto de la pieza) y lo que tiene que decir. <b>ClaudIA</b> arma el copy con el Manual de Redes Sociales y el tono de la marca: Superseis cercano, Stock con buena onda, Delimarket sobrio y sin emojis.</p></div></div>
+  return `<div class="head"><div><h1 class="pmh">${pmIco("pen-line")}Generador de copy</h1><p class="sub">Cargá los textos del creativo (cada lámina del carrusel o el texto de la pieza) y lo que tiene que decir. <b>ClaudIA</b> arma el copy con el Manual de Redes Sociales y el tono de la marca: Superseis cercano, Stock con buena onda, Delimarket sobrio y sin emojis. Las historias no llevan copy.</p></div></div>
     <form id="cgForm" class="panel cgform">
       <label class="oflab">Publicación (opcional)<select class="base" data-cgpost><option value="">— Sin publicación: lo cargo a mano —</option>${cgPosts().map(p => `<option value="${esc(p.id)}" ${p.id === cgUI.post ? "selected" : ""}>${dm(p.date)} · ${esc(p.brand)} · ${esc(p.format || "Post")} · ${esc(agPlain(p.title).slice(0, 50))}</option>`).join("")}</select></label>
       <div class="cgrow"><label class="oflab">Marca<select class="base" data-cgbrand>${brands.map(b => `<option ${b === cgUI.brand ? "selected" : ""}>${esc(b)}</option>`).join("")}</select></label>
