@@ -1131,8 +1131,8 @@ html.light .ofscene image{filter:none}
 @keyframes ofbob{50%{transform:translateY(-2px)}}@keyframes ofleg{to{transform:translateY(-2.5px)}}@keyframes oftype{from{transform:rotate(-14deg)}to{transform:rotate(12deg)}}@keyframes ofblink{50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.ofscene .ofch .ofup,.ofscene .ofch .oflegs rect,.ofscene .ofch .ofarm,.ofscene .ofch .ofant{animation:none!important}}
 .ofleft{display:flex;flex-direction:column;gap:10px;min-width:0}
-.ofstage{position:relative}.ofscroll{touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}.ofstage.drag .ofscroll{cursor:grabbing}.ofstage.drag .ofscene *{pointer-events:none}
-.ofrot{position:absolute;top:10px;right:12px;display:flex;align-items:center;gap:6px;padding:4px;border-radius:12px;background:rgba(15,23,42,.72);backdrop-filter:blur(6px)}.ofrot span{font-size:12px;color:#cbd5e1;padding:0 6px}.ofrot .btn{color:#fff}
+.ofstage{position:relative}.ofscroll{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}.ofstage.zoomed .ofscroll{cursor:grab}.ofrot .ofzv{min-width:40px;text-align:center;font-size:12px;color:#e2e8f0}.ofstage.drag .ofscroll{cursor:grabbing}.ofstage.drag .ofscene *{pointer-events:none}
+.ofrot{position:absolute;top:10px;right:12px;left:auto;max-width:calc(100% - 24px);flex-wrap:wrap;justify-content:flex-end;display:flex;align-items:center;gap:6px;padding:4px;border-radius:12px;background:rgba(15,23,42,.72);backdrop-filter:blur(6px)}.ofrot span{font-size:12px;color:#cbd5e1;padding:0 6px}.ofrot .btn{color:#fff}
 .ofscene .ofhold{display:none}.ofscene .ofch.h-cup .ofhold.cup,.ofscene .ofch.h-glass .ofhold.glass,.ofscene .ofch.h-guampa .ofhold.guampa,.ofscene .ofch.h-phone .ofhold.phone{display:inline}
 .ofnow .st-m{border-color:rgba(124,92,255,.6);background:rgba(124,92,255,.15)}.ofnow .st-m i{background:#7c5cff}
 .ofnow{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-size:12.5px;color:#cbd5e1}.ofnow > b{color:#fff;font-size:13px;margin-right:2px}
@@ -1183,7 +1183,7 @@ html.light .ofscene image{filter:none}
 .ofagents{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .ofag{display:flex;align-items:center;gap:12px;text-align:left;cursor:pointer;border-left:4px solid var(--c)}.ofag b{display:block;color:#fff;font-size:15px}.ofag small{color:var(--muted);font-size:12.5px}.ofag em{margin-left:auto;font-style:normal;font-size:12px;color:var(--muted)}
 @media (max-width:1100px){.ofwrap.sel{grid-template-columns:minmax(0,1fr)}.ofpanel{position:fixed;inset:auto 0 0 0;top:auto;max-height:82dvh;z-index:120;border-radius:20px 20px 0 0;box-shadow:0 -20px 50px -10px rgba(0,0,0,.8)}}
-@media (max-width:760px){.ofrot span{display:none}.ofrot{top:6px;right:6px}.ofagents{grid-template-columns:1fr}.ofpanel{max-height:88dvh;padding-bottom:calc(16px + env(safe-area-inset-bottom))}}
+@media (max-width:760px){.ofrot span{display:none}.ofrot{position:static;max-width:none;justify-content:center;margin-top:8px;background:transparent;backdrop-filter:none;padding:0}.ofagents{grid-template-columns:1fr}.ofpanel{max-height:88dvh;padding-bottom:calc(16px + env(safe-area-inset-bottom))}}
 /* v326 · Cronograma de Acciones */
 .crks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
 .crk{display:flex;flex-direction:column;gap:2px;padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:var(--panel)}
@@ -4699,7 +4699,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v328";
+const APP_VER = "v329";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -6038,6 +6038,7 @@ const mainBrandOptions = cur => `<option value="${VARIAS}" ${cur === VARIAS ? "s
 // se baja la librería completa como respaldo y lo dibuja igual.
 const ICONS = {
 "bot":"<path d=\"M12 8V4H8\" /><rect width=\"16\" height=\"12\" x=\"4\" y=\"8\" rx=\"2\" /><path d=\"M2 14h2\" /><path d=\"M20 14h2\" /><path d=\"M15 13v2\" /><path d=\"M9 13v2\" />",
+"minus":"<path d=\"M5 12h14\" />",
 "rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" />",
 "rotate-cw":"<path d=\"M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8\" /><path d=\"M21 3v5h-5\" />",
 "building-2":"<path d=\"M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z\" /><path d=\"M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2\" /><path d=\"M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2\" /><path d=\"M10 6h4\" /><path d=\"M10 10h4\" /><path d=\"M10 14h4\" /><path d=\"M10 18h4\" />",
@@ -14901,9 +14902,17 @@ const ofSem = iso => { const h = ofAge(iso); return h === null ? "n" : h <= 14 ?
 // v328: la oficina se gira arrastrando con el mouse o el dedo (o con los botones ⟲ ⟳).
 // Medidas en baldosas: x de 0 a 20, y de 0 a 14 (en la vista inicial: x hacia la derecha-abajo, y hacia la izquierda-abajo), z hacia arriba.
 const OFI = { W:20, D:14, WH:3.4, cx:574, cy:422, vw:1150, vh:716 };
-const OFR = { a:(() => { try { const v = parseFloat(localStorage.getItem("rmh-ofrot")); return isFinite(v) ? v : 0; } catch (e){ return 0; } })() };
-const ofCS = () => { if (ofCS.a !== OFR.a){ ofCS.a = OFR.a; ofCS.c = Math.cos(OFR.a); ofCS.s = Math.sin(OFR.a); } return ofCS; };
-const ofP = (x, y, z = 0) => { const r = ofCS(), dx = x - OFI.W / 2, dy = y - OFI.D / 2, u = dx * r.c - dy * r.s, v = dx * r.s + dy * r.c; return [OFI.cx + (u - v) * 32, OFI.cy + (u + v) * 16 - z * 32]; };
+// La vista: giro (a), inclinación (p: 30° es la de la foto; 90° es desde arriba) y zoom con encuadre (OFV). Se recuerdan giro e inclinación.
+const OF_P0 = Math.PI / 6, OF_PMIN = 12 * Math.PI / 180, OF_PMAX = 88 * Math.PI / 180;
+const OFR = (() => { const d = { a:0, p:OF_P0 }; try { const v = JSON.parse(localStorage.getItem("rmh-ofview") || "null") || { a:parseFloat(localStorage.getItem("rmh-ofrot")) }; if (isFinite(v.a)) d.a = v.a; if (isFinite(v.p)) d.p = Math.min(OF_PMAX, Math.max(OF_PMIN, v.p)); } catch (e){} return d; })();
+const OFV = { z:1, x:0, y:0 };
+const ofCS = () => { if (ofCS.a !== OFR.a || ofCS.p !== OFR.p){ const r = ofCS; r.a = OFR.a; r.p = OFR.p; r.c = Math.cos(OFR.a); r.s = Math.sin(OFR.a); r.ky = 32 * Math.sin(OFR.p); r.kz = 32 * Math.cos(OFR.p) / Math.cos(OF_P0);
+    // Encuadre: que la maqueta entre entera con cualquier giro o inclinación (k = escala; ox, oy = centro)
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    [[0, 0], [OFI.W, 0], [OFI.W, OFI.D], [0, OFI.D]].forEach(([x, y]) => [-.45, OFI.WH + .1].forEach(z => { const dx = x - OFI.W / 2, dy = y - OFI.D / 2, u = dx * r.c - dy * r.s, v = dx * r.s + dy * r.c, X = (u - v) * 32, Y = (u + v) * r.ky - z * r.kz; x0 = Math.min(x0, X); x1 = Math.max(x1, X); y0 = Math.min(y0, Y); y1 = Math.max(y1, Y); }));
+    r.k = Math.min(1, (OFI.vw - 40) / (x1 - x0), (OFI.vh - 24) / (y1 - y0)); r.ox = OFI.vw / 2 - (x0 + x1) / 2 * r.k; r.oy = OFI.vh / 2 - (y0 + y1) / 2 * r.k; } return ofCS; };
+const ofP = (x, y, z = 0) => { const r = ofCS(), dx = x - OFI.W / 2, dy = y - OFI.D / 2, u = dx * r.c - dy * r.s, v = dx * r.s + dy * r.c; return [r.ox + (u - v) * 32 * r.k, r.oy + ((u + v) * r.ky - z * r.kz) * r.k]; };
+const ofTr = (px, py) => `translate(${px.toFixed(1)},${py.toFixed(1)})${ofCS().k < .999 ? ` scale(${ofCS().k.toFixed(3)})` : ""}`; // los robots se achican junto con la maqueta
 const ofDepth = (x, y) => { const r = ofCS(), dx = x - OFI.W / 2, dy = y - OFI.D / 2; return dx * (r.c + r.s) + dy * (r.c - r.s); }; // más grande = más adelante
 const ofSeen = (nx, ny) => { const r = ofCS(); return nx * (r.c + r.s) + ny * (r.c - r.s) > 1e-6; }; // una cara que mira hacia (nx, ny) se ve
 const ofPt = (x, y, z) => ofP(x, y, z).map(n => Math.round(n * 10) / 10).join(",");
@@ -14919,10 +14928,10 @@ function ofBox(x, y, z, w, d, h, c){
 }
 const OF_C = { desk:["#eef0f3", "#2b3038", "#1c2027"], wood:["#d9bd92", "#b78d5c", "#9b7549"], dark:["#334155", "#1e293b", "#111827"], chair:["#3b414b", "#2a2f37", "#1f232a"], white:["#f8fafc", "#e2e8f0", "#cbd5e1"], pot:["#f08a3c", "#e1782f", "#c2611f"] };
 // Para dibujar “pegado” a un plano vertical que mira hacia +y (pared del fondo, pantallas) o hacia +x (pared de la izquierda)
-const ofPlaneY = (x, y, z) => { const a = ofP(x, y, z), b = ofP(x + 1, y, z); return `matrix(${((b[0] - a[0]) / 32).toFixed(4)},${((b[1] - a[1]) / 32).toFixed(4)},0,1,${a[0].toFixed(1)},${a[1].toFixed(1)})`; };
-const ofPlaneX = (x, y, z) => { const a = ofP(x, y, z), b = ofP(x, y - 1, z); return `matrix(${((b[0] - a[0]) / 32).toFixed(4)},${((b[1] - a[1]) / 32).toFixed(4)},0,1,${a[0].toFixed(1)},${a[1].toFixed(1)})`; };
+const ofPlaneY = (x, y, z) => { const a = ofP(x, y, z), b = ofP(x + 1, y, z); return `matrix(${((b[0] - a[0]) / 32).toFixed(4)},${((b[1] - a[1]) / 32).toFixed(4)},0,${(ofCS().kz * ofCS().k / 32).toFixed(4)},${a[0].toFixed(1)},${a[1].toFixed(1)})`; };
+const ofPlaneX = (x, y, z) => { const a = ofP(x, y, z), b = ofP(x, y - 1, z); return `matrix(${((b[0] - a[0]) / 32).toFixed(4)},${((b[1] - a[1]) / 32).toFixed(4)},0,${(ofCS().kz * ofCS().k / 32).toFixed(4)},${a[0].toFixed(1)},${a[1].toFixed(1)})`; };
 const ofWallM = (wall, a, z) => wall === "y" ? ofPlaneY(a, 0, z) : ofPlaneX(0, a, z);
-const ofPlant = (x, y, s = 1) => { const [cx, cy] = ofP(x + .25, y + .25, .5); return ofBox(x, y, 0, .5, .5, .5, OF_C.pot) + `<circle cx="${cx - 9 * s}" cy="${cy - 6 * s}" r="${11 * s}" fill="#3f8f3a"/><circle cx="${cx + 8 * s}" cy="${cy - 9 * s}" r="${12 * s}" fill="#4fa346"/><circle cx="${cx}" cy="${cy - 19 * s}" r="${11 * s}" fill="#5bb450"/>`; };
+const ofPlant = (x, y, s = 1) => { const [cx, cy] = ofP(x + .25, y + .25, .5); s *= ofCS().k; return ofBox(x, y, 0, .5, .5, .5, OF_C.pot) + `<circle cx="${cx - 9 * s}" cy="${cy - 6 * s}" r="${11 * s}" fill="#3f8f3a"/><circle cx="${cx + 8 * s}" cy="${cy - 9 * s}" r="${12 * s}" fill="#4fa346"/><circle cx="${cx}" cy="${cy - 19 * s}" r="${11 * s}" fill="#5bb450"/>`; };
 // Las reuniones de los agentes (hora de Paraguay, de lunes a viernes): se juntan en la sala a ver los informes
 const OF_MEETS = [{ h:9, m:0, len:20, t:"reunión de la mañana", what:"el informe del día" }, { h:16, m:0, len:15, t:"reunión de la tarde", what:"cómo van los posteos y la pauta" }];
 function ofMeetNow(){
@@ -15011,7 +15020,7 @@ function ofLook(c, s, L){
 function ofCharSVG(c, s, L){
   const k = ofLook(c, s, L), [px, py] = ofP(s.x, s.y), sc = c.kind === "r" ? .8 : 1, w = Math.round(c.name.length * 6.3 + 24), col = c.color;
   const tip = `${c.name}${c.kind === "r" ? " (robot de datos" + (c.upd ? ", trajo datos hace " + Math.max(0, Math.round(ofAge(c.upd))) + " h" : ", sin dato") + ")" : " · " + AG[c.ref].role}: ${k.txt}`;
-  return `<g class="${k.cls}" id="ofch-${c.id}" data-ofc="${c.kind === "a" ? "a:" + c.ref : "rb"}" role="button" tabindex="0" aria-label="${esc(tip)}" transform="translate(${px.toFixed(1)},${py.toFixed(1)})"><title>${esc(tip)}</title>
+  return `<g class="${k.cls}" id="ofch-${c.id}" data-ofc="${c.kind === "a" ? "a:" + c.ref : "rb"}" role="button" tabindex="0" aria-label="${esc(tip)}" transform="${ofTr(px, py)}"><title>${esc(tip)}</title>
     <ellipse class="ofsh" rx="${12 * sc}" ry="${5 * sc}"/>
     <g transform="scale(${sc})"><g class="oflegs"><rect x="-7" y="-11" width="5" height="11" rx="2"/><rect x="2" y="-11" width="5" height="11" rx="2"/></g>
       <g class="ofup"><rect class="ofarm" x="-15" y="-27" width="5" height="13" rx="2.5" fill="${col}"/><rect class="ofarm r" x="10" y="-27" width="5" height="13" rx="2.5" fill="${col}"/>
@@ -15090,7 +15099,7 @@ function ofScene(){
   // Robots de datos: los servidores contra la pared y una terminal para cada robot
   const rb = OF_ROBOTS(), semC = { g:"#22c55e", y:"#f59e0b", r:"#ef4444", n:"#94a3b8" };
   [0, 1, 2].forEach(r => { const y = 7.15 + r * 1.85; let leds = "";
-    if (ofSeen(1, 0)) rb.forEach(([, u], i) => { if (i % 3 !== r) return; const j = Math.floor(i / 3); [0, 1].forEach(q => { const [lx, ly] = ofP(.78, y + .35 + q * .6, 1.45 - j * .32); leds += `<circle cx="${lx}" cy="${ly}" r="2.6" fill="${semC[ofSem(u)]}"/>`; }); });
+    if (ofSeen(1, 0)) rb.forEach(([, u], i) => { if (i % 3 !== r) return; const j = Math.floor(i / 3); [0, 1].forEach(q => { const [lx, ly] = ofP(.78, y + .35 + q * .6, 1.45 - j * .32); leds += `<circle cx="${lx}" cy="${ly}" r="${(2.6 * ofCS().k).toFixed(2)}" fill="${semC[ofSem(u)]}"/>`; }); });
     it(.41, y + .8, `<g class="ofracks" data-ofc="rb" role="button" tabindex="0" aria-label="Robots de datos: ${rb.filter(([, u]) => ofSem(u) === "g").length} de ${rb.length} al día"><title>Robots de datos: tocá para ver cuándo trabajó cada uno</title>${ofBox(.05, y, 0, .72, 1.6, 1.8, OF_C.dark) + leds}</g>`); });
   rb.forEach(([, u], i) => { const [x, y] = OF_RB_SPOT(i); it(x - .58, y - .02, ofBox(x - .78, y - .22, 0, .4, .4, .82, ["#475569", "#334155", "#1e293b"]) + ofBox(x - .74, y - .18, .82, .32, .32, .03, [semC[ofSem(u)], "#0f172a", "#0f172a"])); });
   // Descanso: café, agua, tereré, sillón con música, plantas
@@ -15100,7 +15109,7 @@ function ofScene(){
   it(16.7, 12.0, ofBox(15.2, 11.6, 0, 3.0, .85, .38, ["#2dd4bf", "#14b8a6", "#0d9488"]) + ofBox(15.2, 11.6, .38, 3.0, .24, .5, ["#2dd4bf", "#14b8a6", "#0d9488"]) + ofBox(15.2, 11.6, .38, .22, .85, .28, ["#2dd4bf", "#14b8a6", "#0d9488"]) + ofBox(17.98, 11.6, .38, .22, .85, .28, ["#2dd4bf", "#14b8a6", "#0d9488"]));
   it(18.82, 11.97, ofBox(18.55, 11.7, 0, .55, .55, .5, OF_C.wood) + ofBox(18.62, 11.78, .5, .4, .32, .6, ["#334155", "#1e293b", "#0f172a"]));
   it(19.35, 9.85, ofPlant(19.1, 9.6)); it(19.4, 13.45, ofPlant(19.15, 13.2));
-  [[19.2, .9], [19.2, 5.2]].forEach(([x, y]) => it(x + .32, y + .7, ofBox(x, y, 0, .65, 1.4, .55, OF_C.pot) + (([cx, cy]) => `<circle cx="${cx - 12}" cy="${cy - 4}" r="12" fill="#3f8f3a"/><circle cx="${cx + 6}" cy="${cy - 9}" r="13" fill="#4fa346"/><circle cx="${cx + 18}" cy="${cy}" r="10" fill="#3f8f3a"/>`)(ofP(x + .32, y + .7, .55))));
+  [[19.2, .9], [19.2, 5.2]].forEach(([x, y]) => it(x + .32, y + .7, ofBox(x, y, 0, .65, 1.4, .55, OF_C.pot) + (([cx, cy], k) => `<circle cx="${cx - 12 * k}" cy="${cy - 4 * k}" r="${12 * k}" fill="#3f8f3a"/><circle cx="${cx + 6 * k}" cy="${cy - 9 * k}" r="${13 * k}" fill="#4fa346"/><circle cx="${cx + 18 * k}" cy="${cy}" r="${10 * k}" fill="#3f8f3a"/>`)(ofP(x + .32, y + .7, .55), ofCS().k)));
   // Los robots, entre los muebles (los de adelante tapan a los de atrás)
   chars.forEach(c => { const s = ofState(c, L); f.push({ d:ofDepth(s.x, s.y), svg:ofCharSVG(c, s, L), ch:c.id }); });
   f.sort((a, b) => a.d - b.d);
@@ -15125,7 +15134,7 @@ function ofScene(){
   const slab = (ofSeen(0, 1) ? ofPoly([[0, D, 0], [W, D, 0], [W, D, -.45], [0, D, -.45]], "#a3abb6") : "") + (ofSeen(0, -1) ? ofPoly([[0, 0, 0], [W, 0, 0], [W, 0, -.45], [0, 0, -.45]], "#a3abb6") : "")
     + (ofSeen(1, 0) ? ofPoly([[W, 0, 0], [W, D, 0], [W, D, -.45], [W, 0, -.45]], "#8b94a1") : "") + (ofSeen(-1, 0) ? ofPoly([[0, 0, 0], [0, D, 0], [0, D, -.45], [0, 0, -.45]], "#8b94a1") : "");
   const floor = slab + ofPoly([[0, 0, 0], [W, 0, 0], [W, D, 0], [0, D, 0]], "#d7dbe0") + `<path d="${grid}" stroke="#c4c9d0" stroke-width="1" fill="none"/>`
-    + [[3, 3], [7, 3], [11, 3], [17, 3], [3, 10], [10, 10.5], [17, 10]].map(([x, y]) => { const [cx, cy] = ofP(x, y); return `<ellipse cx="${cx}" cy="${cy}" rx="120" ry="60" fill="url(#oflight)"/>`; }).join("")
+    + [[3, 3], [7, 3], [11, 3], [17, 3], [3, 10], [10, 10.5], [17, 10]].map(([x, y]) => { const [cx, cy] = ofP(x, y); return `<ellipse cx="${cx}" cy="${cy}" rx="${(120 * ofCS().k).toFixed(1)}" ry="${(120 * ofCS().ky / 32 * ofCS().k).toFixed(1)}" fill="url(#oflight)"/>`; }).join("")
     + ofPoly([[15.0, 11.3, .01], [18.6, 11.3, .01], [18.6, 13.4, .01], [15.0, 13.4, .01]], "#e7d7c1"); // alfombra del sillón
   const zones = zone("co", .4, .4, 3.9, 4.9) + zone("dg", 4.3, .4, 8.7, 4.9) + zone("cm", 9.1, .4, 13.5, 4.9) + zone("sa", 14.6, .4, 19.6, 4.9) + zone("rb", .4, 6.8, 5.3, 13.6) + zone("ia", 6.2, 6.8, 13.5, 13.6) + zone("ds", 14.6, 6.8, 19.6, 13.6);
   const boards = wY ? ofBoard("co", .5, 3.85) + ofBoard("dg", 4.4, 8.65) + ofBoard("cm", 9.2, 13.4) : "";
@@ -15133,7 +15142,7 @@ function ofScene(){
   let rail = ""; for (let y = 0; y <= D; y += 1) rail += `M${ofPt(W, y, 0)}L${ofPt(W, y, 1.05)}`;
   rail += `M${ofPt(W, 0, 1.05)}L${ofPt(W, D, 1.05)}M${ofPt(W, 0, .55)}L${ofPt(W, D, .55)}`;
   const railBack = !ofSeen(1, 0), railSVG = `<path class="ofrail" d="${rail}"/>`;
-  return `<svg class="ofscene" viewBox="0 0 ${OFI.vw} ${OFI.vh}" role="img" aria-label="Oficina de Marketing de Retail (maqueta): áreas de Coordinación, Diseño gráfico, Community Manager, Sala de reunión, Robots de datos, Agentes IA y Descanso">
+  return `<svg class="ofscene" viewBox="${ofViewBox()}" role="img" aria-label="Oficina de Marketing de Retail (maqueta): áreas de Coordinación, Diseño gráfico, Community Manager, Sala de reunión, Robots de datos, Agentes IA y Descanso">
     <defs><radialGradient id="oflight"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>
     ${walls}${pipe}${boards}${tv}${floor}${zones}${railBack ? railSVG : ""}
     <g class="ofitems">${f.map(x => x.ch ? x.svg.replace("<g ", `<g data-d="${x.d.toFixed(3)}" `) : `<g class="ofi" data-d="${x.d.toFixed(3)}">${x.svg}</g>`).join("")}</g>${labs}${railBack ? "" : railSVG}</svg>`;
@@ -15151,7 +15160,7 @@ function ofTick(t){
     if (!s.walk && now >= s.until) ofDecide(c, s, L);
     if (s.walk) ofStep(c, s, L, dt);
     const el = document.getElementById("ofch-" + c.id); if (!el) return; const d = ofDepth(s.x, s.y); pos.push([d, el, c.id]);
-    const [px, py] = ofP(s.x, s.y), tr = `translate(${px.toFixed(1)},${py.toFixed(1)})`; if (el.getAttribute("transform") !== tr) el.setAttribute("transform", tr);
+    const [px, py] = ofP(s.x, s.y), tr = ofTr(px, py); if (el.getAttribute("transform") !== tr) el.setAttribute("transform", tr);
     const k = ofLook(c, s, L); if (el.getAttribute("class") !== k.cls) el.setAttribute("class", k.cls);
     const b = el.querySelector(".ofbub"); if (b){ const bc = "ofbub" + (k.emo ? "" : " off"); if (b.getAttribute("class") !== bc) b.setAttribute("class", bc); const bt = b.querySelector("text"); if (bt.textContent !== k.emo) bt.textContent = k.emo; }
     if (s.txt !== k.txt){ s.txt = k.txt; const lab = (c.kind === "r" ? `${c.name} (robot de datos)` : c.name) + ": " + k.txt; el.setAttribute("aria-label", lab); const tt = el.querySelector("title"); if (tt) tt.textContent = lab; ofNowPaint(); } });
@@ -15165,20 +15174,49 @@ function ofTick(t){
 }
 const ofSimStart = () => { if (!ofSim.raf && page === "oficina"){ ofSim.last = 0; ofSim.raf = requestAnimationFrame(ofTick); } };
 // Girar la oficina: arrastrando con el mouse o el dedo, o con los botones (se recuerda en este dispositivo)
-const ofSaveRot = () => { try { localStorage.setItem("rmh-ofrot", String(Math.round(OFR.a * 1000) / 1000)); } catch (e){} };
-function ofRedraw(){ if (ofRedraw.q) return; ofRedraw.q = requestAnimationFrame(() => { ofRedraw.q = 0; const sc = document.querySelector(".ofscroll"); if (sc && page === "oficina"){ sc.innerHTML = ofScene(); ofNowPaint(); } }); }
+const ofSaveRot = () => { try { localStorage.setItem("rmh-ofview", JSON.stringify({ a:Math.round(OFR.a * 1000) / 1000, p:Math.round(OFR.p * 1000) / 1000 })); } catch (e){} };
+function ofRedraw(){ if (ofRedraw.q) return; ofRedraw.q = requestAnimationFrame(() => { ofRedraw.q = 0; const sc = document.querySelector(".ofscroll"); if (sc && page === "oficina"){ sc.innerHTML = ofScene(); ofNowPaint(); ofZoomUI(); } }); }
 const ofSetRot = a => { OFR.a = Math.atan2(Math.sin(a), Math.cos(a)); ofRedraw(); };
-function ofTurn(to){ const from = OFR.a, d = Math.atan2(Math.sin(to - from), Math.cos(to - from)), t0 = performance.now(), ms = ofReduce() ? 1 : 420;
-  const step = t => { const k = Math.min(1, (t - t0) / ms), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; ofSetRot(from + d * e); if (k < 1) requestAnimationFrame(step); else ofSaveRot(); }; requestAnimationFrame(step); }
-let ofDrag = null;
-document.addEventListener("pointerdown", e => { if (page !== "oficina" || (e.button || 0) > 0 || !e.target.closest?.(".ofscroll")) return; ofDrag = { id:e.pointerId, x:e.clientX, a:OFR.a, moved:false }; });
-document.addEventListener("pointermove", e => { if (!ofDrag || e.pointerId !== ofDrag.id) return; const dx = e.clientX - ofDrag.x; if (!ofDrag.moved && Math.abs(dx) < 6) return;
-  if (!ofDrag.moved){ ofDrag.moved = true; document.querySelector(".ofstage")?.classList.add("drag"); } ofSetRot(ofDrag.a + dx * .0065); });
-const ofEndDrag = e => { if (!ofDrag || e.pointerId !== ofDrag.id) return; const moved = ofDrag.moved; ofDrag = null; document.querySelector(".ofstage")?.classList.remove("drag");
-  if (moved){ ofSaveRot(); const kill = ev => { ev.stopPropagation(); ev.preventDefault(); }; document.addEventListener("click", kill, { capture:true, once:true }); setTimeout(() => document.removeEventListener("click", kill, true), 80); } };
+const ofSetTilt = p => { OFR.p = Math.min(OF_PMAX, Math.max(OF_PMIN, p)); ofRedraw(); };
+// Zoom y encuadre: se cambia el viewBox (no hace falta redibujar)
+const ofViewBox = () => `${OFV.x.toFixed(1)} ${OFV.y.toFixed(1)} ${(OFI.vw / OFV.z).toFixed(1)} ${(OFI.vh / OFV.z).toFixed(1)}`;
+const ofClampV = () => { OFV.z = Math.min(4, Math.max(1, OFV.z)); OFV.x = Math.min(OFI.vw - OFI.vw / OFV.z, Math.max(0, OFV.x)); OFV.y = Math.min(OFI.vh - OFI.vh / OFV.z, Math.max(0, OFV.y)); };
+const ofApplyV = () => { ofClampV(); const sv = document.querySelector(".ofscene"); if (sv) sv.setAttribute("viewBox", ofViewBox()); ofZoomUI(); };
+const ofZoomUI = () => { const t = document.querySelector(".ofrot [data-ofzoomv]"); if (t) t.textContent = Math.round(OFV.z * 100) + "%"; document.querySelector(".ofstage")?.classList.toggle("zoomed", OFV.z > 1.01); };
+function ofZoomAt(z, cx, cy){ // z nuevo; (cx, cy) en pantalla: ese punto queda quieto
+  const sv = document.querySelector(".ofscene"); if (!sv) return; const r = sv.getBoundingClientRect(), fx = r.width ? (cx - r.left) / r.width : .5, fy = r.height ? (cy - r.top) / r.height : .5;
+  const px = OFV.x + fx * OFI.vw / OFV.z, py = OFV.y + fy * OFI.vh / OFV.z; OFV.z = Math.min(4, Math.max(1, z)); OFV.x = px - fx * OFI.vw / OFV.z; OFV.y = py - fy * OFI.vh / OFV.z; ofApplyV(); }
+const ofPanBy = (dx, dy) => { const sv = document.querySelector(".ofscene"); if (!sv) return; const r = sv.getBoundingClientRect(); OFV.x -= dx * (OFI.vw / OFV.z) / (r.width || 1); OFV.y -= dy * (OFI.vh / OFV.z) / (r.height || 1); ofApplyV(); };
+function ofAnim(to, ms = 420){ const fa = OFR.a, fp = OFR.p, da = to.a === undefined ? 0 : Math.atan2(Math.sin(to.a - fa), Math.cos(to.a - fa)), dp = to.p === undefined ? 0 : to.p - fp, t0 = performance.now(); ms = ofReduce() ? 1 : ms;
+  const step = t => { const k = Math.min(1, (t - t0) / ms), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; OFR.a = Math.atan2(Math.sin(fa + da * e), Math.cos(fa + da * e)); OFR.p = fp + dp * e; ofRedraw(); if (k < 1) requestAnimationFrame(step); else ofSaveRot(); }; requestAnimationFrame(step); }
+const ofTurn = to => ofAnim({ a:to });
+// Con el mouse o un dedo: de costado gira, para arriba o abajo inclina (Shift o botón del medio/derecho: mueve el encuadre).
+// Con dos dedos: pellizcar hace zoom y moverlos corre el encuadre. La rueda del mouse hace zoom donde está el puntero.
+const ofPtrs = new Map(); let ofDrag = null;
+const ofStageCls = (k, on) => document.querySelector(".ofstage")?.classList.toggle(k, on);
+document.addEventListener("pointerdown", e => { if (page !== "oficina" || !e.target.closest?.(".ofscroll")) return;
+  ofPtrs.set(e.pointerId, { x:e.clientX, y:e.clientY });
+  if (ofPtrs.size === 2){ const [p, q] = [...ofPtrs.values()]; ofDrag = { pinch:true, d:Math.hypot(p.x - q.x, p.y - q.y) || 1, z:OFV.z, mx:(p.x + q.x) / 2, my:(p.y + q.y) / 2, moved:true }; ofStageCls("drag", true); return; }
+  ofDrag = { id:e.pointerId, x:e.clientX, y:e.clientY, lx:e.clientX, ly:e.clientY, a:OFR.a, p:OFR.p, moved:false, pan:e.shiftKey || e.button === 1 || e.button === 2 }; });
+document.addEventListener("pointermove", e => { if (!ofDrag || !ofPtrs.has(e.pointerId)) return; ofPtrs.set(e.pointerId, { x:e.clientX, y:e.clientY });
+  if (ofDrag.pinch){ if (ofPtrs.size < 2) return; const [p, q] = [...ofPtrs.values()], d = Math.hypot(p.x - q.x, p.y - q.y) || 1, mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
+    ofZoomAt(ofDrag.z * d / ofDrag.d, mx, my); ofPanBy(mx - ofDrag.mx, my - ofDrag.my); ofDrag.mx = mx; ofDrag.my = my; e.preventDefault(); return; }
+  if (e.pointerId !== ofDrag.id) return; const dx = e.clientX - ofDrag.x, dy = e.clientY - ofDrag.y; if (!ofDrag.moved && Math.hypot(dx, dy) < 6) return;
+  if (!ofDrag.moved){ ofDrag.moved = true; ofStageCls("drag", true); }
+  if (ofDrag.pan){ ofPanBy(e.clientX - ofDrag.lx, e.clientY - ofDrag.ly); ofDrag.lx = e.clientX; ofDrag.ly = e.clientY; return; }
+  OFR.a = Math.atan2(Math.sin(ofDrag.a + dx * .0065), Math.cos(ofDrag.a + dx * .0065)); OFR.p = Math.min(OF_PMAX, Math.max(OF_PMIN, ofDrag.p + dy * .0055)); ofRedraw(); });
+const ofEndDrag = e => { if (!ofPtrs.has(e.pointerId)) return; ofPtrs.delete(e.pointerId); if (!ofDrag) return;
+  if (ofDrag.pinch){ if (ofPtrs.size === 0){ ofDrag = null; ofStageCls("drag", false); } else { const [id, p] = [...ofPtrs.entries()][0]; ofDrag = { id, x:p.x, y:p.y, lx:p.x, ly:p.y, a:OFR.a, p:OFR.p, moved:true, pan:false }; } ofKillClick(); return; }
+  if (e.pointerId !== ofDrag.id) return; const moved = ofDrag.moved; ofDrag = null; ofStageCls("drag", false); if (moved){ ofSaveRot(); ofKillClick(); } };
+const ofKillClick = () => { const kill = ev => { ev.stopPropagation(); ev.preventDefault(); }; document.addEventListener("click", kill, { capture:true, once:true }); setTimeout(() => document.removeEventListener("click", kill, true), 80); };
 document.addEventListener("pointerup", ofEndDrag); document.addEventListener("pointercancel", ofEndDrag);
-document.addEventListener("click", e => { const b = e.target.closest?.("[data-ofrot]"); if (!b || page !== "oficina") return; const k = +b.dataset.ofrot, q = Math.PI / 2;
-  ofTurn(k === 0 ? 0 : (Math.round(OFR.a / q) + k) * q); });
+document.addEventListener("contextmenu", e => { if (page === "oficina" && e.target.closest?.(".ofscroll")) e.preventDefault(); });
+document.addEventListener("wheel", e => { if (page !== "oficina" || !e.target.closest?.(".ofscroll")) return; const f = Math.exp(-e.deltaY * (e.ctrlKey ? .01 : .0015)), z = Math.min(4, Math.max(1, OFV.z * f));
+  if (Math.abs(z - OFV.z) < 1e-3) return; /* en el mínimo o el máximo, la rueda vuelve a mover la página */ e.preventDefault(); ofZoomAt(z, e.clientX, e.clientY); }, { passive:false });
+document.addEventListener("click", e => { if (page !== "oficina") return; const b = e.target.closest?.("[data-ofrot],[data-ofzoom],[data-oftilt]"); if (!b) return; const q = Math.PI / 2;
+  if (b.hasAttribute("data-ofzoom")){ const r = document.querySelector(".ofscene")?.getBoundingClientRect(); if (r) ofZoomAt(OFV.z * (b.dataset.ofzoom === "1" ? 1.4 : 1 / 1.4), r.left + r.width / 2, r.top + r.height / 2); return; }
+  if (b.hasAttribute("data-oftilt")){ ofAnim({ p:OFR.p > 1.2 ? OF_P0 : 85 * Math.PI / 180 }); return; }
+  const k = +b.dataset.ofrot || 0; if (k === 0){ OFV.z = 1; OFV.x = 0; OFV.y = 0; ofApplyV(); ofAnim({ a:0, p:OF_P0 }); } else ofTurn((Math.round(OFR.a / q) + k) * q); });
 // “Ahora mismo”: la reunión (si hay), qué hace cada agente, y los robots de datos que trabajan o tienen un problema
 function ofNowHTML(){
   const L = ofLocs(OF_ROBOTS().length), list = ofChars().map(c => ({ c, s:ofState(c, L) })).map(({ c, s }) => ({ c, k:ofLook(c, s, L) })), meet = ofMeetNow(), next = ofMeetNow.next;
@@ -15260,7 +15298,10 @@ function pOficina(){
     <div class="oflegend">${(at => { const plan = agMode() === "plan";
       return `<span class="ofmode">${icon("bot")} Respuestas: ${at ? `<button type="button" class="chip${plan ? " on" : ""}" data-agmode="plan" title="Sin costo extra: se pega en claude.ai con el plan">Con el plan de Claude (copiar y pegar)</button><button type="button" class="chip${plan ? "" : " on"}" data-agmode="api" title="Responden solos en la app: se paga aparte, por uso">Automáticas (cuenta de Claude)</button>` : `<b>${plan ? "con el plan de Claude (copiar y pegar)" : "automáticas"}</b>`}</span>`
         + (plan ? "" : `<span class="oflim" title="Respuestas de los agentes hoy (entre los tres) y el límite del día">Hoy: <b>${agUsed()}</b> de ${at ? `<input type="number" class="base" min="1" max="500" step="1" data-aglim value="${agLimit()}" aria-label="Respuestas por día">` : `<b>${agLimit()}</b>`} respuestas por día</span>`); })(viewer.role === "Admin total")}<span><i style="background:#22c55e"></i>trabajando</span><span><i style="background:#f59e0b"></i>en pausa</span><span><i style="background:#ef4444"></i>con un problema</span><span><i style="background:#7dd3fc;border-radius:3px"></i>pantalla prendida: ${on} del equipo conectados</span></div></div>
-    <div class="ofwrap${ofUI.sel ? " sel" : ""}"><div class="ofleft"><div class="ofstage"><div class="ofscroll">${ofScene()}</div><div class="ofrot" role="group" aria-label="Girar la oficina"><span>Arrastrá para girar</span><button type="button" class="btn sm ib" data-ofrot="-1" title="Girar a la izquierda" aria-label="Girar a la izquierda">${icon("rotate-ccw")}</button><button type="button" class="btn sm" data-ofrot="0" title="Volver a la vista de la foto">Vista inicial</button><button type="button" class="btn sm ib" data-ofrot="1" title="Girar a la derecha" aria-label="Girar a la derecha">${icon("rotate-cw")}</button></div></div><div class="ofnow" id="ofnow" aria-label="Ahora mismo en la oficina"><b>Ahora mismo</b>${ofNowHTML()}</div></div>${ofPanel()}</div>
+    <div class="ofwrap${ofUI.sel ? " sel" : ""}"><div class="ofleft"><div class="ofstage"><div class="ofscroll">${ofScene()}</div><div class="ofrot" role="group" aria-label="Mover la vista de la oficina"><span title="Arrastrá de costado para girar y para arriba o abajo para inclinar. Rueda del mouse o dos dedos: zoom. Con zoom, Shift + arrastrar (o dos dedos) mueve la vista.">Arrastrá: girar e inclinar · rueda o 2 dedos: zoom</span>
+      <button type="button" class="btn sm ib" data-ofzoom="-1" title="Alejar" aria-label="Alejar">${icon("minus")}</button><b class="ofzv" data-ofzoomv>${Math.round(OFV.z * 100)}%</b><button type="button" class="btn sm ib" data-ofzoom="1" title="Acercar" aria-label="Acercar">${icon("plus")}</button>
+      <button type="button" class="btn sm ib" data-ofrot="-1" title="Girar a la izquierda" aria-label="Girar a la izquierda">${icon("rotate-ccw")}</button><button type="button" class="btn sm ib" data-ofrot="1" title="Girar a la derecha" aria-label="Girar a la derecha">${icon("rotate-cw")}</button>
+      <button type="button" class="btn sm" data-oftilt title="Mirar desde arriba (o volver)">Desde arriba</button><button type="button" class="btn sm" data-ofrot="0" title="Volver a la vista de la foto">Vista inicial</button></div></div><div class="ofnow" id="ofnow" aria-label="Ahora mismo en la oficina"><b>Ahora mismo</b>${ofNowHTML()}</div></div>${ofPanel()}</div>
     ${(setTimeout(ofSimStart, 0), "")}<div class="ofagents">${AG_DEF.map(a => `<button type="button" class="panel ofag" data-ofc="a:${a.id}" style="--c:${a.color}"><span class="ofbot" style="background:${a.color}">${icon("bot")}</span><span><b>${esc(a.name)}</b><small>${esc(a.role)}</small></span><em>${agMsgs(a.id).length ? agMsgs(a.id).length + " mensajes" : "Nueva"}</em></button>`).join("")}</div>`;
 }
 document.addEventListener("click", e => {
