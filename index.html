@@ -1161,6 +1161,8 @@ html.light .ofscene image{filter:none}
 .typing .dots{display:inline-flex;gap:3px;margin-left:6px}.typing .dots i{width:5px;height:5px;border-radius:50%;background:#94a3b8;animation:agdot 1s infinite}.typing .dots i:nth-child(2){animation-delay:.15s}.typing .dots i:nth-child(3){animation-delay:.3s}
 @keyframes agdot{0%,100%{opacity:.25}50%{opacity:1}}
 .agquick{gap:6px}.agquick .chip{font-size:12.5px}
+.agqnote{margin:6px 0 4px}.chips.agqgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}.chips.agqgrid .chip{display:flex;align-items:center;gap:8px;justify-content:flex-start;text-align:left;white-space:normal;min-height:36px;height:auto;padding:7px 11px;line-height:1.3}
+.agmore{margin-top:4px}.agmore>summary{cursor:pointer;font-size:12.5px;color:var(--muted);padding:6px 2px;list-style:none;display:inline-flex;align-items:center;gap:6px}.agmore>summary::-webkit-details-marker{display:none}.agmore>summary:hover{color:var(--ink)}.agmore[open]>summary{margin-bottom:6px}
 .agform{display:flex;gap:8px;align-items:flex-end}.agform textarea{flex:1;min-width:0;resize:vertical}
 .ofErr{display:flex;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid rgba(217,89,38,.45);background:rgba(217,89,38,.1);font-size:13px;color:#fed7aa}.ofErr svg{width:18px;height:18px;flex:none}.ofErr b{color:#fff}
 .cgform{display:flex;flex-direction:column;gap:12px;padding:16px}.cgform textarea,.cgform input{font-family:inherit}.cgrow{display:grid;grid-template-columns:1fr 1fr 2fr;gap:10px}.cgslides{display:flex;flex-direction:column;gap:8px}
@@ -4706,7 +4708,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v337";
+const APP_VER = "v338";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -14754,7 +14756,7 @@ let AGENT_CHAT = []; // [{ id, a:"sofia", r:"user"|"assistant", t:"texto", by, a
 const AG_DEF = [
   { id:"sofia", name:"SofIA", role:"Informe diario de Marketing", color:"#d55181", ic:"newspaper",
     hello:"Hola, soy SofIA. Te cuento cómo viene el día del equipo: lo que se publica, lo atrasado, cómo le fue a lo de ayer y quién está más cargado.",
-    quick:["Armame el informe de hoy", "Armame el informe del mes", "¿Qué está atrasado y de quién?", "¿Qué se publica hoy y mañana?"],
+    quick:["Armame el informe de hoy", "Armame el informe del mes", "¿Qué se publica hoy y mañana?", "¿Qué está atrasado y de quién?", "¿Qué acciones del cronograma están en curso?"],
     skills:[["today", "Lo que se publica hoy y mañana"], ["late", "Lo atrasado y de quién es"], ["pend", "Pendientes y aprobaciones por marca"], ["ig", "Alcance de Instagram de ayer"], ["team", "Carga de cada persona del equipo"], ["crono", "Cronograma de acciones: en curso y las que empiezan o terminan"]] },
   { id:"matias", name:"MatIAs", role:"Analista de pautas (Meta Ads)", color:"#7c5cff", ic:"chart-column",
     hello:"Hola, soy MatIAs. Miro los anuncios y campañas de Meta Ads contra el presupuesto de cada marca y te digo qué conviene hacer.",
@@ -14762,14 +14764,16 @@ const AG_DEF = [
     skills:[["ads", "Anuncios del mes y del anterior"], ["camps", "Campañas con su objetivo y resultados"], ["budget", "Presupuesto y plan de pauta por marca"], ["organic", "Publicaciones que funcionaron solas"], ["crono", "Cronograma de acciones del mes y cuáles llevan pauta en redes"]] },
   { id:"claudia", name:"ClaudIA", role:"Redactora de copys", color:"#d95926", ic:"pen-line",
     hello:"Hola, soy ClaudIA. Elegí una publicación y te escribo el copy siguiendo el Manual de Redes Sociales y el tono de su marca (Superseis cercano, Stock con buena onda, Delimarket sobrio y sin emojis). Si me corregís, aprendo.",
-    quick:["Escribí el copy de esta publicación", "Dame 3 opciones de copy", "Hacelo más corto y con más energía", "¿Cuántos copys se hicieron?"],
+    quick:["Escribí el copy de esta publicación", "Dame 3 opciones de copy", "Hacelo más corto y con más energía", "Hacelo sin emojis", "¿Cuántos copys se hicieron?"],
     skills:[["examples", "Aprende de los copys ya aprobados de la marca"], ["emojis", "Usa emojis con medida"], ["hashtags", "Cierra con hashtags de la marca"], ["cta", "Termina con un llamado a la acción"], ["crono", "Conoce las acciones del cronograma de esa fecha"]] },
   { id:"santiago", name:"SantIAgo", role:"Generador de prompts de imágenes", color:"#0891b2", ic:"image",
     hello:"Hola, soy SantIAgo. Cuando alguien genera un prompt de imagen en la app, lo armo yo en mi compu. Te cuento cuántos se hicieron y de qué (marcas, tipos y temas).",
     quick:["¿Cuántos prompts se hicieron hoy?", "¿De qué fueron los prompts del mes?", "¿Cuáles fueron los últimos?"],
     skills:[["count", "Cuenta los prompts del día, la semana y el mes"], ["topics", "Resume las marcas, los tipos y los temas"]] }];
 const AG = Object.fromEntries(AG_DEF.map(a => [a.id, a]));
-let ofUI = { sel:"", tab:"chat", post:"", busy:"", err:"", errCode:"", fix:"" };
+let ofUI = { sel:"", tab:"chat", post:"", busy:"", err:"", errCode:"", fix:"", more:"" };
+// v338 · Que “Escribir otra consulta” quede abierto aunque la pantalla se vuelva a dibujar
+document.addEventListener("toggle", e => { const d = e.target; if (d?.matches?.("details[data-agmore]")){ if (d.open) ofUI.more = d.dataset.agmore; else if (ofUI.more === d.dataset.agmore) ofUI.more = ""; } }, true);
 // v334 · Registros compartidos y sin nombres de personas: cada prompt de imagen (SantIAgo) y cada copy del Generador de copy
 // (ClaudIA). Sirven para que en la oficina se vea al agente trabajando y para contar cuántos se hicieron y de qué.
 let PROMPT_LOG = [], COPY_LOG = [];
@@ -14992,7 +14996,11 @@ function agRobotSofia(text){
   const today = work.filter(x => x.date === TODAY), tmw = work.filter(x => x.date === tom), lateC = work.filter(cmLate), lateD = dg.filter(j => j.date && j.date < TODAY), dueD = dg.filter(j => j.date === TODAY);
   const rev = jobs.filter(j => !j.ex && REVIEW_WAIT.includes(j.status)).length, cps = posts.filter(p => !p.ex && copyStOf(p) === "rev").length, late = lateC.length + lateD.length;
   const L = [];
-  if (/mañana/i.test(q)){ L.push(`**Para mañana, ${wd(tom)} ${dm(tom)}: ${tmw.length} de CM**`, ...tmw.slice(0, 12).map(it)); if (!tmw.length) L.push("Por ahora no hay nada cargado para mañana."); return { t:L.join("\n") }; }
+  if (/mañana/i.test(q)){ if (/\bhoy\b/i.test(q)){ L.push(`**Hoy, ${wd(TODAY)} ${dm(TODAY)}: ${today.length} de CM**`, ...today.slice(0, 12).map(it)); if (!today.length) L.push("Hoy no hay nada de CM para publicar."); }
+    L.push(`**Para mañana, ${wd(tom)} ${dm(tom)}: ${tmw.length} de CM**`, ...tmw.slice(0, 12).map(it)); if (!tmw.length) L.push("Por ahora no hay nada cargado para mañana."); return { t:L.join("\n") }; }
+  if (/cronograma|acciones/i.test(q)){ const cur = crRows().filter(r => crState(r) === "on"), nx = crRows().filter(r => crState(r) !== "on" && r.from > TODAY && r.from <= addDays(TODAY, 14));
+    L.push(`**Acciones del cronograma en curso: ${cur.length}**`, ...(cur.length ? cur.map(r => `- ${r.name}: hasta ${crOpen(r) ? "el fin de la promo" : "el " + dm(r.to)} · ${crMediaTxt(r).join(", ")}`) : ["- Hoy no hay acciones en curso."]));
+    if (nx.length) L.push("**Empiezan en las próximas dos semanas**", ...nx.map(r => `- ${r.name}: desde el ${dm(r.from)}`)); return { t:L.join("\n") }; }
   if (/atrasad/i.test(q)){ L.push(`**Atrasados: ${late}**`, ...lateC.concat(lateD).sort((a, b) => String(a.date).localeCompare(String(b.date))).slice(0, 15).map(it)); if (!late) L.push("No hay nada atrasado. ¡Bien!"); return { t:L.join("\n") }; }
   L.push(`**Informe de hoy, ${wd(TODAY)} ${dm(TODAY)}**`);
   const pl = (n, a, b) => `${n} ${n === 1 ? a : b}`, wait = [rev ? pl(rev, "pedido", "pedidos") : "", cps ? pl(cps, "copy", "copys") : ""].filter(Boolean).join(" y ");
@@ -15620,8 +15628,9 @@ function ofPanelStation(k){
     <ul class="ofrobots">${rb.map(({ n, u, i }) => { const s = ofSem(u), c = ofChars().find(x => x.id === "r-" + i), now = c ? ofLook(c, ofState(c, L), L).txt : ""; return `<li class="s${s}"><i></i><b>${esc(n === "Comercial" ? "Ofertas (Excel de Drive)" : n)}</b><span>${u ? `trajo datos hace ${Math.round(ofAge(u))} h` : "sin dato en la app"}${now ? ` · ahora: ${esc(now)}` : ""}</span></li>`; }).join("")}</ul>
     <h4>${icon("message-circle")} Pedile datos</h4>
     <div class="agmsgs" aria-live="polite">${msgs.length ? msgs.map(m => m.r === "user" ? `<div class="agmsg u"><div class="agtxt"><p>${esc(m.t)}</p></div></div>` : `<div class="agmsg a"><div class="agtxt">${agMd(m.t)}</div></div>`).join("") : `<div class="agmsg a hello"><div class="agtxt"><p>${k === "com" ? "Hola, soy el robot de Comercial: leo los Excel de ofertas que Comercial deja en Drive y veo los pedidos que carga para publicar. Preguntame y te paso lo que hay." : k === "web" ? "Hola. Acá están las webs y los WhatsApp oficiales de cada marca." : `Hola, somos los robots de ${esc(st.t)}. Preguntanos y te pasamos los datos que tenemos en la app.`}</p></div></div>`}</div>
-    <div class="chips agquick">${pq.map(q => `<button type="button" class="chip" data-stq="${esc(q)}">${icon("sparkles")} ${esc(q)}</button>`).join("")}</div>
-    <form id="stForm" class="agform" data-st="${k}"><textarea class="base" name="t" rows="2" maxlength="1000" placeholder="Preguntale a ${esc(st.t)}…"></textarea><button type="submit" class="btn primary" aria-label="Enviar">${icon("send")}</button></form>`;
+    <p class="note agqnote">${icon("mouse-pointer-click")} Tocá una consulta: la responde el robot de la app, <b>sin costo</b>.</p>
+    <div class="chips agquick agqgrid">${pq.map(q => `<button type="button" class="chip" data-stq="${esc(q)}">${icon("sparkles")} ${esc(q)}</button>`).join("")}</div>
+    <details class="agmore" data-agmore="st-${k}"${ofUI.more === "st-" + k ? " open" : ""}><summary>${icon("pencil")} Escribir otra consulta</summary><form id="stForm" class="agform" data-st="${k}"><textarea class="base" name="t" rows="2" maxlength="1000" placeholder="Preguntale a ${esc(st.t)}…"></textarea><button type="submit" class="btn primary" aria-label="Enviar">${icon("send")}</button></form></details>`;
 }
 function ofPanelRobots(){
   return `<header class="ofph" style="--c:${OF_AREA.rb.c}"><span class="ofbot">${icon("server")}</span><div><b>Robots de datos</b><span>Traen solos los datos de Meta y de Comercial, dos o tres veces por día</span></div></header>
@@ -15669,8 +15678,9 @@ function ofPanelAgent(a){
       <form id="agPasteForm" class="agform" data-ag="${a.id}"><textarea class="base" name="t" rows="4" maxlength="12000" placeholder="Pegá acá la respuesta de Claude" required></textarea><button type="submit" class="btn primary">${icon("save")} Guardar</button></form></div>` : ""}
     ${ofUI.err && !busy && bye ? `<div class="ofErr bye">${icon("hand")}<div><b>${esc(ofUI.err)}</b>${at && /respuestas del día/.test(ofUI.err) ? `<p>Si hace falta hoy, subí el número en “Respuestas por día”, arriba de la oficina.</p>` : ""}</div></div>` : ""}
     ${ofUI.err && !busy && !bye ? `<div class="ofErr${nokey ? " key" : ""}">${icon("triangle-alert")}<div><b>${esc(ofUI.err)}</b>${nokey ? `<ol><li>Entrá a <b>console.anthropic.com</b> con la cuenta de la empresa → <b>API Keys</b> → <b>Create Key</b> y copiala. <b>No la pegues en ningún chat.</b></li><li>Entrá a <b>vercel.com</b> → el proyecto <b>mkt</b> → <b>Settings</b> → <b>Environment Variables</b> → <b>Add</b>: nombre <code>ANTHROPIC_API_KEY</code>, valor: la clave, en <b>Production</b> y <b>Preview</b> → <b>Save</b>.</li><li>En <b>Deployments</b>, tocá los tres puntos del último → <b>Redeploy</b>. Listo: volvé a escribirle.</li></ol>${at ? `<button type="button" class="btn sm" data-agmode="robot">${icon("bot")} Usar el robot de la app (sin Claude ni costo)</button> <button type="button" class="btn sm" data-agmode="plan">${icon("clipboard-list")} Usar con mi plan (copiar y pegar)</button>` : ""}` : ""}</div></div>` : ""}
-    <div class="chips agquick">${a.quick.map(q => `<button type="button" class="chip" data-agq="${esc(q)}" ${busy ? "disabled" : ""}>${icon("sparkles")} ${esc(q)}</button>`).join("")}</div>
-    <form id="agForm" class="agform" data-ag="${a.id}"><textarea class="base" name="t" rows="2" maxlength="4000" placeholder="${a.id === "claudia" ? "Pasale referencias: precio, descuento, fechas, sucursales, lo que tiene que decir… (ej.: 20% en vinos hasta el domingo)" : "Escribile a " + esc(a.name) + "…"}" ${busy ? "disabled" : ""}></textarea><button type="submit" class="btn primary" ${busy ? "disabled" : ""} aria-label="Enviar">${icon("send")}</button></form>
+    ${agMode() === "robot" ? `<p class="note agqnote">${icon("mouse-pointer-click")} Tocá una consulta: la responde el robot de la app, <b>sin costo</b>.</p>` : ""}
+    <div class="chips agquick agqgrid">${a.quick.map(q => `<button type="button" class="chip" data-agq="${esc(q)}" ${busy ? "disabled" : ""}>${icon("sparkles")} ${esc(q)}</button>`).join("")}</div>
+    ${agMode() === "robot" ? `<details class="agmore" data-agmore="${a.id}"${ofUI.more === a.id ? " open" : ""}><summary>${icon("pencil")} ${a.id === "claudia" ? "Pasarle datos (precio, fechas…) o escribir otra consulta" : "Escribir otra consulta"}</summary>` : ""}<form id="agForm" class="agform" data-ag="${a.id}"><textarea class="base" name="t" rows="2" maxlength="4000" placeholder="${a.id === "claudia" ? "Pasale referencias: precio, descuento, fechas, sucursales, lo que tiene que decir… (ej.: 20% en vinos hasta el domingo)" : "Escribile a " + esc(a.name) + "…"}" ${busy ? "disabled" : ""}></textarea><button type="submit" class="btn primary" ${busy ? "disabled" : ""} aria-label="Enviar">${icon("send")}</button></form>${agMode() === "robot" ? "</details>" : ""}
     ${at && msgs.length ? `<button type="button" class="btn sm ofclear" data-agclear="${a.id}">${icon("trash-2")} Borrar la charla</button>` : ""}`;
 }
 function ofPanel(){
