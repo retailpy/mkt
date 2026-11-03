@@ -1131,8 +1131,8 @@ html.light .ofscene image{filter:none}
 @keyframes ofbob{50%{transform:translateY(-2px)}}@keyframes ofleg{to{transform:translateY(-2.5px)}}@keyframes oftype{from{transform:rotate(-14deg)}to{transform:rotate(12deg)}}@keyframes ofblink{50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.ofscene .ofch .ofup,.ofscene .ofch .oflegs rect,.ofscene .ofch .ofarm,.ofscene .ofch .ofant{animation:none!important}}
 .ofleft{display:flex;flex-direction:column;gap:10px;min-width:0}
-.ofstage{position:relative}.ofscroll{touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}.ofstage.drag .ofscroll{cursor:grabbing}.ofstage.drag .ofscene *{pointer-events:none}
-.ofrot{position:absolute;top:10px;right:12px;display:flex;align-items:center;gap:6px;padding:4px;border-radius:12px;background:rgba(15,23,42,.72);backdrop-filter:blur(6px)}.ofrot span{font-size:12px;color:#cbd5e1;padding:0 6px}.ofrot .btn{color:#fff}
+.ofstage{position:relative}.ofscroll{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}.ofstage.zoomed .ofscroll{cursor:grab}.ofrot .ofzv{min-width:40px;text-align:center;font-size:12px;color:#e2e8f0}.ofstage.drag .ofscroll{cursor:grabbing}.ofstage.drag .ofscene *{pointer-events:none}
+.ofrot{position:absolute;top:10px;right:12px;left:auto;max-width:calc(100% - 24px);flex-wrap:wrap;justify-content:flex-end;display:flex;align-items:center;gap:6px;padding:4px;border-radius:12px;background:rgba(15,23,42,.72);backdrop-filter:blur(6px)}.ofrot span{font-size:12px;color:#cbd5e1;padding:0 6px}.ofrot .btn{color:#fff}
 .ofscene .ofhold{display:none}.ofscene .ofch.h-cup .ofhold.cup,.ofscene .ofch.h-glass .ofhold.glass,.ofscene .ofch.h-guampa .ofhold.guampa,.ofscene .ofch.h-phone .ofhold.phone{display:inline}
 .ofnow .st-m{border-color:rgba(124,92,255,.6);background:rgba(124,92,255,.15)}.ofnow .st-m i{background:#7c5cff}
 .ofnow{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-size:12.5px;color:#cbd5e1}.ofnow > b{color:#fff;font-size:13px;margin-right:2px}
@@ -1162,6 +1162,7 @@ html.light .ofscene image{filter:none}
 .agquick{gap:6px}.agquick .chip{font-size:12.5px}
 .agform{display:flex;gap:8px;align-items:flex-end}.agform textarea{flex:1;min-width:0;resize:vertical}
 .ofErr{display:flex;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid rgba(217,89,38,.45);background:rgba(217,89,38,.1);font-size:13px;color:#fed7aa}.ofErr svg{width:18px;height:18px;flex:none}.ofErr b{color:#fff}
+.agnote{font-size:11.5px;color:var(--muted);padding-left:4px}
 .agnorm{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:14px;border:1px solid rgba(217,89,38,.45);background:rgba(217,89,38,.08);font-size:13px;color:#e2e8f0}.agnorm > b{display:flex;align-items:center;gap:8px;color:#fff;font-size:14px}.agnorm > b svg{width:17px;height:17px;color:#fdba74}.agnorm p{margin:0}.agnorm ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
 .agplan{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:14px;border:1px solid rgba(34,211,238,.45);background:rgba(34,211,238,.07);font-size:13.5px;color:#e2e8f0}
 .agplan > b{display:flex;align-items:center;gap:8px;color:#fff;font-size:14.5px}.agplan > b svg{width:18px;height:18px;color:#67e8f9}
@@ -1183,7 +1184,7 @@ html.light .ofscene image{filter:none}
 .ofagents{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .ofag{display:flex;align-items:center;gap:12px;text-align:left;cursor:pointer;border-left:4px solid var(--c)}.ofag b{display:block;color:#fff;font-size:15px}.ofag small{color:var(--muted);font-size:12.5px}.ofag em{margin-left:auto;font-style:normal;font-size:12px;color:var(--muted)}
 @media (max-width:1100px){.ofwrap.sel{grid-template-columns:minmax(0,1fr)}.ofpanel{position:fixed;inset:auto 0 0 0;top:auto;max-height:82dvh;z-index:120;border-radius:20px 20px 0 0;box-shadow:0 -20px 50px -10px rgba(0,0,0,.8)}}
-@media (max-width:760px){.ofrot span{display:none}.ofrot{top:6px;right:6px}.ofagents{grid-template-columns:1fr}.ofpanel{max-height:88dvh;padding-bottom:calc(16px + env(safe-area-inset-bottom))}}
+@media (max-width:760px){.ofrot span{display:none}.ofrot{position:static;max-width:none;justify-content:center;margin-top:8px;background:transparent;backdrop-filter:none;padding:0}.ofagents{grid-template-columns:1fr}.ofpanel{max-height:88dvh;padding-bottom:calc(16px + env(safe-area-inset-bottom))}}
 /* v326 · Cronograma de Acciones */
 .crks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
 .crk{display:flex;flex-direction:column;gap:2px;padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:var(--panel)}
@@ -4699,7 +4700,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v328";
+const APP_VER = "v330";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -6038,6 +6039,7 @@ const mainBrandOptions = cur => `<option value="${VARIAS}" ${cur === VARIAS ? "s
 // se baja la librería completa como respaldo y lo dibuja igual.
 const ICONS = {
 "bot":"<path d=\"M12 8V4H8\" /><rect width=\"16\" height=\"12\" x=\"4\" y=\"8\" rx=\"2\" /><path d=\"M2 14h2\" /><path d=\"M20 14h2\" /><path d=\"M15 13v2\" /><path d=\"M9 13v2\" />",
+"minus":"<path d=\"M5 12h14\" />",
 "rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" />",
 "rotate-cw":"<path d=\"M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8\" /><path d=\"M21 3v5h-5\" />",
 "building-2":"<path d=\"M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z\" /><path d=\"M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2\" /><path d=\"M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2\" /><path d=\"M10 6h4\" /><path d=\"M10 10h4\" /><path d=\"M10 14h4\" /><path d=\"M10 18h4\" />",
@@ -14849,7 +14851,163 @@ const agLimit = () => { const n = Math.round(+AGENTS._limite?.n); return n >= 1 
 const agUsed = () => AGENTS._uso?.d === agDay() ? +AGENTS._uso.n || 0 : 0;
 // v327 · Modo de respuesta: "plan" (predeterminado, sin costo extra: la app arma el pedido, se pega en claude.ai con el plan
 // de la persona y la respuesta se pega de vuelta) o "api" (automático, con la cuenta de Claude: se paga por uso).
-const agMode = () => AGENTS._modo === "api" ? "api" : "plan";
+const agMode = () => ["plan", "api"].includes(AGENTS._motor) ? AGENTS._motor : "robot"; // v330: el robot de la app es el de siempre
+// v330 · Los robots de los agentes: responden dentro de la app, sin Claude, sin clave y sin costo (motor “robot”, el de
+// siempre). ClaudIA arma el copy con los datos de la publicación, lo que le escribas de referencia, el Manual de Redes
+// Sociales y el tono de cada marca; aprende de las correcciones (“sin emojis”, “más corto”, “no uses la palabra…”) y de
+// los copys que marcaste “Así está bien”. SofIA arma el informe del día y MatIAs analiza la pauta, con los datos de la app.
+const CL_BRAND = {
+  Superseis:{ tag:"#Superseis", emo:3, web:"www.superseis.com.py", wa:"https://wa.me/595214141960", tone:"s6" },
+  Stock:{ tag:"#Stock", emo:4, web:"www.stock.com.py", wa:"https://wa.me/595214141980", tone:"st" },
+  Delimarket:{ tag:"#Delimarket", emo:0, web:"delimarket.com.py", wa:"https://wa.me/595983500300", tone:"dl" } };
+const CL_TOPIC = [ // palabra clave → tema y su emoji
+  [/navidad|navideñ|pan dulce|stolen|roscas?|nochebuena|fiestas/i, "fiestas", "🎄"], [/vino|espumante|sidra|bodega|brind/i, "bebidas", "🍷"], [/cervez/i, "bebidas", "🍺"],
+  [/carne|asado|parrill|picada/i, "comida", "🥩"], [/pan\b|panader|factura|medialuna/i, "comida", "🥐"], [/desayuno|caf[eé]/i, "comida", "☕"], [/almuerzo|men[uú]|rotiser|plato|comida|bocadito|wow/i, "comida", "🍽️"],
+  [/torta|confiter|dulce|chocolate|postre|helado/i, "comida", "🍰"], [/fruta|verdura|fresco/i, "comida", "🍓"], [/juguete|inflable|niñ/i, "regalo", "🎁"], [/regalo|canasta/i, "regalo", "🎁"],
+  [/cyber|black|hot ?sale|oferta|promo|descuento|%|2x1|3x2|precio|ahorr|liquidaci/i, "promo", "💥"], [/coleccionable/i, "promo", "⭐"], [/mascota|pet/i, "otro", "🐾"], [/beb[eé]|pañal/i, "otro", "👶"], [/limpieza|hogar/i, "otro", "🧼"] ];
+const CL_TXT = { // por tono: ganchos (para promo y para lo demás), una línea según el tema, llamado a la acción y emojis de la marca. Varias versiones de cada uno.
+  s6:{ hook:{ promo:["¡{T}! 💥", "{T}: ¡preparate para ahorrar!", "Atención: {t} 😊", "{T} en Superseis 🛒"], def:["{T} 😊", "Hoy en Superseis: {t}.", "✨ {T} ✨", "{T}, con la calidad de siempre."] }, emo:["😊", "🛒", "📍"],
+    body:{ promo:["Aprovechá las ofertas que preparamos para vos y tu familia.", "Más ahorro para tu compra de todos los días."], comida:["Rico, casero y listo para disfrutar en familia.", "Sabores de casa, listos para tu mesa."], bebidas:["Para brindar en buena compañía.", "Lo mejor para acompañar tus encuentros."],
+      fiestas:["Todo para tus fiestas, en un solo lugar.", "Para que tu mesa de fiestas sea inolvidable."], regalo:["El regalo ideal está en Superseis.", "Ideas para regalar, en un solo lugar."], otro:["Todo lo que necesitás, en un solo lugar.", "Lo que tu casa necesita, con la calidad de siempre."], def:["Te esperamos con la calidad de siempre.", "Siempre cerca tuyo, con lo mejor para tu familia."] },
+    cta:{ def:["Te esperamos en tu Superseis más cercano o pedí online en {web} 🛒", "Pedí online en {web} o por WhatsApp: {wa} 📍"], story:["Pedí online en {web} 👆", "Más info en {web} 👆"], canal:["Pedí por WhatsApp: {wa}", "Pedí online en {web}"] }, swipe:"Deslizá para ver todo 👉", play:"Dale play y mirá todo ▶️" },
+  st:{ hook:{ promo:["¡{T}! 🔥", "¡Atención, ahorradores! {T} 💥", "{T} 💥 ¡Aprovechá!", "¡{T} en Stock! 😎"], def:["¡{T}! 😎", "{T} en Stock 🛒", "¡Llegó {t}! 🔥", "{T}: ¡vení a buscarlo!"] }, emo:["🔥", "💥", "😎", "🛒"],
+    body:{ promo:["¡Precios que rinden y ahorro de verdad!", "¡Tu bolsillo lo va a agradecer!"], comida:["¡Rico y al mejor precio!", "¡Sabor que rinde, precio que te encanta!"], bebidas:["¡Para brindar sin gastar de más!", "¡Las mejores bebidas al mejor precio!"],
+      fiestas:["¡Armá tus fiestas ahorrando!", "¡Fiestas a lo grande, precios a lo Stock!"], regalo:["¡Regalos que rinden!", "¡Regalá más gastando menos!"], otro:["¡Todo lo que necesitás, a precio Stock!", "¡Más cosas, menos gasto!"], def:["¡Te esperamos con los mejores precios!", "¡En Stock rinde más!"] },
+    cta:{ def:["¡Vení a tu Stock o mirá todas las ofertas en {web}! 🛒", "¡Todas las ofertas en {web}! 👉"], story:["¡Mirá todas las ofertas en {web}! 👆", "¡Más en {web}! 👆"], canal:["¡Más ofertas en {web}!", "¡Todas las ofertas en {web}!"] }, swipe:"¡Deslizá y mirá todo! 👉", play:"¡Dale play! ▶️" },
+  dl:{ hook:{ promo:["{T}.", "{T}: beneficios por tiempo limitado.", "Descubrí {t} en Delimarket.", "{T}, una oportunidad para disfrutar."], def:["{T}.", "{T}: una selección pensada para disfrutar.", "Descubrí {t} en Delimarket.", "{T}, el detalle que hace la diferencia."] }, emo:[],
+    body:{ promo:["Una selección especial, con beneficios por tiempo limitado.", "Calidad gourmet, con condiciones especiales."], comida:["Preparado con ingredientes seleccionados, para disfrutar sin apuro.", "Sabores elaborados con dedicación."], bebidas:["Una selección de bodega para acompañar tus mejores momentos.", "Etiquetas elegidas para disfrutar con calma."],
+      fiestas:["Detalles gourmet para tu mesa de fiestas.", "Una mesa de fiestas a la altura de la ocasión."], regalo:["Un obsequio con sello gourmet.", "Regalos elegidos con buen gusto."], otro:["Productos exclusivos e importados, elegidos con dedicación.", "Una propuesta distinta, exclusiva de Delimarket."], def:["Te esperamos para vivir la experiencia Delimarket.", "Una experiencia pensada para disfrutar."] },
+    cta:{ def:["Te esperamos en Delimarket. Pedidos por WhatsApp: {wa}", "Hacé tu pedido por WhatsApp: {wa}"], story:["Pedidos por WhatsApp: {wa}", "Consultas y pedidos: {wa}"], canal:["Pedidos por WhatsApp: {wa}", "Hacé tu pedido: {wa}"] }, swipe:"Deslizá para descubrir la selección.", play:"Mirá el video completo." } };
+const agEmoRe = /\p{Extended_Pictographic}️?/gu;
+const agCap = t => t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
+// Lo que el equipo le enseñó (entrenamiento y correcciones), leído como reglas simples
+function agRules(id){
+  const c = agCfg(id), txt = [c.train || "", ...(c.lessons || []).map(l => l.text)].join("\n"), r = { noEmo:/sin emoji|no (uses|pongas) emoji|cero emoji/i.test(txt), noTag:/sin hashtag|no (uses|pongas) hashtag/i.test(txt),
+    short:/m[aá]s corto|m[aá]s breve|corto|breve/i.test(txt), priceFirst:/precio primero|primero el precio/i.test(txt), noExcl:/sin (signos de )?exclamaci|menos exclamaci/i.test(txt), avoid:[] };
+  txt.replace(/no (uses|pongas|digas|escribas)( la palabra| el t[eé]rmino)?\s*[«“"']?([a-záéíóúñü]{3,})/gi, (m, a, b, w) => { if (!/^(emoji|hashtag|signo)/i.test(w)) r.avoid.push(w.toLowerCase()); return m; });
+  return r;
+}
+// Datos que aparecen en un texto: precio, porcentaje, 2x1, fechas
+function agFacts(t){
+  const f = [], add = x => { x = x.trim(); if (x && !f.some(y => y.toLowerCase() === x.toLowerCase())) f.push(x); };
+  (t.match(/(gs\.?\s*[\d.]{3,}|[\d.]{4,}\s*gs\.?)/gi) || []).forEach(add); (t.match(/\d{1,2}\s?%(\s?off)?/gi) || []).forEach(add); (t.match(/\b\d\s?x\s?\d\b/gi) || []).forEach(add);
+  (t.match(/(hasta el|del|desde el)\s+[^.,;\n]{2,40}?(?=\s+(en|para|con|por)\b|[.,;\n]|$)/gi) || []).forEach(add); (t.match(/\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/g) || []).forEach(d => { if (!f.some(x => x.includes(d))) add(d); });
+  return f.slice(0, 4);
+}
+const agRand = (seed, n) => { let h = 2166136261; for (const ch of String(seed)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return Math.abs(h) % n; };
+// El copy de una publicación (k = número de versión, para dar opciones distintas)
+function clCopy(p, ref, o, k){
+  const B = CL_BRAND[p.brand] || CL_BRAND.Superseis, T = CL_TXT[B.tone], dl = B.tone === "dl", j = p.fromJob ? jobById(p.fromJob) : null, R = agRules("claudia");
+  const brief = agPlain([p.brief, j?.brief, j?.notes].filter(Boolean).join(" ")).replace(/\s+/g, " ").trim(), all = [p.title, brief, ref].join(" ");
+  const topic = (CL_TOPIC.find(([re]) => re.test(all)) || [null, "def", ""]), kind = topic[1], fmt = String(p.format || "Post").toLowerCase();
+  const isStory = /historia/.test(fmt), isCanal = /canal|whatsapp/.test(fmt) || /canal/i.test(p.net || ""), short = o.short || R.short || isStory, promo = kind === "promo" || /oferta|promo|descuento|precio/i.test(all);
+  const tema = agPlain(p.title).replace(/^(post|reel|historia|carrusel|video|canal)\s*[:·-]?\s*/i, "").replace(new RegExp("\\b" + p.brand + "\\b", "ig"), "").replace(/\s+/g, " ").trim() || "Lo nuevo";
+  const ok = t => !R.avoid.some(w => new RegExp("\\b" + w + "\\b", "i").test(t)), base = agRand(p.id, 4);
+  const pick = (list, i) => { const l = list.filter(ok); return (l.length ? l : list)[((i % (l.length || list.length)) + (l.length || list.length)) % (l.length || list.length)]; };
+  const liked = o.likedMeta && o.likedMeta.brand === p.brand && k === 0 ? o.likedMeta : null, hooks = promo ? T.hook.promo : T.hook.def, hi = liked ? liked.h : base + k;
+  const L = [], hook = pick(hooks, hi).replace("{T}", agCap(tema)).replace("{t}", tema.charAt(0).toLowerCase() + tema.slice(1));
+  const facts = agFacts([p.title, brief].join(" ")), refFacts = agFacts(ref || ""), miss = [];
+  L.push(hook);
+  if (R.priceFirst && facts.length && !ref) L.push(facts.join(" · "));
+  if (!short){
+    if (ref) L.push(agCap(ref.replace(/\s+/g, " ").trim().replace(/[.]?$/, ".")));
+    L.push(pick(T.body[kind] || T.body.def, base + k + 1));
+  } else if (ref) L.push(agCap(ref.replace(/\s+/g, " ").trim().replace(/[.]?$/, ".")));
+  if (!R.priceFirst && facts.length && !ref) L.push((dl ? "Vigencia y condiciones: " : B.tone === "st" ? "👉 " : "📍 ") + facts.join(" · "));
+  if (promo && !facts.length && !refFacts.length){ L.push("[precio o descuento] · [fechas de vigencia]"); miss.push("precio o descuento", "fechas de vigencia"); }
+  if (agSkillOn("claudia", "crono") && p.date && !short){ const words = all.toLowerCase().split(/[^a-záéíóúñ]+/).filter(w => w.length > 4);
+    const act = crRows().find(r => crIn(r, p.date, p.date) && (!r.brand || r.brand === p.brand) && words.some(w => r.name.toLowerCase().includes(w)));
+    if (act) L.push(`${act.name}: ${crOpen(act) ? "hasta el fin de la promo" : "hasta el " + dm(act.to)}.`); }
+  if (/carrusel/.test(fmt) && !short) L.push(T.swipe); if (/reel|video/.test(fmt) && !short) L.push(T.play);
+  if (agSkillOn("claudia", "cta")) L.push(pick(isStory ? T.cta.story : isCanal ? T.cta.canal : T.cta.def, base + k).replace("{web}", B.web).replace("{wa}", B.wa));
+  if (agSkillOn("claudia", "hashtags") && !R.noTag && !o.noTag && !isStory){ const tags = [B.tag];
+    if (!dl && agSkillOn("claudia", "examples")){ const cnt = {}; posts.filter(x => x.brand === p.brand && x.copy && copyStOf(x) === "ok").forEach(x => (agPlain(x.copy).match(/#[\wáéíóúñ]+/gi) || []).forEach(h => { if (h.toLowerCase() !== B.tag.toLowerCase()) cnt[h] = (cnt[h] || 0) + 1; }));
+      Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 2).forEach(([h]) => tags.push(h)); }
+    if (kind === "fiestas" && !dl && !tags.some(t => /navidad/i.test(t))) tags.push("#Navidad");
+    L.push(tags.join(" ")); }
+  let out = L.join("\n");
+  // Emojis según la marca y lo que pidieron (Delimarket nunca)
+  const noEmo = dl || R.noEmo || o.noEmo || !agSkillOn("claudia", "emojis");
+  if (noEmo) out = out.replace(agEmoRe, "").replace(/[ \t]+\n/g, "\n").replace(/ {2,}/g, " ").replace(/^\s+|\s+$/gm, "");
+  else { if (topic[2] && !out.includes(topic[2])) out = out.replace(/^([^\n]*)/, `$1 ${topic[2]}`); if (o.energy && T.emo.length) out = out.replace(/^([^\n]*)/, `$1 ${T.emo[0]}`);
+    let n = 0; out = out.replace(agEmoRe, m => ++n > B.emo + (o.energy ? 1 : 0) ? "" : m).replace(/ {2,}/g, " ").replace(/ +$/gm, ""); }
+  if (R.noExcl || dl) out = out.replace(/[¡!]/g, "");
+  R.avoid.forEach(w => { out = out.replace(new RegExp("\\b" + w + "\\b", "gi"), "").replace(/ {2,}/g, " ").replace(/ ([.,;:])/g, "$1"); });
+  return { text:out.trim(), miss, meta:{ brand:p.brand, h:hi } };
+}
+function agRobotClaudia(text){
+  const p = ofUI.post ? postById(ofUI.post) : null, q = String(text || "").trim();
+  if (!p) return { t:"Elegí primero la publicación de la lista (arriba del chat) y te armo el copy con el tono de su marca." };
+  const cmd = /^(escrib[ií] el copy de esta publicaci[oó]n|dame \d+ opciones de copy|hacelo m[aá]s corto y con m[aá]s energ[ií]a)$/i.test(q);
+  const o = { short:/corto|breve/i.test(q), energy:/energ|buena onda|con onda/i.test(q), noEmo:/sin emoji/i.test(q), noTag:/sin hashtag/i.test(q), n:Math.min(3, +(q.match(/(\d)\s*opcion/i) || [])[1] || (/opciones/i.test(q) ? 3 : 1)) };
+  const ref = cmd || /^(hacelo|dame|escrib|otra|de nuevo|otra vez)/i.test(q) ? "" : q.replace(/^(referencia|ref|datos|info)\s*:\s*/i, "");
+  const likedMsg = agMsgs("claudia").filter(m => m.r === "assistant" && m.ok && m.meta).pop(); o.likedMeta = likedMsg?.meta;
+  const prevN = agMsgs("claudia").filter(m => m.r === "assistant" && m.post === p.id).length;
+  const outs = Array.from({ length:o.n }, (_, i) => clCopy(p, ref, o, prevN + i));
+  const B = CL_BRAND[p.brand] ? p.brand : "Superseis", tono = { Superseis:"cercano y familiar, como el manual", Stock:"con más buena onda", Delimarket:"sobrio, elegante, gourmet y sin emojis" }[B];
+  const miss = [...new Set(outs.flatMap(x => x.miss))];
+  return { t:outs.length > 1 ? outs.map((x, i) => `**Opción ${i + 1}**\n${x.text}`).join("\n\n") : outs[0].text, meta:outs[0].meta, post:p.id,
+    n:`Copy del robot de ClaudIA · ${p.brand}, ${tono} · Manual de Redes Sociales.${miss.length ? " Falta confirmar: " + miss.join(" y ") + "." : ""}${ref ? "" : " Escribime datos de referencia (precio, fechas, sucursales) y lo armo con eso."}` };
+}
+// SofIA: el informe del día con los datos de la app
+function agRobotSofia(text){
+  const q = String(text || ""), on = k => agSkillOn("sofia", k), tom = addDays(TODAY, 1), yes = addDays(TODAY, -1), wd = d => WEEKDAYS[wdOf(d)].toLowerCase();
+  const work = cmWork().filter(x => !x.done), dg = jobs.filter(j => !j.ex && j.area === "Diseño" && !isClosedJob(j)).map(j => ({ ...j, date:j.due }));
+  const who = x => x.crew?.length > 1 ? x.crew.join(" + ") : x.who || x.owner || "sin asignar", it = x => `- ${x.date ? dm(x.date) : "—"} · ${x.brand || ""} · ${agPlain(x.title).slice(0, 70)}${on("late") ? " (" + who(x) + ")" : ""}`;
+  const today = work.filter(x => x.date === TODAY), tmw = work.filter(x => x.date === tom), lateC = work.filter(cmLate), lateD = dg.filter(j => j.date && j.date < TODAY), dueD = dg.filter(j => j.date === TODAY);
+  const rev = jobs.filter(j => !j.ex && REVIEW_WAIT.includes(j.status)).length, cps = posts.filter(p => !p.ex && copyStOf(p) === "rev").length, late = lateC.length + lateD.length;
+  const L = [];
+  if (/mañana/i.test(q)){ L.push(`**Para mañana, ${wd(tom)} ${dm(tom)}: ${tmw.length} de CM**`, ...tmw.slice(0, 12).map(it)); if (!tmw.length) L.push("Por ahora no hay nada cargado para mañana."); return { t:L.join("\n") }; }
+  if (/atrasad/i.test(q)){ L.push(`**Atrasados: ${late}**`, ...lateC.concat(lateD).sort((a, b) => String(a.date).localeCompare(String(b.date))).slice(0, 15).map(it)); if (!late) L.push("No hay nada atrasado. ¡Bien!"); return { t:L.join("\n") }; }
+  L.push(`**Informe de hoy, ${wd(TODAY)} ${dm(TODAY)}**`);
+  const pl = (n, a, b) => `${n} ${n === 1 ? a : b}`, wait = [rev ? pl(rev, "pedido", "pedidos") : "", cps ? pl(cps, "copy", "copys") : ""].filter(Boolean).join(" y ");
+  L.push(`En una frase: hoy salen **${pl(today.length, "publicación", "publicaciones")}** de CM y ${dueD.length === 1 ? "vence" : "vencen"} **${pl(dueD.length, "pedido", "pedidos")}** de Diseño; ${late ? `hay **${pl(late, "atrasado", "atrasados")}**` : "no hay atrasados"}${wait ? ` y esperan aprobación ${wait}` : ""}.`);
+  if (on("late") && late){ L.push("**Lo urgente**", ...lateC.concat(lateD).sort((a, b) => String(a.date).localeCompare(String(b.date))).slice(0, 6).map(it)); }
+  if (on("today") && (today.length || dueD.length)){ L.push("**Para hoy**", ...today.concat(dueD).slice(0, 8).map(it)); }
+  if (on("ig")){ const ig = IG_MAIN.map(b => { const ps = igPosts(b, yes.slice(0, 7)).filter(x => pyDate(x.ts) === yes); if (!ps.length) return `- ${b}: nada publicado ayer.`; const best = ps.slice().sort((a, c) => (c.reach || 0) - (a.reach || 0))[0];
+      return `- ${b}: ${ps.length} publicación${ps.length === 1 ? "" : "es"}; la que más llegó: «${agPlain(capTitle(best.cap)).slice(0, 50)}» (${isNum(best.reach) ? dots(best.reach) + " de alcance" : "alcance todavía sin dato"}).`; });
+    L.push("**Lo de ayer en Instagram**", ...ig); }
+  if (on("team")){ const ppl = PEOPLE.filter(pp => pp.active !== false && ["Diseñador", "CM"].includes(pp.role)).map(pp => ({ pp, n:pp.role === "CM" ? work.filter(x => cmIn(x, pp.name)).length : dg.filter(j => hasJob(j, pp.name)).length })).sort((a, b) => b.n - a.n).slice(0, 3);
+    if (ppl.length) L.push("**Los más cargados**", ...ppl.map(x => `- ${x.pp.name} (${x.pp.role}): ${x.n} pendientes`)); }
+  if (on("crono")){ const cur = crRows().filter(r => crState(r) === "on"); if (cur.length) L.push("**Acciones en curso**", ...cur.slice(0, 6).map(r => `- ${r.name}: hasta ${crOpen(r) ? "el fin de la promo" : "el " + dm(r.to)}`)); }
+  const acc = [];
+  if (late) acc.push(`Resolver los ${late} atrasados, empezando por los más viejos.`);
+  if (wait) acc.push(`Aprobar lo que espera: ${wait}.`);
+  if (tmw.length) acc.push(`Dejar listo lo de mañana (${pl(tmw.length, "publicación", "publicaciones")}).`);
+  if (acc.length < 3 && today.length) acc.push(`Confirmar que salgan las ${today.length} publicaciones de hoy.`);
+  if (acc.length < 3) acc.push("Revisar en Instagram cómo le va a lo publicado y responder comentarios.");
+  L.push("**Tres acciones para hoy**", ...acc.slice(0, 3).map((a, i) => `${i + 1}. ${a}`));
+  return { t:L.join("\n"), n:"Informe del robot de SofIA, con los datos de la app en este momento." };
+}
+// MatIAs: la pauta del mes (Meta Ads) con los datos de la app
+function agRobotMatias(text){
+  const q = String(text || ""), has = k => Object.values(META_CREATIVES?.[k] || {}).some(l => Array.isArray(l) && l.length), m = has(MONTH) || !has(prevMonth(MONTH)) ? MONTH : prevMonth(MONTH), src = META_CREATIVES?.[m] || {}, ads = Object.entries(src).flatMap(([b, l]) => (Array.isArray(l) ? l : []).map(a => ({ ...a, b }))).filter(a => (a.spend || 0) > 0 || (a.impressions || 0) > 0);
+  const res = a => a.convs || a.lpv || adClicks(a) || a.eng || 0, rl = a => a.convs ? "conversaciones" : a.lpv ? "visitas a la web" : adClicks(a) ? "clics" : "interacciones", cpr = a => res(a) ? (a.spend || 0) / res(a) : Infinity;
+  const L = [], usd2 = v => usd(Math.round((v || 0) * 100) / 100);
+  if (/pautar|organic|sola/i.test(q)){ const best = IG_MAIN.flatMap(b => igPosts(b, m).map(x => ({ ...x, b }))).filter(x => isNum(x.reach)).sort((a, c) => c.reach - a.reach).slice(0, 3);
+    L.push("**Publicaciones que funcionaron solas (para pautar)**", ...(best.length ? best.map(x => `- ${x.b} · ${dm(pyDate(x.ts))} · «${agPlain(capTitle(x.cap)).slice(0, 60)}» · ${dots(x.reach)} de alcance`) : ["- Todavía no hay datos de alcance de este mes."]));
+    if (best.length) L.push(`Sugerencia: pautá la de ${best[0].b} («${agPlain(capTitle(best[0].cap)).slice(0, 40)}»): ya demostró que interesa sin pauta.`);
+    return { t:L.join("\n"), n:"Análisis del robot de MatIAs con los datos de Instagram de la app." }; }
+  L.push(`**La pauta de ${monthLabel(m)}**${m !== MONTH ? ` (de ${monthName(MONTH)} todavía no hay anuncios)` : ""}`);
+  if (!ads.length) L.push("Todavía no llegaron anuncios de Meta para este mes.");
+  else {
+    const brands = [...new Set(ads.map(a => a.b))];
+    L.push(...brands.map(b => { const l = ads.filter(a => a.b === b), sp = l.reduce((s, a) => s + (a.spend || 0), 0), rc = l.reduce((s, a) => s + (a.reach || 0), 0), lim = PAUTA_LIMITS?.[m]?.[b];
+      return `- **${b}**: ${l.length} anuncio${l.length === 1 ? "" : "s"} · invertido ${usd2(sp)} · alcance ${dots(rc)}${lim ? ` · presupuesto del mes Gs. ${dots(lim)}` : ""}`; }));
+    const ok = ads.filter(a => res(a) > 0 && (a.spend || 0) > 0).sort((a, c) => cpr(a) - cpr(c)), med = ok.length ? cpr(ok[Math.floor(ok.length / 2)]) : 0;
+    if (ok.length){ const b0 = ok[0], w0 = ok[ok.length - 1];
+      L.push("**Lo que mejor funciona**", `- ${b0.b} · «${adName(b0).slice(0, 50)}»: ${usd2(cpr(b0))} por ${rl(b0).replace(/s$/, "")} (${dots(res(b0))} ${rl(b0)}).`);
+      if (ok.length > 1) L.push("**Lo que más cuesta**", `- ${w0.b} · «${adName(w0).slice(0, 50)}»: ${usd2(cpr(w0))} por ${rl(w0).replace(/s$/, "")}.`);
+      const sug = [];
+      if (ok.length > 2 && cpr(w0) > med * 2) sug.push(`Revisar o pausar «${adName(w0).slice(0, 40)}» (${w0.b}): cuesta más del doble que la mitad de los anuncios.`);
+      sug.push(`Repetir el formato de «${adName(b0).slice(0, 40)}» (${b0.b}), que es el que da el resultado más barato.`);
+      const live = ads.filter(a => a.status === "ACTIVE").length; if (!live) sug.push("No hay anuncios en el aire ahora: conviene programar la próxima pauta.");
+      L.push("**Sugerencias**", ...sug.map((s, i) => `${i + 1}. ${s}`)); }
+  }
+  if (/presupuesto/i.test(q)){ const lim = PAUTA_LIMITS?.[m]; L.push("**Presupuesto del mes (Gs.)**", ...(lim ? Object.entries(lim).map(([b, v]) => `- ${b}: Gs. ${dots(v)}`) : ["- No hay presupuesto cargado para este mes."])); }
+  return { t:L.join("\n"), n:"Análisis del robot de MatIAs con los datos de Meta Ads de la app (inversión en dólares, como figura en Meta)." };
+}
+const agRobot = (id, text) => id === "claudia" ? agRobotClaudia(text) : id === "matias" ? agRobotMatias(text) : agRobotSofia(text);
 async function agSend(id, text){
   const d = AG[id]; text = String(text || "").trim(); if (!d || !text || ofUI.busy) return;
   if (id === "claudia" && /esta publicación/i.test(text) && !ofUI.post) return toast("Elegí primero la publicación (arriba del chat).");
@@ -14857,6 +15015,12 @@ async function agSend(id, text){
   if (!plan && agUsed() >= agLimit()){ ofUI.err = `Por hoy ya usamos las ${agLimit()} respuestas del día entre los tres agentes. ¡Nos vemos mañana! 👋`; ofUI.errCode = "limit"; render(); agScroll(); return; }
   const mid = agId(); AGENT_CHAT.push({ id:mid, a:id, r:"user", t:text.slice(0, 4000), by:viewer.name, at:new Date().toISOString() });
   ofUI.busy = id; ofUI.err = ""; ofUI.errCode = ""; ofUI.plan = null; render(); agScroll();
+  if (agMode() === "robot"){ // el robot de la app: responde acá mismo, sin Claude ni costo
+    await new Promise(r => setTimeout(r, ofReduce() ? 50 : 650 + Math.random() * 500));
+    try { const r = agRobot(id, text); AGENT_CHAT.push({ id:agId(), a:id, r:"assistant", t:String(r.t || "").slice(0, 12000), n:r.n || "", ...(r.meta ? { meta:r.meta } : {}), ...(r.post ? { post:r.post } : {}), robot:true, by:d.name, at:new Date().toISOString() }); }
+    catch (e){ ofUI.err = "El robot no pudo armar la respuesta. Probá de nuevo."; console.error(e); }
+    const mine = agMsgs(id); if (mine.length > 80){ const drop = new Set(mine.slice(0, mine.length - 80).map(m => m.id)); AGENT_CHAT = AGENT_CHAT.filter(m => !drop.has(m.id)); }
+    ofUI.busy = ""; render(); agScroll(); window.RMH?.flushNow?.(); return; }
   const c = agCfg(id), hist = agMsgs(id).slice(-12).map(m => ({ role:m.r, content:m.t }));
   try {
     const tok = await window.RMH?.token?.();
@@ -14901,9 +15065,17 @@ const ofSem = iso => { const h = ofAge(iso); return h === null ? "n" : h <= 14 ?
 // v328: la oficina se gira arrastrando con el mouse o el dedo (o con los botones ⟲ ⟳).
 // Medidas en baldosas: x de 0 a 20, y de 0 a 14 (en la vista inicial: x hacia la derecha-abajo, y hacia la izquierda-abajo), z hacia arriba.
 const OFI = { W:20, D:14, WH:3.4, cx:574, cy:422, vw:1150, vh:716 };
-const OFR = { a:(() => { try { const v = parseFloat(localStorage.getItem("rmh-ofrot")); return isFinite(v) ? v : 0; } catch (e){ return 0; } })() };
-const ofCS = () => { if (ofCS.a !== OFR.a){ ofCS.a = OFR.a; ofCS.c = Math.cos(OFR.a); ofCS.s = Math.sin(OFR.a); } return ofCS; };
-const ofP = (x, y, z = 0) => { const r = ofCS(), dx = x - OFI.W / 2, dy = y - OFI.D / 2, u = dx * r.c - dy * r.s, v = dx * r.s + dy * r.c; return [OFI.cx + (u - v) * 32, OFI.cy + (u + v) * 16 - z * 32]; };
+// La vista: giro (a), inclinación (p: 30° es la de la foto; 90° es desde arriba) y zoom con encuadre (OFV). Se recuerdan giro e inclinación.
+const OF_P0 = Math.PI / 6, OF_PMIN = 12 * Math.PI / 180, OF_PMAX = 88 * Math.PI / 180;
+const OFR = (() => { const d = { a:0, p:OF_P0 }; try { const v = JSON.parse(localStorage.getItem("rmh-ofview") || "null") || { a:parseFloat(localStorage.getItem("rmh-ofrot")) }; if (isFinite(v.a)) d.a = v.a; if (isFinite(v.p)) d.p = Math.min(OF_PMAX, Math.max(OF_PMIN, v.p)); } catch (e){} return d; })();
+const OFV = { z:1, x:0, y:0 };
+const ofCS = () => { if (ofCS.a !== OFR.a || ofCS.p !== OFR.p){ const r = ofCS; r.a = OFR.a; r.p = OFR.p; r.c = Math.cos(OFR.a); r.s = Math.sin(OFR.a); r.ky = 32 * Math.sin(OFR.p); r.kz = 32 * Math.cos(OFR.p) / Math.cos(OF_P0);
+    // Encuadre: que la maqueta entre entera con cualquier giro o inclinación (k = escala; ox, oy = centro)
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    [[0, 0], [OFI.W, 0], [OFI.W, OFI.D], [0, OFI.D]].forEach(([x, y]) => [-.45, OFI.WH + .1].forEach(z => { const dx = x - OFI.W / 2, dy = y - OFI.D / 2, u = dx * r.c - dy * r.s, v = dx * r.s + dy * r.c, X = (u - v) * 32, Y = (u + v) * r.ky - z * r.kz; x0 = Math.min(x0, X); x1 = Math.max(x1, X); y0 = Math.min(y0, Y); y1 = Math.max(y1, Y); }));
+    r.k = Math.min(1, (OFI.vw - 40) / (x1 - x0), (OFI.vh - 24) / (y1 - y0)); r.ox = OFI.vw / 2 - (x0 + x1) / 2 * r.k; r.oy = OFI.vh / 2 - (y0 + y1) / 2 * r.k; } return ofCS; };
+const ofP = (x, y, z = 0) => { const r = ofCS(), dx = x - OFI.W / 2, dy = y - OFI.D / 2, u = dx * r.c - dy * r.s, v = dx * r.s + dy * r.c; return [r.ox + (u - v) * 32 * r.k, r.oy + ((u + v) * r.ky - z * r.kz) * r.k]; };
+const ofTr = (px, py) => `translate(${px.toFixed(1)},${py.toFixed(1)})${ofCS().k < .999 ? ` scale(${ofCS().k.toFixed(3)})` : ""}`; // los robots se achican junto con la maqueta
 const ofDepth = (x, y) => { const r = ofCS(), dx = x - OFI.W / 2, dy = y - OFI.D / 2; return dx * (r.c + r.s) + dy * (r.c - r.s); }; // más grande = más adelante
 const ofSeen = (nx, ny) => { const r = ofCS(); return nx * (r.c + r.s) + ny * (r.c - r.s) > 1e-6; }; // una cara que mira hacia (nx, ny) se ve
 const ofPt = (x, y, z) => ofP(x, y, z).map(n => Math.round(n * 10) / 10).join(",");
@@ -14919,10 +15091,10 @@ function ofBox(x, y, z, w, d, h, c){
 }
 const OF_C = { desk:["#eef0f3", "#2b3038", "#1c2027"], wood:["#d9bd92", "#b78d5c", "#9b7549"], dark:["#334155", "#1e293b", "#111827"], chair:["#3b414b", "#2a2f37", "#1f232a"], white:["#f8fafc", "#e2e8f0", "#cbd5e1"], pot:["#f08a3c", "#e1782f", "#c2611f"] };
 // Para dibujar “pegado” a un plano vertical que mira hacia +y (pared del fondo, pantallas) o hacia +x (pared de la izquierda)
-const ofPlaneY = (x, y, z) => { const a = ofP(x, y, z), b = ofP(x + 1, y, z); return `matrix(${((b[0] - a[0]) / 32).toFixed(4)},${((b[1] - a[1]) / 32).toFixed(4)},0,1,${a[0].toFixed(1)},${a[1].toFixed(1)})`; };
-const ofPlaneX = (x, y, z) => { const a = ofP(x, y, z), b = ofP(x, y - 1, z); return `matrix(${((b[0] - a[0]) / 32).toFixed(4)},${((b[1] - a[1]) / 32).toFixed(4)},0,1,${a[0].toFixed(1)},${a[1].toFixed(1)})`; };
+const ofPlaneY = (x, y, z) => { const a = ofP(x, y, z), b = ofP(x + 1, y, z); return `matrix(${((b[0] - a[0]) / 32).toFixed(4)},${((b[1] - a[1]) / 32).toFixed(4)},0,${(ofCS().kz * ofCS().k / 32).toFixed(4)},${a[0].toFixed(1)},${a[1].toFixed(1)})`; };
+const ofPlaneX = (x, y, z) => { const a = ofP(x, y, z), b = ofP(x, y - 1, z); return `matrix(${((b[0] - a[0]) / 32).toFixed(4)},${((b[1] - a[1]) / 32).toFixed(4)},0,${(ofCS().kz * ofCS().k / 32).toFixed(4)},${a[0].toFixed(1)},${a[1].toFixed(1)})`; };
 const ofWallM = (wall, a, z) => wall === "y" ? ofPlaneY(a, 0, z) : ofPlaneX(0, a, z);
-const ofPlant = (x, y, s = 1) => { const [cx, cy] = ofP(x + .25, y + .25, .5); return ofBox(x, y, 0, .5, .5, .5, OF_C.pot) + `<circle cx="${cx - 9 * s}" cy="${cy - 6 * s}" r="${11 * s}" fill="#3f8f3a"/><circle cx="${cx + 8 * s}" cy="${cy - 9 * s}" r="${12 * s}" fill="#4fa346"/><circle cx="${cx}" cy="${cy - 19 * s}" r="${11 * s}" fill="#5bb450"/>`; };
+const ofPlant = (x, y, s = 1) => { const [cx, cy] = ofP(x + .25, y + .25, .5); s *= ofCS().k; return ofBox(x, y, 0, .5, .5, .5, OF_C.pot) + `<circle cx="${cx - 9 * s}" cy="${cy - 6 * s}" r="${11 * s}" fill="#3f8f3a"/><circle cx="${cx + 8 * s}" cy="${cy - 9 * s}" r="${12 * s}" fill="#4fa346"/><circle cx="${cx}" cy="${cy - 19 * s}" r="${11 * s}" fill="#5bb450"/>`; };
 // Las reuniones de los agentes (hora de Paraguay, de lunes a viernes): se juntan en la sala a ver los informes
 const OF_MEETS = [{ h:9, m:0, len:20, t:"reunión de la mañana", what:"el informe del día" }, { h:16, m:0, len:15, t:"reunión de la tarde", what:"cómo van los posteos y la pauta" }];
 function ofMeetNow(){
@@ -15011,7 +15183,7 @@ function ofLook(c, s, L){
 function ofCharSVG(c, s, L){
   const k = ofLook(c, s, L), [px, py] = ofP(s.x, s.y), sc = c.kind === "r" ? .8 : 1, w = Math.round(c.name.length * 6.3 + 24), col = c.color;
   const tip = `${c.name}${c.kind === "r" ? " (robot de datos" + (c.upd ? ", trajo datos hace " + Math.max(0, Math.round(ofAge(c.upd))) + " h" : ", sin dato") + ")" : " · " + AG[c.ref].role}: ${k.txt}`;
-  return `<g class="${k.cls}" id="ofch-${c.id}" data-ofc="${c.kind === "a" ? "a:" + c.ref : "rb"}" role="button" tabindex="0" aria-label="${esc(tip)}" transform="translate(${px.toFixed(1)},${py.toFixed(1)})"><title>${esc(tip)}</title>
+  return `<g class="${k.cls}" id="ofch-${c.id}" data-ofc="${c.kind === "a" ? "a:" + c.ref : "rb"}" role="button" tabindex="0" aria-label="${esc(tip)}" transform="${ofTr(px, py)}"><title>${esc(tip)}</title>
     <ellipse class="ofsh" rx="${12 * sc}" ry="${5 * sc}"/>
     <g transform="scale(${sc})"><g class="oflegs"><rect x="-7" y="-11" width="5" height="11" rx="2"/><rect x="2" y="-11" width="5" height="11" rx="2"/></g>
       <g class="ofup"><rect class="ofarm" x="-15" y="-27" width="5" height="13" rx="2.5" fill="${col}"/><rect class="ofarm r" x="10" y="-27" width="5" height="13" rx="2.5" fill="${col}"/>
@@ -15090,7 +15262,7 @@ function ofScene(){
   // Robots de datos: los servidores contra la pared y una terminal para cada robot
   const rb = OF_ROBOTS(), semC = { g:"#22c55e", y:"#f59e0b", r:"#ef4444", n:"#94a3b8" };
   [0, 1, 2].forEach(r => { const y = 7.15 + r * 1.85; let leds = "";
-    if (ofSeen(1, 0)) rb.forEach(([, u], i) => { if (i % 3 !== r) return; const j = Math.floor(i / 3); [0, 1].forEach(q => { const [lx, ly] = ofP(.78, y + .35 + q * .6, 1.45 - j * .32); leds += `<circle cx="${lx}" cy="${ly}" r="2.6" fill="${semC[ofSem(u)]}"/>`; }); });
+    if (ofSeen(1, 0)) rb.forEach(([, u], i) => { if (i % 3 !== r) return; const j = Math.floor(i / 3); [0, 1].forEach(q => { const [lx, ly] = ofP(.78, y + .35 + q * .6, 1.45 - j * .32); leds += `<circle cx="${lx}" cy="${ly}" r="${(2.6 * ofCS().k).toFixed(2)}" fill="${semC[ofSem(u)]}"/>`; }); });
     it(.41, y + .8, `<g class="ofracks" data-ofc="rb" role="button" tabindex="0" aria-label="Robots de datos: ${rb.filter(([, u]) => ofSem(u) === "g").length} de ${rb.length} al día"><title>Robots de datos: tocá para ver cuándo trabajó cada uno</title>${ofBox(.05, y, 0, .72, 1.6, 1.8, OF_C.dark) + leds}</g>`); });
   rb.forEach(([, u], i) => { const [x, y] = OF_RB_SPOT(i); it(x - .58, y - .02, ofBox(x - .78, y - .22, 0, .4, .4, .82, ["#475569", "#334155", "#1e293b"]) + ofBox(x - .74, y - .18, .82, .32, .32, .03, [semC[ofSem(u)], "#0f172a", "#0f172a"])); });
   // Descanso: café, agua, tereré, sillón con música, plantas
@@ -15100,7 +15272,7 @@ function ofScene(){
   it(16.7, 12.0, ofBox(15.2, 11.6, 0, 3.0, .85, .38, ["#2dd4bf", "#14b8a6", "#0d9488"]) + ofBox(15.2, 11.6, .38, 3.0, .24, .5, ["#2dd4bf", "#14b8a6", "#0d9488"]) + ofBox(15.2, 11.6, .38, .22, .85, .28, ["#2dd4bf", "#14b8a6", "#0d9488"]) + ofBox(17.98, 11.6, .38, .22, .85, .28, ["#2dd4bf", "#14b8a6", "#0d9488"]));
   it(18.82, 11.97, ofBox(18.55, 11.7, 0, .55, .55, .5, OF_C.wood) + ofBox(18.62, 11.78, .5, .4, .32, .6, ["#334155", "#1e293b", "#0f172a"]));
   it(19.35, 9.85, ofPlant(19.1, 9.6)); it(19.4, 13.45, ofPlant(19.15, 13.2));
-  [[19.2, .9], [19.2, 5.2]].forEach(([x, y]) => it(x + .32, y + .7, ofBox(x, y, 0, .65, 1.4, .55, OF_C.pot) + (([cx, cy]) => `<circle cx="${cx - 12}" cy="${cy - 4}" r="12" fill="#3f8f3a"/><circle cx="${cx + 6}" cy="${cy - 9}" r="13" fill="#4fa346"/><circle cx="${cx + 18}" cy="${cy}" r="10" fill="#3f8f3a"/>`)(ofP(x + .32, y + .7, .55))));
+  [[19.2, .9], [19.2, 5.2]].forEach(([x, y]) => it(x + .32, y + .7, ofBox(x, y, 0, .65, 1.4, .55, OF_C.pot) + (([cx, cy], k) => `<circle cx="${cx - 12 * k}" cy="${cy - 4 * k}" r="${12 * k}" fill="#3f8f3a"/><circle cx="${cx + 6 * k}" cy="${cy - 9 * k}" r="${13 * k}" fill="#4fa346"/><circle cx="${cx + 18 * k}" cy="${cy}" r="${10 * k}" fill="#3f8f3a"/>`)(ofP(x + .32, y + .7, .55), ofCS().k)));
   // Los robots, entre los muebles (los de adelante tapan a los de atrás)
   chars.forEach(c => { const s = ofState(c, L); f.push({ d:ofDepth(s.x, s.y), svg:ofCharSVG(c, s, L), ch:c.id }); });
   f.sort((a, b) => a.d - b.d);
@@ -15125,7 +15297,7 @@ function ofScene(){
   const slab = (ofSeen(0, 1) ? ofPoly([[0, D, 0], [W, D, 0], [W, D, -.45], [0, D, -.45]], "#a3abb6") : "") + (ofSeen(0, -1) ? ofPoly([[0, 0, 0], [W, 0, 0], [W, 0, -.45], [0, 0, -.45]], "#a3abb6") : "")
     + (ofSeen(1, 0) ? ofPoly([[W, 0, 0], [W, D, 0], [W, D, -.45], [W, 0, -.45]], "#8b94a1") : "") + (ofSeen(-1, 0) ? ofPoly([[0, 0, 0], [0, D, 0], [0, D, -.45], [0, 0, -.45]], "#8b94a1") : "");
   const floor = slab + ofPoly([[0, 0, 0], [W, 0, 0], [W, D, 0], [0, D, 0]], "#d7dbe0") + `<path d="${grid}" stroke="#c4c9d0" stroke-width="1" fill="none"/>`
-    + [[3, 3], [7, 3], [11, 3], [17, 3], [3, 10], [10, 10.5], [17, 10]].map(([x, y]) => { const [cx, cy] = ofP(x, y); return `<ellipse cx="${cx}" cy="${cy}" rx="120" ry="60" fill="url(#oflight)"/>`; }).join("")
+    + [[3, 3], [7, 3], [11, 3], [17, 3], [3, 10], [10, 10.5], [17, 10]].map(([x, y]) => { const [cx, cy] = ofP(x, y); return `<ellipse cx="${cx}" cy="${cy}" rx="${(120 * ofCS().k).toFixed(1)}" ry="${(120 * ofCS().ky / 32 * ofCS().k).toFixed(1)}" fill="url(#oflight)"/>`; }).join("")
     + ofPoly([[15.0, 11.3, .01], [18.6, 11.3, .01], [18.6, 13.4, .01], [15.0, 13.4, .01]], "#e7d7c1"); // alfombra del sillón
   const zones = zone("co", .4, .4, 3.9, 4.9) + zone("dg", 4.3, .4, 8.7, 4.9) + zone("cm", 9.1, .4, 13.5, 4.9) + zone("sa", 14.6, .4, 19.6, 4.9) + zone("rb", .4, 6.8, 5.3, 13.6) + zone("ia", 6.2, 6.8, 13.5, 13.6) + zone("ds", 14.6, 6.8, 19.6, 13.6);
   const boards = wY ? ofBoard("co", .5, 3.85) + ofBoard("dg", 4.4, 8.65) + ofBoard("cm", 9.2, 13.4) : "";
@@ -15133,7 +15305,7 @@ function ofScene(){
   let rail = ""; for (let y = 0; y <= D; y += 1) rail += `M${ofPt(W, y, 0)}L${ofPt(W, y, 1.05)}`;
   rail += `M${ofPt(W, 0, 1.05)}L${ofPt(W, D, 1.05)}M${ofPt(W, 0, .55)}L${ofPt(W, D, .55)}`;
   const railBack = !ofSeen(1, 0), railSVG = `<path class="ofrail" d="${rail}"/>`;
-  return `<svg class="ofscene" viewBox="0 0 ${OFI.vw} ${OFI.vh}" role="img" aria-label="Oficina de Marketing de Retail (maqueta): áreas de Coordinación, Diseño gráfico, Community Manager, Sala de reunión, Robots de datos, Agentes IA y Descanso">
+  return `<svg class="ofscene" viewBox="${ofViewBox()}" role="img" aria-label="Oficina de Marketing de Retail (maqueta): áreas de Coordinación, Diseño gráfico, Community Manager, Sala de reunión, Robots de datos, Agentes IA y Descanso">
     <defs><radialGradient id="oflight"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>
     ${walls}${pipe}${boards}${tv}${floor}${zones}${railBack ? railSVG : ""}
     <g class="ofitems">${f.map(x => x.ch ? x.svg.replace("<g ", `<g data-d="${x.d.toFixed(3)}" `) : `<g class="ofi" data-d="${x.d.toFixed(3)}">${x.svg}</g>`).join("")}</g>${labs}${railBack ? "" : railSVG}</svg>`;
@@ -15151,7 +15323,7 @@ function ofTick(t){
     if (!s.walk && now >= s.until) ofDecide(c, s, L);
     if (s.walk) ofStep(c, s, L, dt);
     const el = document.getElementById("ofch-" + c.id); if (!el) return; const d = ofDepth(s.x, s.y); pos.push([d, el, c.id]);
-    const [px, py] = ofP(s.x, s.y), tr = `translate(${px.toFixed(1)},${py.toFixed(1)})`; if (el.getAttribute("transform") !== tr) el.setAttribute("transform", tr);
+    const [px, py] = ofP(s.x, s.y), tr = ofTr(px, py); if (el.getAttribute("transform") !== tr) el.setAttribute("transform", tr);
     const k = ofLook(c, s, L); if (el.getAttribute("class") !== k.cls) el.setAttribute("class", k.cls);
     const b = el.querySelector(".ofbub"); if (b){ const bc = "ofbub" + (k.emo ? "" : " off"); if (b.getAttribute("class") !== bc) b.setAttribute("class", bc); const bt = b.querySelector("text"); if (bt.textContent !== k.emo) bt.textContent = k.emo; }
     if (s.txt !== k.txt){ s.txt = k.txt; const lab = (c.kind === "r" ? `${c.name} (robot de datos)` : c.name) + ": " + k.txt; el.setAttribute("aria-label", lab); const tt = el.querySelector("title"); if (tt) tt.textContent = lab; ofNowPaint(); } });
@@ -15165,20 +15337,49 @@ function ofTick(t){
 }
 const ofSimStart = () => { if (!ofSim.raf && page === "oficina"){ ofSim.last = 0; ofSim.raf = requestAnimationFrame(ofTick); } };
 // Girar la oficina: arrastrando con el mouse o el dedo, o con los botones (se recuerda en este dispositivo)
-const ofSaveRot = () => { try { localStorage.setItem("rmh-ofrot", String(Math.round(OFR.a * 1000) / 1000)); } catch (e){} };
-function ofRedraw(){ if (ofRedraw.q) return; ofRedraw.q = requestAnimationFrame(() => { ofRedraw.q = 0; const sc = document.querySelector(".ofscroll"); if (sc && page === "oficina"){ sc.innerHTML = ofScene(); ofNowPaint(); } }); }
+const ofSaveRot = () => { try { localStorage.setItem("rmh-ofview", JSON.stringify({ a:Math.round(OFR.a * 1000) / 1000, p:Math.round(OFR.p * 1000) / 1000 })); } catch (e){} };
+function ofRedraw(){ if (ofRedraw.q) return; ofRedraw.q = requestAnimationFrame(() => { ofRedraw.q = 0; const sc = document.querySelector(".ofscroll"); if (sc && page === "oficina"){ sc.innerHTML = ofScene(); ofNowPaint(); ofZoomUI(); } }); }
 const ofSetRot = a => { OFR.a = Math.atan2(Math.sin(a), Math.cos(a)); ofRedraw(); };
-function ofTurn(to){ const from = OFR.a, d = Math.atan2(Math.sin(to - from), Math.cos(to - from)), t0 = performance.now(), ms = ofReduce() ? 1 : 420;
-  const step = t => { const k = Math.min(1, (t - t0) / ms), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; ofSetRot(from + d * e); if (k < 1) requestAnimationFrame(step); else ofSaveRot(); }; requestAnimationFrame(step); }
-let ofDrag = null;
-document.addEventListener("pointerdown", e => { if (page !== "oficina" || (e.button || 0) > 0 || !e.target.closest?.(".ofscroll")) return; ofDrag = { id:e.pointerId, x:e.clientX, a:OFR.a, moved:false }; });
-document.addEventListener("pointermove", e => { if (!ofDrag || e.pointerId !== ofDrag.id) return; const dx = e.clientX - ofDrag.x; if (!ofDrag.moved && Math.abs(dx) < 6) return;
-  if (!ofDrag.moved){ ofDrag.moved = true; document.querySelector(".ofstage")?.classList.add("drag"); } ofSetRot(ofDrag.a + dx * .0065); });
-const ofEndDrag = e => { if (!ofDrag || e.pointerId !== ofDrag.id) return; const moved = ofDrag.moved; ofDrag = null; document.querySelector(".ofstage")?.classList.remove("drag");
-  if (moved){ ofSaveRot(); const kill = ev => { ev.stopPropagation(); ev.preventDefault(); }; document.addEventListener("click", kill, { capture:true, once:true }); setTimeout(() => document.removeEventListener("click", kill, true), 80); } };
+const ofSetTilt = p => { OFR.p = Math.min(OF_PMAX, Math.max(OF_PMIN, p)); ofRedraw(); };
+// Zoom y encuadre: se cambia el viewBox (no hace falta redibujar)
+const ofViewBox = () => `${OFV.x.toFixed(1)} ${OFV.y.toFixed(1)} ${(OFI.vw / OFV.z).toFixed(1)} ${(OFI.vh / OFV.z).toFixed(1)}`;
+const ofClampV = () => { OFV.z = Math.min(4, Math.max(1, OFV.z)); OFV.x = Math.min(OFI.vw - OFI.vw / OFV.z, Math.max(0, OFV.x)); OFV.y = Math.min(OFI.vh - OFI.vh / OFV.z, Math.max(0, OFV.y)); };
+const ofApplyV = () => { ofClampV(); const sv = document.querySelector(".ofscene"); if (sv) sv.setAttribute("viewBox", ofViewBox()); ofZoomUI(); };
+const ofZoomUI = () => { const t = document.querySelector(".ofrot [data-ofzoomv]"); if (t) t.textContent = Math.round(OFV.z * 100) + "%"; document.querySelector(".ofstage")?.classList.toggle("zoomed", OFV.z > 1.01); };
+function ofZoomAt(z, cx, cy){ // z nuevo; (cx, cy) en pantalla: ese punto queda quieto
+  const sv = document.querySelector(".ofscene"); if (!sv) return; const r = sv.getBoundingClientRect(), fx = r.width ? (cx - r.left) / r.width : .5, fy = r.height ? (cy - r.top) / r.height : .5;
+  const px = OFV.x + fx * OFI.vw / OFV.z, py = OFV.y + fy * OFI.vh / OFV.z; OFV.z = Math.min(4, Math.max(1, z)); OFV.x = px - fx * OFI.vw / OFV.z; OFV.y = py - fy * OFI.vh / OFV.z; ofApplyV(); }
+const ofPanBy = (dx, dy) => { const sv = document.querySelector(".ofscene"); if (!sv) return; const r = sv.getBoundingClientRect(); OFV.x -= dx * (OFI.vw / OFV.z) / (r.width || 1); OFV.y -= dy * (OFI.vh / OFV.z) / (r.height || 1); ofApplyV(); };
+function ofAnim(to, ms = 420){ const fa = OFR.a, fp = OFR.p, da = to.a === undefined ? 0 : Math.atan2(Math.sin(to.a - fa), Math.cos(to.a - fa)), dp = to.p === undefined ? 0 : to.p - fp, t0 = performance.now(); ms = ofReduce() ? 1 : ms;
+  const step = t => { const k = Math.min(1, (t - t0) / ms), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; OFR.a = Math.atan2(Math.sin(fa + da * e), Math.cos(fa + da * e)); OFR.p = fp + dp * e; ofRedraw(); if (k < 1) requestAnimationFrame(step); else ofSaveRot(); }; requestAnimationFrame(step); }
+const ofTurn = to => ofAnim({ a:to });
+// Con el mouse o un dedo: de costado gira, para arriba o abajo inclina (Shift o botón del medio/derecho: mueve el encuadre).
+// Con dos dedos: pellizcar hace zoom y moverlos corre el encuadre. La rueda del mouse hace zoom donde está el puntero.
+const ofPtrs = new Map(); let ofDrag = null;
+const ofStageCls = (k, on) => document.querySelector(".ofstage")?.classList.toggle(k, on);
+document.addEventListener("pointerdown", e => { if (page !== "oficina" || !e.target.closest?.(".ofscroll")) return;
+  ofPtrs.set(e.pointerId, { x:e.clientX, y:e.clientY });
+  if (ofPtrs.size === 2){ const [p, q] = [...ofPtrs.values()]; ofDrag = { pinch:true, d:Math.hypot(p.x - q.x, p.y - q.y) || 1, z:OFV.z, mx:(p.x + q.x) / 2, my:(p.y + q.y) / 2, moved:true }; ofStageCls("drag", true); return; }
+  ofDrag = { id:e.pointerId, x:e.clientX, y:e.clientY, lx:e.clientX, ly:e.clientY, a:OFR.a, p:OFR.p, moved:false, pan:e.shiftKey || e.button === 1 || e.button === 2 }; });
+document.addEventListener("pointermove", e => { if (!ofDrag || !ofPtrs.has(e.pointerId)) return; ofPtrs.set(e.pointerId, { x:e.clientX, y:e.clientY });
+  if (ofDrag.pinch){ if (ofPtrs.size < 2) return; const [p, q] = [...ofPtrs.values()], d = Math.hypot(p.x - q.x, p.y - q.y) || 1, mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
+    ofZoomAt(ofDrag.z * d / ofDrag.d, mx, my); ofPanBy(mx - ofDrag.mx, my - ofDrag.my); ofDrag.mx = mx; ofDrag.my = my; e.preventDefault(); return; }
+  if (e.pointerId !== ofDrag.id) return; const dx = e.clientX - ofDrag.x, dy = e.clientY - ofDrag.y; if (!ofDrag.moved && Math.hypot(dx, dy) < 6) return;
+  if (!ofDrag.moved){ ofDrag.moved = true; ofStageCls("drag", true); }
+  if (ofDrag.pan){ ofPanBy(e.clientX - ofDrag.lx, e.clientY - ofDrag.ly); ofDrag.lx = e.clientX; ofDrag.ly = e.clientY; return; }
+  OFR.a = Math.atan2(Math.sin(ofDrag.a + dx * .0065), Math.cos(ofDrag.a + dx * .0065)); OFR.p = Math.min(OF_PMAX, Math.max(OF_PMIN, ofDrag.p + dy * .0055)); ofRedraw(); });
+const ofEndDrag = e => { if (!ofPtrs.has(e.pointerId)) return; ofPtrs.delete(e.pointerId); if (!ofDrag) return;
+  if (ofDrag.pinch){ if (ofPtrs.size === 0){ ofDrag = null; ofStageCls("drag", false); } else { const [id, p] = [...ofPtrs.entries()][0]; ofDrag = { id, x:p.x, y:p.y, lx:p.x, ly:p.y, a:OFR.a, p:OFR.p, moved:true, pan:false }; } ofKillClick(); return; }
+  if (e.pointerId !== ofDrag.id) return; const moved = ofDrag.moved; ofDrag = null; ofStageCls("drag", false); if (moved){ ofSaveRot(); ofKillClick(); } };
+const ofKillClick = () => { const kill = ev => { ev.stopPropagation(); ev.preventDefault(); }; document.addEventListener("click", kill, { capture:true, once:true }); setTimeout(() => document.removeEventListener("click", kill, true), 80); };
 document.addEventListener("pointerup", ofEndDrag); document.addEventListener("pointercancel", ofEndDrag);
-document.addEventListener("click", e => { const b = e.target.closest?.("[data-ofrot]"); if (!b || page !== "oficina") return; const k = +b.dataset.ofrot, q = Math.PI / 2;
-  ofTurn(k === 0 ? 0 : (Math.round(OFR.a / q) + k) * q); });
+document.addEventListener("contextmenu", e => { if (page === "oficina" && e.target.closest?.(".ofscroll")) e.preventDefault(); });
+document.addEventListener("wheel", e => { if (page !== "oficina" || !e.target.closest?.(".ofscroll")) return; const f = Math.exp(-e.deltaY * (e.ctrlKey ? .01 : .0015)), z = Math.min(4, Math.max(1, OFV.z * f));
+  if (Math.abs(z - OFV.z) < 1e-3) return; /* en el mínimo o el máximo, la rueda vuelve a mover la página */ e.preventDefault(); ofZoomAt(z, e.clientX, e.clientY); }, { passive:false });
+document.addEventListener("click", e => { if (page !== "oficina") return; const b = e.target.closest?.("[data-ofrot],[data-ofzoom],[data-oftilt]"); if (!b) return; const q = Math.PI / 2;
+  if (b.hasAttribute("data-ofzoom")){ const r = document.querySelector(".ofscene")?.getBoundingClientRect(); if (r) ofZoomAt(OFV.z * (b.dataset.ofzoom === "1" ? 1.4 : 1 / 1.4), r.left + r.width / 2, r.top + r.height / 2); return; }
+  if (b.hasAttribute("data-oftilt")){ ofAnim({ p:OFR.p > 1.2 ? OF_P0 : 85 * Math.PI / 180 }); return; }
+  const k = +b.dataset.ofrot || 0; if (k === 0){ OFV.z = 1; OFV.x = 0; OFV.y = 0; ofApplyV(); ofAnim({ a:0, p:OF_P0 }); } else ofTurn((Math.round(OFR.a / q) + k) * q); });
 // “Ahora mismo”: la reunión (si hay), qué hace cada agente, y los robots de datos que trabajan o tienen un problema
 function ofNowHTML(){
   const L = ofLocs(OF_ROBOTS().length), list = ofChars().map(c => ({ c, s:ofState(c, L) })).map(({ c, s }) => ({ c, k:ofLook(c, s, L) })), meet = ofMeetNow(), next = ofMeetNow.next;
@@ -15234,18 +15435,18 @@ function ofPanelAgent(a){
   return `${head}${pick}
     <div class="agmsgs" aria-live="polite">${msgs.length ? "" : `<div class="agmsg a hello"><div class="agtxt"><p>${esc(a.hello)}</p></div></div>`}${msgs.map(m => m.r === "user"
       ? `<div class="agmsg u"><div class="agtxt"><p>${esc(m.t)}</p></div><small>${esc(firstName(m.by || ""))}</small></div>`
-      : `<div class="agmsg a${m.ok ? " liked" : ""}"><div class="agtxt">${agMd(m.t)}</div><div class="agacts"><button type="button" class="btn sm" data-agcopy="${esc(m.id)}">${icon("copy")} Copiar</button><button type="button" class="btn sm${m.ok ? " on" : ""}" data-agok="${esc(m.id)}">${icon("thumbs-up")} ${m.ok ? "Le gustó" : "Así está bien"}</button><button type="button" class="btn sm" data-agfix="${esc(m.id)}">${icon("pencil")} Corregir</button></div>
+      : `<div class="agmsg a${m.ok ? " liked" : ""}"><div class="agtxt">${agMd(m.t)}</div>${m.n ? `<small class="agnote">${m.robot ? "🤖 " : ""}${esc(m.n)}</small>` : ""}<div class="agacts"><button type="button" class="btn sm" data-agcopy="${esc(m.id)}">${icon("copy")} Copiar</button><button type="button" class="btn sm${m.ok ? " on" : ""}" data-agok="${esc(m.id)}">${icon("thumbs-up")} ${m.ok ? "Le gustó" : "Así está bien"}</button><button type="button" class="btn sm" data-agfix="${esc(m.id)}">${icon("pencil")} Corregir</button></div>
         ${ofUI.fix === m.id ? `<form class="agfix" id="agFixForm" data-ag="${a.id}"><input class="base" name="t" maxlength="500" placeholder="¿Qué tiene que hacer distinto? (ej.: más corto, sin emojis, el precio primero)" required autofocus><button type="submit" class="btn primary sm">Enseñarle</button></form>` : ""}</div>`).join("")}
-      ${busy ? `<div class="agmsg a typing"><div class="agtxt"><p>${agMode() === "plan" ? "Preparando el pedido para Claude" : esc(a.name) + " está pensando"}<span class="dots"><i></i><i></i><i></i></span></p></div></div>` : ""}</div>
+      ${busy ? `<div class="agmsg a typing"><div class="agtxt"><p>${agMode() === "plan" ? "Preparando el pedido para Claude" : agMode() === "robot" ? "🤖 " + esc(a.name) + " está armando la respuesta" : esc(a.name) + " está pensando"}<span class="dots"><i></i><i></i><i></i></span></p></div></div>` : ""}</div>
     ${ofUI.plan?.a === a.id && !busy ? `<div class="agplan"><b>${icon("clipboard-list")} Listo para pasárselo a Claude</b>
       <ol><li>Tocá <b>Copiar para Claude</b>.</li><li>Tocá <b>Abrir Claude</b>, pegalo en un chat nuevo y envialo.</li><li>Copiá lo que responda y pegalo acá abajo.</li></ol>
       <div class="chips"><button type="button" class="btn primary" data-agpcopy>${icon("copy")} Copiar para Claude</button><a class="btn" href="https://claude.ai/new" target="_blank" rel="noopener">${icon("external-link")} Abrir Claude</a><button type="button" class="btn" data-agpcancel>Cancelar</button></div>
       <details><summary>Ver el texto (si no se copia solo)</summary><textarea class="base" rows="6" readonly data-agptext>${esc(ofUI.plan.prompt)}</textarea></details>
       <form id="agPasteForm" class="agform" data-ag="${a.id}"><textarea class="base" name="t" rows="4" maxlength="12000" placeholder="Pegá acá la respuesta de Claude" required></textarea><button type="submit" class="btn primary">${icon("save")} Guardar</button></form></div>` : ""}
     ${ofUI.err && !busy && bye ? `<div class="ofErr bye">${icon("hand")}<div><b>${esc(ofUI.err)}</b>${at && /respuestas del día/.test(ofUI.err) ? `<p>Si hace falta hoy, subí el número en “Respuestas por día”, arriba de la oficina.</p>` : ""}</div></div>` : ""}
-    ${ofUI.err && !busy && !bye ? `<div class="ofErr${nokey ? " key" : ""}">${icon("triangle-alert")}<div><b>${esc(ofUI.err)}</b>${nokey ? `<ol><li>Entrá a <b>console.anthropic.com</b> con la cuenta de la empresa → <b>API Keys</b> → <b>Create Key</b> y copiala. <b>No la pegues en ningún chat.</b></li><li>Entrá a <b>vercel.com</b> → el proyecto <b>mkt</b> → <b>Settings</b> → <b>Environment Variables</b> → <b>Add</b>: nombre <code>ANTHROPIC_API_KEY</code>, valor: la clave, en <b>Production</b> y <b>Preview</b> → <b>Save</b>.</li><li>En <b>Deployments</b>, tocá los tres puntos del último → <b>Redeploy</b>. Listo: volvé a escribirle.</li></ol>${at ? `<button type="button" class="btn sm" data-agmode="plan">${icon("clipboard-list")} Mientras tanto, usar con mi plan (copiar y pegar)</button>` : ""}` : ""}</div></div>` : ""}
+    ${ofUI.err && !busy && !bye ? `<div class="ofErr${nokey ? " key" : ""}">${icon("triangle-alert")}<div><b>${esc(ofUI.err)}</b>${nokey ? `<ol><li>Entrá a <b>console.anthropic.com</b> con la cuenta de la empresa → <b>API Keys</b> → <b>Create Key</b> y copiala. <b>No la pegues en ningún chat.</b></li><li>Entrá a <b>vercel.com</b> → el proyecto <b>mkt</b> → <b>Settings</b> → <b>Environment Variables</b> → <b>Add</b>: nombre <code>ANTHROPIC_API_KEY</code>, valor: la clave, en <b>Production</b> y <b>Preview</b> → <b>Save</b>.</li><li>En <b>Deployments</b>, tocá los tres puntos del último → <b>Redeploy</b>. Listo: volvé a escribirle.</li></ol>${at ? `<button type="button" class="btn sm" data-agmode="robot">${icon("bot")} Usar el robot de la app (sin Claude ni costo)</button> <button type="button" class="btn sm" data-agmode="plan">${icon("clipboard-list")} Usar con mi plan (copiar y pegar)</button>` : ""}` : ""}</div></div>` : ""}
     <div class="chips agquick">${a.quick.map(q => `<button type="button" class="chip" data-agq="${esc(q)}" ${busy ? "disabled" : ""}>${icon("sparkles")} ${esc(q)}</button>`).join("")}</div>
-    <form id="agForm" class="agform" data-ag="${a.id}"><textarea class="base" name="t" rows="2" maxlength="4000" placeholder="Escribile a ${esc(a.name)}…" ${busy ? "disabled" : ""}></textarea><button type="submit" class="btn primary" ${busy ? "disabled" : ""} aria-label="Enviar">${icon("send")}</button></form>
+    <form id="agForm" class="agform" data-ag="${a.id}"><textarea class="base" name="t" rows="2" maxlength="4000" placeholder="${a.id === "claudia" ? "Pasale referencias: precio, descuento, fechas, sucursales, lo que tiene que decir… (ej.: 20% en vinos hasta el domingo)" : "Escribile a " + esc(a.name) + "…"}" ${busy ? "disabled" : ""}></textarea><button type="submit" class="btn primary" ${busy ? "disabled" : ""} aria-label="Enviar">${icon("send")}</button></form>
     ${at && msgs.length ? `<button type="button" class="btn sm ofclear" data-agclear="${a.id}">${icon("trash-2")} Borrar la charla</button>` : ""}`;
 }
 function ofPanel(){
@@ -15257,10 +15458,13 @@ function pOficina(){
   if (!ofCan()) return `<div class="panel"><div class="empty">La Oficina de Agentes la ven solo Admin total y Admin.</div></div>`;
   const on = PEOPLE.filter(pp => pp.active !== false && ONLINE[pp.id]).length;
   return `<div class="head ofhead"><div><h1 class="pmh">${pmIco("building-2")}Oficina de Agentes</h1><p class="sub">La oficina en maqueta. Los que se mueven son los robots (los agentes de IA y los robots de datos): con trabajo están en su compu y, si no, se toman un descanso. Las personas no aparecen: cada área tiene su cuadro con cómo viene (tocalo para ver el detalle). Tocá un agente para hablarle, entrenarlo y darle skills.</p></div>
-    <div class="oflegend">${(at => { const plan = agMode() === "plan";
-      return `<span class="ofmode">${icon("bot")} Respuestas: ${at ? `<button type="button" class="chip${plan ? " on" : ""}" data-agmode="plan" title="Sin costo extra: se pega en claude.ai con el plan">Con el plan de Claude (copiar y pegar)</button><button type="button" class="chip${plan ? "" : " on"}" data-agmode="api" title="Responden solos en la app: se paga aparte, por uso">Automáticas (cuenta de Claude)</button>` : `<b>${plan ? "con el plan de Claude (copiar y pegar)" : "automáticas"}</b>`}</span>`
+    <div class="oflegend">${(at => { const md = agMode(), plan = md !== "api", lab = { robot:"Robot de la app (sin costo)", plan:"Con el plan de Claude (copiar y pegar)", api:"Automáticas (cuenta de Claude)" };
+      return `<span class="ofmode">${icon("bot")} Respuestas: ${at ? ["robot", "plan", "api"].map(k => `<button type="button" class="chip${md === k ? " on" : ""}" data-agmode="${k}" title="${k === "robot" ? "Responden acá mismo con los datos de la app y el manual: sin Claude, sin clave y sin costo" : k === "plan" ? "Sin costo extra: se pega en claude.ai con el plan" : "Responden solos con Claude: se paga aparte, por uso"}">${lab[k]}</button>`).join("") : `<b>${lab[md]}</b>`}</span>`
         + (plan ? "" : `<span class="oflim" title="Respuestas de los agentes hoy (entre los tres) y el límite del día">Hoy: <b>${agUsed()}</b> de ${at ? `<input type="number" class="base" min="1" max="500" step="1" data-aglim value="${agLimit()}" aria-label="Respuestas por día">` : `<b>${agLimit()}</b>`} respuestas por día</span>`); })(viewer.role === "Admin total")}<span><i style="background:#22c55e"></i>trabajando</span><span><i style="background:#f59e0b"></i>en pausa</span><span><i style="background:#ef4444"></i>con un problema</span><span><i style="background:#7dd3fc;border-radius:3px"></i>pantalla prendida: ${on} del equipo conectados</span></div></div>
-    <div class="ofwrap${ofUI.sel ? " sel" : ""}"><div class="ofleft"><div class="ofstage"><div class="ofscroll">${ofScene()}</div><div class="ofrot" role="group" aria-label="Girar la oficina"><span>Arrastrá para girar</span><button type="button" class="btn sm ib" data-ofrot="-1" title="Girar a la izquierda" aria-label="Girar a la izquierda">${icon("rotate-ccw")}</button><button type="button" class="btn sm" data-ofrot="0" title="Volver a la vista de la foto">Vista inicial</button><button type="button" class="btn sm ib" data-ofrot="1" title="Girar a la derecha" aria-label="Girar a la derecha">${icon("rotate-cw")}</button></div></div><div class="ofnow" id="ofnow" aria-label="Ahora mismo en la oficina"><b>Ahora mismo</b>${ofNowHTML()}</div></div>${ofPanel()}</div>
+    <div class="ofwrap${ofUI.sel ? " sel" : ""}"><div class="ofleft"><div class="ofstage"><div class="ofscroll">${ofScene()}</div><div class="ofrot" role="group" aria-label="Mover la vista de la oficina"><span title="Arrastrá de costado para girar y para arriba o abajo para inclinar. Rueda del mouse o dos dedos: zoom. Con zoom, Shift + arrastrar (o dos dedos) mueve la vista.">Arrastrá: girar e inclinar · rueda o 2 dedos: zoom</span>
+      <button type="button" class="btn sm ib" data-ofzoom="-1" title="Alejar" aria-label="Alejar">${icon("minus")}</button><b class="ofzv" data-ofzoomv>${Math.round(OFV.z * 100)}%</b><button type="button" class="btn sm ib" data-ofzoom="1" title="Acercar" aria-label="Acercar">${icon("plus")}</button>
+      <button type="button" class="btn sm ib" data-ofrot="-1" title="Girar a la izquierda" aria-label="Girar a la izquierda">${icon("rotate-ccw")}</button><button type="button" class="btn sm ib" data-ofrot="1" title="Girar a la derecha" aria-label="Girar a la derecha">${icon("rotate-cw")}</button>
+      <button type="button" class="btn sm" data-oftilt title="Mirar desde arriba (o volver)">Desde arriba</button><button type="button" class="btn sm" data-ofrot="0" title="Volver a la vista de la foto">Vista inicial</button></div></div><div class="ofnow" id="ofnow" aria-label="Ahora mismo en la oficina"><b>Ahora mismo</b>${ofNowHTML()}</div></div>${ofPanel()}</div>
     ${(setTimeout(ofSimStart, 0), "")}<div class="ofagents">${AG_DEF.map(a => `<button type="button" class="panel ofag" data-ofc="a:${a.id}" style="--c:${a.color}"><span class="ofbot" style="background:${a.color}">${icon("bot")}</span><span><b>${esc(a.name)}</b><small>${esc(a.role)}</small></span><em>${agMsgs(a.id).length ? agMsgs(a.id).length + " mensajes" : "Nueva"}</em></button>`).join("")}</div>`;
 }
 document.addEventListener("click", e => {
@@ -15269,7 +15473,8 @@ document.addEventListener("click", e => {
   const q = t.closest("[data-agq]"); if (q){ const g = t.closest("[data-ofc]"); if (g && g.dataset.ofc !== ofUI.sel){ ofUI.sel = g.dataset.ofc; ofUI.tab = "chat"; } const id = (ofUI.sel || "").slice(2); if (AG[id]){ ofUI.tab = "chat"; agSend(id, q.dataset.agq); } return; }
   const o = t.closest("[data-ofc]"); if (o){ if (ofUI.sel !== o.dataset.ofc){ ofUI.sel = o.dataset.ofc; ofUI.tab = "chat"; ofUI.err = ""; ofUI.fix = ""; } render(); agScroll(); return; }
   if (t.closest("[data-ofclose]")){ ofUI.sel = ""; render(); return; }
-  const md = t.closest("[data-agmode]"); if (md && viewer.role === "Admin total"){ AGENTS._modo = md.dataset.agmode === "api" ? "api" : "plan"; ofUI.err = ""; ofUI.errCode = ""; ofUI.plan = null; render(); toast(agMode() === "plan" ? "Los agentes arman el pedido y vos lo pegás en Claude (sin costo extra)." : "Los agentes responden solos con la cuenta de Claude (se paga por uso)."); return; }
+  const md = t.closest("[data-agmode]"); if (md && viewer.role === "Admin total"){ const v = md.dataset.agmode; AGENTS._motor = ["plan", "api"].includes(v) ? v : "robot"; ofUI.err = ""; ofUI.errCode = ""; ofUI.plan = null; render();
+    toast({ robot:"Los agentes responden con el robot de la app: sin Claude y sin costo.", plan:"Los agentes arman el pedido y vos lo pegás en Claude (sin costo extra).", api:"Los agentes responden solos con la cuenta de Claude (se paga por uso)." }[agMode()]); return; }
   if (t.closest("[data-agpcopy]") && ofUI.plan){ const done = () => { toast("Copiado. Ahora tocá “Abrir Claude” y pegalo."); }, fail = () => { const d = document.querySelector(".agplan details"); if (d){ d.open = true; const x = d.querySelector("textarea"); x.focus(); x.select(); } toast("No se pudo copiar solo: copiá el texto de abajo."); };
     try { navigator.clipboard ? navigator.clipboard.writeText(ofUI.plan.prompt).then(done, fail) : fail(); } catch (er){ fail(); } return; }
   if (t.closest("[data-agpcancel]") && ofUI.plan){ const mid = ofUI.plan.mid; AGENT_CHAT = AGENT_CHAT.filter(m => m.id !== mid); ofUI.plan = null; render(); return; }
