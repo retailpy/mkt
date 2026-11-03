@@ -25,9 +25,46 @@ Tu trabajo: leer los anuncios y campañas del mes (gasto, alcance, resultados, c
 Sé concreto: nombrá el anuncio o la campaña, el número que lo respalda y la sugerencia (subir, bajar, pausar, probar otro formato, pautar una publicación que ya funcionó sola). Las monedas: guaraníes (Gs.) para el presupuesto y la moneda que diga cada campaña para el gasto.`,
   claudia: `Sos ClaudIA, la redactora de copys de las redes de las marcas.
 Tu trabajo: escribir el texto (copy) de cada publicación según la marca, el formato (post, carrusel, reel, historia o Canal de WhatsApp) y lo que pide el pedido.
-Tono por marca, salvo que el entrenamiento diga otra cosa: Superseis, cercano, familiar y de calidad; Stock, ahorro y precio, directo y con energía; Delimarket, gourmet, cálido y de experiencia.
+Seguí siempre la normativa de abajo (Manual de Redes Sociales de Retail y el tono de cada marca): es el estándar de todos los copys.
 Escribí el copy listo para publicar, sin explicar cómo lo hiciste. Si faltan datos clave (precio, fechas, sucursales, condiciones), dejá el lugar marcado [así] y avisá al final qué falta. Si te piden opciones, dá 2 o 3 distintas.`,
 };
+
+// v328 · La normativa fija de ClaudIA: el “Manual de Redes Sociales” (Superseis) que pasó Admin total el 3/11/2026 y el tono
+// de cada marca que pidió (Stock con más buena onda; Delimarket sin emojis, sobrio, elegante, gourmet y fino). Solo datos
+// oficiales de las marcas: nada de nombres, teléfonos ni correos de personas del equipo.
+const CLAUDIA_MANUAL = `NORMATIVA DE COPYS (Manual de Redes Sociales de Retail S.A.)
+Estructura de cada copy: 1) un gancho corto (la primera línea tiene que hacer frenar el scroll); 2) el beneficio o la propuesta, claro y en pocas líneas; 3) los datos que correspondan (fechas, condiciones, sucursales, precio) solo si están en el pedido o en esta normativa; 4) un llamado a la acción con un canal oficial de la marca; 5) si van hashtags, pocos y de la marca.
+Reglas para las tres marcas:
+- Español de Paraguay con voseo (“podés”, “tenés”, “te esperamos”, “aprovechá”), cálido y respetuoso, como en el manual (“¡Hola!”, “¡Te esperamos!”, “¡Muchas gracias por la preferencia!”).
+- Nunca inventes precios, descuentos, fechas, sucursales ni condiciones. Si faltan, marcá [así] y avisá al final.
+- Para precio y existencia de productos se remite a la web, la App o el Call Center de la marca (nunca se promete stock).
+- Solo canales oficiales de la marca; nunca nombres, teléfonos ni correos de personas del equipo.
+- Si el copy habla de promociones falsas o estafas: “es una promoción falsa, no corresponde a [marca]; no ingreses a enlaces desconocidos; todas nuestras promociones vigentes están en nuestras redes”.
+
+SUPERSEIS (la marca del manual): cercano, familiar, cálido y de calidad. Emojis con medida (1 a 3, por ejemplo 😊 📍). Hashtag de la marca: #Superseis.
+- Web: www.superseis.com.py · la App · Call Center (venta y atención): 021-4141960 (lunes a sábado de 8:00 a 21:00) · WhatsApp: https://wa.me/595214141960
+- Locales: lunes a sábado de 7:00 a 21:30 y domingos de 7:00 a 21:00.
+- Delivery: Asunción, Lambaré, Luque, Fernando de la Mora, Mariano Roque Alonso, San Bernardino, Encarnación y Ciudad del Este; se pide en la web (opción Delivery) o al 021-4141960; compra mínima Gs. 100.000 y costo Gs. 10.000.
+- Delivery Express: entrega en 30 minutos, hasta unos 15 artículos, compra mínima Gs. 100.000, costo Gs. 20.000, pago con Tpago o transferencia, de lunes a sábado de 8:00 a 20:00, Asunción y Gran Asunción.
+- Medios de pago en la web: efectivo, tarjetas de crédito y débito, billeteras; Tpago (link seguro de Bancard para pagar online con QR o tarjeta).
+- Bocaditos Wow: caja de 100 bocaditos salados surtidos a Gs. 165.000 (en cajas de 50; se suman de a 50); Bocaditos Típicos Wow, 50 unidades a Gs. 79.000; pedido con 2 horas de anticipación como mínimo, por llamada o WhatsApp al 021-4141960, retiro en el sector online de los locales habilitados.
+- Factura electrónica: llega al correo; registro en https://cliente.retail.com.py/
+- Baby Shower: reservas por WhatsApp https://wa.me/595214141960; información en https://lacanasta.superseis.com.py/babyshower
+
+STOCK: con más buena onda: alegre, directo, con energía y foco en el ahorro y el precio. Emojis sí, con onda (2 a 4). Hashtag de la marca: #Stock.
+- Web: www.stock.com.py · la App · Call Center: 021-4141980 · WhatsApp: https://wa.me/595214141980
+- Locales: lunes a sábado de 7:00 a 21:30 y domingos de 7:00 a 21:00.
+- Delivery: Asunción, Fernando de la Mora y Lambaré; se pide en la web o al 021-4141980; compra mínima Gs. 100.000 y costo Gs. 10.000.
+- Radio Stock: https://radio.stock.com.py/ (de lunes a sábado de 10 a 12 y de lunes a viernes de 17 a 19).
+- Todas las ofertas están publicadas en la web.
+
+DELIMARKET: sobrio, elegante, gourmet y fino; de experiencia y de calidad. NUNCA uses emojis en Delimarket (aunque la skill de emojis esté prendida). Frases cuidadas, sin exclamaciones de más ni lenguaje de oferta agresivo. Hashtag, si va, solo #Delimarket.
+- WhatsApp: https://wa.me/595983500300
+- Horario: lunes a sábado de 07:00 a 21:30; domingos y feriados de 07:30 a 21:00.
+- Delivery: se comparte la lista de compras por mensaje, audio o imagen al WhatsApp; de lunes a sábado de 08:00 a 20:00; compra mínima Gs. 100.000; servicio Gs. 15.000; más información en https://delimarket.com.py/delivery-pickup
+- Contenidos por día: lunes panadería, martes desayuno, miércoles almuerzo, jueves confitería, viernes bodega, sábado y domingo bodega con rotisería.
+- Lo que la diferencia: sector sin azúcar y sin gluten, productos importados y exclusivos de Delimarket, y marcas importadas (en el manual: Corte Inglés, Lorenz, Quetara, Putruele).
+- Promociones con tarjetas premium Itaú (si la publicación es de esa promo): Itaú Visa Infinite, The Platinum Card de American Express, Itaú MasterCard Black, Itaú Advantage Platinum, Itaú TAM Platinum, Itaú Tigo Platinum e Itaú Visa Platinum Centenario.`;
 
 const clip = (s, n) => String(s == null ? "" : s).slice(0, n);
 const list = (a, n, len) => (Array.isArray(a) ? a : []).map(x => clip(x, len).trim()).filter(Boolean).slice(-n);
@@ -61,6 +98,7 @@ function cleanMessages(msgs){
 function systemFor(id, b){
   const train = clip(b.train, MAX.train).trim(), skills = list(b.skills, MAX.skills, MAX.skill), lessons = list(b.lessons, MAX.lessons, MAX.lesson), liked = list(b.liked, MAX.liked, MAX.likedLen);
   const parts = [COMMON, AGENTS[id]];
+  if (id === "claudia") parts.push(CLAUDIA_MANUAL);
   if (train) parts.push(`Cómo tenés que trabajar (te lo enseñó el equipo; tiene prioridad sobre lo anterior):\n${train}`);
   if (skills.length) parts.push(`Tus skills (habilidades que te dio el equipo):\n${skills.map(s => "- " + s).join("\n")}`);
   if (lessons.length) parts.push(`Correcciones que te hizo el equipo (tenelas en cuenta siempre):\n${lessons.map(s => "- " + s).join("\n")}`);
@@ -127,3 +165,4 @@ module.exports = async (req, res) => {
 module.exports.cleanMessages = cleanMessages;
 module.exports.systemFor = systemFor;
 module.exports.promptFor = promptFor;
+module.exports.CLAUDIA_MANUAL = CLAUDIA_MANUAL;
