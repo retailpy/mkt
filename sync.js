@@ -85,6 +85,8 @@ const RMH = (() => {
     PEDIDOS_COM:[() => PEDIDOS_COM, v => { PEDIDOS_COM = Array.isArray(v) ? v : []; }], // v242: pedidos de activaciones de Comercial (los compradores)
     AGENTS:[() => AGENTS, v => { AGENTS = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v326: entrenamiento y skills de los agentes (Oficina de Agentes)
     AGENT_CHAT:[() => AGENT_CHAT, v => { AGENT_CHAT = Array.isArray(v) ? v : []; }], // v326: las charlas con los agentes
+    PROMPT_LOG:[() => PROMPT_LOG, v => { PROMPT_LOG = Array.isArray(v) ? v : []; }], // v334: los prompts de imágenes que se generan (sin nombres; SantIAgo)
+    COPY_LOG:[() => COPY_LOG, v => { COPY_LOG = Array.isArray(v) ? v : []; }], // v334: los copys del Generador de copy (sin nombres; ClaudIA)
     CRONOGRAMA:[() => CRONOGRAMA, v => { CRONOGRAMA = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v326: Cronograma de Acciones (lo cambia Admin total)
     TV_SCREENS:[() => TV_SCREENS, v => { TV_SCREENS = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v266: qué muestra cada televisor (TV 1 a TV 4); lo cambia Admin total
   };
