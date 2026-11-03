@@ -1133,7 +1133,8 @@ html.light .ofscene image{filter:none}
 .ofleft{display:flex;flex-direction:column;gap:10px;min-width:0}
 .ofstage{position:relative}.ofscroll{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}.ofstage.zoomed .ofscroll{cursor:grab}.ofrot .ofzv{min-width:40px;text-align:center;font-size:12px;color:#e2e8f0}.ofstage.drag .ofscroll{cursor:grabbing}.ofstage.drag .ofscene *{pointer-events:none}
 .ofrot{position:absolute;top:10px;right:12px;left:auto;max-width:calc(100% - 24px);flex-wrap:wrap;justify-content:flex-end;display:flex;align-items:center;gap:6px;padding:4px;border-radius:12px;background:rgba(15,23,42,.72);backdrop-filter:blur(6px)}.ofrot span{font-size:12px;color:#cbd5e1;padding:0 6px}.ofrot .btn{color:#fff}
-.ofscene .ofhold{display:none}.ofscene .ofch.h-cup .ofhold.cup,.ofscene .ofch.h-glass .ofhold.glass,.ofscene .ofch.h-guampa .ofhold.guampa,.ofscene .ofch.h-phone .ofhold.phone{display:inline}
+.ofscene .ofwallt.sm{font-size:8.5px}.ofscene .ofdoorp{transform-box:fill-box;transform-origin:0 50%;transition:transform .45s ease}.ofscene .ofdoor.open .ofdoorp{transform:scaleX(.16)}
+@media (prefers-reduced-motion:reduce){.ofscene .ofdoorp{transition:none}}.ofscene .ofhold{display:none}.ofscene .ofch.h-cookie .ofhold.cookie,.ofscene .ofch.h-cup .ofhold.cup,.ofscene .ofch.h-glass .ofhold.glass,.ofscene .ofch.h-guampa .ofhold.guampa,.ofscene .ofch.h-phone .ofhold.phone{display:inline}
 .ofnow .st-m{border-color:rgba(124,92,255,.6);background:rgba(124,92,255,.15)}.ofnow .st-m i{background:#7c5cff}
 .ofnow{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-size:12.5px;color:#cbd5e1}.ofnow > b{color:#fff;font-size:13px;margin-right:2px}
 .ofnow span{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:rgba(2,6,23,.45)}.ofnow span b{color:#fff}
@@ -4700,7 +4701,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v331";
+const APP_VER = "v333";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -15044,7 +15045,7 @@ const agMd = t => { const out = []; let ul = false;
     else { if (ul){ out.push("</ul>"); ul = false; } if (s.trim()) out.push(`<p>${s.replace(/^#+\s*/, "")}</p>`); } });
   if (ul) out.push("</ul>"); return out.join(""); };
 // ---- La oficina dibujada ----
-const OF_AREA = { dg:{ t:"Diseño gráfico", c:"#c98500" }, cm:{ t:"Community Manager", c:"#0ea5b7" }, ia:{ t:"Agentes IA", c:"#7c5cff" }, co:{ t:"Coordinación", c:"#199e70" }, rb:{ t:"Robots de datos", c:"#64748b" }, sa:{ t:"Sala de reunión", c:"#d95926" }, ds:{ t:"Descanso", c:"#16a34a" } };
+const OF_AREA = { dg:{ t:"Diseño gráfico", c:"#c98500" }, cm:{ t:"Community Manager", c:"#0ea5b7" }, ia:{ t:"Agentes IA", c:"#7c5cff" }, co:{ t:"Coordinación", c:"#199e70" }, rb:{ t:"Robots de datos", c:"#64748b" }, sa:{ t:"Sala de reunión", c:"#d95926" }, ds:{ t:"Descanso", c:"#16a34a" }, kc:{ t:"Cafetería", c:"#a16207" } };
 const ofPeople = r => PEOPLE.filter(pp => pp.active !== false && (Array.isArray(r) ? r.includes(pp.role) : pp.role === r));
 function ofWork(pp){
   if (pp.role === "CM"){ const w = cmWork().filter(x => !x.done && cmIn(x, pp.name)); return { w, late:w.filter(cmLate), today:w.filter(x => x.date === TODAY), cur:w.find(x => /proceso|Edición|Grabación/i.test(x.status || "")) || w.filter(x => x.date >= TODAY).sort((a, b) => a.date.localeCompare(b.date))[0] }; }
@@ -15123,10 +15124,12 @@ function ofLocs(n){
   [16.75, 17.85].forEach((x, i) => L["terere" + i] = { door:[OF_AI.V, 10.35], path:[[x, 10.35]], face:up, emo:"🧉", txt:"tomando tereré", go:"va a tomar tereré", hold:"guampa" });
   [[18.9, 8.75], [18.9, 11.0]].forEach(([x, y], i) => L["phone" + i] = { door:[OF_AI.V, y], path:[[x, y]], face:dn, emo:"📱", txt:"mirando en el celular los posteos del día", go:"va a mirar los posteos del día", hold:"phone" });
   [15.8, 16.7, 17.6].forEach((x, i) => L["sofa" + i] = { door:[OF_AI.V, 12.95], path:[[x, 12.95], [x, 12.15]], face:dn, sit:true, emo:"🎧", txt:"escuchando música", go:"va a escuchar música" });
-  L.bath = { door:[.75, OF_AI.H], path:[[.2, 5.9]], face:[-1, 0], emo:"🚻", txt:"en el baño", go:"va al baño", gone:true };
+  L.bath = { door:[.75, OF_AI.H], path:[[.2, 5.9]], face:[-1, 0], emo:"🚪", txt:"salió un rato por la puerta", go:"va a salir un rato", gone:true }; // la puerta de la pared: puede ser el baño u otra cosa
   [16.4, 17.8].forEach((x, i) => L["sala" + i] = { door:[OF_AI.V, 3.3], path:[[x, 3.3]], face:up, sit:true, emo:"💬", txt:"charlando en la sala de reunión", go:"va a la sala de reunión" });
   [16.4, 17.8].forEach((x, i) => L["sala" + (i + 2)] = { door:[OF_AI.V, 3.3], path:[[15.15, 3.3], [15.15, 1.12], [x, 1.12]], face:dn, sit:true, emo:"💬", txt:"charlando en la sala de reunión", go:"va a la sala de reunión" });
   L.print = { door:[13.2, OF_AI.H], path:[], face:up, emo:"🖨️", txt:"imprimiendo", go:"va a la impresora" };
+  L.kitchen0 = { door:[1.05, OF_AI.H], path:[[1.05, 4.78]], face:[-1, 0], emo:"☕", txt:"haciéndose un café en la cafetería", go:"va a la cafetería a hacerse un café", hold:"cup" };
+  L.kitchen1 = { door:[1.05, OF_AI.H], path:[[1.05, 3.98]], face:[-1, 0], emo:"🍪", txt:"comiendo unas masitas en la cafetería", go:"va a la cafetería a buscar masitas", hold:"cookie" };
   L.window0 = { door:[OF_AI.V, .75], path:[[14.45, .75]], face:up, emo:"🪟", txt:"mirando por la ventana", go:"va a la ventana" };
   L.rail0 = { door:[18.6, OF_AI.H], path:[], face:[1, 0], emo:"🌿", txt:"estirando las piernas junto a la baranda", go:"va a estirar las piernas" };
   L.rail1 = { door:[OF_AI.V, 13.55], path:[[18.3, 13.55]], face:[1, 0], emo:"🌿", txt:"estirando las piernas junto a la baranda", go:"va a estirar las piernas" };
@@ -15165,19 +15168,22 @@ function ofState(c, L){
     s = ofSim.ch[c.id] = { x, y, loc, target:"", path:[], until:Date.now() + (busy ? 2000 : (8 + Math.random() * 30) * 1000 * ofSim.dwell), walk:false, fx:0, fy:-1 }; }
   return s;
 }
+function ofDoorOpen(){
+  const now = Date.now(); return Object.values(ofSim.ch).some(s => (s.walk && Math.hypot(s.x - .2, s.y - 5.9) < 1.3) || (!s.walk && s.loc === "bath" && (now - (s.arr || 0) < 1400 || s.until - now < 1400)));
+}
 const ofTaken = (k, id) => Object.entries(ofSim.ch).some(([i, s]) => i !== id && (s.target === k || (!s.target && s.loc === k)));
 const ofMeetSeat = c => c.kind === "a" && ofMeetNow() ? "sala" + Math.min(c.i, 3) : "";
 // Lo que hace cuando no tiene trabajo (nunca quedarse en el escritorio): un lugar libre, distinto del de recién
-const OF_IDLE = [["coffee", 15], ["terere", 14], ["water", 8], ["phone", 13], ["sofa", 14], ["bath", 7], ["sala", 12], ["print", 5], ["window", 6], ["rail", 6]];
+const OF_IDLE = [["kitchen", 14], ["coffee", 12], ["terere", 14], ["water", 8], ["phone", 13], ["sofa", 14], ["bath", 7], ["sala", 12], ["print", 5], ["window", 6], ["rail", 6]];
 function ofIdlePick(c, not){
-  const groups = { sofa:["sofa0", "sofa1", "sofa2"], sala:ofMeetNow() ? [] : ["sala0", "sala1", "sala2", "sala3"], terere:["terere0", "terere1"], phone:["phone0", "phone1"], window:["window0"], rail:["rail0", "rail1"] };
+  const groups = { kitchen:["kitchen0", "kitchen1"], sofa:["sofa0", "sofa1", "sofa2"], sala:ofMeetNow() ? [] : ["sala0", "sala1", "sala2", "sala3"], terere:["terere0", "terere1"], phone:["phone0", "phone1"], window:["window0"], rail:["rail0", "rail1"] };
   const free = k => (groups[k] || [k]).filter(x => x !== not && !ofTaken(x, c.id)), tot = OF_IDLE.reduce((a, [, w]) => a + w, 0);
   for (let tries = 0; tries < 6; tries++){ let r = Math.random() * tot, k = OF_IDLE[0][0]; for (const [n, w] of OF_IDLE){ if ((r -= w) < 0){ k = n; break; } } const f = free(k); if (f.length) return f[0]; }
   for (const [k] of OF_IDLE){ const f = free(k); if (f.length) return f[0]; } return "";
 }
 // Cuánto se queda en cada lugar (como una persona: varios minutos no, pero tampoco segundos)
 const ofStay = (c, loc) => { const dw = (a, b) => (a + Math.random() * (b - a)) * 1000 * ofSim.dwell, k = loc.replace(/\d+$/, "");
-  return ({ coffee:dw(25, 50), terere:dw(40, 80), water:dw(15, 30), phone:dw(20, 45), sofa:dw(40, 90), bath:dw(25, 50), sala:dw(40, 90), print:dw(10, 20), window:dw(20, 40), rail:dw(20, 40) })[k] || dw(20, 40); };
+  return ({ kitchen:dw(25, 50), coffee:dw(25, 50), terere:dw(40, 80), water:dw(15, 30), phone:dw(20, 45), sofa:dw(40, 90), bath:dw(25, 50), sala:dw(40, 90), print:dw(10, 20), window:dw(20, 40), rail:dw(20, 40) })[k] || dw(20, 40); };
 function ofDecide(c, s, L){ // a dónde va ahora
   const busy = ofWorking(c) || ofProblem(c), now = Date.now(), meet = !busy && ofMeetSeat(c);
   let to = c.home;
@@ -15191,7 +15197,7 @@ function ofStep(c, s, L, dt){
   while (left > 0 && s.path.length){ const [tx, ty] = s.path[0], dx = tx - s.x, dy = ty - s.y, d = Math.hypot(dx, dy);
     if (d > .001){ s.fx = dx / d; s.fy = dy / d; }
     if (d <= left){ s.x = tx; s.y = ty; left -= d; s.path.shift(); } else { s.x += dx / d * left; s.y += dy / d * left; left = 0; } }
-  if (!s.path.length && s.walk){ s.walk = false; s.loc = s.target; s.target = ""; const dw = (a, b) => (a + Math.random() * (b - a)) * 1000 * ofSim.dwell;
+  if (!s.path.length && s.walk){ s.walk = false; s.loc = s.target; s.target = ""; s.arr = Date.now(); const dw = (a, b) => (a + Math.random() * (b - a)) * 1000 * ofSim.dwell;
     s.until = Date.now() + (s.loc === c.home ? (ofWorking(c) || ofProblem(c) ? 2000 : dw(1, 2)) : ofMeetSeat(c) === s.loc ? 2500 : ofStay(c, s.loc)); }
 }
 // Cómo se ve cada uno en este momento (clase, globito y texto de “Ahora mismo”)
@@ -15222,6 +15228,7 @@ function ofCharSVG(c, s, L){
         <g class="ofhold cup"><rect x="11" y="-21" width="7" height="7" rx="1.5" fill="#fff" stroke="#92400e" stroke-width="1.2"/><rect x="12" y="-20" width="5" height="2" fill="#78350f"/></g>
         <g class="ofhold glass"><rect x="11" y="-22" width="6" height="8" rx="1" fill="#bae6fd" stroke="#0284c7" stroke-width="1"/></g>
         <g class="ofhold guampa"><line x1="15" y1="-23" x2="18" y2="-30" stroke="#cbd5e1" stroke-width="1.6"/><rect x="11" y="-23" width="6" height="9" rx="2.5" fill="#a16207" stroke="#713f12" stroke-width="1"/></g>
+        <g class="ofhold cookie"><circle cx="14" cy="-18" r="4" fill="#d4a373" stroke="#92400e" stroke-width="1"/><circle cx="12.8" cy="-19" r=".9" fill="#5c3b1e"/><circle cx="15.2" cy="-17.2" r=".9" fill="#5c3b1e"/></g>
         <g class="ofhold phone"><rect x="5" y="-27" width="8" height="12" rx="1.8" fill="#0f172a"/><rect x="6.2" y="-25.6" width="5.6" height="8.4" rx="1" fill="#38bdf8"/><rect x="6.8" y="-24.6" width="2" height="2" fill="#f472b6"/><rect x="9.4" y="-24.6" width="2" height="2" fill="#facc15"/><rect x="6.8" y="-21.8" width="2" height="2" fill="#a3e635"/><rect x="9.4" y="-21.8" width="2" height="2" fill="#fb923c"/></g></g></g>
     <g class="oftag" transform="translate(0,${Math.round(-70 * sc)})"><rect x="${-w / 2}" y="-9" width="${w}" height="18" rx="9"/><circle class="ofdot" cx="${-w / 2 + 10}" r="3.6"/><text x="6" y="3.6" text-anchor="middle">${esc(c.name)}</text></g>
     <g class="ofbub${k.emo ? "" : " off"}" transform="translate(${Math.round(17 * sc)},${Math.round(-52 * sc)})"><rect x="-11" y="-11" width="22" height="20" rx="8"/><text y="4" text-anchor="middle">${k.emo}</text></g></g>`;
@@ -15275,6 +15282,9 @@ function ofScene(){
   const co = ofPeople(["Admin total", "Admin"]);
   [0, 1].forEach(i => { const on = !!(co[i] && ONLINE[co[i].id]), x = .8 + i * 1.6; it(x + .65, 1.85, desk(x, 1.3, 1.3, on ? "#7dd3fc" : "", "co", on)); });
   it(3.6, 4.15, ofPlant(3.35, 3.9, .9));
+  // Cafetería, al lado de los baños: mesada con cafetera, taza, microondas y un plato de masitas
+  it(.36, 4.4, ofBox(.05, 3.6, 0, .62, 1.6, .9, OF_C.wood) + ofBox(.12, 4.95, .9, .46, .22, .3, OF_C.white) + ofBox(.16, 4.42, .9, .36, .34, .5, ["#1f2937", "#111827", "#0b0f19"]) + ofBox(.42, 4.5, .9, .1, .1, .1, ["#fef3c7", "#fde68a", "#f59e0b"])
+    + ofBox(.13, 3.72, .9, .44, .44, .03, OF_C.white) + (([cx, cy], k) => [[-5, -2], [3, -3], [-1, 2], [5, 2], [0, -6]].map(([dx, dy]) => `<circle cx="${(cx + dx * k).toFixed(1)}" cy="${(cy + dy * k).toFixed(1)}" r="${(2.6 * k).toFixed(2)}" fill="#d4a373" stroke="#92400e" stroke-width="${(.6 * k).toFixed(2)}"/>`).join(""))(ofP(.35, 3.94, .95), ofCS().k));
   team("dg", 4.3); team("cm", 9.1);
   it(13.17, 5.27, ofBox(12.85, 5.0, 0, .65, .55, .75, OF_C.white) + ofBox(12.95, 5.08, .75, .45, .35, .06, ["#64748b", "#475569", "#334155"])); // impresora
   it(12.37, 5.34, ofBox(11.95, 5.15, 0, .38, .38, .55, ["#fde047", "#facc15", "#eab308"]) + ofBox(12.4, 5.15, 0, .38, .38, .55, ["#60a5fa", "#3b82f6", "#2563eb"])); // tachos (como en la foto)
@@ -15310,8 +15320,9 @@ function ofScene(){
     + ofPoly([[0, 0, WH], [0, D, WH], [-.22, D, WH], [-.22, 0, WH]], "#cfd4db")
     + `<g transform="${ofWallM("x", 4.9, 3.25)}"><image href="logo-wide.png" x="6" y="4" width="${4.1 * 32 - 12}" height="${1.3 * 32 - 8}" preserveAspectRatio="xMidYMid meet"/></g>`
     + `<g transform="${ofWallM("x", 13.2, 3.25)}"><image href="marcas.png" x="6" y="6" width="${6.2 * 32 - 12}" height="${1.3 * 32 - 12}" preserveAspectRatio="xMidYMid meet"/></g>`
-    + `<g transform="${ofWallM("x", 6.45, 1.85)}"><rect width="${1.1 * 32}" height="${1.85 * 32}" fill="#e1782f"/><rect x="4" y="4" width="${1.1 * 32 - 8}" height="${1.85 * 32 - 4}" fill="#f08a3c"/><circle cx="${1.1 * 32 - 9}" cy="31" r="2" fill="#7c2d12"/></g>`
-    + `<g transform="${ofWallM("x", 6.45, 2.85)}"><text x="${.55 * 32}" y="22" text-anchor="middle" class="ofwallt">🚻 Baños</text></g>`;
+    + `<g transform="${ofWallM("x", 6.45, 1.85)}"><g id="ofdoor" class="ofdoor${ofDoorOpen() ? " open" : ""}"><rect width="${1.1 * 32}" height="${1.85 * 32}" fill="#7c2d12"/><rect x="3" y="3" width="${1.1 * 32 - 6}" height="${1.85 * 32 - 3}" fill="#111827"/><rect x="5" y="${1.85 * 32 - 10}" width="${1.1 * 32 - 10}" height="10" fill="#374151" opacity=".6"/>
+      <g class="ofdoorp"><rect x="3" y="3" width="${1.1 * 32 - 6}" height="${1.85 * 32 - 3}" fill="#e1782f"/><rect x="6" y="6" width="${1.1 * 32 - 12}" height="${1.85 * 32 - 9}" fill="#f08a3c"/><circle cx="${1.1 * 32 - 9}" cy="31" r="2" fill="#7c2d12"/></g></g></g>`
+    + `<g transform="${ofWallM("x", 5.2, 1.95)}"><rect x="6" y="2" width="${1.4 * 32 - 12}" height="13" rx="3" fill="#a16207"/><text x="${.7 * 32}" y="11.5" text-anchor="middle" class="ofwallt sm">☕ Cafetería</text></g>`;
   if (wY) walls += ofPoly([[0, 0, 0], [W, 0, 0], [W, 0, WH], [0, 0, WH]], "#f2f3f5") + ofPoly([[0, 0, 0], [W, 0, 0], [W, 0, .12], [0, 0, .12]], "#3b4048") + ofPoly([[0, 0, WH], [W, 0, WH], [W, -.22, WH], [0, -.22, WH]], "#cfd4db")
     + `<g transform="${ofWallM("y", 13.55, 2.95)}"><rect width="${1.7 * 32}" height="${2.1 * 32}" fill="#b9d6e8" stroke="#334155" stroke-width="3"/><rect x="2" y="${2.1 * 32 - 20}" width="${1.7 * 32 - 4}" height="18" fill="#facc15" opacity=".75"/><rect x="2" y="${2.1 * 32 - 26}" width="${1.7 * 32 - 4}" height="6" fill="#1f2937" opacity=".5"/><path d="M${.85 * 32} 0V${2.1 * 32}M0 ${1.05 * 32}H${1.7 * 32}" stroke="#334155" stroke-width="2"/><path d="M6 10l14-6M8 22l18-8" stroke="#fff" stroke-opacity=".7" stroke-width="2"/></g>`;
   if (wX && wY) walls += ofPoly([[0, 0, WH], [-.22, 0, WH], [-.22, -.22, WH], [0, -.22, WH]], "#cfd4db");
@@ -15326,7 +15337,7 @@ function ofScene(){
   const floor = slab + ofPoly([[0, 0, 0], [W, 0, 0], [W, D, 0], [0, D, 0]], "#d7dbe0") + `<path d="${grid}" stroke="#c4c9d0" stroke-width="1" fill="none"/>`
     + [[3, 3], [7, 3], [11, 3], [17, 3], [3, 10], [10, 10.5], [17, 10]].map(([x, y]) => { const [cx, cy] = ofP(x, y); return `<ellipse cx="${cx}" cy="${cy}" rx="${(120 * ofCS().k).toFixed(1)}" ry="${(120 * ofCS().ky / 32 * ofCS().k).toFixed(1)}" fill="url(#oflight)"/>`; }).join("")
     + ofPoly([[15.0, 11.3, .01], [18.6, 11.3, .01], [18.6, 13.4, .01], [15.0, 13.4, .01]], "#e7d7c1"); // alfombra del sillón
-  const zones = zone("co", .4, .4, 3.9, 4.9) + zone("dg", 4.3, .4, 8.7, 4.9) + zone("cm", 9.1, .4, 13.5, 4.9) + zone("sa", 14.6, .4, 19.6, 4.9) + zone("rb", .4, 6.8, 5.3, 13.6) + zone("ia", 6.2, 6.8, 13.5, 13.6) + zone("ds", 14.6, 6.8, 19.6, 13.6);
+  const zones = zone("co", .4, .4, 3.9, 3.4) + zone("kc", .4, 3.55, 2.3, 5.3) + zone("dg", 4.3, .4, 8.7, 4.9) + zone("cm", 9.1, .4, 13.5, 4.9) + zone("sa", 14.6, .4, 19.6, 4.9) + zone("rb", .4, 6.8, 5.3, 13.6) + zone("ia", 6.2, 6.8, 13.5, 13.6) + zone("ds", 14.6, 6.8, 19.6, 13.6);
   const boards = wY ? ofBoard("co", .5, 3.85) + ofBoard("dg", 4.4, 8.65) + ofBoard("cm", 9.2, 13.4) : "";
   // Baranda negra del entrepiso (como en la foto): adelante de todo, o atrás si se giró la oficina
   let rail = ""; for (let y = 0; y <= D; y += 1) rail += `M${ofPt(W, y, 0)}L${ofPt(W, y, 1.05)}`;
@@ -15356,6 +15367,7 @@ function ofTick(t){
     const k = ofLook(c, s, L); if (el.getAttribute("class") !== k.cls) el.setAttribute("class", k.cls);
     const b = el.querySelector(".ofbub"); if (b){ const bc = "ofbub" + (k.emo ? "" : " off"); if (b.getAttribute("class") !== bc) b.setAttribute("class", bc); const bt = b.querySelector("text"); if (bt.textContent !== k.emo) bt.textContent = k.emo; }
     if (s.txt !== k.txt){ s.txt = k.txt; const lab = (c.kind === "r" ? `${c.name} (robot de datos)` : c.name) + ": " + k.txt; el.setAttribute("aria-label", lab); const tt = el.querySelector("title"); if (tt) tt.textContent = lab; ofNowPaint(); } });
+  { const d = document.getElementById("ofdoor"); if (d){ const c = "ofdoor" + (ofDoorOpen() ? " open" : ""); if (d.getAttribute("class") !== c) d.setAttribute("class", c); } } // la puerta se abre y se cierra
   if (!!ofMeetNow() !== !!ofMeetSeat.was){ ofRedraw(); ofNowPaint(); } // empieza o termina una reunión: la tele y “Ahora mismo” lo muestran
   ofMeetSeat.was = !!ofMeetNow();
   // Cada robot va entre los muebles que le corresponden según dónde está (los de adelante lo tapan)
