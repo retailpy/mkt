@@ -1133,7 +1133,8 @@ html.light .ofscene image{filter:none}
 .ofleft{display:flex;flex-direction:column;gap:10px;min-width:0}
 .ofstage{position:relative}.ofscroll{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}.ofstage.zoomed .ofscroll{cursor:grab}.ofrot .ofzv{min-width:40px;text-align:center;font-size:12px;color:#e2e8f0}.ofstage.drag .ofscroll{cursor:grabbing}.ofstage.drag .ofscene *{pointer-events:none}
 .ofrot{position:absolute;top:10px;right:12px;left:auto;max-width:calc(100% - 24px);flex-wrap:wrap;justify-content:flex-end;display:flex;align-items:center;gap:6px;padding:4px;border-radius:12px;background:rgba(15,23,42,.72);backdrop-filter:blur(6px)}.ofrot span{font-size:12px;color:#cbd5e1;padding:0 6px}.ofrot .btn{color:#fff}
-.ofscene .ofwallt.sm{font-size:8.5px}.ofscene .ofhold{display:none}.ofscene .ofch.h-cookie .ofhold.cookie,.ofscene .ofch.h-cup .ofhold.cup,.ofscene .ofch.h-glass .ofhold.glass,.ofscene .ofch.h-guampa .ofhold.guampa,.ofscene .ofch.h-phone .ofhold.phone{display:inline}
+.ofscene .ofwallt.sm{font-size:8.5px}.ofscene .ofdoorp{transform-box:fill-box;transform-origin:0 50%;transition:transform .45s ease}.ofscene .ofdoor.open .ofdoorp{transform:scaleX(.16)}
+@media (prefers-reduced-motion:reduce){.ofscene .ofdoorp{transition:none}}.ofscene .ofhold{display:none}.ofscene .ofch.h-cookie .ofhold.cookie,.ofscene .ofch.h-cup .ofhold.cup,.ofscene .ofch.h-glass .ofhold.glass,.ofscene .ofch.h-guampa .ofhold.guampa,.ofscene .ofch.h-phone .ofhold.phone{display:inline}
 .ofnow .st-m{border-color:rgba(124,92,255,.6);background:rgba(124,92,255,.15)}.ofnow .st-m i{background:#7c5cff}
 .ofnow{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-size:12.5px;color:#cbd5e1}.ofnow > b{color:#fff;font-size:13px;margin-right:2px}
 .ofnow span{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:rgba(2,6,23,.45)}.ofnow span b{color:#fff}
@@ -4700,7 +4701,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v332";
+const APP_VER = "v333";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -15123,7 +15124,7 @@ function ofLocs(n){
   [16.75, 17.85].forEach((x, i) => L["terere" + i] = { door:[OF_AI.V, 10.35], path:[[x, 10.35]], face:up, emo:"🧉", txt:"tomando tereré", go:"va a tomar tereré", hold:"guampa" });
   [[18.9, 8.75], [18.9, 11.0]].forEach(([x, y], i) => L["phone" + i] = { door:[OF_AI.V, y], path:[[x, y]], face:dn, emo:"📱", txt:"mirando en el celular los posteos del día", go:"va a mirar los posteos del día", hold:"phone" });
   [15.8, 16.7, 17.6].forEach((x, i) => L["sofa" + i] = { door:[OF_AI.V, 12.95], path:[[x, 12.95], [x, 12.15]], face:dn, sit:true, emo:"🎧", txt:"escuchando música", go:"va a escuchar música" });
-  L.bath = { door:[.75, OF_AI.H], path:[[.2, 5.9]], face:[-1, 0], emo:"🚻", txt:"en el baño", go:"va al baño", gone:true };
+  L.bath = { door:[.75, OF_AI.H], path:[[.2, 5.9]], face:[-1, 0], emo:"🚪", txt:"salió un rato por la puerta", go:"va a salir un rato", gone:true }; // la puerta de la pared: puede ser el baño u otra cosa
   [16.4, 17.8].forEach((x, i) => L["sala" + i] = { door:[OF_AI.V, 3.3], path:[[x, 3.3]], face:up, sit:true, emo:"💬", txt:"charlando en la sala de reunión", go:"va a la sala de reunión" });
   [16.4, 17.8].forEach((x, i) => L["sala" + (i + 2)] = { door:[OF_AI.V, 3.3], path:[[15.15, 3.3], [15.15, 1.12], [x, 1.12]], face:dn, sit:true, emo:"💬", txt:"charlando en la sala de reunión", go:"va a la sala de reunión" });
   L.print = { door:[13.2, OF_AI.H], path:[], face:up, emo:"🖨️", txt:"imprimiendo", go:"va a la impresora" };
@@ -15167,6 +15168,9 @@ function ofState(c, L){
     s = ofSim.ch[c.id] = { x, y, loc, target:"", path:[], until:Date.now() + (busy ? 2000 : (8 + Math.random() * 30) * 1000 * ofSim.dwell), walk:false, fx:0, fy:-1 }; }
   return s;
 }
+function ofDoorOpen(){
+  const now = Date.now(); return Object.values(ofSim.ch).some(s => (s.walk && Math.hypot(s.x - .2, s.y - 5.9) < 1.3) || (!s.walk && s.loc === "bath" && (now - (s.arr || 0) < 1400 || s.until - now < 1400)));
+}
 const ofTaken = (k, id) => Object.entries(ofSim.ch).some(([i, s]) => i !== id && (s.target === k || (!s.target && s.loc === k)));
 const ofMeetSeat = c => c.kind === "a" && ofMeetNow() ? "sala" + Math.min(c.i, 3) : "";
 // Lo que hace cuando no tiene trabajo (nunca quedarse en el escritorio): un lugar libre, distinto del de recién
@@ -15193,7 +15197,7 @@ function ofStep(c, s, L, dt){
   while (left > 0 && s.path.length){ const [tx, ty] = s.path[0], dx = tx - s.x, dy = ty - s.y, d = Math.hypot(dx, dy);
     if (d > .001){ s.fx = dx / d; s.fy = dy / d; }
     if (d <= left){ s.x = tx; s.y = ty; left -= d; s.path.shift(); } else { s.x += dx / d * left; s.y += dy / d * left; left = 0; } }
-  if (!s.path.length && s.walk){ s.walk = false; s.loc = s.target; s.target = ""; const dw = (a, b) => (a + Math.random() * (b - a)) * 1000 * ofSim.dwell;
+  if (!s.path.length && s.walk){ s.walk = false; s.loc = s.target; s.target = ""; s.arr = Date.now(); const dw = (a, b) => (a + Math.random() * (b - a)) * 1000 * ofSim.dwell;
     s.until = Date.now() + (s.loc === c.home ? (ofWorking(c) || ofProblem(c) ? 2000 : dw(1, 2)) : ofMeetSeat(c) === s.loc ? 2500 : ofStay(c, s.loc)); }
 }
 // Cómo se ve cada uno en este momento (clase, globito y texto de “Ahora mismo”)
@@ -15316,8 +15320,8 @@ function ofScene(){
     + ofPoly([[0, 0, WH], [0, D, WH], [-.22, D, WH], [-.22, 0, WH]], "#cfd4db")
     + `<g transform="${ofWallM("x", 4.9, 3.25)}"><image href="logo-wide.png" x="6" y="4" width="${4.1 * 32 - 12}" height="${1.3 * 32 - 8}" preserveAspectRatio="xMidYMid meet"/></g>`
     + `<g transform="${ofWallM("x", 13.2, 3.25)}"><image href="marcas.png" x="6" y="6" width="${6.2 * 32 - 12}" height="${1.3 * 32 - 12}" preserveAspectRatio="xMidYMid meet"/></g>`
-    + `<g transform="${ofWallM("x", 6.45, 1.85)}"><rect width="${1.1 * 32}" height="${1.85 * 32}" fill="#e1782f"/><rect x="4" y="4" width="${1.1 * 32 - 8}" height="${1.85 * 32 - 4}" fill="#f08a3c"/><circle cx="${1.1 * 32 - 9}" cy="31" r="2" fill="#7c2d12"/></g>`
-    + `<g transform="${ofWallM("x", 6.45, 2.85)}"><text x="${.55 * 32}" y="22" text-anchor="middle" class="ofwallt">🚻 Baños</text></g>`
+    + `<g transform="${ofWallM("x", 6.45, 1.85)}"><g id="ofdoor" class="ofdoor${ofDoorOpen() ? " open" : ""}"><rect width="${1.1 * 32}" height="${1.85 * 32}" fill="#7c2d12"/><rect x="3" y="3" width="${1.1 * 32 - 6}" height="${1.85 * 32 - 3}" fill="#111827"/><rect x="5" y="${1.85 * 32 - 10}" width="${1.1 * 32 - 10}" height="10" fill="#374151" opacity=".6"/>
+      <g class="ofdoorp"><rect x="3" y="3" width="${1.1 * 32 - 6}" height="${1.85 * 32 - 3}" fill="#e1782f"/><rect x="6" y="6" width="${1.1 * 32 - 12}" height="${1.85 * 32 - 9}" fill="#f08a3c"/><circle cx="${1.1 * 32 - 9}" cy="31" r="2" fill="#7c2d12"/></g></g></g>`
     + `<g transform="${ofWallM("x", 5.2, 1.95)}"><rect x="6" y="2" width="${1.4 * 32 - 12}" height="13" rx="3" fill="#a16207"/><text x="${.7 * 32}" y="11.5" text-anchor="middle" class="ofwallt sm">☕ Cafetería</text></g>`;
   if (wY) walls += ofPoly([[0, 0, 0], [W, 0, 0], [W, 0, WH], [0, 0, WH]], "#f2f3f5") + ofPoly([[0, 0, 0], [W, 0, 0], [W, 0, .12], [0, 0, .12]], "#3b4048") + ofPoly([[0, 0, WH], [W, 0, WH], [W, -.22, WH], [0, -.22, WH]], "#cfd4db")
     + `<g transform="${ofWallM("y", 13.55, 2.95)}"><rect width="${1.7 * 32}" height="${2.1 * 32}" fill="#b9d6e8" stroke="#334155" stroke-width="3"/><rect x="2" y="${2.1 * 32 - 20}" width="${1.7 * 32 - 4}" height="18" fill="#facc15" opacity=".75"/><rect x="2" y="${2.1 * 32 - 26}" width="${1.7 * 32 - 4}" height="6" fill="#1f2937" opacity=".5"/><path d="M${.85 * 32} 0V${2.1 * 32}M0 ${1.05 * 32}H${1.7 * 32}" stroke="#334155" stroke-width="2"/><path d="M6 10l14-6M8 22l18-8" stroke="#fff" stroke-opacity=".7" stroke-width="2"/></g>`;
@@ -15363,6 +15367,7 @@ function ofTick(t){
     const k = ofLook(c, s, L); if (el.getAttribute("class") !== k.cls) el.setAttribute("class", k.cls);
     const b = el.querySelector(".ofbub"); if (b){ const bc = "ofbub" + (k.emo ? "" : " off"); if (b.getAttribute("class") !== bc) b.setAttribute("class", bc); const bt = b.querySelector("text"); if (bt.textContent !== k.emo) bt.textContent = k.emo; }
     if (s.txt !== k.txt){ s.txt = k.txt; const lab = (c.kind === "r" ? `${c.name} (robot de datos)` : c.name) + ": " + k.txt; el.setAttribute("aria-label", lab); const tt = el.querySelector("title"); if (tt) tt.textContent = lab; ofNowPaint(); } });
+  { const d = document.getElementById("ofdoor"); if (d){ const c = "ofdoor" + (ofDoorOpen() ? " open" : ""); if (d.getAttribute("class") !== c) d.setAttribute("class", c); } } // la puerta se abre y se cierra
   if (!!ofMeetNow() !== !!ofMeetSeat.was){ ofRedraw(); ofNowPaint(); } // empieza o termina una reunión: la tele y “Ahora mismo” lo muestran
   ofMeetSeat.was = !!ofMeetNow();
   // Cada robot va entre los muebles que le corresponden según dónde está (los de adelante lo tapan)
