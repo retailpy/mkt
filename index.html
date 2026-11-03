@@ -14923,7 +14923,8 @@ const agRand = (seed, n) => { let h = 2166136261; for (const ch of String(seed))
 // El copy de una publicación (k = número de versión, para dar opciones distintas)
 function clCopy(p, ref, o, k){
   const B = CL_BRAND[p.brand] || CL_BRAND.Superseis, T = CL_TXT[B.tone], dl = B.tone === "dl", j = p.fromJob ? jobById(p.fromJob) : null, R = agRules("claudia");
-  const brief = agPlain([p.brief, j?.brief, j?.notes].filter(Boolean).join(" ")).replace(/\s+/g, " ").trim(), all = [p.title, brief, ref, ...(o.slides || [])].join(" ");
+  const pcb = agPlain(ofComPedOf(p)?.brief || "").replace(/\s+/g, " ").trim(), brief0 = agPlain([p.brief, j?.brief, j?.notes].filter(Boolean).join(" ")).replace(/\s+/g, " ").trim();
+  const brief = pcb && !brief0.includes(pcb.slice(0, 30)) ? (brief0 + " " + pcb).trim() : brief0, all = [p.title, brief, ref, ...(o.slides || [])].join(" "); // v337: también lo que cargó Comercial en su pedido
   const topic = (CL_TOPIC.find(([re]) => re.test(all)) || [null, "def", ""]), kind = topic[1], fmt = String(p.format || "Post").toLowerCase();
   const isStory = /historia/.test(fmt), isCanal = /canal|whatsapp/.test(fmt) || /canal/i.test(p.net || ""), short = o.short || R.short || isStory, promo = kind === "promo" || /oferta|promo|descuento|precio/i.test(all);
   const tema = agPlain(p.title).replace(/^(post|reel|historia|carrusel|video|canal)\s*[:·-]?\s*/i, "").replace(new RegExp("\\b" + p.brand + "\\b", "ig"), "").replace(/\s+/g, " ").trim() || "Lo nuevo";
