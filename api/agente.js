@@ -3,6 +3,8 @@
 // acá se le pregunta a Claude con la clave del servidor (ANTHROPIC_API_KEY en Vercel: nunca llega al navegador).
 //   POST { agent:"sofia"|"matias"|"claudia", messages:[{role,content}], context:"…", train:"…", skills:["…"], lessons:["…"], liked:["…"] }
 //   (sesión de Admin total o Admin)  →  { ok:true, text:"…" }  o  { ok:false, error:"…", code? }
+// v327 · “Modo plan” (sin costo extra): con mode:"prompt" no se llama a Claude; se devuelve el pedido armado
+// (instrucciones + datos + charla) para pegarlo en claude.ai con el plan de la persona → { ok:true, prompt:"…" }.
 const Anthropic = require("@anthropic-ai/sdk").default;
 
 const MODEL = "claude-opus-5-5";
@@ -13,6 +15,7 @@ Le hablás al equipo (Admin total y Admin) en español de Paraguay, con voseo ("
 Usá solo los datos que vienen entre <datos> y </datos> y lo que te cuenten en la conversación. Si algo no está en los datos, decilo; nunca inventes números, nombres ni fechas.
 Respondé corto y claro: primero lo importante, después el detalle. Usá listas cortas con "- " y **negrita** para lo clave. Nada de tablas grandes ni de títulos con #.`;
 
+const NAMES = { sofia: "SofIA", matias: "MatIAs", claudia: "ClaudIA" };
 const AGENTS = {
   sofia: `Sos SofIA, la agente del informe diario de Marketing.
 Tu trabajo: contar en pocas líneas cómo está el día del equipo: qué se publica hoy y mañana, qué está atrasado y de quién, qué pedidos esperan aprobación, cómo le fue a lo publicado ayer en Instagram y quién está más cargado.
@@ -68,17 +71,30 @@ function systemFor(id, b){
   ];
 }
 
+// El pedido completo para pegar en claude.ai (modo plan): lo mismo que recibiría Claude por la API, en un solo texto.
+function promptFor(id, b, messages){
+  const sys = systemFor(id, b), name = NAMES[id], prev = messages.slice(0, -1), last = messages[messages.length - 1].content;
+  return [
+    `Hola, Claude. Te paso un pedido desde la app Retail MKT Hub. Respondé como ${name}, siguiendo estas instrucciones y usando solo los datos de abajo.`,
+    `<instrucciones>\n${sys[0].text}\n</instrucciones>`,
+    sys[1].text,
+    prev.length ? `<conversacion_anterior>\n${prev.map(m => (m.role === "user" ? "Equipo" : name) + ": " + m.content).join("\n\n")}\n</conversacion_anterior>` : "",
+    `Pedido de ahora: ${last}`,
+  ].filter(Boolean).join("\n\n");
+}
+
 module.exports = async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Usá POST." });
   const me = await who(req);
   if (!me) return res.status(401).json({ ok: false, error: "Solo Admin total y Admin pueden hablar con los agentes." });
-  if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ ok: false, code: "nokey", error: "Falta conectar los agentes con Claude: hay que cargar la clave ANTHROPIC_API_KEY en Vercel." });
   const b = (typeof req.body === "string" ? (() => { try { return JSON.parse(req.body); } catch (e) { return {}; } })() : req.body) || {};
   const id = String(b.agent || "");
   if (!AGENTS[id]) return res.status(400).json({ ok: false, error: "Ese agente no existe." });
   const messages = cleanMessages(b.messages);
   if (!messages.length) return res.status(400).json({ ok: false, error: "Escribí algo para el agente." });
+  if (b.mode === "prompt") return res.status(200).json({ ok: true, prompt: promptFor(id, b, messages) });
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ ok: false, code: "nokey", error: "Falta conectar los agentes con Claude: hay que cargar la clave ANTHROPIC_API_KEY en Vercel." });
 
   const client = new Anthropic();
   try {
@@ -110,3 +126,4 @@ module.exports = async (req, res) => {
 };
 module.exports.cleanMessages = cleanMessages;
 module.exports.systemFor = systemFor;
+module.exports.promptFor = promptFor;
