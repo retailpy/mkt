@@ -1133,7 +1133,7 @@ html.light .ofscene image{filter:none}
 .ofleft{display:flex;flex-direction:column;gap:10px;min-width:0}
 .ofstage{position:relative}.ofscroll{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}.ofstage.zoomed .ofscroll{cursor:grab}.ofrot .ofzv{min-width:40px;text-align:center;font-size:12px;color:#e2e8f0}.ofstage.drag .ofscroll{cursor:grabbing}.ofstage.drag .ofscene *{pointer-events:none}
 .ofrot{position:absolute;top:10px;right:12px;left:auto;max-width:calc(100% - 24px);flex-wrap:wrap;justify-content:flex-end;display:flex;align-items:center;gap:6px;padding:4px;border-radius:12px;background:rgba(15,23,42,.72);backdrop-filter:blur(6px)}.ofrot span{font-size:12px;color:#cbd5e1;padding:0 6px}.ofrot .btn{color:#fff}
-.ofscene .ofwallt.sm{font-size:8.5px}.ofscene .ofsign{cursor:pointer}.ofscene .ofsignt{fill:#1f2937;font-size:11px;font-weight:800}.ofscene .offb{fill:#fff;font-size:16px;font-weight:800;font-family:Arial,sans-serif}.ofscene .ofsign:hover rect:first-child,.ofscene .ofsign:focus-visible rect:first-child{stroke-width:3.5}.ofscene .ofdoorp{transform-box:fill-box;transform-origin:0 50%;transition:transform .45s ease}.ofscene .ofdoor.open .ofdoorp{transform:scaleX(.16)}
+.ofscene .ofwallt.sm{font-size:8.5px}.ofscene .ofcountt{fill:#fff;font-size:10.5px;font-weight:800}.ofscene .ofcount{cursor:pointer}.ofkpis.four{grid-template-columns:repeat(4,1fr)}.ofcnt{margin:0}.ofscene .ofsign{cursor:pointer}.ofscene .ofsignt{fill:#1f2937;font-size:11px;font-weight:800}.ofscene .offb{fill:#fff;font-size:16px;font-weight:800;font-family:Arial,sans-serif}.ofscene .ofsign:hover rect:first-child,.ofscene .ofsign:focus-visible rect:first-child{stroke-width:3.5}.ofscene .ofdoorp{transform-box:fill-box;transform-origin:0 50%;transition:transform .45s ease}.ofscene .ofdoor.open .ofdoorp{transform:scaleX(.16)}
 @media (prefers-reduced-motion:reduce){.ofscene .ofdoorp{transition:none}}.ofscene .ofhold{display:none}.ofscene .ofch.h-cookie .ofhold.cookie,.ofscene .ofch.h-cup .ofhold.cup,.ofscene .ofch.h-glass .ofhold.glass,.ofscene .ofch.h-guampa .ofhold.guampa,.ofscene .ofch.h-phone .ofhold.phone{display:inline}
 .ofnow .st-m{border-color:rgba(124,92,255,.6);background:rgba(124,92,255,.15)}.ofnow .st-m i{background:#7c5cff}
 .ofnow{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-size:12.5px;color:#cbd5e1}.ofnow > b{color:#fff;font-size:13px;margin-right:2px}
@@ -4706,7 +4706,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v335";
+const APP_VER = "v336";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -14762,7 +14762,7 @@ const AG_DEF = [
     skills:[["ads", "Anuncios del mes y del anterior"], ["camps", "Campañas con su objetivo y resultados"], ["budget", "Presupuesto y plan de pauta por marca"], ["organic", "Publicaciones que funcionaron solas"], ["crono", "Cronograma de acciones del mes y cuáles llevan pauta en redes"]] },
   { id:"claudia", name:"ClaudIA", role:"Redactora de copys", color:"#d95926", ic:"pen-line",
     hello:"Hola, soy ClaudIA. Elegí una publicación y te escribo el copy siguiendo el Manual de Redes Sociales y el tono de su marca (Superseis cercano, Stock con buena onda, Delimarket sobrio y sin emojis). Si me corregís, aprendo.",
-    quick:["Escribí el copy de esta publicación", "Dame 3 opciones de copy", "Hacelo más corto y con más energía"],
+    quick:["Escribí el copy de esta publicación", "Dame 3 opciones de copy", "Hacelo más corto y con más energía", "¿Cuántos copys se hicieron?"],
     skills:[["examples", "Aprende de los copys ya aprobados de la marca"], ["emojis", "Usa emojis con medida"], ["hashtags", "Cierra con hashtags de la marca"], ["cta", "Termina con un llamado a la acción"], ["crono", "Conoce las acciones del cronograma de esa fecha"]] },
   { id:"santiago", name:"SantIAgo", role:"Generador de prompts de imágenes", color:"#0891b2", ic:"image",
     hello:"Hola, soy SantIAgo. Cuando alguien genera un prompt de imagen en la app, lo armo yo en mi compu. Te cuento cuántos se hicieron y de qué (marcas, tipos y temas).",
@@ -14773,7 +14773,14 @@ let ofUI = { sel:"", tab:"chat", post:"", busy:"", err:"", errCode:"", fix:"" };
 // v334 · Registros compartidos y sin nombres de personas: cada prompt de imagen (SantIAgo) y cada copy del Generador de copy
 // (ClaudIA). Sirven para que en la oficina se vea al agente trabajando y para contar cuántos se hicieron y de qué.
 let PROMPT_LOG = [], COPY_LOG = [];
-const ofLogAdd = (L, x) => { L.push({ id:"l" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at:new Date().toISOString(), ...x }); if (L.length > 300) L.splice(0, L.length - 300); };
+// Cada anotación lleva un código anónimo de la persona (no el nombre), solo para contar cuántas personas lo usaron.
+const ofAnon = id => { let h = 5381; for (const ch of String(id || "")) h = (h * 33 ^ ch.charCodeAt(0)) >>> 0; return h.toString(36); };
+const ofLogAdd = (L, x) => { L.push({ id:"l" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at:new Date().toISOString(), u:ofAnon(viewer?.id), ...x });
+  const from = prevMonth(TODAY.slice(0, 7)) + "-01"; for (let i = L.length - 1; i >= 0; i--) if (String(L[i].at).slice(0, 10) < from) L.splice(i, 1); if (L.length > 1500) L.splice(0, L.length - 1500); }; // este mes y el anterior
+// Cuántos: hoy, 7 días y en el mes (el calendario, no el mes que se esté mirando), y cuántas personas distintas
+const ofLogStats = L => { const d = x => pyDate(x.at), cm = TODAY.slice(0, 7), m = L.filter(x => d(x).slice(0, 7) === cm);
+  return { t:L.filter(x => d(x) === TODAY).length, w:L.filter(x => d(x) >= addDays(TODAY, -6)).length, m:m.length, ppl:new Set(m.map(x => x.u).filter(Boolean)).size, mn:monthName(cm) }; };
+const ofKpiLog = (L, what) => { const S = ofLogStats(L); return `<div class="ofkpis four"><div><b>${S.t}</b><span>${what} hoy</span></div><div><b>${S.w}</b><span>7 días</span></div><div><b>${S.m}</b><span>en ${esc(S.mn)}</span></div><div><b>${S.ppl}</b><span>persona${S.ppl === 1 ? "" : "s"}</span></div></div>`; };
 const ofCan = () => ["Admin total", "Admin"].includes(viewer?.role);
 const agCfg = id => AGENTS[id] || {};
 const agCfgW = id => { const c = AGENTS[id] = AGENTS[id] || {}; c.skills = c.skills || {}; c.custom = c.custom || []; c.lessons = c.lessons || []; return c; };
@@ -14959,6 +14966,8 @@ function clCopy(p, ref, o, k){
 }
 function agRobotClaudia(text){
   const p = ofUI.post ? postById(ofUI.post) : null, q = String(text || "").trim();
+  if (/cu[aá]nt[oa]s? copys?|cu[aá]ntos se hicieron/i.test(q)){ const S = ofLogStats(COPY_LOG), cm = TODAY.slice(0, 7), mm = COPY_LOG.filter(x => pyDate(x.at).slice(0, 7) === cm), by = (f) => Object.entries(mm.reduce((o, x) => { const k = f(x) || "Sin dato"; o[k] = (o[k] || 0) + 1; return o; }, {})).sort((a, b) => b[1] - a[1]);
+    return { t:[`**Copys que armé (de todos los usuarios)**`, `- Hoy: **${S.t}** · últimos 7 días: **${S.w}** · ${S.mn}: **${S.m}**${S.ppl ? ` (para ${S.ppl} persona${S.ppl === 1 ? "" : "s"})` : ""}`, ...(mm.length ? ["**Del mes, por marca**", ...by(x => x.brand).map(([k, n]) => `- ${k}: ${n}`), "**Por formato**", ...by(x => x.fmt).map(([k, n]) => `- ${k}: ${n}`)] : [])].join("\n"), n:"Cuenta del robot de ClaudIA (sin nombres de personas)." }; }
   if (!p) return { t:"Elegí primero la publicación de la lista (arriba del chat) y te armo el copy con el tono de su marca." };
   if (/historia/i.test(String(p.format || ""))) return { t:"Las historias no llevan copy. Elegí un post, carrusel, reel o Canal de WhatsApp y te lo armo." };
   const cmd = /^(escrib[ií] el copy de esta publicaci[oó]n|dame \d+ opciones de copy|hacelo m[aá]s corto y con m[aá]s energ[ií]a)$/i.test(q);
@@ -15063,7 +15072,8 @@ function agRobotSantiago(text){
   const line = x => `- ${dm(day(x))} ${new Date(x.at).toLocaleTimeString("es-PY", { hour:"2-digit", minute:"2-digit", timeZone:"America/Asuncion" })} · ${x.brand || "Sin marca"} · ${x.mode || ""}${x.title ? ` · «${String(x.title).slice(0, 50)}»` : ""}`;
   const L = [];
   if (/[uú]ltim/i.test(q)){ L.push("**Los últimos prompts**", ...(all.length ? all.slice(-6).reverse().map(line) : ["- Todavía no se generó ningún prompt desde que empecé a llevar la cuenta."])); return { t:L.join("\n") }; }
-  L.push(`**Prompts de imágenes**`, `- Hoy: **${today.length}** · últimos 7 días: **${week.length}** · ${monthName(MONTH)}: **${month.length}**`);
+  const ppl = new Set(month.map(x => x.u).filter(Boolean)).size;
+  L.push(`**Prompts de imágenes (de todos los usuarios)**`, `- Hoy: **${today.length}** · últimos 7 días: **${week.length}** · ${monthName(MONTH)}: **${month.length}**${ppl ? ` (hechos por ${ppl} persona${ppl === 1 ? "" : "s"})` : ""}`);
   const base = /hoy/i.test(q) ? today : month;
   if (agSkillOn("santiago", "topics") && base.length){ L.push(`**${/hoy/i.test(q) ? "De hoy" : "Del mes"}: de qué fueron**`, ...cnt(base, x => x.brand).slice(0, 4).map(([k, n]) => `- ${k}: ${n}`), ...cnt(base, x => x.mode).slice(0, 4).map(([k, n]) => `- ${k}: ${n}`));
     const temas = base.slice(-5).reverse().map(x => x.title).filter(Boolean); if (temas.length) L.push(`Temas: ${temas.map(t => "«" + String(t).slice(0, 40) + "»").join(", ")}.`); }
@@ -15080,7 +15090,7 @@ async function agSend(id, text){
   ofUI.busy = id; ofUI.err = ""; ofUI.errCode = ""; ofUI.plan = null; render(); agScroll();
   if (agMode() === "robot"){ // el robot de la app: responde acá mismo, sin Claude ni costo
     await new Promise(r => setTimeout(r, ofReduce() ? 50 : 650 + Math.random() * 500));
-    try { const r = agRobot(id, text); AGENT_CHAT.push({ id:agId(), a:id, r:"assistant", t:String(r.t || "").slice(0, 12000), n:r.n || "", ...(r.meta ? { meta:r.meta } : {}), ...(r.post ? { post:r.post } : {}), robot:true, by:d.name, at:new Date().toISOString() }); }
+    try { const r = agRobot(id, text); if (id === "claudia" && r.post){ const P = postById(r.post); ofLogAdd(COPY_LOG, { brand:P?.brand || "", fmt:P?.format || "Post", title:agPlain(P?.title || "").slice(0, 60), src:"chat" }); } AGENT_CHAT.push({ id:agId(), a:id, r:"assistant", t:String(r.t || "").slice(0, 12000), n:r.n || "", ...(r.meta ? { meta:r.meta } : {}), ...(r.post ? { post:r.post } : {}), robot:true, by:d.name, at:new Date().toISOString() }); }
     catch (e){ ofUI.err = "El robot no pudo armar la respuesta. Probá de nuevo."; console.error(e); }
     const mine = agMsgs(id); if (mine.length > 80){ const drop = new Set(mine.slice(0, mine.length - 80).map(m => m.id)); AGENT_CHAT = AGENT_CHAT.filter(m => !drop.has(m.id)); }
     ofUI.busy = ""; render(); agScroll(); window.RMH?.flushNow?.(); return; }
@@ -15094,6 +15104,7 @@ async function agSend(id, text){
     if (!r.ok || !j.ok) throw Object.assign(new Error(j.error || "No se pudo hablar con el agente. Probá de nuevo."), { code:j.code || "" });
     if (plan){ if (!j.prompt) throw new Error("No se pudo armar el pedido. Probá de nuevo."); ofUI.plan = { a:id, mid, prompt:String(j.prompt) }; }
     else { AGENT_CHAT.push({ id:agId(), a:id, r:"assistant", t:String(j.text || "").slice(0, 12000), by:d.name, at:new Date().toISOString() });
+      if (id === "claudia" && ofUI.post){ const P = postById(ofUI.post); if (P) ofLogAdd(COPY_LOG, { brand:P.brand, fmt:P.format || "Post", title:agPlain(P.title).slice(0, 60), src:"chat" }); }
     AGENTS._uso = { d:agDay(), n:agUsed() + 1 }; }
   } catch (e){ ofUI.err = e.message || String(e); ofUI.errCode = e.code || ""; }
   const mine = agMsgs(id); if (mine.length > 80){ const drop = new Set(mine.slice(0, mine.length - 80).map(m => m.id)); AGENT_CHAT = AGENT_CHAT.filter(m => !drop.has(m.id)); } // las últimas 80 de cada agente
@@ -15372,6 +15383,8 @@ function ofScene(){
   it(19.3, .75, ofPlant(19.05, .5));
   // Agentes IA: una fila de escritorios (los 3 agentes y lugar para los próximos); si trabajan, se ve en su pantalla
   for (let i = 0; i < 5; i++){ const { x, y } = OF_DESK_IA(i), a = AG_DEF[i];
+    if (a && (a.id === "santiago" || a.id === "claudia")){ const S = ofLogStats(a.id === "santiago" ? PROMPT_LOG : COPY_LOG), [bx, by] = ofP(x + .62, y + .1, 2.4), k = ofCS().k, txt = `${a.id === "santiago" ? "🖼️" : "✍️"} ${S.t} hoy · ${S.m} en el mes`, w = txt.length * 6 + 18;
+      signs += `<g class="ofcount" data-ofc="a:${a.id}" role="button" tabindex="0" aria-label="${esc(a.name)}: ${S.t} ${a.id === "santiago" ? "prompts" : "copys"} hoy, ${S.m} en el mes" transform="translate(${bx.toFixed(1)},${by.toFixed(1)}) scale(${k.toFixed(3)})"><title>${esc(a.name)}: ${a.id === "santiago" ? "prompts de imágenes" : "copys"} de todos los usuarios</title><rect x="${-w / 2}" y="-11" width="${w}" height="22" rx="11" fill="#0f172a" stroke="${a.color}" stroke-width="2"/><text y="4" text-anchor="middle" class="ofcountt">${esc(txt)}</text></g>`; }
     if (a){ const on = !!ofAgentJob(a.id); it(x + .62, y + .55, `<g class="ofdesk ia" data-ofc="a:${a.id}" role="button" tabindex="0" aria-label="Escritorio de ${esc(a.name)}"><title>Escritorio de ${esc(a.name)} · ${esc(a.role)}</title>${desk(x, y, 1.25, on ? a.color : "#475569", "", false, on ? a.id : "", a.color)}</g>`); }
     else { const [cx, cy] = ofP(x + .62, y + .38); it(x + .62, y + .38, `<g class="ofempty">${ofPoly([[x, y, .01], [x + 1.25, y, .01], [x + 1.25, y + .75, .01], [x, y + .75, .01]], "none", ` stroke="#7c5cff" stroke-opacity=".6" stroke-dasharray="5 4" stroke-width="1.5"`)}<text x="${cx}" y="${cy + 4}" text-anchor="middle" class="ofrole">+ próximo agente</text></g>`); } }
   // Datos: tres puestos (Instagram, Facebook / Meta y Web), cada uno con su servidor, una mesada con una pantalla por robot y su cartel
@@ -15508,7 +15521,9 @@ function ofNowHTML(){
   const L = ofLocs(OF_ROBOTS().length), list = ofChars().map(c => ({ c, s:ofState(c, L) })).map(({ c, s }) => ({ c, k:ofLook(c, s, L) })), meet = ofMeetNow(), next = ofMeetNow.next;
   const ag = list.filter(x => x.c.kind === "a"), rb = list.filter(x => x.c.kind === "r"), hot = rb.filter(x => x.k.st === "st-w" || x.k.st === "st-x"), rest = rb.length - hot.length;
   const wa = ag.filter(x => x.k.st === "st-w").length, wr = rb.filter(x => x.k.st === "st-w").length, xr = rb.filter(x => x.k.st === "st-x").length;
+  const SP = ofLogStats(PROMPT_LOG), SC = ofLogStats(COPY_LOG);
   return `<span class="${wa || wr ? "st-w" : "st-p"} ofsum"><i></i>Trabajando: <b>${wa} de ${ag.length}</b> agentes · <b>${wr} de ${rb.length}</b> robots de datos${xr ? ` · <b>${xr}</b> con problema` : ""}</span>`
+    + `<span class="st-n ofsum"><i></i>Hoy: <b>${SP.t}</b> prompt${SP.t === 1 ? "" : "s"} (SantIAgo) · <b>${SC.t}</b> copy${SC.t === 1 ? "" : "s"} (ClaudIA) · en ${esc(SP.mn)}: <b>${SP.m}</b> y <b>${SC.m}</b></span>`
     + (meet ? `<span class="st-m"><i></i><b>📊 ${esc(meet.t[0].toUpperCase() + meet.t.slice(1))}</b> en la sala: ${esc(meet.what)}</span>` : next ? `<span class="st-n"><i></i>Próxima reunión: <b>${ofHM(next)}</b> · ${esc(next.what)}</span>` : "")
     + [...ag, ...hot].map(({ c, k }) => `<span class="${k.st}"><i></i><b>${esc(c.name)}</b> ${esc(k.txt)}</span>`).join("") + (rest ? `<span class="st-p"><i></i>${rest} robot${rest === 1 ? "" : "s"} de datos en pausa</span>` : "");
 }
@@ -15598,9 +15613,8 @@ function ofPanelAgent(a){
   const posts14 = a.id === "claudia" ? posts.filter(p => !p.ex && !isDone(p) && p.status !== CANCEL && !/historia/i.test(String(p.format || "")) && seesBrand(p.brand) && p.date >= addDays(TODAY, -3) && p.date <= addDays(TODAY, 21)).sort((x, y) => x.date.localeCompare(y.date) || String(x.time || "").localeCompare(String(y.time || ""))).slice(0, 80) : [];
   const pick = a.id === "claudia" ? `<label class="oflab">Publicación<select class="base" data-agpost><option value="">— Elegí una publicación —</option>${posts14.map(p => `<option value="${esc(p.id)}" ${p.id === ofUI.post ? "selected" : ""}>${dm(p.date)} · ${esc(p.brand)} · ${esc(p.format || "Post")} · ${esc(agPlain(p.title).slice(0, 50))}</option>`).join("")}</select></label>` : "";
   const nokey = ofUI.errCode === "nokey", bye = ofUI.errCode === "limit";
-  const sant = a.id === "santiago" ? (() => { const d = x => pyDate(x.at), t = PROMPT_LOG.filter(x => d(x) === TODAY).length, w = PROMPT_LOG.filter(x => d(x) >= addDays(TODAY, -6)).length, m = PROMPT_LOG.filter(x => d(x).slice(0, 7) === MONTH).length;
-    return `<div class="ofkpis"><div><b>${t}</b><span>hoy</span></div><div><b>${w}</b><span>7 días</span></div><div><b>${m}</b><span>${esc(monthName(MONTH))}</span></div></div><div class="chips"><button type="button" class="btn" data-page="prompts">${icon("wand-sparkles")} Abrir Prompts de imágenes</button></div>`; })() : "";
-  const cgen = a.id === "claudia" ? `<div class="chips"><button type="button" class="btn" data-page="copys">${icon("pen-line")} Abrir el Generador de copy</button></div>` : "";
+  const sant = a.id === "santiago" ? `<p class="note ofcnt">Prompts de imágenes que hicieron todos los usuarios:</p>${ofKpiLog(PROMPT_LOG, "prompts")}<div class="chips"><button type="button" class="btn" data-page="prompts">${icon("wand-sparkles")} Abrir Prompts de imágenes</button></div>` : "";
+  const cgen = a.id === "claudia" ? `<p class="note ofcnt">Copys que armó para todos los usuarios (Generador de copy y chat):</p>${ofKpiLog(COPY_LOG, "copys")}<div class="chips"><button type="button" class="btn" data-page="copys">${icon("pen-line")} Abrir el Generador de copy</button></div>` : "";
   return `${head}${pick}${sant}${cgen}
     <div class="agmsgs" aria-live="polite">${msgs.length ? "" : `<div class="agmsg a hello"><div class="agtxt"><p>${esc(a.hello)}</p></div></div>`}${msgs.map(m => m.r === "user"
       ? `<div class="agmsg u"><div class="agtxt"><p>${esc(m.t)}</p></div><small>${esc(firstName(m.by || ""))}</small></div>`
@@ -15635,7 +15649,7 @@ function pOficina(){
       <button type="button" class="btn sm ib" data-ofzoom="-1" title="Alejar" aria-label="Alejar">${icon("minus")}</button><b class="ofzv" data-ofzoomv>${Math.round(OFV.z * 100)}%</b><button type="button" class="btn sm ib" data-ofzoom="1" title="Acercar" aria-label="Acercar">${icon("plus")}</button>
       <button type="button" class="btn sm ib" data-ofrot="-1" title="Girar a la izquierda" aria-label="Girar a la izquierda">${icon("rotate-ccw")}</button><button type="button" class="btn sm ib" data-ofrot="1" title="Girar a la derecha" aria-label="Girar a la derecha">${icon("rotate-cw")}</button>
       <button type="button" class="btn sm" data-oftilt title="Mirar desde arriba (o volver)">Desde arriba</button><button type="button" class="btn sm" data-ofrot="0" title="Volver a la vista de la foto">Vista inicial</button></div></div><div class="ofnow" id="ofnow" aria-label="Ahora mismo en la oficina"><b>Ahora mismo</b>${ofNowHTML()}</div></div>${ofPanel()}</div>
-    ${(setTimeout(ofSimStart, 0), "")}<div class="ofagents">${AG_DEF.map(a => `<button type="button" class="panel ofag" data-ofc="a:${a.id}" style="--c:${a.color}"><span class="ofbot" style="background:${a.color}">${icon("bot")}</span><span><b>${esc(a.name)}</b><small>${esc(a.role)}</small></span><em>${agMsgs(a.id).length ? agMsgs(a.id).length + " mensajes" : "Nueva"}</em></button>`).join("")}</div>`;
+    ${(setTimeout(ofSimStart, 0), "")}<div class="ofagents">${AG_DEF.map(a => `<button type="button" class="panel ofag" data-ofc="a:${a.id}" style="--c:${a.color}"><span class="ofbot" style="background:${a.color}">${icon("bot")}</span><span><b>${esc(a.name)}</b><small>${esc(a.role)}</small></span><em>${a.id === "santiago" || a.id === "claudia" ? (S => `${a.id === "santiago" ? "🖼️" : "✍️"} <b>${S.t}</b> hoy · <b>${S.m}</b> en ${esc(S.mn)}`)(ofLogStats(a.id === "santiago" ? PROMPT_LOG : COPY_LOG)) : agMsgs(a.id).length ? agMsgs(a.id).length + " mensajes" : "Nueva"}</em></button>`).join("")}</div>`;
 }
 document.addEventListener("click", e => {
   if (page !== "oficina") return;
@@ -15667,7 +15681,8 @@ document.addEventListener("change", e => { if (page !== "oficina") return; const
 document.addEventListener("submit", e => { if (page !== "oficina") return; const f = e.target;
   if (f.id === "stForm"){ e.preventDefault(); stAsk(f.dataset.st, f.querySelector("textarea").value); return; }
   if (f.id === "agPasteForm"){ e.preventDefault(); const id = f.dataset.ag, d = AG[id], t = (f.querySelector("textarea").value || "").trim(); if (!d || !t) return;
-    AGENT_CHAT.push({ id:agId(), a:id, r:"assistant", t:t.slice(0, 12000), by:d.name, at:new Date().toISOString(), plan:true }); ofUI.plan = null;
+    AGENT_CHAT.push({ id:agId(), a:id, r:"assistant", t:t.slice(0, 12000), by:d.name, at:new Date().toISOString(), plan:true });
+    if (id === "claudia" && ofUI.post){ const P = postById(ofUI.post); if (P) ofLogAdd(COPY_LOG, { brand:P.brand, fmt:P.format || "Post", title:agPlain(P.title).slice(0, 60), src:"plan" }); } ofUI.plan = null;
     const mine = agMsgs(id); if (mine.length > 80){ const drop = new Set(mine.slice(0, mine.length - 80).map(m => m.id)); AGENT_CHAT = AGENT_CHAT.filter(m => !drop.has(m.id)); }
     render(); agScroll(); toast("Respuesta guardada. Si querés, marcala “Así está bien” o corregila para que aprenda."); window.RMH?.flushNow?.(); return; }
   if (f.id === "agForm"){ e.preventDefault(); const v = f.t.value; f.t.value = ""; agSend(f.dataset.ag, v); return; }
