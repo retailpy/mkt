@@ -4706,7 +4706,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v336";
+const APP_VER = "v337";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -14852,6 +14852,8 @@ function agCtxClaudia(){
     if (p.copy) L.push(`- Copy que tiene ahora: ${agPlain(p.copy).slice(0, 1500)}`);
     if (p.brief) L.push(`- Indicaciones: ${agPlain(p.brief).slice(0, 1500)}`);
     if (j) L.push(`- Pedido de diseño: ${agPlain(j.title)} (${j.piece || ""})`, j.brief ? `- Lo que pide el pedido: ${agPlain(j.brief).slice(0, 2000)}` : "", j.notes ? `- Notas del pedido: ${agPlain(j.notes).slice(0, 800)}` : "");
+    const pc = ofComPedOf(p); if (pc) L.push("\nViene de un pedido de Comercial:", `- Pedido: ${agPlain(pc.title)} · ${pcBrandTxt(pc)}${pc.pedido ? " · " + pc.pedido : ""}`, pc.marcas ? `- Marcas que participan: ${agPlain(pc.marcas).slice(0, 600)}` : "", pcRange(pc) ? `- Vigencia: ${pcRange(pc)}` : "", pc.brief ? `- Lo que pidió Comercial: ${agPlain(pc.brief).slice(0, 2000)}` : "");
+    const of = ofComOn(p.date, p.brand); if (of.length) L.push(`\nOfertas de Comercial vigentes ese día (${dm(p.date)}, de los Excel de Drive):`, ...of);
     if (agSkillOn("claudia", "crono")){ const cr = crCtx(p.date, p.date, p.brand); if (cr.length) L.push(`\nAcciones del cronograma vigentes ese día (${dm(p.date)}):`, ...cr); }
     if (agSkillOn("claudia", "examples")){ const ex = posts.filter(x => x.id !== p.id && x.brand === p.brand && x.copy && copyStOf(x) === "ok").sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 6);
       if (ex.length) L.push(`\nCopys de ${p.brand} ya aprobados (para aprender el tono):`, ...ex.map(x => `- (${x.format || "Post"}) ${agPlain(x.copy).slice(0, 500)}`)); }
@@ -15086,11 +15088,11 @@ async function agSend(id, text){
   if (id === "claudia" && /esta publicación/i.test(text) && !ofUI.post) return toast("Elegí primero la publicación (arriba del chat).");
   const plan = agMode() === "plan";
   if (!plan && agUsed() >= agLimit()){ ofUI.err = `Por hoy ya usamos las ${agLimit()} respuestas del día entre los tres agentes. ¡Nos vemos mañana! 👋`; ofUI.errCode = "limit"; render(); agScroll(); return; }
-  const mid = agId(); AGENT_CHAT.push({ id:mid, a:id, r:"user", t:text.slice(0, 4000), by:viewer.name, at:new Date().toISOString() });
+  const mid = agId(); AGENT_CHAT.push({ id:mid, a:id, r:"user", t:text.slice(0, 4000), by:viewer.name, at:new Date().toISOString(), ...(id === "claudia" && ofUI.post ? { post:ofUI.post } : {}) });
   ofUI.busy = id; ofUI.err = ""; ofUI.errCode = ""; ofUI.plan = null; render(); agScroll();
   if (agMode() === "robot"){ // el robot de la app: responde acá mismo, sin Claude ni costo
     await new Promise(r => setTimeout(r, ofReduce() ? 50 : 650 + Math.random() * 500));
-    try { const r = agRobot(id, text); if (id === "claudia" && r.post){ const P = postById(r.post); ofLogAdd(COPY_LOG, { brand:P?.brand || "", fmt:P?.format || "Post", title:agPlain(P?.title || "").slice(0, 60), src:"chat" }); } AGENT_CHAT.push({ id:agId(), a:id, r:"assistant", t:String(r.t || "").slice(0, 12000), n:r.n || "", ...(r.meta ? { meta:r.meta } : {}), ...(r.post ? { post:r.post } : {}), robot:true, by:d.name, at:new Date().toISOString() }); }
+    try { const r = agRobot(id, text); if (id === "claudia" && r.post){ const P = postById(r.post); ofLogAdd(COPY_LOG, { brand:P?.brand || "", fmt:P?.format || "Post", title:agPlain(P?.title || "").slice(0, 60), src:"chat", ...ofComMark(P) }); } AGENT_CHAT.push({ id:agId(), a:id, r:"assistant", t:String(r.t || "").slice(0, 12000), n:r.n || "", ...(r.meta ? { meta:r.meta } : {}), ...(r.post ? { post:r.post } : {}), robot:true, by:d.name, at:new Date().toISOString() }); }
     catch (e){ ofUI.err = "El robot no pudo armar la respuesta. Probá de nuevo."; console.error(e); }
     const mine = agMsgs(id); if (mine.length > 80){ const drop = new Set(mine.slice(0, mine.length - 80).map(m => m.id)); AGENT_CHAT = AGENT_CHAT.filter(m => !drop.has(m.id)); }
     ofUI.busy = ""; render(); agScroll(); window.RMH?.flushNow?.(); return; }
@@ -15104,7 +15106,7 @@ async function agSend(id, text){
     if (!r.ok || !j.ok) throw Object.assign(new Error(j.error || "No se pudo hablar con el agente. Probá de nuevo."), { code:j.code || "" });
     if (plan){ if (!j.prompt) throw new Error("No se pudo armar el pedido. Probá de nuevo."); ofUI.plan = { a:id, mid, prompt:String(j.prompt) }; }
     else { AGENT_CHAT.push({ id:agId(), a:id, r:"assistant", t:String(j.text || "").slice(0, 12000), by:d.name, at:new Date().toISOString() });
-      if (id === "claudia" && ofUI.post){ const P = postById(ofUI.post); if (P) ofLogAdd(COPY_LOG, { brand:P.brand, fmt:P.format || "Post", title:agPlain(P.title).slice(0, 60), src:"chat" }); }
+      if (id === "claudia" && ofUI.post){ const P = postById(ofUI.post); if (P) ofLogAdd(COPY_LOG, { brand:P.brand, fmt:P.format || "Post", title:agPlain(P.title).slice(0, 60), src:"chat", ...ofComMark(P) }); }
     AGENTS._uso = { d:agDay(), n:agUsed() + 1 }; }
   } catch (e){ ofUI.err = e.message || String(e); ofUI.errCode = e.code || ""; }
   const mine = agMsgs(id); if (mine.length > 80){ const drop = new Set(mine.slice(0, mine.length - 80).map(m => m.id)); AGENT_CHAT = AGENT_CHAT.filter(m => !drop.has(m.id)); } // las últimas 80 de cada agente
@@ -15186,10 +15188,12 @@ const ofHM = m => `${m.h}:${String(m.m).padStart(2, "0")}`;
 // hold = lo que tiene en la mano (taza, vaso, guampa o celular).
 const OF_AI = { H:6, V:14.05, V2:5.75 }, OF_J = { V:[14.05, 6], V2:[5.75, 6] };
 const OF_DESK_IA = i => ({ x:6.7 + i * 1.35, y:8.4 });
-// v334 · El área de datos tiene tres puestos: Instagram, Facebook / Meta y Web. Cada robot de datos trabaja en el de su fuente.
-const OF_ST = [{ k:"ig", t:"Instagram", y:7.55, c:"#dd2a7b" }, { k:"fb", t:"Facebook · Meta", y:9.95, c:"#1877f2" }, { k:"web", t:"Web", y:12.35, c:"#0ea5e9" }];
-const OF_SRC = { "Seguidores":"ig", "Público":"ig", "Publicaciones":"ig", "Referentes":"ig", "Interacciones":"ig", "Pautas":"fb", "Mensajes":"fb", "Mensajes al instante":"fb", "Campañas (agente diario)":"fb", "Comercial":"web" };
+// v334 · El área de datos tiene puestos: Instagram, Facebook / Meta y Web. Cada robot de datos trabaja en el de su fuente.
+// v337 · Y un cuarto, Comercial: los Excel de ofertas que Comercial deja en Drive y los pedidos que carga para publicar.
+const OF_ST = [{ k:"ig", t:"Instagram", y:7.4, c:"#dd2a7b" }, { k:"fb", t:"Facebook · Meta", y:9.1, c:"#1877f2" }, { k:"web", t:"Web", y:10.8, c:"#0ea5e9" }, { k:"com", t:"Comercial", y:12.5, c:"#1d6f42", full:"Comercial · Excel de Drive y pedidos" }];
+const OF_SRC = { "Seguidores":"ig", "Público":"ig", "Publicaciones":"ig", "Referentes":"ig", "Interacciones":"ig", "Pautas":"fb", "Mensajes":"fb", "Mensajes al instante":"fb", "Campañas (agente diario)":"fb", "Comercial":"com" };
 const ofSrcOf = n => OF_SRC[n] || "web", ofStLane = st => st.y + .75;
+const OF_DRIVE = (x, y) => `<g transform="translate(${x},${y}) scale(.245)"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></g>`;
 const OF_RB_SPOT = i => { const rb = OF_ROBOTS(), src = ofSrcOf(rb[i][0]), st = OF_ST.find(x => x.k === src), j = rb.slice(0, i).filter(([n]) => ofSrcOf(n) === src).length; return [1.25 + j * .68, ofStLane(st)]; };
 function ofLocs(n){
   if (ofLocs.c && ofLocs.n === n) return ofLocs.c;
@@ -15236,13 +15240,19 @@ function ofAgentJob(id){
   for (let i = AGENT_CHAT.length - 1; i >= 0; i--){ const x = AGENT_CHAT[i]; if (x.a !== id) continue; const t = Date.parse(x.at || ""); if (t && now - t < OF_WORK_MS){ const u = lastU(); v = { what:ofJobWhat(id, x, u), key:u?.id || x.id, src:ofJobSrc(id, u) }; } break; }
   // SantIAgo trabaja cuando alguien genera un prompt; ClaudIA, cuando alguien usa el Generador de copy
   const lg = id === "santiago" ? PROMPT_LOG : id === "claudia" ? COPY_LOG : null, l = lg && lg[lg.length - 1];
-  if (!v && l && now - Date.parse(l.at || "") < OF_WORK_MS) v = id === "santiago" ? { what:`armando un prompt de imagen${l.title ? ` de «${String(l.title).slice(0, 34)}»` : ""}`, key:l.id } : { what:`escribiendo un copy de ${l.brand || "la marca"}${l.title ? ` («${String(l.title).slice(0, 30)}»)` : ""}`, key:l.id, src:"web" };
+  if (!v && l && now - Date.parse(l.at || "") < OF_WORK_MS) v = id === "santiago" ? { what:`armando un prompt de imagen${l.title ? ` de «${String(l.title).slice(0, 34)}»` : ""}`, key:l.id } : { what:`escribiendo un copy de ${l.brand || "la marca"}${l.title ? ` («${String(l.title).slice(0, 30)}»)` : ""}`, key:l.id, src:l.com ? "com" : "web" };
   m[id] = { t:now, k:key, v }; return v;
 }
 const ofJobWhat = (id, msg, u) => id === "sofia" ? (/\bmes\b|mensual/i.test(u?.t || "") ? "armando el informe del mes" : "armando el informe del día") : id === "matias" ? "analizando la pauta" : id === "santiago" ? "contando los prompts de imágenes"
   : (p => p ? `escribiendo el copy de «${agPlain(p.title).slice(0, 34)}»` : "escribiendo un copy")(postById(msg?.post || ofUI.post || ""));
-// Para analizar, primero va al puesto de datos que corresponde: SofIA y lo que funcionó solo, a Instagram; MatIAs y la pauta, a Facebook / Meta; ClaudIA, a la Web (ofertas)
-const ofJobSrc = (id, u) => id === "sofia" ? "ig" : id === "matias" ? (/pautar|sola|org[aá]nic/i.test(u?.t || "") ? "ig" : "fb") : id === "claudia" ? "web" : null;
+// Para analizar, primero va al puesto de datos que corresponde: SofIA y lo que funcionó solo, a Instagram; MatIAs y la pauta, a Facebook / Meta;
+// ClaudIA, a la Web (las webs y los WhatsApp del cierre). v337: si es de ofertas, promos o un pedido de Comercial, van al puesto de Comercial.
+const ofComQ = t => /comercial|ofertas?\b|promo|descuento|folleto|activaci[oó]n/i.test(t || "");
+const ofComPedOf = P => { const j = P?.fromJob && jobById(P.fromJob); return j && j.com ? pcById(j.com) || null : null; }; // el pedido de Comercial de donde salió la publicación
+const ofComPost = P => !!P && (!!ofComPedOf(P) || actComOf(P));
+const ofComMark = P => ofComPost(P) ? { com:1 } : {};
+const ofJobSrc = (id, u) => id === "sofia" ? (ofComQ(u?.t) ? "com" : "ig") : id === "matias" ? (ofComQ(u?.t) ? "com" : /pautar|sola|org[aá]nic/i.test(u?.t || "") ? "ig" : "fb")
+  : id === "claudia" ? (ofComQ(u?.t) || ofComPost(postById(u?.post || ofUI.post || "")) ? "com" : "web") : null;
 const ofWorking = c => c.kind === "a" ? !!ofAgentJob(c.ref) : (h => h !== null && h < 1 / 3)(ofAge(c.upd));
 const ofProblem = c => c.kind === "r" && ofSem(c.upd) === "r";
 const ofSim = { ch:{}, raf:0, last:0, speed:1, dwell:1, order:"" };
@@ -15393,10 +15403,12 @@ function ofScene(){
     let leds = ""; if (ofSeen(1, 0)) mine.forEach((r, j) => { const [lx, ly] = ofP(.72, y - .4 + j * .2, 1.25); leds += `<circle cx="${lx}" cy="${ly}" r="${(2.6 * ofCS().k).toFixed(2)}" fill="${semC[ofSem(r.u)]}"/>`; });
     it(.38, y, `<g class="ofracks" data-ofc="st:${st.k}" role="button" tabindex="0" aria-label="Puesto de ${esc(st.t)}: ${ok} de ${mine.length} robots al día"><title>Puesto de datos de ${esc(st.t)}: tocá para pedirle datos</title>${ofBox(.05, y - .6, 0, .65, 1.2, 1.6, OF_C.dark) + leds}</g>`);
     let mon = ""; mine.forEach((r, j) => { const x = 1.25 + j * .68, on = (h => h !== null && h < 1 / 3)(ofAge(r.u)); mon += ofBox(x - .25, y - .22, .78, .5, .06, .34, ["#111", on ? st.c : "#1f2937", "#0b0d10", "#0b0d10"]); });
+    if (!mine.length) mon = ofBox(2.65, y - .22, .78, .5, .06, .34, ["#111", st.c, "#0b0d10", "#0b0d10"]); // Web: sin robot propio, la pantalla con las webs oficiales
     it(2.9, y, `<g class="ofdesk st" data-ofc="st:${st.k}" role="button" tabindex="0" aria-label="Puesto de datos de ${esc(st.t)}"><title>Puesto de datos de ${esc(st.t)}: tocá para pedirle datos</title>${ofBox(.95, y - .3, 0, 3.9, .55, .78, OF_C.desk) + mon}</g>`);
-    const [sx, sy] = ofP(2.9, y - .1, 2.05), k = ofCS().k, w = st.t.length * 6.6 + 46, logo = st.k === "ig" ? `<rect x="${-w / 2 + 6}" y="-11" width="22" height="22" rx="6" fill="url(#ofig)"/><rect x="${-w / 2 + 11}" y="-6" width="12" height="12" rx="3.6" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="${-w / 2 + 17}" cy="0" r="2.8" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="${-w / 2 + 20.6}" cy="-3.6" r=".95" fill="#fff"/>`
-      : st.k === "fb" ? `<circle cx="${-w / 2 + 17}" cy="0" r="11" fill="#1877f2"/><text x="${-w / 2 + 18.5}" y="6.5" text-anchor="middle" class="offb">f</text>` : `<circle cx="${-w / 2 + 17}" cy="0" r="11" fill="#0ea5e9"/><circle cx="${-w / 2 + 17}" cy="0" r="7" fill="none" stroke="#fff" stroke-width="1.4"/><ellipse cx="${-w / 2 + 17}" cy="0" rx="3" ry="7" fill="none" stroke="#fff" stroke-width="1.2"/><line x1="${-w / 2 + 10}" y1="0" x2="${-w / 2 + 24}" y2="0" stroke="#fff" stroke-width="1.2"/>`;
-    signs += `<g class="ofsign" data-ofc="st:${st.k}" role="button" tabindex="0" aria-label="${esc(st.t)}: tocá para pedirle datos" transform="translate(${sx.toFixed(1)},${sy.toFixed(1)}) scale(${k.toFixed(3)})"><title>Puesto de datos de ${esc(st.t)}: tocá para pedirle datos</title><rect x="${-w / 2}" y="-15" width="${w}" height="30" rx="15" fill="#fff" stroke="${st.c}" stroke-width="2"/>${logo}<text x="${-w / 2 + 34}" y="4.5" class="ofsignt">${esc(st.t)}</text></g>`; });
+    const [sx, sy] = ofP(1.9 + OF_ST.indexOf(st) * .75, y - .1, 2.05), k = ofCS().k, w = st.t.length * 6.6 + 46 + (st.k === "com" ? 26 : 0), logo = st.k === "ig" ? `<rect x="${-w / 2 + 6}" y="-11" width="22" height="22" rx="6" fill="url(#ofig)"/><rect x="${-w / 2 + 11}" y="-6" width="12" height="12" rx="3.6" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="${-w / 2 + 17}" cy="0" r="2.8" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="${-w / 2 + 20.6}" cy="-3.6" r=".95" fill="#fff"/>`
+      : st.k === "fb" ? `<circle cx="${-w / 2 + 17}" cy="0" r="11" fill="#1877f2"/><text x="${-w / 2 + 18.5}" y="6.5" text-anchor="middle" class="offb">f</text>`
+      : st.k === "com" ? `<rect x="${-w / 2 + 6}" y="-11" width="22" height="22" rx="5" fill="#1d6f42"/><text x="${-w / 2 + 17}" y="5.5" text-anchor="middle" class="offb">X</text>${OF_DRIVE(-w / 2 + 32, -9.5)}` : `<circle cx="${-w / 2 + 17}" cy="0" r="11" fill="#0ea5e9"/><circle cx="${-w / 2 + 17}" cy="0" r="7" fill="none" stroke="#fff" stroke-width="1.4"/><ellipse cx="${-w / 2 + 17}" cy="0" rx="3" ry="7" fill="none" stroke="#fff" stroke-width="1.2"/><line x1="${-w / 2 + 10}" y1="0" x2="${-w / 2 + 24}" y2="0" stroke="#fff" stroke-width="1.2"/>`;
+    signs += `<g class="ofsign" data-ofc="st:${st.k}" role="button" tabindex="0" aria-label="${esc(st.t)}: tocá para pedirle datos" transform="translate(${sx.toFixed(1)},${sy.toFixed(1)}) scale(${k.toFixed(3)})"><title>Puesto de datos de ${esc(st.t)}: tocá para pedirle datos</title><rect x="${-w / 2}" y="-15" width="${w}" height="30" rx="15" fill="#fff" stroke="${st.c}" stroke-width="2"/>${logo}<text x="${-w / 2 + (st.k === "com" ? 60 : 34)}" y="4.5" class="ofsignt">${esc(st.t)}</text></g>`; });
   // Descanso: café, agua, tereré, sillón con música, plantas
   it(16.3, 7.3, ofBox(15.0, 7.0, 0, 2.6, .6, .9, OF_C.wood) + ofBox(15.5, 7.07, .9, .5, .4, .55, ["#1f2937", "#111827", "#0b0f19"]) + ofBox(16.4, 7.12, .9, .55, .35, .08, ["#94a3b8", "#64748b", "#475569"]));
   it(18.55, 7.3, ofBox(18.3, 7.05, 0, .5, .5, 1.0, OF_C.white) + ofBox(18.37, 7.12, 1.0, .36, .36, .45, ["#bae6fd", "#7dd3fc", "#38bdf8"]));
@@ -15558,14 +15570,39 @@ function stAnswer(k, text){
       L.push(`**Pauta de ${monthName(MONTH)} (Meta Ads)**`, ...(bs.length ? bs.map(b => { const l = ads.filter(a => a.b === b); return `- ${b}: ${l.length} anuncio${l.length === 1 ? "" : "s"} · invertido ${usd(Math.round(l.reduce((s, a) => s + (a.spend || 0), 0) * 100) / 100)} · alcance ${dots(l.reduce((s, a) => s + (a.reach || 0), 0))} · ${l.filter(a => a.status === "ACTIVE").length} en el aire`; }) : ["- Todavía no llegaron anuncios de este mes."])); }
     if (/mensaje/i.test(q) || !/pauta|anuncio|gast|invert|seguidor/i.test(q)){ const r = inboxBrands().map(b => { const c = inboxConvs(b), w = c.filter(x => !ibOk(x)).length; return `- ${b}: ${c.length} conversaciones · ${w} esperando respuesta`; });
       L.push("**Mensajes (Facebook e Instagram)**", ...(r.length ? r : ["- Todavía no llegaron los mensajes."])); }
+  } else if (k === "com"){
+    const D = ofComData(), name = x => `${x.b} · ${comCatName(x.b, x.c)}`, wOf = /oferta|vigente|promo|pr[oó]xim/i.test(q), wPed = /pedido|publicar|pidi/i.test(q), wTop = /destac|redes|tapa|z[oó]calo|producto/i.test(q), wPend = /pendiente|revis|error|no se (pudo|ley)/i.test(q), gen = !wOf && !wPed && !wTop && !wPend;
+    if (gen || wOf){
+      L.push("**Ofertas vigentes hoy (Excel de Comercial en Drive)**", ...(D.vig.length ? D.vig.map(x => { const t = ofComTop(x.f), c = [t.tapa.length && `Tapa ${t.tapa.length}`, t.redes.length && `Redes ${t.redes.length}`, t.dest.length && `Destacados ${t.dest.length}`].filter(Boolean);
+        return `- ${name(x)} · del ${dm(x.f.from)} al ${dm(x.f.to)}${x.f.n ? ` · ${x.f.n} productos` : ""}${c.length ? ` (${c.join(" · ")})` : ""}`; }) : [COMERCIAL.updated ? "- Hoy no hay ofertas vigentes." : "- Todavía no se leyeron los Excel de Comercial."]));
+      if (D.prox.length) L.push("**Empiezan en los próximos 7 días**", ...D.prox.map(x => `- ${name(x)} · del ${dm(x.f.from)} al ${dm(x.f.to)}`)); }
+    if (wTop){ const rows = D.vig.flatMap(x => { const t = ofComTop(x.f); return [...t.redes, ...t.tapa].slice(0, 6).map(i => `- ${x.b} · ${comName(i)}${comOfTxt(i) ? " · " + comOfTxt(i) : ""}${comPctNum(comPct(i)) ? ` (−${comPct(i)})` : ""} · ${COM_FLAG_TXT[i.flag] || i.flag}`); });
+      L.push("**Lo que va destacado para redes (Zócalo redes y Tapa) en las ofertas vigentes**", ...(rows.length ? rows.slice(0, 15) : ["- Las ofertas vigentes no tienen productos marcados para redes."])); }
+    if (gen || wPed){
+      if (!can("pedcom")) L.push("**Pedidos de Comercial**", "- Los ven Admin total y Admin.");
+      else { const mm = D.peds.filter(p => String(p.date || p.at || "").slice(0, 7) === MONTH);
+        L.push(`**Pedidos de Comercial para publicar** · ${D.open.length} en proceso`, ...(D.open.length ? D.open.slice().sort((a, b) => String(a.date || "9").localeCompare(String(b.date || "9"))).slice(0, 10).map(p => `- «${agPlain(p.title).slice(0, 60)}» · ${pcBrandTxt(p)}${p.pedido ? " · " + p.pedido : ""}${p.date ? " · publicar el " + dm(p.date) : ""}${pcRange(p) ? " · vigencia " + pcRange(p) : ""} · ${pcSt(p)}`) : ["- No hay pedidos en proceso."]),
+          `- En ${monthName(MONTH)}: ${mm.length} pedido${mm.length === 1 ? "" : "s"} · ${mm.filter(p => pcSt(p) === "Finalizado").length} finalizados · ${mm.filter(p => pcSt(p) === "No ejecutable").length} no ejecutables`); } }
+    if (gen || wPend){ L.push(`**Archivos de Drive pendientes de revisión:** ${D.pend}`); if (wPend) (COMERCIAL.pending || []).slice(0, 8).forEach(x => L.push(`- ${x.name}${x.reason ? " · " + x.reason : ""}`)); }
+    if (COMERCIAL.updated) L.push(`Los Excel se leyeron por última vez hace ${Math.max(0, Math.round(ofAge(COMERCIAL.updated)))} h.`);
   } else {
-    const files = Object.values(COMERCIAL.files || {}).filter(f => f.from && f.to && f.from <= TODAY && f.to >= TODAY);
-    if (!/web|p[aá]gina|sitio|link/i.test(q) || /oferta|vigente|promo/i.test(q)) L.push("**Ofertas vigentes (Comercial)**", ...(files.length ? files.slice(0, 10).map(f => `- ${f.brand || "Superseis"} · ${f.cat || "quincenal"} · del ${dm(f.from)} al ${dm(f.to)}${f.n ? " · " + f.n : ""}`) : ["- No hay ofertas vigentes cargadas para hoy."]));
+    if (/oferta|vigente|promo|comercial|pedido/i.test(q)) L.push("Las ofertas y los pedidos de Comercial los tiene el puesto de **Comercial** (al lado). Igual te paso lo de hoy:", stAnswer("com", q));
     L.push("**Webs oficiales**", "- Superseis: www.superseis.com.py · WhatsApp https://wa.me/595214141960", "- Stock: www.stock.com.py · WhatsApp https://wa.me/595214141980", "- Delimarket: delimarket.com.py · WhatsApp https://wa.me/595983500300");
   }
   return L.join("\n");
 }
-const ST_QUICK = { ig:["¿Cuántos seguidores tenemos?", "¿Cuáles fueron las publicaciones que más llegaron?", "¿Cuántas publicaciones van este mes?"], fb:["¿Cómo va la pauta del mes?", "¿Cuántos mensajes esperan respuesta?", "¿Cuántos seguidores en Facebook?"], web:["¿Qué ofertas están vigentes?", "¿Cuáles son las webs oficiales?"] };
+const ST_QUICK = { ig:["¿Cuántos seguidores tenemos?", "¿Cuáles fueron las publicaciones que más llegaron?", "¿Cuántas publicaciones van este mes?"], fb:["¿Cómo va la pauta del mes?", "¿Cuántos mensajes esperan respuesta?", "¿Cuántos seguidores en Facebook?"], web:["¿Cuáles son las webs oficiales?", "¿Cuáles son los WhatsApp de cada marca?"],
+  com:["¿Qué ofertas están vigentes?", "¿Qué va destacado en redes?", "¿Qué pedidos de Comercial hay para publicar?", "¿Hay archivos pendientes de revisión?"] };
+// v337 · Comercial: las ofertas de los Excel de Drive (vigentes y próximas, con lo que va destacado para redes) y los pedidos que carga Comercial
+const ofComFiles = () => COM_BRANDS.flatMap(([b, cats]) => cats.flatMap(c => { try { return comAllOf(b + "|" + c).map(f => ({ f, b, c })); } catch (e){ return []; } }));
+const ofComTop = f => { const it = (f.sheets || []).flatMap(sh => sh.items || []); return { tapa:it.filter(i => i.flag === "Tapa"), redes:it.filter(i => i.flag === "Zócalo redes"), dest:it.filter(i => i.flag === "Destacar") }; };
+function ofComData(){
+  const all = ofComFiles(), peds = can("pedcom") ? PEDIDOS_COM.filter(p => p && p.id && !p.demo) : [];
+  return { all, vig:all.filter(x => comState(x.f) === "vig"), prox:all.filter(x => comState(x.f) === "prox" && x.f.from <= addDays(TODAY, 7)), peds, open:peds.filter(p => !pcFinal(p)), pend:(COMERCIAL.pending || []).length };
+}
+// Para el copy: las ofertas de esa marca vigentes ese día, con lo que va para redes
+const ofComOn = (date, brand) => ofComFiles().filter(x => x.b === brand && x.f.from <= date && x.f.to >= date).map(x => { const t = ofComTop(x.f), top = [...t.redes, ...t.tapa].slice(0, 6);
+  return `- ${comCatName(x.b, x.c)} del ${dm(x.f.from)} al ${dm(x.f.to)}${x.f.n ? ` · ${x.f.n} productos` : ""}${top.length ? ` · para redes: ${top.map(i => `${comName(i)}${comOfTxt(i) ? " " + comOfTxt(i) : ""}`).join("; ")}` : ""}`; });
 function stAsk(k, text){
   text = String(text || "").trim(); if (!text) return;
   AGENT_CHAT.push({ id:agId(), a:"st-" + k, r:"user", t:text.slice(0, 1000), by:viewer.name, at:new Date().toISOString() });
@@ -15575,11 +15612,14 @@ function stAsk(k, text){
 }
 function ofPanelStation(k){
   const st = OF_ST.find(x => x.k === k), rb = OF_ROBOTS().map(([n, u], i) => ({ n, u, i })).filter(r => ofSrcOf(r.n) === k), L = ofLocs(OF_ROBOTS().length), msgs = AGENT_CHAT.filter(m => m.a === "st-" + k).slice(-20);
-  return `<header class="ofph" style="--c:${st.c}"><span class="ofbot" style="background:${st.c}">${icon(k === "web" ? "globe" : k === "fb" ? "megaphone" : "image")}</span><div><b>${esc(st.t)}</b><span>Puesto de datos · ${rb.length} robot${rb.length === 1 ? "" : "s"}. Los agentes vienen acá a buscar datos cuando analizan.</span></div></header>
-    <ul class="ofrobots">${rb.map(({ n, u, i }) => { const s = ofSem(u), c = ofChars().find(x => x.id === "r-" + i), now = c ? ofLook(c, ofState(c, L), L).txt : ""; return `<li class="s${s}"><i></i><b>${esc(n)}</b><span>${u ? `trajo datos hace ${Math.round(ofAge(u))} h` : "sin dato en la app"}${now ? ` · ahora: ${esc(now)}` : ""}</span></li>`; }).join("")}</ul>
+  const D = k === "com" ? ofComData() : null, pq = ST_QUICK[k].filter(q => k !== "com" || can("pedcom") || !/pedidos/.test(q));
+  return `<header class="ofph" style="--c:${st.c}"><span class="ofbot" style="background:${st.c}">${icon(k === "com" ? "file-spreadsheet" : k === "web" ? "globe" : k === "fb" ? "megaphone" : "image")}</span><div><b>${esc(st.full || st.t)}</b><span>${k === "com" ? "Los Excel de ofertas que Comercial deja en Drive y los pedidos que carga para publicar. ClaudIA viene acá cuando escribe el copy de una oferta o de un pedido de Comercial; SofIA y MatIAs, cuando analizan ofertas o activaciones." : k === "web" ? "Las webs y los WhatsApp oficiales de cada marca. ClaudIA viene acá a buscar el link para el cierre del copy." : `Puesto de datos · ${rb.length} robot${rb.length === 1 ? "" : "s"}. Los agentes vienen acá a buscar datos cuando analizan.`}</span></div></header>
+    ${D ? `<div class="ofkpis four"><div><b>${D.vig.length}</b><span>ofertas vigentes</span></div><div><b>${D.prox.length}</b><span>empiezan esta semana</span></div><div><b>${can("pedcom") ? D.open.length : "—"}</b><span>pedidos en proceso</span></div><div class="${D.pend ? "bad" : ""}"><b>${D.pend}</b><span>archivos para revisar</span></div></div>
+    <div class="chips">${can("comercial") ? `<button type="button" class="btn" data-page="comercial">${icon("badge-percent")} Ver Comercial</button>` : ""}${can("pedcom") ? `<button type="button" class="btn" data-page="pedcom">${icon("shopping-bag")} Pedidos Comercial</button>` : ""}<a class="btn" href="https://drive.google.com/drive/folders/${COM_ROOT}" target="_blank" rel="noopener">${icon("folder-open")} Carpeta de Drive</a></div>` : ""}
+    <ul class="ofrobots">${rb.map(({ n, u, i }) => { const s = ofSem(u), c = ofChars().find(x => x.id === "r-" + i), now = c ? ofLook(c, ofState(c, L), L).txt : ""; return `<li class="s${s}"><i></i><b>${esc(n === "Comercial" ? "Ofertas (Excel de Drive)" : n)}</b><span>${u ? `trajo datos hace ${Math.round(ofAge(u))} h` : "sin dato en la app"}${now ? ` · ahora: ${esc(now)}` : ""}</span></li>`; }).join("")}</ul>
     <h4>${icon("message-circle")} Pedile datos</h4>
-    <div class="agmsgs" aria-live="polite">${msgs.length ? msgs.map(m => m.r === "user" ? `<div class="agmsg u"><div class="agtxt"><p>${esc(m.t)}</p></div></div>` : `<div class="agmsg a"><div class="agtxt">${agMd(m.t)}</div></div>`).join("") : `<div class="agmsg a hello"><div class="agtxt"><p>Hola, somos los robots de ${esc(st.t)}. Preguntanos y te pasamos los datos que tenemos en la app.</p></div></div>`}</div>
-    <div class="chips agquick">${ST_QUICK[k].map(q => `<button type="button" class="chip" data-stq="${esc(q)}">${icon("sparkles")} ${esc(q)}</button>`).join("")}</div>
+    <div class="agmsgs" aria-live="polite">${msgs.length ? msgs.map(m => m.r === "user" ? `<div class="agmsg u"><div class="agtxt"><p>${esc(m.t)}</p></div></div>` : `<div class="agmsg a"><div class="agtxt">${agMd(m.t)}</div></div>`).join("") : `<div class="agmsg a hello"><div class="agtxt"><p>${k === "com" ? "Hola, soy el robot de Comercial: leo los Excel de ofertas que Comercial deja en Drive y veo los pedidos que carga para publicar. Preguntame y te paso lo que hay." : k === "web" ? "Hola. Acá están las webs y los WhatsApp oficiales de cada marca." : `Hola, somos los robots de ${esc(st.t)}. Preguntanos y te pasamos los datos que tenemos en la app.`}</p></div></div>`}</div>
+    <div class="chips agquick">${pq.map(q => `<button type="button" class="chip" data-stq="${esc(q)}">${icon("sparkles")} ${esc(q)}</button>`).join("")}</div>
     <form id="stForm" class="agform" data-st="${k}"><textarea class="base" name="t" rows="2" maxlength="1000" placeholder="Preguntale a ${esc(st.t)}…"></textarea><button type="submit" class="btn primary" aria-label="Enviar">${icon("send")}</button></form>`;
 }
 function ofPanelRobots(){
@@ -15682,7 +15722,7 @@ document.addEventListener("submit", e => { if (page !== "oficina") return; const
   if (f.id === "stForm"){ e.preventDefault(); stAsk(f.dataset.st, f.querySelector("textarea").value); return; }
   if (f.id === "agPasteForm"){ e.preventDefault(); const id = f.dataset.ag, d = AG[id], t = (f.querySelector("textarea").value || "").trim(); if (!d || !t) return;
     AGENT_CHAT.push({ id:agId(), a:id, r:"assistant", t:t.slice(0, 12000), by:d.name, at:new Date().toISOString(), plan:true });
-    if (id === "claudia" && ofUI.post){ const P = postById(ofUI.post); if (P) ofLogAdd(COPY_LOG, { brand:P.brand, fmt:P.format || "Post", title:agPlain(P.title).slice(0, 60), src:"plan" }); } ofUI.plan = null;
+    if (id === "claudia" && ofUI.post){ const P = postById(ofUI.post); if (P) ofLogAdd(COPY_LOG, { brand:P.brand, fmt:P.format || "Post", title:agPlain(P.title).slice(0, 60), src:"plan", ...ofComMark(P) }); } ofUI.plan = null;
     const mine = agMsgs(id); if (mine.length > 80){ const drop = new Set(mine.slice(0, mine.length - 80).map(m => m.id)); AGENT_CHAT = AGENT_CHAT.filter(m => !drop.has(m.id)); }
     render(); agScroll(); toast("Respuesta guardada. Si querés, marcala “Así está bien” o corregila para que aprenda."); window.RMH?.flushNow?.(); return; }
   if (f.id === "agForm"){ e.preventDefault(); const v = f.t.value; f.t.value = ""; agSend(f.dataset.ag, v); return; }
@@ -15842,7 +15882,7 @@ function cgGenerate(n){
   const o = { slides:sl, piece:!car, hookFromSlide:car && !cgUI.title.trim(), n };
   const outs = Array.from({ length:n }, (_, i) => clCopy(p, cgUI.data.trim(), o, cgUI.n + i)); cgUI.n += n;
   cgUI.out = outs.map(x => x.text); cgUI.miss = [...new Set(outs.flatMap(x => x.miss))];
-  ofLogAdd(COPY_LOG, { brand:cgUI.brand, fmt:cgUI.fmt, title:String(p.title || "").slice(0, 60) }); // ClaudIA trabajando en la oficina (sin nombres)
+  ofLogAdd(COPY_LOG, { brand:cgUI.brand, fmt:cgUI.fmt, title:String(p.title || "").slice(0, 60), ...ofComMark(P) }); // ClaudIA trabajando en la oficina (sin nombres)
   render(); window.RMH?.flushNow?.(); setTimeout(() => document.querySelector(".cgres")?.scrollIntoView({ behavior:"smooth", block:"start" }), 30);
 }
 document.addEventListener("input", e => { if (page !== "copys") return; const t = e.target;
