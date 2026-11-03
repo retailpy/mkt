@@ -1119,7 +1119,7 @@ html.light .ofscene image{filter:none}
 .ofscene .ofch .ofant{fill:#94a3b8}.ofscene .ofch.ag .ofant{fill:#a78bfa}.ofscene .ofch.st-w .ofant{fill:#22c55e}.ofscene .ofch.st-x .ofant{fill:#ef4444}
 .ofscene .ofch.back .offace,.ofscene .ofch.front .ofbk,.ofscene .ofch:not(.back):not(.front) .ofbk{display:none}
 .ofscene .ofch.sit .oflegs{display:none}.ofscene .ofch.sit .ofup{transform:translateY(7px)}
-.ofscene .ofch.walk .ofup{animation:ofbob .42s ease-in-out infinite}.ofscene .ofch.walk .oflegs rect:first-child{animation:ofleg .42s ease-in-out infinite alternate}.ofscene .ofch.walk .oflegs rect:last-child{animation:ofleg .42s ease-in-out infinite alternate-reverse}
+.ofscene .ofch.walk .ofup{animation:ofbob .62s ease-in-out infinite}.ofscene .ofch.walk .oflegs rect:first-child{animation:ofleg .62s ease-in-out infinite alternate}.ofscene .ofch.walk .oflegs rect:last-child{animation:ofleg .62s ease-in-out infinite alternate-reverse}
 .ofscene .ofch.work .ofarm{transform-box:fill-box;transform-origin:50% 0;animation:oftype .3s ease-in-out infinite alternate}.ofscene .ofch.work .ofarm.r{animation-delay:.15s}
 .ofscene .ofch.work .ofant{animation:ofblink 1s steps(2) infinite}
 .ofscene .ofch.gone{opacity:0;pointer-events:none}.ofscene .ofch{transition:opacity .35s}
@@ -4700,7 +4700,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v330";
+const APP_VER = "v331";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -15127,6 +15127,9 @@ function ofLocs(n){
   [16.4, 17.8].forEach((x, i) => L["sala" + i] = { door:[OF_AI.V, 3.3], path:[[x, 3.3]], face:up, sit:true, emo:"💬", txt:"charlando en la sala de reunión", go:"va a la sala de reunión" });
   [16.4, 17.8].forEach((x, i) => L["sala" + (i + 2)] = { door:[OF_AI.V, 3.3], path:[[15.15, 3.3], [15.15, 1.12], [x, 1.12]], face:dn, sit:true, emo:"💬", txt:"charlando en la sala de reunión", go:"va a la sala de reunión" });
   L.print = { door:[13.2, OF_AI.H], path:[], face:up, emo:"🖨️", txt:"imprimiendo", go:"va a la impresora" };
+  L.window0 = { door:[OF_AI.V, .75], path:[[14.45, .75]], face:up, emo:"🪟", txt:"mirando por la ventana", go:"va a la ventana" };
+  L.rail0 = { door:[18.6, OF_AI.H], path:[], face:[1, 0], emo:"🌿", txt:"estirando las piernas junto a la baranda", go:"va a estirar las piernas" };
+  L.rail1 = { door:[OF_AI.V, 13.55], path:[[18.3, 13.55]], face:[1, 0], emo:"🌿", txt:"estirando las piernas junto a la baranda", go:"va a estirar las piernas" };
   ofLocs.n = n; return ofLocs.c = L;
 }
 const ofAisle = p => p[1] === OF_AI.H ? "H" : p[0] === OF_AI.V ? "V" : "V2";
@@ -15140,44 +15143,68 @@ const ofSpot = l => l.path.length ? l.path[l.path.length - 1] : l.door;
 const ofRbName = n => n.replace("Mensajes al instante", "DM al instante").replace("Campañas (agente diario)", "Campañas");
 const ofChars = () => [...AG_DEF.map((a, i) => ({ id:"a-" + a.id, kind:"a", ref:a.id, i, name:a.name, color:a.color, home:"desk" + i })),
   ...OF_ROBOTS().map(([n, u], i) => ({ id:"r-" + i, kind:"r", ref:i, i, name:ofRbName(n), full:n, upd:u, color:"#475569", home:"rb" + i }))];
-const ofWorking = c => c.kind === "a" ? ofUI.busy === c.ref || ofUI.plan?.a === c.ref : (h => h !== null && h < 1 / 3)(ofAge(c.upd)); // un robot de datos “trabaja” los 20 min después de traer datos
+// Un agente “trabaja” mientras responde una consulta y un rato después (90 s desde el último mensaje de su charla: se ve en
+// todos los dispositivos); un robot de datos, los 20 min después de traer datos. Si no, NO está en su escritorio.
+const OF_WORK_MS = 90e3;
+function ofAgentJob(id){
+  if (ofUI.busy === id) return { what:ofJobWhat(id, null) };
+  if (ofUI.plan?.a === id) return { what:"esperando que pegues la respuesta de Claude", plan:true };
+  const now = Date.now(), m = ofAgentJob.m || (ofAgentJob.m = {}), key = AGENT_CHAT.length; if (m[id] && m[id].k === key && now - m[id].t < 400) return m[id].v;
+  let v = null;
+  { for (let i = AGENT_CHAT.length - 1; i >= 0; i--){ const x = AGENT_CHAT[i]; if (x.a !== id) continue; const t = Date.parse(x.at || ""); if (t && now - t < OF_WORK_MS) v = { what:ofJobWhat(id, x) }; break; } }
+  m[id] = { t:now, k:key, v }; return v;
+}
+const ofJobWhat = (id, msg) => id === "sofia" ? "armando el informe del día" : id === "matias" ? "analizando la pauta" : (p => p ? `escribiendo el copy de «${agPlain(p.title).slice(0, 34)}»` : "escribiendo un copy")(postById(msg?.post || ofUI.post || ""));
+const ofWorking = c => c.kind === "a" ? !!ofAgentJob(c.ref) : (h => h !== null && h < 1 / 3)(ofAge(c.upd));
 const ofProblem = c => c.kind === "r" && ofSem(c.upd) === "r";
 const ofSim = { ch:{}, raf:0, last:0, speed:1, dwell:1, order:"" };
 const ofReduce = () => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e){ return false; } };
 function ofState(c, L){
   let s = ofSim.ch[c.id];
-  if (!s){ const [x, y] = ofSpot(L[c.home]); s = ofSim.ch[c.id] = { x, y, loc:c.home, target:"", path:[], until:Date.now() + 1500 + Math.random() * 7000, walk:false, fx:0, fy:-1 }; }
+  if (!s){ const busy = ofWorking(c) || ofProblem(c), loc = busy ? c.home : ofIdlePick(c) || c.home, [x, y] = ofSpot(L[loc]);
+    s = ofSim.ch[c.id] = { x, y, loc, target:"", path:[], until:Date.now() + (busy ? 2000 : (8 + Math.random() * 30) * 1000 * ofSim.dwell), walk:false, fx:0, fy:-1 }; }
   return s;
 }
 const ofTaken = (k, id) => Object.entries(ofSim.ch).some(([i, s]) => i !== id && (s.target === k || (!s.target && s.loc === k)));
 const ofMeetSeat = c => c.kind === "a" && ofMeetNow() ? "sala" + Math.min(c.i, 3) : "";
+// Lo que hace cuando no tiene trabajo (nunca quedarse en el escritorio): un lugar libre, distinto del de recién
+const OF_IDLE = [["coffee", 15], ["terere", 14], ["water", 8], ["phone", 13], ["sofa", 14], ["bath", 7], ["sala", 12], ["print", 5], ["window", 6], ["rail", 6]];
+function ofIdlePick(c, not){
+  const groups = { sofa:["sofa0", "sofa1", "sofa2"], sala:ofMeetNow() ? [] : ["sala0", "sala1", "sala2", "sala3"], terere:["terere0", "terere1"], phone:["phone0", "phone1"], window:["window0"], rail:["rail0", "rail1"] };
+  const free = k => (groups[k] || [k]).filter(x => x !== not && !ofTaken(x, c.id)), tot = OF_IDLE.reduce((a, [, w]) => a + w, 0);
+  for (let tries = 0; tries < 6; tries++){ let r = Math.random() * tot, k = OF_IDLE[0][0]; for (const [n, w] of OF_IDLE){ if ((r -= w) < 0){ k = n; break; } } const f = free(k); if (f.length) return f[0]; }
+  for (const [k] of OF_IDLE){ const f = free(k); if (f.length) return f[0]; } return "";
+}
+// Cuánto se queda en cada lugar (como una persona: varios minutos no, pero tampoco segundos)
+const ofStay = (c, loc) => { const dw = (a, b) => (a + Math.random() * (b - a)) * 1000 * ofSim.dwell, k = loc.replace(/\d+$/, "");
+  return ({ coffee:dw(25, 50), terere:dw(40, 80), water:dw(15, 30), phone:dw(20, 45), sofa:dw(40, 90), bath:dw(25, 50), sala:dw(40, 90), print:dw(10, 20), window:dw(20, 40), rail:dw(20, 40) })[k] || dw(20, 40); };
 function ofDecide(c, s, L){ // a dónde va ahora
-  const busy = ofWorking(c) || ofProblem(c), now = Date.now(), dw = (a, b) => (a + Math.random() * (b - a)) * 1000 * ofSim.dwell, meet = !busy && ofMeetSeat(c);
+  const busy = ofWorking(c) || ofProblem(c), now = Date.now(), meet = !busy && ofMeetSeat(c);
   let to = c.home;
   if (meet) to = meet;
-  else if (!busy){ const r = Math.random(), want = r < .26 ? "" : r < .37 ? "coffee" : r < .48 ? "terere" : r < .55 ? "water" : r < .66 ? "phone" : r < .76 ? "sofa" : r < .83 ? "bath" : r < .93 ? "sala" : "print";
-    const opts = want === "sofa" ? ["sofa0", "sofa1", "sofa2"] : want === "sala" ? (ofMeetNow() ? [] : ["sala0", "sala1", "sala2", "sala3"]) : want === "terere" ? ["terere0", "terere1"] : want === "phone" ? ["phone0", "phone1"] : want ? [want] : [];
-    to = opts.find(k => !ofTaken(k, c.id)) || c.home; }
-  if (to === s.loc){ s.until = now + (busy || meet ? 2500 : to === c.home ? dw(8, 16) : dw(6, 12)); return; }
+  else if (!busy) to = ofIdlePick(c, s.loc) || (s.loc !== c.home ? s.loc : "sala0");
+  if (to === s.loc){ s.until = now + (busy || meet ? 2500 : ofStay(c, to)); return; }
   s.path = ofRoute(L, s.loc, to).map(p => p.slice()); s.target = to; s.walk = true;
 }
 function ofStep(c, s, L, dt){
-  const sp = ofReduce() ? 1e4 : 2.3 * ofSim.speed; let left = sp * dt;
+  const sp = ofReduce() ? 1e4 : .95 * ofSim.speed; let left = sp * dt; // a paso de persona
   while (left > 0 && s.path.length){ const [tx, ty] = s.path[0], dx = tx - s.x, dy = ty - s.y, d = Math.hypot(dx, dy);
     if (d > .001){ s.fx = dx / d; s.fy = dy / d; }
     if (d <= left){ s.x = tx; s.y = ty; left -= d; s.path.shift(); } else { s.x += dx / d * left; s.y += dy / d * left; left = 0; } }
   if (!s.path.length && s.walk){ s.walk = false; s.loc = s.target; s.target = ""; const dw = (a, b) => (a + Math.random() * (b - a)) * 1000 * ofSim.dwell;
-    s.until = Date.now() + (s.loc === c.home ? (ofWorking(c) || ofProblem(c) ? 2000 : dw(8, 16)) : ofMeetSeat(c) === s.loc ? 2500 : /sofa|sala/.test(s.loc) ? dw(10, 18) : s.loc === "print" ? dw(4, 7) : dw(6, 12)); }
+    s.until = Date.now() + (s.loc === c.home ? (ofWorking(c) || ofProblem(c) ? 2000 : dw(1, 2)) : ofMeetSeat(c) === s.loc ? 2500 : ofStay(c, s.loc)); }
 }
 // Cómo se ve cada uno en este momento (clase, globito y texto de “Ahora mismo”)
 function ofLook(c, s, L){
   const work = ofWorking(c), prob = ofProblem(c), at = s.walk ? s.target : s.loc, l = L[at] || {}, home = at === c.home, meet = ofMeetNow(), inMeet = meet && ofMeetSeat(c) === at;
   const st = prob ? "st-x" : work || inMeet ? "st-w" : c.kind === "r" && ofSem(c.upd) === "n" ? "st-n" : "st-p";
   const f = s.walk ? [s.fx, s.fy] : l.face || [0, -1], face = ofSeen(f[0], f[1]) ? "front" : "back";
-  const cls = ["ofch", c.kind === "a" ? "ag" : "rb", st, s.walk ? "walk" : "", face, !s.walk && l.sit ? "sit" : "", !s.walk && home && work && !prob ? "work" : "", !s.walk && l.gone ? "gone" : "", !s.walk && l.hold ? "h-" + l.hold : "", (c.kind === "r" && (work || prob)) ? "show" : ""].filter(Boolean).join(" ");
-  const emo = s.walk ? "" : home ? (prob ? "⚠️" : work ? (c.kind === "a" ? "⌨️" : "⚙️") : "👀") : inMeet ? "📊" : l.emo || "";
-  const txt = prob ? `⚠️ sin datos hace ${Math.round(ofAge(c.upd))} h` : s.walk ? `🚶 ${home ? (work ? "va a su compu a trabajar" : "vuelve a su compu") : inMeet ? "va a la " + meet.t : l.go || "camina"}`
-    : home ? (work ? (c.kind === "a" ? (ofUI.plan?.a === c.ref ? "📋 esperando que pegues la respuesta de Claude" : "⌨️ trabajando") : "⚙️ trayendo datos") : "👀 mirando la compu") : inMeet ? `📊 en la ${meet.t}: ${meet.what}` : `${l.emo} ${l.txt}`;
+  const job = c.kind === "a" && work ? ofAgentJob(c.ref) : null, phoneWork = work && c.kind === "a" && !(home && !s.walk); // le llegó trabajo lejos de la compu: contesta desde el celular mientras va
+  const cls = ["ofch", c.kind === "a" ? "ag" : "rb", st, s.walk ? "walk" : "", face, !s.walk && l.sit ? "sit" : "", !s.walk && home && work && !prob ? "work" : "", !s.walk && l.gone ? "gone" : "", phoneWork ? "h-phone" : !s.walk && l.hold ? "h-" + l.hold : "", (c.kind === "r" && (work || prob)) ? "show" : ""].filter(Boolean).join(" ");
+  const emo = phoneWork ? "📱" : s.walk ? "" : home ? (prob ? "⚠️" : work ? (c.kind === "a" ? "⌨️" : "⚙️") : "") : inMeet ? "📊" : l.emo || "";
+  const txt = prob ? `⚠️ sin datos hace ${Math.round(ofAge(c.upd))} h` : phoneWork ? `📱 ${job ? job.what : "respondiendo"} desde el celular, mientras va a su compu`
+    : s.walk ? `🚶 ${home ? (work ? "va a su compu a trabajar" : "pasa por su escritorio") : inMeet ? "va a la " + meet.t : l.go || "camina"}`
+    : home ? (work ? (c.kind === "a" ? (job?.plan ? "📋 " : "⌨️ ") + (job ? job.what : "trabajando") : "⚙️ trayendo datos") : "pasa por su escritorio") : inMeet ? `📊 en la ${meet.t}: ${meet.what}` : `${l.emo} ${l.txt}`;
   return { cls, emo, txt, st };
 }
 function ofCharSVG(c, s, L){
@@ -15257,7 +15284,7 @@ function ofScene(){
   it(19.3, .75, ofPlant(19.05, .5));
   // Agentes IA: una fila de escritorios (los 3 agentes y lugar para los próximos); si trabajan, se ve en su pantalla
   for (let i = 0; i < 5; i++){ const { x, y } = OF_DESK_IA(i), a = AG_DEF[i];
-    if (a){ const on = ofUI.busy === a.id || ofUI.plan?.a === a.id; it(x + .62, y + .55, `<g class="ofdesk ia" data-ofc="a:${a.id}" role="button" tabindex="0" aria-label="Escritorio de ${esc(a.name)}"><title>Escritorio de ${esc(a.name)} · ${esc(a.role)}</title>${desk(x, y, 1.25, on ? a.color : "#475569", "", false, on ? a.id : "", a.color)}</g>`); }
+    if (a){ const on = !!ofAgentJob(a.id); it(x + .62, y + .55, `<g class="ofdesk ia" data-ofc="a:${a.id}" role="button" tabindex="0" aria-label="Escritorio de ${esc(a.name)}"><title>Escritorio de ${esc(a.name)} · ${esc(a.role)}</title>${desk(x, y, 1.25, on ? a.color : "#475569", "", false, on ? a.id : "", a.color)}</g>`); }
     else { const [cx, cy] = ofP(x + .62, y + .38); it(x + .62, y + .38, `<g class="ofempty">${ofPoly([[x, y, .01], [x + 1.25, y, .01], [x + 1.25, y + .75, .01], [x, y + .75, .01]], "none", ` stroke="#7c5cff" stroke-opacity=".6" stroke-dasharray="5 4" stroke-width="1.5"`)}<text x="${cx}" y="${cy + 4}" text-anchor="middle" class="ofrole">+ próximo agente</text></g>`); } }
   // Robots de datos: los servidores contra la pared y una terminal para cada robot
   const rb = OF_ROBOTS(), semC = { g:"#22c55e", y:"#f59e0b", r:"#ef4444", n:"#94a3b8" };
@@ -15318,6 +15345,8 @@ function ofTick(t){
   const L = ofLocs(OF_ROBOTS().length), now = Date.now(), list = ofChars(), pos = [];
   if (ofSim.box !== box){ ofSim.box = box; ofSim.fur = [...box.querySelectorAll(":scope > g.ofi")].map(n => [+n.dataset.d, n]); ofSim.order = ""; }
   list.forEach(c => { const s = ofState(c, L), busy = ofWorking(c) || ofProblem(c), seat = !busy && ofMeetSeat(c);
+    if (c.kind === "a" && s.wk !== busy){ if (s.wk !== undefined) ofRedraw(); s.wk = busy; } // empezó o terminó de trabajar: la pantalla de su compu se prende o se apaga
+    if (!s.walk && !busy && s.loc === c.home && now < s.until - 3000) s.until = now; // sin trabajo no se queda en el escritorio
     if (!s.walk && busy && s.loc !== c.home) s.until = 0; // le llegó trabajo: deja lo que hace y va a su compu
     if (!s.walk && ((seat && s.loc !== seat) || (!seat && /^sala/.test(s.loc) && c.kind === "a" && ofMeetSeat.was && !ofMeetNow()))) s.until = 0; // empieza o termina la reunión
     if (!s.walk && now >= s.until) ofDecide(c, s, L);
@@ -15384,7 +15413,9 @@ document.addEventListener("click", e => { if (page !== "oficina") return; const 
 function ofNowHTML(){
   const L = ofLocs(OF_ROBOTS().length), list = ofChars().map(c => ({ c, s:ofState(c, L) })).map(({ c, s }) => ({ c, k:ofLook(c, s, L) })), meet = ofMeetNow(), next = ofMeetNow.next;
   const ag = list.filter(x => x.c.kind === "a"), rb = list.filter(x => x.c.kind === "r"), hot = rb.filter(x => x.k.st === "st-w" || x.k.st === "st-x"), rest = rb.length - hot.length;
-  return (meet ? `<span class="st-m"><i></i><b>📊 ${esc(meet.t[0].toUpperCase() + meet.t.slice(1))}</b> en la sala: ${esc(meet.what)}</span>` : next ? `<span class="st-n"><i></i>Próxima reunión: <b>${ofHM(next)}</b> · ${esc(next.what)}</span>` : "")
+  const wa = ag.filter(x => x.k.st === "st-w").length, wr = rb.filter(x => x.k.st === "st-w").length, xr = rb.filter(x => x.k.st === "st-x").length;
+  return `<span class="${wa || wr ? "st-w" : "st-p"} ofsum"><i></i>Trabajando: <b>${wa} de ${ag.length}</b> agentes · <b>${wr} de ${rb.length}</b> robots de datos${xr ? ` · <b>${xr}</b> con problema` : ""}</span>`
+    + (meet ? `<span class="st-m"><i></i><b>📊 ${esc(meet.t[0].toUpperCase() + meet.t.slice(1))}</b> en la sala: ${esc(meet.what)}</span>` : next ? `<span class="st-n"><i></i>Próxima reunión: <b>${ofHM(next)}</b> · ${esc(next.what)}</span>` : "")
     + [...ag, ...hot].map(({ c, k }) => `<span class="${k.st}"><i></i><b>${esc(c.name)}</b> ${esc(k.txt)}</span>`).join("") + (rest ? `<span class="st-p"><i></i>${rest} robot${rest === 1 ? "" : "s"} de datos en pausa</span>` : "");
 }
 const ofNowPaint = () => { const n = document.getElementById("ofnow"); if (n){ const h = `<b>Ahora mismo</b>` + ofNowHTML(); if (n.dataset.h !== h){ n.dataset.h = h; n.innerHTML = h; } } };
@@ -15455,6 +15486,7 @@ function ofPanel(){
   return body ? `<aside class="ofpanel" aria-label="Detalle"><button type="button" class="btn sm ib ofx" data-ofclose aria-label="Cerrar">${icon("x")}</button>${body}</aside>` : "";
 }
 function pOficina(){
+  ofAreaWorkM.m = {}; // al dibujar la página, los cuadros con los datos de ahora (el guardado es solo para cuando se gira)
   if (!ofCan()) return `<div class="panel"><div class="empty">La Oficina de Agentes la ven solo Admin total y Admin.</div></div>`;
   const on = PEOPLE.filter(pp => pp.active !== false && ONLINE[pp.id]).length;
   return `<div class="head ofhead"><div><h1 class="pmh">${pmIco("building-2")}Oficina de Agentes</h1><p class="sub">La oficina en maqueta. Los que se mueven son los robots (los agentes de IA y los robots de datos): con trabajo están en su compu y, si no, se toman un descanso. Las personas no aparecen: cada área tiene su cuadro con cómo viene (tocalo para ver el detalle). Tocá un agente para hablarle, entrenarlo y darle skills.</p></div>
