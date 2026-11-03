@@ -1162,6 +1162,7 @@ html.light .ofscene image{filter:none}
 .agquick{gap:6px}.agquick .chip{font-size:12.5px}
 .agform{display:flex;gap:8px;align-items:flex-end}.agform textarea{flex:1;min-width:0;resize:vertical}
 .ofErr{display:flex;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid rgba(217,89,38,.45);background:rgba(217,89,38,.1);font-size:13px;color:#fed7aa}.ofErr svg{width:18px;height:18px;flex:none}.ofErr b{color:#fff}
+.agnote{font-size:11.5px;color:var(--muted);padding-left:4px}
 .agnorm{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:14px;border:1px solid rgba(217,89,38,.45);background:rgba(217,89,38,.08);font-size:13px;color:#e2e8f0}.agnorm > b{display:flex;align-items:center;gap:8px;color:#fff;font-size:14px}.agnorm > b svg{width:17px;height:17px;color:#fdba74}.agnorm p{margin:0}.agnorm ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
 .agplan{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:14px;border:1px solid rgba(34,211,238,.45);background:rgba(34,211,238,.07);font-size:13.5px;color:#e2e8f0}
 .agplan > b{display:flex;align-items:center;gap:8px;color:#fff;font-size:14.5px}.agplan > b svg{width:18px;height:18px;color:#67e8f9}
@@ -4699,7 +4700,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v329";
+const APP_VER = "v330";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -14850,7 +14851,163 @@ const agLimit = () => { const n = Math.round(+AGENTS._limite?.n); return n >= 1 
 const agUsed = () => AGENTS._uso?.d === agDay() ? +AGENTS._uso.n || 0 : 0;
 // v327 · Modo de respuesta: "plan" (predeterminado, sin costo extra: la app arma el pedido, se pega en claude.ai con el plan
 // de la persona y la respuesta se pega de vuelta) o "api" (automático, con la cuenta de Claude: se paga por uso).
-const agMode = () => AGENTS._modo === "api" ? "api" : "plan";
+const agMode = () => ["plan", "api"].includes(AGENTS._motor) ? AGENTS._motor : "robot"; // v330: el robot de la app es el de siempre
+// v330 · Los robots de los agentes: responden dentro de la app, sin Claude, sin clave y sin costo (motor “robot”, el de
+// siempre). ClaudIA arma el copy con los datos de la publicación, lo que le escribas de referencia, el Manual de Redes
+// Sociales y el tono de cada marca; aprende de las correcciones (“sin emojis”, “más corto”, “no uses la palabra…”) y de
+// los copys que marcaste “Así está bien”. SofIA arma el informe del día y MatIAs analiza la pauta, con los datos de la app.
+const CL_BRAND = {
+  Superseis:{ tag:"#Superseis", emo:3, web:"www.superseis.com.py", wa:"https://wa.me/595214141960", tone:"s6" },
+  Stock:{ tag:"#Stock", emo:4, web:"www.stock.com.py", wa:"https://wa.me/595214141980", tone:"st" },
+  Delimarket:{ tag:"#Delimarket", emo:0, web:"delimarket.com.py", wa:"https://wa.me/595983500300", tone:"dl" } };
+const CL_TOPIC = [ // palabra clave → tema y su emoji
+  [/navidad|navideñ|pan dulce|stolen|roscas?|nochebuena|fiestas/i, "fiestas", "🎄"], [/vino|espumante|sidra|bodega|brind/i, "bebidas", "🍷"], [/cervez/i, "bebidas", "🍺"],
+  [/carne|asado|parrill|picada/i, "comida", "🥩"], [/pan\b|panader|factura|medialuna/i, "comida", "🥐"], [/desayuno|caf[eé]/i, "comida", "☕"], [/almuerzo|men[uú]|rotiser|plato|comida|bocadito|wow/i, "comida", "🍽️"],
+  [/torta|confiter|dulce|chocolate|postre|helado/i, "comida", "🍰"], [/fruta|verdura|fresco/i, "comida", "🍓"], [/juguete|inflable|niñ/i, "regalo", "🎁"], [/regalo|canasta/i, "regalo", "🎁"],
+  [/cyber|black|hot ?sale|oferta|promo|descuento|%|2x1|3x2|precio|ahorr|liquidaci/i, "promo", "💥"], [/coleccionable/i, "promo", "⭐"], [/mascota|pet/i, "otro", "🐾"], [/beb[eé]|pañal/i, "otro", "👶"], [/limpieza|hogar/i, "otro", "🧼"] ];
+const CL_TXT = { // por tono: ganchos (para promo y para lo demás), una línea según el tema, llamado a la acción y emojis de la marca. Varias versiones de cada uno.
+  s6:{ hook:{ promo:["¡{T}! 💥", "{T}: ¡preparate para ahorrar!", "Atención: {t} 😊", "{T} en Superseis 🛒"], def:["{T} 😊", "Hoy en Superseis: {t}.", "✨ {T} ✨", "{T}, con la calidad de siempre."] }, emo:["😊", "🛒", "📍"],
+    body:{ promo:["Aprovechá las ofertas que preparamos para vos y tu familia.", "Más ahorro para tu compra de todos los días."], comida:["Rico, casero y listo para disfrutar en familia.", "Sabores de casa, listos para tu mesa."], bebidas:["Para brindar en buena compañía.", "Lo mejor para acompañar tus encuentros."],
+      fiestas:["Todo para tus fiestas, en un solo lugar.", "Para que tu mesa de fiestas sea inolvidable."], regalo:["El regalo ideal está en Superseis.", "Ideas para regalar, en un solo lugar."], otro:["Todo lo que necesitás, en un solo lugar.", "Lo que tu casa necesita, con la calidad de siempre."], def:["Te esperamos con la calidad de siempre.", "Siempre cerca tuyo, con lo mejor para tu familia."] },
+    cta:{ def:["Te esperamos en tu Superseis más cercano o pedí online en {web} 🛒", "Pedí online en {web} o por WhatsApp: {wa} 📍"], story:["Pedí online en {web} 👆", "Más info en {web} 👆"], canal:["Pedí por WhatsApp: {wa}", "Pedí online en {web}"] }, swipe:"Deslizá para ver todo 👉", play:"Dale play y mirá todo ▶️" },
+  st:{ hook:{ promo:["¡{T}! 🔥", "¡Atención, ahorradores! {T} 💥", "{T} 💥 ¡Aprovechá!", "¡{T} en Stock! 😎"], def:["¡{T}! 😎", "{T} en Stock 🛒", "¡Llegó {t}! 🔥", "{T}: ¡vení a buscarlo!"] }, emo:["🔥", "💥", "😎", "🛒"],
+    body:{ promo:["¡Precios que rinden y ahorro de verdad!", "¡Tu bolsillo lo va a agradecer!"], comida:["¡Rico y al mejor precio!", "¡Sabor que rinde, precio que te encanta!"], bebidas:["¡Para brindar sin gastar de más!", "¡Las mejores bebidas al mejor precio!"],
+      fiestas:["¡Armá tus fiestas ahorrando!", "¡Fiestas a lo grande, precios a lo Stock!"], regalo:["¡Regalos que rinden!", "¡Regalá más gastando menos!"], otro:["¡Todo lo que necesitás, a precio Stock!", "¡Más cosas, menos gasto!"], def:["¡Te esperamos con los mejores precios!", "¡En Stock rinde más!"] },
+    cta:{ def:["¡Vení a tu Stock o mirá todas las ofertas en {web}! 🛒", "¡Todas las ofertas en {web}! 👉"], story:["¡Mirá todas las ofertas en {web}! 👆", "¡Más en {web}! 👆"], canal:["¡Más ofertas en {web}!", "¡Todas las ofertas en {web}!"] }, swipe:"¡Deslizá y mirá todo! 👉", play:"¡Dale play! ▶️" },
+  dl:{ hook:{ promo:["{T}.", "{T}: beneficios por tiempo limitado.", "Descubrí {t} en Delimarket.", "{T}, una oportunidad para disfrutar."], def:["{T}.", "{T}: una selección pensada para disfrutar.", "Descubrí {t} en Delimarket.", "{T}, el detalle que hace la diferencia."] }, emo:[],
+    body:{ promo:["Una selección especial, con beneficios por tiempo limitado.", "Calidad gourmet, con condiciones especiales."], comida:["Preparado con ingredientes seleccionados, para disfrutar sin apuro.", "Sabores elaborados con dedicación."], bebidas:["Una selección de bodega para acompañar tus mejores momentos.", "Etiquetas elegidas para disfrutar con calma."],
+      fiestas:["Detalles gourmet para tu mesa de fiestas.", "Una mesa de fiestas a la altura de la ocasión."], regalo:["Un obsequio con sello gourmet.", "Regalos elegidos con buen gusto."], otro:["Productos exclusivos e importados, elegidos con dedicación.", "Una propuesta distinta, exclusiva de Delimarket."], def:["Te esperamos para vivir la experiencia Delimarket.", "Una experiencia pensada para disfrutar."] },
+    cta:{ def:["Te esperamos en Delimarket. Pedidos por WhatsApp: {wa}", "Hacé tu pedido por WhatsApp: {wa}"], story:["Pedidos por WhatsApp: {wa}", "Consultas y pedidos: {wa}"], canal:["Pedidos por WhatsApp: {wa}", "Hacé tu pedido: {wa}"] }, swipe:"Deslizá para descubrir la selección.", play:"Mirá el video completo." } };
+const agEmoRe = /\p{Extended_Pictographic}️?/gu;
+const agCap = t => t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
+// Lo que el equipo le enseñó (entrenamiento y correcciones), leído como reglas simples
+function agRules(id){
+  const c = agCfg(id), txt = [c.train || "", ...(c.lessons || []).map(l => l.text)].join("\n"), r = { noEmo:/sin emoji|no (uses|pongas) emoji|cero emoji/i.test(txt), noTag:/sin hashtag|no (uses|pongas) hashtag/i.test(txt),
+    short:/m[aá]s corto|m[aá]s breve|corto|breve/i.test(txt), priceFirst:/precio primero|primero el precio/i.test(txt), noExcl:/sin (signos de )?exclamaci|menos exclamaci/i.test(txt), avoid:[] };
+  txt.replace(/no (uses|pongas|digas|escribas)( la palabra| el t[eé]rmino)?\s*[«“"']?([a-záéíóúñü]{3,})/gi, (m, a, b, w) => { if (!/^(emoji|hashtag|signo)/i.test(w)) r.avoid.push(w.toLowerCase()); return m; });
+  return r;
+}
+// Datos que aparecen en un texto: precio, porcentaje, 2x1, fechas
+function agFacts(t){
+  const f = [], add = x => { x = x.trim(); if (x && !f.some(y => y.toLowerCase() === x.toLowerCase())) f.push(x); };
+  (t.match(/(gs\.?\s*[\d.]{3,}|[\d.]{4,}\s*gs\.?)/gi) || []).forEach(add); (t.match(/\d{1,2}\s?%(\s?off)?/gi) || []).forEach(add); (t.match(/\b\d\s?x\s?\d\b/gi) || []).forEach(add);
+  (t.match(/(hasta el|del|desde el)\s+[^.,;\n]{2,40}?(?=\s+(en|para|con|por)\b|[.,;\n]|$)/gi) || []).forEach(add); (t.match(/\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/g) || []).forEach(d => { if (!f.some(x => x.includes(d))) add(d); });
+  return f.slice(0, 4);
+}
+const agRand = (seed, n) => { let h = 2166136261; for (const ch of String(seed)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return Math.abs(h) % n; };
+// El copy de una publicación (k = número de versión, para dar opciones distintas)
+function clCopy(p, ref, o, k){
+  const B = CL_BRAND[p.brand] || CL_BRAND.Superseis, T = CL_TXT[B.tone], dl = B.tone === "dl", j = p.fromJob ? jobById(p.fromJob) : null, R = agRules("claudia");
+  const brief = agPlain([p.brief, j?.brief, j?.notes].filter(Boolean).join(" ")).replace(/\s+/g, " ").trim(), all = [p.title, brief, ref].join(" ");
+  const topic = (CL_TOPIC.find(([re]) => re.test(all)) || [null, "def", ""]), kind = topic[1], fmt = String(p.format || "Post").toLowerCase();
+  const isStory = /historia/.test(fmt), isCanal = /canal|whatsapp/.test(fmt) || /canal/i.test(p.net || ""), short = o.short || R.short || isStory, promo = kind === "promo" || /oferta|promo|descuento|precio/i.test(all);
+  const tema = agPlain(p.title).replace(/^(post|reel|historia|carrusel|video|canal)\s*[:·-]?\s*/i, "").replace(new RegExp("\\b" + p.brand + "\\b", "ig"), "").replace(/\s+/g, " ").trim() || "Lo nuevo";
+  const ok = t => !R.avoid.some(w => new RegExp("\\b" + w + "\\b", "i").test(t)), base = agRand(p.id, 4);
+  const pick = (list, i) => { const l = list.filter(ok); return (l.length ? l : list)[((i % (l.length || list.length)) + (l.length || list.length)) % (l.length || list.length)]; };
+  const liked = o.likedMeta && o.likedMeta.brand === p.brand && k === 0 ? o.likedMeta : null, hooks = promo ? T.hook.promo : T.hook.def, hi = liked ? liked.h : base + k;
+  const L = [], hook = pick(hooks, hi).replace("{T}", agCap(tema)).replace("{t}", tema.charAt(0).toLowerCase() + tema.slice(1));
+  const facts = agFacts([p.title, brief].join(" ")), refFacts = agFacts(ref || ""), miss = [];
+  L.push(hook);
+  if (R.priceFirst && facts.length && !ref) L.push(facts.join(" · "));
+  if (!short){
+    if (ref) L.push(agCap(ref.replace(/\s+/g, " ").trim().replace(/[.]?$/, ".")));
+    L.push(pick(T.body[kind] || T.body.def, base + k + 1));
+  } else if (ref) L.push(agCap(ref.replace(/\s+/g, " ").trim().replace(/[.]?$/, ".")));
+  if (!R.priceFirst && facts.length && !ref) L.push((dl ? "Vigencia y condiciones: " : B.tone === "st" ? "👉 " : "📍 ") + facts.join(" · "));
+  if (promo && !facts.length && !refFacts.length){ L.push("[precio o descuento] · [fechas de vigencia]"); miss.push("precio o descuento", "fechas de vigencia"); }
+  if (agSkillOn("claudia", "crono") && p.date && !short){ const words = all.toLowerCase().split(/[^a-záéíóúñ]+/).filter(w => w.length > 4);
+    const act = crRows().find(r => crIn(r, p.date, p.date) && (!r.brand || r.brand === p.brand) && words.some(w => r.name.toLowerCase().includes(w)));
+    if (act) L.push(`${act.name}: ${crOpen(act) ? "hasta el fin de la promo" : "hasta el " + dm(act.to)}.`); }
+  if (/carrusel/.test(fmt) && !short) L.push(T.swipe); if (/reel|video/.test(fmt) && !short) L.push(T.play);
+  if (agSkillOn("claudia", "cta")) L.push(pick(isStory ? T.cta.story : isCanal ? T.cta.canal : T.cta.def, base + k).replace("{web}", B.web).replace("{wa}", B.wa));
+  if (agSkillOn("claudia", "hashtags") && !R.noTag && !o.noTag && !isStory){ const tags = [B.tag];
+    if (!dl && agSkillOn("claudia", "examples")){ const cnt = {}; posts.filter(x => x.brand === p.brand && x.copy && copyStOf(x) === "ok").forEach(x => (agPlain(x.copy).match(/#[\wáéíóúñ]+/gi) || []).forEach(h => { if (h.toLowerCase() !== B.tag.toLowerCase()) cnt[h] = (cnt[h] || 0) + 1; }));
+      Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 2).forEach(([h]) => tags.push(h)); }
+    if (kind === "fiestas" && !dl && !tags.some(t => /navidad/i.test(t))) tags.push("#Navidad");
+    L.push(tags.join(" ")); }
+  let out = L.join("\n");
+  // Emojis según la marca y lo que pidieron (Delimarket nunca)
+  const noEmo = dl || R.noEmo || o.noEmo || !agSkillOn("claudia", "emojis");
+  if (noEmo) out = out.replace(agEmoRe, "").replace(/[ \t]+\n/g, "\n").replace(/ {2,}/g, " ").replace(/^\s+|\s+$/gm, "");
+  else { if (topic[2] && !out.includes(topic[2])) out = out.replace(/^([^\n]*)/, `$1 ${topic[2]}`); if (o.energy && T.emo.length) out = out.replace(/^([^\n]*)/, `$1 ${T.emo[0]}`);
+    let n = 0; out = out.replace(agEmoRe, m => ++n > B.emo + (o.energy ? 1 : 0) ? "" : m).replace(/ {2,}/g, " ").replace(/ +$/gm, ""); }
+  if (R.noExcl || dl) out = out.replace(/[¡!]/g, "");
+  R.avoid.forEach(w => { out = out.replace(new RegExp("\\b" + w + "\\b", "gi"), "").replace(/ {2,}/g, " ").replace(/ ([.,;:])/g, "$1"); });
+  return { text:out.trim(), miss, meta:{ brand:p.brand, h:hi } };
+}
+function agRobotClaudia(text){
+  const p = ofUI.post ? postById(ofUI.post) : null, q = String(text || "").trim();
+  if (!p) return { t:"Elegí primero la publicación de la lista (arriba del chat) y te armo el copy con el tono de su marca." };
+  const cmd = /^(escrib[ií] el copy de esta publicaci[oó]n|dame \d+ opciones de copy|hacelo m[aá]s corto y con m[aá]s energ[ií]a)$/i.test(q);
+  const o = { short:/corto|breve/i.test(q), energy:/energ|buena onda|con onda/i.test(q), noEmo:/sin emoji/i.test(q), noTag:/sin hashtag/i.test(q), n:Math.min(3, +(q.match(/(\d)\s*opcion/i) || [])[1] || (/opciones/i.test(q) ? 3 : 1)) };
+  const ref = cmd || /^(hacelo|dame|escrib|otra|de nuevo|otra vez)/i.test(q) ? "" : q.replace(/^(referencia|ref|datos|info)\s*:\s*/i, "");
+  const likedMsg = agMsgs("claudia").filter(m => m.r === "assistant" && m.ok && m.meta).pop(); o.likedMeta = likedMsg?.meta;
+  const prevN = agMsgs("claudia").filter(m => m.r === "assistant" && m.post === p.id).length;
+  const outs = Array.from({ length:o.n }, (_, i) => clCopy(p, ref, o, prevN + i));
+  const B = CL_BRAND[p.brand] ? p.brand : "Superseis", tono = { Superseis:"cercano y familiar, como el manual", Stock:"con más buena onda", Delimarket:"sobrio, elegante, gourmet y sin emojis" }[B];
+  const miss = [...new Set(outs.flatMap(x => x.miss))];
+  return { t:outs.length > 1 ? outs.map((x, i) => `**Opción ${i + 1}**\n${x.text}`).join("\n\n") : outs[0].text, meta:outs[0].meta, post:p.id,
+    n:`Copy del robot de ClaudIA · ${p.brand}, ${tono} · Manual de Redes Sociales.${miss.length ? " Falta confirmar: " + miss.join(" y ") + "." : ""}${ref ? "" : " Escribime datos de referencia (precio, fechas, sucursales) y lo armo con eso."}` };
+}
+// SofIA: el informe del día con los datos de la app
+function agRobotSofia(text){
+  const q = String(text || ""), on = k => agSkillOn("sofia", k), tom = addDays(TODAY, 1), yes = addDays(TODAY, -1), wd = d => WEEKDAYS[wdOf(d)].toLowerCase();
+  const work = cmWork().filter(x => !x.done), dg = jobs.filter(j => !j.ex && j.area === "Diseño" && !isClosedJob(j)).map(j => ({ ...j, date:j.due }));
+  const who = x => x.crew?.length > 1 ? x.crew.join(" + ") : x.who || x.owner || "sin asignar", it = x => `- ${x.date ? dm(x.date) : "—"} · ${x.brand || ""} · ${agPlain(x.title).slice(0, 70)}${on("late") ? " (" + who(x) + ")" : ""}`;
+  const today = work.filter(x => x.date === TODAY), tmw = work.filter(x => x.date === tom), lateC = work.filter(cmLate), lateD = dg.filter(j => j.date && j.date < TODAY), dueD = dg.filter(j => j.date === TODAY);
+  const rev = jobs.filter(j => !j.ex && REVIEW_WAIT.includes(j.status)).length, cps = posts.filter(p => !p.ex && copyStOf(p) === "rev").length, late = lateC.length + lateD.length;
+  const L = [];
+  if (/mañana/i.test(q)){ L.push(`**Para mañana, ${wd(tom)} ${dm(tom)}: ${tmw.length} de CM**`, ...tmw.slice(0, 12).map(it)); if (!tmw.length) L.push("Por ahora no hay nada cargado para mañana."); return { t:L.join("\n") }; }
+  if (/atrasad/i.test(q)){ L.push(`**Atrasados: ${late}**`, ...lateC.concat(lateD).sort((a, b) => String(a.date).localeCompare(String(b.date))).slice(0, 15).map(it)); if (!late) L.push("No hay nada atrasado. ¡Bien!"); return { t:L.join("\n") }; }
+  L.push(`**Informe de hoy, ${wd(TODAY)} ${dm(TODAY)}**`);
+  const pl = (n, a, b) => `${n} ${n === 1 ? a : b}`, wait = [rev ? pl(rev, "pedido", "pedidos") : "", cps ? pl(cps, "copy", "copys") : ""].filter(Boolean).join(" y ");
+  L.push(`En una frase: hoy salen **${pl(today.length, "publicación", "publicaciones")}** de CM y ${dueD.length === 1 ? "vence" : "vencen"} **${pl(dueD.length, "pedido", "pedidos")}** de Diseño; ${late ? `hay **${pl(late, "atrasado", "atrasados")}**` : "no hay atrasados"}${wait ? ` y esperan aprobación ${wait}` : ""}.`);
+  if (on("late") && late){ L.push("**Lo urgente**", ...lateC.concat(lateD).sort((a, b) => String(a.date).localeCompare(String(b.date))).slice(0, 6).map(it)); }
+  if (on("today") && (today.length || dueD.length)){ L.push("**Para hoy**", ...today.concat(dueD).slice(0, 8).map(it)); }
+  if (on("ig")){ const ig = IG_MAIN.map(b => { const ps = igPosts(b, yes.slice(0, 7)).filter(x => pyDate(x.ts) === yes); if (!ps.length) return `- ${b}: nada publicado ayer.`; const best = ps.slice().sort((a, c) => (c.reach || 0) - (a.reach || 0))[0];
+      return `- ${b}: ${ps.length} publicación${ps.length === 1 ? "" : "es"}; la que más llegó: «${agPlain(capTitle(best.cap)).slice(0, 50)}» (${isNum(best.reach) ? dots(best.reach) + " de alcance" : "alcance todavía sin dato"}).`; });
+    L.push("**Lo de ayer en Instagram**", ...ig); }
+  if (on("team")){ const ppl = PEOPLE.filter(pp => pp.active !== false && ["Diseñador", "CM"].includes(pp.role)).map(pp => ({ pp, n:pp.role === "CM" ? work.filter(x => cmIn(x, pp.name)).length : dg.filter(j => hasJob(j, pp.name)).length })).sort((a, b) => b.n - a.n).slice(0, 3);
+    if (ppl.length) L.push("**Los más cargados**", ...ppl.map(x => `- ${x.pp.name} (${x.pp.role}): ${x.n} pendientes`)); }
+  if (on("crono")){ const cur = crRows().filter(r => crState(r) === "on"); if (cur.length) L.push("**Acciones en curso**", ...cur.slice(0, 6).map(r => `- ${r.name}: hasta ${crOpen(r) ? "el fin de la promo" : "el " + dm(r.to)}`)); }
+  const acc = [];
+  if (late) acc.push(`Resolver los ${late} atrasados, empezando por los más viejos.`);
+  if (wait) acc.push(`Aprobar lo que espera: ${wait}.`);
+  if (tmw.length) acc.push(`Dejar listo lo de mañana (${pl(tmw.length, "publicación", "publicaciones")}).`);
+  if (acc.length < 3 && today.length) acc.push(`Confirmar que salgan las ${today.length} publicaciones de hoy.`);
+  if (acc.length < 3) acc.push("Revisar en Instagram cómo le va a lo publicado y responder comentarios.");
+  L.push("**Tres acciones para hoy**", ...acc.slice(0, 3).map((a, i) => `${i + 1}. ${a}`));
+  return { t:L.join("\n"), n:"Informe del robot de SofIA, con los datos de la app en este momento." };
+}
+// MatIAs: la pauta del mes (Meta Ads) con los datos de la app
+function agRobotMatias(text){
+  const q = String(text || ""), has = k => Object.values(META_CREATIVES?.[k] || {}).some(l => Array.isArray(l) && l.length), m = has(MONTH) || !has(prevMonth(MONTH)) ? MONTH : prevMonth(MONTH), src = META_CREATIVES?.[m] || {}, ads = Object.entries(src).flatMap(([b, l]) => (Array.isArray(l) ? l : []).map(a => ({ ...a, b }))).filter(a => (a.spend || 0) > 0 || (a.impressions || 0) > 0);
+  const res = a => a.convs || a.lpv || adClicks(a) || a.eng || 0, rl = a => a.convs ? "conversaciones" : a.lpv ? "visitas a la web" : adClicks(a) ? "clics" : "interacciones", cpr = a => res(a) ? (a.spend || 0) / res(a) : Infinity;
+  const L = [], usd2 = v => usd(Math.round((v || 0) * 100) / 100);
+  if (/pautar|organic|sola/i.test(q)){ const best = IG_MAIN.flatMap(b => igPosts(b, m).map(x => ({ ...x, b }))).filter(x => isNum(x.reach)).sort((a, c) => c.reach - a.reach).slice(0, 3);
+    L.push("**Publicaciones que funcionaron solas (para pautar)**", ...(best.length ? best.map(x => `- ${x.b} · ${dm(pyDate(x.ts))} · «${agPlain(capTitle(x.cap)).slice(0, 60)}» · ${dots(x.reach)} de alcance`) : ["- Todavía no hay datos de alcance de este mes."]));
+    if (best.length) L.push(`Sugerencia: pautá la de ${best[0].b} («${agPlain(capTitle(best[0].cap)).slice(0, 40)}»): ya demostró que interesa sin pauta.`);
+    return { t:L.join("\n"), n:"Análisis del robot de MatIAs con los datos de Instagram de la app." }; }
+  L.push(`**La pauta de ${monthLabel(m)}**${m !== MONTH ? ` (de ${monthName(MONTH)} todavía no hay anuncios)` : ""}`);
+  if (!ads.length) L.push("Todavía no llegaron anuncios de Meta para este mes.");
+  else {
+    const brands = [...new Set(ads.map(a => a.b))];
+    L.push(...brands.map(b => { const l = ads.filter(a => a.b === b), sp = l.reduce((s, a) => s + (a.spend || 0), 0), rc = l.reduce((s, a) => s + (a.reach || 0), 0), lim = PAUTA_LIMITS?.[m]?.[b];
+      return `- **${b}**: ${l.length} anuncio${l.length === 1 ? "" : "s"} · invertido ${usd2(sp)} · alcance ${dots(rc)}${lim ? ` · presupuesto del mes Gs. ${dots(lim)}` : ""}`; }));
+    const ok = ads.filter(a => res(a) > 0 && (a.spend || 0) > 0).sort((a, c) => cpr(a) - cpr(c)), med = ok.length ? cpr(ok[Math.floor(ok.length / 2)]) : 0;
+    if (ok.length){ const b0 = ok[0], w0 = ok[ok.length - 1];
+      L.push("**Lo que mejor funciona**", `- ${b0.b} · «${adName(b0).slice(0, 50)}»: ${usd2(cpr(b0))} por ${rl(b0).replace(/s$/, "")} (${dots(res(b0))} ${rl(b0)}).`);
+      if (ok.length > 1) L.push("**Lo que más cuesta**", `- ${w0.b} · «${adName(w0).slice(0, 50)}»: ${usd2(cpr(w0))} por ${rl(w0).replace(/s$/, "")}.`);
+      const sug = [];
+      if (ok.length > 2 && cpr(w0) > med * 2) sug.push(`Revisar o pausar «${adName(w0).slice(0, 40)}» (${w0.b}): cuesta más del doble que la mitad de los anuncios.`);
+      sug.push(`Repetir el formato de «${adName(b0).slice(0, 40)}» (${b0.b}), que es el que da el resultado más barato.`);
+      const live = ads.filter(a => a.status === "ACTIVE").length; if (!live) sug.push("No hay anuncios en el aire ahora: conviene programar la próxima pauta.");
+      L.push("**Sugerencias**", ...sug.map((s, i) => `${i + 1}. ${s}`)); }
+  }
+  if (/presupuesto/i.test(q)){ const lim = PAUTA_LIMITS?.[m]; L.push("**Presupuesto del mes (Gs.)**", ...(lim ? Object.entries(lim).map(([b, v]) => `- ${b}: Gs. ${dots(v)}`) : ["- No hay presupuesto cargado para este mes."])); }
+  return { t:L.join("\n"), n:"Análisis del robot de MatIAs con los datos de Meta Ads de la app (inversión en dólares, como figura en Meta)." };
+}
+const agRobot = (id, text) => id === "claudia" ? agRobotClaudia(text) : id === "matias" ? agRobotMatias(text) : agRobotSofia(text);
 async function agSend(id, text){
   const d = AG[id]; text = String(text || "").trim(); if (!d || !text || ofUI.busy) return;
   if (id === "claudia" && /esta publicación/i.test(text) && !ofUI.post) return toast("Elegí primero la publicación (arriba del chat).");
@@ -14858,6 +15015,12 @@ async function agSend(id, text){
   if (!plan && agUsed() >= agLimit()){ ofUI.err = `Por hoy ya usamos las ${agLimit()} respuestas del día entre los tres agentes. ¡Nos vemos mañana! 👋`; ofUI.errCode = "limit"; render(); agScroll(); return; }
   const mid = agId(); AGENT_CHAT.push({ id:mid, a:id, r:"user", t:text.slice(0, 4000), by:viewer.name, at:new Date().toISOString() });
   ofUI.busy = id; ofUI.err = ""; ofUI.errCode = ""; ofUI.plan = null; render(); agScroll();
+  if (agMode() === "robot"){ // el robot de la app: responde acá mismo, sin Claude ni costo
+    await new Promise(r => setTimeout(r, ofReduce() ? 50 : 650 + Math.random() * 500));
+    try { const r = agRobot(id, text); AGENT_CHAT.push({ id:agId(), a:id, r:"assistant", t:String(r.t || "").slice(0, 12000), n:r.n || "", ...(r.meta ? { meta:r.meta } : {}), ...(r.post ? { post:r.post } : {}), robot:true, by:d.name, at:new Date().toISOString() }); }
+    catch (e){ ofUI.err = "El robot no pudo armar la respuesta. Probá de nuevo."; console.error(e); }
+    const mine = agMsgs(id); if (mine.length > 80){ const drop = new Set(mine.slice(0, mine.length - 80).map(m => m.id)); AGENT_CHAT = AGENT_CHAT.filter(m => !drop.has(m.id)); }
+    ofUI.busy = ""; render(); agScroll(); window.RMH?.flushNow?.(); return; }
   const c = agCfg(id), hist = agMsgs(id).slice(-12).map(m => ({ role:m.r, content:m.t }));
   try {
     const tok = await window.RMH?.token?.();
@@ -15272,18 +15435,18 @@ function ofPanelAgent(a){
   return `${head}${pick}
     <div class="agmsgs" aria-live="polite">${msgs.length ? "" : `<div class="agmsg a hello"><div class="agtxt"><p>${esc(a.hello)}</p></div></div>`}${msgs.map(m => m.r === "user"
       ? `<div class="agmsg u"><div class="agtxt"><p>${esc(m.t)}</p></div><small>${esc(firstName(m.by || ""))}</small></div>`
-      : `<div class="agmsg a${m.ok ? " liked" : ""}"><div class="agtxt">${agMd(m.t)}</div><div class="agacts"><button type="button" class="btn sm" data-agcopy="${esc(m.id)}">${icon("copy")} Copiar</button><button type="button" class="btn sm${m.ok ? " on" : ""}" data-agok="${esc(m.id)}">${icon("thumbs-up")} ${m.ok ? "Le gustó" : "Así está bien"}</button><button type="button" class="btn sm" data-agfix="${esc(m.id)}">${icon("pencil")} Corregir</button></div>
+      : `<div class="agmsg a${m.ok ? " liked" : ""}"><div class="agtxt">${agMd(m.t)}</div>${m.n ? `<small class="agnote">${m.robot ? "🤖 " : ""}${esc(m.n)}</small>` : ""}<div class="agacts"><button type="button" class="btn sm" data-agcopy="${esc(m.id)}">${icon("copy")} Copiar</button><button type="button" class="btn sm${m.ok ? " on" : ""}" data-agok="${esc(m.id)}">${icon("thumbs-up")} ${m.ok ? "Le gustó" : "Así está bien"}</button><button type="button" class="btn sm" data-agfix="${esc(m.id)}">${icon("pencil")} Corregir</button></div>
         ${ofUI.fix === m.id ? `<form class="agfix" id="agFixForm" data-ag="${a.id}"><input class="base" name="t" maxlength="500" placeholder="¿Qué tiene que hacer distinto? (ej.: más corto, sin emojis, el precio primero)" required autofocus><button type="submit" class="btn primary sm">Enseñarle</button></form>` : ""}</div>`).join("")}
-      ${busy ? `<div class="agmsg a typing"><div class="agtxt"><p>${agMode() === "plan" ? "Preparando el pedido para Claude" : esc(a.name) + " está pensando"}<span class="dots"><i></i><i></i><i></i></span></p></div></div>` : ""}</div>
+      ${busy ? `<div class="agmsg a typing"><div class="agtxt"><p>${agMode() === "plan" ? "Preparando el pedido para Claude" : agMode() === "robot" ? "🤖 " + esc(a.name) + " está armando la respuesta" : esc(a.name) + " está pensando"}<span class="dots"><i></i><i></i><i></i></span></p></div></div>` : ""}</div>
     ${ofUI.plan?.a === a.id && !busy ? `<div class="agplan"><b>${icon("clipboard-list")} Listo para pasárselo a Claude</b>
       <ol><li>Tocá <b>Copiar para Claude</b>.</li><li>Tocá <b>Abrir Claude</b>, pegalo en un chat nuevo y envialo.</li><li>Copiá lo que responda y pegalo acá abajo.</li></ol>
       <div class="chips"><button type="button" class="btn primary" data-agpcopy>${icon("copy")} Copiar para Claude</button><a class="btn" href="https://claude.ai/new" target="_blank" rel="noopener">${icon("external-link")} Abrir Claude</a><button type="button" class="btn" data-agpcancel>Cancelar</button></div>
       <details><summary>Ver el texto (si no se copia solo)</summary><textarea class="base" rows="6" readonly data-agptext>${esc(ofUI.plan.prompt)}</textarea></details>
       <form id="agPasteForm" class="agform" data-ag="${a.id}"><textarea class="base" name="t" rows="4" maxlength="12000" placeholder="Pegá acá la respuesta de Claude" required></textarea><button type="submit" class="btn primary">${icon("save")} Guardar</button></form></div>` : ""}
     ${ofUI.err && !busy && bye ? `<div class="ofErr bye">${icon("hand")}<div><b>${esc(ofUI.err)}</b>${at && /respuestas del día/.test(ofUI.err) ? `<p>Si hace falta hoy, subí el número en “Respuestas por día”, arriba de la oficina.</p>` : ""}</div></div>` : ""}
-    ${ofUI.err && !busy && !bye ? `<div class="ofErr${nokey ? " key" : ""}">${icon("triangle-alert")}<div><b>${esc(ofUI.err)}</b>${nokey ? `<ol><li>Entrá a <b>console.anthropic.com</b> con la cuenta de la empresa → <b>API Keys</b> → <b>Create Key</b> y copiala. <b>No la pegues en ningún chat.</b></li><li>Entrá a <b>vercel.com</b> → el proyecto <b>mkt</b> → <b>Settings</b> → <b>Environment Variables</b> → <b>Add</b>: nombre <code>ANTHROPIC_API_KEY</code>, valor: la clave, en <b>Production</b> y <b>Preview</b> → <b>Save</b>.</li><li>En <b>Deployments</b>, tocá los tres puntos del último → <b>Redeploy</b>. Listo: volvé a escribirle.</li></ol>${at ? `<button type="button" class="btn sm" data-agmode="plan">${icon("clipboard-list")} Mientras tanto, usar con mi plan (copiar y pegar)</button>` : ""}` : ""}</div></div>` : ""}
+    ${ofUI.err && !busy && !bye ? `<div class="ofErr${nokey ? " key" : ""}">${icon("triangle-alert")}<div><b>${esc(ofUI.err)}</b>${nokey ? `<ol><li>Entrá a <b>console.anthropic.com</b> con la cuenta de la empresa → <b>API Keys</b> → <b>Create Key</b> y copiala. <b>No la pegues en ningún chat.</b></li><li>Entrá a <b>vercel.com</b> → el proyecto <b>mkt</b> → <b>Settings</b> → <b>Environment Variables</b> → <b>Add</b>: nombre <code>ANTHROPIC_API_KEY</code>, valor: la clave, en <b>Production</b> y <b>Preview</b> → <b>Save</b>.</li><li>En <b>Deployments</b>, tocá los tres puntos del último → <b>Redeploy</b>. Listo: volvé a escribirle.</li></ol>${at ? `<button type="button" class="btn sm" data-agmode="robot">${icon("bot")} Usar el robot de la app (sin Claude ni costo)</button> <button type="button" class="btn sm" data-agmode="plan">${icon("clipboard-list")} Usar con mi plan (copiar y pegar)</button>` : ""}` : ""}</div></div>` : ""}
     <div class="chips agquick">${a.quick.map(q => `<button type="button" class="chip" data-agq="${esc(q)}" ${busy ? "disabled" : ""}>${icon("sparkles")} ${esc(q)}</button>`).join("")}</div>
-    <form id="agForm" class="agform" data-ag="${a.id}"><textarea class="base" name="t" rows="2" maxlength="4000" placeholder="Escribile a ${esc(a.name)}…" ${busy ? "disabled" : ""}></textarea><button type="submit" class="btn primary" ${busy ? "disabled" : ""} aria-label="Enviar">${icon("send")}</button></form>
+    <form id="agForm" class="agform" data-ag="${a.id}"><textarea class="base" name="t" rows="2" maxlength="4000" placeholder="${a.id === "claudia" ? "Pasale referencias: precio, descuento, fechas, sucursales, lo que tiene que decir… (ej.: 20% en vinos hasta el domingo)" : "Escribile a " + esc(a.name) + "…"}" ${busy ? "disabled" : ""}></textarea><button type="submit" class="btn primary" ${busy ? "disabled" : ""} aria-label="Enviar">${icon("send")}</button></form>
     ${at && msgs.length ? `<button type="button" class="btn sm ofclear" data-agclear="${a.id}">${icon("trash-2")} Borrar la charla</button>` : ""}`;
 }
 function ofPanel(){
@@ -15295,8 +15458,8 @@ function pOficina(){
   if (!ofCan()) return `<div class="panel"><div class="empty">La Oficina de Agentes la ven solo Admin total y Admin.</div></div>`;
   const on = PEOPLE.filter(pp => pp.active !== false && ONLINE[pp.id]).length;
   return `<div class="head ofhead"><div><h1 class="pmh">${pmIco("building-2")}Oficina de Agentes</h1><p class="sub">La oficina en maqueta. Los que se mueven son los robots (los agentes de IA y los robots de datos): con trabajo están en su compu y, si no, se toman un descanso. Las personas no aparecen: cada área tiene su cuadro con cómo viene (tocalo para ver el detalle). Tocá un agente para hablarle, entrenarlo y darle skills.</p></div>
-    <div class="oflegend">${(at => { const plan = agMode() === "plan";
-      return `<span class="ofmode">${icon("bot")} Respuestas: ${at ? `<button type="button" class="chip${plan ? " on" : ""}" data-agmode="plan" title="Sin costo extra: se pega en claude.ai con el plan">Con el plan de Claude (copiar y pegar)</button><button type="button" class="chip${plan ? "" : " on"}" data-agmode="api" title="Responden solos en la app: se paga aparte, por uso">Automáticas (cuenta de Claude)</button>` : `<b>${plan ? "con el plan de Claude (copiar y pegar)" : "automáticas"}</b>`}</span>`
+    <div class="oflegend">${(at => { const md = agMode(), plan = md !== "api", lab = { robot:"Robot de la app (sin costo)", plan:"Con el plan de Claude (copiar y pegar)", api:"Automáticas (cuenta de Claude)" };
+      return `<span class="ofmode">${icon("bot")} Respuestas: ${at ? ["robot", "plan", "api"].map(k => `<button type="button" class="chip${md === k ? " on" : ""}" data-agmode="${k}" title="${k === "robot" ? "Responden acá mismo con los datos de la app y el manual: sin Claude, sin clave y sin costo" : k === "plan" ? "Sin costo extra: se pega en claude.ai con el plan" : "Responden solos con Claude: se paga aparte, por uso"}">${lab[k]}</button>`).join("") : `<b>${lab[md]}</b>`}</span>`
         + (plan ? "" : `<span class="oflim" title="Respuestas de los agentes hoy (entre los tres) y el límite del día">Hoy: <b>${agUsed()}</b> de ${at ? `<input type="number" class="base" min="1" max="500" step="1" data-aglim value="${agLimit()}" aria-label="Respuestas por día">` : `<b>${agLimit()}</b>`} respuestas por día</span>`); })(viewer.role === "Admin total")}<span><i style="background:#22c55e"></i>trabajando</span><span><i style="background:#f59e0b"></i>en pausa</span><span><i style="background:#ef4444"></i>con un problema</span><span><i style="background:#7dd3fc;border-radius:3px"></i>pantalla prendida: ${on} del equipo conectados</span></div></div>
     <div class="ofwrap${ofUI.sel ? " sel" : ""}"><div class="ofleft"><div class="ofstage"><div class="ofscroll">${ofScene()}</div><div class="ofrot" role="group" aria-label="Mover la vista de la oficina"><span title="Arrastrá de costado para girar y para arriba o abajo para inclinar. Rueda del mouse o dos dedos: zoom. Con zoom, Shift + arrastrar (o dos dedos) mueve la vista.">Arrastrá: girar e inclinar · rueda o 2 dedos: zoom</span>
       <button type="button" class="btn sm ib" data-ofzoom="-1" title="Alejar" aria-label="Alejar">${icon("minus")}</button><b class="ofzv" data-ofzoomv>${Math.round(OFV.z * 100)}%</b><button type="button" class="btn sm ib" data-ofzoom="1" title="Acercar" aria-label="Acercar">${icon("plus")}</button>
@@ -15310,7 +15473,8 @@ document.addEventListener("click", e => {
   const q = t.closest("[data-agq]"); if (q){ const g = t.closest("[data-ofc]"); if (g && g.dataset.ofc !== ofUI.sel){ ofUI.sel = g.dataset.ofc; ofUI.tab = "chat"; } const id = (ofUI.sel || "").slice(2); if (AG[id]){ ofUI.tab = "chat"; agSend(id, q.dataset.agq); } return; }
   const o = t.closest("[data-ofc]"); if (o){ if (ofUI.sel !== o.dataset.ofc){ ofUI.sel = o.dataset.ofc; ofUI.tab = "chat"; ofUI.err = ""; ofUI.fix = ""; } render(); agScroll(); return; }
   if (t.closest("[data-ofclose]")){ ofUI.sel = ""; render(); return; }
-  const md = t.closest("[data-agmode]"); if (md && viewer.role === "Admin total"){ AGENTS._modo = md.dataset.agmode === "api" ? "api" : "plan"; ofUI.err = ""; ofUI.errCode = ""; ofUI.plan = null; render(); toast(agMode() === "plan" ? "Los agentes arman el pedido y vos lo pegás en Claude (sin costo extra)." : "Los agentes responden solos con la cuenta de Claude (se paga por uso)."); return; }
+  const md = t.closest("[data-agmode]"); if (md && viewer.role === "Admin total"){ const v = md.dataset.agmode; AGENTS._motor = ["plan", "api"].includes(v) ? v : "robot"; ofUI.err = ""; ofUI.errCode = ""; ofUI.plan = null; render();
+    toast({ robot:"Los agentes responden con el robot de la app: sin Claude y sin costo.", plan:"Los agentes arman el pedido y vos lo pegás en Claude (sin costo extra).", api:"Los agentes responden solos con la cuenta de Claude (se paga por uso)." }[agMode()]); return; }
   if (t.closest("[data-agpcopy]") && ofUI.plan){ const done = () => { toast("Copiado. Ahora tocá “Abrir Claude” y pegalo."); }, fail = () => { const d = document.querySelector(".agplan details"); if (d){ d.open = true; const x = d.querySelector("textarea"); x.focus(); x.select(); } toast("No se pudo copiar solo: copiá el texto de abajo."); };
     try { navigator.clipboard ? navigator.clipboard.writeText(ofUI.plan.prompt).then(done, fail) : fail(); } catch (er){ fail(); } return; }
   if (t.closest("[data-agpcancel]") && ofUI.plan){ const mid = ofUI.plan.mid; AGENT_CHAT = AGENT_CHAT.filter(m => m.id !== mid); ofUI.plan = null; render(); return; }
