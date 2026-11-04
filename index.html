@@ -1161,6 +1161,7 @@ html.light .ofscene image{filter:none}
 .typing .dots{display:inline-flex;gap:3px;margin-left:6px}.typing .dots i{width:5px;height:5px;border-radius:50%;background:#94a3b8;animation:agdot 1s infinite}.typing .dots i:nth-child(2){animation-delay:.15s}.typing .dots i:nth-child(3){animation-delay:.3s}
 @keyframes agdot{0%,100%{opacity:.25}50%{opacity:1}}
 .agquick{gap:6px}.agquick .chip{font-size:12.5px}
+.dsgbox{margin-top:10px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:rgba(236,72,153,.06)}.dsgbox b{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.dsgbox p{margin:6px 0 8px;font-size:13.5px}.dsgbox.s-rev{border-color:#a855f7}.dsgbox.s-fix{border-color:#f97316}.dsgbox.s-ok{border-color:#10b981;background:rgba(16,185,129,.07)}.jchain .msg.dsg .bub{border-color:#ec4899}.jchain .msg.dsg.ok .bub{border-color:#10b981}
 .jp-sec .jfgrid .dghrs{grid-column:1/-1}.dghrs b small{font-weight:500}.dghin{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:13px}.dghin input{width:90px}.jp-sec .jfgrid .dghin span,.jp-sec .jfgrid .dghrs b small{text-transform:none;letter-spacing:normal;font-size:12.5px}.dgcat{margin:12px 0 4px;font-size:13px;color:var(--muted)}.dgtypes{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.dgk{margin:8px 0}.dgcfg .clin{white-space:normal;flex-wrap:wrap}.clcard .clpct small+small{display:block;font-size:11.5px;opacity:.9}
 .agqnote{margin:6px 0 4px}.chips.agqgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}.chips.agqgrid .chip{display:flex;align-items:center;gap:8px;justify-content:flex-start;text-align:left;white-space:normal;min-height:36px;height:auto;padding:7px 11px;line-height:1.3}
 .agmore{margin-top:4px}.agmore>summary{cursor:pointer;font-size:12.5px;color:var(--muted);padding:6px 2px;list-style:none;display:inline-flex;align-items:center;gap:6px}.agmore>summary::-webkit-details-marker{display:none}.agmore>summary:hover{color:var(--ink)}.agmore[open]>summary{margin-bottom:6px}
@@ -4391,6 +4392,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-jdel
 // Admin total: aprobar o pedir correcciones desde el aviso
 document.addEventListener("click", e => { const b = e.target.closest("[data-nact]"); if (!b) return;
   const n = NOTIFS.find(x => x.id === +b.dataset.nid);
+  if (n?.dsg){ const p = postById(n.post); if (!p) return; if (b.dataset.nact === "approve") dsgApprove(p); else openDsgFixModal(p); return; }
   if (n?.copy){ const p = n.canal ? canalById(n.post) : postById(n.post); if (!p) return; if (b.dataset.nact === "approve") copyApprove(p); else openCopyFixModal(p); return; }
   const j = n && jobById(n.job); if (!j) return;
   if (b.dataset.nact === "approve"){ n.read = true; openApproveModal(j); } else openFixModal(j, n); });
@@ -4709,7 +4711,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v339";
+const APP_VER = "v340";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -6452,7 +6454,7 @@ const copyWaits = n => (n.canal ? canalById(n.post) : postById(n.post))?.copySt 
 // Tus alertas duran poco: quedan las de hoy y las del día hábil anterior (el lunes, desde el viernes); las más viejas se borran solas.
 const alertCutoff = () => addDays(TODAY, new Date(TODAY + "T12:00").getDay() === 1 ? -3 : -1);
 const notifFresh = n => !n.date || n.date >= alertCutoff();
-const adminNotifs = () => NOTIFS.filter(n => n.to === "admin" && !n.read && notifFresh(n) && (n.type !== "review" || (n.copy ? copyWaits(n) : REVIEW_WAIT.includes(jobById(n.job)?.status))));
+const adminNotifs = () => NOTIFS.filter(n => n.to === "admin" && !n.read && notifFresh(n) && (n.type !== "review" || (n.dsg ? dsgWaits(n) : n.copy ? copyWaits(n) : REVIEW_WAIT.includes(jobById(n.job)?.status))));
 const myNotifs = () => NOTIFS.filter(n => n.to === viewer.name && !n.read && notifFresh(n) && !(n.job && repLater(jobById(n.job)))); // un repetitivo avisa recién 7 días antes
 // Abrir el pedido o la publicación ya es atenderlo: se borran de Tus alertas (y de las ventanas emergentes) todas las alertas
 // que llevan a ese documento, vengan de donde vengan (la ventana, la lista, el calendario). Admin total: las que le llegaron a él.
@@ -6471,13 +6473,14 @@ function notifAlerts(){
     if (n.type === "sug" && !can("sugerencias")) return null;
     if (n.type === "sug") { const x = SUGGESTIONS.find(y => y.id === n.sug); return { go:"sugerencias", key:"n:" + n.id, sev:"#22d3ee", rank:-4, ic:"message-square", t:`Llegó una sugerencia nueva ${x ? sugNo(x) : ""}`, m:`${x ? x.topic : ""}${x && x.anon ? " · anónima" : x ? " · de " + (PEOPLE.find(pp => pp.id === x.author)?.name || "") : ""} · ${dm(n.date)} ${n.time}`, acts:`<button class="btn" data-page="sugerencias">Ver sugerencia</button>` }; }
     if (n.type === "drive") return { go:"cfg:integ", key:"n:" + n.id, sev:"#ef4444", rank:-6, ic:"triangle-alert", t:"Google Drive: no se pudo subir un archivo", m:`${n.who ? firstName(n.who) + " · " : ""}“${n.text}” · ${dm(n.date)} ${n.time} · tocá para ver Integraciones` };
+    if (n.dsg) return dsgAlert(n);
     if (n.copy) return copyAlert(n);
     const j = jobById(n.job); if (!j) return null;
     if (n.type === "nota") return { go:"job:" + j.id, key:"n:" + n.id, sev:"#94a3b8", rank:-4, ic:"message-circle", t:`${n.who} comentó en: ${j.title}`, m:`“${n.text}” · ${dm(n.date)} ${n.time}` };
     return { go:"job:" + j.id, key:"n:" + n.id, sev:"#a855f7", rank:-5, ic:"circle-check", t:`${n.who} ${n.fix ? "terminó las correcciones" : j.area === "CM" ? "terminó su trabajo" : contCopy(j) ? "terminó el boceto y el copy" : "terminó el boceto"}: ${j.title}`, m:`${j.brand} · ${j.piece} · listo para revisar${contCopy(j) ? " · " + jcopyShort(j) : ""} · ${dm(n.date)} ${n.time}${j.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}`,
       acts:`<button class="btn primary" data-nact="approve" data-nid="${n.id}">${j.area === "CM" ? "Aprobar" : "✓ Aprobar"}</button><button class="btn" data-nact="fix" data-nid="${n.id}">Pedir cambios</button><button class="btn" data-jficha="${j.id}">Ver pedido</button>` };
   });
-  return myNotifs().map(n => n.copy ? copyAlert(n) : n.type === "pub" ? pubAlert(n) : n.type === "act" ? actAlert(n) : n.type === "nuevo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:"inbox", t:`Nuevo pedido para vos: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""} · fecha límite ${jobById(n.job) ? dm(jobById(n.job).due) : ""} · tocá para ver todo` }
+  return myNotifs().map(n => n.dsg ? dsgAlert(n) : n.copy ? copyAlert(n) : n.type === "pub" ? pubAlert(n) : n.type === "act" ? actAlert(n) : n.type === "nuevo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:"inbox", t:`Nuevo pedido para vos: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""} · fecha límite ${jobById(n.job) ? dm(jobById(n.job).due) : ""} · tocá para ver todo` }
     : n.type === "listo" && n.post ? listoAlert(n)
     : n.type === "listo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#10b981", rank:-6, ic:"badge-check", t:`Diseño listo para tu grilla: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""}${jobById(n.job)?.designLink ? " · tiene el link del diseño" : ""} · sumalo a tu calendario` }
     : n.type === "nota" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#94a3b8", rank:-4, ic:"message-circle", t:`Admin total comentó en: ${jobById(n.job)?.title || ""}`, m:`“${n.text}” · ${dm(n.date)} ${n.time}` } : ({ go:"job:" + n.job, key:"n:" + n.id, sev:n.type === "approved" ? "#10b981" : "#f97316", rank:-5, ic:n.type === "approved" ? "badge-check" : "pencil", t:n.type === "approved" ? `Admin total aprobó tu ${jobDone(jobById(n.job) || {})}: ${jobById(n.job)?.title}` : `Admin total pidió cambios: ${jobById(n.job)?.title}`, m:`${n.type === "fix" && n.text ? `“${n.text}” · ` : ""}${dm(n.date)} ${n.time}${n.type === "fix" ? ` · cuando termines, tocá “${jobById(n.job)?.area === "CM" ? "Terminé las correcciones" : "Corrección realizada"}”` : ""}`, acts:`${n.type === "fix" ? `<button class="btn primary" data-jdone="${n.job}">✓ ${jobById(n.job)?.area === "CM" ? "Terminé las correcciones" : "Corrección realizada"}</button>` : ""}<button class="btn" data-jficha="${n.job}">Ver pedido</button>` }));
@@ -6881,12 +6884,16 @@ const APR_GROUPS = [
     ["dgval", "Validados por comercial", JOB_COLOR[VAL_COM], aprJobs(j => j.area === "Diseño" && j.status === VAL_COM)]]],
   ["cm", "Community Manager", "megaphone", [
     ["cmcont", "Contenidos (boceto y copy)", "#06b6d4", aprJobs(j => j.area === "Contenidos" && REVIEW_WAIT.includes(j.status))],
+    ["cmdsg", "Diseños de publicaciones", "#ec4899", () => posts.filter(p => p.dsgSt === "rev" && dsgOn(p) && seesBrand(p.brand))],
     ["cmcopy", "Copys de publicaciones", "#a855f7", aprCopies],
     ["cmvid", "Videos", "#f97316", aprJobs(j => j.area === "CM" && REVIEW_WAIT.includes(j.status))]]]];
 // Desde cuándo espera: el día que lo mandaron a revisión (el boceto, la corrección, el video o el copy).
 const aprSince = x => x.copySt || copyDraft(x) ? (x.copyLog || []).filter(c => c.k === "send").pop()?.date || "" : (x.changes || []).filter(c => c.kind === "boceto").pop()?.date || x.requestDate || x.due;
 const aprWait = d => { if (!d) return ""; const n = -daysTo(d); return n > 1 ? ` · <em>hace ${n} días</em>` : n === 1 ? " · desde ayer" : " · desde hoy"; };
 function aprRow(x, c){
+  if (!x.area && x.dsgSt === "rev"){ const where = `${x.net || "IG"} ${x.format || "Post"}`;
+    return `<div class="row arow ago aprrow" data-ago="pub:post:${esc(x.id)}" role="button" tabindex="0" title="Abrir la publicación"><span class="aico" style="--c:${c}">${icon("palette")}</span><div class="grow"><div class="t">${esc(x.title)}</div><div class="m">${esc(firstName(x.cm || ""))} · ${esc(x.brand)} · ${esc(where)} · versión ${dsgVer(x)} · publicar el ${pubWhen(x)}${aprWait(aprSince(x))}</div></div>
+      <div class="chips aprbtns"><button type="button" class="btn sm primary" data-dsgok="${esc(x.id)}">✓ Aprobar diseño</button><button type="button" class="btn sm" data-dsgfix="${esc(x.id)}">Pedir cambios</button></div></div>`; }
   if (x.copySt || copyDraft(x)){ const ref = copyRef(x), where = x.channel ? "Canal de WhatsApp" : `${x.net || "IG"} ${x.format || "Post"}`;
     return `<div class="row arow ago aprrow" data-ago="pub:${esc(ref)}" role="button" tabindex="0" title="Abrir la publicación"><span class="aico" style="--c:${c}">${icon("file-text")}</span><div class="grow"><div class="t">${esc(x.title)}</div><div class="m">${esc(firstName(x.cm || ""))} · ${esc(x.brand)} · ${esc(where)} · publicar el ${pubWhen(x)}${copyDraft(x) ? " · <em>cargado, sin mandar</em>" : aprWait(aprSince(x))}</div>${x.copy ? `<div class="aprcp">“${esc(rclShort(copyPlain(x), 140))}”</div>` : ""}</div>
       <div class="chips aprbtns">${(n => n > 1 ? `<button type="button" class="btn sm primary" data-cpokall="${esc(ref)}">✓ Aprobar en todas (${n})</button><button type="button" class="btn sm" data-cpok="${esc(ref)}">Solo esta</button>` : `<button type="button" class="btn sm primary" data-cpok="${esc(ref)}">✓ Aprobar copy</button>`)(copyAllOf(x).n)}<button type="button" class="btn sm" data-cpfix="${esc(ref)}">Pedir corrección</button></div></div>`; }
@@ -7089,6 +7096,7 @@ document.addEventListener("click", e => {
   closeStageMenu();
   const [ref, to] = o.dataset.stageset.split("|"), [kind, id] = ref.split(":");
   if ((kind === "post" || kind === "canal") && copyLock(kind === "post" ? postById(id) : canalById(id), to)) return toast(copyLockMsg);
+  if (kind === "post" && dsgLock(postById(id), to)) return toast(dsgLockMsg);
   if (kind === "post"){ const p = postById(id); if (!p || p.status === to) return;
     if (onHold(p) && !HOLD_ST.includes(to)) return openReactivate("post", p, to); // v300: con la fecha nueva
     holdMark(p, p.status, to); p.status = to; render(); toast(`“${p.title}” pasó a ${to}.`); return; }
@@ -9658,9 +9666,10 @@ function postForm(){
         <div style="grid-column:1/-1">${cmFilesBlock(p, "form")}</div>
       </div></section>
       <section class="jfs"><h3><i>4</i>Proceso</h3><div class="jfg">
-        <div style="grid-column:1/-1"><div class="pproc" role="group" aria-label="Etapa">${stages.map((x, i) => `<button type="button" class="${i < cur ? "done" : ""}${i === cur ? " on" : ""}" style="--c:${POST_COLOR[x] === "#334155" ? "#94a3b8" : POST_COLOR[x]}" data-postep="${esc(x)}" aria-pressed="${i === cur}"><span>${i + 1}</span>${esc(x)}</button>`).join("")}</div>
+        <div style="grid-column:1/-1"><div class="pproc" role="group" aria-label="Etapa">${stages.map((x, i) => `<button type="button" class="${i < cur ? "done" : ""}${i === cur ? " on" : ""}${real && dsgLock(real, x) && x !== p.status ? " lock" : ""}" style="--c:${POST_COLOR[x] === "#334155" ? "#94a3b8" : POST_COLOR[x]}" data-postep="${esc(x)}" aria-pressed="${i === cur}"><span>${i + 1}</span>${esc(x)}</button>`).join("")}</div>
           <input type="hidden" id="poStatus" value="${esc(p.status)}">
-          ${!canal && !j && canEditPost() ? `<label class="jcext" style="margin-top:8px"><input type="checkbox" id="poAskDesign"> Pedir el diseño a Diseño gráfico <span class="note">(se crea solo el pedido en Diseño para Redes)</span></label>` : ""}</div>
+          ${real && !canal ? dsgBox(real) : ""}
+          ${!canal && !j && canEditPost() && !real?.dsgSt ? `<label class="jcext" style="margin-top:8px"><input type="checkbox" id="poAskDesign"> Pedir el diseño a Diseño gráfico <span class="note">(se crea solo el pedido en Diseño para Redes)</span></label>` : ""}</div>
       </div></section>
       ${real ? `<section class="jfs jfchat">${postChain(real, canal)}</section>` : ""}
       <div class="chips" style="justify-content:flex-end">${f.mode === "edit" && canEditPost() ? `<button class="btn danger" type="button" data-postdel="${canal ? "canal:" : ""}${p.id}" style="margin-right:auto">${icon("trash-2")} Borrar</button>` : ""}<button class="btn" type="button" data-pclose>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div>
@@ -9765,6 +9774,82 @@ document.addEventListener("click", e => {
   if (d.cpfixsend){ const t = document.getElementById("cpFixText")?.value.trim(); if (!t){ document.getElementById("cpFixErr").hidden = false; return; } document.getElementById("fixpop")?.remove(); return copyFix(p, t); }
   if (d.cpreopen && hasPub(p, viewer.name)){ copyTake(p); p.copySt = ""; p.copyConf = false; copyLogAdd(p, "edit"); if (["Programado"].includes(p.status)) p.status = "En proceso"; copySync(p); render(); toast("Podés cambiar el copy: cuando termines, mandalo de nuevo a Admin total."); }
 });
+// ----- v340 · Diseño de la pieza que arma la CM (publicaciones sin pedido de Diseño gráfico): el mismo proceso que Diseño.
+// La CM toca “Boceto finalizado” → a Admin total le llega para revisar → aprueba o pide cambios (queda como ronda en “Cambios
+// pedidos”) → la CM toca “Corrección realizada” → … Si el circuito empezó, no se programa ni se publica hasta que esté aprobado.
+// En la publicación: dsgSt ("" sin mandar, "rev" esperando a Admin total, "fix" con cambios pedidos, "ok" aprobado), dsgBy, dsgAt;
+// el historial (bocetos, cambios y aprobación) va en changes, como en los pedidos.
+const dsgOn = p => !!p && !p.channel && !p.ex && !p.fromJob && !jobs.some(x => x.post === p.id);
+const dsgLock = (p, to) => dsgOn(p) && !!p.dsgSt && p.dsgSt !== "ok" && ["Programado","Publicado","Pautado"].includes(to);
+const dsgLockMsg = "Primero Admin total tiene que aprobar el diseño (Boceto finalizado): recién ahí se programa o se publica.";
+const dsgWaits = n => postById(n.post)?.dsgSt === "rev";
+const dsgVer = p => (p.changes || []).filter(c => c.kind === "boceto").length;
+const dsgNotifsRead = (p, test) => NOTIFS.forEach(n => { if (n.dsg && n.post === p.id && test(n)) n.read = true; });
+function dsgSync(p){ const f = postUI.form; if (f && f.post.id === p.id) Object.assign(f.post, { dsgSt:p.dsgSt, dsgBy:p.dsgBy, dsgAt:p.dsgAt, changes:p.changes, status:p.status }); }
+function dsgSend(p){
+  if (!dsgOn(p) || !hasPub(p, viewer.name) || isViewOnly()) return; if (postUI.form) readPostForm(postUI.form.post); // no se pierde lo que estaba escribiendo
+  const fix = p.dsgSt === "fix"; p.dsgSt = "rev"; if (p.status === "Pendiente") p.status = "En proceso";
+  (p.changes = p.changes || []).push({ date:TODAY, time:nowTime(), kind:"boceto", by:viewer.name, fix });
+  dsgNotifsRead(p, n => n.to === viewer.name || n.to === "admin");
+  notify({ to:"admin", type:"review", dsg:true, fix, post:p.id, who:viewer.name });
+  dsgSync(p); render(); window.RMH?.flushNow?.(); toast(`${fix ? "Corrección realizada" : "Boceto finalizado"}: le llegó a Admin total para revisarlo. Te avisamos cuando lo apruebe o pida cambios.`);
+}
+function dsgApprove(p){
+  if (viewer.role !== "Admin total" || !dsgOn(p)) return; if (postUI.form) readPostForm(postUI.form.post);
+  Object.assign(p, { dsgSt:"ok", dsgBy:viewer.name, dsgAt:TODAY }); (p.changes = p.changes || []).push({ date:TODAY, time:nowTime(), kind:"ok", by:viewer.name });
+  dsgNotifsRead(p, n => n.to === "admin" || (n.to === p.cm && n.type === "fix"));
+  notify({ to:p.cm, type:"listo", dsg:true, post:p.id });
+  dsgSync(p); render(); window.RMH?.flushNow?.(); toast(`Diseño aprobado. Le avisamos a ${firstName(p.cm)}: lo programa y lo publica el ${pubWhen(p)}.`);
+}
+function dsgFix(p, text){
+  if (viewer.role !== "Admin total" || !dsgOn(p)) return; if (postUI.form) readPostForm(postUI.form.post);
+  p.dsgSt = "fix"; (p.changes = p.changes || []).push({ date:TODAY, time:nowTime(), text, by:viewer.name, req:"Admin total" });
+  dsgNotifsRead(p, n => n.to === "admin");
+  notify({ to:p.cm, type:"fix", dsg:true, post:p.id, text });
+  dsgSync(p); render(); window.RMH?.flushNow?.(); toast(`Le mandamos los cambios a ${firstName(p.cm)}.`);
+}
+function openDsgFixModal(p){
+  document.getElementById("fixpop")?.remove();
+  const w = document.createElement("div"); w.id = "fixpop"; w.className = "fixpop";
+  w.innerHTML = `<div class="fixbox" role="dialog" aria-modal="true" aria-labelledby="dsgfh"><h2 id="dsgfh">Pedir cambios del diseño</h2><p class="note">${esc(p.title)} · ${esc(p.brand)} · ${esc(p.cm)}</p>
+    <label>¿Qué hay que cambiar? *<textarea class="base" id="dsgFixText" rows="4" placeholder="Ej.: agrandar el precio, cambiar la foto, usar el logo nuevo"></textarea></label>
+    <p class="perr" id="dsgFixErr" hidden>Escribí qué hay que cambiar para que ${esc(firstName(p.cm))} sepa qué hacer.</p>
+    <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-dsgfixsend="${esc(p.id)}">Enviar cambios</button></div></div>`;
+  document.body.appendChild(w); w.querySelector("textarea").focus();
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-dsgsend],[data-dsgok],[data-dsgfix],[data-dsgfixsend]"); if (!b) return; e.preventDefault(); e.stopPropagation();
+  const d = b.dataset, p = postById(d.dsgsend || d.dsgok || d.dsgfix || d.dsgfixsend); if (!p) return toast("No se encontró la publicación (quizás la borraron).");
+  if (d.dsgsend) return dsgSend(p);
+  if (d.dsgok) return dsgApprove(p);
+  if (d.dsgfix) return openDsgFixModal(p);
+  const t = document.getElementById("dsgFixText")?.value.trim(); if (!t){ document.getElementById("dsgFixErr").hidden = false; return; }
+  document.getElementById("fixpop")?.remove(); dsgFix(p, t);
+});
+// El cuadro en la hoja de la publicación (4 · Proceso)
+function dsgBox(p){
+  if (!dsgOn(p)) return "";
+  const at = viewer.role === "Admin total", mine = hasPub(p, viewer.name) && !isViewOnly(), st = p.dsgSt || "", v = dsgVer(p), lastFix = (p.changes || []).filter(c => !c.kind).pop();
+  const txt = st === "rev" ? `${icon("hourglass")} ${at ? `${esc(firstName(p.cm))} mandó el diseño (versión ${v}): revisalo en Archivos de CM o en la ruta y aprobalo o pedí cambios.` : "Esperando que Admin total revise el diseño. Si pide cambios, te llega el aviso."}`
+    : st === "fix" ? `${icon("pencil")} Admin total pidió cambios${lastFix?.text ? `: “${esc(lastFix.text)}”` : ""}.${mine ? " Hacelos, subí el diseño nuevo y tocá “Corrección realizada”." : ""}`
+    : st === "ok" ? `${icon("badge-check")} Diseño aprobado${p.dsgBy ? " por " + esc(firstName(p.dsgBy)) : ""}${p.dsgAt ? " el " + dm(p.dsgAt) : ""}. Ya se puede programar y publicar.`
+    : mine ? "¿El diseño lo hacés vos? Cuando lo termines, subilo (Archivos de CM o la ruta) y tocá “Boceto finalizado”: le llega a Admin total para revisarlo, como en Diseño gráfico."
+    : "Si la CM arma el diseño, cuando toque “Boceto finalizado” le llega a Admin total para revisarlo.";
+  const btns = (mine && (st === "" || st === "fix") ? `<button type="button" class="btn primary" data-dsgsend="${esc(p.id)}">${icon("check")} ${st === "fix" ? "Corrección realizada" : "Boceto finalizado"} · enviar a revisión</button>` : "")
+    + (at && st === "rev" ? `<button type="button" class="btn primary" data-dsgok="${esc(p.id)}">✓ Aprobar diseño</button><button type="button" class="btn" data-dsgfix="${esc(p.id)}">Pedir cambios</button>` : "");
+  return `<div class="dsgbox s-${st || "none"}" style="grid-column:1/-1"><b>${icon("palette")} Diseño de la pieza <span class="note">(lo arma la CM)</span>${v ? ` <span class="note">· versión ${v}</span>` : ""}</b><p>${txt}</p>${btns ? `<div class="chips">${btns}</div>` : ""}</div>`;
+}
+// Avisos del diseño de la CM (en Tus alertas, en Inicio y en la ventana emergente).
+function dsgAlert(n){
+  const p = postById(n.post); if (!p) return null;
+  const go = "pub:post:" + p.id, where = `${p.net || "IG"} ${p.format || "Post"}`, key = "n:" + n.id;
+  if (n.type === "review") return { go, key, sev:"#a855f7", rank:-5, ic:"palette", t:`${n.fix ? "Corrección realizada" : "Boceto finalizado"} para revisar: ${p.title}`, m:`${firstName(n.who || p.cm)} armó el diseño · ${p.brand} · ${where} · publicar el ${pubWhen(p)}`,
+    acts:`<button class="btn primary" data-nact="approve" data-nid="${n.id}">✓ Aprobar diseño</button><button class="btn" data-nact="fix" data-nid="${n.id}">Pedir cambios</button><button class="btn" data-pubopen="post:${esc(p.id)}">Ver</button>` };
+  if (n.type === "fix") return { go, key, sev:"#f97316", rank:-5, ic:"pencil", t:`Admin total pidió cambios en el diseño: ${p.title}`, m:`${n.text ? `“${n.text}” · ` : ""}${dm(n.date)} ${n.time} · hacelos y tocá “Corrección realizada”`,
+    acts:`<button class="btn primary" data-pubopen="post:${esc(p.id)}">${icon("pencil")} Ver los cambios</button>` };
+  return { go, key, sev:"#10b981", rank:-6, ic:"badge-check", t:`Diseño aprobado: ${p.title}`, m:`${p.brand} · ${where} · programalo y publicalo el ${pubWhen(p)}`,
+    acts:`<button class="btn primary" data-pubopen="post:${esc(p.id)}">${icon("arrow-up-right")} Ver publicación</button>` };
+}
 // Avisos del copy (en Tus alertas y en la ventana emergente).
 function copyAlert(n){
   const p = n.canal ? canalById(n.post) : postById(n.post); if (!p) return null;
@@ -9783,6 +9868,8 @@ function postChain(p, canal){
   let r = 0;
   const item = c => { const me = c.by === viewer.name;
     if (c.kind === "nota") return `<li class="msg ${me ? "me" : ""}"><div class="bub"><b>${esc(who(c.by))}</b><p>${esc(c.text)}</p><span>${dm(c.date)} ${c.time}</span></div></li>`;
+    if (c.kind === "boceto") return `<li class="msg dsg ${me ? "me" : ""}"><div class="bub"><b>${esc(who(c.by))} · ${c.fix ? "Corrección realizada" : "Boceto finalizado"}</b><p>Mandó el diseño a revisión.</p><span>${dm(c.date)} ${c.time}</span></div></li>`;
+    if (c.kind === "ok") return `<li class="msg dsg ok ${me ? "me" : ""}"><div class="bub"><b>${esc(who(c.by))} · Diseño aprobado ✓</b><span>${dm(c.date)} ${c.time}</span></div></li>`;
     r++; return `<li class="msg fx ${me ? "me" : ""}"><div class="bub"><b>${esc(who(c.by))} · cambios (ronda ${r})</b>${c.req ? `<small class="jreq">Los pidió: ${esc(c.req)}</small>` : ""}<p>${esc(c.text)}</p><span>${dm(c.date)} ${c.time}</span></div></li>`; };
   return `<div class="jchain"><h3>${icon("pencil")} 5 · Cambios pedidos <span class="jcount${rounds ? " on" : ""}">${rounds} ${rounds === 1 ? "ronda" : "rondas"}</span></h3>
     ${list.length ? `<ol>${list.map(item).join("")}</ol>` : `<p class="note" style="margin:0">Todavía no hay cambios.</p>`}
@@ -9827,6 +9914,7 @@ document.addEventListener("click", e => {
   const st = e.target.closest("[data-postep]"); if (st && postUI.form){ const h = document.getElementById("poStatus");
     const live = postUI.form.kind === "Canal" ? canalById(postUI.form.post.id) : postById(postUI.form.post.id);
     if (copyLock(live || postUI.form.post, st.dataset.postep) && st.dataset.postep !== (live || postUI.form.post).status){ toast(copyLockMsg); return; }
+    if (postUI.form.kind !== "Canal" && dsgLock(live, st.dataset.postep) && st.dataset.postep !== live.status){ toast(dsgLockMsg); return; }
     if (h) h.value = st.dataset.postep;
     st.parentElement.querySelectorAll("button").forEach((b, i, all) => { const k = [...all].indexOf(st); b.classList.toggle("on", b === st); b.classList.toggle("done", i < k); b.setAttribute("aria-pressed", b === st); }); return; }
   const sd = e.target.closest("[data-pcsend]"); if (sd){ const key = sd.dataset.pcsend, canal = key.startsWith("canal:"), id = canal ? key.slice(6) : key, p = canal ? canalById(id) : postById(id), t = document.getElementById("pcText")?.value.trim();
@@ -9850,6 +9938,7 @@ document.addEventListener("submit", e => {
   const was = f.mode === "edit" ? (f.kind === "Canal" ? canalById(f.post.id) : postById(f.post.id)) : null, prevCrew = was ? crewOf(was.cm, was) : [];
   const alsoNotify = (x, canal) => alsoOf(x).filter(n => !prevCrew.includes(n) && n !== viewer.name).forEach(n => notify({ to:n, type:"pub", post:x.id, canal })); // v309: a quien suman
   if (copyLock(was || f.post, $("#poStatus").value) && $("#poStatus").value !== was?.status){ toast(copyLockMsg); return; }
+  if (f.kind !== "Canal" && was && dsgLock(was, $("#poStatus").value) && $("#poStatus").value !== was.status){ toast(dsgLockMsg); return; }
   const d = f.post, acb = document.getElementById("poActCom"), common = { ...(acb ? { actCom:acb.checked } : {}), date, brand:$("#poBrand").value, title, cm:$("#poCm").value, also:alsoClean({ also:d.also }, $("#poCm").value).also, status:$("#poStatus").value, notes:$("#poNotes").value.trim(), requester:d.requester || "Marketing",
     brief:d.brief || "", canva:d.canva || "", drive:d.drive || "", canvaN:d.canvaN || "", driveN:d.driveN || "", xlinks:d.xlinks || [], links:d.links || [], cmFiles:d.cmFiles || [],
     ...(d.time !== undefined ? { time:d.time || "" } : {}), ...(d.copy !== undefined ? { copy:d.copy, copyBg:d.copyBg || "" } : {}) };
@@ -14316,7 +14405,7 @@ let jobPop = { items:[] };
 function jobPopCheck(){
   if (!viewer || !enterApp.done || !$("#login").hidden || window.RMH?.previewing || noPops()) return;
   const mine = [...myNotifs(), ...(viewer.role === "Admin total" ? adminNotifs().filter(n => ADMIN_POP.includes(n.type) && n.who !== viewer.name && (n.type !== "sug" || can("sugerencias"))) : [])]
-    .filter(n => JOBPOP[n.type] && !POP_LOCAL.includes(n.type) && (n.copy ? copyAlert(n) : (n.type !== "pub" || pubAlert(n)) && (n.type !== "act" || actAlert(n)) && (n.type !== "listo" || !n.post || listoAlert(n)) && (!n.job || jobById(n.job))))
+    .filter(n => JOBPOP[n.type] && !POP_LOCAL.includes(n.type) && (n.dsg ? dsgAlert(n) : n.copy ? copyAlert(n) : (n.type !== "pub" || pubAlert(n)) && (n.type !== "act" || actAlert(n)) && (n.type !== "listo" || !n.post || listoAlert(n)) && (!n.job || jobById(n.job))))
     .concat(avActiveFor(viewer).filter(a => !(a.seen || []).includes(viewer.id) && a.by !== viewer.id).map(a => avPopOf(a))) // avisos del equipo vigentes, sin “Entendido”
     .concat(avOkItems()) // a quien mandó un Aviso: cada persona que tocó “Entendido”
     .concat(pcPopItems()); // v242: Pedidos Comercial
@@ -14418,6 +14507,8 @@ function jobPopInfo(n){
   if (n.type === "alerta"){ const a = n.al; return { ...P, go:a.go || "alertas", title:a.t, m:a.m || "", ic:a.ic || "bell", c:/^(#|var\()/.test(a.sev || "") ? a.sev : P.c }; }
   if (n.type === "sug"){ const x = SUGGESTIONS.find(y => y.id === n.sug); return { ...P, go:"sugerencias", title:x ? `${sugNo(x)} · ${x.topic || ""}` : "", m:x ? (x.anon ? "Anónima" : "De " + (PEOPLE.find(pp => pp.id === x.author)?.name || "alguien del equipo")) : "" }; }
   if (n.type === "drive") return { ...P, go:"cfg:integ", title:n.who ? firstName(n.who) : "", m:n.text ? `“${rclShort(String(n.text), 160)}”` : "" };
+  if (n.dsg){ const a = dsgAlert(n), p = postById(n.post);
+    return { ...P, go:a?.go || "", title:p?.title || "", t:n.type === "review" ? (n.fix ? "Corrección realizada: diseño para revisar" : "Boceto finalizado: diseño para revisar") : n.type === "fix" ? "Te pidieron cambios en el diseño" : "Diseño aprobado: listo para publicar", ic:n.type === "listo" ? P.ic : "palette", m:a?.m || "" }; }
   if (n.copy){ const a = copyAlert(n), p = n.canal ? canalById(n.post) : postById(n.post);
     return { ...P, go:a?.go || "", title:p?.title || "", t:n.type === "review" ? (n.fix ? "Copy corregido para aprobar" : "Copy listo para aprobar") : n.type === "fix" ? "Te pidieron corregir el copy" : n.conf ? "Copy confirmado por Admin total" : "Copy aprobado: listo para publicar", ic:n.type === "review" || n.type === "fix" ? "file-text" : P.ic,
       m:!p ? "" : n.type === "review" ? `${firstName(n.who || p.cm)} escribió el copy · ${p.brand} · publicar el ${pubWhen(p)}${p.copy ? ` · “${rclShort(copyPlain(p), 140)}”` : ""}` : n.type === "fix" ? (n.text ? `“${rclShort(String(n.text), 160)}”` : p.brand) : `${p.brand} · publicalo el ${pubWhen(p)}${n.conf ? " · no lo tenés que escribir" : ""}` }; }
