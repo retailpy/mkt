@@ -1161,7 +1161,7 @@ html.light .ofscene image{filter:none}
 .typing .dots{display:inline-flex;gap:3px;margin-left:6px}.typing .dots i{width:5px;height:5px;border-radius:50%;background:#94a3b8;animation:agdot 1s infinite}.typing .dots i:nth-child(2){animation-delay:.15s}.typing .dots i:nth-child(3){animation-delay:.3s}
 @keyframes agdot{0%,100%{opacity:.25}50%{opacity:1}}
 .agquick{gap:6px}.agquick .chip{font-size:12.5px}
-.jp-sec .jfgrid .dghrs{grid-column:1/-1}.dghrs b small{font-weight:500}.dghin{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:13px}.dghin input{width:90px}.jp-sec .jfgrid .dghin span,.jp-sec .jfgrid .dghrs b small{text-transform:none;letter-spacing:normal;font-size:12.5px}.dgcat{margin:12px 0 4px;font-size:13px;color:var(--muted)}.dgtypes{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.dgk{margin:8px 0}.dgcfg .clin{white-space:normal;flex-wrap:wrap}
+.jp-sec .jfgrid .dghrs{grid-column:1/-1}.dghrs b small{font-weight:500}.dghin{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:13px}.dghin input{width:90px}.jp-sec .jfgrid .dghin span,.jp-sec .jfgrid .dghrs b small{text-transform:none;letter-spacing:normal;font-size:12.5px}.dgcat{margin:12px 0 4px;font-size:13px;color:var(--muted)}.dgtypes{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.dgk{margin:8px 0}.dgcfg .clin{white-space:normal;flex-wrap:wrap}.clcard .clpct small+small{display:block;font-size:11.5px;opacity:.9}
 .agqnote{margin:6px 0 4px}.chips.agqgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}.chips.agqgrid .chip{display:flex;align-items:center;gap:8px;justify-content:flex-start;text-align:left;white-space:normal;min-height:36px;height:auto;padding:7px 11px;line-height:1.3}
 .agmore{margin-top:4px}.agmore>summary{cursor:pointer;font-size:12.5px;color:var(--muted);padding:6px 2px;list-style:none;display:inline-flex;align-items:center;gap:6px}.agmore>summary::-webkit-details-marker{display:none}.agmore>summary:hover{color:var(--ink)}.agmore[open]>summary{margin-bottom:6px}
 .agform{display:flex;gap:8px;align-items:flex-end}.agform textarea{flex:1;min-width:0;resize:vertical}
@@ -4957,7 +4957,7 @@ const POST_PENDING = ["Pendiente","En proceso"];
 function loadOf(name){ const cp = PEOPLE.find(x => x.name === name && x.role === "CM");
   if (cp){ const c = cmLoad(cp); return { n:c.n, cm:true, min:c.min, avail:c.avail, pct:c.pct, missing:c.missing, next:c.week.next, pts:null }; } // CM: en %, sin puntos
   const dp = PEOPLE.find(x => x.name === name && x.role === "Diseñador");
-  if (dp){ const d = dgLoad(dp); return { n:d.n, cm:true, dg:true, min:d.min, avail:d.avail, pct:d.pct, missing:"", next:d.week.next, pts:null }; } // v339: Diseño también en horas
+  if (dp){ const d = dgLoad(dp); return { n:d.open, cm:true, dg:true, min:d.min, avail:d.avail, pct:d.pct, missing:"", next:d.week.next, pts:null }; } // v339: Diseño también en horas; n = sus trabajos sin terminar
   const open = jobs.filter(j => hasJob(j, name) && !isIdleJob(j)); const pp = posts.filter(p => hasPub(p, name) && p.date.slice(0,7) === CURRENT_MONTH && POST_PENDING.includes(p.status)); const pts = open.reduce((a, j) => a + (CX_W[j.complexity] || 2), 0) + pp.length; return { n:open.length + pp.length, pts, pct:Math.round(pts / LOAD_FULL * 100) }; }
 // Zonas (sobre la capacidad): 0-49 % verde = zona ideal · 50-79 % amarillo · 80-99 % naranja · 100 % o más rojo.
 const loadLevel = pct => pct >= 100 ? { c:"#ef4444", t:"Sobrecargado", k:"red" } : pct >= 80 ? { c:"#f97316", t:"Al límite", k:"orange" } : pct >= 50 ? { c:"#eab308", t:"Carga alta", k:"yellow" } : { c:"#10b981", t:"Zona ideal", k:"green" };
@@ -4966,13 +4966,16 @@ const loadLevel = pct => pct >= 100 ? { c:"#ef4444", t:"Sobrecargado", k:"red" }
 // Diseño + CM juntos: el promedio del % de cada persona que tiene datos.
 function loadStats(names){ const ls = names.map(loadOf), n = ls.reduce((a, l) => a + l.n, 0), cms = ls.filter(l => l.cm), dz = ls.filter(l => !l.cm);
   if (ls.length && !dz.length){ const ok = cms.filter(l => l.avail !== null), min = ok.reduce((a, l) => a + l.min, 0), av = ok.reduce((a, l) => a + l.avail, 0);
-    return { n, cm:true, min, avail:ok.length ? av : null, pct:ok.length ? (av > 0 ? Math.round(min / av * 100) : min > 0 ? 999 : 0) : null, missing:cms.length - ok.length }; }
+    return { n, cm:true, dg:cms.every(l => l.dg), min, avail:ok.length ? av : null, pct:ok.length ? (av > 0 ? Math.round(min / av * 100) : min > 0 ? 999 : 0) : null, missing:cms.length - ok.length }; }
   if (!cms.length){ const pts = dz.reduce((a, l) => a + l.pts, 0), cap = LOAD_FULL * Math.max(1, names.length); return { n, pts, cap, pct:Math.round(pts / cap * 100) }; }
   const ok = ls.filter(l => l.pct !== null); return { n, mixed:true, pct:ok.length ? Math.round(ok.reduce((a, l) => a + Math.min(l.pct, 200), 0) / ok.length) : null, missing:ls.length - ok.length }; }
 const areaNames = area => PEOPLE.filter(pp => pp.active && (area === "Diseño" ? pp.role === "Diseñador" : area === "CM" ? pp.role === "CM" : ["Diseñador","CM"].includes(pp.role))).map(pp => pp.name);
 const ltrack = L => { const lv = lvOf(L), pc = L.pct ?? 0; return `<div class="ptrack ztrack" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.min(pc, 100)}" aria-label="Carga de trabajo ${L.pct === null || L.pct === undefined ? "sin datos" : pc + "%"}"><div class="pfill ld-${lv.k}" style="width:${Math.max(Math.min(pc, 100), L.pct !== null && L.pct !== undefined && (L.pts || L.min) ? 2 : 0)}%"></div><i class="zmark" style="left:50%"></i><i class="zmark" style="left:80%"></i></div>`; };
 function loadBar(title, L, big = false){
   const lv = lvOf(L);
+  if (L.dg) return `<div class="prog lprog ${big ? "big" : ""}"><div class="ph"><div><b>${title}</b></div><span class="pc dgpc" style="color:${lv.c}"><span data-count="${L.n}">${L.n}</span> <small style="color:${lv.c}">${L.n === 1 ? "trabajo" : "trabajos"} · ${pctHTML(L)} de la semana · ${lv.t}</small></span></div>
+    ${ltrack(L)}
+    <div class="pmeta"><span><i>${L.n}</i> ${L.n === 1 ? "trabajo sin terminar" : "trabajos sin terminar"}</span><span>≈ ${fmtMin(L.min)} de trabajo ${L.next ? "la semana que viene" : "esta semana"} sobre ${fmtMin(L.avail || 0)} (lo complejo pesa más)</span></div></div>`;
   const meta = L.cm ? `<span><i>${L.n}</i> ${L.n === 1 ? "tarea pendiente" : "tareas pendientes"} ${L.next ? "la semana que viene" : "esta semana"}</span><span>100 % = capacidad completa</span>`
     : L.mixed ? `<span><i>${L.n}</i> trabajos y publicaciones sin terminar</span><span>promedio del % de cada persona${L.missing ? ` · ${L.missing} sin horario` : ""}</span>`
     : `<span><i>${L.n}</i> ${L.n === 1 ? "trabajo" : "trabajos"} sin finalizar</span><span><i>${L.pts}</i> de ${L.cap} puntos de capacidad</span>`;
@@ -4987,9 +4990,9 @@ function loadChart(groups, cls = ""){
   const max = Math.max(100, ...all.map(x => Math.min(x.pct ?? 0, 200)));
   let k = 0;
   const col = x => { const lv = lvOf(x), pc = Math.min(x.pct ?? 0, 200), h = Math.max(pc / max * 100, pc ? 4 : 1.5);
-    const tip = x.cm ? `${x.pp.name}: ${x.pct === null ? "falta configurar su horario" : x.pct >= 999 ? "sin horas disponibles" : x.pct + "%"} · ${x.n} ${x.n === 1 ? "tarea" : "tareas"} ${x.next ? "la semana que viene" : "esta semana"} · ${lv.t}` : `${x.pp.name}: ${x.n} ${x.n === 1 ? "trabajo" : "trabajos"} sin finalizar (${x.pts} puntos) · ${lv.t}`;
+    const tip = x.dg ? `${x.pp.name}: ${x.n} ${x.n === 1 ? "trabajo" : "trabajos"} sin terminar · ${x.pct >= 999 ? "+100" : x.pct}% de sus horas ${x.next ? "la semana que viene" : "esta semana"} (lo complejo pesa más) · ${lv.t}` : x.cm ? `${x.pp.name}: ${x.pct === null ? "falta configurar su horario" : x.pct >= 999 ? "sin horas disponibles" : x.pct + "%"} · ${x.n} ${x.n === 1 ? "tarea" : "tareas"} ${x.next ? "la semana que viene" : "esta semana"} · ${lv.t}` : `${x.pp.name}: ${x.n} ${x.n === 1 ? "trabajo" : "trabajos"} sin finalizar (${x.pts} puntos) · ${lv.t}`;
     return `<div class="lcol" title="${esc(tip)}">
-      <div class="lval">${x.cm ? `<b style="color:${lv.c}">${x.pct === null ? "—" : x.pct >= 999 ? "+100%" : x.pct + "%"}</b><span>${x.next ? "semana que viene" : "esta semana"}</span>` : `<b style="color:${lv.c}">${x.n}</b><span>${x.pts} pts</span>`}</div>
+      <div class="lval">${x.dg ? `<b style="color:${lv.c}">${x.n}</b><span>${x.n === 1 ? "trabajo" : "trabajos"} · ${x.pct >= 999 ? "+100" : x.pct}% ${x.next ? "sem. que viene" : "de la semana"}</span>` : x.cm ? `<b style="color:${lv.c}">${x.pct === null ? "—" : x.pct >= 999 ? "+100%" : x.pct + "%"}</b><span>${x.next ? "semana que viene" : "esta semana"}</span>` : `<b style="color:${lv.c}">${x.n}</b><span>${x.pts} pts</span>`}</div>
       <div class="ltrack" style="--lim:${100 / max * 100}%;--ideal:${50 / max * 100}%"><div class="lbar" style="height:${h}%;--c:${lv.c};animation-delay:${(k++) * 80}ms"></div></div>
       <div class="lname">${avatarHTML(x.pp)}<b>${esc(nickOf(x.pp))}</b><span style="color:${lv.c}">${lv.t}</span></div></div>`; };
   return `<div class="loadchart ${cls}"><div class="lgroups">${groups.filter(g => g.people.length).map(g => `<div class="lgroup" style="flex:${g.people.length}"><div class="lcols">${g.people.map(pp => col(all.find(x => x.pp === pp))).join("")}</div><div class="lglabel">${g.label}</div></div>`).join("")}</div>
@@ -5149,7 +5152,8 @@ function dgPending(pp){
 // Carga de un diseñador: % (lo asignado en la semana ÷ sus horas de la semana), como la de CM.
 function dgLoad(pp){
   const wk = cmWeek(pp), all = dgPending(pp), items = all.filter(x => !x.done), min = all.reduce((a, x) => a + x.t, 0), left = items.reduce((a, x) => a + x.left, 0), avail = wk.avail;
-  return { all, items, n:items.length, total:all.length, min, left, done:Math.max(0, min - left), avail, leftAvail:wk.left, pct:avail > 0 ? Math.round(min / avail * 100) : min > 0 ? 999 : 0, week:wk, defAvail:!cmHasAvail(pp) }; }
+  const open = jobs.filter(j => !j.ex && j.area === "Diseño" && hasJob(j, pp.name) && !isIdleJob(j)).length; // todos sus trabajos sin terminar (de cualquier fecha)
+  return { all, items, n:items.length, open, total:all.length, min, left, done:Math.max(0, min - left), avail, leftAvail:wk.left, pct:avail > 0 ? Math.round(min / avail * 100) : min > 0 ? 999 : 0, week:wk, defAvail:!cmHasAvail(pp) }; }
 // Informe del mes (productividad): las horas de los pedidos terminados en el mes ÷ las horas que tuvo disponibles (hasta hoy).
 function dgReport(pp, M = MONTH){
   const name = pp.name, last = M === CURRENT_MONTH ? TODAY : M < CURRENT_MONTH ? monthEnd(M) : addDays(M + "-01", -1);
@@ -9179,7 +9183,7 @@ const dgHow = j => `${dgType(j.piece)} · ${j.complexity || "Media"}${j.rounds ?
 function dgLoadCard(pp){
   const L = dgLoad(pp), lv = lvOf({ ...L, cm:true }), open = cargaUI.open["d:" + pp.id], items = L.all.slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
   return `<section class="panel clcard"><header class="clh"><div class="person">${avatarHTML(pp)}<div><b>${esc(pp.name)}</b><span>${esc(pp.cargo || "Diseño gráfico")}</span><span>${L.defAvail ? "Horario de oficina (lun a vie 8:00–17:00)" : "Horario propio"}</span></div></div>
-    <div class="clpct" style="color:${lv.c}"><span>${pctHTML({ ...L, cm:true })}</span><small>${lv.t}</small></div></header>
+    <div class="clpct" style="color:${lv.c}"><span>${L.open}</span><small>${L.open === 1 ? "trabajo sin terminar" : "trabajos sin terminar"}</small><small>${pctHTML({ ...L, cm:true })} de la semana · ${lv.t}</small></div></header>
     ${ltrack({ ...L, cm:true })}
     <p class="note clmeta">Semana del ${dm(L.week.from)} al ${dm(L.week.to)}: ≈ <b>${fmtMin(L.min)}</b> de trabajo en ${L.total} ${L.total === 1 ? "pedido" : "pedidos"} (ya hecho ≈ ${fmtMin(L.done)} · falta ≈ <b>${fmtMin(L.left)}</b>) sobre <b>${fmtMin(L.avail)}</b> disponibles en la semana.${!L.week.next && L.left > L.leftAvail ? ` ${icon("triangle-alert")} Lo que falta no entra en las horas que le quedan.` : ""}</p>
     ${items.length ? `<button type="button" class="btn sm" data-clopen="d:${pp.id}">${icon(open ? "chevron-up" : "chevron-down")} ${open ? "Ocultar" : "Ver"} los pedidos de la semana (${items.length})</button>` : `<p class="note" style="margin:0">No tiene pedidos esta semana.</p>`}
@@ -10095,7 +10099,7 @@ function tvTeamSlide(sl){
     const kd = cmT ? CM_KIND[cmKind(pp)] : null;
     return `<div class="tvp tc${kd && cmKind(pp) === "cm" ? " cmmsg" : ""}" style="--k:${k}"><div class="top">${avatarHTML(pp)}<div class="who"><b>${esc(pp.name)}</b><span>${kd ? `${kd[0]} · ` : ""}${open.length} ${open.length === 1 ? "tarea abierta" : "tareas abiertas"}</span></div></div>
       <div class="pline">${ltrack(L)}<div class="pct" style="color:${lv.c}">${pctHTML(L)}</div></div>
-      <div class="lvtag" style="--c:${lv.c}">${lv.t} · ${cmT ? `${st.total} ${st.total === 1 ? "tarea" : "tareas"} esta semana` : L.cm ? `${L.n} ${L.n === 1 ? "tarea" : "tareas"} esta semana` : `${L.pts} de ${LOAD_FULL} pts`}</div>
+      <div class="lvtag" style="--c:${lv.c}">${lv.t} · ${cmT ? `${st.total} ${st.total === 1 ? "tarea" : "tareas"} esta semana` : L.dg ? `${L.n} ${L.n === 1 ? "trabajo" : "trabajos"} · ${L.pct >= 999 ? "+100" : L.pct}% esta semana` : L.cm ? `${L.n} ${L.n === 1 ? "tarea" : "tareas"} esta semana` : `${L.pts} de ${LOAD_FULL} pts`}</div>
       <div class="cnt3"><div class="g"><i>${st.fin}</i><span>finalizadas</span></div><div class="y"><i>${st.proc}</i><span>en proceso</span></div><div class="r"><i>${st.pend}</i><span>pendientes</span></div></div>
 
       <div class="jl">${open.map(j => { const u = urgency(j); return `<div class="jr" style="--b:${BRANDS[j.brand]}"><b>${esc(j.title)}</b>${u ? `<span class="ub ${u.late ? "late" : ""}" style="--u:${u.c}">${u.late ? "⏰ " : ""}${u.t.replace("Faltan ","").replace("Falta ","").replace("Retraso de ","+")}</span>` : `<span class="dd">${dm(j.due)}</span>`}</div>`; }).join("") || `<div class="empty">Sin tareas abiertas 🎉</div>`}</div>
