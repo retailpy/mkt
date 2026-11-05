@@ -2021,6 +2021,7 @@ tr.off td{opacity:.55}
 #stagepop{position:fixed;z-index:130;min-width:220px;max-width:280px;background:linear-gradient(var(--panel),var(--panel)),var(--bg);border:1px solid var(--line-3);border-radius:14px;padding:8px;box-shadow:0 20px 40px -10px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:3px}
 #stagepop .sp-h{font-size:12px;color:var(--muted);padding:4px 8px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #stagepop .sp-a{border-top:1px solid var(--line-3);margin-top:4px;padding-top:4px}
+.carried.resched{color:#7dd3fc;border-color:rgba(56,189,248,.45);background:rgba(56,189,248,.1)}
 #stagepop .sp-n{font-size:11.5px;color:var(--faint);padding:6px 8px 2px}
 #stagepop button{all:unset;display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer}
 #stagepop button i{width:10px;height:10px;border-radius:50%;background:var(--c);flex:none}
@@ -4711,7 +4712,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v341";
+const APP_VER = "v342";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -7084,7 +7085,7 @@ document.addEventListener("click", e => {
   const vid = kind === "job" || (kind === "rec" && it.r.kind === "Grabación");
   const colorOf = st => kind === "act" ? (st === "Pendiente" ? "#94a3b8" : SEM[semLvl(st)]) : vid ? (st === "Pendiente" ? "#94a3b8" : JOB_COLOR[st] || "#94a3b8") : (POST_COLOR[st] === "#334155" ? "#94a3b8" : POST_COLOR[st]);
   const pop = document.createElement("div"); pop.id = "stagepop"; pop.setAttribute("role", "menu");
-  pop.innerHTML = `<div class="sp-h">Etapa de “${esc(it.title)}”</div>${opts.map(st => `<button type="button" role="menuitemradio" aria-checked="${st === it.status}" class="${st === it.status ? "on" : ""}" data-stageset="${kind}:${id}|${esc(st)}" style="--c:${colorOf(st)}"><i></i>${esc(st)}${st === it.status ? " ✓" : ""}</button>`).join("")}${isDesigner() ? `<div class="sp-n">Aprobar y entregar lo hace Admin total.</div>` : ""}${kind === "job" && jobCanApprove(it) ? `<div class="sp-a"><button type="button" role="menuitem" data-jrev="approve:${esc(it.id)}" style="--c:#14b8a6">${icon("badge-check")}${it.area === "CM" ? (CM_STAGES.indexOf(it.status) < CM_STAGES.indexOf("Programado") ? "Aprobar (pasa a Programado)" : "Aprobar") : "Aprobar"}</button>${REVIEW_WAIT.includes(it.status) ? `<button type="button" role="menuitem" data-jrev="fix:${esc(it.id)}" style="--c:#f97316">${icon("pencil-line")}Pedir cambios</button>` : ""}</div>` : ""}`;
+  pop.innerHTML = `<div class="sp-h">Etapa de “${esc(it.title)}”</div>${opts.map(st => `<button type="button" role="menuitemradio" aria-checked="${st === it.status}" class="${st === it.status ? "on" : ""}" data-stageset="${kind}:${id}|${esc(st)}" style="--c:${colorOf(st)}"><i></i>${esc(st)}${st === it.status ? " ✓" : ""}</button>`).join("")}${isDesigner() ? `<div class="sp-n">Aprobar y entregar lo hace Admin total.</div>` : ""}${kind === "job" && jobCanApprove(it) ? `<div class="sp-a"><button type="button" role="menuitem" data-jrev="approve:${esc(it.id)}" style="--c:#14b8a6">${icon("badge-check")}${it.area === "CM" ? (CM_STAGES.indexOf(it.status) < CM_STAGES.indexOf("Programado") ? "Aprobar (pasa a Programado)" : "Aprobar") : "Aprobar"}</button>${REVIEW_WAIT.includes(it.status) ? `<button type="button" role="menuitem" data-jrev="fix:${esc(it.id)}" style="--c:#f97316">${icon("pencil-line")}Pedir cambios</button>` : ""}</div>` : ""}${(kind === "post" || kind === "canal") && canResched(it) ? `<div class="sp-a"><button type="button" role="menuitem" data-rsched="${kind}:${esc(it.id)}" style="--c:#38bdf8">${icon("calendar-clock")}Reprogramar (cambiar la fecha)</button></div>` : ""}`;
   document.body.appendChild(pop);
   const r = b.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
   pop.style.left = Math.max(8, Math.min(r.left, innerWidth - pw - 8)) + "px";
@@ -7219,7 +7220,7 @@ function postBoard(list, kind){
   return `<div class="kanban" style="grid-template-columns:repeat(${stages.length},minmax(min(210px,100%),1fr))">${stages.map(st => { const col = list.filter(p => p.status === st);
     return `<div class="col"><div class="col-h" style="--c:${stColor(st)}"><span>${st}</span><span class="num">${col.length}</span></div>${col.map(p => { const tap = stageOptions(canal ? "canal" : "post", p).length, u = canal ? null : postUrgency(p);
       return `<div class="card${tap ? " tapstage" : ""}" style="--c:${BRANDS[p.brand]}"${tap ? ` data-stagemenu="${canal ? "canal" : "post"}:${p.id}" role="button" tabindex="0" title="Tocá para cambiar la etapa"` : ""}><div class="in">${u ? `<div>${postUrgBadge(p)}</div>` : ""}<div class="t">${esc(p.title)}</div>
-        <div class="m">${brandTag(p.brand)}<span>${canal ? `${icon(CH_ICO[p.channel] || "message-circle")} ${esc(p.channel)}` : `${p.net} · ${p.format}`}</span><span>${dm(p.date)}</span></div>
+        <div class="m">${brandTag(p.brand)}<span>${canal ? `${icon(CH_ICO[p.channel] || "message-circle")} ${esc(p.channel)}` : `${p.net} · ${p.format}`}</span><span>${dm(p.date)}</span></div>${reschedTag(p) ? `<div>${reschedTag(p)}</div>` : ""}
         <div class="foot"><span>${esc(firstName(p.cm || ""))}</span>${canEditPost() ? `<button class="btn sm ib" data-pedit="${canal ? "canal" : "post"}:${p.id}" title="Editar" aria-label="Editar">${icon("pencil")}</button>` : ""}</div>
         <div class="dact"><span class="spl" style="color:${stColor(p.status)}">● ${p.status}${tap ? " ▾" : ""}</span></div></div></div>`; }).join("") || `<div class="empty" style="padding:6px">Vacío</div>`}</div>`; }).join("")}</div>`;
 }
@@ -7227,7 +7228,7 @@ function postBoard(list, kind){
 function postTable(list, kind){
   const canal = kind === "Canal";
   return `<div class="tw"><table><thead><tr><th>Fecha</th><th>Marca</th><th>CM</th><th>${canal ? "Canal" : "Red · formato"}</th><th>Tema</th>${canal ? "" : "<th>Diseño gráfico</th>"}<th>Estado</th></tr></thead><tbody>
-    ${list.map(p => `<tr><td class="num" style="white-space:nowrap">${dm(p.date)}</td><td>${brandTag(p.brand)}</td><td>${esc(firstName(p.cm || ""))}</td><td style="white-space:nowrap">${canal ? `${icon(CH_ICO[p.channel] || "message-circle")} ${esc(p.channel)}` : `<span class="net">${p.net}</span> ${p.format}`}</td><td style="min-width:180px">${canEditPost() ? `<button type="button" class="linkish" data-pedit="${canal ? "canal" : "post"}:${p.id}">${esc(p.title)}</button>` : `<b style="color:#fff">${esc(p.title)}</b>`}</td>${canal ? "" : `<td style="white-space:nowrap">${postDesignCell(p)}</td>`}<td><div class="chips" style="flex-wrap:nowrap">${canal ? canalStatusCell(p) : `${postStatusCell(p)}${postUrgBadge(p)}`}</div></td></tr>`).join("") || `<tr><td colspan="7" class="empty">No hay nada cargado con estos filtros.</td></tr>`}
+    ${list.map(p => `<tr><td class="num" style="white-space:nowrap">${dm(p.date)}</td><td>${brandTag(p.brand)}</td><td>${esc(firstName(p.cm || ""))}</td><td style="white-space:nowrap">${canal ? `${icon(CH_ICO[p.channel] || "message-circle")} ${esc(p.channel)}` : `<span class="net">${p.net}</span> ${p.format}`}</td><td style="min-width:180px">${canEditPost() ? `<button type="button" class="linkish" data-pedit="${canal ? "canal" : "post"}:${p.id}">${esc(p.title)}</button>` : `<b style="color:#fff">${esc(p.title)}</b>`}${reschedTag(p)}</td>${canal ? "" : `<td style="white-space:nowrap">${postDesignCell(p)}</td>`}<td><div class="chips" style="flex-wrap:nowrap">${canal ? canalStatusCell(p) : `${postStatusCell(p)}${postUrgBadge(p)}`}</div></td></tr>`).join("") || `<tr><td colspan="7" class="empty">No hay nada cargado con estos filtros.</td></tr>`}
   </tbody></table></div>`;
 }
 const canalStatusCell = k => canEditPost() && stageOptions("canal", k).length ? `<select class="base sm semsel" data-kstatus="${k.id}" aria-label="Estado de ${esc(k.title)}" style="--c:${SEM[semLvl(k.status)]}">${[...new Set([k.status, ...stageOptions("canal", k)])].map(st => `<option value="${st}" ${st === k.status ? "selected" : ""}>${st}</option>`).join("")}</select>` : pill(k.status, SEM[semLvl(k.status)]);
@@ -7318,7 +7319,7 @@ function pPlan(){
     if (x.vid) return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${esc(firstName(x.cm || ""))}</td><td style="white-space:nowrap">${icon("clapperboard")} ${esc(x.piece)}</td><td style="min-width:190px">${canCreateJobs() ? `<button type="button" class="linkish" data-jedit="${x.id}">${esc(x.title)}</button>` : `<b style="color:#fff">${esc(x.title)}</b>`}</td><td><span class="note">—</span></td><td><div class="chips" style="flex-wrap:nowrap">${stageOptions("job", x.job).length ? `<button type="button" class="semchip s${semLvl(x.status)}" data-stagemenu="job:${x.id}" title="Etapa: ${esc(x.status)} · tocá para cambiarla">${esc(x.status)} ▾</button>` : pill(x.status, JOB_COLOR[x.status])}${urgBadge(x.job)}</div></td><td><span class="note">—</span></td></tr>`;
     if (x.canal) return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${esc(firstName(x.cm || ""))}</td><td style="white-space:nowrap">${icon("message-circle")} Canal de WhatsApp</td><td style="min-width:190px">${tema(x, "canal")}</td><td><span class="note">—</span></td><td>${canalStatusCell(x)}</td><td><span class="note">—</span></td></tr>`;
     const lbl = canEditPost() && { "En proceso":"Programar", "Programado":"Marcar publicado", "Publicado":"Pautar" }[x.status];
-    return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${canEditPost() ? `<select class="base sm" data-pcm="${x.id}" aria-label="CM de ${esc(x.title)}">${[...new Set([...CM_NAMES(), x.cm].filter(Boolean))].map(n => `<option value="${esc(n)}" ${n === x.cm ? "selected" : ""}>${esc(firstName(n))}</option>`).join("")}</select>${alsoOf(x).length ? `<small class="note"> + ${esc(alsoOf(x).map(firstName).join(" + "))}</small>` : ""}` : esc(crewTxt(x.cm, x))}</td><td style="white-space:nowrap">${icon(x.format === "Historia" ? "smartphone" : "image")} <span class="net">${x.net}</span> ${x.format}</td><td style="min-width:190px">${tema(x, "post")}${x.carried ? `<span class="carried">↩ Arrastrado de ${x.carried}</span>` : ""}</td><td style="white-space:nowrap">${postDesignCell(x)}</td><td><div class="chips" style="flex-wrap:nowrap">${postStatusCell(x)}${postUrgBadge(x)}</div></td><td>${lbl ? `<button class="btn" data-adv-post="${x.id}">${lbl}</button>` : `<span class="note">—</span>`}</td></tr>`;
+    return `<tr><td class="num" style="white-space:nowrap">${dm(x.date)}</td><td>${brandTag(x.brand)}</td><td>${canEditPost() ? `<select class="base sm" data-pcm="${x.id}" aria-label="CM de ${esc(x.title)}">${[...new Set([...CM_NAMES(), x.cm].filter(Boolean))].map(n => `<option value="${esc(n)}" ${n === x.cm ? "selected" : ""}>${esc(firstName(n))}</option>`).join("")}</select>${alsoOf(x).length ? `<small class="note"> + ${esc(alsoOf(x).map(firstName).join(" + "))}</small>` : ""}` : esc(crewTxt(x.cm, x))}</td><td style="white-space:nowrap">${icon(x.format === "Historia" ? "smartphone" : "image")} <span class="net">${x.net}</span> ${x.format}</td><td style="min-width:190px">${tema(x, "post")}${x.carried ? `<span class="carried">↩ Arrastrado de ${x.carried}</span>` : ""}${reschedTag(x)}</td><td style="white-space:nowrap">${postDesignCell(x)}</td><td><div class="chips" style="flex-wrap:nowrap">${postStatusCell(x)}${postUrgBadge(x)}</div></td><td>${lbl ? `<button class="btn" data-adv-post="${x.id}">${lbl}</button>` : `<span class="note">—</span>`}</td></tr>`;
   };
   return `<div class="head"><div><h1 class="pmh">${pmIco(calOnly ? "calendar-days" : "list-checks")}${calOnly ? "Planificación · Temario" : "Plan de posteo"}</h1><p class="sub">${calOnly ? (view === "semana" ? `Semana del ${weekLabel(planWk())}` : monthLabel(MONTH)) + " · todo lo de CM junto: publicaciones, historias, WhatsApp, videos, repetitivos y actividades." : `${monthLabel(MONTH)} · todo lo de CM del mes, junto: feed (posts, carruseles y reels), historias, Canal de WhatsApp, videos y repetitivos. Cargalo desde acá o desde cada Gestión.`}</p></div>${calOnly ? `<div class="chips">${cmLoadBtn()}${viewTabs(PLAN_VIEWS, view, "data-gview")}</div>` : viewTabs([["calendario","Calendario","calendar-days"],["tabla","Tabla","table-2"],["tablero","Tablero","kanban"]], planUI.view, "data-plview")}</div>
   ${isClosed() && !isLocked() ? `<p class="note pastopen">${icon("lock-open")}<span>${monthLabel(MONTH)} ya pasó, pero tiene <b>${monthOpenN()}</b> ${monthOpenN() === 1 ? "trabajo" : "trabajos"} sin terminar: se sigue trabajando igual que siempre hasta terminarlos.</span></p>` : ""}${isLocked() ? `<div class="ro">${icon("lock")} ${monthLabel(MONTH)} está cerrado: se puede consultar, pero no modificar. Lo que no se cumplió pasó al mes siguiente como “arrastrado”.</div>` : ""}
@@ -8498,6 +8499,48 @@ document.addEventListener("click", e => {
   else { x.due = due; x.pubDate = pub; jobPubsOf(x).filter(p => !["Publicado","Pautado"].includes(p.status)).forEach(p => { p.date = pub; }); }
   setJobStatus(x, to); window.RMH?.flushNow?.();
 });
+// v342: el CM (y Admin total) reprograma una publicación del feed, una historia o un contenido del Canal de WhatsApp:
+// cambia la fecha de publicación (y la hora, si tiene), la etapa queda igual y se guarda el registro
+// (de qué fecha a cuál, quién, cuándo y el motivo). En listas, tablero y ficha se ve “↻ Reprogramado”.
+const canResched = x => !!x && canEditPost() && !onHold(x) && !["Publicado","Pautado"].includes(x.status);
+const reschedTxt = r => `${dm(r.from)} → ${dm(r.to)} · ${firstName(r.by || "")}${r.why ? " · " + r.why : ""}`;
+const reschedTag = x => x?.resched?.length ? `<span class="carried resched" title="${esc(x.resched.map(reschedTxt).join("\n"))}">↻ Reprogramado${x.resched.length > 1 ? ` ${x.resched.length} veces` : ""} · antes ${dm(x.resched[0].from)}</span>` : "";
+function openResched(kind, x){
+  document.getElementById("fixpop")?.remove(); closeStageMenu();
+  const hasTime = x.time !== undefined, w = document.createElement("div"); w.id = "fixpop"; w.className = "fixpop";
+  w.innerHTML = `<div class="fixbox" role="dialog" aria-modal="true" aria-labelledby="rsh"><h2 id="rsh">${icon("calendar-clock")} Reprogramar</h2><p class="note">${esc(x.title)} · ${esc(x.brand)} · hoy está para el <b>${dm(x.date)}</b>${x.time ? ` a las ${esc(x.time)}` : ""} · sigue en <b>${esc(x.status)}</b></p>
+    <label>Nueva fecha de publicación *<input class="base" type="date" id="rsDate" min="${TODAY}" value="${esc(x.date >= TODAY ? x.date : TODAY)}"></label>
+    ${hasTime ? `<label>Hora <span class="note">(opcional)</span><input class="base" type="time" id="rsTime" value="${esc(x.time || "")}"></label>` : ""}
+    <label>Motivo <span class="note">(opcional)</span><input class="base" id="rsWhy" maxlength="140" placeholder="Ej.: comercial pidió moverlo · falta el diseño · cambió la oferta"></label>
+    ${x.resched?.length ? `<p class="note" style="margin:0">Ya se reprogramó: ${x.resched.map(r => esc(reschedTxt(r))).join(" · ")}</p>` : ""}
+    ${x.status === "Programado" ? `<p class="note" style="margin:0">${icon("info")} Estaba Programado: acordate de cambiar también la fecha en Meta (Business Suite).</p>` : ""}
+    <p class="perr" id="rsErr" hidden></p>
+    <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-rsend="${kind}|${esc(x.id)}">${icon("calendar-days")} Reprogramar</button></div></div>`;
+  document.body.appendChild(w); w.querySelector("#rsDate").focus();
+}
+document.addEventListener("click", e => {
+  const o = e.target.closest("[data-rsched]"); if (!o) return;
+  e.preventDefault(); const [kind, id] = o.dataset.rsched.split(":"), x = kind === "canal" ? canalById(id) : postById(id);
+  if (!canResched(x)){ closeStageMenu(); return toast("Esta publicación ya no se puede reprogramar."); }
+  openResched(kind, x);
+});
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-rsend]"); if (!b) return;
+  const [kind, id] = b.dataset.rsend.split("|"), x = kind === "canal" ? canalById(id) : postById(id); if (!canResched(x)) return;
+  const to = document.getElementById("rsDate")?.value || "", tEl = document.getElementById("rsTime"), time = tEl ? tEl.value : x.time, why = (document.getElementById("rsWhy")?.value || "").trim();
+  const err = t => { const el = document.getElementById("rsErr"); el.textContent = t; el.hidden = false; };
+  if (!to || to < TODAY) return err("Elegí la nueva fecha (de hoy en adelante).");
+  if (!MONTHS_APP.some(m => m.v === to.slice(0,7))) return err(`La fecha (${dm(to)}) está fuera de los meses de la app.`);
+  if (to === x.date && (time || "") === (x.time || "")) return err("Es la misma fecha: elegí otra.");
+  document.getElementById("fixpop")?.remove();
+  const from = x.date; x.date = to; if (tEl) x.time = time || "";
+  if (to !== from) (x.resched ||= []).push({ from, to, by:viewer.name, at:TODAY, ...(why ? { why } : {}) });
+  const dj = kind === "post" && x.fromJob && jobById(x.fromJob); // el pedido de Diseño de esa publicación queda con la fecha nueva (si tiene una sola)
+  if (dj && jobPubsOf(dj).length === 1 && jobPubsOf(dj)[0].id === x.id){ dj.pubDate = to; if (tEl) dj.pubTime = x.time; }
+  if (postUI.form?.mode === "edit" && postUI.form.post.id === x.id){ const fp = postUI.form.post; readPostForm(fp); fp.date = x.date; if (tEl) fp.time = x.time; fp.resched = x.resched; } // con la ficha abierta, que al guardar no vuelva la fecha vieja
+  MONTH = to.slice(0,7); render(); window.RMH?.flushNow?.();
+  toast(`“${x.title}” reprogramado: del ${dm(from)} al ${dm(to)}${x.time && tEl ? ` a las ${x.time}` : ""}${from.slice(0,7) !== to.slice(0,7) ? ` (pasó a ${monthName(to.slice(0,7))})` : ""}. Sigue en ${x.status}.`);
+});
 // v299: Admin total lo pone En pausa, lo cancela o lo reanuda (vuelve a la etapa en que estaba).
 function jobHoldBar(j){
   const ops = stageOptions("job", j); if (viewer.role !== "Admin total" || !ops.includes(PAUSE)) return "";
@@ -9652,7 +9695,7 @@ function postForm(){
       <section class="jfs"><h3><i>2</i>Quién y para cuándo</h3><div class="jfg">
         <label>Solicitante *<select class="base" id="poReq">${opt(SOLICITANTES, p.requester || "Marketing")}</select></label>
         <label>CM responsable (de cualquier marca) *<select class="base" id="poCm">${cmOwnerOpts([...new Set([...CM_NAMES(), p.cm].filter(Boolean))], p.cm)}</select></label>${canCreateJobs() ? cmSuggestNote("poCm", p.cm) : ""}${alsoBox(p, p.cm)}
-        <label>Fecha de publicación *<input class="base" type="date" id="poDate" value="${p.date}" required></label>
+        <label>Fecha de publicación *<input class="base" type="date" id="poDate" value="${p.date}" required></label>${real && canResched(real) ? `<div style="align-self:end"><button type="button" class="btn" data-rsched="${canal ? "canal" : "post"}:${esc(real.id)}">${icon("calendar-clock")} Reprogramar</button></div>` : ""}${real?.resched?.length ? `<p class="note" style="grid-column:1/-1;margin:0">↻ Reprogramada: ${real.resched.map(r => esc(reschedTxt(r))).join(" · ")}</p>` : ""}
         <label>Hora de publicación <span class="note">(opcional)</span><input class="base" type="time" id="poTime" value="${esc(p.time || "")}"></label>
         ${p.repOf || p.fromJob ? "" : moreDaysBox(f)}
         ${p.repOf ? `<p class="note" style="grid-column:1/-1;margin:0">${icon("repeat")} Se cargó sola porque se repite (la repite “${esc((canal ? canalById(p.repOf) : postById(p.repOf))?.title || p.title)}”).${canEditPost() && (canal ? canalById(p.repOf) : postById(p.repOf)) ? ` <button type="button" class="btn sm" data-reptpl="${canal ? "canal" : "post"}:${esc(p.repOf)}">${icon("repeat")} Editar la repetición (días, vigencia, texto, CM)</button>` : ""}</p>` : `<div class="jrep" style="grid-column:1/-1"><span class="jll">${icon("repeat")} ¿Se repite? <span class="note">(opcional: elegí los días y se carga sola cada semana, con la misma marca, CM, texto y links)</span></span>
