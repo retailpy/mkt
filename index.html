@@ -4711,7 +4711,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v340";
+const APP_VER = "v341";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -10888,13 +10888,23 @@ function anaLife(b){
 // v319 · El Análisis es un MAPA: se abre en una ventana limpia (arriba queda solo la botonera) con gráficos y textos cortos de
 // especialista. Todo sale de las publicaciones de Instagram de este mes y el anterior de Superseis, Stock y Delimarket, cada una
 // comparada con lo normal de su marca en su mes (alcance ÷ mediana), porque las cuentas tienen tamaños muy distintos. Lo que tiene
-// menos de 3 publicaciones (o 5, según el caso) no decide nada. Las promos salen de 7:00 a 10:59, también sábado y domingo.
+// menos de 3 publicaciones (o 5, según el caso) no decide nada. Se publica de 8:00 a 22:00, también sábado y domingo (v341).
 function anaPlanRows(){
   const ms = [prevMonth(MONTH), MONTH], out = [];
   IG_MAIN.filter(b => socialBrands().includes(b)).forEach(b => ms.forEach(m => { const L = anaRows(b, m, anaFlagged(m)).filter(x => x.mature), md = anaMed(L.map(x => x.reach)); if (md) L.forEach(x => out.push({ ...x, idx:x.reach / md, m })); }));
   return out;
 }
-const ANA_SLOTS = [7, 8, 9, 10], ANA_MAXDAY = ANA_SLOTS.length; // ventana de las promos: una por hora como máximo (7:00, 8:00, 9:00 y 10:00)
+// v341 · Se publica de 8 a 22 h (en v319 se tomó por error “de 7 a 10 h” de la mañana). Las promos van en las horas que mejor
+// rinden dentro de ese horario, separadas por lo menos 4 h (como pide el análisis: nada de ráfagas); máximo 4 por día.
+const ANA_SLOTS = Array.from({ length:15 }, (_, i) => i + 8), ANA_MAXDAY = 4, ANA_GAP = 4;
+// Las k mejores horas para las promos, separadas por lo menos 4 h (si no alcanza, 3 y después 2). Primero las que rinden bien
+// (de mayor a menor), después las que no tienen datos (para probar, parejas en el día) y recién al final las flojas: nunca se
+// completa con una hora floja si hay otra mejor o sin datos.
+const ANA_EVEN = [8, 12, 16, 20, 10, 14, 18, 22, 9, 11, 13, 15, 17, 19, 21];
+const anaPick = (slots, k) => { const v = Object.fromEntries(slots.map(x => [x.h, x.v])), out = [];
+  const good = slots.filter(x => x.v != null && x.v >= 1).sort((a, b) => b.v - a.v || a.h - b.h).map(x => x.h), none = ANA_EVEN.filter(h => v[h] == null && h in v), bad = slots.filter(x => x.v != null && x.v < 1).sort((a, b) => b.v - a.v).map(x => x.h);
+  for (const g of [ANA_GAP, 3, 2]) for (const h of [...good, ...none, ...bad]){ if (out.length >= k) break; if (!out.includes(h) && out.every(o => Math.abs(o - h) >= g)) out.push(h); }
+  return out.sort((a, b) => a - b); };
 const ANA_COL = { up:"#3987e5", down:"#d95926", mid:"#2b2f36", Post:"#c98500", Carrusel:"#199e70", Reel:"#3987e5", Vender:"#c98500", Atraer:"#d55181", Fidelizar:"#199e70" };
 const ANA_PILLARS = [["Vender", "ofertas, folleto y precios", ["Folleto de ofertas", "Descuentos", "Producto con precio"]],
   ["Atraer", "marca, experiencias y temporada", ["Marca y entretenimiento", "Ferias y degustaciones", "Temporada"]],
@@ -10905,7 +10915,7 @@ const ANA_PROD = [["Carnes y parrilla", /carne|asado|parrilla|pollo|cerdo|choriz
   ["Panadería y dulces", /pan |panader|torta|confiter|chipa|cupcake|medialuna|galleti|chocolate|alfajor|dulce/], ["Frutas y verduras", /fruta|verdura|durazno|frutilla|manzana|banana|tomate/],
   ["Hogar y bazar", /limpieza|detergente|papel higi|hogar|bazar|vajilla|bellagio|coleccionable|electro|cocina/], ["Almacén", /arroz|aceite|fideo|harina|az[uú]car|yerba|caf[eé]|leche|l[aá]cteo|yogur|alacena|almac[eé]n/]];
 const anaProd = cap => (ANA_PROD.find(([, re]) => re.test(String(cap || "").toLowerCase())) || [null])[0];
-const ANA_HBLK = [[7, 10, "7 a 10 h"], [11, 13, "11 a 13 h"], [14, 16, "14 a 16 h"], [17, 19, "17 a 19 h"], [20, 23, "20 a 23 h"]];
+const ANA_HBLK = [[8, 10, "8 a 10 h"], [11, 13, "11 a 13 h"], [14, 16, "14 a 16 h"], [17, 19, "17 a 19 h"], [20, 22, "20 a 22 h"]];
 // Fechas del mes que viene (calendario, no sale de los datos).
 const ANA_SEASON = { "01":"Verano y vacaciones: bebidas frías, helados y parrilla.", "02":"Vuelta a clases: útiles, loncheras y desayunos.",
   "03":"Semana Santa (marzo o abril): chipa, sopa paraguaya y pescado.", "04":"Semana Santa (marzo o abril): chipa, sopa paraguaya y pescado.",
@@ -10941,11 +10951,11 @@ function anaMapData(sel){
   const dows = ANA_DOW.map((k, i) => { const l = R.filter(x => x.dow === i); return { k, i, n:l.length, v:vOf(l) }; });
   const dowsA = ANA_DOW.map((k, i) => { const l = A.filter(x => x.dow === i); return { k, i, n:l.length, v:vOf(l) }; }); // solo las promos
   const dowsO = ANA_DOW.map((k, i) => { const l = R.filter(x => x.dow === i && !x.act); return { k, i, n:l.length, v:vOf(l) }; }); // lo que no es promo
-  const hours = Array.from({ length:16 }, (_, j) => j + 7).map(h => { const l = R.filter(x => x.h === h); return { h, n:l.length, v:vOf(l, 3) }; });
+  const hours = ANA_SLOTS.map(h => { const l = R.filter(x => x.h === h); return { h, n:l.length, v:vOf(l, 3) }; });
   const slots = ANA_SLOTS.map(h => ({ h, v:vOf(R.filter(x => x.h === h)) ?? vOf(all.filter(x => x.h === h)) })).sort((a, b) => (b.v ?? -9) - (a.v ?? -9) || b.h - a.h);
   const heat = ANA_DOW.map((d, i) => ANA_HBLK.map(([h0, h1]) => { const l = R.filter(x => x.dow === i && x.h >= h0 && x.h <= h1); return { n:l.length, v:vOf(l, 2) }; }));
   // Promos por día de cada marca: lo que se sube hoy ese día (promedio), +1 si ese día las promos rinden +10 % o más, −1 si rinden
-  // −15 % o menos (con 5 o más promos ese día); mínimo 1, máximo 4 (una por hora de 7 a 10). Sin promos ese día: 1 para probar.
+  // −15 % o menos (con 5 o más promos ese día); mínimo 1, máximo 4 (en las mejores horas de 8 a 22, separadas 4 h). Sin promos ese día: 1 para probar.
   const week = b => { const L = R.filter(x => x.b === b), P = L.filter(x => x.act);
     return ANA_DOW.map((d, i) => { const nd = new Set(L.filter(x => x.dow === i).map(x => x.date)).size, g = P.filter(x => x.dow === i), now = nd ? g.length / nd : 0, v = vOf(g);
       const want = Math.max(1, Math.round(now)) + (v == null ? 0 : v >= 1.1 ? 1 : v <= .85 ? -1 : 0);
@@ -11006,24 +11016,24 @@ function anaPlane(D){
 }
 // Cuándo rinde lo que publicamos: días × horarios, y cada hora del día.
 function anaHeat(D){
-  const ce = (c, d, b) => `<div class="ahc${b === 0 ? " win" : ""}" style="background:${anaDiv(c.v)}" title="${ANA_DOW[d]}, ${ANA_HBLK[b][2]}: ${c.v == null ? "pocos datos" : anaPx(c.v)} (${c.n} pub.)">${c.v == null ? (c.n ? "·" : "") : anaPx(c.v).replace(" ", "")}</div>`;
+  const ce = (c, d, b) => `<div class="ahc" style="background:${anaDiv(c.v)}" title="${ANA_DOW[d]}, ${ANA_HBLK[b][2]}: ${c.v == null ? "pocos datos" : anaPx(c.v)} (${c.n} pub.)">${c.v == null ? (c.n ? "·" : "") : anaPx(c.v).replace(" ", "")}</div>`;
   const cells = D.heat.flatMap((r, d) => r.map((c, b) => ({ c, d, b }))).filter(o => o.c.v != null && o.c.n >= 3);
   const best = [...cells].sort((a, b) => b.c.v - a.c.v)[0], worst = [...cells].sort((a, b) => a.c.v - b.c.v)[0];
-  const sw = D.slots.filter(s => s.v != null), H = D.hours.filter(o => o.v != null), hb = [...H].sort((a, b) => b.v - a.v)[0], hw = [...H].sort((a, b) => a.v - b.v)[0], mx = Math.max(.3, ...H.map(o => Math.abs(o.v - 1)));
+  const sw = D.slots.filter(s => s.v != null), pick = anaPick(D.slots, ANA_MAXDAY), H = D.hours.filter(o => o.v != null), hb = [...H].sort((a, b) => b.v - a.v)[0], hw = [...H].sort((a, b) => a.v - b.v)[0], mx = Math.max(.3, ...H.map(o => Math.abs(o.v - 1)));
   return `<div class="aheatw"><div class="aheat" role="table" aria-label="Cuánto rinde cada día y horario">
-      <div class="ahh"></div>${ANA_HBLK.map((b, k) => `<div class="ahh${k === 0 ? " win" : ""}">${b[2]}${k === 0 ? "<small>ventana de las promos</small>" : ""}</div>`).join("")}
+      <div class="ahh"></div>${ANA_HBLK.map(b => `<div class="ahh">${b[2]}</div>`).join("")}
       ${D.heat.map((r, d) => `<div class="ahd">${ANA_DOW[d]}</div>${r.map((c, b) => ce(c, d, b)).join("")}`).join("")}
     </div>
     <div class="ascale"><span>rinde menos</span><i style="background:linear-gradient(90deg,${anaDiv(.5)},${anaDiv(1)},${anaDiv(1.5)})"></i><span>rinde más</span><span class="note">· vacío o “·”: pocos datos</span></div></div>
-    <div class="ahours" role="img" aria-label="Cuánto rinde cada hora">${D.hours.map(o => { const h = o.v == null ? 0 : Math.abs(o.v - 1) / mx * 46, up = o.v != null && o.v >= 1, tag = o.v != null && (o === hb || o === hw || ANA_SLOTS.includes(o.h)) ? (o === hb || o === hw ? "x" : "w") : "";
-      return `<div class="ahcol${ANA_SLOTS.includes(o.h) ? " win" : ""}" title="${o.h} h: ${o.v == null ? "pocos datos" : anaPx(o.v)} (${o.n} pub.)"><div class="ahtrk">${o.v == null ? "" : `<i style="${up ? "bottom" : "top"}:50%;height:${h.toFixed(1)}%;background:${up ? ANA_COL.up : ANA_COL.down}"></i>`}${tag ? `<b class="${tag}" style="${up ? "top" : "bottom"}:calc(50% + 3px)">${anaPx(o.v).replace(" ", "")}</b>` : ""}</div><span>${o.h}</span></div>`; }).join("")}</div>
+    <div class="ahours" role="img" aria-label="Cuánto rinde cada hora">${D.hours.map(o => { const h = o.v == null ? 0 : Math.abs(o.v - 1) / mx * 46, up = o.v != null && o.v >= 1, tag = o.v != null && (o === hb || o === hw || pick.includes(o.h)) ? (o === hb || o === hw ? "x" : "w") : "";
+      return `<div class="ahcol${pick.includes(o.h) ? " win" : ""}" title="${o.h} h: ${o.v == null ? "pocos datos" : anaPx(o.v)} (${o.n} pub.)"><div class="ahtrk">${o.v == null ? "" : `<i style="${up ? "bottom" : "top"}:50%;height:${h.toFixed(1)}%;background:${up ? ANA_COL.up : ANA_COL.down}"></i>`}${tag ? `<b class="${tag}" style="${up ? "top" : "bottom"}:calc(50% + 3px)">${anaPx(o.v).replace(" ", "")}</b>` : ""}</div><span>${o.h}</span></div>`; }).join("")}</div>
     <div class="atwo">${best ? `<p class="akey k-up">${icon("arrow-up-right")} <span>Donde más rinde: <b>${ANA_DOW[best.d]}, ${ANA_HBLK[best.b][2]}</b> (${anaPx(best.c.v)}).${hb ? ` La mejor hora: <b>${hb.h} h</b>.` : ""}</span></p>` : ""}${worst ? `<p class="akey k-dn">${icon("arrow-down-right")} <span>Donde menos: <b>${ANA_DOW[worst.d]}, ${ANA_HBLK[worst.b][2]}</b> (${anaPx(worst.c.v)}).${hw ? ` La hora más floja: <b>${hw.h} h</b>.` : ""}</span></p>` : ""}</div>
-    ${sw.length ? `<p class="akey k-go">${icon("clock")} <span>Las promos van de 7 a 10 h: ahí, primero las <b>${sw[0].h}:00</b> (${anaPxT(sw[0].v)})${sw.length > 1 ? `, después ${sw.slice(1).map(s => `${s.h}:00 (${anaPxT(s.v)})`).join(", ")}` : ""}${ANA_SLOTS.some(h => !sw.find(s => s.h === h)) ? `; ${ANA_SLOTS.filter(h => !sw.find(s => s.h === h)).map(h => h + ":00").join(" y ")}, todavía sin datos` : ""}.</span></p>` : ""}`;
+    <p class="akey k-go">${icon("clock")} <span>Se publica de 8 a 22 h. Para las promos, las mejores horas separadas por lo menos 4 h: <b>${pick.map(h => h + ":00" + (D.slots.find(x => x.h === h)?.v == null ? " (para probar)" : "")).join(" · ")}</b>${sw.length ? ` (la que más rinde: <b>${sw[0].h}:00</b>, ${anaPxT(sw[0].v)})` : " (todavía sin datos: parejas en el día)"}. En las columnas resaltadas.</span></p>`;
 }
-// La semana comercial: cuántas promos por marca cada día, a qué hora (de 7 a 10), qué productos y en qué formato.
+// La semana comercial: cuántas promos por marca cada día, a qué hora (las mejores de 8 a 22, separadas 4 h), qué productos y en qué formato.
 function anaWeekView(D){
   const one = D.brands.length === 1, gen = D.prods.filter(p => p.v != null && p.v >= 1).sort((a, b) => b.v - a.v).slice(0, 2);
-  const slotsFor = k => D.slots.slice(0, k).map(s => s.h).sort((a, b) => a - b);
+  const slotsFor = k => anaPick(D.slots, k);
   const card = i => { const dv = D.dowsA[i], dO = D.dowsO[i], sem = anaSemV(dv.v), inf = D.days[i], cont = dO.v != null && dO.v >= 1.1 && (dv.v == null || dO.v >= dv.v + .15);
     const rows = D.brands.map(b => { const w = D.W[b][i], hs = slotsFor(w.rec);
       return `<div class="awb${one ? " big" : ""}" data-b="${esc(b)}" style="--c:${BRANDS[b]}"><span class="awbn">${one ? "" : `<i></i>${esc(anaShort(b))}`}</span><b class="awnum">${w.rec}</b><span class="awlab">${w.rec === 1 ? "promo" : "promos"}${w.test ? " · para probar" : ""}</span><span class="awhrs">${hs.map(h => h + ":00").join(" · ")}</span></div>`; }).join("");
@@ -11035,7 +11045,7 @@ function anaWeekView(D){
   const over = D.brands.some(b => D.W[b].some(x => x.over));
   return `<div class="aweekg">${[0, 1, 2, 3, 4, 5, 6].map(card).join("")}</div>
     <div class="awtot">${tot}</div>
-    <p class="note awhow">${icon("info")}<span>Cómo sale el número: lo que se sube hoy ese día (promedio de los dos meses), <b>+1</b> si ese día las promos de la marca rinden +10 % o más, <b>−1</b> si rinden −15 % o menos. Mínimo 1, máximo 4 (una por hora, de 7:00 a 10:00).${over ? " Si hay más promos que horas, las que sobran van juntas en un carrusel o en historias." : ""} La hora más fuerte de la ventana va primero: ${D.slots.filter(s => s.v != null).map(s => `${s.h}:00 (${anaPxT(s.v)})`).join(", ") || "todavía sin datos"}.</span></p>`;
+    <p class="note awhow">${icon("info")}<span>Cómo sale el número: lo que se sube hoy ese día (promedio de los dos meses), <b>+1</b> si ese día las promos de la marca rinden +10 % o más, <b>−1</b> si rinden −15 % o menos. Mínimo 1, máximo 4, en las horas que mejor rinden de 8:00 a 22:00 y separadas por lo menos 4 h.${over ? " Si hay más promos que esas, las que sobran van juntas en un carrusel o en historias." : ""} Las horas que más rinden: ${D.slots.filter(s => s.v != null).slice(0, 5).map(s => `${s.h}:00 (${anaPxT(s.v)})`).join(", ") || "todavía sin datos"}.</span></p>`;
 }
 function anaAudience(D){
   const L = D.brands.map(b => [b, demoReal(b, MONTH), demoRaw(b, MONTH)]).filter(([, d]) => d);
@@ -11094,12 +11104,12 @@ function anaMapView(D){
   const read = [`Cada marca sube <b>${String(Math.round(D.perDay * 10) / 10).replace(".", ",")} publicaciones por día</b>; el <b>${pctAct} %</b> son promos${post && post.n ? ` y el ${Math.round(post.sh * 100)} % son imágenes sueltas` : ""}.`,
     top ? `Lo que más rinde: <b>${esc(anaLow(top.k))}</b> (${anaPxT(top.v)})${D.combo && D.combo.v >= 1.4 ? `; también ${esc(anaLow(D.combo.k))} (${anaPxT(D.combo.v)})` : ""}.` : "",
     bestD && worstD && bestD !== worstD ? `Para promos, el mejor día es el <b>${bestD.k}</b> (${anaPxT(bestD.v)}) y el más flojo el <b>${worstD.k}</b> (${anaPxT(worstD.v)})${contD ? `; el <b>${contD.k}</b> rinde más lo que no es promo (${anaPxT(contD.v)})` : ""}.` : "",
-    s0 ? `De 7 a 10 h, la mejor hora es <b>${s0.h}:00</b> (${anaPxT(s0.v)})${sl && sl !== s0 ? `; a las ${sl.h}:00, ${anaPxT(sl.v)}` : ""}: lo más importante va a las ${s0.h}:00.` : ""].filter(Boolean);
+    s0 ? `De 8 a 22 h, la mejor hora es <b>${s0.h}:00</b> (${anaPxT(s0.v)})${sl && sl !== s0 ? `; la más floja, ${sl.h}:00 (${anaPxT(sl.v)})` : ""}: lo más importante va a las ${s0.h}:00.` : ""].filter(Boolean);
   const e0 = D.errs[0], best = bestD, bpr = best ? D.days[best.i].pr[0] : null;
   const hero = `<div class="ahero">
     <article class="ah h-up"><span>${icon("thumbs-up")} Funcionó</span><b>${top && top.v >= 1 ? esc(top.k) : "—"}</b><small>${top && top.v >= 1 ? `${anaPx(top.v)} sobre lo normal · ${top.n} publicaciones` : "pocos datos"}</small></article>
     <article class="ah h-dn"><span>${icon("thumbs-down")} No funcionó</span><b>${e0 ? esc(e0.what) : low ? esc(low.k) : "—"}</b><small>${e0 ? `${anaP(e0.p)} de alcance → ${esc(e0.fix)}` : low ? `${anaPx(low.v)} contra lo normal` : "nada bajó el alcance"}</small></article>
-    <article class="ah h-go"><span>${icon("target")} La jugada</span><b>${best ? `${best.k.charAt(0).toUpperCase() + best.k.slice(1)}${bpr ? `: ${esc(anaLow(bpr.k))}` : " fuerte"}` : "Promos de 7 a 10 h"}</b><small>${best ? `el mejor día para promos (${anaPxT(best.v)})${bpr ? `; ese día ese producto rinde ${anaPxT(bpr.v)}` : ""}` : "máximo 4 por marca, una por hora"}</small></article></div>`;
+    <article class="ah h-go"><span>${icon("target")} La jugada</span><b>${best ? `${best.k.charAt(0).toUpperCase() + best.k.slice(1)}${bpr ? `: ${esc(anaLow(bpr.k))}` : " fuerte"}` : "Promos en las mejores horas"}</b><small>${best ? `el mejor día para promos (${anaPxT(best.v)})${bpr ? `; ese día ese producto rinde ${anaPxT(bpr.v)}` : ""}` : "máximo 4 por marca, separadas 4 h (de 8 a 22)"}</small></article></div>`;
   const tn = D.pil.map(g => Math.floor(g.pr / 10)); [...D.pil].map((g, i) => [g.pr / 10 - tn[i], i]).sort((a, b) => b[0] - a[0]).slice(0, 10 - tn.reduce((s, v) => s + v, 0)).forEach(([, i]) => tn[i]++);
   const ten = D.pil.map((g, i) => `<b>${tn[i]}</b> para ${anaLow(g.k)}`);
   const roles = sel ? "" : `<div class="aroles">${D.brands.map(b => { const L = D.R.filter(x => x.b === b), c = D.grp(L, x => x.cat, 3).filter(g => g.k !== "Sorteos").sort((p, q) => q.v - p.v)[0], f = D.grp(L, x => x.fmt, 3).sort((p, q) => q.v - p.v)[0];
@@ -11121,7 +11131,7 @@ function anaMapView(D){
   <div class="amap">
   ${anaStop(1, "megaphone", "Estrategia de marketing en redes", "Tres objetivos y cuánto le damos a cada uno: hoy y lo que proponemos según lo que rinde.", s1)}
   ${anaStop(2, "palette", "Estrategia de contenidos", "Qué formatos usar y qué contenidos creativos sumar.", s2)}
-  ${anaStop(3, "calendar-days", "Semana comercial: cuántas promos cada día", `Promos y carruseles de ofertas por marca. <b>Siempre de 7:00 a 10:00</b>, también sábado y domingo; a la noche no se publica.${sel ? "" : " Si dos marcas salen a la misma hora, que no sea la misma promo."}`, anaWeekView(D))}
+  ${anaStop(3, "calendar-days", "Semana comercial: cuántas promos cada día", `Promos y carruseles de ofertas por marca. <b>De 8:00 a 22:00</b>, también sábado y domingo, en las horas que mejor rinden y separadas por lo menos 4 h.${sel ? "" : " Si dos marcas salen a la misma hora, que no sea la misma promo."}`, anaWeekView(D))}
   ${anaStop(4, "clock", "Cuándo nos ven más", "Cuánto llegó lo que publicamos según el día y la hora en que salió. Instagram no nos da a qué hora está conectada la gente.", anaHeat(D))}
   ${anaStop(5, "chart-scatter", "El plano: qué hacer con cada tema", "Cada burbuja es un tema: a la derecha, lo que más publicamos; arriba, lo que mejor rinde. Más grande, más publicaciones.", s5)}
   ${anaStop(6, "flag", "Resultados y errores", "", anaResults(D) + `<div class="alife">${anaLife(sel)}</div>`)}
