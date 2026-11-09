@@ -3756,6 +3756,8 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 .gfil{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
 .gfil > span{display:inline-flex;align-items:center;gap:5px}.gfil svg{width:13px;height:13px}
 .gfil select.base{min-width:190px;max-width:100%;padding:7px 10px;border-radius:12px}
+.gcmfil.dgfil{margin:0 0 12px}.dgfil .gfil select.base{min-width:170px}.dgfil .gfil select.base.on{border-color:var(--cyan,#22d3ee);box-shadow:0 0 0 1px var(--cyan,#22d3ee) inset}
+@media (max-width:600px){.gcmfil.dgfil .gfil{flex:1 1 45%}.dgfil .gfil select.base{min-width:0;width:100%}}
 .gcmfil .gord svg{width:15px;height:15px}
 .gdayrow{display:flex;gap:6px;align-items:center}.gday select.base{min-width:230px}.gday input[type=date].base{padding:6px 10px;border-radius:12px;color-scheme:dark;min-width:150px}
 .gcmfil .gcount{margin-left:auto;align-self:center}
@@ -4712,7 +4714,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v342";
+const APP_VER = "v343";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -9423,9 +9425,31 @@ function pedPage(A, title, ico, sub, newHint, extra = ""){
 // Calendario de Diseño gráfico: todas las entregas (Redes, Cartelería, Web y Pantallas) en su fecha límite. Mis trabajos o todo el equipo.
 // Planificación de Diseño gráfico: arriba el resumen del mes por etapa (como en CM), para controlar qué se está haciendo,
 // qué está en revisión y qué ya se aprobó. Tocar una etapa muestra solo esos trabajos en el calendario (otra vez: todos).
-let dgPlanUI = { st:"Todos", view:"calendario" };
+let dgPlanUI = { st:"Todos", view:"calendario", f:{ who:"", brand:"", type:"", sec:"", req:"" } };
+// v343 · Filtros de la Planificación de entregas: responsable, marca, tipo de trabajo, sección y solicitante (se combinan).
+const DG_FIL = [["who", "user-round", "Responsable", "Todos los responsables", j => crewOf(j.owner, j)],
+  ["brand", "tag", "Marca", "Todas las marcas", j => jobBrands(j)],
+  ["type", "shapes", "Tipo de trabajo", "Todos los tipos", j => [j.piece || "Otro"]],
+  ["sec", "layout-grid", "Sección", "Todas las secciones", j => [DG_SEC[jobSection(j)] || "Redes Sociales"]],
+  ["req", "megaphone", "Solicitante", "Todos los solicitantes", j => [j.requester || "Sin indicar"]]];
+const dgFOk = (j, skip) => DG_FIL.every(([k, , , , f]) => k === skip || !dgPlanUI.f[k] || f(j).includes(dgPlanUI.f[k]));
+const dgFOn = () => DG_FIL.some(([k]) => dgPlanUI.f[k]);
+function dgFilBar(base, inScope){
+  const pool = base.filter(inScope);
+  const sel = ([k, ic, lab, all, f]) => { const others = pool.filter(j => dgFOk(j, k)), vals = new Map();
+    others.forEach(j => f(j).forEach(v => v && vals.set(v, (vals.get(v) || 0) + 1)));
+    if (dgPlanUI.f[k] && !vals.has(dgPlanUI.f[k])) vals.set(dgPlanUI.f[k], 0);
+    const order = k === "brand" ? [...vals.keys()].sort((a, b) => (IG_MAIN.indexOf(a) + 1 || 99) - (IG_MAIN.indexOf(b) + 1 || 99) || a.localeCompare(b)) : [...vals.keys()].sort((a, b) => a.localeCompare(b, "es"));
+    return `<label class="gfil"><span>${icon(ic)} ${lab}</span><select class="base${dgPlanUI.f[k] ? " on" : ""}" data-dgf="${k}" aria-label="${lab}"><option value="">${all} (${others.length})</option>${order.map(v => `<option value="${esc(v)}" ${v === dgPlanUI.f[k] ? "selected" : ""}>${esc(v)} (${vals.get(v)})</option>`).join("")}</select></label>`; };
+  const n = pool.filter(j => dgFOk(j)).length;
+  return `<div class="gcmfil dgfil" role="group" aria-label="Filtros de la planificación">${DG_FIL.map(sel).join("")}
+    ${dgFOn() ? `<button type="button" class="btn sm" data-dgfclear>${icon("x")} Limpiar filtros</button>` : ""}<span class="note gcount">${dgFOn() ? `${n} de ${pool.length} trabajos` : `${pool.length} ${pool.length === 1 ? "trabajo" : "trabajos"}`}${dgPlanUI.view === "semana" ? " de la semana" : ` de ${monthName(MONTH)}`}</span></div>`;
+}
+document.addEventListener("change", e => { const el = e.target.closest?.("[data-dgf]"); if (!el) return; dgPlanUI.f = { ...dgPlanUI.f, [el.dataset.dgf]:el.value }; render(); });
+document.addEventListener("click", e => { if (!e.target.closest("[data-dgfclear]")) return; dgPlanUI.f = { who:"", brand:"", type:"", sec:"", req:"" }; render(); });
 function pCalDG(){
-  const base = jobs.filter(j => j.area === "Diseño" && seesJob(j) && j.status !== "Cancelado" && (!pedMine() || j.owner === viewer.name || j.ex));
+  const base0 = jobs.filter(j => j.area === "Diseño" && seesJob(j) && j.status !== "Cancelado" && (!pedMine() || j.owner === viewer.name || j.ex)), base = base0.filter(j => dgFOk(j));
+  const wk = dgPlanUI.view === "semana" ? planWk() : null, inScope = j => wk ? j.due >= wk && j.due <= addDays(wk, 6) : j.due.slice(0, 7) === MONTH;
   const lateOn = dgPlanUI.st === LATE_ST, late = dgLateList(base);
   const list = (lateOn ? late : base.filter(j => dgPlanUI.st === "Todos" || j.status === dgPlanUI.st)).sort((a, b) => a.due.localeCompare(b.due));
   const n = list.filter(j => j.due.slice(0, 7) === MONTH).length;
@@ -9437,10 +9461,11 @@ function pCalDG(){
     ${dgPlanUI.st !== "Todos" ? `<p class="note dgstnote" style="margin:-6px 0 0">${icon("info")} Mostrando solo <b>${esc(dgPlanUI.st)}</b>.${lateOn && dgPlanUI.view !== "tabla" && late.some(j => j.due.slice(0, 7) < MONTH) ? " Los atrasados de meses anteriores se ven en Tabla." : ""} <button type="button" class="linkish" data-dgst="Todos">Ver todas las etapas</button></p>` : ""}`;
   return `<div class="head"><div><h1 class="pmh">${pmIco("calendar-days")}Planificación de entregas</h1><p class="sub">${dgPlanUI.view === "semana" ? `Semana del ${weekLabel(planWk())}` : monthLabel(MONTH)} · cada trabajo de Diseño gráfico (redes, cartelería, web y pantallas) en su fecha de entrega.</p></div></div>
   ${canCreateJobs() ? `<button class="panel cmnew" data-jnew><span class="cmplus">${icon("plus")}</span><span><b>Cargar pedido</b><small>Qué pieza, para qué marca, quién la hace y para cuándo. También podés tocar un día del calendario.</small></span></button>` : ""}
+  ${dgFilBar(base0, inScope)}
   ${summary}
   ${ownsJobs() ? `<div class="chips pedscope"><button type="button" class="chip ${pedMine() ? "on" : ""}" data-pedscope="mine">${icon("user-round")} Mis trabajos</button><button type="button" class="chip ${pedMine() ? "" : "on"}" data-pedscope="team">${icon("users")} Todo el equipo</button></div>` : ""}
   ${viewTabs([["calendario", "Mes", "calendar-days"], ["semana", "Semana", "calendar-range"], ["tabla", "Tabla", "table-2"]], dgPlanUI.view || "calendario", "data-dgview")}
-  ${dgPlanUI.view === "tabla" ? dgTable(lateOn ? list : list.filter(j => j.due.slice(0, 7) === MONTH)) : `${jobDeliveryCal(list, "Diseño", dgPlanUI.view === "semana")}${n || dgPlanUI.view === "semana" ? "" : `<p class="note">No hay entregas en ${monthName(MONTH)}${dgPlanUI.st !== "Todos" ? ` en ${esc(dgPlanUI.st)}` : ""}${pedMine() ? " a tu nombre" : ""}.</p>`}`}
+  ${dgPlanUI.view === "tabla" ? dgTable(lateOn ? list : list.filter(j => j.due.slice(0, 7) === MONTH)) : `${jobDeliveryCal(list, "Diseño", dgPlanUI.view === "semana")}${n || dgPlanUI.view === "semana" ? "" : `<p class="note">No hay entregas en ${monthName(MONTH)}${dgPlanUI.st !== "Todos" ? ` en ${esc(dgPlanUI.st)}` : ""}${pedMine() ? " a tu nombre" : ""}${dgFOn() ? " con estos filtros" : ""}.</p>`}`}
   ${jobForm()}`;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-dgst]"); if (!b) return; const st = b.dataset.dgst; dgPlanUI.st = st === "Todos" || dgPlanUI.st === st ? "Todos" : st; render(); });
