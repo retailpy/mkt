@@ -83,6 +83,7 @@ const RMH = (() => {
     INFLUENCERS:[() => INFLUENCERS, v => { INFLUENCERS = Array.isArray(v) ? v : []; }], // cumpleaños de influencers de las marcas (solo Admin total y CM)
     ESCRACHES:[() => ESCRACHES, v => { ESCRACHES = Array.isArray(v) ? v : []; }], // Búsqueda de Escraches: los cargados y las marcas (solo Admin total, Admin y CM)
     PEDIDOS_COM:[() => PEDIDOS_COM, v => { PEDIDOS_COM = Array.isArray(v) ? v : []; }], // v242: pedidos de activaciones de Comercial (los compradores)
+    CAMP_FOLDERS:[() => CAMP_FOLDERS, v => { CAMP_FOLDERS = Array.isArray(v) ? v : CF_DEF.map(c => ({ ...c, brands:[...c.brands] })); }], // v344: campañas (carpetas de la Planificación)
     AGENTS:[() => AGENTS, v => { AGENTS = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v326: entrenamiento y skills de los agentes (Oficina de Agentes)
     AGENT_CHAT:[() => AGENT_CHAT, v => { AGENT_CHAT = Array.isArray(v) ? v : []; }], // v326: las charlas con los agentes
     PROMPT_LOG:[() => PROMPT_LOG, v => { PROMPT_LOG = Array.isArray(v) ? v : []; }], // v334: los prompts de imágenes que se generan (sin nombres; SantIAgo)
