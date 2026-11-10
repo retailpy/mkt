@@ -363,7 +363,8 @@ html.navmini .nav-group.closed > a{display:flex}
 .jpart.ok .jpno{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.6);color:#34d399}.jpart.cur{border-color:rgba(56,189,248,.55)}.jpart.cur .jpno{border-color:#38bdf8;color:#38bdf8}.jpart.next{opacity:.65}
 .jparts{display:flex;flex-direction:column;gap:8px}.jparts .jpartsn{max-width:220px}
 .okpart{display:flex;gap:6px;align-items:flex-start;margin:0;padding:8px 10px;border-radius:12px;background:rgba(56,189,248,.1);color:var(--ink);font-size:13.5px}.okpart svg{flex:none;width:16px;height:16px;margin-top:2px;color:#38bdf8}
-.bkwait{display:flex;gap:6px;align-items:flex-start;margin:10px 0 0}.bkwait svg{flex:none;width:15px;height:15px;margin-top:2px}
+.bkwait{display:flex;gap:6px;align-items:flex-start;margin:10px 0 0}
+.bksplit{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line-2)}.bksplit .btn{border-color:rgba(56,189,248,.55);color:#38bdf8}.bkwait svg{flex:none;width:15px;height:15px;margin-top:2px}
 /* v345 · varios bocetos juntos (la tanda que se subió junta) */
 .bkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .bkcell{display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -4519,6 +4520,36 @@ function partsBlock(j){
     <ol class="jpartl">${P.map(row).join("")}</ol>
     <p class="note" style="margin:0">${icon("info")} Cada parte se sube y se aprueba por separado. Al aprobarla, la CM elegida ya la puede subir a redes${cur >= 0 && cur < P.length - 1 ? ` y se habilita la Parte ${cur + 2}` : ""}. El pedido termina con la última parte.</p></section>`;
 }
+// v349 · Desde la ficha (en Boceto): un pedido de Diseño que se cargó entero se puede pasar a “por partes” (Admin total o quien lo hace),
+// mientras no esté aprobado. La publicación que ya tenía cargada para la CM (todavía Pendiente) se saca: cada parte elige su CM al aprobarse.
+const canSplit = j => !!j && j.area === "Diseño" && !jobParts(j) && !jobApproved(j) && !j.ex && !isViewOnly() && !jobLocked(j) && (canCreateJobs() || hasJob(j, viewer.name));
+const splitBtn = j => canSplit(j) ? `<div class="bksplit"><button type="button" class="btn sm" data-partsplit="${esc(j.id)}">${icon("layers")} Entregar por partes</button><span class="note">Para folletos y publicaciones de ofertas: Parte 1, Parte 2… Se aprueba cada parte, la CM la sube y se habilita la siguiente.</span></div>` : "";
+function openSplit(j){
+  document.getElementById("fixpop")?.remove();
+  const had = jobPubsOf(j).filter(x => x.status === "Pendiente");
+  const w = document.createElement("div"); w.id = "fixpop"; w.className = "fixpop";
+  w.innerHTML = `<div class="fixbox" role="dialog" aria-modal="true" aria-labelledby="splh"><h2 id="splh">${icon("layers")} Entregar por partes</h2><p class="note">${esc(j.title)} · ${esc(j.owner)}</p>
+    <label>¿En cuántas partes se entrega?<select class="base" id="splN">${Array.from({ length:PARTS_MAX - 1 }, (_, k) => k + 2).map(k => `<option value="${k}" ${k === 2 ? "selected" : ""}>${k} partes</option>`).join("")}</select></label>
+    <p class="note" style="margin:0">Lo que ya está subido en Boceto queda como <b>Parte 1</b>. Cada parte se manda a revisión con “Boceto finalizado”; al aprobarla se elige qué CM la sube y se habilita la siguiente. El pedido termina con la última parte.</p>
+    ${had.length ? `<p class="note" style="margin:0">${icon("info")} Ya tenía cargada la publicación para ${esc(firstName(had[0].cm))}: se saca y cada parte elige su CM al aprobarse.</p>` : ""}
+    <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-splitsend="${esc(j.id)}">${icon("layers")} Dividir en partes</button></div></div>`;
+  document.body.appendChild(w); document.getElementById("splN")?.focus();
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-partsplit]"); if (b){ const j = fileJob(b.dataset.partsplit); if (canSplit(j)) openSplit(j); return; }
+  const s = e.target.closest("[data-splitsend]"); if (!s) return; const j = jobById(s.dataset.splitsend); if (!canSplit(j)) return;
+  const n = Math.min(PARTS_MAX, Math.max(2, +(document.getElementById("splN")?.value || 2)));
+  const gone = jobPubsOf(j).filter(x => x.status === "Pendiente");
+  gone.forEach(x => { const L = x.channel ? CHANNEL_POSTS : posts, i = L.indexOf(x); if (i >= 0) L.splice(i, 1); NOTIFS.forEach(nn => { if (nn.post === x.id) nn.read = true; }); });
+  const keep = jobPubsOf(j).filter(x => !gone.includes(x)); j.pubs = keep.map(x => ({ id:x.id, canal:!!x.channel })); j.pub = j.pubs[0] || null;
+  NOTIFS.forEach(nn => { if (nn.job === j.id && nn.type === "pub" && !nn.post) nn.read = true; });
+  j.parts = Array.from({ length:n }, () => ({})); j.pubCm = ""; j.pubDate = ""; j.pubTime = "";
+  (j.bocetos || []).forEach(x => { if (!x.pt) x.pt = 1; });
+  (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), kind:"nota", text:`Se entrega en ${n} partes.`, by:viewer.name });
+  if (viewer.name !== j.owner && j.owner && j.owner !== "Sin asignar") notify({ to:j.owner, type:"nota", job:j.id, who:viewer.name, text:`Ahora se entrega en ${n} partes: empezá por la Parte 1 (lo que ya subiste queda como Parte 1).` });
+  document.getElementById("fixpop")?.remove(); render(); window.RMH?.flushNow?.();
+  toast(`Listo: “${j.title}” se entrega en ${n} partes. Ahora va la Parte 1.`);
+});
 // Aprobar la parte en curso (la ventana de siempre: quién aprobó, qué CM la publica, fecha, hora, dónde y el copy).
 function approvePart(j, opts = {}){
   const P = j.parts, i = partCur(j), q = P[i], last = i === P.length - 1, cm = opts.cm || "", by = opts.by || "";
@@ -4833,7 +4864,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v348";
+const APP_VER = "v349";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -8752,7 +8783,7 @@ function bocetoBlock(j){
     ${P ? P.map((q, k) => { if (k + 1 === show) return ""; const bs = (j.bocetos || []).filter(b => (b.pt || 1) === k + 1); return bs.length ? `<div class="bkold"><span class="note">${icon("layers")} Parte ${k + 1}${q.ok ? " · aprobada" : ""}</span><div class="bkthumbs">${bs.map(b => view(b)).join("")}</div></div>` : ""; }).join("") : ""}
     ${P && canAttach(j) && waitRev ? `<p class="note bkwait">${icon("hourglass")} La Parte ${show} está en revisión. Cuando se aprueba se habilita la ${show < P.length ? `Parte ${show + 1}` : "entrega final"}; si piden cambios, la corregís acá.</p>` : ""}
     ${ed ? `<div class="bkup"><label class="btn sm primary${up ? " disabled" : ""}">${icon("upload")} <span id="bkprog-${esc(j.id)}">${up ? esc(up) : last ? "Subir otra versión" : "Subir boceto"}</span><input type="file" multiple data-bkup="${esc(j.id)}" hidden ${up ? "disabled" : ""}></label>
-      <span class="note">Imágenes, PDF o logos de hasta <b>100 MB</b> cada uno. Podés elegir <b>varios a la vez</b> (por ejemplo, las 10 piezas de las ofertas del fin de semana): se suben juntos a Google Drive y se ven todos acá.</span></div>` : ""}</section>`;
+      <span class="note">Imágenes, PDF o logos de hasta <b>100 MB</b> cada uno. Podés elegir <b>varios a la vez</b> (por ejemplo, las 10 piezas de las ofertas del fin de semana): se suben juntos a Google Drive y se ven todos acá.</span></div>` : ""}${splitBtn(j)}</section>`;
 }
 // Sube un archivo directo a Google Drive (la app abre la subida y el navegador manda el archivo). Devuelve el id o un error.
 async function bkSend(j, f, onPct){
@@ -9175,6 +9206,7 @@ function jobForm(){
       <div class="jbrands" style="grid-column:1/-1"><span class="jll">Marcas * <span class="note">(podés elegir varias, por ejemplo Superseis y Stock)</span></span><div class="chips" role="group" aria-label="Marcas">${myBrands().map(b => { const on = jobBrands(j).includes(b); return `<button type="button" class="chip jbr${on ? " on" : ""}" data-jbrand="${esc(b)}" aria-pressed="${on}" style="--bc:${BRANDS[b] || "#94a3b8"}"><i></i>${esc(b)}</button>`; }).join("")}</div></div>
       <label class="wide" style="grid-column:1/-1">Trabajo solicitado *<input class="base" id="jTitle" value="${esc(j.title)}" placeholder="${area === "CM" ? "Ej.: Reel receta navideña: clericó en 1 minuto" : area === "Contenidos" ? "Ej.: Historia ofertas del finde de Stock" : "Ej.: Post de Navidad: canasta navideña 20% OFF"}" required></label>
       <label style="grid-column:1/-1">Observaciones <span class="note">(opcional, algo corto)</span><textarea class="base" id="jNotes" rows="2" placeholder="Ej.: Usar el logo nuevo y los colores de la campaña. Imprimir 40 unidades.">${esc(j.notes)}</textarea></label>
+      ${area === "Diseño" ? partsBox(j) : ""}
       ${cfPick("jCamp", j, "job")}
       </div></section>
       <section class="jfs"><h3><i>2</i>Quién y para cuándo</h3><div class="jfg">
@@ -9183,7 +9215,7 @@ function jobForm(){
       <label>Fecha de solicitud *<input class="base" type="date" id="jReq" value="${j.requestDate}" required></label>
       <label >Fecha límite *<input class="base" type="date" id="jDue" value="${j.due}" required></label>
       ${own ? "" : actComBox("jActCom", jobActCom(j))}
-      ${area === "Diseño" ? partsBox(j) + jobPubCmBox(j) : ""}
+      ${area === "Diseño" ? jobPubCmBox(j) : ""}
       ${own ? "" : j.repOf ? `<p class="note" style="grid-column:1/-1;margin:0">${icon("repeat")} Este pedido se cargó solo porque se repite (lo repite el pedido ${esc(j.repOf)}).</p>` : `<div class="jrep" style="grid-column:1/-1"><span class="jll">${icon("repeat")} ¿Se repite? <span class="note">(opcional: elegí los días y el pedido se carga solo cada semana, con la fecha límite de ese día)</span></span>
         <div class="chips">${WEEKDAYS.map((w, i) => `<button type="button" class="chip ${(f.repDays || []).includes(i) ? "on" : ""}" data-jrepday="${i}" aria-pressed="${(f.repDays || []).includes(i)}">${w}</button>`).join("")}</div>
         <label class="jrepu">Hasta <span class="note">(vacío = siempre)</span><input class="base" type="date" id="jRepUntil" value="${esc(j.rep?.until || "")}"></label>
