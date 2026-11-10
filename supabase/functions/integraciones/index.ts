@@ -7,6 +7,7 @@
 //   fetch_image {url}                                               → baja una imagen pegada que llegó como link (la devuelve en base64)
 //   diag {kind,info}                                                → diagnóstico de la app (solo queda en el registro)
 //   boceto_upload {job,name,type,data} · boceto_delete {id}          → bocetos de los pedidos (carpeta de Bocetos, una carpeta por mes)
+//   boceto_session {job,name,type,size} · boceto_done {id}            → v345: bocetos de hasta 100 MB, directo a Drive (el navegador sube el archivo)
 //   doc_session {name,type,size} · doc_done {id} · doc_folder        → documentos del chat, en su formato original ("Documentos Retail MKT", una carpeta por mes)
 //   tendencias {area:"dg"|"cm"|"ideas", force?}                      → campañas, piezas y contenidos con foto, en español (force: solo Admin total)
 //   noticias {force?}                                                → lo que sale en los medios de Paraguay sobre Retail S.A. y sus marcas (3 meses)
@@ -35,8 +36,9 @@ const DOCS_FOLDER_ID = "1w0G3EphbFMN6rKWVvEoybBWxr9PJZKz3"; // documentos del ch
 const MAX_BYTES = 400 * 1024;
 const CHAT_MAX = 4 * 1024 * 1024; // la app achica las fotos antes de subirlas (suelen quedar en 200-600 KB)
 const BOCETO_MAX = 10 * 1024 * 1024; // boceto liviano para ver cómo va (el original va en los links del pedido)
+const BOCETO_BIG = 100 * 1024 * 1024; // v345: bocetos subidos directo a Drive (varios a la vez), hasta 100 MB cada uno
 const TYPES = ["image/png", "image/webp", "image/gif", "image/jpeg"];
-const SCRIPT_V = 8; // versión del script de Drive que necesita la app (2: fotos del chat por mes · 3: bocetos · 4: Comercial y videos de CM · 5: respaldo de las ofertas · 6: documentos del chat · 7: ofertas de Superseis, Stock y Delimarket en varias carpetas · 8: carpeta «MKT - FOLLETOS» de las quincenales)
+const SCRIPT_V = 9; // versión del script de Drive que necesita la app (9: bocetos grandes directo a la carpeta de Bocetos · 2: fotos del chat por mes · 3: bocetos · 4: Comercial y videos de CM · 5: respaldo de las ofertas · 6: documentos del chat · 7: ofertas de Superseis, Stock y Delimarket en varias carpetas · 8: carpeta «MKT - FOLLETOS» de las quincenales)
 const SCRIPT_RE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]{20,}\/exec$/;
 const thumb = (id: string) => `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w320`;
 
@@ -68,6 +70,7 @@ const DOCS_FOLDER_ID = "${DOCS_FOLDER_ID}";
 const MAX_BYTES = ${MAX_BYTES};
 const CHAT_MAX = ${CHAT_MAX};
 const BOCETO_MAX = ${BOCETO_MAX};
+const BOCETO_BIG = ${BOCETO_BIG};
 const TYPES = ${JSON.stringify(TYPES)};
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const out = o => ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
@@ -100,6 +103,8 @@ function doPost(e){
   if (b.k !== SECRET) return out({ ok: false, error: "no autorizado" });
   if (b.kind === "trash") return trash(b);
   if (b.kind === "boceto") return boceto(b);
+  if (b.kind === "boceto_session") return bocetoSession(b);
+  if (b.kind === "boceto_done") return bocetoDone(b);
   if (b.kind === "comercial_list") return comercialList(b);
   if (b.kind === "comercial_file") return comercialFile(b);
   if (b.kind === "video_folder") return out({ ok: true, folder: monthFolder(VIDEO_FOLDER_ID).getUrl() });
@@ -129,6 +134,27 @@ function boceto(b){
   f.setDescription(String(b.by || "").slice(0, 40));
   try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (err){}
   return out({ ok: true, file: { id: f.getId(), name: f.getName(), mime: f.getMimeType(), size: f.getSize() } });
+}
+
+// Bocetos grandes (v345, hasta 100 MB): se abre una subida directa a la carpeta del mes de Bocetos y el navegador manda el archivo.
+function bocetoSession(b){
+  const folder = monthFolder(BOCETO_FOLDER_ID), size = Number(b.size) || 0;
+  if (!size || size > BOCETO_BIG) return out({ ok: false, error: "el boceto supera 100 MB" });
+  const res = UrlFetchApp.fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id,name,mimeType,size", {
+    method: "post", contentType: "application/json; charset=UTF-8", muteHttpExceptions: true,
+    headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken(), "X-Upload-Content-Type": String(b.type || "application/octet-stream"), "X-Upload-Content-Length": String(size), Origin: String(b.origin || "") },
+    payload: JSON.stringify({ name: String(b.name || "boceto").slice(0, 160), parents: [folder.getId()], description: String(b.by || "").slice(0, 40) }),
+  });
+  const url = res.getHeaders()["Location"] || res.getHeaders()["location"];
+  if (res.getResponseCode() >= 300 || !url) return out({ ok: false, error: "Drive no abrió la subida (" + res.getResponseCode() + ")" });
+  return out({ ok: true, url: url });
+}
+function bocetoDone(b){
+  let f; try { f = DriveApp.getFileById(String(b.id || "")); } catch (err){ return out({ ok: false, error: "no existe" }); }
+  let ok = false; for (const ps = f.getParents(); ps.hasNext();){ const p = ps.next(); for (const pp = p.getParents(); pp.hasNext();) if (pp.next().getId() === BOCETO_FOLDER_ID) ok = true; }
+  if (!ok) return out({ ok: false, error: "no es de la carpeta de bocetos" });
+  try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (err){}
+  return out({ ok: true, name: f.getName(), mime: f.getMimeType(), size: f.getSize() });
 }
 
 // Comercial: los archivos de una carpeta de ofertas y de sus subcarpetas (hasta 2 niveles). Solo se leen; no se cambia nada.
@@ -471,7 +497,7 @@ async function comercialSync(c: any, minAge: number){
     // Carpetas que todavía no se leen porque falta actualizar el script de Drive.
     for (const fu of FUENTES) if (!src[fu.id]) src[fu.id] = { at: now, old: true };
     const data = { v: 1, updated: nuevos || respaldos || !prev.updated ? now : prev.updated, syncedAt: now, backupScript: canBackup, scriptV: sv, files, src, pending: pending.slice(0, 80) };
-    const res = { ok: true, nuevos, agregados, errores, respaldos, n, faltan, pendientes: pending.length, carpetasConError: Object.values(src).filter((x: any) => x.err).length, scriptViejo: sv < SCRIPT_V };
+    const res = { ok: true, nuevos, agregados, errores, respaldos, n, faltan, pendientes: pending.length, carpetasConError: Object.values(src).filter((x: any) => x.err).length, scriptViejo: sv < 8 }; // las ofertas necesitan la 8 (la 9 es para los bocetos grandes)
     if (!row){ const { error } = await db.from("app_state").insert({ key: "s:COMERCIAL", data }); if (!error) return res; continue; }
     const { data: up } = await db.from("app_state").update({ data, version: row.version + 1, updated_at: now }).eq("key", "s:COMERCIAL").eq("version", row.version).select("version");
     if (up && up.length) return res;
@@ -602,6 +628,27 @@ Deno.serve(async (req) => {
         const j = await scriptPost(c, { kind: "boceto", name, type, data: b.data, by: m.person_id });
         if (!j.ok || !j.file?.id) return json({ ok: false, error: j.error || "No se pudo guardar el boceto" });
         return json({ ok: true, id: j.file.id, name: j.file.name, mime: j.file.mime, size: j.file.size });
+      }
+      // v345 · Bocetos grandes (hasta 100 MB, varios a la vez): el navegador sube el archivo directo a Drive.
+      // Con el script 9, a la carpeta de Bocetos (carpeta del mes); con uno anterior (6 a 8), a Documentos: igual se ve en el pedido.
+      case "boceto_session": case "boceto_done": {
+        if (!c.sticker_url) return json({ ok: false, nokey: true, error: "Google Drive todavía no está conectado: Admin total lo conecta en Configuración → Integraciones." });
+        const sv = await scriptVersion(c.sticker_url, c.sticker_secret);
+        if (sv < 6) return json({ ok: false, old: true, error: "Falta actualizar el script de Google Drive para los bocetos: Admin total lo hace en Configuración → Integraciones." });
+        const own = sv >= 9;
+        if (b.action === "boceto_done"){
+          const id = String(b.id || "");
+          if (!/^[\w-]{10,100}$/.test(id)) return json({ ok: false, error: "Boceto inválido" });
+          const j = await scriptPost(c, { kind: own ? "boceto_done" : "doc_done", id });
+          return json(j.ok ? { ok: true, id, name: j.name, mime: j.mime, size: j.size, folder: own ? "bocetos" : "documentos" } : { ok: false, error: j.error || "No se pudo terminar la subida" });
+        }
+        const size = Number(b.size) || 0, type = /^[\w.+-]+\/[\w.+-]+$/.test(String(b.type || "")) ? String(b.type) : "application/octet-stream";
+        if (!size || size > BOCETO_BIG) return json({ ok: false, error: "El boceto supera 100 MB: subí una versión más liviana" });
+        const base = String(b.name || "boceto").replace(/[\\/:*?"<>|#%]+/g, "_").replace(/\s+/g, " ").trim().slice(-80) || "boceto";
+        const job = String(b.job || "").replace(/[^\w-]+/g, "").slice(0, 20);
+        const stamp = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date()).replace(", ", " ").replace(":", "");
+        const name = `${job ? job + " · " : ""}${stamp} · ${base}`;
+        return json(await scriptPost(c, { kind: own ? "boceto_session" : "doc_session", name, type, size, origin: req.headers.get("origin") || "", by: m.person_id }));
       }
       // Comercial: "Actualizar" (cualquiera del equipo) o al abrir la página si hace rato que no se revisa.
       case "comercial_sync":
