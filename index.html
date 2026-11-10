@@ -2028,6 +2028,8 @@ tr.off td{opacity:.55}
 .ev .stbtn:hover,.ev .stbtn:focus-visible{text-decoration:underline}
 #stagepop{position:fixed;z-index:130;min-width:220px;max-width:280px;background:linear-gradient(var(--panel),var(--panel)),var(--bg);border:1px solid var(--line-3);border-radius:14px;padding:8px;box-shadow:0 20px 40px -10px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:3px}
 #stagepop .sp-h{font-size:12px;color:var(--muted);padding:4px 8px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#stagepop .sp-day{display:flex;align-items:center;gap:4px;margin-top:3px;color:#fbbf24;font-weight:600;white-space:normal}#stagepop .sp-day svg{width:13px;height:13px;flex:none}
+.note.repday{margin:8px 0 0;display:flex;gap:6px;align-items:flex-start}.note.repday svg{flex:none;width:15px;height:15px;margin-top:2px;color:#fbbf24}
 #stagepop .sp-a{border-top:1px solid var(--line-3);margin-top:4px;padding-top:4px}
 .carried.resched{color:#7dd3fc;border-color:rgba(56,189,248,.45);background:rgba(56,189,248,.1)}
 #stagepop .sp-n{font-size:11.5px;color:var(--faint);padding:6px 8px 2px}
@@ -4753,7 +4755,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v346";
+const APP_VER = "v347";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -7117,6 +7119,10 @@ function evStage(kind, it, text, color){
   return can2 ? `<button type="button" class="st stbtn" data-stagemenu="${kind}:${it.id}" style="color:${color}" title="Cambiar etapa">● ${text} ▾</button>` : `<span class="st" style="color:${color}">● ${text}</span>`;
 }
 function closeStageMenu(){ document.getElementById("stagepop")?.remove(); }
+// v347 · Historias y contenidos repetitivos: cada día tiene su propia etapa. Se dice en el menú, en la hoja y en el aviso.
+const repDay = x => !!x && !!(x.repOf || x.rep?.days?.length) && !!x.date;
+const repDayTxt = x => `${WEEKDAYS[wdOf(x.date)].toLowerCase()} ${dm(x.date)}`;
+const repOnly = x => repDay(x) ? ` (solo el ${repDayTxt(x)}; los otros días siguen como estaban)` : "";
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-stagemenu]");
   if (!b || (b.classList.contains("card") && e.target.closest("button,a,select,input"))){ if (!e.target.closest("#stagepop")) closeStageMenu(); return; }
@@ -7126,7 +7132,7 @@ document.addEventListener("click", e => {
   const vid = kind === "job" || (kind === "rec" && it.r.kind === "Grabación");
   const colorOf = st => kind === "act" ? (st === "Pendiente" ? "#94a3b8" : SEM[semLvl(st)]) : vid ? (st === "Pendiente" ? "#94a3b8" : JOB_COLOR[st] || "#94a3b8") : (POST_COLOR[st] === "#334155" ? "#94a3b8" : POST_COLOR[st]);
   const pop = document.createElement("div"); pop.id = "stagepop"; pop.setAttribute("role", "menu");
-  pop.innerHTML = `<div class="sp-h">Etapa de “${esc(it.title)}”</div>${opts.map(st => `<button type="button" role="menuitemradio" aria-checked="${st === it.status}" class="${st === it.status ? "on" : ""}" data-stageset="${kind}:${id}|${esc(st)}" style="--c:${colorOf(st)}"><i></i>${esc(st)}${st === it.status ? " ✓" : ""}</button>`).join("")}${isDesigner() ? `<div class="sp-n">Aprobar y entregar lo hace Admin total.</div>` : ""}${kind === "job" && jobCanApprove(it) ? `<div class="sp-a"><button type="button" role="menuitem" data-jrev="approve:${esc(it.id)}" style="--c:#14b8a6">${icon("badge-check")}${it.area === "CM" ? (CM_STAGES.indexOf(it.status) < CM_STAGES.indexOf("Programado") ? "Aprobar (pasa a Programado)" : "Aprobar") : "Aprobar"}</button>${REVIEW_WAIT.includes(it.status) ? `<button type="button" role="menuitem" data-jrev="fix:${esc(it.id)}" style="--c:#f97316">${icon("pencil-line")}Pedir cambios</button>` : ""}</div>` : ""}${(kind === "post" || kind === "canal") && canResched(it) ? `<div class="sp-a"><button type="button" role="menuitem" data-rsched="${kind}:${esc(it.id)}" style="--c:#38bdf8">${icon("calendar-clock")}Reprogramar (cambiar la fecha)</button></div>` : ""}`;
+  pop.innerHTML = `<div class="sp-h">Etapa de “${esc(it.title)}”${(kind === "post" || kind === "canal") && repDay(it) ? `<small class="sp-day">${icon("repeat")} Solo el ${esc(repDayTxt(it))}</small>` : ""}</div>${opts.map(st => `<button type="button" role="menuitemradio" aria-checked="${st === it.status}" class="${st === it.status ? "on" : ""}" data-stageset="${kind}:${id}|${esc(st)}" style="--c:${colorOf(st)}"><i></i>${esc(st)}${st === it.status ? " ✓" : ""}</button>`).join("")}${isDesigner() ? `<div class="sp-n">Aprobar y entregar lo hace Admin total.</div>` : ""}${kind === "job" && jobCanApprove(it) ? `<div class="sp-a"><button type="button" role="menuitem" data-jrev="approve:${esc(it.id)}" style="--c:#14b8a6">${icon("badge-check")}${it.area === "CM" ? (CM_STAGES.indexOf(it.status) < CM_STAGES.indexOf("Programado") ? "Aprobar (pasa a Programado)" : "Aprobar") : "Aprobar"}</button>${REVIEW_WAIT.includes(it.status) ? `<button type="button" role="menuitem" data-jrev="fix:${esc(it.id)}" style="--c:#f97316">${icon("pencil-line")}Pedir cambios</button>` : ""}</div>` : ""}${(kind === "post" || kind === "canal") && canResched(it) ? `<div class="sp-a"><button type="button" role="menuitem" data-rsched="${kind}:${esc(it.id)}" style="--c:#38bdf8">${icon("calendar-clock")}Reprogramar (cambiar la fecha)</button></div>` : ""}`;
   document.body.appendChild(pop);
   const r = b.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
   pop.style.left = Math.max(8, Math.min(r.left, innerWidth - pw - 8)) + "px";
@@ -7141,8 +7147,8 @@ document.addEventListener("click", e => {
   if (kind === "post" && dsgLock(postById(id), to)) return toast(dsgLockMsg);
   if (kind === "post"){ const p = postById(id); if (!p || p.status === to) return;
     if (onHold(p) && !HOLD_ST.includes(to)) return openReactivate("post", p, to); // v300: con la fecha nueva
-    holdMark(p, p.status, to); p.status = to; render(); toast(`“${p.title}” pasó a ${to}.`); return; }
-  if (kind === "canal"){ const k = canalById(id); if (!k || k.status === to) return; if (onHold(k) && !HOLD_ST.includes(to)) return openReactivate("canal", k, to); holdMark(k, k.status, to); k.status = to; render(); toast(`“${k.title}” pasó a ${to}.`); return; }
+    holdMark(p, p.status, to); p.status = to; render(); toast(`“${p.title}” pasó a ${to}${repOnly(p)}.`); return; }
+  if (kind === "canal"){ const k = canalById(id); if (!k || k.status === to) return; if (onHold(k) && !HOLD_ST.includes(to)) return openReactivate("canal", k, to); holdMark(k, k.status, to); k.status = to; render(); toast(`“${k.title}” pasó a ${to}${repOnly(k)}.`); return; }
   if (kind === "act"){ const a = actById(id); if (!a || a.status === to || !stageOptions("act", a).includes(to)) return; a.status = to; render(); window.RMH?.flushNow?.(); toast(`“${a.title}” pasó a ${to}.`); return; }
   if (kind === "rec"){ const x = recItem(id); if (!x || x.status === to || !stageOptions("rec", x).includes(to)) return;
     setRecSt(x.r, x.d, to); render(); window.RMH?.flushNow?.(); toast(`“${x.r.title}” del ${dm(x.d)} pasó a ${to}.`); return; }
@@ -9957,7 +9963,7 @@ function pubCopyForm(f, p, dj, canal, real, chat){
         <p class="note" style="grid-column:1/-1;margin:0">La CM lo publica en este día y a esta hora, cuando el copy esté aprobado.</p></div></section>` : hid("poDate", p.date) + hid("poTime", p.time || "")}
       <section class="jfs"><h3><i>${at ? 3 : 2}</i>Etapa</h3><div class="jfg">
         <div style="grid-column:1/-1"><div class="pproc" role="group" aria-label="Etapa">${stages.map((x, i) => `<button type="button" class="${i < cur ? "done" : ""}${i === cur ? " on" : ""}${copyLock(p, x) && x !== p.status ? " lock" : ""}" style="--c:${POST_COLOR[x] === "#334155" ? "#94a3b8" : POST_COLOR[x]}" data-postep="${esc(x)}" aria-pressed="${i === cur}"><span>${i + 1}</span>${esc(x)}</button>`).join("")}</div>
-          <input type="hidden" id="poStatus" value="${esc(p.status)}">
+          <input type="hidden" id="poStatus" value="${esc(p.status)}">${repDay(p) ? `<p class="note repday">${icon("repeat")}<span>Esta etapa es <b>solo del ${esc(repDayTxt(p))}</b>. Cada día de la repetición tiene su propia etapa: cambiar este día no cambia los otros.</span></p>` : ""}
           <p class="note" style="margin:8px 0 0">${st === "ok" || none ? `${icon("clock")} Publicalo el ${pubWhen(p)} y marcá Publicado.` : `${icon("lock")} Programado y Publicado se habilitan cuando Admin total apruebe el copy.`}</p></div>
       </div></section>
       <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-pclose>Cancelar</button><button class="btn primary" type="submit">Guardar</button></div>
@@ -10013,7 +10019,7 @@ function postForm(){
       </div></section>
       <section class="jfs"><h3><i>4</i>Proceso</h3><div class="jfg">
         <div style="grid-column:1/-1"><div class="pproc" role="group" aria-label="Etapa">${stages.map((x, i) => `<button type="button" class="${i < cur ? "done" : ""}${i === cur ? " on" : ""}${real && dsgLock(real, x) && x !== p.status ? " lock" : ""}" style="--c:${POST_COLOR[x] === "#334155" ? "#94a3b8" : POST_COLOR[x]}" data-postep="${esc(x)}" aria-pressed="${i === cur}"><span>${i + 1}</span>${esc(x)}</button>`).join("")}</div>
-          <input type="hidden" id="poStatus" value="${esc(p.status)}">
+          <input type="hidden" id="poStatus" value="${esc(p.status)}">${repDay(p) ? `<p class="note repday">${icon("repeat")}<span>Esta etapa es <b>solo del ${esc(repDayTxt(p))}</b>. Cada día de la repetición tiene su propia etapa: cambiar este día no cambia los otros.</span></p>` : ""}
           ${real && !canal ? dsgBox(real) : ""}
           ${!canal && !j && canEditPost() && !real?.dsgSt ? `<label class="jcext" style="margin-top:8px"><input type="checkbox" id="poAskDesign"> Pedir el diseño a Diseño gráfico <span class="note">(se crea solo el pedido en Diseño para Redes)</span></label>` : ""}</div>
       </div></section>
@@ -17963,7 +17969,7 @@ document.addEventListener("change", e => {
   const pst = e.target.closest("[data-pstatus]");
   if (pst){ const p = postById(pst.dataset.pstatus), to = pst.value;
     if (onHold(p) && !HOLD_ST.includes(to)){ render(); return openReactivate("post", p, to); } // v300
-    holdMark(p, p.status, to); p.status = to; render(); toast(`“${p.title}” pasó a ${to}.`); return; }
+    holdMark(p, p.status, to); p.status = to; render(); toast(`“${p.title}” pasó a ${to}${repOnly(p)}.`); return; }
   const jf = e.target.closest("[data-jf]"); if (jf){ jobUI[jf.dataset.jf] = jf.value; render(); return; }
   if (e.target.id === "jSearch"){ jobUI.q = e.target.value; render(); return; }
   if (e.target.id === "jPiece" && jobUI.form && jobUI.form.job.area === "CM"){ const j = jobUI.form.job; readJobForm(j); vidDefaults(j); render(); if (j.piece === OTRO) document.getElementById("jOtro")?.focus(); return; }
