@@ -3768,6 +3768,9 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
 @media (max-width:600px){.gcmfil.dgfil .gfil{flex:1 1 45%}.dgfil .gfil select.base{min-width:0;width:100%}}
 /* v344 · Campañas en carpetas (Planificación de Diseño y de CM) */
 .cfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:22px 14px;margin-top:18px}
+.cffil{margin:6px 0 4px}.cffil input[type=date].base{border:1px solid var(--line-3);background:var(--inner);color:var(--ink);font:inherit;font-size:13.5px;outline:none;padding:7px 10px;border-radius:12px;min-width:150px}
+.cffil input[type=date].base:focus{border-color:var(--cyan)}@media (max-width:600px){.cffil input[type=date].base{min-width:0;width:100%}}
+.cfopen .cffil{margin:0 0 12px}
 .cff{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"ico t" "n n" "k k" "d d";gap:6px 12px;align-items:center;text-align:left;font:inherit;color:inherit;cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:4px 16px 16px 16px;padding:16px 16px 14px;transition:border-color .15s,transform .15s}
 .cff::before{content:"";position:absolute;left:-1px;top:-12px;width:42%;height:13px;background:var(--panel);border:1px solid var(--line);border-bottom:0;border-radius:10px 10px 0 0}
 .cff:hover{border-color:rgba(251,191,36,.6);transform:translateY(-1px)}.cff:hover::before{border-color:rgba(251,191,36,.6)}
@@ -4750,7 +4753,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v345";
+const APP_VER = "v346";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -9537,7 +9540,7 @@ const CF_DEF = [
   { id:"verano", name:"Verano", brands:[], icon:"sun", kw:"verano" },
 ];
 let CAMP_FOLDERS = CF_DEF.map(c => ({ ...c, brands:[...c.brands] }));
-let cfUI = { open:null, form:null, old:false };
+let cfUI = { open:null, form:null, old:false, f:{} }; // f: los filtros de cada Planificación (dg / cm), v346
 const cfById = id => CAMP_FOLDERS.find(c => c.id === id);
 const cfPlain = t => pmPlain(t).replace(/\s+/g, " ").trim();
 const CF_RE = new Map();
@@ -9617,16 +9620,18 @@ function cfRow(it){
   const go = k === "job" ? "job:" + x.id : k === "post" ? "pub:post:" + x.id : k === "canal" ? "pub:canal:" + x.id : k === "act" ? "act:" + x.id : "com:" + x.id;
   return `<div class="row arow ago cfrow" data-ago="${esc(go)}" role="button" tabindex="0" title="Abrir"><span class="cfdate num">${dm(it.date)}</span><div class="grow"><div class="t">${esc(x.title || "(sin título)")}${it.auto ? ` <span class="cfauto" title="No tiene la campaña elegida: se encontró por el nombre">por el nombre</span>` : ""}</div><div class="s">${what}${who ? ` · ${esc(who)}` : ""}</div></div><span class="cfbr">${brands.map(brandTag).join("")}</span>${st}</div>`;
 }
-function cfFolder(c, list){
+function cfFolder(c, list, bar = ""){
   const fut = list.filter(it => it.date >= MONTH_FIRST()).sort((a, b) => a.date.localeCompare(b.date)), past = list.filter(it => it.date < MONTH_FIRST()).sort((a, b) => b.date.localeCompare(a.date));
   const block = l => cfGroups(cfArea()).map(([g, t, ic, sub]) => { const r = l.filter(it => cfGroup(it) === g); return r.length ? `<div class="cfsec"><h3>${icon(ic)} ${t} <span class="note">${r.length} · ${sub}</span></h3><div class="list">${r.map(cfRow).join("")}</div></div>` : ""; }).join("");
   const n = g => list.filter(it => cfGroup(it) === g).length, auto = list.filter(it => it.auto).length;
   return `<div class="cfopen"><div class="head"><button type="button" class="btn" data-cfback>${icon("arrow-left")} Todas las campañas</button>${cfCanEdit(c) ? `<div class="chips"><button type="button" class="btn sm" data-cfedit="${esc(c.id)}">${icon("pencil")} Editar</button><button type="button" class="btn sm danger" data-cfdel="${esc(c.id)}">${icon("trash-2")} Borrar</button></div>` : ""}</div>
     <div class="panel cfhead"><span class="cfico big">${icon(cfIcon(c))}</span><div class="grow"><h2>${esc(c.name)}</h2><p class="note">${esc(cfBrandTxt(c))}${pmRange(c.from, c.until) ? ` · ${pmRange(c.from, c.until)}` : ""}</p></div>
       <div class="cfkpis">${cfGroups(cfArea()).map(([g, t, ic]) => `<span><b>${n(g)}</b>${icon(ic)} ${g === "com" ? "Comercial" : g === "dg" ? "Diseño" : "CM"}</span>`).join("")}</div></div>
+    ${bar}
     ${auto ? `<p class="note">${icon("search")} ${auto === 1 ? "1 actividad está" : `${auto} actividades están`} acá <b>por el nombre</b> (dice “${esc(c.name)}” o algo parecido). Para dejarla fija o sacarla, abrila y elegí la campaña en el campo <b>Campaña</b>.</p>` : ""}
     ${list.length ? `${fut.length ? `<h3 class="cfwhen">${icon("calendar-days")} De ${monthName(MONTH_FIRST().slice(0, 7))} en adelante</h3>${block(fut)}` : `<p class="note">No hay nada de ${monthName(MONTH_FIRST().slice(0, 7))} en adelante.</p>`}
       ${past.length ? `<details class="cfpast"${cfUI.old || !fut.length ? " open" : ""}><summary>${icon("folder")} Anteriores (${past.length})</summary>${block(past)}</details>` : ""}`
+    : cfFOn() ? `<div class="panel"><div class="empty">No hay nada con estos filtros en esta campaña. <button type="button" class="linkish" data-cffclear>Limpiar filtros</button></div></div>`
     : `<div class="panel"><div class="empty">Todavía no hay nada de ${cfArea() === "dg" ? "Diseño gráfico" : "CM"} en esta campaña. Al cargar ${cfArea() === "dg" ? "un pedido de Diseño" : "una publicación, una historia, un contenido o una actividad"}, elegí <b>${esc(c.name)}</b> en el campo <b>Campaña</b> (o poné el nombre de la campaña en el título).</div></div>`}</div>`;
 }
 const MONTH_FIRST = () => (MONTH < CURRENT_MONTH ? MONTH : CURRENT_MONTH) + "-01";
@@ -9640,17 +9645,55 @@ function cfForm(){
     <p class="note" style="grid-column:1/-1;margin:0">${icon("search")} Lo que tenga el nombre de la campaña en el título entra solo; lo demás se elige en el campo <b>Campaña</b> del pedido o de la publicación.</p>
     <div class="chips" style="grid-column:1/-1;justify-content:flex-end"><button type="button" class="btn" data-cfcancel>Cancelar</button><button type="submit" class="btn primary">${icon("folder-open")} ${f.mode === "edit" ? "Guardar" : "Crear campaña"}</button></div></form>`;
 }
+// v346 · Filtros de Campañas: fecha, responsable, marca, tipo y estado. Se combinan, cada lista dice cuántos quedan y valen
+// en la lista de carpetas (los números de cada carpeta) y adentro de cada una. Cada Planificación (Diseño y CM) tiene los suyos.
+const CF_F0 = () => ({ per:"", from:"", to:"", who:"", brand:"", type:"", st:"" });
+const cfF = () => cfUI.f[cfArea()] || (cfUI.f[cfArea()] = CF_F0());
+const CF_PER = [["", "Todas las fechas"], ["mes", () => "De " + monthName(MONTH)], ["semana", "Esta semana"], ["prox", "De hoy en adelante"], ["pasado", "Ya pasadas"], ["rango", "Elegir fechas…"]];
+function cfMeta(it){
+  if (it.m) return it.m; const x = it.x, k = it.kind;
+  const who = k === "job" || k === "act" ? crewOf(x.owner, x) : k === "post" || k === "canal" ? crewOf(x.cm, x) : [x.byName || "Comercial"];
+  const brands = k === "job" ? jobBrands(x) : k === "pc" ? (x.brands || []) : [x.brand].filter(Boolean);
+  const type = k === "job" ? x.piece || (x.area === "CM" ? "Video" : "Contenido gráfico") : k === "post" ? (x.format === "Historia" ? "Historia" : x.format || "Publicación") : k === "canal" ? "Canal de WhatsApp" : k === "act" ? actType(x.type).n : "Pedido de Comercial";
+  return (it.m = { who:who.length ? who : ["Sin asignar"], brands, type, st:k === "pc" ? pcSt(x) : x.status || "Pendiente" });
+}
+const CF_FIL = [["who", "user-round", "Responsable", "Todos los responsables", it => cfMeta(it).who], ["brand", "tag", "Marca", "Todas las marcas", it => cfMeta(it).brands],
+  ["type", "shapes", "Tipo de trabajo", "Todos los tipos", it => [cfMeta(it).type]], ["st", "list-checks", "Estado", "Todos los estados", it => [cfMeta(it).st]]];
+function cfPerOk(d, f){
+  if (!f.per) return true; if (f.per === "mes") return d.slice(0, 7) === MONTH;
+  if (f.per === "semana"){ const w = mondayOf(TODAY); return d >= w && d <= addDays(w, 6); }
+  if (f.per === "prox") return d >= TODAY; if (f.per === "pasado") return d < TODAY;
+  return (!f.from || d >= f.from) && (!f.to || d <= f.to);
+}
+const cfFOk = (it, skip) => { const f = cfF(); return (skip === "per" || cfPerOk(it.date, f)) && CF_FIL.every(([k, , , , g]) => k === skip || !f[k] || g(it).includes(f[k])); };
+const cfFOn = () => { const f = cfF(); return !!(f.per || CF_FIL.some(([k]) => f[k])); };
+function cfFilBar(items){
+  const f = cfF();
+  const sel = ([k, ic, lab, all, g]) => { const others = items.filter(it => cfFOk(it, k)), vals = new Map();
+    others.forEach(it => g(it).forEach(v => v && vals.set(v, (vals.get(v) || 0) + 1))); if (f[k] && !vals.has(f[k])) vals.set(f[k], 0);
+    return `<label class="gfil"><span>${icon(ic)} ${lab}</span><select class="base${f[k] ? " on" : ""}" data-cff="${k}" aria-label="${lab}"><option value="">${all} (${others.length})</option>${[...vals.keys()].sort((a, b) => a.localeCompare(b, "es")).map(v => `<option value="${esc(v)}" ${v === f[k] ? "selected" : ""}>${esc(v)} (${vals.get(v)})</option>`).join("")}</select></label>`; };
+  const po = items.filter(it => cfFOk(it, "per")), pn = k => k === "rango" ? "" : ` (${k ? po.filter(it => cfPerOk(it.date, { per:k })).length : po.length})`;
+  const per = `<label class="gfil"><span>${icon("calendar-days")} Fecha</span><select class="base${f.per ? " on" : ""}" data-cff="per" aria-label="Fecha">${CF_PER.map(([k, l]) => `<option value="${k}" ${k === f.per ? "selected" : ""}>${typeof l === "function" ? l() : l}${pn(k)}</option>`).join("")}</select></label>
+    ${f.per === "rango" ? `<label class="gfil"><span>Desde</span><input class="base" type="date" data-cffd="from" value="${esc(f.from)}" aria-label="Desde"></label><label class="gfil"><span>Hasta</span><input class="base" type="date" data-cffd="to" value="${esc(f.to)}" aria-label="Hasta"></label>` : ""}`;
+  const n = items.filter(it => cfFOk(it)).length;
+  return `<div class="gcmfil dgfil cffil" role="group" aria-label="Filtros de las campañas">${per}${CF_FIL.map(sel).join("")}${cfFOn() ? `<button type="button" class="btn sm" data-cffclear>${icon("x")} Limpiar filtros</button>` : ""}<span class="note gcount">${cfFOn() ? `${n} de ${items.length} actividades` : `${items.length} ${items.length === 1 ? "actividad" : "actividades"}`}</span></div>`;
+}
+document.addEventListener("change", e => {
+  const s = e.target.closest?.("[data-cff]"); if (s){ const f = cfF(); f[s.dataset.cff] = s.value; if (s.dataset.cff === "per" && s.value !== "rango"){ f.from = ""; f.to = ""; } render(); return; }
+  const d = e.target.closest?.("[data-cffd]"); if (d){ cfF()[d.dataset.cffd] = d.value; render(); }
+});
+document.addEventListener("click", e => { if (!e.target.closest("[data-cffclear]")) return; Object.assign(cfF(), CF_F0()); render(); });
 function cfView(){
   if (cfUI.form) return cfForm();
-  const items = cfItems(), by = new Map(); items.forEach(it => { const a = by.get(it.c.id) || []; a.push(it); by.set(it.c.id, a); });
-  const op = cfUI.open && cfById(cfUI.open); if (op) return cfFolder(op, by.get(op.id) || []); cfUI.open = null;
+  const all0 = cfItems(), items = all0.filter(it => cfFOk(it)), by = new Map(); items.forEach(it => { const a = by.get(it.c.id) || []; a.push(it); by.set(it.c.id, a); });
+  const op = cfUI.open && cfById(cfUI.open); if (op){ const base = all0.filter(it => it.c.id === op.id); return cfFolder(op, base.filter(it => cfFOk(it)), cfFilBar(base)); } cfUI.open = null;
   const info = c => { const l = by.get(c.id) || [], next = l.map(it => it.date).filter(d => d >= TODAY).sort()[0], last = l.map(it => it.date).filter(d => d < TODAY).sort().pop(); return { c, l, next, last }; };
   const all = CAMP_FOLDERS.map(info).sort((a, b) => (!!b.next - !!a.next) || (a.next && b.next ? a.next.localeCompare(b.next) : 0) || (!!b.l.length - !!a.l.length) || String(b.last || "").localeCompare(String(a.last || "")));
   const card = ({ c, l, next, last }) => `<button type="button" class="cff${l.length ? "" : " empty"}" data-cfopen="${esc(c.id)}"><span class="cfico">${icon(cfIcon(c))}</span><span class="cft"><b>${esc(c.name)}</b><small>${esc(cfBrandTxt(c))}</small></span>
     <span class="cfn"><b>${l.length}</b> ${l.length === 1 ? "actividad" : "actividades"}</span>
     <span class="cfk">${cfGroups(cfArea()).map(([g, , ic]) => { const n = l.filter(it => cfGroup(it) === g).length; return n ? `<i>${icon(ic)}${n}</i>` : ""; }).join("")}</span>
-    <span class="cfd">${next ? `Próxima: ${dm(next)}` : last ? `Última: ${dm(last)}` : "Sin actividades todavía"}</span></button>`;
-  return `<div class="cfgrid">${all.map(card).join("")}${cfCanNew() ? `<button type="button" class="cff cfadd" data-cfnew><span class="cfico">${icon("plus")}</span><span class="cft"><b>Nueva campaña</b><small>Para agrupar sus pedidos y publicaciones</small></span></button>` : ""}</div>
+    <span class="cfd">${next ? `Próxima: ${dm(next)}` : last ? `Última: ${dm(last)}` : cfFOn() ? "Nada con estos filtros" : "Sin actividades todavía"}</span></button>`;
+  return `${cfFilBar(all0)}<div class="cfgrid">${all.map(card).join("")}${cfCanNew() ? `<button type="button" class="cff cfadd" data-cfnew><span class="cfico">${icon("plus")}</span><span class="cft"><b>Nueva campaña</b><small>Para agrupar sus pedidos y publicaciones</small></span></button>` : ""}</div>
     <p class="note cfnote">${icon("info")} ${cfArea() === "dg" ? `Acá están solo los pedidos de <b>Diseño gráfico</b> de cada campaña (redes, cartelería, web y pantallas${can("pedcom") ? ", y los pedidos de Comercial que se pasaron a Diseño" : ""}). Lo de CM está en la Planificación de CM.` : `Acá está solo lo de <b>Community Manager</b> de cada campaña (publicaciones, historias, Canal de WhatsApp, contenidos, videos y actividades${can("pedcom") ? ", y los pedidos de Comercial" : ""}). Los pedidos de Diseño están en la Planificación de Diseño gráfico.`} Entra lo que tiene la campaña elegida en el campo <b>Campaña</b> y lo que la nombra en el título.</p>`;
 }
 document.addEventListener("click", e => {
