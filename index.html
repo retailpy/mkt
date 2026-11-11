@@ -4518,7 +4518,8 @@ document.addEventListener("change", e => { if (e.target.id !== "jPartsOn") retur
 // aprobarla pasa a la publicación de la CM (solo la de esa parte). Si se corrige después, se corrige también en su publicación.
 function partShareSet(j, k, v){
   const q = (j.parts || [])[k]; if (!q) return; const old = shareClean(q.share), nm = partName(q, k); v = shareClean(v); q.share = v;
-  const L = shareList(j).filter(x => shareClean(x.p)).map(x => ({ ...x })), i = L.findIndex(x => x.n === nm || (old && shareClean(x.p) === old));
+  const L = shareList(j).filter(x => shareClean(x.p)).map(x => ({ ...x })), same = x => (x.n || "").trim().toLowerCase() === nm.toLowerCase() || shareClean(x.p) === v || (old && shareClean(x.p) === old);
+  const i = L.findIndex(same);
   if (i >= 0) L[i] = { ...L[i], n:nm, p:v }; else L.push({ n:nm, p:v });
   j.shares = L; j.share = L[0]?.p || "";
   if (q.ok) partPubs(q).forEach(x => { x.shares = [{ n:nm, p:v }]; x.share = v; });
@@ -4541,7 +4542,7 @@ function partsBlock(j){
       <button type="button" class="btn sm" data-shcopy="${esc(rt)}" ${rt ? "" : "disabled"}>${icon("copy")} Copiar link</button><button type="button" class="btn sm" data-shopen="${esc(rt)}" ${rt ? "" : "disabled"}>${icon("arrow-up-right")} Abrir</button></div>` : "";
     return `<li class="jpart${q.ok ? " ok" : " cur"}"><span class="jpno">${q.ok ? icon("check") : k + 1}</span><div class="grow"><b>${esc(partName(q, k))}</b>${q.last ? ` <span class="partlast">${icon("flag")} Último envío</span>` : ""}<small>${info}</small></div>
       <div class="chips">${st}${pubs.map(x => `<button type="button" class="btn sm" data-pubopen="${x.channel ? "canal" : "post"}:${esc(x.id)}">${icon("external-link")} Ver publicación${pubs.length > 1 ? ` (${esc(x.brand)})` : ""}</button>`).join("")}</div>${rtRow}</li>`; };
-  const next = !done && o < 0 ? `<li class="jpart next"><span class="jpno">${icon("plus")}</span><div class="grow"><b>${P.length ? "Próxima parte" : "Primera parte"}</b><small>${esc(firstName(j.owner))} la sube en Boceto, le pone el nombre (ej.: Carnes) y toca “Enviar parte”, o “Último envío” si es la última.</small></div></li>` : "";
+  const next = !done && o < 0 ? `<li class="jpart next"><span class="jpno">${icon("plus")}</span><div class="grow"><b>${P.length ? "Próxima parte" : "Primera parte"}</b><small>${esc(firstName(j.owner))} pone el nombre (ej.: Carnes) y la ruta de la compartida en Boceto y toca “Enviar parte”, o “Último envío” si es la última.</small></div></li>` : "";
   return `<section class="panel jp-sec jp-parts"><h2 class="pmh">${pmIco("layers")}Partes <span class="note" style="font-weight:500">· ${done ? `terminado: ${P.length} ${P.length === 1 ? "parte" : "partes"}` : `${n} ${n === 1 ? "aprobada" : "aprobadas"}${o >= 0 ? " · 1 esperando" : ""}`}</span></h2>
     <ol class="jpartl">${P.map(row).join("")}${next}</ol>
     <p class="note" style="margin:0">${icon("info")} Cada parte se envía con su nombre y Admin total la aprueba al verla: en ese momento la CM elegida ya la puede subir a redes. El pedido termina cuando se aprueba el <b>Último envío</b>.</p></section>`;
@@ -4555,7 +4556,7 @@ function partSendBox(j){
     <label for="bkPartRt-${id}" class="jll">${icon("folder-symlink")} Ruta de la compartida de esta parte * <span class="note" style="font-weight:400">(la carpeta del servidor donde está; al aprobarla, la CM la abre desde su publicación)</span></label>
     <input class="base" id="bkPartRt-${id}" spellcheck="false" autocomplete="off" value="${esc(shareClean(prevRt))}" placeholder="Pegar la ruta, ej.: \\\\retsvrfs01\\Marketing\\STOCK\\2026\\Ofertas\\Carnes">
     <div class="chips"><button type="button" class="btn primary" data-partsend="${id}|">${icon("send")} Enviar parte</button><button type="button" class="btn lastbtn" data-partsend="${id}|last">${icon("flag")} Último envío</button></div>
-    <span class="note">Subí la parte arriba (podés elegir varias imágenes juntas), poné su nombre y enviala: Admin total la ve y la aprueba, y la CM ya la puede subir. En la última, tocá <b>Último envío</b> (al aprobarla, el pedido termina).</span></div>`;
+    <span class="note">Con el <b>nombre</b> y la <b>ruta de la compartida</b> alcanza para enviarla (el boceto de arriba es opcional: si lo subís, Admin total lo ve acá). Admin total la aprueba y la CM ya la puede subir con esa ruta. En la última, tocá <b>Último envío</b> (al aprobarla, el pedido termina).</span></div>`;
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-partsend]"); if (!b) return;
@@ -4565,7 +4566,6 @@ document.addEventListener("click", e => {
   const rti = document.getElementById("bkPartRt-" + id), route = shareClean(rti?.value);
   if (!route){ rti?.focus(); return toast("Pegá la ruta de la compartida de esta parte (la carpeta donde está), así la CM la puede abrir al publicar."); }
   const k = (j.parts || []).length;
-  if (!(j.bocetos || []).some(x => (x.pt || 1) === k + 1)) return toast("Primero subí la parte en Boceto (las imágenes de esta parte).");
   if ((j.parts || []).some(q => (q.name || "").toLowerCase() === name.toLowerCase())) return toast(`Ya hay una parte “${name}”: poné otro nombre.`);
   if (last && !confirmTap(b, "plast:" + j.id, "¿Es la última? Tocá de nuevo")) return;
   (j.parts = j.parts || []).push({ name, ...(last ? { last:true } : {}), sentAt:TODAY, by:viewer.name }); j.partsOn = true;
@@ -4927,7 +4927,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v351";
+const APP_VER = "v352";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
