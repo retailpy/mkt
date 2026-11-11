@@ -353,6 +353,12 @@ html.navmini .nav-group.closed > a{display:flex}
 .bkthumbs .bkimg{width:76px;height:76px;max-height:none}.bkthumbs .bkimg img{height:100%;max-height:none;object-fit:cover}
 .bkthumbs .bkfile{width:76px;min-height:76px;padding:6px;font-size:11px}.bkthumbs .bkfile svg{width:18px;height:18px}
 .bkup{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+/* v353 · Entregas a tiempo por persona (Trabajo del equipo) */
+.otpanel h2{display:flex;align-items:center;gap:8px}.otpanel h2 svg{width:20px;height:20px;color:#38bdf8}
+.otsum{display:flex;gap:8px;align-items:flex-start;margin:4px 0 8px;padding:10px 12px;border-radius:12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.35);color:var(--ink)}.otsum svg{flex:none;width:17px;height:17px;margin-top:2px;color:#f87171}
+.otsum.ok{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.35)}.otsum.ok svg{color:#34d399}
+.otbar{display:inline-block;vertical-align:middle;width:90px;height:8px;border-radius:999px;background:var(--inner);overflow:hidden;margin-right:8px}.otbar i{display:block;height:100%;border-radius:999px}
+.ottab td:nth-child(6){white-space:nowrap}.ottab tr.otbad td:first-child{box-shadow:inset 3px 0 0 #ef4444}.ottab td.down{color:#f87171;font-weight:700}
 /* v348 · pedidos por partes */
 .partchip{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:#38bdf8;border:1px solid rgba(56,189,248,.45);border-radius:999px;padding:2px 9px;white-space:nowrap;vertical-align:1px}.partchip svg{width:13px;height:13px}
 .jp-parts .partbar{height:8px;border-radius:999px;background:var(--inner);overflow:hidden;margin:4px 0 12px}.jp-parts .partbar span{display:block;height:100%;background:linear-gradient(90deg,#10b981,#34d399);border-radius:999px}
@@ -4927,7 +4933,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v352";
+const APP_VER = "v353";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -11311,6 +11317,26 @@ function teamWork(m = MONTH){
   RECURRING.filter(r => seesBrand(r.brand)).forEach(r => { for (let d = 1; d <= lastDay(m); d++){ const c = m + "-" + String(d).padStart(2, "0"); if (recOn(r, c)){ const st = recSt(r, c); add("rec", r, r.owner, c, ["Publicado", "Pautado", "Hecho"].includes(st), r.title, r.brand, st); } } });
   return out;
 }
+// v353 · Entregas a tiempo (las mismas reglas que el informe de Diseño y el de cada CM): un pedido (Diseño, contenido o video) está a
+// tiempo si se aprobó o terminó hasta su fecha límite; una publicación, historia o Canal, si quedó programada o publicada hasta su fecha
+// (doneAt). Vencido: la fecha ya pasó y no está hecho. Lo que todavía no vence, lo que está en pausa y lo hecho sin fecha anotada
+// (actividades, repetitivos y publicaciones de antes de que se anotara) no cuentan para el %.
+const twDays = (a, b) => Math.max(0, Math.round((new Date(b + "T12:00") - new Date(a + "T12:00")) / 864e5));
+const twAt = x => ["dg", "vid", "cont"].includes(x.k) ? x.it.delivered || x.it.approved || null : ["pub", "hist", "canal"].includes(x.k) ? x.it.doneAt || null : null;
+const twDone = x => ["pub", "hist", "canal"].includes(x.k) ? DONE_PUB.includes(x.it.status) : x.done; // la publicación programada a tiempo ya está entregada (como en el informe de cada CM)
+function twTime(x){
+  if (!x.date || onHold(x.it)) return "pend";
+  if (twDone(x)){ const at = twAt(x); return at ? (at <= x.date ? "ok" : "late") : "nd"; }
+  return x.date < TODAY ? "over" : "pend";
+}
+const twLateDays = x => { const t = twTime(x); return t === "late" ? twDays(x.date, twAt(x)) : t === "over" ? twDays(x.date, TODAY) : 0; };
+function twOnTime(l){
+  const r = { ok:0, late:0, over:0, nd:0, pend:0, days:0 }; l.forEach(x => { const t = twTime(x); r[t]++; r.days += twLateDays(x); });
+  r.ev = r.ok + r.late + r.over; r.pct = r.ev ? Math.round(r.ok / r.ev * 100) : null; r.bad = r.late + r.over; r.avg = r.bad ? Math.round(r.days / r.bad * 10) / 10 : 0; return r;
+}
+const twPctCol = p => p == null ? "#64748b" : p >= 80 ? "#10b981" : p >= 60 ? "#f59e0b" : "#ef4444";
+const twPlazo = x => { const t = twTime(x), d = twLateDays(x);
+  return t === "ok" ? `<span class="up">a tiempo</span>` : t === "late" ? `<span class="down">con atraso (${d} ${d === 1 ? "día" : "días"})</span>` : t === "over" ? `<span class="down">vencido hace ${d} ${d === 1 ? "día" : "días"}</span>` : t === "nd" ? `<span class="note">hecho</span>` : `<span class="note">${onHold(x.it) ? "en pausa" : "todavía no vence"}</span>`; };
 function repEquipo(){
   const w = teamWork(), pw = teamWork(prevMonth(MONTH)), done = w.filter(x => x.done).length, dgN = w.filter(x => x.k === "dg").length, pc = (a, b) => b ? Math.round(a / b * 100) : 0;
   const kinds = TW_KINDS.filter(([k]) => w.some(x => x.k === k) || ["dg", "pub", "hist", "canal", "vid", "cont"].includes(k));
@@ -11318,9 +11344,14 @@ function repEquipo(){
     .sort((a, b) => (a.n === "Sin asignar") - (b.n === "Sin asignar") || b.l.length - a.l.length);
   const two = w.filter(x => x.k === "dg" && jobPubsOf(x.it).length), twoPubs = w.filter(x => (x.k === "pub" || x.k === "hist" || x.k === "canal") && x.from && jobById(x.from)?.area === "Diseño").length;
   const kn = k => (TW_KINDS.find(x => x[0] === k) || [k, k])[1], shared = w.filter(x => x.crew.length > 1).length;
+  const OT = twOnTime(w), PT = people.filter(x => x.n !== "Sin asignar").map(x => ({ ...x, t:twOnTime(x.l) }));
+  const ptSorted = PT.slice().sort((a, b) => (!b.t.ev - !a.t.ev) || (a.t.ev && b.t.ev ? a.t.pct - b.t.pct || b.t.bad - a.t.bad : 0) || a.n.localeCompare(b.n));
+  const lates = PT.filter(x => x.t.bad).sort((a, b) => b.t.bad - a.t.bad || a.t.pct - b.t.pct), clean = PT.filter(x => x.t.ev && !x.t.bad);
+  const nm = x => esc(x.n.split(" ").slice(0, 2).join(" "));
   return `<div class="grid kpis">
     <div class="panel kpi"><div class="l">Trabajos del equipo</div><div class="n">${w.length}</div>${cmpTxt(w.length, pw.length)}</div>
     <div class="panel kpi"><div class="l">Terminados</div><div class="n ${pc(done, w.length) >= 80 ? "up" : "warn"}">${done}</div><div class="d">el ${pc(done, w.length)}% del total</div></div>
+    <div class="panel kpi"><div class="l">Entregas a tiempo</div><div class="n" style="color:${twPctCol(OT.pct)}">${OT.pct == null ? "—" : OT.pct + "%"}</div><div class="d">${OT.ev ? `${OT.ok} de ${OT.ev} · ${OT.bad} con atraso` : "todavía no venció nada"}</div></div>
     <div class="panel kpi"><div class="l">Diseño gráfico</div><div class="n">${dgN}</div><div class="d">pedidos de diseño</div></div>
     <div class="panel kpi"><div class="l">Community Manager</div><div class="n">${w.length - dgN}</div><div class="d">publicaciones, canal, videos, contenidos y actividades</div></div>
   </div>
@@ -11333,8 +11364,18 @@ function repEquipo(){
     ${people.map(x => `<tr><td><b style="color:#fff">${esc(x.n)}</b></td><td>${x.pp ? esc(cargoOf(x.pp)) : "—"}</td>${kinds.map(([k]) => { const n = x.l.filter(y => y.k === k).length; return `<td class="r num">${n || ""}</td>`; }).join("")}<td class="r num"><b>${x.l.length}</b></td><td class="r num">${x.d}</td><td class="r num">${pc(x.d, x.l.length)}%</td></tr>`).join("")}
     <tr class="twtot"><td><b>Total del equipo</b></td><td></td>${kinds.map(([k]) => `<td class="r num"><b>${w.filter(y => y.k === k).length}</b></td>`).join("")}<td class="r num"><b>${w.length}</b></td><td class="r num"><b>${done}</b></td><td class="r num"><b>${pc(done, w.length)}%</b></td></tr>
   </tbody></table></div></div>
-  <details class="panel twall"><summary><h2>Todos los trabajos del mes</h2><span class="note">${w.length} · tocá para ver la lista completa</span></summary><div class="tw"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Trabajo</th><th>Marca</th><th>Quién lo hace</th><th>Estado</th><th>Sale del pedido</th></tr></thead><tbody>
-    ${w.slice().sort((a, b) => String(a.date).localeCompare(String(b.date)) || a.k.localeCompare(b.k)).map(x => `<tr><td class="num">${x.date ? dm(x.date) : "—"}</td><td>${esc(TW_SHORT[x.k])}</td><td>${esc(x.title)}</td><td>${esc(x.brand)}</td><td>${esc(x.crew.join(" + "))}</td><td>${esc(x.st)}${x.done ? " ✓" : ""}</td><td>${esc(x.from)}</td></tr>`).join("")}
+  <div class="panel otpanel"><h2>${icon("timer")} Entregas a tiempo, por persona</h2>
+    <p class="otsum">${lates.length ? `${icon("triangle-alert")}<span><b>Se atrasan:</b> ${lates.map(x => `${nm(x)} <span class="note">(${x.t.bad}: ${[x.t.late ? `${x.t.late} con atraso` : "", x.t.over ? `${x.t.over} ${x.t.over === 1 ? "vencido" : "vencidos"}` : ""].filter(Boolean).join(", ")})</span>`).join(" · ")}</span>` : `${icon("badge-check")}<span>${OT.ev ? "<b>Nadie se atrasó</b> en lo que ya venció este mes." : "Todavía no venció nada este mes."}</span>`}</p>
+    ${clean.length ? `<p class="otsum ok">${icon("badge-check")}<span><b>Todo a tiempo:</b> ${clean.map(nm).join(" · ")}</span></p>` : ""}
+    <div class="tw"><table class="ottab"><thead><tr><th>Persona</th><th>Área</th><th class="r">A tiempo</th><th class="r">Con atraso</th><th class="r">Vencidos sin hacer</th><th>% a tiempo</th><th class="r">Atraso promedio</th></tr></thead><tbody>
+      ${ptSorted.map(x => `<tr${x.t.bad ? ` class="otbad"` : ""}><td><b style="color:var(--ink)">${esc(x.n)}</b></td><td>${x.pp ? esc(cargoOf(x.pp)) : "—"}</td><td class="r num">${x.t.ok || ""}</td><td class="r num${x.t.late ? " down" : ""}">${x.t.late || ""}</td><td class="r num${x.t.over ? " down" : ""}">${x.t.over || ""}</td>
+        <td>${x.t.ev ? `<span class="otbar"><i style="width:${x.t.pct}%;background:${twPctCol(x.t.pct)}"></i></span><b class="num" style="color:${twPctCol(x.t.pct)}">${x.t.pct}%</b> <span class="note">de ${x.t.ev}</span>` : `<span class="note">todavía no venció nada</span>`}</td>
+        <td class="r num">${x.t.bad ? `${String(x.t.avg).replace(".", ",")} ${x.t.avg === 1 ? "día" : "días"}` : ""}</td></tr>`).join("")}
+      <tr class="twtot"><td><b>Total del equipo</b></td><td></td><td class="r num"><b>${OT.ok}</b></td><td class="r num"><b>${OT.late}</b></td><td class="r num"><b>${OT.over}</b></td><td><b class="num">${OT.pct == null ? "—" : OT.pct + "%"}</b></td><td class="r num"><b>${OT.bad ? `${String(OT.avg).replace(".", ",")} ${OT.avg === 1 ? "día" : "días"}` : ""}</b></td></tr>
+    </tbody></table></div>
+    <p class="note" style="margin:8px 0 0">${icon("info")} <b>A tiempo:</b> el pedido se aprobó (o terminó) hasta su fecha límite; la publicación, historia o Canal quedó programada o publicada hasta su fecha. <b>Con atraso:</b> se hizo después. <b>Vencido:</b> la fecha ya pasó y no está hecho. Lo que todavía no vence o está en pausa no cuenta${OT.nd ? `; tampoco ${OT.nd === 1 ? "1 trabajo hecho" : `${OT.nd} trabajos hechos`} sin fecha de entrega anotada (actividades y algunos de antes)` : ""}. Si lo hacen varias personas, cuenta para cada una.</p></div>
+  <details class="panel twall"><summary><h2>Todos los trabajos del mes</h2><span class="note">${w.length} · tocá para ver la lista completa</span></summary><div class="tw"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Trabajo</th><th>Marca</th><th>Quién lo hace</th><th>Estado</th><th>Plazo</th><th>Sale del pedido</th></tr></thead><tbody>
+    ${w.slice().sort((a, b) => String(a.date).localeCompare(String(b.date)) || a.k.localeCompare(b.k)).map(x => `<tr><td class="num">${x.date ? dm(x.date) : "—"}</td><td>${esc(TW_SHORT[x.k])}</td><td>${esc(x.title)}</td><td>${esc(x.brand)}</td><td>${esc(x.crew.join(" + "))}</td><td>${esc(x.st)}${x.done ? " ✓" : ""}</td><td>${twPlazo(x)}</td><td>${esc(x.from)}</td></tr>`).join("")}
   </tbody></table></div></details>`;
 }
 // v314 · Análisis de redes (botón “Análisis” del Informe mensual): vista corta y visual, por marca y al final “Todas las marcas”.
