@@ -29,6 +29,16 @@ async function config() {
   return data;
 }
 const state = async (key: string) => (await db.from("app_state").select("data").eq("key", key).maybeSingle()).data?.data;
+// v355: solo los elementos que hacen falta, por id (función public.state_items). Antes se leía la lista entera en cada
+// aviso (s:jobs ~415 KB, s:posts ~330 KB) para buscar uno. Si la función no está en la base, se lee la lista como antes.
+async function items(key: string, ids: unknown[]): Promise<any[]> {
+  const want = [...new Set(ids.filter((x) => x !== null && x !== undefined && x !== "").map(String))];
+  if (!want.length) return [];
+  const { data, error } = await db.rpc("state_items", { p_key: key, p_ids: want });
+  if (!error && Array.isArray(data)) return data;
+  const all = await state(key);
+  return Array.isArray(all) ? all.filter((x: any) => want.includes(String(x?.id))) : [];
+}
 const short = (t: string, n = 120) => (t.length > n ? t.slice(0, n - 1) + "…" : t);
 const dm = (d: string) => (/^\d{4}-\d{2}-\d{2}/.test(d || "") ? `${d.slice(8, 10)}/${d.slice(5, 7)}` : "");
 const isDnd = (pr: any, now: number) => pr?.st === "dnd" && pr?.until && new Date(pr.until).getTime() > now;
@@ -61,10 +71,10 @@ async function jobPush(cfg: any, items: any[]) {
   if (!list.length) return json({ ok: true, skipped: "sin avisos" });
   const people: any[] = (await state("s:PEOPLE")) || [];
   const presence: Record<string, any> = (await state("s:PRESENCE")) || {};
-  const jobs: any[] = (await state("s:jobs")) || [];
-  const needPosts = list.some((n) => n.type === "pub" || n.type === "listo" || n.copy);
-  const posts: any[] = needPosts ? (await state("s:posts")) || [] : [];
-  const canal: any[] = needPosts ? (await state("s:CHANNEL_POSTS")) || [] : [];
+  const jobs: any[] = await items("s:jobs", list.map((n) => n.job));
+  const needPosts = list.filter((n) => (n.type === "pub" || n.type === "listo" || n.copy) && n.post);
+  const posts: any[] = await items("s:posts", needPosts.filter((n) => !n.canal).map((n) => n.post));
+  const canal: any[] = await items("s:CHANNEL_POSTS", needPosts.filter((n) => n.canal).map((n) => n.post));
   const now = Date.now();
   let sent = 0, admins: string[] | null = null;
   for (const n of list) {
@@ -106,7 +116,7 @@ async function jobPush(cfg: any, items: any[]) {
       head = n.to === "admin" ? `${wn || "Alguien"} comentó en un trabajo` : "Admin total comentó en tu trabajo";
       body = n.text ? `“${short(String(n.text), 140)}”` : brands;
     } else if (n.type === "sug") {
-      const x = ((await state("s:SUGGESTIONS")) || []).find((y: any) => y.id === n.sug);
+      const x = (await items("s:SUGGESTIONS", [n.sug])).find((y: any) => String(y.id) === String(n.sug));
       title = x?.topic || ""; body = x ? (x.anon ? "Anónima" : "De " + (people.find((p) => p.id === x.author)?.name || "alguien del equipo")) : ""; go = "sugerencias";
     } else if (n.type === "drive") {
       const w = people.find((x) => x.name === n.who), wn = w?.nick || String(n.who || "").split(" ")[0];

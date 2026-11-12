@@ -4933,7 +4933,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v354";
+const APP_VER = "v355";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -6053,8 +6053,11 @@ function pTVRedes(){
 }
 let dashBrand = "Superseis";
 // Las publicaciones de Instagram se piden solas si tienen más de 20 horas (una vez por sesión; Admin total, Admin o CM).
+// v355: solo con la sesión ya cargada (enterApp.done). Antes, al abrir la página se dibujaba el Dashboard antes de saber
+// quién entró y sin los datos (sin fecha de las publicaciones) y se pedían a Meta de nuevo en cada apertura, de cualquier
+// persona: s:META_POSTS (775 KB) se reescribía ~57 veces por día y todos los dispositivos lo volvían a bajar.
 function postsAuto(){
-  if (postsAuto.done || !canMetaRefresh() || metaBusy.publicaciones || /^(localhost|127\.)/.test(location.hostname)) return;
+  if (!enterApp.done || postsAuto.done || !canMetaRefresh() || metaBusy.publicaciones || /^(localhost|127\.)/.test(location.hostname)) return;
   const u = postsUpdated(); if (u && Date.now() - new Date(u) < 20 * 3600e3) return;
   postsAuto.done = true; setTimeout(() => metaRefresh("publicaciones", "Publicaciones"), 600);
 }
@@ -17872,7 +17875,7 @@ const EVENTOS_PY = [[/d[ií]a del trabajador|1 de mayo|labou?r day/i, [4]], [/d[
 function fueraDeTemporada(txt){ const m = new Date().getMonth(), ok = [m, (m + 1) % 12, (m + 2) % 12]; return EVENTOS_PY.some(([re, ms]) => re.test(txt) && !ms.some(x => ok.includes(x))); }
 // Instagram de los supermercados de referencia: si no hay posteos o tienen más de 20 horas, se piden solos (una vez por sesión).
 function refsAuto(){
-  if (refsAuto.done || !canMetaRefresh() || metaBusy.referentes || /^(localhost|127\.)/.test(location.hostname)) return; // en una copia local no hay funciones /api
+  if (!enterApp.done || refsAuto.done || !canMetaRefresh() || metaBusy.referentes || /^(localhost|127\.)/.test(location.hostname)) return; // en una copia local no hay funciones /api
   const age = META_REFS.updated ? Date.now() - new Date(META_REFS.updated) : Infinity, err = META_REFS.errorAt ? Date.now() - new Date(META_REFS.errorAt) : Infinity;
   if (age < 20 * 3600e3 || err < 6 * 3600e3) return;
   refsAuto.done = true; setTimeout(() => metaRefresh("referentes", "Visuales"), 400);
