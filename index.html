@@ -4947,7 +4947,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v357";
+const APP_VER = "v358";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -9283,7 +9283,7 @@ document.addEventListener("click", e => {
 // v210/v211 · En el pedido de Diseño, Admin total puede asignar (opcional) qué CM lo publica y cuándo. A la CM le llega
 // enseguida, aunque el diseño esté en proceso: nombre, tipo, dónde y fecha de publicación (o “sin definir”); con fecha,
 // se le carga en su calendario. La ruta de la compartida la ve recién cuando se aprueba. Se puede cambiar cuando quiera.
-const jobPubsOf = j => (j?.pubs || (j?.pub ? [j.pub] : [])).map(r => r.canal ? canalById(r.id) : postById(r.id)).filter(Boolean);
+const jobPubsOf = j => (j?.pubs || (j?.pub ? [j.pub] : [])).map(r => r.canal ? canalById(r.id) : postById(r.id)).filter(x => x && !(x.channel && !brandHasCanal(x.brand))); // v358: sin Canal de Delimarket
 const seesPubDate = () => ["Admin total", "CM"].includes(viewer?.role); // la fecha de publicación la ven Admin total y CM (Diseño, no)
 const jobApproved = j => !!j && (!!j.approved || isFin(j));
 const pubFmtLabel = f => f === "Canal" ? "Canal de WhatsApp" : f === POST_HIST ? "Post + Historia" : f;
