@@ -4947,7 +4947,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v358";
+const APP_VER = "v359";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -10788,9 +10788,18 @@ const TV_TEAM_BASE = [{ cover:true, icon:"📅", label:"Hoy" }, { months:true, i
 // v273: solo esas tres (sin “Otras marcas”, pedido de Admin total).
 // v284: la de Diseño gráfico arranca con una pantalla “General” (las tres marcas juntas, con tarjetas más chicas para que
 // entren más) y después sigue por marca.
+// v359: si las personas de un área no entran en una fila (tarjetas de 230 px como mínimo, como tvFit), su pantalla se parte
+// en varias: “Diseño gráfico (1 de 2)” y “(2 de 2)”, repartidas parejo. Antes quedaba una segunda fila que no entraba en la
+// pantalla (con 5 diseñadores, Laura y Arnaldo no se veían).
+const tvPerRow = () => { const st = document.getElementById("ttStage"), w = st?.clientWidth || Math.max(320, innerWidth - 80), gap = Math.min(28, Math.max(16, innerWidth * .014));
+  return Math.max(1, Math.floor((w + gap) / (230 + gap))); };
+const tvRoleSlides = sl => { if (!sl.role) return [sl]; const per = tvPerRow(); if (per < 2) return [sl]; // en el celular (una por fila) la página se desliza: todas juntas, como antes
+  const n = PEOPLE.filter(pp => pp.active && pp.role === sl.role).length, parts = Math.max(1, Math.ceil(n / per));
+  if (parts === 1) return [sl]; const size = Math.ceil(n / parts);
+  return Array.from({ length:parts }, (_, k) => ({ ...sl, base:sl.label, part:k, parts, size, label:`${sl.label} (${k + 1} de ${parts})` })); };
 function tvTeamSlides(){
   const wk = A => IG_MAIN.map(b => ({ week:A, brand:b, icon:A === "CM" ? "🎬" : "🎨", label:`Semana de ${A === "CM" ? "CM" : "Diseño gráfico"} · ${b}` }));
-  return [...(tvAllFirst() ? [TV_TEAM_BASE[0]] : []), ...tvAvisoSlides(), ...TV_TEAM_BASE.slice(1), { week:"Diseño", all:true, icon:"🎨", label:"Semana de Diseño gráfico · General" }, ...wk("Diseño"), ...wk("CM"), ...tvCampSlides()]; // v287: avisos después de la portada; campañas y temas al final
+  return [...(tvAllFirst() ? [TV_TEAM_BASE[0]] : []), ...tvAvisoSlides(), ...TV_TEAM_BASE.slice(1).flatMap(tvRoleSlides), { week:"Diseño", all:true, icon:"🎨", label:"Semana de Diseño gráfico · General" }, ...wk("Diseño"), ...wk("CM"), ...tvCampSlides()]; // v287: avisos después de la portada; campañas y temas al final
 }
 function pTV(){
   return `<div class="tvpage">${tvBrandRow(true)}
@@ -10803,10 +10812,10 @@ function pTV(){
 function tvTeamSlide(sl){
   const team = progStats(jobs), ar = progStats(jobs.filter(j => j.area === (sl.area || "Diseño")));
   const tL = loadStats(areaNames("Todos")), aL = loadStats(areaNames(sl.area || "Todos"));
-  const ppl = PEOPLE.filter(pp => pp.active && pp.role === sl.role);
+  const pplAll = PEOPLE.filter(pp => pp.active && pp.role === sl.role), ppl = sl.parts ? pplAll.slice(sl.part * sl.size, (sl.part + 1) * sl.size) : pplAll; // v359: por partes
   // v275: en CM, los números son de lo de la semana (lo mismo que su carga): publicaciones, historias, Canal, videos, contenidos,
   // actividades y mensajes del día, con lo que ya terminaron; antes solo contaban los pedidos de video.
-  const cmSt = sl.area === "CM" ? cmTaskStats(ppl.flatMap(cmWeekTasks)) : null;
+  const cmSt = sl.area === "CM" ? cmTaskStats(pplAll.flatMap(cmWeekTasks)) : null; // la carga del área, con todas las personas
   const big = (title, st, L, cls, txt) => { const lv = lvOf(L); return `<div class="ttbar ${cls}"><div class="tth"><b>${title}</b><em style="color:${lv.c}">${pctHTML(L)} <small>${lv.t}</small></em></div>${ltrack(L)}<div class="ttm"><span>${txt || `<i>${L.n}</i> trabajos sin finalizar`}</span><span class="g"><i>${st.fin}</i> finalizadas</span><span><i>${st.proc}</i> en proceso</span><span class="r"><i>${st.pend}</i> pendientes</span></div></div>`; };
   const card = (pp, k) => { const cmT = pp.role === "CM" ? cmWeekTasks(pp) : null, st = cmT ? cmTaskStats(cmT) : progStats(jobs.filter(j => hasJob(j, pp.name))), L = loadStats([pp.name]), lv = lvOf(L);
     const open = cmT ? cmT.filter(x => !x.done).sort((a, b2) => a.date.localeCompare(b2.date)).map(x => ({ title:x.title, brand:x.brand, due:x.date, status:x.st || "Pendiente" }))
@@ -10830,8 +10839,8 @@ function tvTeamSlide(sl){
     <div class="ttload">${loadChart(loadGroups("Todos"), "tv")}</div>
   </div>`;
   return `<div class="ttslide">
-    <div class="ttsum">${big("Carga del equipo <small>(Diseño + CM)</small>", team, tL, "all")}${cmSt ? big(`${sl.icon} Carga de ${sl.label.toLowerCase()}`, cmSt, aL, "area", `<i>${cmSt.total}</i> tareas esta semana`) : big(`${sl.icon} Carga de ${sl.label.toLowerCase()}`, ar, aL, "area")}</div>
-    <div class="tthead"><b>${sl.icon} ${sl.label}</b><span>${ppl.length} ${ppl.length === 1 ? "persona" : "personas"}</span>${dots}</div>
+    <div class="ttsum">${big("Carga del equipo <small>(Diseño + CM)</small>", team, tL, "all")}${cmSt ? big(`${sl.icon} Carga de ${(sl.base || sl.label).toLowerCase()}`, cmSt, aL, "area", `<i>${cmSt.total}</i> tareas esta semana`) : big(`${sl.icon} Carga de ${(sl.base || sl.label).toLowerCase()}`, ar, aL, "area")}</div>
+    <div class="tthead"><b>${sl.icon} ${sl.label}</b><span>${sl.parts ? `${ppl.length} de ${pplAll.length} personas` : `${ppl.length} ${ppl.length === 1 ? "persona" : "personas"}`}</span>${dots}</div>
     <div class="tvgrid">${ppl.map(card).join("")}</div>
   </div>`;
 }
