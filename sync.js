@@ -66,7 +66,9 @@ const RMH = (() => {
     RECLAMOS:[() => RECLAMOS, v => { RECLAMOS = Array.isArray(v) ? v : []; }], // solo Admin total, Admin y CM
     META_REFS:[() => META_REFS, v => { META_REFS = v || {}; }],
     COMERCIAL:[() => COMERCIAL, v => { COMERCIAL = v || {}; }], // lo escribe el servidor (ofertas de Comercial)
-    CHANNEL_POSTS:[() => CHANNEL_POSTS, v => { CHANNEL_POSTS = v; }],
+    // v358: sin publicaciones de Canal de marcas que no tienen Canal de WhatsApp (Delimarket). Si alguna llega (cargada
+    // desde una app sin actualizar), se descarta acá y, al guardar, se borra también de la base.
+    CHANNEL_POSTS:[() => CHANNEL_POSTS, v => { CHANNEL_POSTS = Array.isArray(v) && typeof brandHasCanal === "function" ? v.filter(k => !k || typeof k !== "object" || brandHasCanal(k.brand)) : v; }],
     MAIN_PRIORITIES:[() => MAIN_PRIORITIES, v => { MAIN_PRIORITIES = v; }],
     CHAT_GROUPS:[() => CHAT_GROUPS, v => { CHAT_GROUPS = v; }],
     PRESENCE:[() => PRESENCE, v => { PRESENCE = v || {}; }],
