@@ -381,6 +381,16 @@ const RMH = (() => {
     const { data: row } = await sb.from("app_state").select("key, data, version").eq("key", key).maybeSingle();
     return row;
   }
+  // v355: una sola descarga a la vez por clave. El en vivo y la revisión de respaldo (o volver a la app) muchas veces
+  // piden la misma fila en el mismo momento y se bajaba dos veces (en los registros del 12/11, más o menos la mitad de
+  // las descargas grandes salían repetidas). Si ya se está bajando esa clave (en esa versión o una más nueva), se espera.
+  const inflight = new Map(); // clave → { to, p }
+  function rowOnce(key, to){
+    const f = inflight.get(key); if (f && f.to >= to) return f.p;
+    const p = getRow(key, to).catch(e => { console.warn("row", key, e); return null; })
+      .finally(() => { if (inflight.get(key)?.p === p) inflight.delete(key); });
+    inflight.set(key, { to, p }); return p;
+  }
   // ---------- copia en el dispositivo ----------
   // Lo último que vino de la base queda guardado en este dispositivo (IndexedDB, aparte para cada usuario). Al abrir o
   // recargar la app se pide solo la lista de versiones (unos KB) y se bajan únicamente las colecciones que cambiaron
@@ -535,13 +545,13 @@ const RMH = (() => {
       const key = p.new?.key; if (!key || previewing || !wantedFn()(key)) return;
       if ((base.get(key)?.v || 0) >= (p.new.version || 0)) return;
       if (heavy(key) && !inUse()) return; // grande, de los servidores y sin nadie mirando: se baja cuando vuelva alguien (catchUp)
-      const row = await getRow(key, p.new.version); // v320: solo lo que cambió, si se puede
+      const row = await rowOnce(key, p.new.version); // v320: solo lo que cambió, si se puede (v355: sin repetir)
       if (row && applyRow(row)) scheduleRender([key]);
     }).subscribe(status => { rtOk = status === "SUBSCRIBED"; if (rtOk) catchUp(); }); // al (re)conectar se trae lo que llegó mientras tanto
   }
   // La conexión en vivo se corta (celular bloqueado, pestaña en segundo plano, wifi, sesión renovada) y lo que llega
-  // durante el corte no se repite. Por eso, además, se revisa qué cambió: con la app en uso, cada 30 s si el en vivo
-  // anda (es solo un respaldo) y cada 10 s si está cortado; sin nadie usándola, cada 2 min; y siempre al volver a la
+  // durante el corte no se repite. Por eso, además, se revisa qué cambió: con la app en uso, cada 60 s si el en vivo
+  // anda (es solo un respaldo; hasta v354 cada 30 s) y cada 10 s si está cortado; sin nadie usándola, cada 2 min; y siempre al volver a la
   // app y al volver internet.
   let catching = null, catchingFull = false; // si ya se está revisando, el que pide “Actualizar” espera a que termine esa revisión
   function catchUp(){
@@ -562,19 +572,29 @@ const RMH = (() => {
       const stale = data.filter(r => wanted(r.key) && (base.get(r.key)?.v || 0) < r.version && (full || !heavy(r.key))).map(r => r.key);
       if (!stale.length) return;
       const changed = [], vers = new Map(data.map(r => [r.key, r.version]));
-      // v320: primero, solo lo que cambió (por pasos); lo que no se puede así, la fila entera.
-      const viaDelta = await Promise.all(stale.map(k => deltaRow(k, vers.get(k), base.get(k))));
-      viaDelta.forEach(r => { if (r) try { if (applyRow(r)) changed.push(r.key); } catch (e){ console.warn("catchUp", r.key, e); } });
-      const rest = stale.filter((k, i) => !viaDelta[i]); deltaStats.full += rest.length;
-      for (let i = 0; i < rest.length; i += 50){
-        const { data: rows } = await sb.from("app_state").select("key, data, version").in("key", rest.slice(i, i + 50));
-        // Si una fila falla, las demás se aplican igual (antes una sola cortaba la revisión y todo se volvía a bajar).
-        (rows || []).forEach(r => { try { if (applyRow(r)) changed.push(r.key); } catch (e){ console.warn("catchUp", r.key, e); } });
-      }
+      // Si una fila falla, las demás se aplican igual (antes una sola cortaba la revisión y todo se volvía a bajar).
+      const add = r => { if (r) try { if (applyRow(r)) changed.push(r.key); } catch (e){ console.warn("catchUp", r.key, e); } };
+      // v355: lo que el en vivo ya está bajando no se pide otra vez: se espera esa descarga. Lo demás queda anotado como
+      // “bajándose”, así el en vivo que llegue mientras tanto espera esta revisión en vez de bajarlo de nuevo.
+      const waits = stale.filter(k => inflight.get(k)?.to >= vers.get(k)).map(k => inflight.get(k).p);
+      const todo = stale.filter(k => !(inflight.get(k)?.to >= vers.get(k))), own = new Map();
+      todo.forEach(k => { let res; const p = new Promise(r => { res = r; }); own.set(k, { p, res }); inflight.set(k, { to:vers.get(k), p }); });
+      const done = (k, r) => { const o = own.get(k); if (!o) return; own.delete(k); o.res(r || null); if (inflight.get(k)?.p === o.p) inflight.delete(k); };
+      try {
+        // v320: primero, solo lo que cambió (por pasos); lo que no se puede así, la fila entera.
+        const viaDelta = await Promise.all(todo.map(k => deltaRow(k, vers.get(k), base.get(k))));
+        viaDelta.forEach((r, i) => { if (r){ add(r); done(todo[i], r); } });
+        const rest = todo.filter((k, i) => !viaDelta[i]); deltaStats.full += rest.length;
+        for (let i = 0; i < rest.length; i += 50){
+          const { data: rows } = await sb.from("app_state").select("key, data, version").in("key", rest.slice(i, i + 50));
+          (rows || []).forEach(r => { add(r); done(r.key, r); });
+        }
+      } finally { [...own.keys()].forEach(k => done(k, null)); }
+      (await Promise.all(waits)).forEach(add);
       if (changed.length) scheduleRender(changed);
     } catch (e) { console.warn("catchUp", e); }
   }
-  const pollEvery = () => !inUse() ? 120e3 : rtOk ? 30e3 : 10e3;
+  const pollEvery = () => !inUse() ? 120e3 : rtOk ? 60e3 : 10e3; // v355: con el en vivo andando, cada 60 s (antes 30 s)
   setInterval(() => { if (Date.now() - lastPoll >= pollEvery() - 500) catchUp(); }, 5000);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible"){ lastAct = Date.now(); catchUp(); } });
   addEventListener("online", () => catchUp());
