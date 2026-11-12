@@ -4488,13 +4488,16 @@ const POST_HIST = "Post + Historia";
 const PUB_FMTS = [["Post","Post (feed)"],["Carrusel","Carrusel"],["Reel","Reel"],["Historia","Historia"],[POST_HIST,"Post + Historia"],["Canal","Canal de WhatsApp"]];
 // v259: “¿Dónde se publica?” con selección múltiple (ej.: Post + Historia + Canal de WhatsApp). Se guarda como lista.
 const fmtList = f => Array.isArray(f) ? f : f === POST_HIST ? ["Post", "Historia"] : f ? [f] : [];
-const fmtPick = (list) => `<div class="okfmts" style="grid-column:1/-1"><span class="jll">¿Dónde se publica? * <span class="note">(podés elegir varios)</span></span><input type="hidden" id="okFmt" value="${esc(list.join("|"))}">
-  <div class="chips" role="group" aria-label="Dónde se publica">${PUB_FMTS.filter(([v]) => v !== POST_HIST).map(([v, l]) => `<button type="button" class="chip${list.includes(v) ? " on" : ""}" data-okfmt="${v}" aria-pressed="${list.includes(v)}">${list.includes(v) ? icon("check") + " " : ""}${l}</button>`).join("")}</div></div>`;
+// v357: el Canal de WhatsApp solo si alguna marca del pedido lo tiene (Delimarket no tiene); con varias marcas, dice cuáles.
+const canalFmts = (list, brands) => brands.some(brandHasCanal) ? list : (x => x.length ? x : ["Post"])(list.filter(f => f !== "Canal"));
+const fmtPick = (list, brands = []) => { const cb = brands.filter(brandHasCanal), lbl = (v, l) => v === "Canal" && cb.length < brands.length ? `${l} (solo ${cb.join(" y ")})` : l;
+  list = canalFmts(list, brands); return `<div class="okfmts" style="grid-column:1/-1"><span class="jll">¿Dónde se publica? * <span class="note">(podés elegir varios)</span></span><input type="hidden" id="okFmt" value="${esc(list.join("|"))}">
+  <div class="chips" role="group" aria-label="Dónde se publica">${PUB_FMTS.filter(([v]) => v !== POST_HIST && (v !== "Canal" || !brands.length || cb.length)).map(([v, l]) => `<button type="button" class="chip${list.includes(v) ? " on" : ""}" data-okfmt="${v}" data-l="${esc(lbl(v, l))}" aria-pressed="${list.includes(v)}">${list.includes(v) ? icon("check") + " " : ""}${esc(lbl(v, l))}</button>`).join("")}</div></div>`; };
 document.addEventListener("click", e => { const b = e.target.closest("[data-okfmt]"); if (!b) return; e.preventDefault(); const h = document.getElementById("okFmt"); if (!h) return;
   const v = b.dataset.okfmt, cur = h.value.split("|").filter(Boolean), next = cur.includes(v) ? cur.filter(x => x !== v) : [...cur, v];
   if (!next.length) return toast("Elegí al menos un lugar.");
   h.value = PUB_FMTS.map(([x]) => x).filter(x => next.includes(x)).join("|"); const on = next.includes(v); b.classList.toggle("on", on); b.setAttribute("aria-pressed", on);
-  b.innerHTML = (on ? icon("check") + " " : "") + esc(PUB_FMTS.find(([x]) => x === v)[1]); if (window.lucide) lucide.createIcons();
+  b.innerHTML = (on ? icon("check") + " " : "") + esc(b.dataset.l || PUB_FMTS.find(([x]) => x === v)[1]); if (window.lucide) lucide.createIcons();
   const n = document.querySelector(".okbox .oknet"); if (n) n.hidden = next.every(x => x === "Canal"); });
 const pubFmtOf = j => /post \+ historia/i.test(j.piece) ? POST_HIST : /histori/i.test(j.piece) ? "Historia" : /carrusel/i.test(j.piece) ? "Carrusel" : /reel|video|animaci/i.test(j.piece) ? "Reel" : /whatsapp/i.test(j.piece) ? "Canal" : "Post";
 // Aprobar (Diseño gráfico y Gestión de Contenidos): quién aprobó (obligatorio) y la publicación para el CM: qué CM la sube
@@ -4665,8 +4668,8 @@ function openApproveModal(j){
     <div class="okpub"${(!cont && !preCm) || (cont && !contPub) ? " hidden" : ""}>
       <div class="okgrid"><label>Fecha de publicación *<input class="base" type="date" id="okDate" value="${esc(preDate)}"></label>
       <label>Hora de publicación *<input class="base" type="time" id="okTime" value="${esc(preTime)}"></label>
-      ${fmtPick(preFmts)}
-      <div class="oknet" style="grid-column:1/-1"${preFmts.every(f => f === "Canal") ? " hidden" : ""}>${netPick("okNet", jobBrands(j), preNet)}</div></div>
+      ${fmtPick(preFmts, jobBrands(j))}
+      <div class="oknet" style="grid-column:1/-1"${canalFmts(preFmts, jobBrands(j)).every(f => f === "Canal") ? " hidden" : ""}>${netPick("okNet", jobBrands(j), preNet)}</div></div>
       ${cont ? `<div class="okcopy"><b>${icon("file-text")} Copy</b> <span class="note">(se aprueba junto con el diseño y queda en la publicación del CM)</span>${j.noCopy ? `<p class="note" style="margin:4px 0 0">No lleva copy.</p>` : jcopyHas(j) ? (h => `<div class="rtview cpprev${rtBgCls(rtBgOf(h))}"${rtBgStyle(rtBgOf(h))}>${h.replace(/^<!--bg:#[0-9a-f]{6}-->/i, "")}</div>`)(copyHtml(j)) : `<p class="perr" style="margin:4px 0 0">Todavía no tiene copy: el CM lo escribe en su publicación y te llega para aprobar.</p>`}</div>`
       : viewer.role === "Admin total" ? (cf => `<div class="okcopy"><label class="jcext okcpon"><input type="checkbox" id="okCopyOn"${cf ? " checked" : ""}> <b>Copy confirmado</b> <span class="note">(si ya tenés el copy: lo escribís acá, queda aprobado y la CM solo lo publica)</span></label>
         <label class="jcext okcpon okcpnone"><input type="checkbox" id="okNoCopy"${!cf && jobPubsOf(j).length && jobPubsOf(j).every(y => y.noCopy) ? " checked" : ""}> <b>No lleva copy</b> <span class="note">(se publica sin copy: la CM no lo escribe ni hace falta aprobarlo)</span></label>
@@ -4746,7 +4749,8 @@ function makePub(j, o){
   const prev = (j.pubs || (j.pub ? [j.pub] : [])).map(r => r.canal ? canalById(r.id) : postById(r.id)).filter(Boolean);
   const fmts = fmtList(o.fmt), used = new Set(), out = [];
   const pick = (b, f) => { const c = prev.filter(x => !used.has(x) && x.brand === b), y = c.find(x => (x.channel ? "Canal" : x.format) === f) || (fmts.length === 1 ? c[0] : c.find(x => f === "Historia" ? x.format === "Historia" : !x.channel && x.format !== "Historia")); if (y) used.add(y); return y; };
-  jobBrands(j).forEach((b, i) => fmts.forEach((f, k) => { let old = pick(b, f);
+  jobBrands(j).forEach((b, i) => fmts.forEach((f, k) => { if (f === "Canal" && !brandHasCanal(b)) return; // v357: Delimarket no tiene Canal de WhatsApp
+    let old = pick(b, f);
     if (!old && i === 0 && k === 0){ const y = prev.find(x => !used.has(x)) || (j.post && postById(j.post)); if (y && !used.has(y)){ old = y; used.add(y); } }
     out.push(makePubOne(j, { ...o, fmt:f }, b, old)); }));
   j.pubs = out.map(x => ({ id:x.id, canal:!!x.channel })); j.pub = j.pubs[0]; return out;
@@ -4943,7 +4947,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v356";
+const APP_VER = "v357";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -8217,7 +8221,8 @@ function pCalAct(){
         return `<div class="d ${c.slice(0, 7) !== mon ? "out" : ""} ${c === TODAY ? "today" : ""}${caAddOk(c) ? " caadd" : ""}"${caAddOk(c) ? ` data-cadd="${c}" title="Tocá un espacio libre para cargar algo el ${dm(c)}"` : ""}><span class="dn">${+c.slice(8)}</span>${its.map(x => cmCard(x, true)).join("")}</div>`; }).join("")}</div></div>${recDrawer()}`;
   }
   const days = Array.from({ length:7 }, (_, i) => addDays(wk, i)), items = [...all.filter(x => x.date >= days[0] && x.date <= days[6]), ...cmRecs(days).filter(x => cmMine(x) && caBrandOk(x))];
-  const rows = CM_PLATS.filter(([k]) => CM_PLAT_FIXED.includes(k) || items.some(x => cmPlats(x).includes(k)));
+  const noCanal = caBrandPick() && !brandHasCanal(caBrandPick()); // v357: con solo Delimarket, sin la fila del Canal de WhatsApp
+  const rows = CM_PLATS.filter(([k]) => (CM_PLAT_FIXED.includes(k) && !(k === "canal" && noCanal)) || items.some(x => cmPlats(x).includes(k)));
   const remRow = days.some(c => remOn(c).length || inflList().some(x => x.bday === c.slice(5)));
   const cell = (k, c) => items.filter(x => x.date === c && cmPlats(x).includes(k)).sort((a, b) => (a.time || "99").localeCompare(b.time || "99") || a.title.localeCompare(b.title)).map(x => cmCard(x)).join("");
   return `${head}${bar}<div class="cawrap"><div class="cagrid" style="--rows:${rows.length + (remRow ? 1 : 0)}">
@@ -10078,11 +10083,12 @@ const CANALES = ["Canal de WhatsApp"];
 const CANAL_STAGES = ["Pendiente","En proceso","Programado","Publicado"]; // el Canal de WhatsApp no se pauta
 let CHANNEL_POSTS = [];
 const canalById = id => CHANNEL_POSTS.find(k => k.id === id);
-const visibleCanales = () => CHANNEL_POSTS.filter(k => seesBrand(k.brand) && inFilter(k.brand));
+const visibleCanales = () => CHANNEL_POSTS.filter(k => seesBrand(k.brand) && inFilter(k.brand) && brandHasCanal(k.brand)); // v357: sin Delimarket (no tiene Canal)
 let postUI = { form:null };
 const nextPostId = () => "P" + (Math.max(0, ...posts.map(p => +(String(p.id).match(/^P?(\d+)$/) || [])[1] || 0)) + 1);
 function newPostOn(date, kind, net = "", br = ""){
-  const brand = br && poBrandList(kind === "Canal").includes(br) ? br : MAIN_BRANDS.includes(brandFilter) && myBrands().includes(brandFilter) ? brandFilter : myBrands()[0];
+  const ok = poBrandList(kind === "Canal"); // v357: en el Canal de WhatsApp, solo marcas que lo tienen (no Delimarket)
+  const brand = br && ok.includes(br) ? br : MAIN_BRANDS.includes(brandFilter) && ok.includes(brandFilter) ? brandFilter : ok[0] || myBrands()[0];
   const cm = cmOfBrand(brand) || CM_NAMES()[0] || "";
   postUI.form = kind === "Canal"
     ? { mode:"new", kind, post:{ id:"K" + (Math.max(0, ...CHANNEL_POSTS.map(k => +(String(k.id).match(/^K?(\d+)$/) || [])[1] || 0)) + 1), date, brand, channel:CANALES[0], title:"", status:"Pendiente", cm, notes:"" } }
@@ -10729,7 +10735,7 @@ function recDrawer(){
       ${r && recUI.at ? `<div class="recat" style="grid-column:1/-1"><span>${icon("calendar-days")} <b>${WEEKDAYS[(new Date(recUI.at + "T12:00").getDay() + 6) % 7]} ${dm(recUI.at)}</b> · etapa</span>${recChip(r, recUI.at)}</div>` : ""}
       <label style="grid-column:1/-1">Qué se publica o se hace *<input class="base" id="rcTitle" required value="${esc(v.title)}" placeholder="Ej.: Ofertas de la semana"></label>
       <label>Marca *<select class="base" id="rcBrand">${opt(myBrands(), v.brand)}</select></label>
-      <label>Tipo *<select class="base" id="rcKind">${Object.keys(REC_KINDS).map(k => `<option value="${k}" ${k === (recUI.kind || v.kind) ? "selected" : ""}>${k === "Canal" ? "Canal de WhatsApp" : k}</option>`).join("")}</select></label>
+      <label>Tipo *<select class="base" id="rcKind">${Object.keys(REC_KINDS).map(k => `<option value="${k}" ${k === (recUI.kind || v.kind) ? "selected" : ""}${k === "Canal" && v.brand && !brandHasCanal(v.brand) ? " disabled" : ""}>${k === "Canal" ? "Canal de WhatsApp" : k}</option>`).join("")}</select></label>
       <div class="recdays" style="grid-column:1/-1"><span class="note">Se repite todos los *${r ? " · tocá los días para cambiarlos (o arrastralo en el calendario a otro día)" : ""}</span><div class="chips">${WEEKDAYS.map((w, i) => `<button type="button" class="chip ${recUI.days.includes(i) ? "on" : ""}" data-recday="${i}">${w}</button>`).join("")}</div></div>
       <label>Hora *<input class="base" type="time" id="rcTime" value="${v.time}" required></label>
       <label>Responsable (de cualquier marca) *<select class="base" id="rcOwner">${opt(CM_NAMES(), v.owner)}</select></label>
@@ -10754,9 +10760,13 @@ document.addEventListener("submit", e => { if (e.target.id !== "recForm") return
   const until = $("#rcNoEnd").checked ? "" : $("#rcUntil").value, from = $("#rcFrom").value;
   if (until && until < from){ toast("La fecha de fin tiene que ser después de la de inicio."); return; }
   const data = { title:$("#rcTitle").value.trim(), brand:$("#rcBrand").value, kind:$("#rcKind").value, days:[...recUI.days], time:$("#rcTime").value, owner:$("#rcOwner").value, from, until };
+  if (data.kind === "Canal" && !brandHasCanal(data.brand)) return toast(`${data.brand} no tiene Canal de WhatsApp: elegí otro tipo u otra marca.`); // v357
   const old = recUI.edit && RECURRING.find(r => r.id === recUI.edit);
   if (old) Object.assign(old, data); else RECURRING.push({ id:Math.max(0, ...RECURRING.map(r => r.id)) + 1, ...data });
   recUI = { form:false, days:[] }; render(); toast(`${old ? "Guardado" : "Listo"}: “${data.title}” ${recDays(data).toLowerCase()}${until ? " hasta el " + dm(until) : ", sin fecha de fin"}. Ya aparece solo en el calendario.`); });
+// v357: en el repetitivo, “Canal de WhatsApp” solo para las marcas que lo tienen (Delimarket no).
+document.addEventListener("change", e => { if (e.target.id !== "rcBrand") return; const k = document.getElementById("rcKind"), o = k?.querySelector('option[value="Canal"]'); if (!o) return;
+  const no = !brandHasCanal(e.target.value); o.disabled = no; if (no && k.value === "Canal"){ k.value = "Feed"; k.dispatchEvent(new Event("change", { bubbles:true })); toast(`${e.target.value} no tiene Canal de WhatsApp: el tipo pasó a Feed.`); } });
 function pGestionCM(){
   if (cmUI.tview === "repetitivos" && canCreateJobs()) return `<div class="head"><div><h1 class="pmh">${pmIco("repeat")}Pedidos repetitivos</h1><p class="sub">Lo que se repite ciertos días de la semana. Se carga solo en el calendario.</p></div><button class="btn" data-cmtv="calendario">‹ Volver a Gestión de Video</button></div>
     <button class="panel cmnew cmrec" data-recgo="Historia"><span class="cmplus">${icon("repeat")}</span><span><b>Cargar pedido repetitivo</b><small>Todos los lunes, o lunes y viernes… desde una fecha hasta otra (o sin fin).</small></span></button>
