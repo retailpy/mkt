@@ -4933,7 +4933,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v353";
+const APP_VER = "v354";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -7004,7 +7004,7 @@ const PANEL_DESIGN = [
 const PANEL_CM = [
   { k:"gcm", t:"Gestión de Comunicación y Marketing", d:"Todos los pedidos pendientes en una tabla: publicaciones, historias, WhatsApp, videos, contenidos y actividades.", i:"layers" },
   { k:"calact", t:"Calendario de Actividades", d:"La semana de lunes a domingo, por plataforma: qué sale, quién lo hace, a qué hora y en qué estado está.", i:"calendar-range" },
-  { k:"postext", t:"Plan de posteo", d:"El mes en texto, como la hoja de Excel: qué se publica cada día, con colores de fondo y de letra.", i:"table-2" },
+  { k:"postext", t:"Plan de posteo", d:"En texto, como la hoja de Excel: qué se publica cada día de la semana (o del mes), con colores de fondo y de letra.", i:"table-2" },
   { k:"inbox", t:"Mensajes en Redes Sociales", d:"Mensajes directos y comentarios que arroban a la marca en Instagram y Facebook, con reclamos y escraches.", i:"inbox" },
   { k:"ideas", t:"Banco de Ideas", d:"Ideas para creadores de contenido: tendencias de TikTok, Instagram y Facebook para cada marca.", i:"lightbulb" },
 ];
@@ -7699,7 +7699,7 @@ const ptHtml = x => x?.h ? ptClean(x.h) : esc(x?.t || "").replace(/\n/g, "<br>")
 const ptSave = el => ptSet(el.dataset.pttx, { h:ptClean(el.innerHTML), t:el.innerText.trim() });
 const PT_FMT = [["bold","bold","Negrita"],["sz:2","a-arrow-down","Letra chica"],["sz:3","type","Letra normal"],["sz:5","a-arrow-up","Letra grande"],["ol","list-ordered","Lista numerada"],["chk","list-checks","Checklist (tocá el cuadradito para tildar)"]];
 // v258 · vista Mes (la hoja del mes entero) o Semana (de lunes a domingo, con más lugar para escribir en cada día).
-let ptView = "mes", ptWk = null;
+let ptView = "semana", ptWk = null; // v354: abre en Semana (la de hoy); “Mes” sigue en la pestaña
 const ptWeek = () => { const ok = w => w && addDays(w, 6).slice(0, 7) >= MONTH && w.slice(0, 7) <= MONTH;
   if (!ok(ptWk)) ptWk = mondayOf(MONTH === CURRENT_MONTH ? TODAY : MONTH + "-01"); return ptWk; };
 function pPlanTxt(){
@@ -7710,7 +7710,7 @@ function pPlanTxt(){
   const work = cmWork().filter(x => x.date && x.brand === ptBrand);
   const sw = (list, kind) => list.map(c => `<button type="button" class="ptsw" data-ptcolor="${kind}:${c}" style="--c:${c}" title="${kind === "bg" ? "Fondo" : "Letra"} ${c}" aria-label="${kind === "bg" ? "Color de fondo" : "Color de letra"} ${c}"></button>`).join("");
   return `<div class="head"><div><h1 class="pmh">${pmIco("table-2")}Plan de posteo</h1><p class="sub">${monthLabel(MONTH)} · un calendario por cuenta: escribí en cada día y en cada red (Instagram/Facebook, TikTok, Canal de WhatsApp…) lo que se va a publicar en <b>${esc(ptBrand)}</b>, como en la hoja de Excel. Se guarda solo.</p></div></div>
-  <div class="head ptviews">${viewTabs([["mes","Mes","calendar-days"],["semana","Semana","calendar-range"]], ptView, "data-ptview")}${ptView === "semana" ? (() => { const w = ptWeek(), e = addDays(w, 6); return `<div class="ptwknav"><button type="button" class="btn sm" data-ptwk="-7" aria-label="Semana anterior">‹</button><b>Semana del ${+w.slice(8)}/${+w.slice(5, 7)} al ${+e.slice(8)}/${+e.slice(5, 7)}</b><button type="button" class="btn sm" data-ptwk="7" aria-label="Semana siguiente">›</button></div>`; })() : ""}</div>
+  <div class="head ptviews">${viewTabs([["semana","Semana","calendar-range"],["mes","Mes","calendar-days"]], ptView, "data-ptview")}${ptView === "semana" ? (() => { const w = ptWeek(), e = addDays(w, 6); return `<div class="ptwknav"><button type="button" class="btn sm" data-ptwk="-7" aria-label="Semana anterior">‹</button><b>Semana del ${+w.slice(8)}/${+w.slice(5, 7)} al ${+e.slice(8)}/${+e.slice(5, 7)}</b><button type="button" class="btn sm" data-ptwk="7" aria-label="Semana siguiente">›</button></div>`; })() : ""}</div>
   <div class="chips ptbrands" role="group" aria-label="Cuenta">${bl.map(b => `<button type="button" class="chip${b === ptBrand ? " on" : ""}" data-ptbrand="${esc(b)}" aria-pressed="${b === ptBrand}" style="--c:${BRANDS[b] || "#94a3b8"}"><span class="ptdot"></span>${esc(b)}</button>`).join("")}</div>
   <div class="ptbar"><span class="pttl">${icon("paint-bucket")} Fondo</span><div class="ptsws">${sw(PT_BG, "bg")}</div><span class="pttl">${icon("type")} Letra</span><div class="ptsws">${sw(PT_FG, "fg")}</div>
     <button type="button" class="btn sm" data-ptcolor="clear:">${icon("eraser")} Quitar colores</button>
