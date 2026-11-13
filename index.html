@@ -4947,7 +4947,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v359";
+const APP_VER = "v360";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -12313,26 +12313,34 @@ function permSheet(){
 }
 function pUsuarios(){
   const ok = n => n === 1 ? "trabajo abierto" : "trabajos abiertos";
-  const form = userUI.newOpen ? `<div class="panel"><h2 class="pmh">${pmIco("user-plus")}Nueva persona</h2>
-    <form id="personForm" class="pform">
+  // v360: “Completar ficha” de una cuenta que existe pero no tiene ficha en el equipo (si se cortó la carga al crearla).
+  const fix = userUI.fixId && userUI.accts?.[userUI.fixId] ? { id:userUI.fixId, ...userUI.accts[userUI.fixId] } : null;
+  const form = userUI.newOpen || fix ? `<div class="panel"><h2 class="pmh">${pmIco("user-plus")}${fix ? `Completar la ficha de ${esc(fix.username || "la cuenta")}` : "Nueva persona"}</h2>
+    ${fix ? `<p class="note" style="margin:0 0 10px">El usuario de ingreso ya existe (no se crea otro ni cambia su contraseña): falta su ficha en el equipo para que aparezca en la app.</p>` : ""}
+    <form id="personForm" class="pform"${fix ? ` data-fix="${esc(fix.id)}"` : ""}>
       <label>Nombre y apellido<input class="base" id="pName" required placeholder="Ej.: Sofía Aquino"></label>
-      <label>Usuario de ingreso<input class="base" id="pUser" required maxlength="30" placeholder="Ej.: Alesme (inicial + apellido)" autocapitalize="none" autocorrect="off" spellcheck="false"></label>
+      <label>Usuario de ingreso<input class="base" id="pUser" required maxlength="30" placeholder="Ej.: Alesme (inicial + apellido)" autocapitalize="none" autocorrect="off" spellcheck="false"${fix ? ` value="${esc(fix.username || "")}" readonly` : ""}></label>
       <label>Email (opcional)<input class="base" id="pEmail" type="email" placeholder="nombre@aj.com.py o nombre@gmail.com"></label>
       <label>Rol<select class="base" id="pRole">${ROLES.map(r => `<option>${r}</option>`).join("")}</select></label>
       <label>Teléfono corporativo<input class="base" id="pWork" placeholder="+595 21 xxx xxxx"></label>
       <label>Celular personal<input class="base" id="pPhone" placeholder="+595 9xx xxx xxx"></label>
       <label>Celular personal adicional<input class="base" id="pPhone2" placeholder="Opcional"></label>
       <label>Marca principal<select class="base" id="pMain">${mainBrandOptions("Superseis")}</select></label>
-      <label>Fecha de nacimiento (día y mes)<input class="base" id="pBday" type="date"></label>
+      <fieldset class="hbox" style="grid-column:1/-1"><legend>Marcas secundarias</legend><div class="hchecks">${MAIN_BRANDS.map(b => `<label class="hck" style="--c:${BRANDS[b]}"><input type="checkbox" name="pSecond" value="${esc(b)}"> ${esc(b)}</label>`).join("")}</div></fieldset>
+      <label>Fecha de nacimiento<input class="base" id="pBday" type="date"></label>
       <label>Habilidades (separadas por coma)<input class="base" id="pSkills" placeholder="Ej.: Diseño gráfico institucional, Branding"></label>
-      <label>Contraseña provisoria<input class="base" id="pPass" readonly value="${genPass()}"></label>
-      <div class="chips"><button class="btn" type="button" data-ugen>↻ Generar otra</button><button class="btn primary" type="submit">Crear usuario</button><button class="btn" type="button" data-unew>Cancelar</button></div>
+      ${fix ? "" : `<label>Contraseña provisoria<input class="base" id="pPass" readonly value="${genPass()}"></label>`}
+      <div class="chips">${fix ? `<button class="btn primary" type="submit">Guardar ficha</button><button class="btn" type="button" data-ufixcancel>Cancelar</button>` : `<button class="btn" type="button" data-ugen>↻ Generar otra</button><button class="btn primary" type="submit">Crear usuario</button><button class="btn" type="button" data-unew>Cancelar</button>`}</div>
     </form>
     <p class="note" style="margin:12px 0 0">Al entrar por primera vez, la app le pide que elija su propia contraseña. Los permisos arrancan con los del rol y después se ajustan abajo.</p></div>` : "";
   const pass = userUI.lastPass ? `<div class="panel passbox"><div style="flex:1;min-width:220px"><b style="color:#cffafe">Contraseña provisoria de ${esc(userUI.lastPass.name)}${userUI.lastPass.user ? ` · usuario ${esc(userUI.lastPass.user)}` : ""}</b><div class="note">Pasásela por WhatsApp o en persona. No la mandes por mail. Al entrar le vamos a pedir que la cambie.</div></div><code>${userUI.lastPass.pass}</code><button class="btn" data-ucopy="${userUI.lastPass.pass}">Copiar</button><button class="btn" data-uclose>Listo</button></div>` : "";
   const reqs = resetRequests.length ? `<div class="panel"><h2>🔑 Pedidos para restablecer contraseña</h2><div class="list">${resetRequests.map(id => { const pp = PEOPLE.find(x => x.id === id); return `<div class="row">${avatarHTML(pp)}<div class="grow"><div class="t">${esc(pp.name)}</div><div class="m">${esc(mainEmail(pp))} · lo pidió desde el login</div></div><button class="btn primary" data-ureset="${pp.id}">Restablecer contraseña</button></div>`; }).join("")}</div></div>` : "";
   const at = viewer.role === "Admin total";
   if (at && userUI.accts === undefined){ userUI.accts = null; accessRefresh(); }
+  const orph = at && userUI.accts ? Object.entries(userUI.accts).filter(([id, a]) => a?.account && !PEOPLE.some(pp => pp.id === id) && id !== userUI.fixId) : [];
+  const orphBox = orph.length ? `<div class="panel orphbox"><h2 class="pmh">${pmIco("user-plus")}Cuentas sin ficha <span class="note" style="font-weight:500">· ${orph.length}</span></h2>
+    <p class="note" style="margin:0 0 8px">El usuario de ingreso existe pero falta su ficha en el equipo, por eso no aparece en la app (pasa si se cortó la carga al crearla). Completala acá: no se crea otra cuenta.</p>
+    <div class="list">${orph.map(([id, a]) => `<div class="row"><div class="grow"><div class="t">${esc(a.username || id)}</div><div class="m">${a.signedIn ? "Ya entró alguna vez" : "Todavía no entró"}</div></div><button type="button" class="btn primary sm" data-ufix="${esc(id)}">${icon("user-plus")} Completar ficha</button></div>`).join("")}</div></div>` : "";
   const acc = id => userUI.accts?.[id];
   const rows = PEOPLE.map(pp => {
     const me = pp.id === viewer.id;
@@ -12350,7 +12358,7 @@ function pUsuarios(){
   const roleCards = `<div class="grid kpis">${ROLES.map(r => `<div class="panel kpi"><div class="l">${r}</div><div class="n">${PEOPLE.filter(pp => pp.active && pp.role === r).length}</div><div class="d">${ROLE_INFO[r]}</div></div>`).join("")}</div>`;
   const counts = ROLES.map(r => `<span class="tag">${r}: ${PEOPLE.filter(pp => pp.active && pp.role === r).length}</span>`).join("");
   return `<div class="head"><div><h1>Usuarios y permisos</h1><p class="sub">Quién entra a la app, con qué rol, y qué ve cada uno.</p></div><button class="btn primary" data-unew>${icon("user-plus")} Nueva persona</button></div>
-  ${pass}${form}${roleCards}${at ? accessPanel() : ""}${reqs}
+  ${pass}${orphBox}${form}${roleCards}${at ? accessPanel() : ""}${reqs}
   <div class="panel flush"><div class="panel-h cyan"><h2 class="pmh">${pmIco("users")}Personas del equipo</h2><div class="tag-row">${counts}<span class="tag">Admin total activos: ${activeAdmins().length} (se recomienda 2 o más)</span></div></div>
     <div class="tw" style="border:0;border-radius:0;box-shadow:none"><table><thead><tr><th>Persona</th><th>Rol</th><th>Estado</th><th>Último ingreso</th><th class="r">Acciones</th></tr></thead><tbody>${rows}</tbody></table></div></div>
   ${permSheet()}
@@ -18238,9 +18246,11 @@ document.addEventListener("click", e => {
     else if (d.jclose !== undefined) jobUI.form = null;
     render(); return; }
   if (e.target.closest("[data-bdclear]")){ viewer.birthday = null; render(); toast("Quitaste tu cumpleaños."); return; }
-  const t = e.target.closest("[data-unew],[data-ugen],[data-ureset],[data-utoggle],[data-uconfirm],[data-ucancel],[data-uremove],[data-ucopy],[data-uclose]");
+  const t = e.target.closest("[data-unew],[data-ugen],[data-ureset],[data-utoggle],[data-uconfirm],[data-ucancel],[data-uremove],[data-ucopy],[data-uclose],[data-ufix],[data-ufixcancel]");
   if (!t) return;
   const d = t.dataset, find = id => PEOPLE.find(x => x.id === id);
+  if (d.ufix || d.ufixcancel !== undefined){ userUI.fixId = d.ufix || null; userUI.newOpen = false; render(); // v360: completar la ficha de una cuenta sin ficha
+    if (d.ufix) setTimeout(() => { const f = document.getElementById("personForm"); if (f) window.scrollTo({ top:Math.max(0, f.getBoundingClientRect().top + scrollY - 16), behavior:"smooth" }); document.getElementById("pName")?.focus(); }, 60); return; }
   if (d.unew !== undefined){ userUI.newOpen = !userUI.newOpen; render(); // v266: el formulario sale arriba y la página va hasta él (antes quedaba abajo y parecía que no pasaba nada)
     if (userUI.newOpen) setTimeout(() => { const f = document.getElementById("personForm"); if (f) window.scrollTo({ top:Math.max(0, f.getBoundingClientRect().top + scrollY - 16), behavior:"smooth" }); document.getElementById("pName")?.focus({ preventScroll:true }); }, 60); }
   else if (d.ugen !== undefined){ $("#pPass").value = genPass(); }
@@ -18430,17 +18440,21 @@ document.addEventListener("submit", e => {
     if (j.rep) toast(`${f.mode === "edit" ? "Guardado" : "Creado"}: “${j.title}” se repite: ${repText(j.rep).toLowerCase()}.${nRep ? ` Ya ${nRep === 1 ? "se cargó 1" : `se cargaron ${nRep}`} de los próximos 7 días.` : ""}`); else
     toast(`${f.mode === "edit" ? "Guardado" : "Creado"}: “${j.title}” en ${to === "gestioncm" ? "Gestión de Video" : to === "contenidos" ? "Gestión de Contenidos" : (DESIGN_SECS.find(x => x[0] === to) || DESIGN_SECS[0])[1]} · ${j.brand} · fecha límite ${dm(due)}.`); return; }
   if (e.target.id === "personForm"){ e.preventDefault();
-    const name = $("#pName").value.trim(), user = $("#pUser").value.trim(), email = $("#pEmail").value.trim(), role = $("#pRole").value, pass = $("#pPass").value;
+    const fixId = e.target.dataset.fix || "";
+    const name = $("#pName").value.trim(), user = $("#pUser").value.trim(), email = $("#pEmail").value.trim(), role = $("#pRole").value, pass = fixId ? "" : $("#pPass").value;
     if (!name || !USER_RE.test(user)){ toast("Completá nombre y un usuario de ingreso (de 2 a 30 letras o números, sin espacios ni tildes)."); return; }
     if (userTaken(user)){ toast(`El usuario “${user}” ya lo tiene otra persona.`); return; }
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ toast("Revisá el email (o dejalo vacío)."); return; }
     if (email && PEOPLE.some(x => [x.email, x.personalEmail].some(m => (m || "").toLowerCase() === email.toLowerCase()))){ toast("Ya hay una persona con ese email."); return; }
-    const id = "u" + Date.now();
-    const bd = $("#pBday").value;
-    const person = { id, username:user, workPhone:$("#pWork").value.trim(), phone:$("#pPhone").value.trim(), phone2:$("#pPhone2").value.trim() || null, mainBrand:$("#pMain").value, birthday: bd ? bd.slice(5) : null, skills:$("#pSkills").value.split(",").map(x => x.trim()).filter(Boolean), tempPass:pass, name, email, cargo:role === "Diseñador" ? "Diseñador" : role === "CM" ? "Community Manager" : role === "Admin" ? "Gerencia" : role === "Comercial" ? "Comercial" : role === "TV" ? "Televisores de la oficina" : "Administración", role, brands:role === "Comercial" ? [...PC_BRANDS] : null, perms:new Set(ROLE_DEFAULTS[role]), active:true, mustChange:true, last:null };
+    if (fixId && PEOPLE.some(x => x.id === fixId)){ toast("Esa ficha ya existe."); userUI.fixId = null; render(); return; }
+    const id = fixId || "u" + Date.now();
+    const bd = $("#pBday").value, second = [...document.querySelectorAll('input[name="pSecond"]:checked')].map(x => x.value).filter(b => b !== $("#pMain").value);
+    const person = { id, username:user, workPhone:$("#pWork").value.trim(), phone:$("#pPhone").value.trim(), phone2:$("#pPhone2").value.trim() || null, mainBrand:$("#pMain").value, birthday: bd ? bd.slice(5) : null, ...(bd && +bd.slice(0, 4) > 1900 ? { birthYear:+bd.slice(0, 4) } : {}), ...(second.length ? { secondBrands:second } : {}), skills:$("#pSkills").value.split(",").map(x => x.trim()).filter(Boolean), ...(pass ? { tempPass:pass } : {}), name, email, cargo:role === "Diseñador" ? "Diseñador" : role === "CM" ? "Community Manager" : role === "Admin" ? "Gerencia" : role === "Comercial" ? "Comercial" : role === "TV" ? "Televisores de la oficina" : "Administración", role, brands:role === "Comercial" ? [...PC_BRANDS] : null, perms:new Set(ROLE_DEFAULTS[role]), active:true, mustChange:fixId ? !userUI.accts?.[fixId]?.signedIn : true, last:null };
     const btn = e.target.querySelector('[type="submit"]'); btn.disabled = true;
+    if (fixId){ PEOPLE.push(person); userUI.fixId = null; refreshPeople(); render(); window.RMH?.flushNow?.(); // v360: la cuenta ya existe: solo la ficha
+      toast(`Listo: la ficha de ${name} quedó guardada${person.mustChange ? `. Si no tenés su contraseña provisoria, tocá “Restablecer contraseña”.` : "."}`); return; }
     RMH.admin({ action:"create", person_id:id, email, role, password:pass, username:user }).then(ok => { btn.disabled = false; if (!ok) return;
-      PEOPLE.push(person);
+      PEOPLE.push(person); window.RMH?.flushNow?.(); // v360: la ficha se guarda enseguida (antes, si se cerraba o se recargaba al toque, la cuenta quedaba sin ficha)
       userUI.newOpen = false; userUI.lastPass = { name, pass, user }; refreshPeople(); render(); toast(`${name} fue creado como ${role}. Ya puede entrar con su usuario (${user}) y la contraseña provisoria.`); }); }
   else if (e.target.id === "bdForm"){ e.preventDefault();
     const d = +$("#bdDay").value, m = +$("#bdMonth").value;
