@@ -4506,16 +4506,27 @@ const pubFmtOf = j => /post \+ historia/i.test(j.piece) ? POST_HIST : /histori/i
 // de partes ni “Parte 1, Parte 2”: quien la sube le pone el nombre que quiere (ej.: Carnes, Embutidos) y toca “Enviar parte” (o
 // “Último envío” si es la última). Admin total la ve y la aprueba con la ventana de siempre: se crea su publicación para la CM elegida
 // (“{título} · Carnes”; puede ser otra CM en cada parte) y la CM ya la puede subir. Mientras una parte espera aprobación no se manda
-// otra. El pedido queda Aprobado (terminado) al aprobar el último envío.
+// otra (v361: ya no: se manda una tras otra y cada una se aprueba por su lado). El pedido queda Aprobado al aprobar todas con el último envío.
 // j.partsOn = true · j.parts = [{ name, last, sentAt, by, ok, okAt, okBy, cm, date, pubs }] (cada una se crea al enviarla).
 const jobParts = j => j && j.area !== "CM" && (j.partsOn || (Array.isArray(j.parts) && j.parts.length)) ? (j.parts || []) : null;
 const partOpen = j => (jobParts(j) || []).findIndex(q => !q.ok); // la parte enviada que espera aprobación o cambios (-1: ninguna)
 const partsOk = j => (jobParts(j) || []).filter(q => q.ok).length;
-const partsDone = j => (jobParts(j) || []).some(q => q.ok && q.last);
+// v361: terminado = se aprobó el último envío y también todas las partes anteriores (se pueden aprobar en cualquier orden).
+const partsDone = j => { const P = jobParts(j) || []; return P.some(q => q.ok && q.last) && P.every(q => q.ok); };
 const partName = (q, k) => q?.name || `Parte ${k + 1}`;
-const partNext = j => { const P = jobParts(j) || [], o = P.findIndex(q => !q.ok); return o >= 0 ? o : P.length; }; // a qué parte van los bocetos que se suben
-const partLbl = j => { const P = jobParts(j); if (!P) return ""; const o = partOpen(j), n = partsOk(j);
-  return o >= 0 ? `${partName(P[o], o)}${P[o].last ? " · último envío" : ""}` : partsDone(j) ? `${P.length} ${P.length === 1 ? "parte" : "partes"} · terminado` : n ? `${n} ${n === 1 ? "parte aprobada" : "partes aprobadas"}` : "Por partes"; };
+// v361: los bocetos que se suben van a la parte con cambios pedidos (para corregirla) o, si no hay, a la próxima que se manda.
+const partNext = j => { const P = jobParts(j) || [], f = P.findIndex(q => !q.ok && q.fix); return f >= 0 ? f : P.length; };
+const partLastSent = j => (jobParts(j) || []).some(q => q.last); // después del último envío no se mandan más partes
+const partsWait = j => (jobParts(j) || []).map((q, k) => [q, k]).filter(([q]) => !q.ok); // enviadas sin aprobar (esperando o con cambios)
+// v361 · El diseñador manda una parte tras otra sin esperar la aprobación de la anterior; cada parte tiene su estado (q.ok aprobada,
+// q.fix cambios pedidos, q.fixed corregida) y el estado del pedido sale de sus partes: alguna esperando → en revisión (Admin total
+// tiene algo para aprobar); si no, alguna con cambios → En corrección; si no → En proceso. Aprobado, al aprobar todas con el último envío.
+function partsStatus(j){ const P = jobParts(j) || []; if (!P.length || partsDone(j)) return;
+  const wait = P.filter(q => !q.ok && !q.fix), fix = P.some(q => !q.ok && q.fix);
+  j.status = wait.length ? (REVIEW_WAIT.includes(j.status) ? j.status : wait.some(q => q.fixed) ? "Corrección realizada" : "Boceto finalizado") : fix ? fixStage(j) : "En proceso"; }
+function partGo(j){ jobUI.ficha = j.id; render(); setTimeout(() => { const i = document.getElementById("bkPart-" + j.id); i?.scrollIntoView({ block:"center" }); i?.focus(); }, 60); }
+const partLbl = j => { const P = jobParts(j); if (!P) return ""; const w = partsWait(j), n = partsOk(j);
+  return w.length > 1 ? `${w.length} partes esperando` : w.length ? `${partName(w[0][0], w[0][1])}${w[0][0].last ? " · último envío" : ""}` : partsDone(j) ? `${P.length} ${P.length === 1 ? "parte" : "partes"} · terminado` : n ? `${n} ${n === 1 ? "parte aprobada" : "partes aprobadas"}` : "Por partes"; };
 const partChip = j => jobParts(j) ? `<span class="partchip" title="Se entrega por partes">${icon("layers")} ${esc(partLbl(j))}</span>` : "";
 const partPubs = q => (q?.pubs || []).map(r => r.canal ? canalById(r.id) : postById(r.id)).filter(Boolean);
 // v351 · La publicación de una parte ya se puede publicar cuando ESA parte está aprobada (aunque el pedido siga con otras partes).
@@ -4551,35 +4562,36 @@ document.addEventListener("change", e => { const el = e.target.closest?.("[data-
 // En la ficha del pedido: las partes enviadas (aprobadas o esperando), y la próxima.
 function partsBlock(j){
   const P = jobParts(j); if (!P) return "";
-  const o = partOpen(j), done = partsDone(j), n = partsOk(j);
+  const done = partsDone(j), n = partsOk(j), nw = partsWait(j).length, adm = jobCanApprove(j), mine = canAttach(j) && hasJob(j, viewer.name);
   const row = (q, k) => { const pubs = partPubs(q);
-    const st = q.ok ? pill("Aprobada", "#10b981") : pill(j.status, JOB_COLOR[j.status] || "#94a3b8");
+    const st = q.ok ? pill("Aprobada", "#10b981") : q.fix ? pill("Con cambios", JOB_COLOR["En corrección"]) : pill("Esperando aprobación", JOB_COLOR["Boceto finalizado"]);
     const info = q.ok ? `Aprobada el ${dm(q.okAt || TODAY)}${q.okBy ? ` · aprobó ${esc(firstName(q.okBy))}` : ""}${pubs.length ? ` · la sube ${esc(firstName(pubs[0].cm))} el ${dm(pubs[0].date)}${pubs[0].time ? ` ${esc(pubs[0].time)} h` : ""}` : " · sin publicación"}`
-      : REVIEW_WAIT.includes(j.status) ? `Enviada el ${dm(q.sentAt || TODAY)}${q.by ? ` por ${esc(firstName(q.by))}` : ""}: esperando que Admin total la apruebe` : j.status === fixStage(j) ? "Con cambios pedidos: corregila en Boceto y tocá “Corrección realizada”" : "En curso";
+      : q.fix ? `Cambios pedidos: “${esc(q.fix)}”${mine ? " · corregila en Boceto y tocá “Corrección realizada”" : ""}` : `Enviada el ${dm(q.sentAt || TODAY)}${q.by ? ` por ${esc(firstName(q.by))}` : ""}${q.fixed ? " (corregida)" : ""}: esperando que Admin total la apruebe`;
+    const acts = q.ok ? "" : `${adm ? `<button type="button" class="btn sm primary" data-partok="${esc(j.id)}|${k}">${icon("check")} Aprobar</button>${q.fix ? "" : `<button type="button" class="btn sm" data-partfix="${esc(j.id)}|${k}">${icon("pencil")} Pedir cambios</button>`}` : ""}${q.fix && mine ? `<button type="button" class="btn sm primary" data-partfixed="${esc(j.id)}|${k}">${icon("check")} Corrección realizada</button>` : ""}`;
     const rt = shareClean(q.share), edRt = !isViewOnly() && !jobLocked(j) && (viewer.role === "Admin total" || (!q.ok && canAttach(j)));
     const rtRow = rt || edRt ? `<div class="jpshare">${icon("folder-symlink")}${edRt ? `<input class="base" data-partshare="${esc(j.id)}|${k}" value="${esc(rt)}" spellcheck="false" placeholder="Ruta de la compartida de “${esc(partName(q, k))}”" aria-label="Ruta de la compartida de ${esc(partName(q, k))}">` : `<code>${esc(rt)}</code>`}
       <button type="button" class="btn sm" data-shcopy="${esc(rt)}" ${rt ? "" : "disabled"}>${icon("copy")} Copiar link</button><button type="button" class="btn sm" data-shopen="${esc(rt)}" ${rt ? "" : "disabled"}>${icon("arrow-up-right")} Abrir</button></div>` : "";
     return `<li class="jpart${q.ok ? " ok" : " cur"}"><span class="jpno">${q.ok ? icon("check") : k + 1}</span><div class="grow"><b>${esc(partName(q, k))}</b>${q.last ? ` <span class="partlast">${icon("flag")} Último envío</span>` : ""}<small>${info}</small></div>
-      <div class="chips">${st}${pubs.map(x => `<button type="button" class="btn sm" data-pubopen="${x.channel ? "canal" : "post"}:${esc(x.id)}">${icon("external-link")} Ver publicación${pubs.length > 1 ? ` (${esc(x.brand)})` : ""}</button>`).join("")}</div>${rtRow}</li>`; };
-  const next = !done && o < 0 ? `<li class="jpart next"><span class="jpno">${icon("plus")}</span><div class="grow"><b>${P.length ? "Próxima parte" : "Primera parte"}</b><small>${esc(firstName(j.owner))} pone el nombre (ej.: Carnes) y la ruta de la compartida en Boceto y toca “Enviar parte”, o “Último envío” si es la última.</small></div></li>` : "";
-  return `<section class="panel jp-sec jp-parts"><h2 class="pmh">${pmIco("layers")}Partes <span class="note" style="font-weight:500">· ${done ? `terminado: ${P.length} ${P.length === 1 ? "parte" : "partes"}` : `${n} ${n === 1 ? "aprobada" : "aprobadas"}${o >= 0 ? " · 1 esperando" : ""}`}</span></h2>
+      <div class="chips">${st}${acts}${pubs.map(x => `<button type="button" class="btn sm" data-pubopen="${x.channel ? "canal" : "post"}:${esc(x.id)}">${icon("external-link")} Ver publicación${pubs.length > 1 ? ` (${esc(x.brand)})` : ""}</button>`).join("")}</div>${rtRow}</li>`; };
+  const next = !done && !partLastSent(j) ? `<li class="jpart next"><span class="jpno">${icon("plus")}</span><div class="grow"><b>${P.length ? "Próxima parte" : "Primera parte"}</b><small>${esc(firstName(j.owner))} pone el nombre (ej.: Carnes) y la ruta de la compartida en Boceto y toca “Enviar parte”, o “Último envío” si es la última.</small></div></li>` : "";
+  return `<section class="panel jp-sec jp-parts"><h2 class="pmh">${pmIco("layers")}Partes <span class="note" style="font-weight:500">· ${done ? `terminado: ${P.length} ${P.length === 1 ? "parte" : "partes"}` : `${n} ${n === 1 ? "aprobada" : "aprobadas"}${nw ? ` · ${nw} sin aprobar` : ""}`}</span></h2>
     <ol class="jpartl">${P.map(row).join("")}${next}</ol>
-    <p class="note" style="margin:0">${icon("info")} Cada parte se envía con su nombre y Admin total la aprueba al verla: en ese momento la CM elegida ya la puede subir a redes. El pedido termina cuando se aprueba el <b>Último envío</b>.</p></section>`;
+    <p class="note" style="margin:0">${icon("info")} Cada parte se envía con su nombre, <b>sin esperar</b> que se apruebe la anterior. Admin total aprueba cada una cuando la ve (en cualquier orden): en ese momento la CM elegida ya la puede subir a redes. El pedido termina cuando están aprobadas todas, con el <b>Último envío</b>.</p></section>`;
 }
 // En Boceto: el nombre de la parte y “Enviar parte” / “Último envío” (cuando no hay una parte esperando).
 function partSendBox(j){
-  if (!jobParts(j) || partsDone(j) || partOpen(j) >= 0 || !canAttach(j)) return "";
+  if (!jobParts(j) || partsDone(j) || partLastSent(j) || !canAttach(j)) return ""; // v361: aunque haya partes esperando aprobación
   const id = esc(j.id), P = jobParts(j) || [], n = P.length, prevRt = [...P].reverse().find(q => q.share)?.share || shareList(j).find(x => shareClean(x.p))?.p || "";
   return `<div class="bkpartsend"><label for="bkPart-${id}" class="jll">${icon("layers")} Nombre de ${n ? "esta parte" : "la primera parte"} *</label>
     <input class="base" id="bkPart-${id}" maxlength="40" placeholder="Ej.: Carnes, Embutidos, Bebidas…" autocomplete="off">
     <label for="bkPartRt-${id}" class="jll">${icon("folder-symlink")} Ruta de la compartida de esta parte * <span class="note" style="font-weight:400">(la carpeta del servidor donde está; al aprobarla, la CM la abre desde su publicación)</span></label>
     <input class="base" id="bkPartRt-${id}" spellcheck="false" autocomplete="off" value="${esc(shareClean(prevRt))}" placeholder="Pegar la ruta, ej.: \\\\retsvrfs01\\Marketing\\STOCK\\2026\\Ofertas\\Carnes">
     <div class="chips"><button type="button" class="btn primary" data-partsend="${id}|">${icon("send")} Enviar parte</button><button type="button" class="btn lastbtn" data-partsend="${id}|last">${icon("flag")} Último envío</button></div>
-    <span class="note">Con el <b>nombre</b> y la <b>ruta de la compartida</b> alcanza para enviarla (el boceto de arriba es opcional: si lo subís, Admin total lo ve acá). Admin total la aprueba y la CM ya la puede subir con esa ruta. En la última, tocá <b>Último envío</b> (al aprobarla, el pedido termina).</span></div>`;
+    ${partsWait(j).length ? `<span class="note">${icon("info")} Podés mandarla aunque ${partsWait(j).length === 1 ? "la anterior todavía espera" : "las anteriores todavía esperan"} aprobación.</span>` : ""}<span class="note">Con el <b>nombre</b> y la <b>ruta de la compartida</b> alcanza para enviarla (el boceto de arriba es opcional: si lo subís, Admin total lo ve acá). Admin total la aprueba y la CM ya la puede subir con esa ruta. En la última, tocá <b>Último envío</b> (al aprobarla, el pedido termina).</span></div>`;
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-partsend]"); if (!b) return;
-  const [id, kind] = b.dataset.partsend.split("|"), j = fileJob(id); if (!j || !jobParts(j) || partOpen(j) >= 0 || partsDone(j) || !canAttach(j)) return;
+  const [id, kind] = b.dataset.partsend.split("|"), j = fileJob(id); if (!j || !jobParts(j) || partLastSent(j) || partsDone(j) || !canAttach(j)) return;
   const inp = document.getElementById("bkPart-" + id), name = (inp?.value || "").trim().replace(/\s+/g, " ").slice(0, 40), last = kind === "last";
   if (!name){ inp?.focus(); return toast("Poné el nombre de esta parte (ej.: Carnes)."); }
   const rti = document.getElementById("bkPartRt-" + id), route = shareClean(rti?.value);
@@ -4589,13 +4601,27 @@ document.addEventListener("click", e => {
   if (last && !confirmTap(b, "plast:" + j.id, "¿Es la última? Tocá de nuevo")) return;
   (j.parts = j.parts || []).push({ name, ...(last ? { last:true } : {}), sentAt:TODAY, by:viewer.name }); j.partsOn = true;
   partShareSet(j, j.parts.length - 1, route); // v351: la ruta de esta parte (con su nombre) también en las rutas del pedido
-  const prev = j.status, to = reviewStage(j);
-  j.status = to; NOTIFS.forEach(n => { if (n.to === viewer.name && n.job === j.id) n.read = true; });
+  partsStatus(j); NOTIFS.forEach(n => { if (n.to === viewer.name && n.job === j.id && n.type !== "fix") n.read = true; }); // v361: los cambios pedidos de otra parte siguen a la vista
   (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), kind:"boceto", by:viewer.name, fix:false, part:name, link:j.designLink || "" });
   if (viewer.role !== "Admin total"){ notify({ to:"admin", type:"review", job:j.id, who:viewer.name, fix:false, text:`Parte “${name}”${last ? " (último envío)" : ""}` }); }
   render(); window.RMH?.flushNow?.();
-  if (viewer.role === "Admin total"){ toast(`“${name}” enviada. Aprobala cuando quieras.`); return openApproveModal(j); }
-  toast(`¡Bien! “${name}”${last ? " (último envío)" : ""} le llegó a Admin total para aprobar.${prev === to ? "" : ""}`);
+  if (viewer.role === "Admin total"){ toast(`“${name}” enviada. Aprobala cuando quieras.`); return openApproveModal(j, j.parts.length - 1); }
+  toast(`¡Bien! “${name}”${last ? " (último envío)" : ""} le llegó a Admin total para aprobar.${last ? "" : " Ya podés seguir con la próxima parte."}`);
+});
+// v361 · Botones de cada parte: Admin total aprueba o pide cambios a una parte (en cualquier orden); quien la hace marca
+// “Corrección realizada” en la parte con cambios; “Enviar otra parte” lleva a Boceto, donde se pone el nombre y la ruta.
+document.addEventListener("click", e => {
+  const g = e.target.closest("[data-jpartgo]"); if (g){ const j = fileJob(g.dataset.jpartgo); if (j) partGo(j); return; }
+  const b = e.target.closest("[data-partok],[data-partfix],[data-partfixed]"); if (!b) return;
+  const [id, ks] = (b.dataset.partok || b.dataset.partfix || b.dataset.partfixed).split("|"), j = fileJob(id), k = +ks, q = j?.parts?.[k]; if (!q || q.ok) return;
+  if (b.dataset.partok){ if (jobCanApprove(j)) openApproveModal(j, k); return; }
+  if (b.dataset.partfix){ if (jobCanApprove(j)) openFixModal(j, k); return; }
+  if (!q.fix || !canAttach(j)) return;
+  const nm = partName(q, k); delete q.fix; q.fixed = true; j.rounds = (j.rounds || 0) + 1; partsStatus(j);
+  (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), kind:"boceto", by:viewer.name, fix:true, part:nm, link:j.designLink || "" });
+  NOTIFS.forEach(n => { if (n.to === viewer.name && n.job === j.id && n.type === "fix" && String(n.text || "").startsWith(nm + ":")) n.read = true; });
+  if (viewer.role !== "Admin total") notify({ to:"admin", type:"review", job:j.id, who:viewer.name, fix:true, text:`Corrección de “${nm}”` });
+  render(); window.RMH?.flushNow?.(); toast(`Listo: la corrección de “${nm}” le llegó a Admin total para aprobar.`);
 });
 // v349 · Desde la ficha (en Boceto): un pedido de Diseño que se cargó entero se puede pasar a “por partes” (Admin total o quien lo hace),
 // mientras no esté aprobado. La publicación que ya tenía cargada para la CM (todavía Pendiente) se saca: cada parte elige su CM al aprobarse.
@@ -4629,8 +4655,9 @@ document.addEventListener("click", e => {
 });
 // Aprobar la parte que espera (la ventana de siempre: quién aprobó, qué CM la publica, fecha, hora, dónde y el copy).
 function approvePart(j, opts = {}){
-  const P = j.parts, i = partOpen(j), q = P[i], last = !!q.last, nm = partName(q, i), cm = opts.cm || "", by = opts.by || "";
-  Object.assign(q, { ok:true, okAt:TODAY, ...(by ? { okBy:by } : {}), ...(cm ? { cm, date:opts.date || "" } : {}) });
+  const P = j.parts, i = Number.isInteger(opts.part) && P[opts.part] && !P[opts.part].ok ? opts.part : partOpen(j), q = P[i], nm = partName(q, i), cm = opts.cm || "", by = opts.by || ""; // v361: la parte elegida
+  Object.assign(q, { ok:true, okAt:TODAY, ...(by ? { okBy:by } : {}), ...(cm ? { cm, date:opts.date || "" } : {}) }); delete q.fix; delete q.fixed;
+  const last = partsDone(j), left = partsWait(j); // terminado: aprobadas todas, con el último envío
   (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), ok:true, part:nm, by:viewer.name, ...(by ? { okBy:by } : {}) });
   NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
   let xs = [];
@@ -4643,14 +4670,14 @@ function approvePart(j, opts = {}){
   }
   j.pubs = P.flatMap(x => x.pubs || []); j.pub = j.pubs[0] || null;
   if (last){ j.status = "Aprobado"; if (!j.approved) j.approved = TODAY; if (!j.delivered) j.delivered = TODAY; if (by) j.approvedBy = by; notify({ to:j.owner, type:"approved", job:j.id }); }
-  else { j.status = "En proceso"; notify({ to:j.owner, type:"nota", job:j.id, who:viewer.name, text:`“${nm}” aprobada${by ? ` (aprobó ${firstName(by)})` : ""}. Ya podés enviar la próxima parte (o el Último envío).` }); }
+  else { partsStatus(j); notify({ to:j.owner, type:"nota", job:j.id, who:viewer.name, text:`“${nm}” aprobada${by ? ` (aprobó ${firstName(by)})` : ""}.${partLastSent(j) ? "" : " Podés seguir mandando las próximas partes (o el Último envío)."}` }); }
   jobUI.form = null; render(); window.RMH?.flushNow?.();
-  toast(`“${nm}” aprobada${by ? ` por ${firstName(by)}` : ""}.${xs.length ? ` ${firstName(cm)} ya la puede subir: quedó en su calendario el ${dm(xs[0].date)}${xs.length > 1 ? ` (${xs.length} publicaciones)` : ""}.` : ""} ${last ? "Era el último envío: el pedido quedó Aprobado." : `${firstName(j.owner)} ya puede enviar la próxima parte.`}`);
+  toast(`“${nm}” aprobada${by ? ` por ${firstName(by)}` : ""}.${xs.length ? ` ${firstName(cm)} ya la puede subir: quedó en su calendario el ${dm(xs[0].date)}${xs.length > 1 ? ` (${xs.length} publicaciones)` : ""}.` : ""} ${last ? "Estaban todas: el pedido quedó Aprobado." : left.length ? `Falta aprobar: ${left.map(([x, k]) => `“${partName(x, k)}”`).join(", ")}.` : `${firstName(j.owner)} sigue con las próximas partes.`}`);
 }
-function openApproveModal(j){
+function openApproveModal(j, k){
   if (j.area === "CM") return approveJob(j);
   document.getElementById("fixpop")?.remove();
-  const PT = jobParts(j), pi = partOpen(j), pLast = PT ? [...PT].reverse().find(q => q.ok) : null; // v348: por partes, lo de la parte anterior como sugerencia
+  const PT = jobParts(j), pi = PT && Number.isInteger(k) && PT[k] && !PT[k].ok ? k : partOpen(j), pLast = PT ? [...PT].reverse().find(q => q.ok) : null; // v348: por partes, lo de la parte anterior como sugerencia
   const cont = j.area === "Contenidos", p = j.post && postById(j.post), x = PT ? partPubs(pLast)[0] || null : pubOf(j) || p, cms = CM_NAMES();
   const fms = [...new Set((PT ? pLast?.pubs || [] : j.pubs || []).map(r => r.canal ? "Canal" : postById(r.id)?.format).filter(Boolean))];
   const preCm = cont ? j.owner : x?.cm || j.pubCm || "", preDate = PT ? (j.due >= TODAY ? j.due : TODAY) : x?.date || j.pubDate || (j.due >= TODAY ? j.due : TODAY), preTime = x?.time || j.pubTime || "", preFmts = fms.length ? fms : fmtList(pubFmtOf(j));
@@ -4660,7 +4687,7 @@ function openApproveModal(j){
   const contPub = cont && (jobPubsOf(j).length > 0 || (j.piece !== OTRO && j.piece !== "Plantilla editable"));
   const w = document.createElement("div"); w.id = "fixpop"; w.className = "fixpop";
   w.innerHTML = `<div class="fixbox okbox" role="dialog" aria-modal="true" aria-labelledby="okh"><h2 id="okh">${cont ? "Aprobar contenido" : "Aprobar diseño"}${PT && pi >= 0 ? ` · ${esc(partName(PT[pi], pi))}` : ""}</h2><p class="note">${esc(j.title)} · ${esc(j.owner)}</p>
-    ${PT && pi >= 0 ? `<p class="okpart">${icon("layers")}<span>${PT[pi].last ? `Es el <b>último envío</b>: al aprobarlo, el pedido queda Aprobado.` : `Al aprobarla, la CM que elijas ya la puede subir. Después ${esc(firstName(j.owner))} manda la próxima parte (o el último envío).`}</span></p>` : ""}
+    ${PT && pi >= 0 ? `<p class="okpart">${icon("layers")}<span>${PT[pi].last ? (PT.every((q, x) => q.ok || x === pi) ? `Es el <b>último envío</b>: al aprobarlo, el pedido queda Aprobado.` : `Es el <b>último envío</b>: el pedido queda Aprobado cuando estén aprobadas todas las partes.`) : `Al aprobarla, la CM que elijas ya la puede subir. ${esc(firstName(j.owner))} puede seguir mandando las próximas partes.`}</span></p>` : ""}
     <label>¿Quién aprobó? *<select class="base" id="okBy"><option value="">Elegí quién lo aprobó</option>${approverNames().map(n => `<option>${esc(n)}</option>`).join("")}</select></label>
     ${cont ? `<label class="jcext okpubon"><input type="checkbox" id="okPubOn" data-pubowner="${esc(j.owner)}"${contPub ? " checked" : ""}> <b>Se publica en redes</b> <span class="note">(destildalo si es una cobertura de evento, una sesión de fotos u otra actividad que no se publica)</span></label>
       <p class="okcm"${contPub ? "" : " hidden"}>${icon("user-round")} Lo publica <b>${esc(j.owner)}</b>, el mismo CM que lo armó.</p><input type="hidden" id="okCm" value="${contPub ? esc(j.owner) : ""}">`
@@ -4676,7 +4703,7 @@ function openApproveModal(j){
         <div class="okcpsheet"${cf ? "" : " hidden"}>${copySheet({ copy:cf ? x.copy : "" }, true, "okCopy")}</div></div>`)(!PT && x?.copyConf && x.copySt === "ok") : ""}
       <p class="note" style="margin:0">${icon("calendar-days")} Se carga sola en el calendario del CM con lo justo para publicar (título, tipo de gráfica, dónde se publica, día, hora y la ruta de la compartida), y le llega el aviso (+1). ${cont ? "El copy de arriba queda aprobado en su publicación: solo la publica." : "Si no marcás “Copy confirmado”, el CM escribe el copy y te llega para aprobarlo."} Si elegís varios lugares (ej.: Post e Historia), se carga una publicación por cada uno.</p></div>
     <p class="perr" id="okErr" hidden></p>
-    <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-oksend="${j.id}">✓ Aprobar</button></div></div>`;
+    <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-oksend="${j.id}"${PT && pi >= 0 ? ` data-okpart="${pi}"` : ""}>✓ Aprobar</button></div></div>`;
   document.body.appendChild(w);
 }
 document.addEventListener("change", e => { if (!e.target.closest?.(".okbox")) return;
@@ -4700,7 +4727,8 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-okse
   const copy = cpOn && cpEd ? rtHtml(cpEd) : "";
   if (cpOn && !copyPlain({ copy }).trim() && !/<img/i.test(copy)) return err("Escribí el copy confirmado (o destildá “Copy confirmado” para que lo escriba el CM).");
   const noCopy = !!cm && !cpOn && !!document.getElementById("okNoCopy")?.checked;
-  document.getElementById("fixpop")?.remove(); approveJob(j, { by, cm, date, time, fmt, net, ...(cpOn ? { copy } : {}), ...(noCopy ? { noCopy } : {}) }); }); // aprobar no pide ningún link (pedido de Admin total)
+  const part = b.dataset.okpart !== undefined ? +b.dataset.okpart : null; // v361: la parte que se está aprobando
+  document.getElementById("fixpop")?.remove(); approveJob(j, { by, cm, date, time, fmt, net, ...(cpOn ? { copy } : {}), ...(noCopy ? { noCopy } : {}), ...(Number.isInteger(part) ? { part } : {}) }); }); // aprobar no pide ningún link (pedido de Admin total)
 // En la ficha del pedido: la publicación que salió al aprobarlo (CM, fecha, formato) con un botón para abrirla.
 function pubInfo(j){ return (j.pubs || (j.pub ? [j.pub] : [])).map(r => r.canal ? canalById(r.id) : postById(r.id)).filter(Boolean).map(x => pubInfoOne(x)).join(""); }
 function pubInfoOne(x){
@@ -4797,20 +4825,27 @@ function approveJob(j, opts = {}){
   toast(`Aprobado${j.area === "CM" ? `: quedó en ${j.status}` : ""}${by ? ` por ${firstName(by)}` : ""}. Le avisamos a ${firstName(j.owner)}${x ? `${cm === j.owner ? "" : ` y a ${firstName(cm)} (CM)`}: “${x.title}” quedó en su calendario el ${dm(x.date)}${xs.length > 1 ? ` (${xs.length} publicaciones: ${xs.map(p => `${p.brand} ${p.channel ? "Canal" : p.format}`).join(", ")})` : ""}${opts.copy ? ", con el copy confirmado" : ""}` : cm ? ` y a ${firstName(cm)} (CM)` : ""}.`);
 }
 const jobRounds = j => (j.changes || []).filter(c => !c.ok && !c.kind).length; // cuántas veces se pidieron cambios
-function sendJobChanges(j, text, req = ""){
+function sendJobChanges(j, text, req = "", part = null){
+  const P = jobParts(j), k = P ? (Number.isInteger(part) && P[part] && !P[part].ok ? part : partOpen(j)) : -1; // v361: por partes, los cambios son de una parte
+  if (k >= 0){ const q = P[k], nm = partName(q, k); q.fix = text; delete q.fixed; partsStatus(j);
+    (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), text:`${nm}: ${text}`, by:viewer.name, part:nm, ...(req ? { req } : {}) });
+    if (!partsWait(j).some(([x]) => !x.fix)) NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
+    notify({ to:j.owner, type:"fix", job:j.id, text:`${nm}: ${text}` }); jobUI.form = null;
+    render(); window.RMH?.flushNow?.(); return toast(`Le mandamos los cambios de “${nm}” a ${firstName(j.owner)}.`); }
   j.status = fixStage(j); (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), text, by:viewer.name, ...(req ? { req } : {}) }); // req: quién pidió los cambios
   NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
   notify({ to:j.owner, type:"fix", job:j.id, text }); jobUI.form = null;
   render(); toast(`Le mandamos los cambios a ${firstName(j.owner)}.`);
 }
-function openFixModal(j){
+function openFixModal(j, k){
   document.getElementById("fixpop")?.remove();
+  const P = jobParts(j), pk = P ? (Number.isInteger(k) && P[k] && !P[k].ok ? k : partOpen(j)) : -1;
   const w = document.createElement("div"); w.id = "fixpop"; w.className = "fixpop";
-  w.innerHTML = `<div class="fixbox" role="dialog" aria-modal="true" aria-labelledby="fixh"><h2 id="fixh">Pedir cambios</h2><p class="note">${esc(j.title)} · ${esc(j.owner)}</p>
+  w.innerHTML = `<div class="fixbox" role="dialog" aria-modal="true" aria-labelledby="fixh"><h2 id="fixh">Pedir cambios${pk >= 0 ? ` · ${esc(partName(P[pk], pk))}` : ""}</h2><p class="note">${esc(j.title)} · ${esc(j.owner)}</p>
     <label>¿Quién pide los cambios? *<select class="base" id="fixReq">${[...new Set([j.requester, ...SOLICITANTES].filter(Boolean))].map(x => `<option>${esc(x)}</option>`).join("")}</select></label>
     <label>¿Qué hay que cambiar? *<textarea class="base" id="fixText" rows="5" placeholder="Ej.: agrandar el logo, cambiar el precio a 15.900, usar la foto 2"></textarea></label>
     <p class="perr" id="fixErr" hidden>Escribí los cambios para que ${esc(firstName(j.owner))} sepa qué corregir.</p>
-    <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-fixsend="${j.id}">Enviar cambios</button></div></div>`;
+    <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-fixsend="${j.id}"${pk >= 0 ? ` data-fixpart="${pk}"` : ""}>Enviar cambios</button></div></div>`;
   document.body.appendChild(w); w.querySelector("textarea").focus();
 }
 document.addEventListener("click", e => {
@@ -4818,7 +4853,7 @@ document.addEventListener("click", e => {
   const b = e.target.closest("[data-fixsend]"); if (!b) return;
   const text = document.getElementById("fixText").value.trim(), j = jobById(b.dataset.fixsend);
   if (!text){ document.getElementById("fixErr").hidden = false; return; }
-  const req = document.getElementById("fixReq")?.value || ""; document.getElementById("fixpop").remove(); if (j) sendJobChanges(j, text, req);
+  const req = document.getElementById("fixReq")?.value || "", part = b.dataset.fixpart !== undefined ? +b.dataset.fixpart : null; document.getElementById("fixpop").remove(); if (j) sendJobChanges(j, text, req, part);
 });
 // Cambia la etapa respetando el flujo: cuando la persona termina (boceto o trabajo de CM) le avisa a Admin total para revisar.
 function moveJob(j, to){
@@ -4828,14 +4863,15 @@ function moveJob(j, to){
   if (viewer.role === "Admin total" && to === fixStage(j)){ render(); openFixModal(j); return; } // los cambios siempre van con mensaje
   if (viewer.role === "Admin total" && (to === "Aprobado" || (j.area === "CM" && to === "Programado")) && (REVIEW_WAIT.includes(j.status) || (to === "Aprobado" && jobParts(j) && partOpen(j) >= 0))){ render(); return openApproveModal(j); }
   // v350 · Por partes: se manda a revisión con el nombre de la parte (en Boceto); sin una parte enviada no hay nada que aprobar.
-  if (jobParts(j) && !partsDone(j) && partOpen(j) < 0 && (to === reviewStage(j) || to === "Aprobado")){ render();
+  if (jobParts(j) && !partsDone(j) && (to === "Aprobado" ? partOpen(j) < 0 : to === reviewStage(j) && !(jobParts(j) || []).some(q => !q.ok && q.fix))){ render();
     if (to === "Aprobado") return toast("Todavía no hay una parte enviada para aprobar.");
-    jobUI.ficha = j.id; render(); setTimeout(() => { const i = document.getElementById("bkPart-" + j.id); i?.scrollIntoView({ block:"center" }); i?.focus(); }, 60);
-    return toast("Poné el nombre de esta parte (ej.: Carnes) y tocá “Enviar parte” (o “Último envío” si es la última)."); }
+    if (partLastSent(j)) return toast("Ya mandaste el último envío: falta que Admin total apruebe las partes.");
+    partGo(j); return toast("Poné el nombre de esta parte (ej.: Carnes) y tocá “Enviar parte” (o “Último envío” si es la última)."); }
   if (viewer.role !== "Admin total" && to === reviewStage(j)){
     if (contCopy(j) && !jcopyOk(j)){ jobUI.ficha = j.id; render(); window.scrollTo(0, 0); setTimeout(() => document.querySelector(".jp-copy")?.scrollIntoView({ block:"center" }), 50);
       return toast("Falta el copy: escribilo en “Copy de la publicación” (o marcá “No lleva copy”) y tocá de nuevo. Se manda junto con el diseño."); }
-    const fix = j.status === fixStage(j); if (fix) j.rounds = (j.rounds || 0) + 1;
+    const fix = j.status === fixStage(j) || (jobParts(j) || []).some(q => !q.ok && q.fix); if (fix) j.rounds = (j.rounds || 0) + 1;
+    (jobParts(j) || []).forEach(q => { if (!q.ok && q.fix){ delete q.fix; q.fixed = true; } }); // v361: corrigió las partes con cambios
     if (contCopy(j) && !j.noCopy && !j.copyConf) copyLogAdd(j, "send");
     j.status = to; NOTIFS.forEach(n => { if (n.to === viewer.name && n.job === j.id) n.read = true; });
     (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), kind:"boceto", by:viewer.name, fix, link:j.designLink || "" });
@@ -4947,7 +4983,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v360";
+const APP_VER = "v361";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -7363,6 +7399,8 @@ function designerAction(j){
     return ""; }
   const back = designsJob(j) && designBack(j) ? `<button class="btn sm backbtn" data-jback="${j.id}" title="Por si lo pasaste sin querer">${icon("undo-2")} Volver a ${designBack(j)}</button>` : "";
   if (j.status === "Pendiente") return `<button class="btn primary donebtn" data-jstart="${j.id}">${icon("play")} Empezar · En proceso</button>`;
+  if (jobParts(j) && !partsDone(j)){ const P = jobParts(j), fx = P.findIndex(q => !q.ok && q.fix), wait = P.filter(q => !q.ok && !q.fix).length; // v361
+    return `${fx >= 0 ? `<button class="btn primary donebtn fix" data-partfixed="${j.id}|${fx}">✓ Corrección de “${esc(partName(P[fx], fx))}” realizada</button>` : ""}${partLastSent(j) ? "" : `<button class="btn ${fx >= 0 ? "" : "primary "}donebtn" data-jpartgo="${j.id}">${icon("send")} ${P.length ? "Enviar otra parte" : "Enviar parte"}</button>`}${wait ? `<span class="waitchip">${icon("hourglass")} ${wait === 1 ? "1 parte esperando aprobación" : `${wait} partes esperando aprobación`}</span>` : ""}`; }
   if (j.status === "En proceso") return `<button class="btn primary donebtn" data-jdone="${j.id}">✓ ${jobParts(j) ? "Enviar parte" : "Boceto finalizado"}</button>${back}`;
   if (j.status === "En corrección") return `<button class="btn primary donebtn fix" data-jdone="${j.id}">✓ Corrección realizada</button>`;
   if (REVIEW_WAIT.includes(j.status)) return `<span class="waitchip">${icon("hourglass")} Esperando revisión</span>${valComBtn(j)}${back}`;
@@ -8851,9 +8889,10 @@ const bkDrive = id => `https://drive.google.com/file/d/${encodeURIComponent(id)}
 const canDelBk = (b, j) => !isViewOnly() && !jobLocked(j) && (viewer.role === "Admin total" || (hasJob(j, viewer.name) && b.by === viewer.name));
 // v345: los que se suben juntos (g) se ven juntos, como la versión actual; los de antes, en “Versiones anteriores”.
 function bocetoBlock(j){
-  // v348 · Por partes: se ve la parte en curso (los de las otras partes, abajo); mientras una parte está en revisión no se sube la siguiente.
-  const P = jobParts(j), po = partOpen(j), pdone = partsDone(j), show = P ? (pdone ? P.length : partNext(j) + 1) : 0, waitRev = !!P && po >= 0 && REVIEW_WAIT.includes(j.status);
-  const list = (j.bocetos || []).filter(b => !P || (b.pt || 1) === show).slice().reverse(), ed = canAttach(j) && !(P && (pdone || waitRev)), last = list[0];
+  // v348 · Por partes: se ve la parte en curso (los de las otras partes, abajo).
+  // v361: se puede seguir subiendo y mandando partes aunque otras esperen aprobación (después del último envío, solo para corregir).
+  const P = jobParts(j), pdone = partsDone(j), fixing = !!P && P.some(q => !q.ok && q.fix), show = P ? (pdone ? P.length : partNext(j) + 1) : 0, waiting = P ? partsWait(j).filter(([q]) => !q.fix) : [];
+  const list = (j.bocetos || []).filter(b => !P || (b.pt || 1) === show).slice().reverse(), ed = canAttach(j) && !(P && (pdone || (partLastSent(j) && !fixing))), last = list[0];
   const showName = P ? (P[show - 1] ? partName(P[show - 1], show - 1) : P.length ? "próxima parte" : "primera parte") : "";
   const cur = last ? (last.g ? list.filter(b => b.g === last.g) : [last]) : [], old = list.filter(b => !cur.includes(b));
   const view = (b, cls = "") => bkKind(b.t) === "file" ? `<a class="bkfile ${cls}" href="${bkDrive(b.id)}" target="_blank" rel="noopener">${icon("file")}<b>${esc(b.n)}</b><small>Abrir en Drive</small></a>`
@@ -8869,7 +8908,7 @@ function bocetoBlock(j){
       : `<p class="note" style="margin:0">Todavía no hay boceto.</p>`}
     ${old.length ? `<div class="bkold"><span class="note">Versiones anteriores</span><div class="bkthumbs">${old.map(b => view(b)).join("")}</div></div>` : ""}
     ${P ? P.map((q, k) => { if (k + 1 === show) return ""; const bs = (j.bocetos || []).filter(b => (b.pt || 1) === k + 1); return bs.length ? `<div class="bkold"><span class="note">${icon("layers")} ${esc(partName(q, k))}${q.ok ? " · aprobada" : ""}</span><div class="bkthumbs">${bs.map(b => view(b)).join("")}</div></div>` : ""; }).join("") : ""}
-    ${P && canAttach(j) && waitRev ? `<p class="note bkwait">${icon("hourglass")}<span>“${esc(showName)}” está esperando que Admin total la apruebe. Cuando se aprueba, ya podés mandar la próxima parte${P[po]?.last ? "" : " (o el último envío)"}; si piden cambios, la corregís acá.</span></p>` : ""}
+    ${P && canAttach(j) && waiting.length ? `<p class="note bkwait">${icon("hourglass")}<span>${waiting.map(([q, k]) => `“${esc(partName(q, k))}”`).join(", ")} ${waiting.length === 1 ? "está esperando" : "están esperando"} que Admin total ${waiting.length === 1 ? "la apruebe" : "las apruebe"}.${partLastSent(j) ? "" : " Mientras tanto podés seguir subiendo y mandando las próximas partes."} Si piden cambios, la corregís acá.</span></p>` : ""}
     ${ed ? `<div class="bkup"><label class="btn sm primary${up ? " disabled" : ""}">${icon("upload")} <span id="bkprog-${esc(j.id)}">${up ? esc(up) : last ? "Subir otra versión" : "Subir boceto"}</span><input type="file" multiple data-bkup="${esc(j.id)}" hidden ${up ? "disabled" : ""}></label>
       <span class="note">Imágenes, PDF o logos de hasta <b>100 MB</b> cada uno. Podés elegir <b>varios a la vez</b> (por ejemplo, las 10 piezas de las ofertas del fin de semana): se suben juntos a Google Drive y se ven todos acá.</span></div>` : ""}${partSendBox(j)}${splitBtn(j)}</section>`;
 }
@@ -9242,7 +9281,11 @@ function jobFicha(){
   const last = j.status === fixStage(j) && hist.find(c => !c.ok && !c.kind);
   const label = st => st === reviewStage(j) && !at ? (j.area === "CM" ? "✓ Mandar a revisión" : `✓ ${st} · enviar a revisión`) : st === "Publicado" ? "✓ Publicado" : st;
   const opts = stageOptions("job", j).filter(st => st !== j.status);
-  const acts = at && REVIEW_WAIT.includes(j.status) ? `<div class="chips">${valComBtn(j)}<button class="btn primary" data-jrev="approve:${j.id}">${j.area === "CM" ? "Aprobar" : "✓ Aprobar"}</button><button class="btn" data-jrev="fix:${j.id}">Pedir cambios</button></div>`
+  // v361 · Por partes: Admin total aprueba o pide cambios en cada parte (en “Partes”); quien la hace manda la próxima sin esperar.
+  const pa = jobParts(j) && !partsDone(j) && j.status !== "Pendiente" && !jobLocked(j), pw = pa ? partsWait(j).length : 0;
+  const acts = pa ? (at ? `<div class="chips">${pw ? `<button class="btn primary" data-jrev="approve:${j.id}">✓ Aprobar la primera que espera</button><span class="note">${icon("layers")} o aprobá / pedí cambios en cada parte, abajo en “Partes”.</span>` : `<span class="waitchip">${icon("hourglass")} Esperando la próxima parte</span>`}</div>`
+      : j.owner === viewer.name ? `<div class="chips">${designerAction(j)}</div>` : `<div class="chips"><span class="waitchip">${icon("hourglass")} ${pw ? `${pw} ${pw === 1 ? "parte" : "partes"} sin aprobar` : "Esperando la próxima parte"}</span></div>`)
+    : at && REVIEW_WAIT.includes(j.status) ? `<div class="chips">${valComBtn(j)}<button class="btn primary" data-jrev="approve:${j.id}">${j.area === "CM" ? "Aprobar" : "✓ Aprobar"}</button><button class="btn" data-jrev="fix:${j.id}">Pedir cambios</button></div>`
     : REVIEW_WAIT.includes(j.status) ? `<div class="chips"><span class="waitchip">${icon("hourglass")} Esperando la revisión</span>${valComBtn(j)}${designsJob(j) && opts.includes(designBack(j)) ? `<button class="btn" data-jmove="${j.id}|${designBack(j)}">${icon("undo-2")} Volver a ${designBack(j)}</button>` : ""}</div>`
     : opts.length ? `<div class="chips">${jobCanApprove(j) ? `<button class="btn primary" data-jrev="approve:${j.id}">${j.area === "CM" ? "Aprobar" : "✓ Aprobar"}</button>` : ""}${opts.map(st => `<button class="btn${st === reviewStage(j) || st === "Publicado" ? " primary" : ""}" data-jmove="${j.id}|${st}">${!at && designsJob(j) && designBack(j) === st ? `${icon("undo-2")} Volver a ${st}` : label(st)}</button>`).join("")}</div>` : "";
   const mine = j.owner === viewer.name && !isFin(j) && !isViewOnly() && j.area !== "CM";
