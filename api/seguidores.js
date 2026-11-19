@@ -4,8 +4,10 @@
 //
 // Probar sin guardar:  /api/seguidores?dry=1&secret=EL_CRON_SECRET
 const { ORDEN, cronOrUser, brandPages, save, today, tokenHint } = require("./_lib/meta");
+const historias = require("./_lib/historias"); // v362: /api/seguidores?que=historias (Vercel gratis: hasta 12 funciones)
 
 module.exports = async (req, res) => {
+  if (req.query?.que === "historias") return historias(req, res);
   const who = await cronOrUser(req); // el cron o el botón “Actualizar” de la app (Admin total, Admin o CM)
   if (!who) return res.status(401).json({ ok: false, error: "No autorizado: falta ?secret= o es incorrecto" });
   if (!process.env.META_TOKEN){ console.error("ERROR: falta la variable META_TOKEN en Vercel"); return res.status(500).json({ ok: false, error: "Falta la variable META_TOKEN en Vercel" }); }
