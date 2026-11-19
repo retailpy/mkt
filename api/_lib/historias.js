@@ -11,8 +11,9 @@
 //   "err:<marca>": el error de la última vez (o se borra si anduvo)
 // En esta clave, mandar una clave con null la borra (ingest_meta, migración 20261119120000).
 //
-// Probar sin guardar:  /api/historias?dry=1&secret=EL_CRON_SECRET
-const { cronOrUser, graph, brandPages, save, readMeta, today, tokenHint } = require("./_lib/meta");
+// Vive en _lib (no es una función aparte: el plan de Vercel permite 12) y se llama con /api/seguidores?que=historias.
+// Probar sin guardar:  /api/seguidores?que=historias&dry=1&secret=EL_CRON_SECRET
+const { cronOrUser, graph, brandPages, save, readMeta, today, tokenHint } = require("./meta");
 
 const BRANDS = ["Superseis", "Stock", "Delimarket"], TOP = 12, TOP_MONTHS = 3, SUM_MONTHS = 13, IMG_DAYS = 3;
 const pyDay = ts => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date(ts));
