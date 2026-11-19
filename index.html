@@ -1532,7 +1532,22 @@ h2{font-size:17px;margin:0 0 14px;font-weight:600;color:#fff}
 .panel-h.story{background:linear-gradient(to right,rgba(249,115,22,.24),rgba(236,72,153,.16),transparent)}
 .stpanel .stnote,.stlivep .stnote{margin:0 0 10px}.stlivep .lph{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .stlive{display:grid;grid-auto-flow:column;grid-auto-columns:118px;gap:10px;overflow-x:auto;padding:8px 2px 6px;scroll-snap-type:x proximity}.stlive .stcard{scroll-snap-align:start}
-.stlive .stimg em{left:50%;transform:translateX(-50%);min-width:22px;text-align:center}.strow{padding:10px 0;border-top:1px solid var(--line-2)}.strow:first-of-type{border-top:0}
+.stlive .stimg em{left:50%;transform:translateX(-50%);min-width:22px;text-align:center}
+button.stcard{appearance:none;background:none;border:0;padding:0;margin:0;text-align:left;color:inherit;font:inherit;cursor:zoom-in;width:100%;display:block}
+button.stcard:hover .stimg{box-shadow:0 0 0 3px rgba(236,72,153,.85)}button.stcard:focus-visible{outline:2px solid var(--accent,#f472b6);outline-offset:3px;border-radius:12px}.stm{display:block}
+.streg{margin-top:10px;border:1px solid var(--line-2);border-radius:12px;padding:6px 10px}.streg>summary{cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px;padding:4px 0}.streg>summary svg{width:15px;height:15px}
+.streg-t td{vertical-align:middle}.stregr{cursor:zoom-in}.stregr:hover td{background:rgba(236,72,153,.08)}.stmini{display:block;width:30px}.stmini .stimg{border-radius:6px;box-shadow:none}.stmini .stimg>i svg{width:12px;height:12px}
+.stlivep .lph .btn{margin-left:auto}
+body.stbox-on{overflow:hidden}
+.stbox{position:fixed;inset:0;z-index:9000;background:rgba(5,8,16,.86);display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)}
+.stbox-in{position:relative;display:flex;gap:22px;align-items:center;max-width:860px;width:100%;max-height:100%;background:var(--panel,#0f172a);border:1px solid var(--line-2);border-radius:18px;padding:18px}
+.stbox-pic{position:relative;flex:0 0 auto;width:min(340px,42vh)}.stbox-pic .stimg{border-radius:14px}.stbox-pic .stimg>i svg{width:40px;height:40px}
+.stbox-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:38px;height:38px;border-radius:999px;border:0;background:rgba(0,0,0,.6);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}.stbox-nav.prev{left:-14px}.stbox-nav.next{right:-14px}.stbox-nav:disabled{opacity:.25;cursor:default}
+.stbox-x{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:999px;border:1px solid var(--line-2);background:rgba(255,255,255,.06);color:inherit;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.stbox-d{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px}.stbox-d .lph{display:flex;gap:8px;align-items:center}.stbox-when{margin:0;line-height:1.5}
+.stbox-st{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.stbox-st div{border:1px solid var(--line-2);border-radius:12px;padding:8px 10px;display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:center}.stbox-st svg{width:16px;height:16px;grid-row:span 2;opacity:.8}.stbox-st b{font-size:18px}.stbox-st span{font-size:12px;color:var(--muted)}
+.stbox-d .btn{align-self:flex-start}
+@media (max-width:700px){.stbox{align-items:flex-start;overflow-y:auto;padding:10px}.stbox-in{flex-direction:column;gap:14px;padding:14px}.stbox-pic{width:min(260px,62vw)}.stbox-nav.prev{left:-12px}.stbox-nav.next{right:-12px}}.strow{padding:10px 0;border-top:1px solid var(--line-2)}.strow:first-of-type{border-top:0}
 .stkpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:8px 0 10px}.stkpis div{border:1px solid var(--line-2);border-radius:12px;padding:8px 10px}.stkpis b{display:block;font-size:20px;color:#fff}.stkpis span{font-size:12px;color:var(--muted)}
 .stgrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
 .stcard{min-width:0}.stimg{position:relative;display:block;aspect-ratio:9/16;border-radius:12px;overflow:hidden;background:linear-gradient(160deg,rgba(249,115,22,.35),rgba(236,72,153,.35),rgba(124,58,237,.35));box-shadow:0 0 0 2px rgba(236,72,153,.55)}
@@ -5730,6 +5745,7 @@ function metaAdsPanel(simple = false){
 // Seguidores y público reales de Meta: los escriben las funciones diarias en Supabase (solo lectura en la app).
 // META_FOLLOWERS = { updated, "AAAA-MM": { Marca: { ig, fb, handle, page } } } · META_DEMO = { updated, Marca: { handle, foll, cities, ages, gender } } (cantidades).
 let META_FOLLOWERS = {}, META_DEMO = {}, META_POSTS = {}, META_CREATIVES = {}, META_INBOX = {}, META_REFS = {}, META_STORIES = {}; // v362: META_STORIES (historias)
+let STORY_IMGS = {}; // v364: id de la historia → id de su imagen en Google Drive (la de Instagram vence); la escribe la app (storyKeep)
 let META_DM = {}; // mensajes de Instagram que llegan en vivo (webhook de Meta → /api/webhook-meta → s:META_DM)
 let META_IG_ACT = {}; // comentarios, comentarios en vivo y menciones de Instagram (webhook y /api/interacciones → s:META_IG_ACT)
 let META_DM_LOG = {}; // los últimos avisos de Meta a ese webhook y qué pasó con cada uno (sin el texto de los mensajes)
@@ -5890,28 +5906,40 @@ function lastPostsPanel(bs, fill = false){ // fill (v276, TV): si una marca tien
   const rows = bs.map(b => ({ b, list:nine(b), h:META_POSTS[b]?.handle })).filter(r => r.list.length);
   return `<div class="panel flush${fill ? " tvlp" : ""}"><div class="panel-h cyan"><h2 class="pmh">${pmIco("images")}Últimas publicaciones de Instagram</h2><div class="tag-row"><span class="tag">${monthLabel(MONTH)}</span><span class="tag">Fuente: Meta</span>${updTag(postsUpdated())}${rows.length > 1 && !bare ? `<button type="button" class="btn sm" data-lpfull="${esc(rows.map(r => r.b).join(","))}">${icon("maximize-2")} Ver todas en grande</button>` : ""}${bare ? "" : metaBtn("publicaciones", "Publicaciones")}</div></div>
     <div class="panel-b">${rows.length ? rows.map(r => `<div class="lpost"><div class="lph">${brandTag(r.b)}${r.h ? `<span class="note">${esc(r.h)}</span>` : ""}${bare ? "" : `<button type="button" class="btn sm lpbig" data-lpfull="${esc(rows.map(x => x.b).join(","))}" data-lpsel="${esc(r.b)}" title="Ver las 9 de ${esc(r.b)} en grande, con sus números">${icon("maximize-2")} Ver en grande</button>`}</div><div class="lpgrid">${r.list.map(x => { const pp = { img:x.img, format:x.type };
-      return `<a class="lpitem" href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="${esc((x.cap || "").slice(0, 140))}"><span class="pwrap">${pubThumb(pp, "lg")}${reelBadge(x)}${x._m ? `<span class="tvpmes">${monthName(x._m)}</span>` : ""}</span><span class="lpmeta">${dm(pyDate(x.ts))}${fill || bare ? "" : ` · ♥ ${dots(x.likes || 0)}`}</span></a>`; }).join("")}</div></div>`).join("")
+      return `<a class="lpitem" href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="${esc((x.cap || "").slice(0, 140))}"><span class="pwrap">${pubThumb(pp, "lg")}${reelBadge(x)}${x._m ? `<span class="tvpmes">${monthName(x._m)}</span>` : ""}</span><span class="lpmeta">${dm(pyDate(x.ts))}${fill || bare ? "" : ` · ♥ ${dots(x.likes || 0)}${isNum(x.reach) ? `<br><b title="Alcance: cuentas distintas que la vieron">${icon("users")} ${dots(x.reach)}</b> alcance` : ""}`}</span></a>`; }).join("")}</div></div>`).join("")
       : `<div class="empty">${isFuture() ? `${monthLabel(MONTH)} todavía no empezó: acá van a salir sus publicaciones.` : `Todavía no hay publicaciones de ${monthName(MONTH)}: llegan con la actualización diaria de Meta.`}</div>`}
       ${rows.length && bs.some(b => !rows.some(r => r.b === b)) ? `<p class="note" style="margin:8px 0 0">Todavía sin publicaciones en ${monthName(MONTH)}: ${bs.filter(b => !rows.some(r => r.b === b)).join(", ")}${canMetaRefresh() ? " (tocá “Actualizar”)" : ""}.</p>` : ""}</div></div>`;
 }
-// v362 · Historias de Instagram de Superseis, Stock y Delimarket (s:META_STORIES: /api/historias las mide varias veces por día
-// mientras están publicadas, 24 h). Van aparte de las publicaciones (otro color, formato vertical): Dashboard y Informe de Redes.
-const stViews = x => x?.v ?? x?.r ?? 0;
+// v362 · Historias de Instagram de Superseis, Stock y Delimarket (s:META_STORIES: /api/seguidores?que=historias las mide varias
+// veces por día mientras están publicadas, 24 h). Van aparte de las publicaciones (otro color, formato vertical): Dashboard e Informe.
+// v364: tocar una historia la abre en grande (con sus números y el link a Instagram); el top del mes va por ALCANCE y queda como
+// registro (13 meses), con la imagen guardada en Google Drive (s:STORY_IMGS) porque la de Instagram vence a los pocos días.
+const stViews = x => x?.v ?? x?.r ?? 0, stReach = x => x?.r ?? x?.v ?? 0;
 const stTime = ts => new Intl.DateTimeFormat("es-PY", { timeZone:"America/Asuncion", hour:"2-digit", minute:"2-digit", hour12:false }).format(new Date(ts));
-// Las de una marca en un mes: las guardadas una por una (mes en curso y anterior) o, para meses viejos, el resumen y las 12 más vistas.
+// Las de una marca en un mes: las guardadas una por una (mes en curso; el anterior hasta el día 2) o, para meses cerrados, el
+// resumen y las 12 con más alcance (el registro del mes).
 function storyData(b, m = MONTH){
   const list = Object.entries(META_STORIES || {}).filter(([k, x]) => k.startsWith("st:") && x && x.b === b && x.ts && pyDate(x.ts).slice(0, 7) === m).map(([k, x]) => ({ ...x, id:k.slice(3) }));
-  const saved = META_STORIES?.["sum:" + m]?.[b] || null;
-  if (!list.length) return { sum:saved && saved.n ? saved : null, top:META_STORIES?.["top:" + m]?.[b] || [], list };
+  const saved = META_STORIES?.["sum:" + m]?.[b] || null, byReach = l => [...l].sort((a, c) => stReach(c) - stReach(a) || stViews(c) - stViews(a));
+  if (!list.length) return { sum:saved && saved.n ? saved : null, top:byReach(META_STORIES?.["top:" + m]?.[b] || []), list };
   const s = { n:list.length, v:0, r:0, rp:0, sh:0, ne:0 }; list.forEach(x => ["v", "r", "rp", "sh", "ne"].forEach(k => { s[k] += x[k] || 0; }));
-  return { sum:{ ...(saved || {}), ...s }, top:[...list].sort((a, c) => stViews(c) - stViews(a)), list };
+  return { sum:{ ...(saved || {}), ...s }, top:byReach(list), list };
 }
 const stNum = v => isNum(v) ? dots(v) : "—";
-const stImg = (x, badge) => `<span class="stimg"><i>${icon(x.ty === "Video" ? "clapperboard" : "image")}</i>${x.img ? `<img src="${esc(x.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}${badge ? `<em>${badge}</em>` : ""}${x.ty === "Video" ? `<span class="stvid">${icon("play")}</span>` : ""}</span>`;
-const storyCard = (x, i) => `<div class="stcard" title="${esc(`${dm(pyDate(x.ts))} ${stTime(x.ts)} · ${stNum(stViews(x))} vistas${isNum(x.r) ? ` · alcance ${dots(x.r)}` : ""}`)}">${stImg(x, i < 3 ? `${i + 1}°` : "")}
-  <div class="stm"><b>${icon("eye")} ${stNum(stViews(x))}</b><small>${dm(pyDate(x.ts))} · ${stTime(x.ts)} h${isNum(x.r) ? ` · alcance ${dots(x.r)}` : ""}</small></div></div>`;
+// La imagen: la copia de Drive si ya está (no vence), si no la de Instagram (sirve los primeros días).
+const stSrc = (x, w = 480) => STORY_IMGS?.[x?.id] ? driveSrc(STORY_IMGS[x.id], w) : x?.img || "";
+const stImg = (x, badge, w) => { const src = stSrc(x, w);
+  return `<span class="stimg"><i>${icon(x.ty === "Video" ? "clapperboard" : "image")}</i>${src ? `<img src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="${STORY_IMGS?.[x.id] ? "imgRetry(this)" : "this.remove()"}">` : ""}${badge ? `<em>${badge}</em>` : ""}${x.ty === "Video" ? `<span class="stvid">${icon("play")}</span>` : ""}</span>`; };
+// Las listas que se ven en pantalla, para abrir una historia en grande y pasar a la anterior o la siguiente.
+const ST_LISTS = {};
+const stKey = (key, list) => { ST_LISTS[key] = list; return key; };
+// Top del mes: ordenadas por alcance (el número grande), con las vistas abajo.
+const storyCard = (x, i, key) => `<button type="button" class="stcard" data-stopen="${esc(key)}|${i}" title="${esc(`Ver en grande · ${dm(pyDate(x.ts))} ${stTime(x.ts)} h · alcance ${stNum(x.r)} · ${stNum(x.v)} vistas`)}">${stImg(x, i < 3 ? `${i + 1}°` : "")}
+  <span class="stm"><b>${icon("users")} ${stNum(stReach(x))}</b><small>alcance · ${stNum(x.v)} vistas<br>${dm(pyDate(x.ts))} · ${stTime(x.ts)} h</small></span></button>`;
 const storyKpis = s => `<div class="stkpis"><div><b>${stNum(s.n)}</b><span>historias</span></div><div><b>${stNum(s.v)}</b><span>vistas</span></div><div><b>${stNum(s.r)}</b><span>alcance (suma)</span></div><div><b>${s.n ? stNum(Math.round(s.v / s.n)) : "—"}</b><span>vistas por historia</span></div></div>`;
-const storyNote = () => `<p class="note stnote">${icon("info")} Aparte de las publicaciones: las historias duran 24 horas y Meta da sus números solo mientras están publicadas, por eso se miden varias veces por día.${META_STORIES?.since ? ` Medidas desde el ${dm(pyDate(META_STORIES.since))}.` : ""}</p>`;
+const storyNote = () => `<p class="note stnote">${icon("info")} Aparte de las publicaciones: las historias duran 24 horas y Meta da sus números solo mientras están publicadas, por eso se miden varias veces por día. Tocá una historia para verla en grande.${META_STORIES?.since ? ` Medidas desde el ${dm(pyDate(META_STORIES.since))}.` : ""}</p>`;
+// El usuario de Instagram de la marca (para el link): de las publicaciones o de los seguidores.
+const igUser = b => String(META_POSTS?.[b]?.handle || Object.values(META_FOLLOWERS || {}).map(m => m && typeof m === "object" ? m[b]?.handle : null).find(Boolean) || "").replace(/^@/, "");
 // v363 · Las que están arriba ahora (v364: de la más nueva a la más vieja): las que vio la última lectura
 // de Meta y tienen menos de 24 h. Las vistas son las que llevaban en esa lectura.
 function liveStories(b){
@@ -5921,14 +5949,14 @@ function liveStories(b){
     .map(([k, x]) => ({ ...x, id:k.slice(3) })).sort((a, c) => new Date(c.ts) - new Date(a.ts)); // v364: la más nueva primero
 }
 const liveLeft = ts => { const h = Math.round(24 - (Date.now() - new Date(ts)) / 36e5); return h >= 1 ? `quedan ${h} h` : "se va en menos de 1 h"; };
-const liveCard = (x, i) => `<div class="stcard" title="${esc(`Subida ${dm(pyDate(x.ts))} ${stTime(x.ts)} h · ${stNum(stViews(x))} vistas${isNum(x.r) ? ` · alcance ${dots(x.r)}` : ""}`)}">${stImg(x, String(i + 1))}
-  <div class="stm"><b>${icon("eye")} ${stNum(stViews(x))}</b><small>Subida ${stTime(x.ts)} h · ${liveLeft(x.ts)}${isNum(x.r) ? `<br>alcance ${dots(x.r)}` : ""}</small></div></div>`;
+const liveCard = (x, i, key) => `<button type="button" class="stcard" data-stopen="${esc(key)}|${i}" title="${esc(`Ver en grande · subida ${dm(pyDate(x.ts))} ${stTime(x.ts)} h · ${stNum(stViews(x))} vistas${isNum(x.r) ? ` · alcance ${dots(x.r)}` : ""}`)}">${stImg(x, String(i + 1))}
+  <span class="stm"><b>${icon("eye")} ${stNum(stViews(x))}</b><small>Subida ${stTime(x.ts)} h · ${liveLeft(x.ts)}${isNum(x.r) ? `<br>alcance ${dots(x.r)}` : ""}</small></span></button>`;
 function liveStoriesPanel(bs){
   if (MONTH !== CURRENT_MONTH) return ""; // es lo de este momento: en otro mes no va
   const rows = bs.map(b => ({ b, list:liveStories(b) })), n = rows.reduce((t, r) => t + r.list.length, 0), adm = viewer.role === "Admin total";
   return `<div class="panel flush stlivep"><div class="panel-h story"><h2 class="pmh">${pmIco("smartphone")}Historias de Instagram · arriba ahora</h2><div class="tag-row"><span class="tag">${n} ${n === 1 ? "historia" : "historias"}</span><span class="tag">Fuente: Meta</span>${updTag(META_STORIES?.updated)}${metaBtn("historias", "Historias", "Historias actualizadas con lo último de Meta.")}</div></div>
-    <div class="panel-b"><p class="note stnote">${icon("info")} Las que están publicadas ahora, de la más nueva (la última que se subió) a la más vieja, con las vistas que llevan. Cada historia dura 24 horas.</p>
-    ${rows.map(r => `<div class="strow"><div class="lph">${brandTag(r.b)}<span class="note">${r.list.length ? `${r.list.length} ${r.list.length === 1 ? "historia arriba" : "historias arriba"}` : "Ninguna historia arriba ahora"}</span>${adm && META_STORIES?.["err:" + r.b] ? `<span class="sterr">${icon("triangle-alert")} Meta: ${esc(META_STORIES["err:" + r.b])}</span>` : ""}</div>${r.list.length ? `<div class="stlive">${r.list.map(liveCard).join("")}</div>` : ""}</div>`).join("")}</div></div>`;
+    <div class="panel-b"><p class="note stnote">${icon("info")} Las que están publicadas ahora, de la más nueva (la última que se subió) a la más vieja, con las vistas que llevan. Cada historia dura 24 horas. Tocá una para verla en grande o abrirla en Instagram.</p>
+    ${rows.map(r => `<div class="strow"><div class="lph">${brandTag(r.b)}<span class="note">${r.list.length ? `${r.list.length} ${r.list.length === 1 ? "historia arriba" : "historias arriba"}` : "Ninguna historia arriba ahora"}</span>${r.list.length && igUser(r.b) ? `<a class="btn sm" href="https://www.instagram.com/stories/${esc(igUser(r.b))}/" target="_blank" rel="noopener">${icon("instagram")} Ver en Instagram</a>` : ""}${adm && META_STORIES?.["err:" + r.b] ? `<span class="sterr">${icon("triangle-alert")} Meta: ${esc(META_STORIES["err:" + r.b])}</span>` : ""}</div>${r.list.length ? `<div class="stlive">${r.list.map((x, i) => liveCard(x, i, stKey("live:" + r.b, r.list))).join("")}</div>` : ""}</div>`).join("")}</div></div>`;
 }
 // Al abrir el Dashboard, si la última lectura tiene más de 30 min, se pide una nueva (sin avisos; una vez cada 30 min).
 function storiesAuto(){
@@ -5937,13 +5965,77 @@ function storiesAuto(){
   if (Date.now() - (storiesAuto.t || 0) < 30 * 60e3) return;
   storiesAuto.t = Date.now(); setTimeout(() => metaRefresh("historias", "Historias", "", true), 800);
 }
+// v364 · Registro del mes: las (hasta 12) con más alcance de cada marca, con su fecha, hora y números. Se abre y se cierra
+// (queda como lo dejaste aunque la pantalla se actualice).
+const stRegOpen = new Set();
+const storyReg = (b, top, key, m = MONTH) => !top.length ? "" : `<details class="streg" data-streg="${esc(b + "|" + m)}"${stRegOpen.has(b + "|" + m) ? " open" : ""}><summary>${icon("list")} Registro de ${monthName(m)}: ${top.length === 1 ? "la historia" : `las ${top.length}`} con más alcance de ${esc(b)}</summary>
+  <div class="tw"><table class="sttab streg-t"><thead><tr><th>#</th><th></th><th>Subida</th><th class="r">Alcance</th><th class="r">Vistas</th><th class="r">Respuestas</th><th class="r">Compartidas</th><th class="r">Salieron</th></tr></thead>
+  <tbody>${top.map((x, i) => `<tr class="stregr" data-stopen="${esc(key)}|${i}" title="Ver en grande"><td class="num">${i + 1}</td><td><span class="stmini">${stImg(x, "", 160)}</span></td><td>${dm(pyDate(x.ts))} · ${stTime(x.ts)} h${x.ty === "Video" ? ` <span class="note">· video</span>` : ""}</td><td class="r num"><b>${stNum(x.r)}</b></td><td class="r num">${stNum(x.v)}</td><td class="r num">${stNum(x.rp)}</td><td class="r num">${stNum(x.sh)}</td><td class="r num">${isNum(x.ne) && x.v ? `${Math.round(x.ne / x.v * 100)}%` : "—"}</td></tr>`).join("")}</tbody></table></div></details>`;
+document.addEventListener("toggle", e => { const d = e.target; if (!d?.matches?.("details[data-streg]")) return; d.open ? stRegOpen.add(d.dataset.streg) : stRegOpen.delete(d.dataset.streg); }, true);
 function storiesPanel(bs){
-  const rows = bs.map(b => ({ b, ...storyData(b) })), any = rows.some(r => r.sum?.n);
-  return `<div class="panel flush stpanel"><div class="panel-h story"><h2 class="pmh">${pmIco("trophy")}Top historias de Instagram del mes · las más vistas</h2><div class="tag-row"><span class="tag">${monthLabel(MONTH)}</span><span class="tag">Fuente: Meta</span></div></div>
-    <div class="panel-b">${storyNote()}${any ? rows.map(r => `<div class="strow"><div class="lph">${brandTag(r.b)}</div>${r.sum?.n ? `${storyKpis(r.sum)}<div class="stgrid">${r.top.slice(0, 6).map(storyCard).join("")}</div>` : `<p class="note" style="margin:0">Todavía sin historias medidas en ${monthName(MONTH)}.${viewer.role === "Admin total" && META_STORIES?.["err:" + r.b] ? ` <span class="sterr">${icon("triangle-alert")} Meta: ${esc(META_STORIES["err:" + r.b])}</span>` : ""}</p>`}</div>`).join("")
-      : `<div class="empty">${META_STORIES?.since ? `Todavía no hay historias medidas de ${monthName(MONTH)}.` : "Las historias se empiezan a medir apenas se active la lectura de Instagram (varias veces por día): acá van a salir las más vistas del mes."}</div>`}</div></div>`;
+  const rows = bs.map(b => ({ b, ...storyData(b) })), any = rows.some(r => r.sum?.n || r.top.length);
+  return `<div class="panel flush stpanel"><div class="panel-h story"><h2 class="pmh">${pmIco("trophy")}Top historias de Instagram del mes · más alcance</h2><div class="tag-row"><span class="tag">${monthLabel(MONTH)}</span><span class="tag">Fuente: Meta</span></div></div>
+    <div class="panel-b">${storyNote()}${any ? rows.map(r => { const key = stKey(`top:${MONTH}:${r.b}`, r.top.slice(0, 12));
+      return `<div class="strow"><div class="lph">${brandTag(r.b)}</div>${r.sum?.n || r.top.length ? `${r.sum?.n ? storyKpis(r.sum) : ""}<div class="stgrid">${r.top.slice(0, 6).map((x, i) => storyCard(x, i, key)).join("")}</div>${storyReg(r.b, r.top.slice(0, 12), key)}` : `<p class="note" style="margin:0">Todavía sin historias medidas en ${monthName(MONTH)}.${viewer.role === "Admin total" && META_STORIES?.["err:" + r.b] ? ` <span class="sterr">${icon("triangle-alert")} Meta: ${esc(META_STORIES["err:" + r.b])}</span>` : ""}</p>`}</div>`; }).join("")
+      : `<div class="empty">${META_STORIES?.since ? `Todavía no hay historias medidas de ${monthName(MONTH)}.` : "Las historias se empiezan a medir apenas se active la lectura de Instagram (varias veces por día): acá van a salir las de más alcance del mes."}</div>`}</div></div>`;
 }
-// En el Informe de Redes: este mes contra el anterior, las más vistas y los mejores horarios (con 2 historias o más en esa hora).
+// v364 · Historia en grande: la imagen vertical, sus números y el link a Instagram (mientras está publicada abre la historia;
+// después, el perfil de la marca: Instagram no deja ver una historia vencida salvo que esté en destacadas).
+let stBoxAt = null; // { key, i }
+function stBoxDraw(){
+  let el = document.getElementById("stbox");
+  const list = ST_LISTS[stBoxAt?.key] || [], i = stBoxAt?.i ?? -1, x = list[i];
+  if (!x){ el?.remove(); stBoxAt = null; document.body.classList.remove("stbox-on"); return; }
+  if (!el){ el = document.createElement("div"); el.id = "stbox"; el.className = "stbox"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", "Historia en grande"); document.body.appendChild(el); }
+  document.body.classList.add("stbox-on");
+  const live = Date.now() - new Date(x.ts) < 864e5, u = igUser(x.b), n = list.length;
+  const link = live ? x.ln || (u ? `https://www.instagram.com/stories/${u}/` : "") : u ? `https://www.instagram.com/${u}/` : "";
+  const st = [["users", "Alcance", x.r], ["eye", "Vistas", x.v], ["message-circle", "Respuestas", x.rp], ["send", "Compartidas", x.sh], ["log-out", "Salieron", x.ne], ["chevron-right", "Toques para adelantar", x.nf], ["chevron-left", "Toques para volver", x.nb]].filter(s => isNum(s[2]));
+  el.innerHTML = `<div class="stbox-in">
+    <button type="button" class="stbox-x" data-stclose aria-label="Cerrar">${icon("x")}</button>
+    <div class="stbox-pic">${n > 1 ? `<button type="button" class="stbox-nav prev" data-stnav="-1" aria-label="Anterior"${i ? "" : " disabled"}>${icon("chevron-left")}</button>` : ""}${stImg(x, "", 1080)}${n > 1 ? `<button type="button" class="stbox-nav next" data-stnav="1" aria-label="Siguiente"${i < n - 1 ? "" : " disabled"}>${icon("chevron-right")}</button>` : ""}</div>
+    <div class="stbox-d"><div class="lph">${brandTag(x.b)}${n > 1 ? `<span class="note">${i + 1} de ${n}</span>` : ""}</div>
+      <p class="stbox-when"><b>Subida el ${dm(pyDate(x.ts))} a las ${stTime(x.ts)} h</b>${x.ty === "Video" ? " · video" : ""}<br><span class="note">${live ? `Publicada ahora · ${liveLeft(x.ts)}` : "Ya no está publicada (las historias duran 24 h)"}</span></p>
+      <div class="stbox-st">${st.map(([ic, l, v]) => `<div>${icon(ic)}<b>${dots(v)}</b><span>${l}</span></div>`).join("") || `<p class="note">Sin números de Meta todavía.</p>`}</div>
+      ${x.at ? `<p class="note">Números de la lectura del ${metaWhen(x.at)}${isNum(x.h) ? ` (tenía ${Math.round(x.h)} h publicada)` : ""}.</p>` : ""}
+      ${link ? `<a class="btn" href="${esc(link)}" target="_blank" rel="noopener">${icon("instagram")} ${live ? "Ver la historia en Instagram" : `Ver el perfil de @${esc(u)} en Instagram`}</a>${live ? "" : `<p class="note">Si la guardaron en destacadas, está en el perfil.</p>`}` : ""}
+    </div></div>`;
+  el.querySelector(".stbox-x")?.focus({ preventScroll:true });
+}
+document.addEventListener("click", e => {
+  const o = e.target.closest("[data-stopen]"); if (o){ const [k, i] = o.dataset.stopen.split("|"); stBoxAt = { key:k, i:+i }; stBoxDraw(); return; }
+  if (!stBoxAt) return;
+  const nv = e.target.closest("[data-stnav]"); if (nv){ stBoxAt.i += +nv.dataset.stnav; stBoxDraw(); return; }
+  if (e.target.closest("[data-stclose]") || e.target.id === "stbox"){ stBoxAt = null; stBoxDraw(); }
+});
+document.addEventListener("keydown", e => { if (!stBoxAt) return;
+  if (e.key === "Escape"){ stBoxAt = null; stBoxDraw(); } else if (e.key === "ArrowRight" || e.key === "ArrowLeft"){ const n = (ST_LISTS[stBoxAt.key] || []).length, j = stBoxAt.i + (e.key === "ArrowRight" ? 1 : -1); if (j >= 0 && j < n){ stBoxAt.i = j; stBoxDraw(); } } });
+// v364 · La imagen de Instagram de una historia vence a los pocos días: las que entran en el top del mes (por alcance) se copian
+// achicadas a Google Drive (Fotos Retail MKT) y el id queda en s:STORY_IMGS, así el registro del mes sigue con su imagen.
+// Lo hace en segundo plano la app de Admin total, Admin o CM con el Dashboard o el Informe abiertos: de a una, hasta 12 cada 10 min.
+async function storyKeep(){
+  if (storyKeep.busy || !enterApp.done || !["Admin total", "Admin", "CM"].includes(viewer.role) || window.RMH?.previewing || !window.RMH?.integ || storyKeep.off || /^(localhost|127\.)/.test(location.hostname)) return;
+  if (Date.now() - (storyKeep.t || 0) < 10 * 60e3) return; storyKeep.t = Date.now();
+  const fail = storyKeep.fail || (storyKeep.fail = new Set()), want = [];
+  for (const m of [CURRENT_MONTH, prevMonth(CURRENT_MONTH)]) for (const b of IG_MAIN) storyData(b, m).top.slice(0, 12).forEach(x => { if (x.id && x.img && !STORY_IMGS?.[x.id] && !fail.has(x.id)) want.push(x); });
+  if (!want.length) return;
+  storyKeep.busy = true; let n = 0;
+  try {
+    for (const x of want.slice(0, 12)){
+      try {
+        const j = await RMH.integ({ action:"fetch_image", url:x.img });
+        if (!j?.ok || !j.data){ fail.add(x.id); continue; } // la de Instagram ya venció
+        const bin = atob(j.data), a = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) a[k] = bin.charCodeAt(k);
+        const { blob } = await shrinkPhoto(new File([a], "historia", { type:j.type || "image/jpeg" }), 720, .8);
+        const r = await RMH.integ({ action:"chat_image", type:"image/jpeg", data:await toB64(blob) });
+        if (r?.nokey || r?.old){ storyKeep.off = true; break; } // Drive sin conectar o con el script viejo: no se insiste
+        if (r?.ok && r.id){ STORY_IMGS = { ...STORY_IMGS, [x.id]:r.id }; n++; } else fail.add(x.id);
+      } catch { fail.add(x.id); }
+    }
+  } finally { storyKeep.busy = false; if (n){ window.RMH?.flushNow?.(); render(); } }
+}
+// En el Informe de Redes: este mes contra el anterior, las de más alcance (v364; antes las más vistas), su registro y los mejores
+// horarios (con 2 historias o más en esa hora).
 function repHistorias(){
   const pm = prevMonth(MONTH), rows = IG_MAIN.map(b => ({ b, c:storyData(b, MONTH), p:storyData(b, pm) }));
   const head = `<h2 style="margin:8px 0 -8px" class="pmh">${pmIco("smartphone")}Historias de Instagram</h2>`;
@@ -5955,7 +6047,7 @@ function repHistorias(){
     <tbody>${rows.map(({ b, c, p }) => { const s = c.sum; return `<tr><td>${brandTag(b)}</td>${s?.n ? `<td class="r num">${stNum(s.n)}</td><td class="r num"><b>${stNum(s.v)}</b></td><td class="r num">${stNum(s.r)}</td><td class="r num">${stNum(Math.round(per(s)))}</td><td class="r">${dTag(delta(per(s), per(p.sum)))}</td><td class="r num">${stNum(s.rp)}</td><td class="r num">${stNum(s.sh)}</td><td class="r num">${s.v ? `${Math.round((s.ne || 0) / s.v * 100)}%` : "—"}</td>` : `<td colspan="8" class="note">Sin historias medidas en ${monthName(MONTH)}</td>`}</tr>`; }).join("")}</tbody></table></div>
     <p class="note" style="margin:6px 0 0">Vistas: veces que se vio (una persona puede verla más de una vez). Alcance: cuentas distintas que la vieron (sumado por historia). Salieron: el % de vistas en que la persona cerró las historias en esa.</p>`;
   return `${head}<div class="panel stpanel">${storyNote()}${table}
-    ${rows.filter(r => r.c.top.length).map(({ b, c }) => { const hs = hours(c.sum); return `<div class="strow"><div class="lph">${brandTag(b)}<span class="note">las más vistas de ${monthName(MONTH)}</span></div><div class="stgrid">${c.top.slice(0, 6).map(storyCard).join("")}</div>
+    ${rows.filter(r => r.c.top.length).map(({ b, c }) => { const hs = hours(c.sum), key = stKey(`rep:${MONTH}:${b}`, c.top.slice(0, 12)); return `<div class="strow"><div class="lph">${brandTag(b)}<span class="note">las de más alcance de ${monthName(MONTH)}</span></div><div class="stgrid">${c.top.slice(0, 6).map((x, i) => storyCard(x, i, key)).join("")}</div>${storyReg(b, c.top.slice(0, 12), key)}
       ${hs.length ? `<p class="note sthours">${icon("clock")} Mejores horarios (vistas promedio): ${hs.map(([h, v]) => `<b>${+h} h</b> (${dots(v)})`).join(" · ")}</p>` : ""}</div>`; }).join("")}</div>`;
 }
 // “Ver en grande”: las últimas 9 publicaciones de cada marca en página completa, con likes, comentarios, alcance y texto.
@@ -6210,7 +6302,7 @@ function pBienvenida(){
   </section>`;
 }
 function pDashboard(){
-  const com = isComercial(), bs = com ? IG_MAIN.filter(b => myBrands().includes(b)) : socialBrands(); postsAuto(); if (!com) storiesAuto(); // v305: Comercial, solo las tres
+  const com = isComercial(), bs = com ? IG_MAIN.filter(b => myBrands().includes(b)) : socialBrands(); postsAuto(); if (!com){ storiesAuto(); setTimeout(storyKeep, 2500); } // v305: Comercial, solo las tres
   return `<div><h1>${helloHTML()}</h1><p class="sub">${com ? "Dashboard · seguidores, publicaciones y público de Superseis, Stock y Delimarket, actualizados todos los días desde Meta." : "Dashboard · seguidores y público de todas las cuentas, actualizados todos los días desde Meta."}</p></div>
   ${folNote()}
   ${followersPanel(com ? bs : undefined)}
@@ -6513,6 +6605,9 @@ const ICONS = {
 "check-check":"<path d=\"M18 6 7 17l-5-5\"/><path d=\"m22 10-7.5 7.5L13 16\"/>",
 "chef-hat":"<path d=\"M17 21a1 1 0 0 0 1-1v-5.35c0-.457.316-.844.727-1.041a4 4 0 0 0-2.134-7.589 5 5 0 0 0-9.186 0 4 4 0 0 0-2.134 7.588c.411.198.727.585.727 1.041V20a1 1 0 0 0 1 1Z\"/><path d=\"M6 17h12\"/>",
 "chevron-down":"<path d=\"m6 9 6 6 6-6\"/>",
+"chevron-left":"<path d=\"m15 18-6-6 6-6\"/>",
+"chevron-right":"<path d=\"m9 18 6-6-6-6\"/>",
+"log-out":"<path d=\"m16 17 5-5-5-5\"/><path d=\"M21 12H9\"/><path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\"/>",
 "chevron-up":"<path d=\"m18 15-6-6-6 6\"/>",
 "chrome":"<circle cx=\"12\" cy=\"12\" r=\"10\"/><circle cx=\"12\" cy=\"12\" r=\"4\"/><line x1=\"21.17\" x2=\"12\" y1=\"8\" y2=\"8\"/><line x1=\"3.95\" x2=\"8.54\" y1=\"6.06\" y2=\"14\"/><line x1=\"10.88\" x2=\"15.46\" y1=\"21.94\" y2=\"14\"/>",
 "circle-alert":"<circle cx=\"12\" cy=\"12\" r=\"10\"/><line x1=\"12\" x2=\"12\" y1=\"8\" y2=\"12\"/><line x1=\"12\" x2=\"12.01\" y1=\"16\" y2=\"16\"/>",

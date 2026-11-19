@@ -3,10 +3,13 @@
 // día (crons cada ~4 h) y guarda lo último que midió de cada una. Lo que venció antes de activarla no se puede pedir: se mide desde
 // que empieza a correr. Formato (una clave por historia, así cada cambio baja solo lo que cambió):
 //   "updated": "...", "since": "...",
-//   "st:<id>": { b, ts, ty, v, r, rp, sh, ti, nf, nb, ne, img, at, h }   ← historias del mes en curso y del anterior
+//   "st:<id>": { b, ts, ty, v, r, rp, sh, ti, nf, nb, ne, img, ln, at, h }   ← historias del mes en curso (v364: y las del mes
+//        anterior solo hasta el día 2, cuando ya se midieron todas; antes quedaban todo el mes y la fila crecía al doble)
 //        v vistas · r alcance (cuentas únicas) · rp respuestas · sh compartidas · ti interacciones · nf/nb/ne toques adelante, atrás
-//        y salidas · img la imagen (o la portada si es video; solo los primeros días) · at cuándo se midió · h horas que tenía
-//   "top:YYYY-MM": { marca: [ las 12 más vistas del mes, con imagen ] }   ← 3 meses
+//        y salidas · img la imagen (o la portada si es video; solo los primeros días) · ln el link de la historia en Instagram (v364)
+//        · at cuándo se midió · h horas que tenía
+//   "top:YYYY-MM": { marca: [ las 12 con más alcance del mes ] }   ← v364: 13 meses (el registro del mes; la imagen la guarda
+//        la app en Google Drive, s:STORY_IMGS, porque la de Instagram vence a los pocos días)
 //   "sum:YYYY-MM": { marca: { n, v, r, rp, sh, ne, d:{ "DD":[n, v, r] }, hr:{ "HH":[n, v] } } }   ← 13 meses
 //   "err:<marca>": el error de la última vez (o se borra si anduvo)
 // En esta clave, mandar una clave con null la borra (ingest_meta, migración 20261119120000).
@@ -15,7 +18,7 @@
 // Probar sin guardar:  /api/seguidores?que=historias&dry=1&secret=EL_CRON_SECRET
 const { cronOrUser, graph, brandPages, save, readMeta, today, tokenHint } = require("./meta");
 
-const BRANDS = ["Superseis", "Stock", "Delimarket"], TOP = 12, TOP_MONTHS = 3, SUM_MONTHS = 13, IMG_DAYS = 3;
+const BRANDS = ["Superseis", "Stock", "Delimarket"], TOP = 12, TOP_MONTHS = 13, SUM_MONTHS = 13, IMG_DAYS = 3, KEEP_DAYS = 2;
 const pyDay = ts => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date(ts));
 const pyHour = ts => new Intl.DateTimeFormat("en-GB", { timeZone: "America/Asuncion", hour: "2-digit", hour12: false }).format(new Date(ts)).slice(0, 2);
 const prevOf = m => { const [y, n] = m.split("-").map(Number); return n === 1 ? `${y - 1}-12` : `${y}-${String(n - 1).padStart(2, "0")}`; };
@@ -45,7 +48,7 @@ async function pool(items, n, fn){
   await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length){ const k = i++; out[k] = await fn(items[k]); } }));
   return out;
 }
-const views = x => x.v ?? x.r ?? 0;
+const views = x => x.v ?? x.r ?? 0, reachOf = x => x.r ?? x.v ?? 0; // v364: el top va por alcance
 // Resumen de un mes por marca (con lo de cada día y cada hora, para el informe) y las 12 más vistas.
 function monthStats(list){
   const s = { n: 0, v: 0, r: 0, rp: 0, sh: 0, ne: 0, d: {}, hr: {} };
@@ -57,7 +60,7 @@ function monthStats(list){
   }
   return s;
 }
-const topOf = list => [...list].sort((a, b) => views(b) - views(a)).slice(0, TOP).map(x => ({ id: x.id, ts: x.ts, ty: x.ty, v: x.v ?? null, r: x.r ?? null, rp: x.rp ?? null, sh: x.sh ?? null, ...(x.img ? { img: x.img } : {}) }));
+const topOf = list => [...list].sort((a, b) => reachOf(b) - reachOf(a) || views(b) - views(a)).slice(0, TOP).map(x => ({ id: x.id, ts: x.ts, ty: x.ty, v: x.v ?? null, r: x.r ?? null, rp: x.rp ?? null, sh: x.sh ?? null, ne: x.ne ?? null }));
 
 const handler = async (req, res) => {
   const who = await cronOrUser(req); // el cron o el botón “Actualizar” de la app
@@ -67,19 +70,19 @@ const handler = async (req, res) => {
   try {
     const [{ byBrand }, old] = await Promise.all([brandPages(), readMeta("s:META_STORIES").catch(() => null)]);
     const prev = old && typeof old === "object" ? old : {};
-    const { at, month } = today(), pm = prevOf(month), now = Date.now();
+    const { at, month } = today(), now = Date.now();
     const out = { updated: at, ...(prev.since ? {} : { since: at }) }, summary = {};
     const all = new Map(Object.entries(prev).filter(([k, v]) => k.startsWith("st:") && v && typeof v === "object").map(([k, v]) => [k.slice(3), { ...v, id: k.slice(3) }]));
     await Promise.all(BRANDS.map(async (b) => {
       const p = byBrand[b];
       if (!p || !p.igId){ summary[b] = "sin Instagram vinculado a la página"; out["err:" + b] = summary[b]; return; }
       try {
-        const j = await graph(`/${p.igId}/stories`, { fields: "id,media_type,media_url,thumbnail_url,timestamp", limit: "100" });
+        const j = await graph(`/${p.igId}/stories`, { fields: "id,media_type,media_url,thumbnail_url,permalink,timestamp", limit: "100" });
         const list = (j.data || []).filter(s => s && s.id && s.timestamp), ins = await pool(list, 6, s => storyInsights(s.id));
         list.forEach((s, i) => {
           const was = all.get(s.id) || {}, m = ins[i] || {}, keep = Object.fromEntries(Object.entries(m).map(([k, v]) => [k, v ?? was[k] ?? null])); // si una métrica falló esta vez, queda la anterior
-          const img = (s.media_type === "VIDEO" ? s.thumbnail_url : s.media_url) || was.img || null;
-          const e = { b, ts: s.timestamp, ty: s.media_type === "VIDEO" ? "Video" : "Imagen", ...keep, ...(img ? { img } : {}), at, h: Math.round((now - Date.parse(s.timestamp)) / 36e5 * 10) / 10 };
+          const img = (s.media_type === "VIDEO" ? s.thumbnail_url : s.media_url) || was.img || null, ln = s.permalink || was.ln || null;
+          const e = { b, ts: s.timestamp, ty: s.media_type === "VIDEO" ? "Video" : "Imagen", ...keep, ...(img ? { img } : {}), ...(ln ? { ln } : {}), at, h: Math.round((now - Date.parse(s.timestamp)) / 36e5 * 10) / 10 };
           all.set(s.id, { ...e, id: s.id }); out["st:" + s.id] = e;
         });
         summary[b] = list.length; if (prev["err:" + b]) out["err:" + b] = null;
@@ -87,17 +90,18 @@ const handler = async (req, res) => {
         const hint = tokenHint(e); summary[b] = "error: " + e.message; out["err:" + b] = `${e.message}${hint ? " — " + hint : ""}`.slice(0, 300);
       }
     }));
-    // Resumen y las más vistas de cada mes que tiene historias guardadas (el mes en curso y el anterior están completos).
-    const byMonth = {};
-    for (const x of all.values()){ const m = pyDay(x.ts).slice(0, 7); if (m < pm) continue; ((byMonth[m] = byMonth[m] || {})[x.b] = byMonth[m][x.b] || []).push(x); }
+    // Resumen y top de cada mes que tiene sus historias guardadas: el mes en curso y, hasta el día 2, el anterior (las del último
+    // día se terminan de medir al otro día). Después el anterior queda fijo con su resumen y su top.
+    const keepFrom = pyDay(now - KEEP_DAYS * 864e5).slice(0, 7), byMonth = {};
+    for (const x of all.values()){ const m = pyDay(x.ts).slice(0, 7); if (m < keepFrom) continue; ((byMonth[m] = byMonth[m] || {})[x.b] = byMonth[m][x.b] || []).push(x); }
     for (const [m, bs] of Object.entries(byMonth)){
       out["sum:" + m] = Object.fromEntries(Object.entries(bs).map(([b, l]) => [b, monthStats(l)]));
       out["top:" + m] = Object.fromEntries(Object.entries(bs).map(([b, l]) => [b, topOf(l)]));
     }
-    // Limpieza: las historias de antes del mes anterior se borran (queda su resumen); la imagen, solo los primeros días.
+    // Limpieza: las historias de los meses ya cerrados se borran (queda su resumen y su top); la imagen, solo los primeros días.
     for (const [id, x] of all){
       const m = pyDay(x.ts).slice(0, 7);
-      if (m < pm){ out["st:" + id] = null; continue; }
+      if (m < keepFrom){ out["st:" + id] = null; continue; }
       if (x.img && now - Date.parse(x.ts) > IMG_DAYS * 864e5 && prev["st:" + id]?.img){ const { img, id: _, ...rest } = x; out["st:" + id] = rest; }
     }
     for (const k of Object.keys(prev)){

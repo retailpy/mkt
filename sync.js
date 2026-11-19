@@ -58,6 +58,7 @@ const RMH = (() => {
     META_DEMO:[() => META_DEMO, v => { META_DEMO = v || {}; }],
     META_POSTS:[() => META_POSTS, v => { META_POSTS = v || {}; }],
     META_STORIES:[() => META_STORIES, v => { META_STORIES = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v362: historias de Instagram (api/historias)
+    STORY_IMGS:[() => STORY_IMGS, v => { STORY_IMGS = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v364: imágenes de las historias del top, en Drive
     META_CREATIVES:[() => META_CREATIVES, v => { META_CREATIVES = v || {}; }],
     META_INBOX:[() => META_INBOX, v => { META_INBOX = v || {}; }],
     META_DM:[() => META_DM, v => { META_DM = v || {}; }], // mensajes de Instagram en vivo (los escribe el webhook)
