@@ -78,6 +78,8 @@ pendiente si no tiene las **fechas** en el nombre o si el Excel no tiene columna
 «MKT - FOLLETOS» y del Excel que dice FINAL. Las carpetas «OFERTA QUINCENAL S6/STOCK» ya no se leen (las filas de la tabla de
 abajo quedan como referencia de lo guardado).
 
+**Nombres corregidos solos (v368):** el nombre del producto (`comName`) se corrige al mostrarlo, copiarlo y bajarlo (no se toca el Excel ni `s:COMERCIAL`): unidades “1 Kg.”, “350 gr.”, “250 ml.”, “1 lt.”, “26 cm.”, “12 un.” y, por kilo/unidad/paquete, “el Kg.”, “la un.”, “el paq.”; sin “PV”/“PVP”; “XKG” → “el Kg.”; acentos y errores comunes (`COM_FIX`, `comFix`, `comFixCase`, `comTidy`, `COM_UNITS`, `comProd`). Si hay que sumar otra corrección, va en `COM_FIX` (palabras) o `COM_UNITS` (unidades); probar con `t368`.
+
 **Tal cual el Excel (v232):** descuento = columna «% DESC.» sin calcular nada (vacía → no se muestra; texto → como está);
 oferta y precio normal con texto, la marca de la primera columna y la temática (salvo FLEJE, etiqueta `.ctem`) se muestran como
 están escritos en el Excel (`comRaw`, `comPvpTxt`, `comFlagTxt`, `comTem`). `PARSE_V` = 4.

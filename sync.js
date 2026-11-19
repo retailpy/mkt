@@ -88,6 +88,7 @@ const RMH = (() => {
     ESCRACHES:[() => ESCRACHES, v => { ESCRACHES = Array.isArray(v) ? v : []; }], // Búsqueda de Escraches: los cargados y las marcas (solo Admin total, Admin y CM)
     PEDIDOS_COM:[() => PEDIDOS_COM, v => { PEDIDOS_COM = Array.isArray(v) ? v : []; }], // v242: pedidos de activaciones de Comercial (los compradores)
     CAMP_FOLDERS:[() => CAMP_FOLDERS, v => { CAMP_FOLDERS = Array.isArray(v) ? v : CF_DEF.map(c => ({ ...c, brands:[...c.brands] })); }], // v344: campañas (carpetas de la Planificación)
+    DRAFTS:[() => DRAFTS, v => { DRAFTS = v && typeof v === "object" && !Array.isArray(v) ? v : {}; window.draftsSynced?.(); }], // v369: borradores de pedidos (solo Admin total)
     AGENTS:[() => AGENTS, v => { AGENTS = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v326: entrenamiento y skills de los agentes (Oficina de Agentes)
     AGENT_CHAT:[() => AGENT_CHAT, v => { AGENT_CHAT = Array.isArray(v) ? v : []; }], // v326: las charlas con los agentes
     PROMPT_LOG:[() => PROMPT_LOG, v => { PROMPT_LOG = Array.isArray(v) ? v : []; }], // v334: los prompts de imágenes que se generan (sin nombres; SantIAgo)
@@ -96,7 +97,7 @@ const RMH = (() => {
     TV_SCREENS:[() => TV_SCREENS, v => { TV_SCREENS = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v266: qué muestra cada televisor (TV 1 a TV 4); lo cambia Admin total
   };
   // Claves que solo existen para Admin total (la base no se las deja leer ni guardar al resto).
-  const ADMIN_ONLY = new Set(["s:SUGGESTIONS", "s:SURVEYS"]);
+  const ADMIN_ONLY = new Set(["s:SUGGESTIONS", "s:SURVEYS", "s:DRAFTS"]); // v369: los borradores de pedidos
   // Claves que solo existen para Admin total, Admin y CM (reclamos de clientes: tienen nombres y datos personales).
   const CM_ONLY = new Set(["s:RECLAMOS", "s:ESCRACHES", "s:META_DM", "s:META_DM_LOG", "s:META_IG_ACT"]);
   const isCMish = () => ["Admin total", "Admin", "CM"].includes(member?.role);

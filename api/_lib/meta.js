@@ -36,14 +36,15 @@ function authorized(req){
 }
 
 // Desde la app (botón “Actualizar”): la sesión de la persona. Solo Admin total, Admin y CM pueden pedir que se actualice.
-async function allowedUser(req){
+// extra (v367): otros roles para una función puntual (las historias también las pide el televisor, rol TV).
+async function allowedUser(req, extra = []){
   const h = req.headers.authorization || "", tok = h.replace(/^Bearer\s+/i, "");
   const url = process.env.SUPABASE_URL, apikey = process.env.SUPABASE_KEY;
   if (!tok || !url || !apikey || tok === process.env.CRON_SECRET) return false;
   const u = await fetch(`${url}/auth/v1/user`, { headers: { apikey, Authorization: `Bearer ${tok}` } }).then(r => r.ok ? r.json() : null).catch(() => null);
   if (!u?.id) return false;
   const rows = await fetch(`${url}/rest/v1/members?select=role,active&user_id=eq.${encodeURIComponent(u.id)}`, { headers: { apikey, Authorization: `Bearer ${tok}` } }).then(r => r.ok ? r.json() : []).catch(() => []);
-  return Array.isArray(rows) && rows.some(m => m.active && ["Admin total", "Admin", "CM", "Revisor"].includes(m.role)); // Revisor: usuario de la revisión de Meta
+  return Array.isArray(rows) && rows.some(m => m.active && ["Admin total", "Admin", "CM", "Revisor", ...extra].includes(m.role)); // Revisor: usuario de la revisión de Meta
 }
 // Cualquier persona activa del equipo (para cosas livianas como la vista previa de links del chat).
 async function memberUser(req){
@@ -56,7 +57,7 @@ async function memberUser(req){
   return Array.isArray(rows) && rows.some(m => m.active);
 }
 // El cron (CRON_SECRET) o una persona con permiso desde la app.
-async function cronOrUser(req){ return authorized(req) ? "cron" : (await allowedUser(req)) ? "user" : null; }
+async function cronOrUser(req, extra){ return authorized(req) ? "cron" : (await allowedUser(req, extra)) ? "user" : null; }
 
 async function graph(path, params = {}){
   const url = new URL(GRAPH + path);
