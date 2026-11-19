@@ -4997,7 +4997,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v363";
+const APP_VER = "v364";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -5912,13 +5912,13 @@ const storyCard = (x, i) => `<div class="stcard" title="${esc(`${dm(pyDate(x.ts)
   <div class="stm"><b>${icon("eye")} ${stNum(stViews(x))}</b><small>${dm(pyDate(x.ts))} · ${stTime(x.ts)} h${isNum(x.r) ? ` · alcance ${dots(x.r)}` : ""}</small></div></div>`;
 const storyKpis = s => `<div class="stkpis"><div><b>${stNum(s.n)}</b><span>historias</span></div><div><b>${stNum(s.v)}</b><span>vistas</span></div><div><b>${stNum(s.r)}</b><span>alcance (suma)</span></div><div><b>${s.n ? stNum(Math.round(s.v / s.n)) : "—"}</b><span>vistas por historia</span></div></div>`;
 const storyNote = () => `<p class="note stnote">${icon("info")} Aparte de las publicaciones: las historias duran 24 horas y Meta da sus números solo mientras están publicadas, por eso se miden varias veces por día.${META_STORIES?.since ? ` Medidas desde el ${dm(pyDate(META_STORIES.since))}.` : ""}</p>`;
-// v363 · Las que están arriba ahora, en el orden en que se subieron (como se ven en Instagram): las que vio la última lectura
+// v363 · Las que están arriba ahora (v364: de la más nueva a la más vieja): las que vio la última lectura
 // de Meta y tienen menos de 24 h. Las vistas son las que llevaban en esa lectura.
 function liveStories(b){
   const at = META_STORIES?.updated, now = Date.now();
   if (!at) return [];
   return Object.entries(META_STORIES).filter(([k, x]) => k.startsWith("st:") && x && x.b === b && x.ts && x.at === at && now - new Date(x.ts) < 864e5)
-    .map(([k, x]) => ({ ...x, id:k.slice(3) })).sort((a, c) => new Date(a.ts) - new Date(c.ts));
+    .map(([k, x]) => ({ ...x, id:k.slice(3) })).sort((a, c) => new Date(c.ts) - new Date(a.ts)); // v364: la más nueva primero
 }
 const liveLeft = ts => { const h = Math.round(24 - (Date.now() - new Date(ts)) / 36e5); return h >= 1 ? `quedan ${h} h` : "se va en menos de 1 h"; };
 const liveCard = (x, i) => `<div class="stcard" title="${esc(`Subida ${dm(pyDate(x.ts))} ${stTime(x.ts)} h · ${stNum(stViews(x))} vistas${isNum(x.r) ? ` · alcance ${dots(x.r)}` : ""}`)}">${stImg(x, String(i + 1))}
@@ -5927,7 +5927,7 @@ function liveStoriesPanel(bs){
   if (MONTH !== CURRENT_MONTH) return ""; // es lo de este momento: en otro mes no va
   const rows = bs.map(b => ({ b, list:liveStories(b) })), n = rows.reduce((t, r) => t + r.list.length, 0), adm = viewer.role === "Admin total";
   return `<div class="panel flush stlivep"><div class="panel-h story"><h2 class="pmh">${pmIco("smartphone")}Historias de Instagram · arriba ahora</h2><div class="tag-row"><span class="tag">${n} ${n === 1 ? "historia" : "historias"}</span><span class="tag">Fuente: Meta</span>${updTag(META_STORIES?.updated)}${metaBtn("historias", "Historias", "Historias actualizadas con lo último de Meta.")}</div></div>
-    <div class="panel-b"><p class="note stnote">${icon("info")} Las que están publicadas ahora, en el orden en que se subieron (como se ven en Instagram), con las vistas que llevan. Cada historia dura 24 horas.</p>
+    <div class="panel-b"><p class="note stnote">${icon("info")} Las que están publicadas ahora, de la más nueva (la última que se subió) a la más vieja, con las vistas que llevan. Cada historia dura 24 horas.</p>
     ${rows.map(r => `<div class="strow"><div class="lph">${brandTag(r.b)}<span class="note">${r.list.length ? `${r.list.length} ${r.list.length === 1 ? "historia arriba" : "historias arriba"}` : "Ninguna historia arriba ahora"}</span>${adm && META_STORIES?.["err:" + r.b] ? `<span class="sterr">${icon("triangle-alert")} Meta: ${esc(META_STORIES["err:" + r.b])}</span>` : ""}</div>${r.list.length ? `<div class="stlive">${r.list.map(liveCard).join("")}</div>` : ""}</div>`).join("")}</div></div>`;
 }
 // Al abrir el Dashboard, si la última lectura tiene más de 30 min, se pide una nueva (sin avisos; una vez cada 30 min).
