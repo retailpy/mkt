@@ -57,6 +57,7 @@ const RMH = (() => {
     META_FOLLOWERS:[() => META_FOLLOWERS, v => { META_FOLLOWERS = v || {}; }],
     META_DEMO:[() => META_DEMO, v => { META_DEMO = v || {}; }],
     META_POSTS:[() => META_POSTS, v => { META_POSTS = v || {}; }],
+    META_STORIES:[() => META_STORIES, v => { META_STORIES = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v362: historias de Instagram (api/historias)
     META_CREATIVES:[() => META_CREATIVES, v => { META_CREATIVES = v || {}; }],
     META_INBOX:[() => META_INBOX, v => { META_INBOX = v || {}; }],
     META_DM:[() => META_DM, v => { META_DM = v || {}; }], // mensajes de Instagram en vivo (los escribe el webhook)
@@ -194,7 +195,7 @@ const RMH = (() => {
   let flushing = null, lastSeen = "", changedAt = 0, dirtySince = 0, rerenderPending = false, saveErrShown = false, retryAt = 0;
   // Pendiente de guardar: cambió desde lo último del servidor, o todavía no existe en la base (v 0: se crea).
   // De solo lectura: las escriben las funciones de Meta; la app las lee pero nunca las guarda.
-  const READONLY = new Set(["s:META_FOLLOWERS", "s:META_DEMO", "s:META_POSTS", "s:META_CREATIVES", "s:META_INBOX", "s:META_REFS", "s:COMERCIAL", "s:META_DM", "s:META_DM_LOG", "s:META_IG_ACT"]);
+  const READONLY = new Set(["s:META_FOLLOWERS", "s:META_DEMO", "s:META_POSTS", "s:META_CREATIVES", "s:META_INBOX", "s:META_REFS", "s:COMERCIAL", "s:META_DM", "s:META_DM_LOG", "s:META_IG_ACT", "s:META_STORIES"]);
   // El Revisor (usuario de la revisión de Meta) solo guarda “contestado” y su presencia: la base tampoco le deja otra cosa.
   const REVISOR_SAVE = new Set(["s:INBOX_DONE", "s:PRESENCE"]);
   // Comercial (los compradores) solo guarda sus pedidos, su presencia y su perfil: la base tampoco le deja otra cosa.

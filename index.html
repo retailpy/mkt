@@ -1528,6 +1528,18 @@ h2{font-size:17px;margin:0 0 14px;font-weight:600;color:#fff}
 .panel-h{padding:20px}
 .panel-h.cyan{background:linear-gradient(to right,rgba(6,182,212,.2),rgba(59,130,246,.1),transparent)}
 .panel-h.fuchsia{background:linear-gradient(to right,rgba(217,70,239,.2),rgba(168,85,247,.1),transparent)}
+/* v362 · Historias de Instagram: aparte de las publicaciones (colores de historia y formato vertical) */
+.panel-h.story{background:linear-gradient(to right,rgba(249,115,22,.24),rgba(236,72,153,.16),transparent)}
+.stpanel .stnote{margin:0 0 10px}.strow{padding:10px 0;border-top:1px solid var(--line-2)}.strow:first-of-type{border-top:0}
+.stkpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:8px 0 10px}.stkpis div{border:1px solid var(--line-2);border-radius:12px;padding:8px 10px}.stkpis b{display:block;font-size:20px;color:#fff}.stkpis span{font-size:12px;color:var(--muted)}
+.stgrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.stcard{min-width:0}.stimg{position:relative;display:block;aspect-ratio:9/16;border-radius:12px;overflow:hidden;background:linear-gradient(160deg,rgba(249,115,22,.35),rgba(236,72,153,.35),rgba(124,58,237,.35));box-shadow:0 0 0 2px rgba(236,72,153,.55)}
+.stimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.stimg>i{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.75)}.stimg>i svg{width:26px;height:26px}
+.stimg em{position:absolute;top:6px;left:6px;font-style:normal;font-weight:800;font-size:12px;background:rgba(0,0,0,.65);color:#fff;border-radius:999px;padding:2px 8px}
+.stimg .stvid{position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.6);border-radius:999px;padding:3px;display:flex}.stimg .stvid svg{width:14px;height:14px;color:#fff}
+.stm{margin-top:6px}.stm b{display:flex;align-items:center;gap:4px;color:#fff;font-size:14px}.stm b svg{width:14px;height:14px}.stm small{display:block;color:var(--muted);font-size:11px;line-height:1.3}
+.sterr{color:#fbbf24}.sttab td.r,.sttab th.r{text-align:right}.stdelta{font-weight:700}.stdelta.up{color:#34d399}.stdelta.down{color:#f87171}.sthours{margin:8px 0 0}
+@media (max-width:900px){.stgrid{grid-template-columns:repeat(3,minmax(0,1fr))}.stkpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .panel-h h2{font-size:20px;font-weight:700;margin:0}
 .panel-b{padding:16px}
 .demo{border-color:rgba(6,182,212,.4);background:rgba(8,51,68,.35);display:flex;gap:12px;align-items:center;padding:14px 18px}
@@ -4983,7 +4995,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v361";
+const APP_VER = "v362";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -5715,7 +5727,7 @@ function metaAdsPanel(simple = false){
 
 // Seguidores y público reales de Meta: los escriben las funciones diarias en Supabase (solo lectura en la app).
 // META_FOLLOWERS = { updated, "AAAA-MM": { Marca: { ig, fb, handle, page } } } · META_DEMO = { updated, Marca: { handle, foll, cities, ages, gender } } (cantidades).
-let META_FOLLOWERS = {}, META_DEMO = {}, META_POSTS = {}, META_CREATIVES = {}, META_INBOX = {}, META_REFS = {};
+let META_FOLLOWERS = {}, META_DEMO = {}, META_POSTS = {}, META_CREATIVES = {}, META_INBOX = {}, META_REFS = {}, META_STORIES = {}; // v362: META_STORIES (historias)
 let META_DM = {}; // mensajes de Instagram que llegan en vivo (webhook de Meta → /api/webhook-meta → s:META_DM)
 let META_IG_ACT = {}; // comentarios, comentarios en vivo y menciones de Instagram (webhook y /api/interacciones → s:META_IG_ACT)
 let META_DM_LOG = {}; // los últimos avisos de Meta a ese webhook y qué pasó con cada uno (sin el texto de los mensajes)
@@ -5879,6 +5891,44 @@ function lastPostsPanel(bs, fill = false){ // fill (v276, TV): si una marca tien
       return `<a class="lpitem" href="${esc(x.link || "#")}" target="_blank" rel="noopener" title="${esc((x.cap || "").slice(0, 140))}"><span class="pwrap">${pubThumb(pp, "lg")}${reelBadge(x)}${x._m ? `<span class="tvpmes">${monthName(x._m)}</span>` : ""}</span><span class="lpmeta">${dm(pyDate(x.ts))}${fill || bare ? "" : ` · ♥ ${dots(x.likes || 0)}`}</span></a>`; }).join("")}</div></div>`).join("")
       : `<div class="empty">${isFuture() ? `${monthLabel(MONTH)} todavía no empezó: acá van a salir sus publicaciones.` : `Todavía no hay publicaciones de ${monthName(MONTH)}: llegan con la actualización diaria de Meta.`}</div>`}
       ${rows.length && bs.some(b => !rows.some(r => r.b === b)) ? `<p class="note" style="margin:8px 0 0">Todavía sin publicaciones en ${monthName(MONTH)}: ${bs.filter(b => !rows.some(r => r.b === b)).join(", ")}${canMetaRefresh() ? " (tocá “Actualizar”)" : ""}.</p>` : ""}</div></div>`;
+}
+// v362 · Historias de Instagram de Superseis, Stock y Delimarket (s:META_STORIES: /api/historias las mide varias veces por día
+// mientras están publicadas, 24 h). Van aparte de las publicaciones (otro color, formato vertical): Dashboard y Informe de Redes.
+const stViews = x => x?.v ?? x?.r ?? 0;
+const stTime = ts => new Intl.DateTimeFormat("es-PY", { timeZone:"America/Asuncion", hour:"2-digit", minute:"2-digit", hour12:false }).format(new Date(ts));
+// Las de una marca en un mes: las guardadas una por una (mes en curso y anterior) o, para meses viejos, el resumen y las 12 más vistas.
+function storyData(b, m = MONTH){
+  const list = Object.entries(META_STORIES || {}).filter(([k, x]) => k.startsWith("st:") && x && x.b === b && x.ts && pyDate(x.ts).slice(0, 7) === m).map(([k, x]) => ({ ...x, id:k.slice(3) }));
+  const saved = META_STORIES?.["sum:" + m]?.[b] || null;
+  if (!list.length) return { sum:saved && saved.n ? saved : null, top:META_STORIES?.["top:" + m]?.[b] || [], list };
+  const s = { n:list.length, v:0, r:0, rp:0, sh:0, ne:0 }; list.forEach(x => ["v", "r", "rp", "sh", "ne"].forEach(k => { s[k] += x[k] || 0; }));
+  return { sum:{ ...(saved || {}), ...s }, top:[...list].sort((a, c) => stViews(c) - stViews(a)), list };
+}
+const stNum = v => isNum(v) ? dots(v) : "—";
+const storyCard = (x, i) => `<div class="stcard" title="${esc(`${dm(pyDate(x.ts))} ${stTime(x.ts)} · ${stNum(stViews(x))} vistas${isNum(x.r) ? ` · alcance ${dots(x.r)}` : ""}`)}"><span class="stimg"><i>${icon(x.ty === "Video" ? "clapperboard" : "image")}</i>${x.img ? `<img src="${esc(x.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}${i < 3 ? `<em>${i + 1}°</em>` : ""}${x.ty === "Video" ? `<span class="stvid">${icon("play")}</span>` : ""}</span>
+  <div class="stm"><b>${icon("eye")} ${stNum(stViews(x))}</b><small>${dm(pyDate(x.ts))} · ${stTime(x.ts)} h${isNum(x.r) ? ` · alcance ${dots(x.r)}` : ""}</small></div></div>`;
+const storyKpis = s => `<div class="stkpis"><div><b>${stNum(s.n)}</b><span>historias</span></div><div><b>${stNum(s.v)}</b><span>vistas</span></div><div><b>${stNum(s.r)}</b><span>alcance (suma)</span></div><div><b>${s.n ? stNum(Math.round(s.v / s.n)) : "—"}</b><span>vistas por historia</span></div></div>`;
+const storyNote = () => `<p class="note stnote">${icon("info")} Aparte de las publicaciones: las historias duran 24 horas y Meta da sus números solo mientras están publicadas, por eso se miden varias veces por día.${META_STORIES?.since ? ` Medidas desde el ${dm(pyDate(META_STORIES.since))}.` : ""}</p>`;
+function storiesPanel(bs){
+  const rows = bs.map(b => ({ b, ...storyData(b) })), any = rows.some(r => r.sum?.n);
+  return `<div class="panel flush stpanel"><div class="panel-h story"><h2 class="pmh">${pmIco("smartphone")}Historias de Instagram · las más vistas</h2><div class="tag-row"><span class="tag">${monthLabel(MONTH)}</span><span class="tag">Fuente: Meta</span></div></div>
+    <div class="panel-b">${storyNote()}${any ? rows.map(r => `<div class="strow"><div class="lph">${brandTag(r.b)}</div>${r.sum?.n ? `${storyKpis(r.sum)}<div class="stgrid">${r.top.slice(0, 6).map(storyCard).join("")}</div>` : `<p class="note" style="margin:0">Todavía sin historias medidas en ${monthName(MONTH)}.${viewer.role === "Admin total" && META_STORIES?.["err:" + r.b] ? ` <span class="sterr">${icon("triangle-alert")} Meta: ${esc(META_STORIES["err:" + r.b])}</span>` : ""}</p>`}</div>`).join("")
+      : `<div class="empty">${META_STORIES?.since ? `Todavía no hay historias medidas de ${monthName(MONTH)}.` : "Las historias se empiezan a medir apenas se active la lectura de Instagram (varias veces por día): acá van a salir las más vistas del mes."}</div>`}</div></div>`;
+}
+// En el Informe de Redes: este mes contra el anterior, las más vistas y los mejores horarios (con 2 historias o más en esa hora).
+function repHistorias(){
+  const pm = prevMonth(MONTH), rows = IG_MAIN.map(b => ({ b, c:storyData(b, MONTH), p:storyData(b, pm) }));
+  const head = `<h2 style="margin:8px 0 -8px" class="pmh">${pmIco("smartphone")}Historias de Instagram</h2>`;
+  if (!rows.some(r => r.c.sum?.n || r.p.sum?.n)) return `${head}<div class="panel stpanel">${storyNote()}<div class="empty">Todavía no hay historias medidas de ${monthName(MONTH)}.</div></div>`;
+  const per = s => s?.n ? s.v / s.n : null, delta = (a, b) => isNum(a) && isNum(b) && b > 0 ? Math.round((a - b) / b * 100) : null;
+  const dTag = d => d === null ? `<span class="note">—</span>` : `<span class="stdelta ${d >= 0 ? "up" : "down"}">${d >= 0 ? "+" : ""}${d}%</span>`;
+  const hours = s => Object.entries(s?.hr || {}).filter(([, x]) => x[0] >= 2).map(([h, x]) => [h, x[1] / x[0]]).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const table = `<div class="tw"><table class="sttab"><thead><tr><th>Marca</th><th class="r">Historias</th><th class="r">Vistas</th><th class="r">Alcance (suma)</th><th class="r">Vistas por historia</th><th class="r">vs ${monthName(pm)}</th><th class="r">Respuestas</th><th class="r">Compartidas</th><th class="r">Salieron</th></tr></thead>
+    <tbody>${rows.map(({ b, c, p }) => { const s = c.sum; return `<tr><td>${brandTag(b)}</td>${s?.n ? `<td class="r num">${stNum(s.n)}</td><td class="r num"><b>${stNum(s.v)}</b></td><td class="r num">${stNum(s.r)}</td><td class="r num">${stNum(Math.round(per(s)))}</td><td class="r">${dTag(delta(per(s), per(p.sum)))}</td><td class="r num">${stNum(s.rp)}</td><td class="r num">${stNum(s.sh)}</td><td class="r num">${s.v ? `${Math.round((s.ne || 0) / s.v * 100)}%` : "—"}</td>` : `<td colspan="8" class="note">Sin historias medidas en ${monthName(MONTH)}</td>`}</tr>`; }).join("")}</tbody></table></div>
+    <p class="note" style="margin:6px 0 0">Vistas: veces que se vio (una persona puede verla más de una vez). Alcance: cuentas distintas que la vieron (sumado por historia). Salieron: el % de vistas en que la persona cerró las historias en esa.</p>`;
+  return `${head}<div class="panel stpanel">${storyNote()}${table}
+    ${rows.filter(r => r.c.top.length).map(({ b, c }) => { const hs = hours(c.sum); return `<div class="strow"><div class="lph">${brandTag(b)}<span class="note">las más vistas de ${monthName(MONTH)}</span></div><div class="stgrid">${c.top.slice(0, 6).map(storyCard).join("")}</div>
+      ${hs.length ? `<p class="note sthours">${icon("clock")} Mejores horarios (vistas promedio): ${hs.map(([h, v]) => `<b>${+h} h</b> (${dots(v)})`).join(" · ")}</p>` : ""}</div>`; }).join("")}</div>`;
 }
 // “Ver en grande”: las últimas 9 publicaciones de cada marca en página completa, con likes, comentarios, alcance y texto.
 let lpFull = null; // { bs: marcas del panel, sel: la marca elegida o null = todas }
@@ -6139,6 +6189,7 @@ function pDashboard(){
   ${lastPostsPanel(com ? bs : IG_MAIN)}
   ${followersTable(false, com ? bs : undefined)}
   ${com ? "" : topReach(bs)}
+  ${com ? "" : storiesPanel(IG_MAIN)}
   <div class="head"><h2 style="margin:0">Demográfico por marca</h2><div class="chips">${bs.map(b => `<button class="chip ${dashBrand === b ? "on" : ""}" data-dbrand="${b}">${b}</button>`).join("")}</div></div>
   <div class="dash-demo" id="dashDemo">${demoBlock(bs.includes(dashBrand) ? dashBrand : bs[0], 0)}${lastPostsPanel([bs.includes(dashBrand) ? dashBrand : bs[0]])}</div>`;
 }
@@ -12278,7 +12329,7 @@ function pReportes(){
   const tabs = REPORT_TABS.filter(repTabOk);
   if (reportTab && !tabs.find(t => t.k === reportTab)) reportTab = ""; // v316: "" = ningún informe abierto (se ven las tarjetas)
   const estado = isClosed() ? "🔒 Mes cerrado · datos fijos" : isFuture() ? "En planificación" : `En curso · cierra el ${lastDay(MONTH)}/${MONTH.slice(5)}`;
-  const body = { equipo:repEquipo, diseno:repDiseno, cm:repCM, analisis:repAnalisis, comercial:repComercial, redes:() => (repTabOk(REPORT_TABS.find(t => t.k === "comercial")) ? `<div class="chips comgo"><button class="btn" data-rtab="comercial">${icon("badge-percent")} Informe Comercial</button><span class="note">las publicaciones marcadas como Activación Comercial, con su alcance, para mandar en PDF</span></div>` : "") + repAlcance() + lastPostsPanel(IG_MAIN) + (can("pauta") ? `<h2 style="margin:8px 0 -8px" class="pmh">${pmIco("megaphone")}Pauta en Meta Ads</h2>` + repPauta() : "") }[reportTab];
+  const body = { equipo:repEquipo, diseno:repDiseno, cm:repCM, analisis:repAnalisis, comercial:repComercial, redes:() => (repTabOk(REPORT_TABS.find(t => t.k === "comercial")) ? `<div class="chips comgo"><button class="btn" data-rtab="comercial">${icon("badge-percent")} Informe Comercial</button><span class="note">las publicaciones marcadas como Activación Comercial, con su alcance, para mandar en PDF</span></div>` : "") + repAlcance() + lastPostsPanel(IG_MAIN) + repHistorias() + (can("pauta") ? `<h2 style="margin:8px 0 -8px" class="pmh">${pmIco("megaphone")}Pauta en Meta Ads</h2>` + repPauta() : "") }[reportTab];
   const cur = tabs.find(t => t.k === reportTab);
   if (cur && cur.k === "analisis") return `<div class="repwrap anawrap"><div class="anafull" id="repBody">${body()}</div></div>`; // v319: ventana limpia, arriba solo la botonera
   return `<div class="repwrap"><div class="panel flush"><div class="panel-h cyan">
@@ -17027,7 +17078,7 @@ const canMetaRefresh = () => ["Admin total","Admin","CM","Revisor"].includes(vie
 const metaBusy = {};
 async function metaRefresh(what, label, okMsg){
   if (metaBusy[what]) return; metaBusy[what] = true; render();
-  const eps = { mensajes:["mensajes"], seguidores:["seguidores","demograficos","publicaciones"] }[what] || [what];
+  const eps = { mensajes:["mensajes"], seguidores:["seguidores","demograficos","publicaciones","historias"] }[what] || [what];
   let ok = 0, err = "";
   try { const tok = window.RMH?.token ? await RMH.token() : null;
     for (const ep of eps){ const r = await fetch("/api/" + ep, { headers: tok ? { Authorization:"Bearer " + tok } : {} }); const j = await r.json().catch(() => ({}));
