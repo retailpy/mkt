@@ -5030,7 +5030,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v367";
+const APP_VER = "v368";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -17492,7 +17492,7 @@ const comTemTag = it => comTem(it) ? `<span class="ctem">${esc(comTem(it))}</spa
 // Lectura fácil: el Excel viene todo en mayúsculas y sin acentos. Se pasa a "Papas Fritas Vima Congeladas 1kg" y se corrigen
 // los acentos de palabras comunes (las marcas no se tocan: no están en la lista).
 const COM_LOW = new Set(["de","del","la","las","el","los","y","e","o","con","sin","en","para","por","a","al","x","c/","s/"]);
-const COM_UP = new Set(["sa","s.a.","srl","s.r.l.","ltd","ltd.","pv","uht","led","usb","tv","bbq","fyv"]);
+const COM_UP = new Set(["sa","s.a.","srl","s.r.l.","ltd","ltd.","pv","uht","led","usb","tv","bbq","fyv","fp"]);
 const COM_FIX = Object.fromEntries(("almacen:almacén rotiseria:rotisería confiteria:confitería panaderia:panadería carniceria:carnicería fiambreria:fiambrería lacteos:lácteos perfumeria:perfumería " +
   "electronica:electrónica pagina:página jamon:jamón limon:limón azucar:azúcar cafe:café algodon:algodón jabon:jabón higienico:higiénico liquido:líquido salmon:salmón atun:atún maiz:maíz " +
   "pure:puré melon:melón sandia:sandía arandano:arándano arandanos:arándanos champinon:champiñón champinones:champiñones budin:budín bombon:bombón camara:cámara telefono:teléfono plastico:plástico " +
@@ -17504,8 +17504,22 @@ const COM_FIX = Object.fromEntries(("almacen:almacén rotiseria:rotisería confi
   "pequeno:pequeño pequena:pequeña unico:único unica:única clasico:clásico clasica:clásica rapido:rápido rapida:rápida practico:práctico facil:fácil jardin:jardín tap:tapa hall:halloween hallo:halloween hallow:halloween hallowen:halloween halloween:halloween " +
   "maceta:maceta reposeria:repostería reposteria:repostería lampara:lámpara cortina:cortina azucarera:azucarera termo:termo vasito:vasito bateria:batería baterias:baterías " +
   "linea:línea vehiculo:vehículo tunel:túnel boligrafo:bolígrafo cuaderno:cuaderno utiles:útiles mochila:mochila album:álbum regalo:regalo musica:música sillon:sillón cajon:cajón " +
-  "colchon:colchón almohadon:almohadón edredon:edredón algodon:algodón poliester:poliéster silicona:silicona dulceria:dulcería heladeria:heladería guarnicion:guarnición").split(" ").map(x => x.split(":")));
-const comFix = w => { const m = w.match(/^([^\p{L}]*)(\p{L}+)(.*)$/u); if (!m) return w; const r = COM_FIX[m[2]]; return r ? m[1] + r + m[3] : w; };
+  "colchon:colchón almohadon:almohadón edredon:edredón algodon:algodón poliester:poliéster silicona:silicona dulceria:dulcería heladeria:heladería guarnicion:guarnición " +
+  // v368: más acentos y errores comunes de los Excel de Comercial
+  "intregal:integral intregales:integrales tallarin:tallarín salamin:salamín almidon:almidón tartara:tártara mbeju:mbejú pacu:pacú surubi:surubí acido:ácido glicolico:glicólico " +
+  "hialuronico:hialurónico humeda:húmeda humedas:húmedas humedo:húmedo humedos:húmedos panal:pañal panales:pañales panuelo:pañuelo panuelos:pañuelos panuelitos:pañuelitos vacio:vacío " +
+  "higado:hígado corazon:corazón rinon:riñón lechon:lechón anana:ananá pimenton:pimentón oregano:orégano turron:turrón champan:champán tonica:tónica isotonica:isotónica " +
+  "lacteo:lácteo lactea:láctea camaron:camarón noqui:ñoqui noquis:ñoquis lasana:lasaña canelon:canelón maquina:máquina sarten:sartén extension:extensión carbon:carbón lena:leña " +
+  "capsula:cápsula capsulas:cápsulas citrico:cítrico citrica:cítrica citricos:cítricos vitaminico:vitamínico antiseptico:antiséptico liquida:líquida liquidos:líquidos proteina:proteína " +
+  "proteinas:proteínas fosforo:fósforo fosforos:fósforos mburucuya:mburucuyá mamon:mamón raton:ratón locion:loción termometro:termómetro pestanas:pestañas rimel:rímel cucharon:cucharón " +
+  "espatula:espátula salchichon:salchichón carre:carré albondiga:albóndiga albondigas:albóndigas medallon:medallón mejillon:mejillón pate:paté requeson:requesón galleton:galletón " +
+  "chupetin:chupetín castana:castaña castanas:castañas fecula:fécula semola:sémola tirabuzon:tirabuzón monito:moñito curcuma:cúrcuma nectar:néctar aristocrata:aristócrata terere:tereré " +
+  "brocoli:brócoli rucula:rúcula lapiz:lápiz lapices:lápices crayon:crayón tempera:témpera compas:compás petalo:pétalo petalos:pétalos clasicos:clásicos clasicas:clásicas " +
+  "unicos:únicos economico:económico economica:económica practica:práctica rapidos:rápidos tradicion:tradición sabroson:sabrosón cajon:cajón jamones:jamones limones:limones " +
+  "melones:melones pantalon:pantalón camion:camión avion:avión corazones:corazones esponjosa:esponjosa esponjoso:esponjoso estandar:estándar maxima:máxima maximo:máximo minimo:mínimo " +
+  "minima:mínima optimo:óptimo ultima:última ultimo:último numero:número basico:básico basica:básica magico:mágico magica:mágica").split(" ").map(x => x.split(":")));
+const comFix1 = w => { const m = w.match(/^([^\p{L}]*)(\p{L}+)(.*)$/u); if (!m) return w; const r = COM_FIX[m[2]]; return r ? m[1] + r + m[3] : w; };
+const comFix = w => w.split("/").map(comFix1).join("/"); // v368: también después de una barra (“p/jardín”)
 const comPre = s => String(s || "").toLowerCase().replace(/\s+/g, " ").replace(/\b([cs])\/\s*/g, "$1/ ").trim();
 const comNice = s => comPre(s).split(" ").map(comFix).map((w, i) => COM_UP.has(w) ? w.toUpperCase() : i && COM_LOW.has(w) ? w : w.replace(/^(\p{L})/u, c => c.toUpperCase())).join(" ")
   .replace(/(\d)\s?(kg|gr|g|ml|lt|l|cc|cm|mm|m|un|u)\b/gi, (m, n, u) => n + u.toLowerCase());
@@ -17520,7 +17534,33 @@ const COM_ICO = [[/rotiser|confiter|panader|pan\b/, "croissant"], [/carne|carnic
 const comIco = s => { const t = rclFold(s); return (COM_ICO.find(([re]) => re.test(t)) || [0, "tag"])[1]; };
 const comOfTxt = it => typeof it.of === "number" ? gs(it.of) : comRaw(it.of);
 // Nombre del producto: el texto del folleto tal cual (columna “DESCRIPCION FOLLETO” del Excel FINAL) o la descripción del sistema, prolija.
-const comName = i => i.fol ? String(i.desc || "").replace(/\s+/g, " ").trim() : comNice(i.desc);
+// v368 · Corrección automática de los nombres de productos (pedido de Admin total), al mostrar, copiar y bajar en Excel/PDF: cada Excel
+// nuevo sale corregido solo y el original de Drive no se toca. Unidades siempre igual: “1 Kg.”, “350 gr.”, “250 ml.”, “1 lt.”, “26 cm.”,
+// “12 un.” y, sin número (el precio es por kilo, unidad o paquete), “el Kg.”, “la un.”, “el paq.” (“X KG”, “XKG”, “el kilo”, “x un”,
+// “PAQ”…); sin “PV” ni “PVP”; acentos y errores comunes (COM_FIX). En el texto del folleto (Excel FINAL) las palabras en mayúsculas
+// (las marcas) no se tocan.
+const COM_UNITS = [["kgs?|kilos?|kilogramos?", "Kg.", "el Kg."], ["grs?|g|gramos?", "gr."], ["mls?|cc|mililitros?", "ml."], ["lts?|l|litros?", "lt."],
+  ["cms?|cent[ií]metros?", "cm."], ["un|unds?|unid|unids|unidad|unidades|u", "un.", "la un.", true], ["paq|paquetes?|pq|pqt", "paq.", "el paq."]];
+function comTidy(s){
+  let t = " " + String(s || "").replace(/\s+/g, " ").trim() + " ";
+  t = t.replace(/\s(?:pvp?|p\.v\.(?:p\.?)?)(?=[\s,;.)])/gi, " ");                     // fuera “PV” y “PVP”
+  t = t.replace(/\s(?:c\/u|c\/unidad)(?=[\s,;.)])/gi, " la un.");                       // “c/u” = la unidad
+  for (const [re, n, per, strict] of COM_UNITS){
+    // Con número (suelto o después de una “x”: “350GR”, “4X1.5L”): una cantidad. No toca códigos como “FOP24L”.
+    t = t.replace(new RegExp(`(^|[^\\p{L}\\d.,]|[xX])(\\d+(?:[.,]\\d+)?)\\s*(?:${re})\\.?(?=[\\s,;)/+])`, "giu"), `$1$2 ${n}`);
+    if (!per) continue;
+    t = t.replace(new RegExp(`(\\s)((?:x|por|el|la|p\\/)\\s*)?(?:${re})\\.?(?=[\\s,;)/+])`, "gi"), (m, sp, pre, off, str) => {
+      if (!pre && /\d\s*$/.test(str.slice(0, off))) return m;                            // ya es una cantidad (“1 Kg.”)
+      if (!pre && strict && str.slice(off + m.length).trim()) return m;                   // “un” suelto en el medio: puede ser el artículo
+      return sp + per; });
+  }
+  return t.replace(/\s+([,;)])/g, "$1").replace(/\.{2,}/g, ".").replace(/\s{2,}/g, " ").trim();
+}
+// Acentos en un texto que ya viene escrito (el del folleto): respeta las mayúsculas del principio y no toca palabras en mayúsculas.
+const comFixCase = s => String(s || "").split(/(\s+|\/)/).map(w => { const m = w.match(/^([^\p{L}]*)(\p{L}+)(.*)$/u); if (!m || (m[2].length > 1 && m[2] === m[2].toUpperCase())) return w;
+  const r = COM_FIX[m[2].toLowerCase()]; if (!r) return w; return m[1] + (m[2][0] !== m[2][0].toLowerCase() ? r[0].toUpperCase() + r.slice(1) : r) + m[3]; }).join("");
+const comProd = s => comTidy(comNice(s)); // descripción del sistema (todo en mayúsculas) → prolija y corregida
+const comName = i => i.fol ? comTidy(comFixCase(i.desc)) : comProd(i.desc);
 // Novedad (Excel FINAL): “Nuevo” en el folleto o “Se mantiene” de la quincena anterior. No es lo mismo que el aviso de productos recién cargados.
 const comHasNov = f => (f?.sheets || []).some(s => s.items.some(i => i.nov));
 const comNov = i => i.nov ? `<span class="cnov n-${i.nov === "Nuevo" ? "nuevo" : i.nov === "Se mantiene" ? "mant" : "x"}"><small>Novedad: </small>${esc(i.nov)}</span>` : "";
@@ -17565,7 +17605,7 @@ const comFlag = it => it.flag ? `<span class="cflag f-${rclFold(COM_FLAG_TXT[it.
 const COM_COLS = [["Página / sección", i => comSec(i.sec || i.sector)], ["Producto", i => comName(i)], ["Novedad", i => i.nov || "", i => i.nov], ["Precio normal", i => typeof i.pvp === "number" ? i.pvp : comRaw(i.pvp)], ["Precio oferta", i => typeof i.of === "number" ? i.of : comRaw(i.of)],
   ["Descuento", i => comPct(i)], ["Destacado", i => i.flag ? comFlagTxt(i) : ""], ["Sector", i => comSent(i.sector)], ["Código", i => i.cod || ""], ["Material", i => i.mat || ""], ["Temática", i => comRaw(i.tem)],
   ["Reconocimiento", i => i.rec ?? ""], ["Oferta negociada", i => i.neg || ""], ["Proveedor", i => comNice(i.prov)], ["N.° proveedor", i => i.nprov || ""], ["Subcategoría", i => comSent(i.sub)],
-  ["Descripción del sistema", i => i.dsis ? comNice(i.dsis) : "", i => i.dsis], ["Variantes", i => (i.vars || []).map(v => `${comNice(v.d)}${v.cod ? " (" + v.cod + ")" : ""}${v.of !== i.of || v.pvp !== i.pvp ? " · " + (comPvpTxt(v) ? comPvpTxt(v) + " → " : "") + comVarOf(v) : ""}`).join(" | "), i => i.vars?.length]];
+  ["Descripción del sistema", i => i.dsis ? comNice(i.dsis) : "", i => i.dsis], ["Variantes", i => (i.vars || []).map(v => `${comProd(v.d)}${v.cod ? " (" + v.cod + ")" : ""}${v.of !== i.of || v.pvp !== i.pvp ? " · " + (comPvpTxt(v) ? comPvpTxt(v) + " → " : "") + comVarOf(v) : ""}`).join(" | "), i => i.vars?.length]];
 // Columnas que van en el Excel: las de siempre y las del Excel FINAL solo si ese archivo las tiene.
 const comCols = f => COM_COLS.filter(c => !c[2] || (f.sheets || []).some(s => s.items.some(c[2])));
 // Ilustración de la cabecera: una etiqueta de oferta con el carrito (azul de la app y amarillo de oferta).
@@ -17695,7 +17735,7 @@ function pComercial(){
       <span class="cofn" data-l="Antes">${comPvpTxt(i) ? comFp(i, esc(comPvpTxt(i))) : ""}</span>
       <span class="cofo" data-l="Oferta">${comFo(i, esc(comOfTxt(i)))}</span>
       <span class="cofd2" data-l="${pc ? "Descuento" : ""}">${pc ? comFc(i, comPctTag(pc, 1)) : ""}</span></div>${comCopyBtn(id)}${ck ? comChkBtn(f.id, ck, on) : ""}</div>
-      ${open ? `<dl class="cofd">${[["Código", i.cod], ["Material", i.mat], ["Sector", comSent(i.sector)], ["Temática", comRaw(i.tem)], ["Reconocimiento", typeof i.rec === "number" ? gs(i.rec) : i.rec], ["Oferta negociada", i.neg], ["Proveedor", comNice(i.prov) + (i.nprov ? " · N.° " + i.nprov : "")], ["Subcategoría", comSent(i.sub)], ["Página del folleto", i.sec ? comSec(i.sec) : ""], ["Destacado", i.flag ? comFlagTxt(i) : ""], ["Novedad", i.nov], ["Descripción del sistema", i.dsis ? comNice(i.dsis) : ""]].filter(([, v]) => v && String(v).trim()).map(([l, v]) => `<dt>${l}</dt><dd>${esc(String(v))}</dd>`).join("")}</dl>${i.vars?.length ? `<div class="cofvar"><b>Mismo cuadro del folleto: ${i.vars.length + 1} variantes</b><ul>${[{ d:i.dsis || i.desc, cod:i.cod, mat:i.mat, pvp:i.pvp, of:i.of }, ...i.vars].map(v => `<li><span>${esc(comNice(v.d))}</span><small>${[v.cod && "Cód. " + v.cod, v.mat && "Mat. " + v.mat].filter(Boolean).map(esc).join(" · ")}</small>${comVarDif(i) ? `<small>${comPvpTxt(v) ? "Antes " + esc(comPvpTxt(v)) + " · " : ""}</small><em>${esc(comVarOf(v))}</em>` : ""}</li>`).join("")}</ul></div>` : ""}` : ""}</div>`; };
+      ${open ? `<dl class="cofd">${[["Código", i.cod], ["Material", i.mat], ["Sector", comSent(i.sector)], ["Temática", comRaw(i.tem)], ["Reconocimiento", typeof i.rec === "number" ? gs(i.rec) : i.rec], ["Oferta negociada", i.neg], ["Proveedor", comNice(i.prov) + (i.nprov ? " · N.° " + i.nprov : "")], ["Subcategoría", comSent(i.sub)], ["Página del folleto", i.sec ? comSec(i.sec) : ""], ["Destacado", i.flag ? comFlagTxt(i) : ""], ["Novedad", i.nov], ["Descripción del sistema", i.dsis ? comNice(i.dsis) : ""]].filter(([, v]) => v && String(v).trim()).map(([l, v]) => `<dt>${l}</dt><dd>${esc(String(v))}</dd>`).join("")}</dl>${i.vars?.length ? `<div class="cofvar"><b>Mismo cuadro del folleto: ${i.vars.length + 1} variantes</b><ul>${[{ d:i.dsis || i.desc, cod:i.cod, mat:i.mat, pvp:i.pvp, of:i.of }, ...i.vars].map(v => `<li><span>${esc(comProd(v.d))}</span><small>${[v.cod && "Cód. " + v.cod, v.mat && "Mat. " + v.mat].filter(Boolean).map(esc).join(" · ")}</small>${comVarDif(i) ? `<small>${comPvpTxt(v) ? "Antes " + esc(comPvpTxt(v)) + " · " : ""}</small><em>${esc(comVarOf(v))}</em>` : ""}</li>`).join("")}</ul></div>` : ""}` : ""}</div>`; };
   const bySec = []; list.forEach(i => { const k = comSec(i.sec || i.sector); let g = bySec.find(x => x[0] === k); if (!g) bySec.push(g = [k, []]); g[1].push(i); });
   return head + `<div class="comper" role="group" aria-label="Quincena">${chips.map(x => { const st = comState(x); return `<button type="button" class="comchip s-${st} ${x.id === f.id ? "on" : ""}" data-comper="${x.id}" aria-pressed="${x.id === f.id}"><small>${icon(st === "vig" ? "circle-check" : st === "prox" ? "calendar-clock" : "history")}${comStName(st, x)}</small><b>${comRange(x)}</b></button>`; }).join("")}
       ${older.length ? `<select class="base sm" data-comold aria-label="Ofertas anteriores"><option value="">${comUI.cat.endsWith("|quincenal") ? "Quincenas anteriores…" : "Ofertas anteriores…"}</option>${older.map(x => `<option value="${x.id}" ${x.id === f.id ? "selected" : ""}>${comRange(x)} ${x.from.slice(0, 4)}</option>`).join("")}</select>` : ""}</div>
