@@ -771,7 +771,7 @@ b.comf{display:block}.comfw{white-space:nowrap}b.comf svg{display:inline;vertica
 }
 /* v266 · Televisores: el usuario TV no ve el menú; un televisor (TV 1 a TV 4) muestra solo su pantalla, a lo ancho */
 html.tvrole .side,html.tvrole .brandbar,html.tvrole .tabbar,html.tvrole .navshow,html.tvrole .pcrumb,
-html.tvkiosk .side,html.tvkiosk .brandbar,html.tvkiosk .tabbar,html.tvkiosk .navshow,html.tvkiosk .pcrumb,html.tvkiosk #updBar{display:none !important}
+html.tvkiosk .side,html.tvkiosk .brandbar,html.tvkiosk .tabbar,html.tvkiosk .navshow,html.tvkiosk .pcrumb,html.tvkiosk #updBar,html.tvrole #updBar{display:none !important}
 html.tvrole .main,html.tvkiosk .main{margin:0 !important;padding:0 !important;max-width:none !important}
 html.tvkiosk #content{max-width:none !important;margin:0 !important;padding:0 !important}
 html.tvkiosk #content > div{gap:0 !important}
@@ -816,6 +816,10 @@ html.tvkiosk{cursor:none}html.tvkiosk.tvcur{cursor:auto}
 .tvredes .tvslide.tvcmp .ftable .trendb{font-size:clamp(14px,min(2.6vh,1.5vw),28px);padding:.3em .6em}
 .tvredes .tvslide.tvcmp .ftable .trendb .tdot{width:.9em;height:.9em}.tvredes .tvslide.tvcmp .ftable .trendb .tarr{width:1.1em;height:1.1em}
 .tvredes .tvslide.tvcmp .panel-h h2{font-size:clamp(20px,3.2vh,34px)}
+/* v367 · Pantalla parada angosta (TV de 540 o 720 de ancho): las 8 columnas no entran; quedan este mes, la diferencia y la tendencia */
+@media (max-width:760px){.tvredes .tvslide.tvcmp .ftable .past{display:none}.tvredes .tvslide.tvcmp .ftable th,.tvredes .tvslide.tvcmp .ftable td{padding-left:5px;padding-right:5px}
+.tvredes .tvslide.tvcmp .ftable th{font-size:clamp(10px,2vw,14px)}.tvredes .tvslide.tvcmp .ftable .brand{font-size:clamp(13px,3.4vw,24px)}.tvredes .tvslide.tvcmp .ftable td.num,.tvredes .tvslide.tvcmp .ftable td.cur{font-size:clamp(13px,3.4vw,26px)}
+.tvredes .tvslide.tvcmp .ftable .dbadge{font-size:clamp(11px,2.6vw,18px)}.tvredes .tvslide.tvcmp .ftable .trendb{font-size:clamp(10px,2.4vw,16px)}.tvredes .tvslide.tvcmp .panel-h h2{font-size:clamp(18px,4.4vw,30px)}}
 /* v272–v274 · TV Redes: publicaciones de una marca en vertical 4:5 (como Instagram), 10 por pantalla en grande (5 arriba y 5 abajo)
    y el resto del mes en mediano (8 × 3). Sin encabezado: la marca y qué publicaciones son van en el título de arriba.
    tvPostsFit pone el tamaño (--pw × --ph): lo más grande que entra, centrado. */
@@ -5026,7 +5030,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v366";
+const APP_VER = "v367";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -5040,11 +5044,20 @@ if ("serviceWorker" in navigator && location.protocol === "https:" && window.top
   }).catch(() => {});
   // Se publicó una versión nueva: se avisa con un botón (no se recarga sola, así no se pierde lo que se está escribiendo).
   navigator.serviceWorker.addEventListener("controllerchange", () => { if (!hadCtrl) return;
-    if ((document.visibilityState === "hidden" || (typeof tvOn === "function" && tvOn())) && safeToReload()) return updReload(); // los televisores (v266) se actualizan solos
+    if (tvDevice() || (document.visibilityState === "hidden" && safeToReload())) return updReload(); // los televisores (v266; v367 también en la pantalla de botones) se actualizan solos
     showUpdateBar(); document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && safeToReload()) Promise.resolve(window.RMH?.flushNow?.()).catch(() => {}).finally(() => updReload()); }); });
 });
+// v367 · Un televisor (usuario TV o una Vista TV a pantalla completa) no tiene quien toque “Actualizar”: nunca ve el aviso y se
+// recarga solo. Además, cada 5 minutos se fija si se publicó una versión nueva (mira sw.js, que es chico y lleva el número de
+// versión), porque el navegador de algunos televisores no avisa del cambio y quedaban con la versión vieja.
+function tvDevice(){ try { return (!!viewer && typeof isTV === "function" && isTV()) || (typeof tvOn === "function" && tvOn()); } catch (e) { return false; } }
+function tvVerCheck(){
+  if (!tvDevice()) return Promise.resolve(false);
+  return fetch("sw.js", { cache:"no-store" }).then(r => r.ok ? r.text() : "").then(t => { const m = t.match(/mkthub-(v[\w.-]+)/); if (m && m[1] !== APP_VER){ updReload(); return true; } return false; }).catch(() => false);
+}
+setInterval(tvVerCheck, 5 * 60e3);
 function showUpdateBar(){
-  if (document.getElementById("updBar")) return;
+  if (document.getElementById("updBar") || tvDevice()) return;
   const b = document.createElement("div"); b.id = "updBar"; b.setAttribute("role", "status");
   b.innerHTML = '<span>Hay una versión nueva de la app.</span><button type="button" class="btn primary sm" id="updGo">Actualizar</button>';
   document.body.appendChild(b);
@@ -5058,7 +5071,7 @@ const updReload = () => { try { sessionStorage.setItem("rmh-upd-reload", "1"); }
 function checkNewVersion(){
   let prev = null, just = false;
   try { prev = localStorage.getItem("rmh-ver"); localStorage.setItem("rmh-ver", APP_VER); just = sessionStorage.getItem("rmh-upd-reload") === "1"; sessionStorage.removeItem("rmh-upd-reload"); } catch (e) { return; }
-  if (prev && prev !== APP_VER && !just) showUpdateBar();
+  if (prev && prev !== APP_VER && !just && !tvDevice()) showUpdateBar();
 }
 window.addEventListener("load", () => setTimeout(checkNewVersion, 1200));
 refreshPeople();
@@ -5973,8 +5986,9 @@ function liveStoriesPanel(bs){
     ${rows.map(r => `<div class="strow"><div class="lph">${brandTag(r.b)}<span class="note">${r.list.length ? `${r.list.length} ${r.list.length === 1 ? "historia arriba" : "historias arriba"}` : "Ninguna historia arriba ahora"}</span>${r.list.length && igUser(r.b) ? `<a class="btn sm" href="https://www.instagram.com/stories/${esc(igUser(r.b))}/" target="_blank" rel="noopener">${icon("instagram")} Ver en Instagram</a>` : ""}${adm && META_STORIES?.["err:" + r.b] ? `<span class="sterr">${icon("triangle-alert")} Meta: ${esc(META_STORIES["err:" + r.b])}</span>` : ""}</div>${r.list.length ? `<div class="stlive">${r.list.map((x, i) => liveCard(x, i, stKey("live:" + r.b, r.list))).join("")}</div>` : ""}</div>`).join("")}</div></div>`;
 }
 // Al abrir el Dashboard, si la última lectura tiene más de 30 min, se pide una nueva (sin avisos; una vez cada 30 min).
+// v367: también el televisor, mientras pasa TV Redes (así “arriba ahora” se actualiza solo, sin que nadie toque nada).
 function storiesAuto(){
-  if (!enterApp.done || !["Admin total", "Admin", "CM"].includes(viewer.role) || window.RMH?.previewing || metaBusy.historias || MONTH !== CURRENT_MONTH || /^(localhost|127\.)/.test(location.hostname)) return;
+  if (!enterApp.done || !["Admin total", "Admin", "CM", "TV"].includes(viewer.role) || window.RMH?.previewing || metaBusy.historias || MONTH !== CURRENT_MONTH || /^(localhost|127\.)/.test(location.hostname)) return;
   const u = META_STORIES?.updated; if (u && Date.now() - new Date(u) < 30 * 60e3) return;
   if (Date.now() - (storiesAuto.t || 0) < 30 * 60e3) return;
   storiesAuto.t = Date.now(); setTimeout(() => metaRefresh("historias", "Historias", "", true), 800);
@@ -6216,8 +6230,9 @@ function tvSlides(){ const bs = tvRedesBrands(); return [
 // vieja) y el top del mes por alcance, las tres marcas juntas. Imágenes verticales lo más grandes que entran (tvStFit); si no
 // entran todas, el último cuadro dice cuántas más hay. Las pantallas solo salen si hay historias para mostrar.
 // v366: muchos Smart TV muestran la página a 1280×720 o 960×540: con las tres marcas juntas las historias quedaban diminutas y
-// los números se pisaban. Con menos de 1000 px de alto va una marca por pantalla (y, si entra, en 2 o 3 filas).
-const tvStSplit = () => innerHeight < 1000;
+// los números se pisaban. Con menos de 1000 px de alto va una marca por pantalla (y, si entra, en 2 a 4 filas).
+// v367: también en las pantallas paradas (alargadas): con las tres juntas cada marca mostraba solo 2 y “+8 más”.
+const tvStSplit = () => innerHeight < 1000 || innerHeight > innerWidth * 1.1;
 function tvStGroups(bs, kind){
   const live = kind === "live", withSt = bs.filter(b => (live ? liveStories(b) : storyData(b).top).length);
   if (!withSt.length) return [];
@@ -6231,7 +6246,7 @@ function tvStoriesSlide(kind, bs = tvRedesBrands()){
   const what = r => live ? (r.list.length ? `${r.list.length} ${r.list.length === 1 ? "historia publicada ahora" : "historias publicadas ahora"}` : "ninguna publicada ahora") : r.list.length ? `${r.list.length === 1 ? "la historia" : `las ${r.list.length}`} con más alcance de ${monthName(MONTH)}` : `sin historias en ${monthName(MONTH)}`;
   return `<div class="tvst ${kind}">${rows.map(r => `<div class="tvstrow${r.list.length ? "" : " empty"}"><div class="tvsth">${brandTag(r.b)}<span>${what(r)}</span></div>${r.list.length ? `<div class="tvstg">${r.list.map(card).join("")}<div class="tvstc more" hidden><span class="stimg"><b></b><small>historias más</small></span></div></div>` : ""}</div>`).join("")}</div>`;
 }
-// El tamaño de las historias: el alto que deja cada fila de marca. Con una sola marca en la pantalla prueba 1, 2 o 3 filas y se
+// El tamaño de las historias: el alto que deja cada fila de marca. Con una sola marca en la pantalla prueba de 1 a 4 filas y se
 // queda con la que muestra todas (o más) sin bajar de 150 px de alto. Si no entran todas, el último cuadro dice cuántas faltan.
 function tvStFit(){
   const p = document.querySelector("#tvStage .tvst"); if (!p) return;
@@ -6242,7 +6257,7 @@ function tvStFit(){
     const cs = getComputedStyle(g), gap = parseFloat(cs.columnGap) || 0, rg = parseFloat(cs.rowGap) || gap, H = g.clientHeight, W = g.clientWidth;
     const cards = [...g.querySelectorAll(".tvstc:not(.more)")], more = g.querySelector(".tvstc.more"), n = cards.length;
     let best = null;
-    for (let R = 1; R <= (grids.length === 1 ? 3 : 1); R++){
+    for (let R = 1; R <= (grids.length === 1 ? 4 : 1); R++){
       const sh = Math.floor((H - (R - 1) * rg) / R), sw = Math.floor(sh * 9 / 16), cap = R * Math.max(1, Math.floor((W + gap) / (sw + gap)));
       if (R > 1 && sh < 150) break;
       if (!best || (best.cap < n && cap > best.cap)) best = { sh, sw, cap };
@@ -6317,7 +6332,7 @@ function tvShow(n){
   st.innerHTML = `<div class="tvtimer"><i style="animation-duration:${TV_SECS}s;${tv.paused ? "animation-play-state:paused" : ""}"></i></div><p class="tvtitle">${slides[tv.i].title} · ${tv.i + 1} de ${slides.length}</p><div class="tvslide ${slides[tv.i].cls || ""}">${slides[tv.i].html()}</div>`;
   document.querySelectorAll(".tvdot").forEach((d, k) => d.classList.toggle("on", k === tv.i));
   st.closest(".tvredes")?.classList.toggle("cvon", !!(slides[tv.i].cover || slides[tv.i].full));
-  tvPostsFit(); tvLastFit(); tvStFit(); tviFit();
+  tvPostsFit(); tvLastFit(); tvStFit(); tviFit(); storiesAuto(); // v367: el televisor pide las historias solo
 }
 function tvStart(){ clearInterval(tv.timer); tv.timer = setInterval(() => { if (!tv.paused && !tvAllEdge(1, tv.i, tvSlides().length)) tvShow(tv.i + 1); }, TV_SECS * 1000); }
 function tvStop(){ clearInterval(tv.timer); tv.timer = null; }
@@ -11298,6 +11313,7 @@ function tvTeamLoop(){ clearInterval(tvTeam.slideT); tvTeam.slideT = setInterval
 // 2) Muestra 3, 2 o 1 tarea por persona: la mayor cantidad que entra en la pantalla; si no entra ni con 1, la página baja con scroll.
 function tvFit(){
   const pg = document.querySelector(".tvpage"); if (!pg) return;
+  pg.style.zoom = ""; // v367: se vuelve a medir desde el tamaño normal
   tvWeekFit();
   document.querySelectorAll(".tvpage .tvgrid").forEach(g => {
     const n = g.children.length, gap = parseFloat(getComputedStyle(g).columnGap) || 16;
@@ -11310,6 +11326,12 @@ function tvFit(){
     cards.forEach(c => { const rows = [...c.querySelectorAll(".jr")], more = c.querySelector(".more"), hid = Math.max(0, rows.length - k);
       rows.forEach((r, i) => r.hidden = i >= k); more.hidden = !hid; more.textContent = hid ? `+ ${hid} ${hid === 1 ? "tarea más" : "tareas más"}` : ""; });
     if (fits()) break;
+  }
+  // v367 · Si igual no entra (televisores que muestran la página a 1280×720 o 960×540, o parados), se achica todo junto hasta que
+  // entre, en vez de quedar cortado abajo. Solo en el televisor (o la Vista TV a pantalla completa); en 1920×1080 no cambia nada.
+  if (tvKiosk || tvSolo) for (let k = 0; k < 4 && !fits(); k++){
+    const H = document.fullscreenElement === pg ? pg.clientHeight : innerHeight, S = document.fullscreenElement === pg ? pg.scrollHeight : document.scrollingElement.scrollHeight;
+    pg.style.zoom = ((parseFloat(pg.style.zoom) || 1) * Math.max(.35, H / S) * .985).toFixed(3);
   }
 }
 addEventListener("resize", () => { if (page === "tv") tvFit(); if (["tv","tvredes","tvimpacto"].includes(page)) tviFit(); });
@@ -17258,7 +17280,7 @@ const pendBadge = () => { const n = inboxPend(); return n ? `<span class="count 
 const canMetaRefresh = () => ["Admin total","Admin","CM","Revisor"].includes(viewer.role) && !window.RMH?.previewing;
 const metaBusy = {};
 async function metaRefresh(what, label, okMsg, quiet){ // quiet (v363): la actualización automática de las historias, sin avisos
-  if (metaBusy[what]) return; metaBusy[what] = true; render();
+  if (metaBusy[what]) return; metaBusy[what] = true; if (!quiet) render(); // v367: sin redibujar (en la TV reiniciaba la pantalla)
   const eps = { mensajes:["mensajes"], seguidores:["seguidores","demograficos","publicaciones","seguidores?que=historias"], historias:["seguidores?que=historias"] }[what] || [what];
   let ok = 0, err = "";
   try { const tok = window.RMH?.token ? await RMH.token() : null;
@@ -17266,8 +17288,9 @@ async function metaRefresh(what, label, okMsg, quiet){ // quiet (v363): la actua
       if (r.ok && j.ok) ok++; else err = err || j.hint || j.error || `HTTP ${r.status}`; }
     if (ok) await window.RMH?.catchUp?.();
   } catch { err = "No se pudo conectar"; }
-  metaBusy[what] = false; render();
+  metaBusy[what] = false;
   if (quiet){ if (err) console.warn("metaRefresh", what, err); return; }
+  render();
   toast(ok === eps.length ? okMsg || `${label} actualizados con lo último de Meta.` : ok ? `${label}: se actualizó una parte (${err}).` : `No se pudo actualizar: ${err}.`);
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-metare]"); if (b) metaRefresh(b.dataset.metare, b.dataset.metal || "Datos", b.dataset.metaok); });

@@ -63,7 +63,7 @@ function monthStats(list){
 const topOf = list => [...list].sort((a, b) => reachOf(b) - reachOf(a) || views(b) - views(a)).slice(0, TOP).map(x => ({ id: x.id, ts: x.ts, ty: x.ty, v: x.v ?? null, r: x.r ?? null, rp: x.rp ?? null, sh: x.sh ?? null, ne: x.ne ?? null }));
 
 const handler = async (req, res) => {
-  const who = await cronOrUser(req); // el cron o el botón “Actualizar” de la app
+  const who = await cronOrUser(req, ["TV"]); // el cron, el botón “Actualizar” de la app o (v367) el televisor, que las pide solo
   if (!who) return res.status(401).json({ ok: false, error: "No autorizado: falta ?secret= o es incorrecto" });
   if (!process.env.META_TOKEN){ console.error("ERROR: falta la variable META_TOKEN en Vercel"); return res.status(500).json({ ok: false, error: "Falta la variable META_TOKEN en Vercel" }); }
   const dry = req.query.dry === "1" && who === "cron";
