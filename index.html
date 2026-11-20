@@ -386,7 +386,7 @@ html.navmini .nav-group.closed > a{display:flex}
 .jpart .jpshare{flex:1 1 100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:42px}.jpart .jpshare svg{width:16px;height:16px;color:#38bdf8;flex:none}
 .jpart .jpshare input.base,.jpart .jpshare code{flex:1 1 260px;min-width:0;border:1px solid var(--line-3);background:var(--inner);color:var(--ink);border-radius:10px;padding:6px 10px;font:12.5px/1.4 var(--mono);outline:none;overflow-wrap:anywhere}.jpart .jpshare input.base:focus{border-color:var(--cyan)}
 @media (max-width:600px){.jpart .jpshare{margin-left:0}}
-.bkpartsend .lastbtn{border-color:rgba(251,191,36,.6);color:#fbbf24}.partlast{display:inline-flex;align-items:center;gap:3px;margin-left:6px;font-size:11.5px;font-weight:700;color:#fbbf24}.partlast svg{width:12px;height:12px}
+.bkpartsend .lastbtn{border-color:rgba(251,191,36,.6);color:#fbbf24}.bkpartsend .allbtn{border-color:rgba(52,211,153,.6);color:#34d399}.partlast{display:inline-flex;align-items:center;gap:3px;margin-left:6px;font-size:11.5px;font-weight:700;color:#fbbf24}.partlast svg{width:12px;height:12px}
 .bksplit{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line-2)}.bksplit .btn{border-color:rgba(56,189,248,.55);color:#38bdf8}.bkwait svg{flex:none;width:15px;height:15px;margin-top:2px}
 /* v345 · varios bocetos juntos (la tanda que se subió junta) */
 .bkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
@@ -4579,6 +4579,21 @@ const partsWait = j => (jobParts(j) || []).map((q, k) => [q, k]).filter(([q]) =>
 function partsStatus(j){ const P = jobParts(j) || []; if (!P.length || partsDone(j)) return;
   const wait = P.filter(q => !q.ok && !q.fix), fix = P.some(q => !q.ok && q.fix);
   j.status = wait.length ? (REVIEW_WAIT.includes(j.status) ? j.status : wait.some(q => q.fixed) ? "Corrección realizada" : "Boceto finalizado") : fix ? fixStage(j) : "En proceso"; }
+// v370 · Por partes, pero va todo junto (o el diseñador entregó sin tocar “Enviar parte”): Admin total igual lo aprueba. Se agrega
+// una parte “Todo junto” (o “Resto del pedido” si ya hubo partes) como último envío y se abre la ventana de aprobar de siempre;
+// si se cancela, se saca y el pedido queda como estaba.
+function partApproveAll(j){
+  if (!jobParts(j) || partsDone(j)) return;
+  const P = j.parts = j.parts || [], w = partOpen(j);
+  if (w >= 0) return openApproveModal(j, w); // ya hay una parte esperando: esa
+  const last = P.findIndex(q => q.last), name = P.length ? "Resto del pedido" : "Todo junto";
+  if (last >= 0) return openApproveModal(j, last);
+  P.push({ name, last:true, sentAt:TODAY, by:j.owner, auto:true });
+  partApproveAll.pend = { id:j.id, k:P.length - 1 };
+  openApproveModal(j, P.length - 1);
+}
+function partAutoDrop(){ const p = partApproveAll.pend; partApproveAll.pend = null; if (!p) return; const j = jobById(p.id), q = j?.parts?.[p.k];
+  if (q && q.auto && !q.ok){ j.parts.splice(p.k, 1); render(); } }
 function partGo(j){ jobUI.ficha = j.id; render(); setTimeout(() => { const i = document.getElementById("bkPart-" + j.id); i?.scrollIntoView({ block:"center" }); i?.focus(); }, 60); }
 const partLbl = j => { const P = jobParts(j); if (!P) return ""; const w = partsWait(j), n = partsOk(j);
   return w.length > 1 ? `${w.length} partes esperando` : w.length ? `${partName(w[0][0], w[0][1])}${w[0][0].last ? " · último envío" : ""}` : partsDone(j) ? `${P.length} ${P.length === 1 ? "parte" : "partes"} · terminado` : n ? `${n} ${n === 1 ? "parte aprobada" : "partes aprobadas"}` : "Por partes"; };
@@ -4628,11 +4643,12 @@ function partsBlock(j){
       <button type="button" class="btn sm" data-shcopy="${esc(rt)}" ${rt ? "" : "disabled"}>${icon("copy")} Copiar link</button><button type="button" class="btn sm" data-shopen="${esc(rt)}" ${rt ? "" : "disabled"}>${icon("arrow-up-right")} Abrir</button></div>` : "";
     return `<li class="jpart${q.ok ? " ok" : " cur"}"><span class="jpno">${q.ok ? icon("check") : k + 1}</span><div class="grow"><b>${esc(partName(q, k))}</b>${q.last ? ` <span class="partlast">${icon("flag")} Último envío</span>` : ""}<small>${info}</small></div>
       <div class="chips">${st}${acts}${pubs.map(x => `<button type="button" class="btn sm" data-pubopen="${x.channel ? "canal" : "post"}:${esc(x.id)}">${icon("external-link")} Ver publicación${pubs.length > 1 ? ` (${esc(x.brand)})` : ""}</button>`).join("")}</div>${rtRow}</li>`; };
-  const next = !done && !partLastSent(j) ? `<li class="jpart next"><span class="jpno">${icon("plus")}</span><div class="grow"><b>${P.length ? "Próxima parte" : "Primera parte"}</b><small>${esc(firstName(j.owner))} pone el nombre (ej.: Carnes) y la ruta de la compartida en Boceto y toca “Enviar parte”, o “Último envío” si es la última.</small></div></li>` : "";
+  const next = !done && !partLastSent(j) ? `<li class="jpart next"><span class="jpno">${icon("plus")}</span><div class="grow"><b>${P.length ? "Próxima parte" : "Primera parte"}</b><small>${esc(firstName(j.owner))} pone el nombre (ej.: Carnes) y la ruta de la compartida en Boceto y toca “Enviar parte”, o “Último envío” si es la última${P.length ? "" : " (o “Todo junto” si va en un solo envío)"}.</small></div>${viewer.role === "Admin total" && partOpen(j) < 0 ? `<button type="button" class="btn sm primary" data-partall="${esc(j.id)}" title="Aprobar el pedido aunque no se haya mandado como partes: queda como una sola parte (último envío)">${icon("check")} ${P.length ? "Aprobar el resto" : "Aprobar todo junto"}</button>` : ""}</li>` : "";
   return `<section class="panel jp-sec jp-parts"><h2 class="pmh">${pmIco("layers")}Partes <span class="note" style="font-weight:500">· ${done ? `terminado: ${P.length} ${P.length === 1 ? "parte" : "partes"}` : `${n} ${n === 1 ? "aprobada" : "aprobadas"}${nw ? ` · ${nw} sin aprobar` : ""}`}</span></h2>
     <ol class="jpartl">${P.map(row).join("")}${next}</ol>
     <p class="note" style="margin:0">${icon("info")} Cada parte se envía con su nombre, <b>sin esperar</b> que se apruebe la anterior. Admin total aprueba cada una cuando la ve (en cualquier orden): en ese momento la CM elegida ya la puede subir a redes. El pedido termina cuando están aprobadas todas, con el <b>Último envío</b>.</p></section>`;
 }
+document.addEventListener("click", e => { const b = e.target.closest("[data-partall]"); if (!b || viewer.role !== "Admin total") return; const j = jobById(b.dataset.partall); if (j) partApproveAll(j); }); // v370
 // En Boceto: el nombre de la parte y “Enviar parte” / “Último envío” (cuando no hay una parte esperando).
 function partSendBox(j){
   if (!jobParts(j) || partsDone(j) || partLastSent(j) || !canAttach(j)) return ""; // v361: aunque haya partes esperando aprobación
@@ -4641,19 +4657,19 @@ function partSendBox(j){
     <input class="base" id="bkPart-${id}" maxlength="40" placeholder="Ej.: Carnes, Embutidos, Bebidas…" autocomplete="off">
     <label for="bkPartRt-${id}" class="jll">${icon("folder-symlink")} Ruta de la compartida de esta parte * <span class="note" style="font-weight:400">(la carpeta del servidor donde está; al aprobarla, la CM la abre desde su publicación)</span></label>
     <input class="base" id="bkPartRt-${id}" spellcheck="false" autocomplete="off" value="${esc(shareClean(prevRt))}" placeholder="Pegar la ruta, ej.: \\\\retsvrfs01\\Marketing\\STOCK\\2026\\Ofertas\\Carnes">
-    <div class="chips"><button type="button" class="btn primary" data-partsend="${id}|">${icon("send")} Enviar parte</button><button type="button" class="btn lastbtn" data-partsend="${id}|last">${icon("flag")} Último envío</button></div>
+    <div class="chips"><button type="button" class="btn primary" data-partsend="${id}|">${icon("send")} Enviar parte</button><button type="button" class="btn lastbtn" data-partsend="${id}|last">${icon("flag")} Último envío</button>${n ? "" : `<button type="button" class="btn allbtn" data-partsend="${id}|all" title="Si va todo en un solo envío: se manda como una sola parte (y es la última)">${icon("package")} Todo junto (un solo envío)</button>`}</div>
     ${partsWait(j).length ? `<span class="note">${icon("info")} Podés mandarla aunque ${partsWait(j).length === 1 ? "la anterior todavía espera" : "las anteriores todavía esperan"} aprobación.</span>` : ""}<span class="note">Con el <b>nombre</b> y la <b>ruta de la compartida</b> alcanza para enviarla (el boceto de arriba es opcional: si lo subís, Admin total lo ve acá). Admin total la aprueba y la CM ya la puede subir con esa ruta. En la última, tocá <b>Último envío</b> (al aprobarla, el pedido termina).</span></div>`;
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-partsend]"); if (!b) return;
   const [id, kind] = b.dataset.partsend.split("|"), j = fileJob(id); if (!j || !jobParts(j) || partLastSent(j) || partsDone(j) || !canAttach(j)) return;
-  const inp = document.getElementById("bkPart-" + id), name = (inp?.value || "").trim().replace(/\s+/g, " ").slice(0, 40), last = kind === "last";
+  const all = kind === "all" && !(j.parts || []).length, inp = document.getElementById("bkPart-" + id), name = (inp?.value || "").trim().replace(/\s+/g, " ").slice(0, 40) || (all ? "Todo junto" : ""), last = kind === "last" || all; // v370: todo junto = una sola parte, la última
   if (!name){ inp?.focus(); return toast("Poné el nombre de esta parte (ej.: Carnes)."); }
   const rti = document.getElementById("bkPartRt-" + id), route = shareClean(rti?.value);
   if (!route){ rti?.focus(); return toast("Pegá la ruta de la compartida de esta parte (la carpeta donde está), así la CM la puede abrir al publicar."); }
   const k = (j.parts || []).length;
   if ((j.parts || []).some(q => (q.name || "").toLowerCase() === name.toLowerCase())) return toast(`Ya hay una parte “${name}”: poné otro nombre.`);
-  if (last && !confirmTap(b, "plast:" + j.id, "¿Es la última? Tocá de nuevo")) return;
+  if (last && !confirmTap(b, "plast:" + j.id, all ? "¿Va todo junto? Tocá de nuevo" : "¿Es la última? Tocá de nuevo")) return;
   (j.parts = j.parts || []).push({ name, ...(last ? { last:true } : {}), sentAt:TODAY, by:viewer.name }); j.partsOn = true;
   partShareSet(j, j.parts.length - 1, route); // v351: la ruta de esta parte (con su nombre) también en las rutas del pedido
   partsStatus(j); NOTIFS.forEach(n => { if (n.to === viewer.name && n.job === j.id && n.type !== "fix") n.read = true; }); // v361: los cambios pedidos de otra parte siguen a la vista
@@ -4717,7 +4733,7 @@ function approvePart(j, opts = {}){
   NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
   let xs = [];
   if (cm && opts.date){
-    const rt = shareClean(q.share), pj = { ...j, title:`${j.title} · ${nm}`, pubs:[], pub:null, post:null, ...(rt ? { shares:[{ n:nm, p:rt }], share:rt } : {}) }; // v351: la ruta de esta parte
+    const rt = shareClean(q.share), pj = { ...j, title:q.auto && P.length === 1 ? j.title : `${j.title} · ${nm}`, pubs:[], pub:null, post:null, ...(rt ? { shares:[{ n:nm, p:rt }], share:rt } : {}) }; // v351: la ruta de esta parte
     xs = makePub(pj, { ...opts, cm }); q.pubs = pj.pubs;
     if (opts.copy) xs.forEach(p => copyConfSet(p, opts.copy));
     else if (opts.noCopy) xs.forEach(p => { if (!p.noCopy){ Object.assign(p, { noCopy:true, copyConf:false }); copyLogAdd(p, "none"); } });
@@ -4731,6 +4747,7 @@ function approvePart(j, opts = {}){
 }
 function openApproveModal(j, k){
   if (j.area === "CM") return approveJob(j);
+  if (jobParts(j) && !partsDone(j) && partOpen(j) < 0 && !Number.isInteger(k)) return partApproveAll(j); // v370: por partes sin parte enviada → todo junto
   document.getElementById("fixpop")?.remove();
   const PT = jobParts(j), pi = PT && Number.isInteger(k) && PT[k] && !PT[k].ok ? k : partOpen(j), pLast = PT ? [...PT].reverse().find(q => q.ok) : null; // v348: por partes, lo de la parte anterior como sugerencia
   const cont = j.area === "Contenidos", p = j.post && postById(j.post), x = PT ? partPubs(pLast)[0] || null : pubOf(j) || p, cms = CM_NAMES();
@@ -4782,7 +4799,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-okse
   const copy = cpOn && cpEd ? rtHtml(cpEd) : "";
   if (cpOn && !copyPlain({ copy }).trim() && !/<img/i.test(copy)) return err("Escribí el copy confirmado (o destildá “Copy confirmado” para que lo escriba el CM).");
   const noCopy = !!cm && !cpOn && !!document.getElementById("okNoCopy")?.checked;
-  const part = b.dataset.okpart !== undefined ? +b.dataset.okpart : null; // v361: la parte que se está aprobando
+  const part = b.dataset.okpart !== undefined ? +b.dataset.okpart : null; partApproveAll.pend = null; // v361: la parte que se está aprobando
   document.getElementById("fixpop")?.remove(); approveJob(j, { by, cm, date, time, fmt, net, ...(cpOn ? { copy } : {}), ...(noCopy ? { noCopy } : {}), ...(Number.isInteger(part) ? { part } : {}) }); }); // aprobar no pide ningún link (pedido de Admin total)
 // En la ficha del pedido: la publicación que salió al aprobarlo (CM, fecha, formato) con un botón para abrirla.
 function pubInfo(j){ return (j.pubs || (j.pub ? [j.pub] : [])).map(r => r.canal ? canalById(r.id) : postById(r.id)).filter(Boolean).map(x => pubInfoOne(x)).join(""); }
@@ -4904,7 +4921,7 @@ function openFixModal(j, k){
   document.body.appendChild(w); w.querySelector("textarea").focus();
 }
 document.addEventListener("click", e => {
-  if (e.target.closest("[data-fixcancel]") || e.target.id === "fixpop"){ document.getElementById("fixpop")?.remove(); return; }
+  if (e.target.closest("[data-fixcancel]") || e.target.id === "fixpop"){ document.getElementById("fixpop")?.remove(); partAutoDrop(); return; } // v370: si era “todo junto”, se saca
   const b = e.target.closest("[data-fixsend]"); if (!b) return;
   const text = document.getElementById("fixText").value.trim(), j = jobById(b.dataset.fixsend);
   if (!text){ document.getElementById("fixErr").hidden = false; return; }
@@ -4919,7 +4936,7 @@ function moveJob(j, to){
   if (viewer.role === "Admin total" && (to === "Aprobado" || (j.area === "CM" && to === "Programado")) && (REVIEW_WAIT.includes(j.status) || (to === "Aprobado" && jobParts(j) && partOpen(j) >= 0))){ render(); return openApproveModal(j); }
   // v350 · Por partes: se manda a revisión con el nombre de la parte (en Boceto); sin una parte enviada no hay nada que aprobar.
   if (jobParts(j) && !partsDone(j) && (to === "Aprobado" ? partOpen(j) < 0 : to === reviewStage(j) && !(jobParts(j) || []).some(q => !q.ok && q.fix))){ render();
-    if (to === "Aprobado") return toast("Todavía no hay una parte enviada para aprobar.");
+    if (to === "Aprobado") return viewer.role === "Admin total" ? partApproveAll(j) : toast("Todavía no hay una parte enviada para aprobar."); // v370
     if (partLastSent(j)) return toast("Ya mandaste el último envío: falta que Admin total apruebe las partes.");
     partGo(j); return toast("Poné el nombre de esta parte (ej.: Carnes) y tocá “Enviar parte” (o “Último envío” si es la última)."); }
   if (viewer.role !== "Admin total" && to === reviewStage(j)){
@@ -5038,7 +5055,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v369";
+const APP_VER = "v370";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
