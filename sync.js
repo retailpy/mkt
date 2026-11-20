@@ -96,6 +96,12 @@ const RMH = (() => {
     COPY_LOG:[() => COPY_LOG, v => { COPY_LOG = Array.isArray(v) ? v : []; }], // v334: los copys del Generador de copy (sin nombres; ClaudIA)
     CRONOGRAMA:[() => CRONOGRAMA, v => { CRONOGRAMA = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v326: Cronograma de Acciones (lo cambia Admin total)
     TV_SCREENS:[() => TV_SCREENS, v => { TV_SCREENS = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v266: qué muestra cada televisor (TV 1 a TV 4); lo cambia Admin total
+    // v375 · Panel de Seguimiento: quién lo ve (lo cambia Admin total) y el panel (solo esas personas y Admin total; también en la base).
+    // Si a esta persona le dan el acceso, se trae el panel enseguida; si se lo sacan, se borra la copia de este dispositivo.
+    SEG_ACCESS:[() => SEG_ACCESS, v => { const was = segIn(); SEG_ACCESS = Array.isArray(v) ? v.filter(x => typeof x === "string") : [...SEG_ACCESS_DEF]; const now = segIn();
+      if (now && !was) setTimeout(() => catchUp(), 300);
+      if (was && !now){ SEGUIMIENTO = undefined; base.delete("s:SEGUIMIENTO"); } }],
+    SEGUIMIENTO:[() => SEGUIMIENTO, v => { SEGUIMIENTO = v && typeof v === "object" && !Array.isArray(v) ? v : undefined; }], // sin datos de la base: undefined (no se crea solo)
   };
   // Claves que solo existen para Admin total (la base no se las deja leer ni guardar al resto).
   const ADMIN_ONLY = new Set(["s:SUGGESTIONS", "s:SURVEYS", "s:DRAFTS"]); // v369: los borradores de pedidos
@@ -110,14 +116,16 @@ const RMH = (() => {
   const isAdm = () => ["Admin total", "Admin"].includes(member?.role);
   // Claves que todos leen pero solo Admin total guarda. (Los grupos de chat los crea cualquiera: la base controla
   // que cada uno cambie solo los suyos.)
-  const ADMIN_WRITE = new Set(["s:TV_SCREENS", "s:CRONOGRAMA", "s:APP_VIDEO"]); // v326: el Cronograma de Acciones lo mira Admin y lo cambia Admin total
+  const ADMIN_WRITE = new Set(["s:TV_SCREENS", "s:CRONOGRAMA", "s:APP_VIDEO", "s:SEG_ACCESS"]); // v326: el Cronograma de Acciones lo mira Admin y lo cambia Admin total · v374: el video de la app · v375: quién ve el Panel de Seguimiento
   const isAT = () => member?.role === "Admin total";
+  // v375: el Panel de Seguimiento (s:SEGUIMIENTO) lo bajan y lo guardan solo las personas de s:SEG_ACCESS y Admin total.
+  const segIn = () => !!member && !["Revisor", "Comercial", "TV"].includes(member.role) && (isAT() || (Array.isArray(SEG_ACCESS) ? SEG_ACCESS : []).includes(me));
 
   let me = null, member = null, previewing = false, ready = false;
   const base = new Map(); // clave → { v: versión en el servidor, json: lo último que coincidió con el servidor }
 
   function localKeys(){
-    return [...Object.keys(SHARED).map(k => "s:" + k).filter(k => (isAT() || !ADMIN_ONLY.has(k)) && (isCMish() || !CM_ONLY.has(k)) && (isATCM() || !ATCM_ONLY.has(k)) && (isAdm() || !ADM_ONLY.has(k))), "notes:" + me, "prompts:" + me, "comchk:" + me,
+    return [...Object.keys(SHARED).map(k => "s:" + k).filter(k => (isAT() || !ADMIN_ONLY.has(k)) && (isCMish() || !CM_ONLY.has(k)) && (isATCM() || !ATCM_ONLY.has(k)) && (isAdm() || !ADM_ONLY.has(k)) && (k !== "s:SEGUIMIENTO" || segIn())), "notes:" + me, "prompts:" + me, "comchk:" + me,
       ...THREADS.filter(t => t.a === me || t.b === me).map(t => "thread:" + t.id),
       ...CHAT_GROUPS.filter(g => chatMember(g, { id:me, role:member?.role })).map(g => "chat:" + g.id)]; // siempre con quien inició sesión
   }
