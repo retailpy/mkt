@@ -4371,6 +4371,7 @@ const SECTIONS = [
   { g:"General", k:"aviso", l:"Aviso", i:"siren", virtual:true }, // solo Admin total: mensaje emergente al momento, con sonido y vibración (a personas, CM, Diseño o todos)
   { g:"Diseño gráfico", k:"paneldg", l:"Panel de Trabajo Diseño gráfico", n:"Panel de Trabajo", i:"layout-grid", virtual:true }, // acceso visual a las categorías de Diseño (no es un permiso aparte)
   { g:"Diseño gráfico", k:"caldg", l:"Planificación Diseño gráfico", n:"Planificación", i:"calendar-days", virtual:true }, // todas las entregas de Diseño en su fecha (mías o de todo el equipo)
+  { g:"Diseño gráfico", k:"borradoresdg", l:"Borradores Diseño gráfico", n:"Borradores", i:"file-pen", virtual:true }, // v372: en el menú, debajo de Planificación (solo Admin total): pedidos sin enviar o sin responsable, con +N rojo
   { g:"Diseño gráfico", k:"cargadiseno", l:"Carga de trabajo Diseño gráfico", n:"Carga de trabajo", i:"gauge" },
   { g:"Diseño gráfico", k:"tendg", l:"Tendencias Diseño gráfico", n:"Tendencias", i:"sparkles", virtual:true }, // 10 novedades de diseño, packaging y supermercados del mundo, con su link
   { g:"Diseño gráfico", k:"pedidos", l:"Diseño para Redes", n:"Diseño: Redes", i:"image", hide:true },
@@ -4378,10 +4379,9 @@ const SECTIONS = [
   { g:"Diseño gráfico", k:"web", l:"Diseño para Web", n:"Diseño: Web", i:"monitor", hide:true },
   { g:"Diseño gráfico", k:"pantallas", l:"Diseño para Pantallas", n:"Diseño: Pantallas", i:"tv", hide:true },
   { g:"Diseño gráfico", k:"historial", l:"Historial Diseño gráfico", n:"Historial", i:"archive", hide:true },
-  { g:"Diseño gráfico", k:"borradoresdg", l:"Borradores Diseño gráfico", n:"Borradores", i:"file-pen", virtual:true, hide:true }, // v371: botón de la botonera del Panel de Trabajo (solo Admin total)
-  { g:"Community Manager", k:"borradorescm", l:"Borradores Community Manager", n:"Borradores", i:"file-pen", virtual:true, hide:true }, // v371
   { g:"Community Manager", k:"panelcm", l:"Panel de Trabajo Community Manager", n:"Panel de Trabajo", i:"layout-grid", virtual:true }, // acceso visual a las categorías de CM
   { g:"Community Manager", k:"calcm", l:"Planificación Community Manager", n:"Planificación", i:"calendar-days", virtual:true }, // el calendario del Plan de posteo (mío o de todo el equipo)
+  { g:"Community Manager", k:"borradorescm", l:"Borradores Community Manager", n:"Borradores", i:"file-pen", virtual:true }, // v372
   { g:"Community Manager", k:"cargacm", l:"Carga de trabajo CM", n:"Carga de trabajo", i:"gauge" },
   { g:"Community Manager", k:"tencm", l:"Tendencias Community Manager", n:"Tendencias", i:"sparkles", virtual:true }, // 10 novedades de redes y campañas de supermercados, con su link
   { g:"Community Manager", k:"noticias", l:"Noticias", n:"Noticias", i:"newspaper", virtual:true }, // lo que sale en los medios de Paraguay sobre Retail S.A. y sus marcas (en la botonera, debajo de Tendencias)
@@ -5057,7 +5057,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v371";
+const APP_VER = "v372";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -7342,8 +7342,6 @@ const CM_GEST = ["calendario","calhistoria","calcanales","gestioncm","contenidos
 const PANEL_CM_MORE = [...CM_GEST, "escraches", "reclamos"].map(k => ({ k }));
 const PANEL_TOOLS = [
   { k:"historial", t:"Historial", a:"Diseño", i:"archive", d:"Los pendientes del mes, y lo aprobado aparte, por marca y diseñador." }, { k:"historialcm", t:"Historial", a:"CM", i:"archive", d:"Lo pendiente del mes, y lo publicado o terminado aparte." },
-  // v371 · Borradores (solo Admin total): lo que se cargó y no se envió, y los pedidos sin responsable, con el +N rojo.
-  { k:"borradoresdg", t:"Borradores", a:"Diseño", i:"file-pen", d:"Pedidos que se empezaron a cargar y no se enviaron, o que quedaron sin responsable." }, { k:"borradorescm", t:"Borradores", a:"CM", i:"file-pen", d:"Pedidos que se empezaron a cargar y no se enviaron, o que quedaron sin responsable." },
 ];
 const PANEL_DG_KEYS = [...PANEL_DESIGN, ...PANEL_TOOLS.filter(x => x.a === "Diseño")].map(x => x.k);
 const PANEL_CM_KEYS = [...PANEL_CM, ...PANEL_CM_MORE, ...PANEL_TOOLS.filter(x => x.a === "CM")].map(x => x.k);
@@ -7501,7 +7499,7 @@ function pPanelCM(){
   const gNew = [...myJobsOpen("gestioncm"), ...myJobsOpen("contenidos")], gUnseen = gNew.filter(isUnseenJob).length + myNewPubs().length, gOpen = gNew.length + myNewPubs().length;
   const meta = { gcm:`${mine.length ? `${mine.length} ${mine.length === 1 ? "pendiente tuyo" : "pendientes tuyos"}` : "Nada pendiente a tu nombre"}${late ? ` · <em>${late} ${late === 1 ? "atrasado" : "atrasados"}</em>` : ""}`,
     calact:wkN ? `${wkN} ${wkN === 1 ? "trabajo" : "trabajos"} esta semana` : "Nada cargado esta semana", inbox:panelStats().inbox, ideas:"", borradorescm:draftMeta("CM") };
-  const icons = [...PANEL_CM, ...PANEL_TOOLS.filter(x => x.k === "borradorescm")].filter(x => can(x.k)).map((x, i) => {
+  const icons = PANEL_CM.filter(x => can(x.k)).map((x, i) => {
     const badge = x.k === "inbox" ? pendBadge() : x.k === "borradorescm" ? draftPicon("CM") : x.k === "gcm" && gOpen ? `<span class="count ibc${gUnseen ? " new" : ""}" title="${gOpen} a tu nombre sin terminar${gUnseen ? ` · ${gUnseen} sin abrir` : ""}">+${gOpen > 99 ? 99 : gOpen}</span>` : "";
     return `<button type="button" class="picon" data-page="${x.k}" style="--i:${i}" aria-label="Abrir ${esc(x.t)}"><span class="pring" aria-hidden="true">${icon(x.i)}${badge}</span><b>${x.t}</b><small>${x.d}</small><span class="pmeta">${meta[x.k] || ""}</span></button>`; }).join("");
   const go = can("calcm") ? "calcm" : "plan", pb = cmPanB(), keep = brandFilter;
@@ -7511,7 +7509,7 @@ function pPanelCM(){
   return `<div class="phero"><h1>Panel de Trabajo</h1><p class="sub">Community Manager</p></div>${pastOpenNote("CM")}
   ${aprBlock("cm")}${can(go) ? `${opts.length ? `<div class="chips cmpanbr" role="group" aria-label="Marca">${opts.map(b => `<button type="button" class="chip${b === pb ? " on" : ""}" data-cmpanbrand="${b}" aria-pressed="${b === pb}">${b === "Todas" ? "Todas juntas" : b === "Otros" ? "Otras marcas" : b}</button>`).join("")}</div>` : ""}
   ${cmPlanSummary(sumAll, go)}<p class="note dgpanhint">${icon("info")} Lo de ${monthName(MONTH)} de <b>${esc(bTxt)}</b>, igual que en Planificación. Tocá un cuadro para ver esos trabajos en Planificación (se abre con la misma marca).</p>` : ""}
-  <nav class="picons pcm4${[...PANEL_CM, ...PANEL_TOOLS.filter(x => x.k === "borradorescm")].filter(x => can(x.k)).length > 4 ? " pcm5" : ""}" aria-label="Community Manager">${icons || `<div class="empty">No tenés secciones habilitadas.</div>`}</nav>`;
+  <nav class="picons pcm4${PANEL_CM.filter(x => can(x.k)).length > 4 ? " pcm5" : ""}" aria-label="Community Manager">${icons || `<div class="empty">No tenés secciones habilitadas.</div>`}</nav>`;
 }
 let panelDoneAll = false, panelDoneOpen = false; // Diseño: los aprobados del Panel de Trabajo, ocultos hasta tocar “Ver aprobados”
 document.addEventListener("click", e => { if (e.target.closest("[data-paneldoneopen]")){ panelDoneOpen = !panelDoneOpen; render(); } });
@@ -17382,8 +17380,8 @@ const newPubTxt = k => { const n = myNewPubs(k).length; return n ? ` · <em>${n}
 // Pantallas, Videos). El número queda hasta que el pedido se aprueba, se termina o se cancela.
 const JOB_SECS = ["pedidos","cartel","web","pantallas","gestioncm","contenidos"];
 const myJobsOpen = k => viewer ? jobs.filter(j => !j.ex && !repLater(j) && hasJob(j, viewer.name) && jobSection(j) === k && !isIdleJob(j)) : [];
-// v369: +N rojo con los borradores (sin enviar o sin responsable) de Diseño gráfico y de CM, para Admin total.
-const draftBadge = k => { const g = k === "paneldg" ? "Diseño" : k === "panelcm" ? "CM" : null, n = g ? draftCount(g) : 0;
+// v369: +N rojo con los borradores (sin enviar o sin responsable) de Diseño gráfico y de CM, para Admin total (v372: en “Borradores” del menú).
+const draftBadge = k => { const g = k === "borradoresdg" ? "Diseño" : k === "borradorescm" ? "CM" : null, n = g ? draftCount(g) : 0;
   return n ? `<span class="count drc" title="${n} ${n === 1 ? "borrador" : "borradores"} de ${g === "Diseño" ? "Diseño gráfico" : "CM"} (sin enviar o sin responsable)">${icon("file-pen")}+${n > 99 ? 99 : n}</span>` : ""; };
 const navBadge = k => navBadge0(k) + draftBadge(k);
 const navBadge0 = k => { if (k === "pedcom"){ const n = pcBadgeN(); return n ? `<span class="count ibc" title="${isComercial() ? `${n} pedido${n === 1 ? "" : "s"} con novedades (publicado o mensaje nuevo)` : `${n} pedido${n === 1 ? "" : "s"} de Comercial sin pasar o con mensaje nuevo`}">+${n > 99 ? 99 : n}</span>` : ""; }
