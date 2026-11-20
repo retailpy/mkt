@@ -2252,6 +2252,10 @@ html.light .pbdot{filter:invert(1) hue-rotate(180deg)}
 #draftBar{position:fixed;left:50%;transform:translateX(-50%);top:calc(14px + env(safe-area-inset-top));z-index:150;display:flex;align-items:center;gap:10px;flex-wrap:wrap;max-width:min(760px,calc(100vw - 24px));padding:10px 12px 10px 16px;border:1px solid rgba(239,68,68,.6);border-radius:14px;background:#2a0f12;color:#fee2e2;box-shadow:0 10px 30px rgba(0,0,0,.45)}
 #draftBar svg{width:16px;height:16px;vertical-align:-3px;color:#f87171}#draftBar span{flex:1 1 280px}
 html.tvkiosk #draftBar,html.tvrole #draftBar{display:none!important}
+#draftPark{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));z-index:145;display:flex;align-items:center;gap:10px;flex-wrap:wrap;max-width:min(720px,calc(100vw - 24px));padding:10px 12px 10px 16px;border:1px solid rgba(239,68,68,.6);border-radius:14px;background:#2a0f12;color:#fee2e2;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+#draftPark svg{width:16px;height:16px;vertical-align:-3px;color:#f87171}#draftPark span{flex:1 1 260px}
+@media (max-width:767px){#draftPark{bottom:calc(84px + env(safe-area-inset-bottom))}}
+html.tvkiosk #draftPark,html.tvrole #draftPark{display:none!important}
 /* Aviso de versión nueva */
 #updBar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));z-index:140;display:flex;align-items:center;gap:12px;padding:10px 10px 10px 16px;border:1px solid var(--cyan);border-radius:14px;background:var(--panel);color:var(--ink);box-shadow:0 12px 32px -12px rgba(0,0,0,.7);font-size:14px;font-weight:600;max-width:calc(100% - 32px);width:max-content}
 @media (max-width:767px){#updBar{bottom:calc(84px + env(safe-area-inset-bottom))}}
@@ -5057,7 +5061,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v372";
+const APP_VER = "v373";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -9740,12 +9744,12 @@ function draftsMerge(){
 }
 window.draftsSynced = () => setTimeout(() => { if (draftsMerge()) render(); }, 0);
 // Guarda lo que hay escrito en el formulario (sin validar). No guarda un formulario que todavía está vacío.
-function draftSave(){
+function draftSave(force){
   clearTimeout(draftT); draftT = null;
   const f = jobUI.form; if (!f || f.mode === "edit" || !draftOn() || !document.getElementById("jobForm")) return;
   const j = { ...f.job }; try { readJobForm(j); } catch (e) {}
   j.title = (document.getElementById("jTitle")?.value || "").trim(); j.due = document.getElementById("jDue")?.value || j.due || "";
-  if (!f.draftId && !j.title && !draftTxt(j.notes) && !draftTxt(j.brief)) return;
+  if (!f.draftId && !force && !j.title && !draftTxt(j.notes) && !draftTxt(j.brief)) return;
   if (!f.draftId) f.draftId = "dr" + Date.now().toString(36);
   DRAFTS = { ...(DRAFTS || {}), [f.draftId]:{ id:f.draftId, by:viewer.id, at:new Date().toISOString(), mode:f.mode, area:j.area, job:j, repDays:[...(f.repDays || [])] } };
   draftLocalSave(); window.RMH?.flushNow?.();
@@ -9756,8 +9760,24 @@ const draftNoteTxt = f => { const d = f.draftId && DRAFTS?.[f.draftId];
   return d ? `${icon("file-pen")} <b>Borrador guardado</b> a las ${new Intl.DateTimeFormat("es-PY", { timeZone:"America/Asuncion", hour:"2-digit", minute:"2-digit", hour12:false }).format(new Date(d.at))} · todavía no se envió el pedido`
     : `${icon("file-pen")} Mientras cargás, se guarda solo como <b>borrador</b> (aunque se corte internet o la luz). Sale de Borradores cuando lo guardás con un responsable.`; };
 const draftForm = () => !!jobUI.form && jobUI.form.mode !== "edit" && draftOn();
-["input", "change"].forEach(ev => document.addEventListener(ev, e => { if (draftForm() && e.target.closest?.("#jobForm")){ clearTimeout(draftT); draftT = setTimeout(draftSave, 450); } }, true));
-document.addEventListener("click", e => { if (draftForm() && e.target.closest?.("#jobForm")){ clearTimeout(draftT); draftT = setTimeout(draftSave, 450); } }, true);
+["input", "change"].forEach(ev => document.addEventListener(ev, e => { if (draftForm() && e.target.closest?.("#jobForm")){ jobUI.form.touched = true; clearTimeout(draftT); draftT = setTimeout(draftSave, 450); } }, true));
+document.addEventListener("click", e => { if (draftForm() && e.target.closest?.("#jobForm") && !e.target.closest("[data-jclose]")){ if (e.target.closest("button, .chip")) jobUI.form.touched = true; clearTimeout(draftT); draftT = setTimeout(draftSave, 450); } }, true); // tocar un campo sin escribir no cuenta
+// v373 · Si Admin total sale del pedido que está cargando sin enviarlo (toca un aviso, “Ver pedido” de una notificación, el menú, el
+// buscador…), antes de cerrarlo se guarda todo lo que había (aunque fueran solo las marcas o la categoría) y abajo queda
+// “Seguir cargando el pedido”, que lo vuelve a abrir tal cual. Antes se perdía lo escrito en los últimos segundos o todo.
+let draftParked = null;
+(() => { let cur = jobUI.form; Object.defineProperty(jobUI, "form", { configurable:true, enumerable:true, get(){ return cur; },
+  set(v){ const old = cur;
+    if (old && old !== v && !old.sent && old.mode !== "edit" && draftOn() && document.getElementById("jobForm")){ try { draftSave(!!old.touched); } catch (e) {} if (old.draftId && DRAFTS?.[old.draftId]) draftParked = old.draftId; }
+    cur = v; if (v && v.draftId && v.draftId === draftParked) draftParked = null; } }); })();
+function draftParkBar(){
+  const el = document.getElementById("draftPark"), d = draftParked && DRAFTS?.[draftParked];
+  if (!d || jobUI.form || !draftOn()){ el?.remove(); if (!d) draftParked = null; return; }
+  const html = `<span>${icon("file-pen")} Tenés un pedido a medio cargar: <b>${esc(d.job.title || "(sin título)")}</b> · quedó guardado</span><button type="button" class="btn primary sm" data-drgo="${esc(d.id)}">${icon("pencil")} Seguir cargando el pedido</button><button type="button" class="btn sm" data-drparkx aria-label="Cerrar (queda en Borradores)" title="Cerrar (queda en Borradores)">${icon("x")}</button>`;
+  if (el){ if (el.dataset.id !== d.id + d.at){ el.innerHTML = html; el.dataset.id = d.id + d.at; } return; }
+  const b = document.createElement("div"); b.id = "draftPark"; b.setAttribute("role", "status"); b.dataset.id = d.id + d.at; b.innerHTML = html; document.body.appendChild(b);
+}
+document.addEventListener("click", e => { if (e.target.closest("[data-drparkx]")){ draftParked = null; document.getElementById("draftPark")?.remove(); toast("Quedó en Borradores (debajo de Planificación)."); } });
 addEventListener("pagehide", () => { if (draftT) draftSave(); });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && draftT) draftSave(); });
 // v371 · Botón “Borradores” de la botonera del Panel de Trabajo: +N rojo y, abajo, cuántos hay sin enviar o sin responsable.
@@ -18550,6 +18570,8 @@ function backTo(){
   if (isRevisor()) return null; // el Revisor solo tiene Mensajes de las cuentas
   const home = can("inicio") ? "inicio" : isComercial() ? "comercial" : "dashboard", pk = panelOf(page);
   if (page === home) return null;
+  // v373: con un informe abierto, Volver lleva a las tarjetas del Informe mensual (antes iba a Inicio).
+  if (page === "reportes" && reportTab && reportTab !== "analisis") return { k:"reportes", t:"Informe mensual", rep:true };
   // Secciones principales del menú (Panel de Trabajo, Planificación, Carga, Tendencias, Dashboard…): Volver = Inicio.
   const top = SECTIONS.some(x => x.k === page && !x.hide) && !pk;
   if (top) return { k:home, t:home === "inicio" ? "Inicio" : "Dashboard" };
@@ -18599,7 +18621,7 @@ function render(){
   if (tvOn()){ const v = tvCurView(); if (page !== v) page = v; } // v266: un televisor muestra siempre lo que eligió Admin total (si lo cambia, se cambia solo)
   document.documentElement.classList.toggle("tvrole", isTV()); document.documentElement.classList.toggle("tvkiosk", tvOn());
   if (page !== "reportes" && reportTab === "analisis") reportTab = ""; // v319: el Análisis (pantalla completa) se cierra al ir a otra sección
-  draftAlert(); // v369: pedidos en borrador sin enviar
+  draftAlert(); draftParkBar(); // v369: pedidos en borrador sin enviar · v373: el que quedó a medio cargar
   document.documentElement.classList.toggle("anaopen", page === "reportes" && reportTab === "analisis" && !jobUI.form && !actUI.form && !postUI.form && !lpFull && !jobUI.ficha);
   if (isCalPage() && (brandFilter === "Todas" || brandFilter === "Materiales")) brandFilter = myGroups()[0]; // calendarios: una marca a la vez
   if (brandFilter === "Materiales") brandFilter = "Todas"; // Cartelería ahora es su propia sección
@@ -18633,7 +18655,7 @@ function render(){
   else if (postUI.form){ const pf = postForm(); if (pf){ $("#content").innerHTML = pf; if (!canEditPost()) postReadOnly(); if (render.pfOpen !== postUI.form){ render.pfOpen = postUI.form; window.scrollTo(0, 0); } } } // publicación, historia o canal: página completa
   else if (lpFull){ $("#content").innerHTML = lpFullPage(); } // últimas publicaciones en grande: página completa
   else if (!jobUI.ficha && backTo() && !$("#content .pback")){ const b = backTo(), x = [...PANEL_DESIGN, ...PANEL_CM, ...PANEL_TOOLS].find(y => y.k === page);
-    $("#content").insertAdjacentHTML("afterbegin", `<nav class="pcrumb" aria-label="Ubicación"><button type="button" class="btn gback" data-page="${b.k}"${b.back ? " data-back" : ""} title="Volver a ${esc(b.t)}">${icon("arrow-left")} Volver</button>${x && b.k.startsWith("panel") ? `<span>›</span><b>${esc(x.t)}</b>` : ""}</nav>`); }
+    $("#content").insertAdjacentHTML("afterbegin", `<nav class="pcrumb" aria-label="Ubicación"><button type="button" class="btn gback" data-page="${b.k}"${b.back ? " data-back" : ""}${b.rep ? " data-repback" : ""} title="Volver a ${esc(b.t)}">${icon("arrow-left")} Volver</button>${x && b.k.startsWith("panel") ? `<span>›</span><b>${esc(x.t)}</b>` : ""}</nav>`); }
   else if (jobUI.ficha){ const fx = jobFicha(); if (fx) $("#content").innerHTML = fx; else jobUI.ficha = null; } // el pedido se abre como página completa, desde cualquier página
   if (jobUI.ficha || jobUI.form?.mode === "edit") renderNav(); // al abrir un pedido propio, el +N de la botonera baja enseguida
   { const ci = document.getElementById("chatInput"); if (ci && keepChat){ ci.value = keepChat.v; if (keepChat.f){ ci.focus(); ci.setSelectionRange(keepChat.s, keepChat.e); } }
@@ -18703,7 +18725,7 @@ document.addEventListener("click", e => {
     else if (d.jdup){ const o = find(d.jdup); jobUI.form = { mode:"dup", job:{ ...o, id:nextJobId(o.area), requestDate:TODAY, status:"Pendiente", delivered:null, approved:null, post:null, pub:null, pubs:null, com:undefined } }; }
     else if (d.jdel){ if (!confirmTap(jt, "job:" + d.jdel, "¿Seguro? Tocá de nuevo")) return;
       const o = find(d.jdel); if (!o || !(canCreateJobs() || canDelJob(o))) return; NOTIFS.forEach(n => { if (n.job === o.id) n.read = true; }); jobs.splice(jobs.indexOf(o), 1); if (jobUI.form?.job?.id === o.id) jobUI.form = null; toast(`Pedido “${o.title}” borrado.`); }
-    else if (d.jclose !== undefined){ const f = jobUI.form; if (f && f.mode !== "edit" && draftOn()){ draftSave(); if (f.draftId) setTimeout(() => toast("Quedó en Borradores: todavía no se envió el pedido."), 50); } jobUI.form = null; }
+    else if (d.jclose !== undefined){ const f = jobUI.form; if (f && f.mode !== "edit" && draftOn()){ draftSave(!!f.touched); if (f.draftId) setTimeout(() => toast("Quedó en Borradores: todavía no se envió el pedido."), 50); } jobUI.form = null; draftParked = null; }
     render(); return; }
   if (e.target.closest("[data-bdclear]")){ viewer.birthday = null; render(); toast("Quitaste tu cumpleaños."); return; }
   const t = e.target.closest("[data-unew],[data-ugen],[data-ureset],[data-utoggle],[data-uconfirm],[data-ucancel],[data-uremove],[data-ucopy],[data-uclose],[data-ufix],[data-ufixcancel]");
@@ -18896,7 +18918,7 @@ document.addEventListener("submit", e => {
     if (soloYo && !hasJob(j, viewer.name)) soloYo = false;
     if (brandFilter !== "Todas" && groupOf(j.brand) !== brandFilter || isCalPage()) brandFilter = groupOf(j.brand);
     const nRep = j.rep ? spawnRepeats() : 0;
-    if (f.draftId){ clearTimeout(draftT); draftT = null; draftDel(f.draftId); } // v369: ya se envió: sale de Borradores
+    f.sent = true; if (f.draftId){ clearTimeout(draftT); draftT = null; draftDel(f.draftId); } // v369: ya se envió: sale de Borradores (v373: y no se vuelve a guardar al cerrarse)
     jobUI.form = null; render(); window.RMH?.flushNow?.(); // se guarda ya: así le llega enseguida a quien lo tiene que hacer
     if (draftOn() && noOwner(j) && !own) setTimeout(() => toast(`Quedó en Borradores: “${j.title}” no tiene responsable. Se envía cuando le asignes a alguien.`), 50); // v369
     if (j.rep) toast(`${f.mode === "edit" ? "Guardado" : "Creado"}: “${j.title}” se repite: ${repText(j.rep).toLowerCase()}.${nRep ? ` Ya ${nRep === 1 ? "se cargó 1" : `se cargaron ${nRep}`} de los próximos 7 días.` : ""}`); else
