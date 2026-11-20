@@ -4378,6 +4378,8 @@ const SECTIONS = [
   { g:"Diseño gráfico", k:"web", l:"Diseño para Web", n:"Diseño: Web", i:"monitor", hide:true },
   { g:"Diseño gráfico", k:"pantallas", l:"Diseño para Pantallas", n:"Diseño: Pantallas", i:"tv", hide:true },
   { g:"Diseño gráfico", k:"historial", l:"Historial Diseño gráfico", n:"Historial", i:"archive", hide:true },
+  { g:"Diseño gráfico", k:"borradoresdg", l:"Borradores Diseño gráfico", n:"Borradores", i:"file-pen", virtual:true, hide:true }, // v371: botón de la botonera del Panel de Trabajo (solo Admin total)
+  { g:"Community Manager", k:"borradorescm", l:"Borradores Community Manager", n:"Borradores", i:"file-pen", virtual:true, hide:true }, // v371
   { g:"Community Manager", k:"panelcm", l:"Panel de Trabajo Community Manager", n:"Panel de Trabajo", i:"layout-grid", virtual:true }, // acceso visual a las categorías de CM
   { g:"Community Manager", k:"calcm", l:"Planificación Community Manager", n:"Planificación", i:"calendar-days", virtual:true }, // el calendario del Plan de posteo (mío o de todo el equipo)
   { g:"Community Manager", k:"cargacm", l:"Carga de trabajo CM", n:"Carga de trabajo", i:"gauge" },
@@ -5055,7 +5057,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v370";
+const APP_VER = "v371";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -6918,7 +6920,7 @@ function lucideFull(){
 if (!window.lucide) window.lucide = { createIcons(){ document.querySelectorAll("i[data-lucide]").forEach(el => { const n = el.getAttribute("data-lucide"); if (ICONS[n]) el.outerHTML = svgIcon(n, el.getAttribute("class") || ""); else lucideFull(); }); } };
 const icon = n => ICONS[n] ? svgIcon(n) : (lucideFull(), `<i data-lucide="${n}"></i>`);
 // Vistas TV, Usuarios y Carga de trabajo: solo Admin total (aunque el permiso esté marcado).
-const ONLY_AT = ["tv","tvredes","tvimpacto","tvconf","tvpant","usuarios","sugerencias","encuestas","aviso"]; // Encuestas y sugerencias: solo Admin total (también en la base)
+const ONLY_AT = ["tv","tvredes","tvimpacto","tvconf","tvpant","usuarios","sugerencias","encuestas","aviso","borradoresdg","borradorescm"]; // Encuestas y sugerencias: solo Admin total (también en la base)
 const ONLY_ADMINS = ["historial","historialcm","pauta","reportes","oficina","cronograma"]; // Historial de Diseño y de CM, Meta Ads e Informe mensual: solo Admin total y Admin
 // Todo el equipo ve los Paneles de Trabajo (y sus categorías), la Planificación, la Carga de trabajo de Diseño y de CM
 // y el Informe Redes (Diseño y CM incluidos). Meta Ads (pauta) y el Informe del mes siguen solo para Admin total y Admin.
@@ -7340,6 +7342,8 @@ const CM_GEST = ["calendario","calhistoria","calcanales","gestioncm","contenidos
 const PANEL_CM_MORE = [...CM_GEST, "escraches", "reclamos"].map(k => ({ k }));
 const PANEL_TOOLS = [
   { k:"historial", t:"Historial", a:"Diseño", i:"archive", d:"Los pendientes del mes, y lo aprobado aparte, por marca y diseñador." }, { k:"historialcm", t:"Historial", a:"CM", i:"archive", d:"Lo pendiente del mes, y lo publicado o terminado aparte." },
+  // v371 · Borradores (solo Admin total): lo que se cargó y no se envió, y los pedidos sin responsable, con el +N rojo.
+  { k:"borradoresdg", t:"Borradores", a:"Diseño", i:"file-pen", d:"Pedidos que se empezaron a cargar y no se enviaron, o que quedaron sin responsable." }, { k:"borradorescm", t:"Borradores", a:"CM", i:"file-pen", d:"Pedidos que se empezaron a cargar y no se enviaron, o que quedaron sin responsable." },
 ];
 const PANEL_DG_KEYS = [...PANEL_DESIGN, ...PANEL_TOOLS.filter(x => x.a === "Diseño")].map(x => x.k);
 const PANEL_CM_KEYS = [...PANEL_CM, ...PANEL_CM_MORE, ...PANEL_TOOLS.filter(x => x.a === "CM")].map(x => x.k);
@@ -7465,8 +7469,8 @@ function pPanel(ar){
   const dg = ar === "dg", st = panelStats();
   const icons = [...(dg ? PANEL_DESIGN : PANEL_CM), ...PANEL_TOOLS.filter(x => x.a === (dg ? "Diseño" : "CM"))].filter(x => can(x.k))
     .map((x, i) => { const open = JOB_SECS.includes(x.k) ? myJobsOpen(x.k) : PUB_SECS.includes(x.k) ? myNewPubs(x.k) : [], nw = PUB_SECS.includes(x.k) ? open.length : open.filter(isUnseenJob).length;
-      const badge = x.k === "inbox" ? pendBadge() : open.length ? `<span class="count ibc${nw ? " new" : ""}" title="${open.length} pedido${open.length === 1 ? "" : "s"} a tu nombre sin terminar${nw ? ` · ${nw} sin abrir` : ""}">+${open.length > 99 ? 99 : open.length}</span>` : "";
-      return `<button type="button" class="picon" data-page="${x.k}" style="--i:${i}" aria-label="Abrir ${esc(x.t)}${open.length ? ` (${open.length} pedido${open.length === 1 ? "" : "s"} a tu nombre sin terminar)` : ""}"><span class="pring" aria-hidden="true">${icon(x.i)}${badge}</span><b>${x.t}</b><small>${x.d}</small><span class="pmeta">${st[x.k] || ""}</span></button>`; }).join("");
+      const badge = x.k === "inbox" ? pendBadge() : x.k === "borradoresdg" ? draftPicon("Diseño") : open.length ? `<span class="count ibc${nw ? " new" : ""}" title="${open.length} pedido${open.length === 1 ? "" : "s"} a tu nombre sin terminar${nw ? ` · ${nw} sin abrir` : ""}">+${open.length > 99 ? 99 : open.length}</span>` : "";
+      return `<button type="button" class="picon" data-page="${x.k}" style="--i:${i}" aria-label="Abrir ${esc(x.t)}${open.length ? ` (${open.length} pedido${open.length === 1 ? "" : "s"} a tu nombre sin terminar)` : ""}"><span class="pring" aria-hidden="true">${icon(x.i)}${badge}</span><b>${x.t}</b><small>${x.d}</small><span class="pmeta">${x.k === "borradoresdg" ? draftMeta("Diseño") : st[x.k] || ""}</span></button>`; }).join("");
   const al = panelMine(ar), shown = panelAll ? al : al.slice(0, 5);
   const area = dg ? "Diseño" : "CM", mineOnly = ownsJobs();
   const scope = jobs.filter(j => jobGroup(j) === area && seesJob(j) && (!mineOnly || hasJob(j, viewer.name)));
@@ -7474,7 +7478,7 @@ function pPanel(ar){
   const doneShown = panelDoneAll ? done : done.slice(0, 5);
   const doneList = done.length ? `<div class="list">${doneShown.map(j => `<div class="row arow ago" data-ago="job:${j.id}" role="button" tabindex="0"><span class="aico" style="--c:#10b981">${icon("circle-check")}</span><div class="grow"><div class="t">${esc(j.title)}</div><div class="m">${esc(jobBrands(j).join(" + "))} · ${esc(j.piece)} · terminado el ${dm(j.delivered || j.approved || j.due)}${mineOnly ? "" : ` · ${esc(firstName(j.owner))}`}</div></div>${pill(j.status, JOB_COLOR[j.status])}</div>`).join("")}</div>` : `<div class="empty">Todavía no hay trabajos terminados en ${monthName(MONTH)}.</div>`;
   return `<div class="phero"><h1>Panel de Trabajo</h1><p class="sub">${dg ? "Elegí qué tipo de pieza vas a trabajar: cada categoría tiene sus pedidos, su tabla y sus procesos." : "Elegí qué vas a gestionar: el plan del mes, cada red y los pedidos de video."}</p></div>${pastOpenNote(area)}
-  ${draftsBlock("Diseño")}${aprBlock("dg")}${dgPanelBlock(scope)}
+  ${aprBlock("dg")}${dgPanelBlock(scope)}
   <nav class="picons" aria-label="Categorías">${icons || `<div class="empty">No tenés categorías habilitadas.</div>`}</nav>
   <section class="panel palerts"><div class="head" style="margin-bottom:10px"><h2 style="margin:0" class="pmh">${pmIco("list-todo")}Trabajos pendientes${al.length ? ` <span class="note">${al.length}</span>` : ""}</h2>
     ${al.length > 5 ? `<button type="button" class="btn sm" data-panelall>${panelAll ? "Ver menos" : `Ver más (${al.length - 5})`}</button>` : ""}</div>
@@ -7496,18 +7500,18 @@ function pPanelCM(){
   const wk = mondayOf(TODAY), wkN = work.filter(x => x.date >= wk && x.date <= addDays(wk, 6)).length;
   const gNew = [...myJobsOpen("gestioncm"), ...myJobsOpen("contenidos")], gUnseen = gNew.filter(isUnseenJob).length + myNewPubs().length, gOpen = gNew.length + myNewPubs().length;
   const meta = { gcm:`${mine.length ? `${mine.length} ${mine.length === 1 ? "pendiente tuyo" : "pendientes tuyos"}` : "Nada pendiente a tu nombre"}${late ? ` · <em>${late} ${late === 1 ? "atrasado" : "atrasados"}</em>` : ""}`,
-    calact:wkN ? `${wkN} ${wkN === 1 ? "trabajo" : "trabajos"} esta semana` : "Nada cargado esta semana", inbox:panelStats().inbox, ideas:"" };
-  const icons = PANEL_CM.filter(x => can(x.k)).map((x, i) => {
-    const badge = x.k === "inbox" ? pendBadge() : x.k === "gcm" && gOpen ? `<span class="count ibc${gUnseen ? " new" : ""}" title="${gOpen} a tu nombre sin terminar${gUnseen ? ` · ${gUnseen} sin abrir` : ""}">+${gOpen > 99 ? 99 : gOpen}</span>` : "";
+    calact:wkN ? `${wkN} ${wkN === 1 ? "trabajo" : "trabajos"} esta semana` : "Nada cargado esta semana", inbox:panelStats().inbox, ideas:"", borradorescm:draftMeta("CM") };
+  const icons = [...PANEL_CM, ...PANEL_TOOLS.filter(x => x.k === "borradorescm")].filter(x => can(x.k)).map((x, i) => {
+    const badge = x.k === "inbox" ? pendBadge() : x.k === "borradorescm" ? draftPicon("CM") : x.k === "gcm" && gOpen ? `<span class="count ibc${gUnseen ? " new" : ""}" title="${gOpen} a tu nombre sin terminar${gUnseen ? ` · ${gUnseen} sin abrir` : ""}">+${gOpen > 99 ? 99 : gOpen}</span>` : "";
     return `<button type="button" class="picon" data-page="${x.k}" style="--i:${i}" aria-label="Abrir ${esc(x.t)}"><span class="pring" aria-hidden="true">${icon(x.i)}${badge}</span><b>${x.t}</b><small>${x.d}</small><span class="pmeta">${meta[x.k] || ""}</span></button>`; }).join("");
   const go = can("calcm") ? "calcm" : "plan", pb = cmPanB(), keep = brandFilter;
   brandFilter = pb; const sumAll = can(go) ? cmPlanMonth().all : []; brandFilter = keep; // los mismos números que Planificación con esa marca
   const opts = myGroups().length > 1 ? (cmPanStart() === "Superseis" ? [...myGroups(), "Todas"] : ["Todas", ...myGroups()]) : [];
   const bTxt = pb === "Todas" ? "todas las marcas" : pb === "Otros" ? "las otras marcas" : pb;
   return `<div class="phero"><h1>Panel de Trabajo</h1><p class="sub">Community Manager</p></div>${pastOpenNote("CM")}
-  ${draftsBlock("CM")}${aprBlock("cm")}${can(go) ? `${opts.length ? `<div class="chips cmpanbr" role="group" aria-label="Marca">${opts.map(b => `<button type="button" class="chip${b === pb ? " on" : ""}" data-cmpanbrand="${b}" aria-pressed="${b === pb}">${b === "Todas" ? "Todas juntas" : b === "Otros" ? "Otras marcas" : b}</button>`).join("")}</div>` : ""}
+  ${aprBlock("cm")}${can(go) ? `${opts.length ? `<div class="chips cmpanbr" role="group" aria-label="Marca">${opts.map(b => `<button type="button" class="chip${b === pb ? " on" : ""}" data-cmpanbrand="${b}" aria-pressed="${b === pb}">${b === "Todas" ? "Todas juntas" : b === "Otros" ? "Otras marcas" : b}</button>`).join("")}</div>` : ""}
   ${cmPlanSummary(sumAll, go)}<p class="note dgpanhint">${icon("info")} Lo de ${monthName(MONTH)} de <b>${esc(bTxt)}</b>, igual que en Planificación. Tocá un cuadro para ver esos trabajos en Planificación (se abre con la misma marca).</p>` : ""}
-  <nav class="picons pcm4${PANEL_CM.filter(x => can(x.k)).length > 4 ? " pcm5" : ""}" aria-label="Community Manager">${icons || `<div class="empty">No tenés secciones habilitadas.</div>`}</nav>`;
+  <nav class="picons pcm4${[...PANEL_CM, ...PANEL_TOOLS.filter(x => x.k === "borradorescm")].filter(x => can(x.k)).length > 4 ? " pcm5" : ""}" aria-label="Community Manager">${icons || `<div class="empty">No tenés secciones habilitadas.</div>`}</nav>`;
 }
 let panelDoneAll = false, panelDoneOpen = false; // Diseño: los aprobados del Panel de Trabajo, ocultos hasta tocar “Ver aprobados”
 document.addEventListener("click", e => { if (e.target.closest("[data-paneldoneopen]")){ panelDoneOpen = !panelDoneOpen; render(); } });
@@ -9758,7 +9762,16 @@ const draftForm = () => !!jobUI.form && jobUI.form.mode !== "edit" && draftOn();
 document.addEventListener("click", e => { if (draftForm() && e.target.closest?.("#jobForm")){ clearTimeout(draftT); draftT = setTimeout(draftSave, 450); } }, true);
 addEventListener("pagehide", () => { if (draftT) draftSave(); });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && draftT) draftSave(); });
-// Bloque “Borradores” en el Panel de Trabajo de Diseño gráfico y de CM.
+// v371 · Botón “Borradores” de la botonera del Panel de Trabajo: +N rojo y, abajo, cuántos hay sin enviar o sin responsable.
+const draftPicon = g => { const n = draftCount(g); return n ? `<span class="count ibc drc" title="${n} ${n === 1 ? "borrador" : "borradores"} (sin enviar o sin responsable)">+${n > 99 ? 99 : n}</span>` : ""; };
+const draftMeta = g => { const a = draftsOf(g).length, b = draftNoOwner(g).length; return a || b ? [a ? `<em>${a} sin enviar</em>` : "", b ? `<em>${b} sin responsable</em>` : ""].filter(Boolean).join(" · ") : "Ninguno"; };
+function pBorradores(g){
+  const dg = g === "Diseño", list = draftsBlock(g);
+  return `<div class="head"><div><h1 class="pmh">${pmIco("file-pen")}Borradores · ${dg ? "Diseño gráfico" : "Community Manager"}</h1><p class="sub">Los pedidos que se empezaron a cargar y no se enviaron (se guardan solos, aunque se corte internet o la luz) y los que quedaron sin responsable. Salen de acá cuando se envían con un responsable asignado.</p></div>
+    <div class="chips"><button type="button" class="btn" data-page="${dg ? "paneldg" : "panelcm"}">${icon("arrow-left")} Panel de Trabajo</button></div></div>
+    ${list || `<div class="panel empty">${icon("check")} No hay borradores: todo lo que se cargó se envió y tiene responsable.</div>`}`;
+}
+// Lista de borradores de un área (en la página Borradores).
 function draftsBlock(g){
   if (!draftOn()) return "";
   const ds = draftsOf(g).sort((a, b) => String(b.at).localeCompare(String(a.at))), no = draftNoOwner(g).sort((a, b) => String(a.due).localeCompare(String(b.due))), n = ds.length + no.length;
@@ -9775,7 +9788,7 @@ document.addEventListener("click", e => {
     jobUI.ficha = null; postUI.form = null; jobUI.form = { mode:d.mode === "dup" ? "dup" : "new", job, repDays:[...(d.repDays || [])], draftId:d.id }; document.getElementById("draftBar")?.remove(); render(); window.scrollTo(0, 0); return; }
   const x = e.target.closest("[data-drdel]"); if (x){ if (!confirmTap(x, "dr:" + x.dataset.drdel, "¿Seguro? Tocá de nuevo")) return; draftDel(x.dataset.drdel); render(); toast("Borrador descartado."); return; }
   if (e.target.closest("[data-drbarx]")){ document.getElementById("draftBar")?.remove(); return; }
-  const v = e.target.closest("[data-drview]"); if (v){ document.getElementById("draftBar")?.remove(); jobUI.form = null; page = draftsOf("Diseño").length || !draftsOf("CM").length ? "paneldg" : "panelcm"; render(); setTimeout(() => document.getElementById("draftsBlock")?.scrollIntoView({ block:"start", behavior:"smooth" }), 60); }
+  const v = e.target.closest("[data-drview]"); if (v){ document.getElementById("draftBar")?.remove(); jobUI.form = null; page = draftsOf("Diseño").length || !draftsOf("CM").length ? "borradoresdg" : "borradorescm"; render(); window.scrollTo(0, 0); }
 });
 // Al entrar (también después de un corte de internet o de luz): si quedaron pedidos sin enviar, sale el aviso.
 const draftT0 = Date.now();
@@ -17222,7 +17235,7 @@ document.addEventListener("click", e => { if (page !== "copys") return; const t 
   const sv = t.closest("[data-cgsave]"); if (sv){ const P = cgPost(), v = cgUI.out[+sv.dataset.cgsave] || ""; if (!cgCanSave(P) || !v) return;
     P.copy = esc(v).replace(/\n/g, "<br>"); P.copyBg = ""; render(); window.RMH?.flushNow?.(); toast("Copy guardado en la publicación. Revisalo y mandalo a aprobar desde la publicación."); } });
 document.addEventListener("submit", e => { if (page !== "copys" || e.target.id !== "cgForm") return; e.preventDefault(); cgGenerate(1); });
-const PAGES = { copys:pCopys, cronograma:pCronograma, oficina:pOficina, tvpant:pTvPant, tvjunto:pTvJunto, tvconf:pTvConf, postext:pPlanTxt, pedcom:pPedCom, gcm:pGestCM, calact:pCalAct, contenidos:pContenidos, escraches:pEscraches, bienvenida:pBienvenida, ideas:pIdeas, inbox:pInbox, reclamos:pReclamos, noticias:pNoticias, comercial:pComercial, tendg:() => pTend("dg"), tencm:() => pTend("cm"), paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), caldg:pCalDG, calcm:pPlan, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, aviso:pAviso, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
+const PAGES = { borradoresdg:() => pBorradores("Diseño"), borradorescm:() => pBorradores("CM"), copys:pCopys, cronograma:pCronograma, oficina:pOficina, tvpant:pTvPant, tvjunto:pTvJunto, tvconf:pTvConf, postext:pPlanTxt, pedcom:pPedCom, gcm:pGestCM, calact:pCalAct, contenidos:pContenidos, escraches:pEscraches, bienvenida:pBienvenida, ideas:pIdeas, inbox:pInbox, reclamos:pReclamos, noticias:pNoticias, comercial:pComercial, tendg:() => pTend("dg"), tencm:() => pTend("cm"), paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), caldg:pCalDG, calcm:pPlan, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, aviso:pAviso, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
 
 /* ---------- render ---------- */
 // Barra de pestañas abajo (celular), como en cualquier app: lo que más usa cada rol + “Más” para el menú completo.
