@@ -4398,7 +4398,7 @@ button.sgpst:hover .sgpci{transform:translateY(-2px);box-shadow:0 0 0 6px color-
 .sgpst b{font-size:26px;line-height:1.1;color:#fff;font-weight:650;margin-top:4px}.sgpst.zero b{color:var(--faint)}.sgpst.zero .sgpci{opacity:.5}
 .sgpst small{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.sgpst small.sgpsh{display:none}
 /* columnas (portada) */
-.sgcolg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.sgcolg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
 .sgcolcard{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:10px;padding:18px;border-radius:16px;background:var(--sgsf);border:1px solid transparent;transition:border-color .15s,background .15s}
 .sgcolcard:hover{border-color:var(--sgln);background:rgba(148,163,184,.09)}.sgcolcard:focus-visible{outline:2px solid var(--sgac);outline-offset:2px}
 .sgcoli{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--sgacbg);color:var(--sgac);flex:none}.sgcoli svg{width:19px;height:19px}
@@ -4748,7 +4748,7 @@ button.sghc{cursor:pointer}button.sghc:hover{background:var(--sgsf)}.sghc svg{wi
   .sgcdbig{width:52px;height:48px}
 }
 /* tamaños de pantalla */
-@media (max-width:1100px){.sgstg{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:1100px){.sgstg{grid-template-columns:repeat(3,minmax(0,1fr))}.sgcolg{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:980px){.sgdetg,.sgtwo,.sgtwo-r{grid-template-columns:1fr}.sgdeta{position:static}.sggrid2{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}.sgtiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:760px){.sgcolg{grid-template-columns:1fr}.sgfrow4{grid-template-columns:repeat(2,minmax(0,1fr))}.sgfrow3{grid-template-columns:1fr}}
 @media (max-width:640px){
@@ -17783,7 +17783,8 @@ let SEG_ACCESS = [...SEG_ACCESS_DEF], SEGUIMIENTO; // SEGUIMIENTO llega de la ba
 const SEG_COLS = [
   ["lv", "Línea visual y comunicación", "Línea visual", "palette", "Cartelería interna y externa; cartelería legal, intratienda y comercial; cenefas y marcas propias; promociones y ofertas; tótems, pantallas, medios, buses y radios internas; producción gráfica; gestión de proveedores; distribución e implementación."],
   ["ec", "Entendimiento del cliente", "Entendimiento", "scan-search", "Conversión y penetración de categorías; encuestas; investigación de hábitos y percepción; análisis de datos; segmentación RFM; frecuencia y recencia de compra; hallazgos y planes de acción."],
-  ["cy", "Campañas y estrategias", "Campañas", "megaphone", "Campañas comerciales y Bellagio; efemérides; redes sociales y contenidos (Superseis, Stock y DeliMarket); pauta digital; community management; marketing directo y CRM; WhatsApp, SMS y mailing; medición de campañas."]];
+  ["cy", "Campañas y estrategias", "Campañas", "megaphone", "Campañas comerciales y Bellagio; efemérides; redes sociales y contenidos (Superseis, Stock y DeliMarket); pauta digital; community management; marketing directo y CRM; WhatsApp, SMS y mailing; medición de campañas."],
+  ["ad", "Tareas administrativas", "Administrativas", "briefcase", "Gestiones administrativas del área: presupuestos y órdenes de compra, facturas y pagos a proveedores, contratos, rendiciones, trámites y documentación. Referente: Marlene.", "Marlene"]];
 // Las 4 etapas, en orden: [clave, nombre, ícono, qué significa, color] — de rojo (sin empezar) a verde (finalizada).
 const SEG_ST = [
   ["pend", "Pendiente", "hourglass", "Registrada, todavía sin empezar.", "#ef4444"],
@@ -18179,7 +18180,7 @@ function segItemForm(){
   const fm = segUI.form, it = fm.mode === "edit" ? segItem(fm.id) : null, f = "it";
   if (fm.mode === "edit" && !it){ segUI.form = null; return segIniciativas(); }
   const v = (k, d) => segDv(f, k, it ? (k === "end" ? segEnd(it) : it[k] ?? d) : d), mt = fm.meet ? segMeet(fm.meet) : null;
-  const resp = new Set(segDv(f, "resp", it ? it.resp || [] : [])), ext = new Set(segDv(f, "ext", it ? it.ext || [] : [])), collab = new Set(segDv(f, "collab", it ? it.collab || [] : []));
+  const resp = new Set(segDv(f, "resp", it ? it.resp || [] : segCol(segUI.col || "lv")[5] ? [segCol(segUI.col)[5]] : [])), ext = new Set(segDv(f, "ext", it ? it.ext || [] : [])), collab = new Set(segDv(f, "collab", it ? it.collab || [] : []));
   const subs = [...new Set(segItems().map(x => x.sub).filter(Boolean))].sort();
   const chk = (name, val, on, l) => `<label class="sgck"><input type="checkbox" name="${name}" value="${esc(val)}" ${on ? "checked" : ""}><span>${esc(l || val)}</span></label>`;
   const others = (set, base) => [...set].filter(x => !base.includes(x)).join(", ");
@@ -18474,7 +18475,7 @@ function segComo(){
   const node = (ic, t, s, c) => `<div class="sgfn${c ? " " + c : ""}">${icon(ic)}<b>${t}</b>${s ? `<small>${s}</small>` : ""}</div>`, arrow = `<div class="sgfa" aria-hidden="true">${icon("chevron-down")}</div>`;
   const FIELDS = [["ID", "Identificador único de la tarea (MKT-###)."], ["Inicio y entrega", "Cuándo empieza el trabajo y cuándo se entrega (con cuenta regresiva)."], ["Fuente", "Correo, reunión, sistema o formulario comercial."], ["Solicitante", "Área, gerencia o persona que origina la tarea."], ["Cadena", "Superseis, Stock, DeliMarket o varias cadenas."], ["Tarea", "Nombre del trabajo."], ["Columna principal", "Línea visual, Entendimiento o Campañas."], ["Áreas colaboradoras", "Otras columnas implicadas en su ejecución."], ["Responsable", "Persona o equipo asignado."], ["Objetivo", "Qué resultado se espera."], ["Prioridad", "Alta, media, baja o por definir."], ["Etapa", "Pendiente, En proceso, Validación o Finalizado (aparte: En pausa o Cancelado)."], ["Próxima acción", "Siguiente paso concreto."], ["Avances", "Mensajes con fecha, quién y (si se quiere) una imagen; cada uno queda en su etapa."], ["Evidencia / resultado", "Entregable, comprobación e indicadores de impacto."]];
   const PROFILES = [["shield-check", "Administrador general", "Acceso completo, asignación de tareas, prioridades y aprobación de proyectos."], ["user-check", "Responsable de tarea", "Crear y actualizar tareas, fechas, avances y entregables."], ["users", "Colaborador", "Escribir avances de las tareas asignadas y adjuntar imágenes."], ["inbox", "Solicitante", "Registrar solicitudes y consultar su avance."], ["eye", "Consulta ejecutiva", "Visualizar tareas, indicadores y resultados, sin modificar información."]];
-  const WHO = [["Patricia", "Línea visual, producción gráfica, medios y campañas."], ["Alyssa", "Línea visual, canales publicitarios, contenidos y campañas."], ["Marlene", "Cartelería, tótems, materiales gráficos y activaciones."], ["Enrique", "Gestión de cartelería, señalética y comunicación de locales."], ["Helena", "Entendimiento del cliente, encuestas, CRM, conversión y campañas."], ["Emanuel", "Exhibidores y materiales en punto de venta."]];
+  const WHO = [["Patricia", "Línea visual, producción gráfica, medios y campañas."], ["Alyssa", "Línea visual, canales publicitarios, contenidos y campañas."], ["Marlene", "Tareas administrativas; cartelería, tótems, materiales gráficos y activaciones."], ["Enrique", "Gestión de cartelería, señalética y comunicación de locales."], ["Helena", "Entendimiento del cliente, encuestas, CRM, conversión y campañas."], ["Emanuel", "Exhibidores y materiales en punto de venta."]];
   const OTHERS = [["Romis", "Coordinación y capacitación para administrar los 31 tótems de Superseis."], ["Finanzas", "Coordinación de promociones bancarias, como Mastercard."], ["Recursos Humanos", "Mejora del discurso de cajeros para captura de datos."], ["Directores", "Consultas y validaciones de tareas."], ["Gerentes de locales", "Solicitudes de cartelería e implementación."], ["Proveedores", "Producción, instalación y entrega de materiales."]];
   const HOW = [["list-checks", "Una tarea, un código", "Cada trabajo se registra una sola vez con su código MKT-###, su inicio y su entrega."],
     ["users", "Cada reunión abre lo pendiente", "Al crear la reunión se abre todo lo que sigue sin resolver, agrupado por responsable."],
@@ -18488,11 +18489,11 @@ function segComo(){
     <div class="sgtwo">
       <section class="sgsec"><h3 class="sgh">${icon("compass")} Cómo se usa</h3><ol class="sghow">${HOW.map(([ic, t, d]) => `<li><span class="sghowi">${icon(ic)}</span><div><b>${t}</b><span>${d}</span></div></li>`).join("")}</ol></section>
       <section class="sgsec"><h3 class="sgh">${icon("building-2")} Estructura del departamento</h3><div class="sgstruct">${SEG_COLS.map(([k, l, , ic, d], i) => `<div class="sgsc"><span class="sgcoli">${icon(ic)}</span><div><b>${i + 1}. ${esc(l)}</b><p>${esc(d)}</p></div></div>`).join("")}</div>
-        <p class="sgmuted sgsmall"><b>Redes sociales</b> es una subcategoría de Campañas y estrategias, con operación propia y vínculo con las otras dos columnas.</p></section></div>
+        <p class="sgmuted sgsmall"><b>Redes sociales</b> es una subcategoría de Campañas y estrategias, con operación propia y vínculo con las otras columnas. <b>Tareas administrativas</b> (presupuestos, compras, pagos, documentación) tiene como referente a Marlene.</p></section></div>
     <section class="sgsec"><h3 class="sgh">${icon("share-2")} Flujo general de trabajo</h3><div class="sgflow">
       <div class="sgfrow4">${[["mail", "Correos"], ["users", "Reuniones, audios y anotaciones"], ["server", "Datos del sistema"], ["clipboard-list", "Formularios y prioridades comerciales"]].map(([ic, t]) => node(ic, t)).join("")}</div>${arrow}
       ${node("table-2", "Matriz central de Marketing", "este panel: registro, clasificación y prioridad", "main")}${arrow}
-      <div class="sgfrow3">${SEG_COLS.map(([k, l, , ic]) => node(ic, esc(l))).join("")}</div>${arrow}
+      <div class="sgfrow4">${SEG_COLS.map(([k, l, , ic]) => node(ic, esc(l))).join("")}</div>${arrow}
       ${node("play", "Ejecución y validación")}${arrow}${node("chart-column", "Medición y resultados", "", "main")}</div></section>
     <div class="sgtwo">
       <section class="sgsec"><h3 class="sgh">${icon("users")} Quiénes participan</h3><ul class="sgdl">${WHO.map(([n, d]) => `<li><span class="sgav${segUser(n) ? "" : " nouser"}" aria-hidden="true">${n[0]}</span><div><b>${n}</b><span>${d}</span></div><em class="${segUser(n) ? "sgok" : "sgno"}" title="${segUser(n) ? "Tiene usuario" : "Todavía sin usuario"}">${icon(segUser(n) ? "user-check" : "user-x")}</em></li>`).join("")}</ul>
@@ -18623,6 +18624,8 @@ document.addEventListener("change", e => {
   if (page !== "seguimiento" || !segCan() || !segOk()) return;
   const t = e.target;
   if (t.matches("[data-sgf]")){ segUI[t.dataset.sgf] = t.value; render(); return; }
+  if (t.matches('#sgItemForm [name="col"]')){ const ref = segCol(t.value)[5], f = t.form; // v381: Tareas administrativas → Marlene (si todavía no se eligió responsable)
+    if (ref && !f.querySelector('[name="resp"]:checked')){ const c = f.querySelector(`[name="resp"][value="${CSS.escape(ref)}"]`); if (c){ c.checked = true; segUI.dr["it.resp"] = [ref]; toast(`Responsable: ${ref} (Tareas administrativas). Podés cambiarlo.`); } } return; }
   if (t.matches("[data-sgatt]")){ const f = t.files?.[0], k = t.dataset.sgatt; t.value = ""; if (!f) return;
     if (!/^image\//.test(f.type)) return toast("Elegí una imagen (JPG, PNG o WEBP).");
     if (f.size > 15 * 1048576) return toast("La imagen supera 15 MB.");
