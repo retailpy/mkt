@@ -4576,10 +4576,12 @@ button.sghc{cursor:pointer}button.sghc:hover{background:var(--sgsf)}.sghc svg{wi
 .sgchat.mini{max-height:240px;padding:10px;border-radius:12px}
 .sgday{display:flex;justify-content:center;margin:6px 0}.sgday span{font-size:11.5px;color:#cbd5e1;background:#182229;border-radius:8px;padding:3px 10px}
 .sgsys{align-self:center;max-width:90%;text-align:center;font-size:12px;color:#94a3b8;background:rgba(24,34,41,.8);border-radius:8px;padding:4px 10px}.sgsys b{color:#e2e8f0}
-.sgmsg{display:flex}.sgmsg.me{justify-content:flex-end}
+.sgmsg{display:flex}.sgmsg.me{justify-content:flex-start}
 .sgbub{position:relative;max-width:78%;background:#202c33;border-radius:4px 12px 12px 12px;padding:6px 9px 4px;display:flex;flex-direction:column;gap:3px;box-shadow:0 1px 1px rgba(0,0,0,.25)}
 .sgmsg.me .sgbub{background:#005c4b;border-radius:12px 4px 12px 12px}
-.sgbub p{margin:0;color:#e9edef;font-size:14px;line-height:1.4;overflow-wrap:anywhere}.sgbn2{font-size:12.5px;color:#53bdeb;font-weight:600}
+.sgbub p{margin:0;color:#e9edef;font-size:14px;line-height:1.4;overflow-wrap:anywhere}.sgbn2{font-size:12.5px;color:var(--nc,#53bdeb);font-weight:700}.sgbn2 small{font-weight:400;color:rgba(233,237,239,.55);font-size:11px}
+.sgmsg{align-items:flex-end;gap:6px}.sgmsg.me{flex-direction:row-reverse}.sgmav{width:26px;height:26px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:11.5px;font-weight:700;color:#0b141a;background:var(--nc,#53bdeb)}
+.sgci-last{margin-top:-4px}.sglastw{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#cbd5e1}.sglastw i{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:10px;font-weight:700;color:#0b141a;background:var(--nc)}.sglastw svg{width:13px;height:13px;color:var(--faint)}
 .sgmeta2{align-self:flex-end;display:inline-flex;align-items:center;gap:4px;font-size:11px;color:rgba(233,237,239,.6);white-space:nowrap}.sgmeta2 .sglink{font-size:11px;color:rgba(233,237,239,.75)}
 .sgstd{width:7px;height:7px;border-radius:50%;background:var(--c)}
 .sgimgb{all:unset;cursor:zoom-in;display:block;border-radius:8px;overflow:hidden;max-width:260px;background:#111b21;min-height:60px}.sgimgb img{display:block;width:100%;height:auto;max-height:320px;object-fit:cover}
@@ -17859,6 +17861,7 @@ function segCard(it, omitResp){ // omitResp: agrupadas por responsables, el grup
     <button type="button" class="sgname" data-sgopen="${esc(it.id)}"><b>${esc(it.name)}</b><small>${esc([segCol(it.col)[2], it.sub, it.chain].filter(Boolean).join(" · "))}</small></button>
     ${segProc(it, { mini:true })}
     <p class="sgci-next">${icon("flag")}<span>${esc(it.next || "Sin próxima acción")}</span></p>
+    ${segLastTag(it) ? `<div class="sgci-last">${segLastTag(it)}</div>` : ""}
     <div class="sgci-foot">${omitResp ? "" : segRespTxt(it)}<span class="sgsp"></span>${segCountTag(it)}${it.conf ? "" : `<span class="sgtag" title="Etapa propuesta en la minuta, todavía sin confirmar">${icon("circle-alert")}a confirmar</span>`}</div></article>`;
 }
 const segCountTxt = (n, t) => n === t ? `${t} tarea${t === 1 ? "" : "s"}` : `${n} de ${t} tareas`;
@@ -17913,6 +17916,13 @@ function segChatItems(it){
     return { l, stg, text, bubble:!!(text || (l.kind === "msg" && l.img)) }; });
 }
 const segFmtTxt = t => esc(t).replace(/\n/g, "<br>");
+// Un color fijo por persona para su nombre y su inicial en los avances (como en un grupo de WhatsApp).
+const SEG_NC = ["#53bdeb", "#fc9775", "#a5b337", "#e26ab6", "#06cf9c", "#ffd279", "#a78bfa", "#ff8f8f"];
+const segNameC = n => { const k = String(n || ""); let h = 0; for (const ch of k) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return SEG_NC[h % SEG_NC.length]; };
+// El último avance escrito (quién y cuándo), para las tarjetas.
+const segLastMsg = it => segChatItems(it).filter(x => x.bubble).pop();
+const segLastTag = it => { const x = segLastMsg(it); if (!x) return ""; const w = segShort(x.l.by) || "—", d = x.l.d === TODAY ? "hoy" : segFD(x.l.d).slice(0, 5);
+  return `<span class="sglastw" style="--nc:${segNameC(x.l.by)}" title="Último avance: ${esc(x.l.by || "—")} · ${segFD(x.l.d)}${x.text ? " · " + esc(x.text.slice(0, 120)) : ""}"><i aria-hidden="true">${esc(w.slice(0, 1).toUpperCase())}</i>${icon("message-circle")}${esc(w)} · ${d}</span>`; };
 function segSysTxt(l){
   const who = esc(segShort(l.by) || "—");
   if (l.kind === "alta") return `${who === "Minuta" ? "Alta en la minuta" : `${who} creó la tarea`}${l.st ? ` en <b>${esc(segSt(l.st)[1])}</b>` : ""}`;
@@ -17932,8 +17942,8 @@ function segChat(it, opt = {}){
     const mt = l.m ? segMeet(l.m) : null, sys = segSysTxt(l);
     if (sys && !(bubble && l.kind === "msg")) out += `<div class="sgsys">${sys}${l.kind !== "alta" && l.m && !opt.m ? ` · <button type="button" class="sglink" data-sggomeet="${esc(l.m)}">${mt ? "reunión del " + segFD(mt.date).slice(0, 5) : "reunión"}</button>` : ""}</div>`;
     if (!bubble) return;
-    const mine = l.by === viewer.name, c = segStC(stg);
-    out += `<div class="sgmsg${mine ? " me" : ""}"><div class="sgbub">${mine ? "" : `<b class="sgbn2">${esc(segShort(l.by) || "—")}</b>`}
+    const mine = l.by === viewer.name, c = segStC(stg), who = segShort(l.by) || "—", nc = segNameC(l.by);
+    out += `<div class="sgmsg${mine ? " me" : ""}" style="--nc:${nc}"><span class="sgmav" title="${esc(l.by || "—")}" aria-hidden="true">${esc(who.slice(0, 1).toUpperCase())}</span><div class="sgbub"><b class="sgbn2" title="${esc(l.by || "")}">${esc(who)}${mine ? ` <small>(vos)</small>` : ""}</b>
       ${l.img ? `<button type="button" class="sgimgb" data-sglb="${esc(l.img)}" aria-label="Ver la imagen"><img data-sgimg="${esc(l.img)}" alt="Imagen del avance"></button>` : ""}
       ${text ? `<p>${segFmtTxt(text)}</p>` : ""}
       <span class="sgmeta2"><i class="sgstd" style="--c:${c}" title="Etapa: ${esc(segSt(stg)[1])}"></i>${esc(segSt(stg)[1])}${l.m && mt && !opt.m ? ` · <button type="button" class="sglink" data-sggomeet="${esc(l.m)}">reunión ${segFD(mt.date).slice(0, 5)}</button>` : ""} · ${segFD(l.d).slice(0, 5)}${l.at ? " " + segHM(l.at) : ""}</span></div></div>`;
