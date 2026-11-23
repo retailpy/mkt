@@ -566,7 +566,7 @@ html.nomotion .picon{animation:none}
 .okbox{max-height:calc(100dvh - 32px);overflow:auto}.okbox .okcopy{display:flex;flex-direction:column;gap:8px}.okbox .okcpsheet[hidden]{display:none}
 .fixbox.okbox label.okpubon{flex-direction:row;align-items:flex-start;flex-wrap:wrap;gap:4px 8px;padding:10px 12px;border:1px solid var(--line-3);border-radius:12px;color:var(--ink)}.okbox label.okpubon input{width:auto;margin:2px 0 0}.okbox label.okpubon .note{flex-basis:100%;padding-left:24px}
 .fixbox.okbox label.okcpon{flex-direction:row;align-items:flex-start;flex-wrap:wrap;gap:4px 8px;padding:10px 12px;border:1px solid var(--line-3);border-radius:12px;color:var(--ink)}.okbox label.okcpon input{width:auto;margin:2px 0 0}.okbox label.okcpon .note{flex-basis:100%;padding-left:24px}.okbox .okcpsheet .rtedit{min-height:140px}
-.okbox .okpub[hidden]{display:none}.okbox .okcm{margin:0;display:flex;gap:6px;align-items:center;color:var(--muted)}
+.okbox .okpub[hidden]{display:none}.okbox .okotro{display:flex;flex-direction:column;gap:8px}.okbox .okotro[hidden]{display:none}.jotro{margin-top:12px;padding:12px 14px;border:1px solid var(--line-3);border-radius:14px;display:flex;flex-direction:column;gap:8px}.jotro .jotro-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.jotro .jotro-t{white-space:pre-wrap;margin:0}.jotro .chips{justify-content:flex-end}.jotro label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}.jotro textarea.base,.jotro input.base{width:100%;box-sizing:border-box;font:inherit;font-size:14px;color:var(--ink);padding:10px 12px;border-radius:12px}.jotro textarea.base{resize:vertical;min-height:72px}.okbox .okcm{margin:0;display:flex;gap:6px;align-items:center;color:var(--muted)}
 @media (max-width:520px){.okbox .okgrid{grid-template-columns:1fr}}
 .shhow{grid-column:1/-1;padding:12px 14px;border-radius:12px;border:1px solid color-mix(in srgb,#38bdf8 45%,transparent);background:color-mix(in srgb,#38bdf8 10%,transparent);font-size:14px}
 .shhow b.t{display:block;color:#fff;margin-bottom:6px}.shhow ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}.shhow kbd{font:600 12.5px ui-monospace,Menlo,Consolas,monospace;padding:1px 6px;border-radius:6px;border:1px solid var(--line-3);background:rgba(148,163,184,.12);color:#fff}
@@ -5373,6 +5373,7 @@ function approvePart(j, opts = {}){
   const last = partsDone(j), left = partsWait(j); // terminado: aprobadas todas, con el último envío
   (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), ok:true, part:nm, by:viewer.name, ...(by ? { okBy:by } : {}) });
   NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
+  if (opts.otro) otroSet(j, nm, opts.otro); // v387
   let xs = [];
   if (cm && opts.date){
     const rt = shareClean(q.share), pj = { ...j, title:q.auto && P.length === 1 ? j.title : `${j.title} · ${nm}`, pubs:[], pub:null, post:null, ...(rt ? { shares:[{ n:nm, p:rt }], share:rt } : {}) }; // v351: la ruta de esta parte
@@ -5385,7 +5386,7 @@ function approvePart(j, opts = {}){
   if (last){ j.status = "Aprobado"; if (!j.approved) j.approved = TODAY; if (!j.delivered) j.delivered = TODAY; if (by) j.approvedBy = by; notify({ to:j.owner, type:"approved", job:j.id }); }
   else { partsStatus(j); notify({ to:j.owner, type:"nota", job:j.id, who:viewer.name, text:`“${nm}” aprobada${by ? ` (aprobó ${firstName(by)})` : ""}.${partLastSent(j) ? "" : " Podés seguir mandando las próximas partes (o el Último envío)."}` }); }
   jobUI.form = null; render(); window.RMH?.flushNow?.();
-  toast(`“${nm}” aprobada${by ? ` por ${firstName(by)}` : ""}.${xs.length ? ` ${firstName(cm)} ya la puede subir: quedó en su calendario el ${dm(xs[0].date)}${xs.length > 1 ? ` (${xs.length} publicaciones)` : ""}.` : ""} ${last ? "Estaban todas: el pedido quedó Aprobado." : left.length ? `Falta aprobar: ${left.map(([x, k]) => `“${partName(x, k)}”`).join(", ")}.` : `${firstName(j.owner)} sigue con las próximas partes.`}`);
+  toast(`“${nm}” aprobada${by ? ` por ${firstName(by)}` : ""}.${opts.otro ? " Quedó anotado “Otro” en el pedido." : ""}${xs.length ? ` ${firstName(cm)} ya la puede subir: quedó en su calendario el ${dm(xs[0].date)}${xs.length > 1 ? ` (${xs.length} publicaciones)` : ""}.` : ""} ${last ? "Estaban todas: el pedido quedó Aprobado." : left.length ? `Falta aprobar: ${left.map(([x, k]) => `“${partName(x, k)}”`).join(", ")}.` : `${firstName(j.owner)} sigue con las próximas partes.`}`);
 }
 function openApproveModal(j, k){
   if (j.area === "CM") return approveJob(j);
@@ -5399,6 +5400,7 @@ function openApproveModal(j, k){
   // v283: en Gestión de Contenidos no todo se publica (coberturas, sesiones de fotos, plantillas…): se puede aprobar sin publicación.
   // Viene destildado si es “Otro” o una plantilla y no tenía publicación cargada.
   const contPub = cont && (jobPubsOf(j).length > 0 || (j.piece !== OTRO && j.piece !== "Plantilla editable"));
+  const oN = PT && pi >= 0 ? partName(PT[pi], pi) : "", oE = (j.otros || []).find(o => o.n === oN), oLink = oE?.link || shareClean(PT && pi >= 0 ? PT[pi].share : "") || shareList(j).find(s => s.p)?.p || ""; // v387: “Otro”
   const w = document.createElement("div"); w.id = "fixpop"; w.className = "fixpop";
   w.innerHTML = `<div class="fixbox okbox" role="dialog" aria-modal="true" aria-labelledby="okh"><h2 id="okh">${cont ? "Aprobar contenido" : "Aprobar diseño"}${PT && pi >= 0 ? ` · ${esc(partName(PT[pi], pi))}` : ""}</h2><p class="note">${esc(j.title)} · ${esc(j.owner)}</p>
     ${PT && pi >= 0 ? `<p class="okpart">${icon("layers")}<span>${PT[pi].last ? (PT.every((q, x) => q.ok || x === pi) ? `Es el <b>último envío</b>: al aprobarlo, el pedido queda Aprobado.` : `Es el <b>último envío</b>: el pedido queda Aprobado cuando estén aprobadas todas las partes.`) : `Al aprobarla, la CM que elijas ya la puede subir. ${esc(firstName(j.owner))} puede seguir mandando las próximas partes.`}</span></p>` : ""}
@@ -5416,11 +5418,17 @@ function openApproveModal(j, k){
         <label class="jcext okcpon okcpnone"><input type="checkbox" id="okNoCopy"${!cf && jobPubsOf(j).length && jobPubsOf(j).every(y => y.noCopy) ? " checked" : ""}> <b>No lleva copy</b> <span class="note">(se publica sin copy: la CM no lo escribe ni hace falta aprobarlo)</span></label>
         <div class="okcpsheet"${cf ? "" : " hidden"}>${copySheet({ copy:cf ? x.copy : "" }, true, "okCopy")}</div></div>`)(!PT && x?.copyConf && x.copySt === "ok") : ""}
       <p class="note" style="margin:0">${icon("calendar-days")} Se carga sola en el calendario del CM con lo justo para publicar (título, tipo de gráfica, dónde se publica, día, hora y la ruta de la compartida), y le llega el aviso (+1). ${cont ? "El copy de arriba queda aprobado en su publicación: solo la publica." : "Si no marcás “Copy confirmado”, el CM escribe el copy y te llega para aprobarlo."} Si elegís varios lugares (ej.: Post e Historia), se carga una publicación por cada uno.</p></div>
+    <label class="jcext okpubon"><input type="checkbox" id="okOtroOn"${oE ? " checked" : ""}> <b>Otro</b> <span class="note">(lo publica o lo usa alguien fuera del equipo: anotá qué se hace con el material o a quién se le pasa el link; no hace falta elegir CM)</span></label>
+    <div class="okotro"${oE ? "" : " hidden"}><label>¿Qué se hace con este material? *<textarea class="base" id="okOtroTxt" rows="3" maxlength="600" placeholder="Ej.: pasarle el link a Juan Pérez (Sucursal Mburucuyá) para que lo publique el viernes">${esc(oE?.txt || "")}</textarea></label>
+      <label>Link del material <span class="note">(ruta de la compartida, Drive o el PDF del diseño)</span><input class="base" id="okOtroLink" type="text" spellcheck="false" autocomplete="off" maxlength="300" value="${esc(oLink)}" placeholder="Pegá la ruta \\\\retsvrfs01\\Marketing\\… o un link https://…"></label>
+      <p class="note" style="margin:0">${icon("save")} Queda guardado en el pedido. Después lo podés cambiar en la ficha con “Guardar texto”.</p></div>
     <p class="perr" id="okErr" hidden></p>
     <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-oksend="${j.id}"${PT && pi >= 0 ? ` data-okpart="${pi}"` : ""}>✓ Aprobar</button></div></div>`;
   document.body.appendChild(w);
 }
+document.addEventListener("input", e => { if (e.target.id === "okOtroTxt"){ const el = document.getElementById("okErr"); if (el) el.hidden = true; } }); // v387
 document.addEventListener("change", e => { if (!e.target.closest?.(".okbox")) return;
+  if (e.target.id === "okOtroOn"){ const o = document.querySelector(".okbox .okotro"); if (o){ o.hidden = !e.target.checked; if (e.target.checked) document.getElementById("okOtroTxt")?.focus(); } } // v387
   if (e.target.id === "okCm"){ const pub = document.querySelector(".okbox .okpub"); if (pub) pub.hidden = !e.target.value; }
   if (e.target.id === "okPubOn"){ const on = e.target.checked, cm = document.getElementById("okCm"), pub = document.querySelector(".okbox .okpub"), who = document.querySelector(".okbox .okcm");
     if (cm) cm.value = on ? e.target.dataset.pubowner : ""; if (pub) pub.hidden = !on; if (who) who.hidden = !on; }
@@ -5435,6 +5443,8 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-okse
   if (cm && !date) return err("Elegí la fecha de publicación.");
   if (cm && !time) return err("Elegí la hora de publicación.");
   if (cm && !MONTHS_APP.some(m => m.v === date.slice(0, 7))) return err(`La fecha (${dm(date)}) está fuera de los meses de la app.`);
+  const otro = document.getElementById("okOtroOn")?.checked ? { txt:v("okOtroTxt").trim().slice(0, 600), link:shareClean(v("okOtroLink")) } : null; // v387
+  if (otro && !otro.txt) return err("Escribí en “Otro” qué se hace con este material (o destildalo).");
   // v222: “Copy confirmado”: Admin total ya tiene el copy; queda aprobado y la CM no lo tiene que escribir
   const cpOn = cm && document.getElementById("okCopyOn")?.checked, cpEd = document.getElementById("okCopy");
   if (cpOn && rtUploading(cpEd)) return err("Esperá que termine de subir la imagen.");
@@ -5442,7 +5452,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-okse
   if (cpOn && !copyPlain({ copy }).trim() && !/<img/i.test(copy)) return err("Escribí el copy confirmado (o destildá “Copy confirmado” para que lo escriba el CM).");
   const noCopy = !!cm && !cpOn && !!document.getElementById("okNoCopy")?.checked;
   const part = b.dataset.okpart !== undefined ? +b.dataset.okpart : null; partApproveAll.pend = null; // v361: la parte que se está aprobando
-  document.getElementById("fixpop")?.remove(); approveJob(j, { by, cm, date, time, fmt, net, ...(cpOn ? { copy } : {}), ...(noCopy ? { noCopy } : {}), ...(Number.isInteger(part) ? { part } : {}) }); }); // aprobar no pide ningún link (pedido de Admin total)
+  document.getElementById("fixpop")?.remove(); approveJob(j, { by, cm, date, time, fmt, net, ...(otro ? { otro } : {}), ...(cpOn ? { copy } : {}), ...(noCopy ? { noCopy } : {}), ...(Number.isInteger(part) ? { part } : {}) }); }); // aprobar no pide ningún link (pedido de Admin total)
 // En la ficha del pedido: la publicación que salió al aprobarlo (CM, fecha, formato) con un botón para abrirla.
 function pubInfo(j){ return (j.pubs || (j.pub ? [j.pub] : [])).map(r => r.canal ? canalById(r.id) : postById(r.id)).filter(Boolean).map(x => pubInfoOne(x)).join(""); }
 function pubInfoOne(x){
@@ -5523,6 +5533,7 @@ function approveJob(j, opts = {}){
   (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), ok:true, by:viewer.name, ...(by ? { okBy:by } : {}) });
   NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
   notify({ to:j.owner, type:"approved", job:j.id }); jobUI.form = null;
+  if (opts.otro) otroSet(j, "", opts.otro); // v387
   let x = null;
   let xs = [];
   if (cm && j.area !== "CM" && opts.date){ const had = new Map(jobPubsOf(j).map(p => [p.id, p.cm])); NOTIFS.forEach(n => { if (n.job === j.id && ((n.type === "pub" && !n.post) || ((n.type === "pub" || n.type === "listo") && n.to !== cm))) n.read = true; });
@@ -5536,8 +5547,33 @@ function approveJob(j, opts = {}){
     xs.forEach(p => notify({ to:cm, type:had.get(p.id) === cm ? "listo" : "pub", job:j.id, post:p.id, canal:!!p.channel })); }
   else if (cm){ notify({ to:cm, type:"listo", job:j.id }); j.cmNotified = cm; }
   render(); window.RMH?.flushNow?.();
-  toast(`Aprobado${j.area === "CM" ? `: quedó en ${j.status}` : ""}${by ? ` por ${firstName(by)}` : ""}. Le avisamos a ${firstName(j.owner)}${x ? `${cm === j.owner ? "" : ` y a ${firstName(cm)} (CM)`}: “${x.title}” quedó en su calendario el ${dm(x.date)}${xs.length > 1 ? ` (${xs.length} publicaciones: ${xs.map(p => `${p.brand} ${p.channel ? "Canal" : p.format}`).join(", ")})` : ""}${opts.copy ? ", con el copy confirmado" : ""}` : cm ? ` y a ${firstName(cm)} (CM)` : ""}.`);
+  toast(`Aprobado${j.area === "CM" ? `: quedó en ${j.status}` : ""}${by ? ` por ${firstName(by)}` : ""}. Le avisamos a ${firstName(j.owner)}${x ? `${cm === j.owner ? "" : ` y a ${firstName(cm)} (CM)`}: “${x.title}” quedó en su calendario el ${dm(x.date)}${xs.length > 1 ? ` (${xs.length} publicaciones: ${xs.map(p => `${p.brand} ${p.channel ? "Canal" : p.format}`).join(", ")})` : ""}${opts.copy ? ", con el copy confirmado" : ""}` : cm ? ` y a ${firstName(cm)} (CM)` : ""}.${opts.otro ? " Quedó anotado “Otro” en el pedido." : ""}`);
 }
+// v387 · “Otro”: lo que Admin total anota al aprobar (o después, en la ficha) sobre qué se hace con el material cuando lo publica
+// o lo usa alguien fuera del equipo, con el link. No crea publicación ni tarea para la CM. j.otros = [{ n (parte o ""), txt, link, by, at }].
+function otroSet(j, n, o){ const L = j.otros = j.otros || [], e = L.find(x => x.n === n), v = { n, txt:o.txt, link:o.link || "", by:viewer.name, at:TODAY };
+  if (!v.txt && !v.link){ if (e) L.splice(L.indexOf(e), 1); if (!L.length) delete j.otros; return; }
+  if (e) Object.assign(e, v); else L.push(v); }
+// El link guardado (ruta de la compartida o https://), con Copiar y Abrir.
+function otroLinkRow(v){ v = shareClean(v); if (!v) return ""; const u = safeUrl(v);
+  return `<div class="lkrow share otrolk"><div class="lkname"><span class="lkic">${icon(u ? "link" : "folder-symlink")}</span><span class="lkn-w"><b>Link del material</b></span></div><span class="lkurl">${esc(v)}</span>
+    ${u ? `<button type="button" class="btn lkbtn" data-lkcopy="${esc(u)}">${icon("copy")} Copiar link</button><a class="btn lkbtn" href="${esc(u)}" target="_blank" rel="noopener">${icon("arrow-up-right")} Abrir</a>`
+      : `<button type="button" class="btn lkbtn" data-shcopy="${esc(v)}">${icon("copy")} Copiar link</button><button type="button" class="btn lkbtn" data-shopen="${esc(v)}">${icon("arrow-up-right")} Abrir</button>`}<span></span><div class="shhow" hidden></div></div>`; }
+// En la ficha del pedido: “Otro” para ver y, para Admin total, para escribir o cambiar con “Guardar texto”.
+function otroBox(j){
+  if (!["Diseño", "Contenidos"].includes(j.area)) return "";
+  const L = j.otros || [], ed = viewer?.role === "Admin total" && !isViewOnly(), done = jobApproved(j) || (jobParts(j) || []).some(q => q.ok);
+  const list = L.length ? L : ed && done ? [{ n:"", txt:"", link:"" }] : []; if (!list.length) return "";
+  return list.map((o, i) => `<div class="jotro" data-otroi="${i}"><div class="jotro-h">${icon("share-2")}<b>Otro${o.n ? " · " + esc(o.n) : ""}</b><span class="note">lo publica o lo usa alguien fuera del equipo${o.by ? ` · anotó ${esc(firstName(o.by))}${o.at ? " el " + dm(o.at) : ""}` : ""}</span></div>
+    ${ed ? `<label>¿Qué se hace con este material?<textarea class="base" data-otrotxt rows="3" maxlength="600" placeholder="Ej.: pasarle el link a Juan Pérez (Sucursal Mburucuyá) para que lo publique el viernes">${esc(o.txt)}</textarea></label>
+      <label>Link del material <span class="note">(ruta de la compartida, Drive o el PDF)</span><input class="base" data-otrolink type="text" spellcheck="false" autocomplete="off" maxlength="300" value="${esc(o.link || "")}" placeholder="Pegá la ruta \\\\retsvrfs01\\Marketing\\… o un link https://…"></label>`
+      : o.txt ? `<p class="jotro-t">${esc(o.txt)}</p>` : ""}
+    ${otroLinkRow(o.link)}${ed ? `<div class="chips"><button type="button" class="btn primary sm" data-otrosave="${esc(j.id)}|${esc(o.n)}">${icon("save")} Guardar texto</button></div>` : ""}</div>`).join(""); }
+document.addEventListener("click", e => { const b = e.target.closest("[data-otrosave]"); if (!b) return;
+  if (viewer?.role !== "Admin total" || isViewOnly()) return toast("Solo Admin total lo puede cambiar.");
+  const [id, ...nn] = b.dataset.otrosave.split("|"), j = jobById(id), box = b.closest(".jotro"); if (!j || !box) return;
+  const txt = (box.querySelector("[data-otrotxt]")?.value || "").trim().slice(0, 600), link = shareClean(box.querySelector("[data-otrolink]")?.value);
+  otroSet(j, nn.join("|"), { txt, link }); render(); window.RMH?.flushNow?.(); toast(txt || link ? "Texto guardado en el pedido." : "Se borró “Otro” del pedido."); });
 const jobRounds = j => (j.changes || []).filter(c => !c.ok && !c.kind).length; // cuántas veces se pidieron cambios
 function sendJobChanges(j, text, req = "", part = null){
   const P = jobParts(j), k = P ? (Number.isInteger(part) && P[part] && !P[part].ok ? part : partOpen(j)) : -1; // v361: por partes, los cambios son de una parte
@@ -5697,7 +5733,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v386";
+const APP_VER = "v387";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -10219,7 +10255,7 @@ function jobFicha(){
       <div class="jfgrid">${row(jobBrands(j).length > 1 ? "Marcas" : "Marca", jobBrandTags(j))}${j.area === "Diseño" && j.pubCm && !jobApproved(j) && seesPubDate() ? row("Lo publica", `${cmSwapSel(j, "pub") || esc(j.pubCm)} · ${j.pubDate ? `el ${dm(j.pubDate)}` : "fecha sin definir"} <span class="note">(ya le llegó; la ruta de la compartida la ve al aprobarse)</span>`) : j.area === "Diseño" && jobApproved(j) && canSwapPub(j) ? row("Lo publica", `${cmSwapSel(j, "pub")} <span class="note">(si no está disponible, pasáselo a otro CM: le llega el aviso)</span>`) : ""}${row("Tipo de trabajo", esc((j.area === "Diseño" && dgCatOf(j) ? dgCatOf(j) + " · " : "") + cmPiece(j)))}${row("Trabajo solicitado", esc(j.title))}${p ? row("Para el post", `${dm(p.date)} · ${esc(p.net)}`) : ""}${j.piece === OTRO && j.otro ? `<div style="grid-column:1/-1"><span>Actividades</span><b>${esc(j.otro)}</b></div>` : ""}</div>
       ${j.notes ? `<div class="jfnotes"><span>Observaciones</span><p>${esc(j.notes)}</p></div>` : ""}</section>
     <section class="panel jp-sec"><h2 class="pmh">${pmIco("users")}<i class="jpn">2</i>Quién y para cuándo</h2>
-      <div class="jfgrid"><div><span>Quién lo pidió</span><b>${esc(j.requester || "Sin indicar")}</b></div>${row("Responsable", (j.area !== "Diseño" && cmSwapSel(j, "owner")) || esc(j.owner))}${alsoOf(j).length ? row("También participan", esc(alsoOf(j).join(", "))) : ""}${jobActCom(j) ? row("Activación", `<span class="actag">${icon("badge-percent")} Activación Comercial</span>`) : ""}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", prioTag(j.priority))}${row("Complejidad", esc(j.complexity))}${j.area === "Diseño" ? dgHoursRow(j) : ""}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}${j.approvedBy ? row("Aprobó", `${icon("badge-check")} ${esc(j.approvedBy)}${j.approved ? " · " + dm(j.approved) : ""}`) : ""}</div>${seesPubDate() ? pubInfo(j) : ""}</section>
+      <div class="jfgrid"><div><span>Quién lo pidió</span><b>${esc(j.requester || "Sin indicar")}</b></div>${row("Responsable", (j.area !== "Diseño" && cmSwapSel(j, "owner")) || esc(j.owner))}${alsoOf(j).length ? row("También participan", esc(alsoOf(j).join(", "))) : ""}${jobActCom(j) ? row("Activación", `<span class="actag">${icon("badge-percent")} Activación Comercial</span>`) : ""}${row("Fecha de solicitud", dm(j.requestDate))}${row("Fecha límite", dm(j.due))}${row("Prioridad", prioTag(j.priority))}${row("Complejidad", esc(j.complexity))}${j.area === "Diseño" ? dgHoursRow(j) : ""}${j.area === "CM" ? "" : `<div><span>Cambios pedidos</span><b>${jobRounds(j)}</b></div>`}${j.approvedBy ? row("Aprobó", `${icon("badge-check")} ${esc(j.approvedBy)}${j.approved ? " · " + dm(j.approved) : ""}`) : ""}</div>${seesPubDate() ? pubInfo(j) : ""}${otroBox(j)}</section>
     ${jobBriefSection(j)}
     ${j.area === "Diseño" ? matBlock(j) : ""}
     ${jobCopyBlock(j)}
