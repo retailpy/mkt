@@ -4942,7 +4942,8 @@ html.light .sg :is(.sgptn,.sgagnum,.sgstari,.sgppav,.sgstack,.sgpbar2 i){filter:
 @media (max-width:640px){
   .sg{gap:16px}.sgsec{padding:16px;border-radius:18px}
   .sgtop{position:relative;padding:8px;gap:8px;border-radius:16px}
-  .sghero{gap:6px;padding:0 2px}.sghero h1{font-size:23px}.sgmark{width:44px;height:44px;border-radius:14px}.sgmark svg{width:22px;height:22px}.sgkick{font-size:11.5px;letter-spacing:.13em;gap:7px}.sgkick i{width:18px}.sgdate{font-size:12.5px}
+  .sghero{gap:6px;padding:0 2px}.sghero h1{font-size:23px}.sgmark{width:44px;height:44px;border-radius:14px}.sgmark svg{width:22px;height:22px}.sgkick{font-size:11px;letter-spacing:.07em;gap:6px}.sgkick i{width:14px}
+  @media (max-width:400px){.sgkick i{display:none}}.sgdate{font-size:12.5px}
   .sgtabs{width:100%;gap:2px;padding:5px;border-radius:20px}.sgtabs button{gap:6px;padding:8px 1px 10px;border-radius:14px;font-size:10.5px}.sgti{width:40px;height:40px;border-radius:13px}.sgti svg{width:20px;height:20px}
   .sgti em{top:-6px;right:-9px;min-width:19px;height:19px;font-size:10px}.sgtlf{display:none}.sgtls{display:inline}.sgtabs button.on::after{bottom:2px;width:16px;margin-left:-8px}
   @media (max-width:400px){.sgtabs{padding:4px;gap:0}.sgtabs button{font-size:10px;letter-spacing:-.015em}.sgti{width:38px;height:38px}}
@@ -5762,7 +5763,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v388";
+const APP_VER = "v389";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -18216,8 +18217,8 @@ function pSeguimiento(){
     <div class="sgthm" role="group" aria-label="Colores del panel">${[["dark", "Oscuro", "moon"], ["light", "Claro", "sun"]].map(([k, l, ic]) => `<button type="button" class="${segTheme() === k ? "on" : ""}" data-sgthm="${k}" aria-pressed="${segTheme() === k}" title="Ver el panel en versión ${l.toLowerCase()}">${icon(ic)}<span>${l}</span></button>`).join("")}</div>
 </header>
     <div class="sghero"><span class="sgmark" aria-hidden="true">${icon("chart-gantt")}</span><h1>Panel Interactivo de Seguimiento de Marketing</h1>
-      <p class="sgkick"><i aria-hidden="true"></i>${icon("users")}<span>Reuniones de procesos</span><i aria-hidden="true"></i></p>
-      <p class="sgdate">${icon("calendar-days")}<span>${esc(segToday())}</span></p></div>`; // v383: el título va sobre la página (fuera del recuadro), con “Reuniones de procesos” y la fecha del día
+      <p class="sgkick"><i aria-hidden="true"></i>${icon("users")}<span>Reuniones y seguimiento de procesos</span><i aria-hidden="true"></i></p>
+      <p class="sgdate">${icon("calendar-days")}<span>${esc(segToday())}</span></p></div>`; // v383: el título va sobre la página (fuera del recuadro), con “Reuniones y seguimiento de procesos” (v389) y la fecha del día
   if (!segOk()){
     segAsk();
     return `<div class="sg${fx === "open" ? " fx-open" : ""}">${top}<div class="sgsec sgload">${segUI.missing ? `<b>Todavía no hay datos del panel.</b><p class="sgmuted">Si recién te habilitaron, tocá “Actualizar” en un ratito. Si es la primera vez, se puede empezar vacío y cargar las tareas a mano.</p><div class="chips"><button type="button" class="btn" data-sgretry>${icon("refresh-cw")} Actualizar</button><button type="button" class="btn primary" data-sgstart>${icon("plus")} Empezar el panel</button></div>` : `${icon("loader-circle")} Cargando el panel…`}</div></div>`;
@@ -18957,7 +18958,7 @@ function segMeetPdf(m){
     tr.t td{background:#E8F0F8;font-weight:700}.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:10.5px;font-weight:700;border:1.5px solid;white-space:nowrap}
     ul{margin:0;padding-left:18px}li{margin:2px 0}.foot{margin-top:18px;color:#64748b;font-size:10.5px;border-top:1px solid #e2e8f0;padding-top:6px}@media print{body{margin:0}}
   </style></head><body>
-    <div class="top"><div><h1>Informe de reunión de procesos</h1><p class="sub">${e(m.title || "Reunión de procesos de Marketing")} · ${e(segLong(m.date))}</p></div><div class="brand">Panel Interactivo de Seguimiento de Marketing<br>Reuniones de procesos</div></div>
+    <div class="top"><div><h1>Informe de reunión y seguimiento de procesos</h1><p class="sub">${e(m.title || "Reunión de procesos de Marketing")} · ${e(segLong(m.date))}</p></div><div class="brand">Panel Interactivo de Seguimiento de Marketing<br>Reuniones y seguimiento de procesos</div></div>
     <div class="meta">${m.who?.length ? `<p><b>Participantes:</b> ${e(m.who.join(", "))}</p>` : ""}${m.nextDate ? `<p><b>Próxima reunión:</b> ${e(segLong(m.nextDate))}</p>` : ""}${m.notes ? `<div class="notes">${e(m.notes)}</div>` : ""}</div>
     <div class="ks">${k(D.tem.filter(a => !a.done).length, "temas por resolver")}${k(D.resT.length + D.res.length, "cerrados en esta reunión")}${k(T.filter(segOpen).length, "tareas en seguimiento")}${k(D.follow.length ? `${D.rev} de ${D.follow.length}` : "—", "tareas revisadas de antes")}${k(D.news.length, "tareas nuevas")}</div>
     <h2>Temas, minutas y pedidos</h2>${D.tem.length ? `<table><thead><tr><th>N.º</th><th>Tema, minuta o pedido</th><th>Cómo quedó</th><th>Qué pasó</th></tr></thead><tbody>${tem}</tbody></table>` : "<p>No hubo temas en esta reunión.</p>"}
@@ -19210,7 +19211,7 @@ function renderNav(){
   const ts = document.getElementById("topSt"); if (ts && viewer) ts.innerHTML = statusChip("top") + (chatUI.status === "top" ? statusMenu() : ""); // compu y tablet: el estado va arriba, al lado de la hora
   const mc = document.getElementById("msgCount"), nm = chatUnreadTotal(); if (mc){ mc.hidden = !nm; mc.textContent = nm; }
   const groups = [...new Set(SECTIONS.map(s => s.g))];
-  const segBtn = can("seguimiento") ? `<a href="#seguimiento" data-page="seguimiento" class="segnav${page === "seguimiento" ? " on" : ""}" title="Panel Interactivo de Seguimiento de Marketing">${icon("chart-gantt")}<span><b>Panel de Seguimiento</b><small>Reuniones de procesos</small></span></a>` : ""; // v375: sección destacada, arriba de todo
+  const segBtn = can("seguimiento") ? `<a href="#seguimiento" data-page="seguimiento" class="segnav${page === "seguimiento" ? " on" : ""}" title="Panel Interactivo de Seguimiento de Marketing">${icon("chart-gantt")}<span><b>Panel de Seguimiento</b><small>Reuniones y seguimiento de procesos</small></span></a>` : ""; // v375: sección destacada, arriba de todo
   $("#nav").innerHTML = segBtn + groups.map(g => {
     const items = SECTIONS.filter(s => s.g === g && can(s.k) && (!s.hide || (isRevisor() && s.k === "inbox")));
     if (!items.length) return "";
