@@ -5726,7 +5726,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v374";
+const APP_VER = "v387";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -11758,14 +11758,15 @@ function spawnPostRepeats(){
 }
 // v245: al editar el original de una repetición, las copias pendientes (de hoy en adelante) toman los cambios; las de días que
 // ya no se repiten (o después del “Hasta”) se sacan, y las que faltan se cargan solas.
+// v386: cada día es un posteo distinto (otro diseño): del original solo se pasan el título, la CM, la marca y la red; el texto,
+// las observaciones, el diseño y los links (ruta de la compartida, Canva/Drive, links extra) de cada día quedan como los dejó la CM.
 function syncRepCopies(t, canal){
   if (!t || t.repOf) return;
   const L = canal ? CHANNEL_POSTS : posts, ok = x => !!t.rep?.days?.length && x.date > t.date && t.rep.days.includes(wdOf(x.date)) && (!t.rep.until || x.date <= t.rep.until);
   for (let i = L.length - 1; i >= 0; i--){ const x = L[i]; if (x.repOf !== t.id || x.status !== "Pendiente" || x.date < TODAY) continue;
     if (!ok(x)){ L.splice(i, 1); NOTIFS.forEach(n => { if (n.post === x.id) n.read = true; }); continue; }
     if (alsoOf(t).length) x.also = alsoOf(t); else delete x.also; // v309
-    Object.assign(x, { brand:t.brand, title:t.title, cm:t.cm, requester:t.requester || "Marketing", notes:t.notes || "", brief:t.brief || "", canva:t.canva || "", drive:t.drive || "",
-      canvaN:t.canvaN || "", driveN:t.driveN || "", xlinks:(t.xlinks || []).map(y => ({ ...y })), links:(t.links || []).slice() }, canal ? { channel:t.channel } : { net:t.net, format:t.format }); }
+    Object.assign(x, { brand:t.brand, title:t.title, cm:t.cm, requester:t.requester || "Marketing" }, canal ? { channel:t.channel } : { net:t.net, format:t.format }); }
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-reptpl]"); if (!b || !canEditPost()) return;
   const [k, id] = b.dataset.reptpl.split(":"), t = k === "canal" ? canalById(id) : postById(id); if (!t) return toast("No se encontró la repetición original (quizás la borraron).");
