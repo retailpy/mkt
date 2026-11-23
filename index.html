@@ -4959,6 +4959,18 @@ html.light .sg :is(.sgptn,.sgagnum,.sgstari,.sgppav,.sgstack,.sgpbar2 i){filter:
   .sgtl.nar .sgtlf{display:inline}.sgtl.nar .sgtls{display:none}
 }
 @media (max-width:400px){.sgtl.nar .sgtlf{display:none}.sgtl.nar .sgtls{display:inline}} /* v390: en celulares chicos, nombres cortos para que entren las 7 pestañas */
+/* v391 · urgencias: número rojo, alertas en Mis tareas y aviso en la portada del panel */
+.sgti em.urg{background:#ef4444;color:#fff;box-shadow:0 0 0 2px #0b1222;animation:sgurg 2s ease-in-out infinite}.sgtabs button.on .sgti em.urg{background:#ef4444;color:#fff}
+@keyframes sgurg{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+.nav a.segnav .segnavb{margin-left:auto;flex:none;min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;border-radius:10px;display:grid;place-items:center;background:#ef4444;color:#fff;font-style:normal;font-size:11px;font-weight:700}
+.sgmyal{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.sgmyalb{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:color-mix(in srgb,var(--c) 14%,#0b1222);border:1px solid color-mix(in srgb,var(--c) 50%,transparent)}
+.sgmyalb > svg{width:18px;height:18px;color:var(--c);flex:none}.sgmyalb > svg:last-child{width:16px;height:16px;color:var(--faint);margin-left:auto}.sgmyalb.late > svg:first-child{animation:sgurg 2s ease-in-out infinite}
+.sgmyalb b{color:#fff;font-size:13.5px;white-space:nowrap}.sgmyalb span{color:#e2e8f0;font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sgmyalb:hover{filter:brightness(1.15)}.sgmyalb:focus-visible{outline:2px solid var(--sgac)}
+.sgurgban{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border-radius:16px;border:1px solid rgba(239,68,68,.55);background:rgba(239,68,68,.1);color:#fecaca;font-size:13.5px}
+.sgurgban > svg{width:20px;height:20px;color:#f87171;flex:none;animation:sgurg 2s ease-in-out infinite}.sgurgban > span{flex:1 1 240px}.sgurgban b{color:#fff}.sgurgban .btn{display:inline-flex;align-items:center;gap:6px}
+@media (prefers-reduced-motion:reduce){.sgti em.urg,.sgmyalb.late > svg:first-child,.sgurgban > svg{animation:none}}
+@media (max-width:640px){.sgmyalb{flex-wrap:wrap;row-gap:2px}.sgmyalb span{flex:1 1 100%;white-space:normal;padding-left:28px}.sgmyalb > svg:last-child{display:none}.sgurgban .btn{flex:1 1 100%;justify-content:center}}
 /* tamaños de pantalla */
 @media (max-width:1100px){.sgstg{grid-template-columns:repeat(3,minmax(0,1fr))}.sgcolg{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:980px){.sgdetg,.sgtwo,.sgtwo-r{grid-template-columns:1fr}.sgdeta{position:static}.sggrid2{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}.sgtiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -5787,7 +5799,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v390";
+const APP_VER = "v391";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -18090,6 +18102,8 @@ const segShort = n => String(n || "").split(" ")[0];
 const segMe = () => segShort(viewer?.name);
 const segMine = it => (it.resp || []).some(r => r === segMe() || r === "Todo el equipo");
 const segUser = r => PEOPLE.find(p => p.active !== false && segShort(p.name) === r && !["Revisor", "TV"].includes(p.role));
+// v391 · Nombre y apellido de cada responsable (en la base se guarda el nombre corto; el completo sale del usuario). Sin usuario, el nombre.
+const segFull = r => { const u = segUser(r); return u ? u.name : r; };
 const segFold = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const segFD = d => d ? `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}` : "";
 const segLong = d => { try { return new Intl.DateTimeFormat("es-PY", { weekday:"long", day:"numeric", month:"long", year:"numeric", timeZone:"UTC" }).format(new Date(d + "T12:00:00Z")); } catch { return segFD(d); } };
@@ -18165,7 +18179,7 @@ const segColIc = k => { const [, l, , ic] = segCol(k); return `<span class="sgco
 const segAv = r => r === "Todo el equipo" ? icon("users") : r === "Por confirmar" ? "?" : esc(String(r).slice(0, 1).toUpperCase());
 const segRespTxt = it => { const R = it.resp || [];
   if (!R.length) return `<span class="sgwhos"><span class="sgav nouser" aria-hidden="true">?</span><span class="sgwn">Sin responsable</span></span>`;
-  return `<span class="sgwhos" title="${esc(R.map(r => r + (segUser(r) || SEG_RESP_X.includes(r) ? "" : " (todavía sin usuario)")).join(", "))}"><span class="sgavs" aria-hidden="true">${R.map(r => `<span class="sgav${segUser(r) || SEG_RESP_X.includes(r) ? "" : " nouser"}">${segAv(r)}</span>`).join("")}</span><span class="sgwn">${esc(R.join(" y "))}</span></span>`; };
+  return `<span class="sgwhos" title="${esc(R.map(r => segFull(r) + (segUser(r) || SEG_RESP_X.includes(r) ? "" : " (todavía sin usuario)")).join(", "))}"><span class="sgavs" aria-hidden="true">${R.map(r => `<span class="sgav${segUser(r) || SEG_RESP_X.includes(r) ? "" : " nouser"}">${segAv(r)}</span>`).join("")}</span><span class="sgwn">${esc(R.map(segFull).join(" y "))}</span></span>`; };
 const segBar = (pct, lbl, grad) => `<span class="sgpbar2${grad ? " grad" : ""}" role="img" aria-label="${esc(lbl || "Avance")}: ${pct} %"><i style="width:${pct}%${grad && pct ? `;background-size:${Math.round(10000 / pct)}% 100%` : ""}"></i></span>`;
 // La barra del proceso de una tarea: las 4 etapas con su ícono y su color. Tocar una etapa pasa la tarea a esa etapa (si estaba
 // en pausa, la retoma). Dentro de una reunión, el cambio queda con la reunión. mini: rayitas + la etapa actual (tarjetas).
@@ -18205,7 +18219,7 @@ function segGroups(list, by){
   list.forEach(it => { const R = segRespKey(it), k = R.join(" y ") || "Sin responsable"; if (!m.has(k)) m.set(k, { key:k, R, items:[] }); m.get(k).items.push(it); });
   const last = g => g.R.some(r => SEG_RESP_X.includes(r)) || !g.R.length;
   return [...m.values()].sort((a, b) => last(a) - last(b) || b.items.length - a.items.length || a.key.localeCompare(b.key))
-    .map(g => ({ key:g.key, head:`<span class="sgavs" aria-hidden="true">${(g.R.length ? g.R : ["?"]).map(r => `<span class="sgav${r === "?" || segUser(r) || SEG_RESP_X.includes(r) ? "" : " nouser"}">${r === "?" ? "?" : segAv(r)}</span>`).join("")}</span><b>${esc(g.key)}</b>`, items:g.items }));
+    .map(g => ({ key:g.key, head:`<span class="sgavs" aria-hidden="true">${(g.R.length ? g.R : ["?"]).map(r => `<span class="sgav${r === "?" || segUser(r) || SEG_RESP_X.includes(r) ? "" : " nouser"}">${r === "?" ? "?" : segAv(r)}</span>`).join("")}</span><b>${esc(g.R.length ? g.R.map(segFull).join(" y ") : g.key)}</b>`, items:g.items }));
 }
 const segGroupHead = g => `<div class="sggh">${g.head}<em class="sgn">${g.items.length}</em><span class="sgsp"></span>${segStack(g.items)}<span class="sggpct" title="Avance del grupo">${segPct(g.items)} %</span></div>`;
 function segFilter(list){
@@ -18228,6 +18242,8 @@ const SEG_THK = () => "rmh-segtheme-" + (viewer?.id || "");
 function segTheme(){ let v = ""; try { v = localStorage.getItem(SEG_THK()) || ""; } catch (e) {} return v === "light" || v === "dark" ? v : viewer?.theme === "light" ? "light" : "dark"; }
 // v385 · Lo que se destaca es la tarea o el tema (su nombre); el código MKT-### queda solo en la ficha, chiquito y secundario.
 const segNm = it => `“${it.name.length > 48 ? it.name.slice(0, 46).trim() + "…" : it.name}”`;
+// v391 · Lo mío urgente: atrasado o que se entrega en 3 días o menos (número rojo en “Mis tareas”, en el menú y alertas).
+const segUrgMine = () => segOk() && segCan() ? segItems().filter(it => segMine(it) && segLive(it) && (segCount(it)?.n ?? 99) <= 3).sort((a, b) => segCount(a).n - segCount(b).n) : [];
 const segInside = () => segUI.tab !== "home" || !!(segUI.open || segUI.form || segUI.meet || segUI.mform || segUI.rnote || segUI.acc);
 function segGoHome(){ if (segUI.tab !== "home") segUI.fx = "tab:home"; Object.assign(segUI, { tab:"home", open:"", form:null, meet:"", mform:null, rnote:"", acc:false, stf:"", dv:"", dvst:"", calD:"", qk:false }); ["it", "mt"].forEach(segDrClear); }
 function pSeguimiento(){
@@ -18247,8 +18263,8 @@ function pSeguimiento(){
     segAsk();
     return `<div class="sg${fx === "open" ? " fx-open" : ""}">${top}<div class="sgsec sgload">${segUI.missing ? `<b>Todavía no hay datos del panel.</b><p class="sgmuted">Si recién te habilitaron, tocá “Actualizar” en un ratito. Si es la primera vez, se puede empezar vacío y cargar las tareas a mano.</p><div class="chips"><button type="button" class="btn" data-sgretry>${icon("refresh-cw")} Actualizar</button><button type="button" class="btn primary" data-sgstart>${icon("plus")} Empezar el panel</button></div>` : `${icon("loader-circle")} Cargando el panel…`}</div></div>`;
   }
-  const tabs = [["home", "Panel", "layout-dashboard", ""], ["reu", "Reuniones", "users", ms.length, "Reunión", 1], ["cal", "Calendario", "calendar-days", "", "Calend.", 1], ["ini", "Tareas", "list-checks", all.filter(segOpen).length], ["mis", "Mis tareas", "user", all.filter(it => segMine(it) && segOpen(it)).length, "Mías"], ["res", "Resultados", "trending-up", "", "Result.", 1], ["como", "Cómo trabajamos", "route", "", "Cómo"]]; // v383: este orden
-  const tabBar = `<nav class="sgtabs" role="tablist" aria-label="Partes del panel">${tabs.map(([k, l, ic, n, sh, nar], i) => `<button type="button" role="tab" class="${segUI.tab === k ? "on" : ""}${fx === "tab:" + k ? " pop" : ""}" style="--i:${i}" aria-selected="${segUI.tab === k}" data-sgtab="${k}"${n !== "" ? ` aria-label="${l}: ${n}"` : ""}><span class="sgti">${icon(ic)}${n !== "" ? `<em aria-hidden="true">${n}</em>` : ""}</span><span class="sgtl${nar ? " nar" : ""}">${sh ? `<span class="sgtlf">${l}</span><span class="sgtls" aria-hidden="true">${sh}</span>` : l}</span></button>`).join("")}</nav>`;
+  const tabs = [["home", "Panel", "layout-dashboard", ""], ["reu", "Reuniones", "users", ms.length, "Reunión", 1], ["cal", "Calendario", "calendar-days", "", "Calend.", 1], ["ini", "Tareas", "list-checks", all.filter(segOpen).length], ["mis", "Mis tareas", "user", segUrgMine().length || all.filter(it => segMine(it) && segOpen(it)).length, "Mías", 0, segUrgMine().length], ["res", "Resultados", "trending-up", "", "Result.", 1], ["como", "Cómo trabajamos", "route", "", "Cómo"]]; // v383: este orden
+  const tabBar = `<nav class="sgtabs" role="tablist" aria-label="Partes del panel">${tabs.map(([k, l, ic, n, sh, nar, urg], i) => `<button type="button" role="tab" class="${segUI.tab === k ? "on" : ""}${fx === "tab:" + k ? " pop" : ""}" style="--i:${i}" aria-selected="${segUI.tab === k}" data-sgtab="${k}"${n !== "" ? ` aria-label="${l}: ${n}${urg ? ` urgente${urg === 1 ? "" : "s"}` : ""}"` : ""}><span class="sgti">${icon(ic)}${n !== "" ? `<em class="${urg ? "urg" : ""}" aria-hidden="true"${urg ? ` title="${urg} urgente${urg === 1 ? "" : "s"}: atrasada${urg === 1 ? "" : "s"} o para entregar en 3 días o menos"` : ""}>${n}</em>` : ""}</span><span class="sgtl${nar ? " nar" : ""}">${sh ? `<span class="sgtlf">${l}</span><span class="sgtls" aria-hidden="true">${sh}</span>` : l}</span></button>`).join("")}</nav>`;
   const body = segUI.tab === "home" ? segPortada() : segUI.tab === "cal" ? segCal() : segUI.tab === "reu" ? (segUI.meet && segMeet(segUI.meet) ? segMeetView(segMeet(segUI.meet)) : segMeetList())
     : segUI.tab === "res" ? segResumen() : segUI.tab === "como" ? segComo()
     : segUI.form ? segItemForm() : segUI.open && segItem(segUI.open) ? segDetail(segItem(segUI.open)) : segUI.tab === "mis" ? segMisTareas() : segIniciativas();
@@ -18261,7 +18277,9 @@ function segPortada(){
   const all = segItems(), ms = segMeets(), last = ms[0], nx = last?.nextDate && last.nextDate >= TODAY ? last.nextDate : "";
   const unconf = all.filter(x => !x.conf && segOpen(x)).length, pa = segPct(all), openI = all.filter(segOpen), pts = segPointsNext();
   const closedI = all.filter(it => it.st === "fin" && it.hold !== "can").length, closedT = segAgenda().filter(a => a.kind !== "info" && a.done).length, late = openI.filter(segLate).length;
-  return `<section class="sgsec"><div class="sghrow"><h2 class="sgh">${icon("layers")} Columnas de trabajo</h2><span class="sgmuted">Tocá una para ver sus tareas.</span></div>
+  const U = segUrgMine(), uL = U.filter(it => segCount(it).n < 0).length, uS = U.length - uL;
+  return `${U.length ? `<div class="sgurgban">${icon("alarm-clock")}<span><b>${uL ? `Tenés ${uL} tarea${uL === 1 ? "" : "s"} atrasada${uL === 1 ? "" : "s"}` : ""}${uL && uS ? " y " : uS ? "Tenés " : ""}${uS ? `${uS} para entregar en 3 días o menos` : ""}.</b> ${esc(segNm(U[0]))}${U.length > 1 ? ` y ${U.length - 1} más` : ""}.</span><button type="button" class="btn sm" data-sgtab="mis">${icon("user")} Ver mis tareas</button></div>` : ""}
+    <section class="sgsec"><div class="sghrow"><h2 class="sgh">${icon("layers")} Columnas de trabajo</h2><span class="sgmuted">Tocá una para ver sus tareas.</span></div>
       <div class="sgcolg">${SEG_COLS.map(([k, l, , ic]) => { const L = all.filter(x => x.col === k), p = segPct(L);
         return `<button type="button" class="sgcolcard" data-sggo="col:${k}" title="Ver las tareas de ${esc(l)}"><span class="sgcoli">${icon(ic)}</span><span class="sgcoln">${esc(l)}</span><b>${L.filter(segOpen).length}</b>${segStack(L)}<small>${p} % de avance · ${L.filter(x => x.st === "fin").length} finalizadas</small></button>`; }).join("")}</div></section>
     <section class="sgsec sghmeet"><div class="sghrow"><h2 class="sgh">${icon("users")} Reuniones</h2><button type="button" class="sglink" data-sggo="tab:reu">Ver todas las reuniones ${icon("chevron-right")}</button></div>
@@ -18293,7 +18311,7 @@ function segPeopleSec(open){
     <p class="sgmuted">Tocá una persona para ver qué tiene pendiente y en qué situación está.</p>
     ${G.length ? `<ul class="sgppl">${G.map(g => { const on = !!segUI.pp[g.n], lt = g.L.filter(segLate).length, me = g.n === segMe();
       return `<li class="${on ? "open" : ""}"><button type="button" class="sgpph" data-sgpp="${esc(g.n)}" aria-expanded="${on}"><span class="sgppav" style="--nc:${segNameC(g.n)}" aria-hidden="true">${g.x ? "?" : segAv(g.n)}</span>
-        <span class="sgppn"><b>${esc(g.n)}${me ? ` <em>(vos)</em>` : ""}</b><small>${g.L.length} pendiente${g.L.length === 1 ? "" : "s"}${lt ? ` · <span class="late">${lt} atrasada${lt === 1 ? "" : "s"}</span>` : ""}</small></span>${segStack(g.L)}<span class="sgppch">${icon("chevron-down")}</span></button>
+        <span class="sgppn"><b>${esc(g.x ? g.n : segFull(g.n))}${me ? ` <em>(vos)</em>` : ""}</b><small>${g.L.length} pendiente${g.L.length === 1 ? "" : "s"}${lt ? ` · <span class="late">${lt} atrasada${lt === 1 ? "" : "s"}</span>` : ""}</small></span>${segStack(g.L)}<span class="sgppch">${icon("chevron-down")}</span></button>
         ${on ? `<ul class="sgpendl">${g.L.map(segPendLi).join("")}</ul>` : ""}</li>`; }).join("")}</ul>` : `<p class="sgmuted">No hay tareas pendientes. ¡Todo al día!</p>`}</section>`;
 }
 // v390 · Mis tareas: solo lo que me toca resolver (a mi nombre o de todo el equipo), separado de las tareas de los demás y ordenado
@@ -18305,7 +18323,7 @@ const segCdMy = it => { const c = segCount(it), e = segEnd(it);
 function segMyCard(it){
   const others = (it.resp || []).filter(r => r !== segMe()), nx = !it.hold && it.st !== "fin" ? SEG_ST[segStI(it.st) + 1] : null;
   return `<article class="sgmy${it.hold ? " held" : ""}" data-sgrow="${esc(it.id)}" style="--c:${it.hold ? SEG_HOLD[it.hold][2] : segUrgC(it)}">${segCdMy(it)}
-    <div class="sgmyb"><button type="button" class="sgname" data-sgopen="${esc(it.id)}"><b>${esc(it.name)}</b><small>${esc([segCol(it.col)[2], it.sub, it.chain].filter(Boolean).join(" · "))}${others.length ? ` · ${others.includes("Todo el equipo") ? "de todo el equipo" : "con " + others.join(", ")}` : ""}</small></button>
+    <div class="sgmyb"><button type="button" class="sgname" data-sgopen="${esc(it.id)}"><b>${esc(it.name)}</b><small>${esc([segCol(it.col)[2], it.sub, it.chain].filter(Boolean).join(" · "))}${others.length ? ` · ${others.includes("Todo el equipo") ? "de todo el equipo" : "con " + others.map(segFull).join(", ")}` : ""}</small></button>
       ${segSituHtml(it)}<p class="sgci-next">${icon("flag")}<span>${esc(it.next || "Sin próxima acción")}</span></p></div>
     <div class="sgmyp">${segProc(it, { mini:true })}<div class="chips">${nx ? `<button type="button" class="btn sm" data-sgstep="${esc(it.id)}|${nx[0]}|" title="Pasar a ${esc(nx[1])}">${icon("arrow-right")} ${esc(nx[1])}</button>` : ""}<button type="button" class="btn sm primary" data-sgopen="${esc(it.id)}">${icon("message-circle")} Escribir avance</button></div></div></article>`;
 }
@@ -18319,6 +18337,7 @@ function segMisTareas(){
   if (!mine.length) return `<section class="sgsec sgmyh"><div class="sgmyhi"><span class="sgppav" style="--nc:${segNameC(me)}">${esc((me || "?").slice(0, 1).toUpperCase())}</span><div><h2>Mis tareas</h2><p class="sgmuted">Todavía no hay tareas a tu nombre${me ? ` (${esc(me)})` : ""}. Cuando te asignen una en la reunión, aparece acá con los días que faltan para entregarla.</p></div></div></section>`;
   return `<section class="sgsec sgmyh"><div class="sgmyhi"><span class="sgppav" style="--nc:${segNameC(me)}">${esc((me || "?").slice(0, 1).toUpperCase())}</span><div><h2>Hola, ${esc(me)}: esto es lo que tenés que resolver</h2>
         <p class="sgmuted">Solo tus tareas (y las de todo el equipo), ordenadas por lo más urgente. Tocá una para escribir el avance o pasala a la etapa siguiente.</p></div></div>
+      ${segUrgMine().length ? `<ul class="sgmyal" aria-label="Alertas de entrega">${segUrgMine().map(it => { const c = segCount(it); return `<li><button type="button" class="sgmyalb${c.n < 0 ? " late" : ""}" data-sgopen="${esc(it.id)}" style="--c:${segUrgC(it)}">${icon(c.n < 0 ? "alarm-clock" : "bell-ring")}<b>${esc(c.t)}</b><span>${esc(it.name)}</span>${icon("chevron-right")}</button></li>`; }).join("")}</ul>` : ""}
       <div class="sgmysts">${stat("late", late.length, `atrasada${late.length === 1 ? "" : "s"}`, "alarm-clock")}${stat("week", week.length, "para esta semana", "calendar-clock")}${stat("live", live.length, "en curso", "play")}${stat("nod", nodate.length, "sin fecha de entrega", "calendar-x")}</div></section>
     ${live.length ? "" : `<div class="sgempty">${icon("party-popper")}<span>No tenés tareas en curso. ¡Todo al día!</span></div>`}
     ${sec("late", "alarm-clock", "Atrasadas", "resolvelas primero", late)}
@@ -18335,7 +18354,7 @@ const segSituHtml = it => { const x = segLastMsg(it);
   return x ? `<span class="sgsit" style="--nc:${segNameC(x.l.by)}">${icon("message-circle")}<span><b>${esc(segShort(x.l.by) || "—")} · ${x.l.d === TODAY ? "hoy" : segFD(x.l.d).slice(0, 5)}:</b> ${esc(x.text || "mandó una imagen")}</span></span>`
     : ""; }; // sin avances escritos: la situación la dice la próxima acción (abajo)
 // Una tarea pendiente en texto: qué es, en qué etapa está y su situación (el último avance); tocarla abre la ficha.
-const segPendLi = it => `<li><button type="button" class="sgpli" data-sgopen="${esc(it.id)}" style="--c:${segStC(it.st)}"><span class="sgpl1"><b>${esc(it.name)}</b>${segStPill(it.st, it.hold)}${segCountTag(it)}</span>${segSituHtml(it)}<span class="sgpl3">${icon("flag")}<span>${esc(it.next || "Sin próxima acción")}</span>${(it.resp || []).length ? `<em>· ${esc(it.resp.join(", "))}</em>` : ""}</span></button></li>`;
+const segPendLi = it => `<li><button type="button" class="sgpli" data-sgopen="${esc(it.id)}" style="--c:${segStC(it.st)}"><span class="sgpl1"><b>${esc(it.name)}</b>${segStPill(it.st, it.hold)}${segCountTag(it)}</span>${segSituHtml(it)}<span class="sgpl3">${icon("flag")}<span>${esc(it.next || "Sin próxima acción")}</span>${(it.resp || []).length ? `<em>· ${esc(it.resp.map(segFull).join(", "))}</em>` : ""}</span></button></li>`;
 // v382 · Tareas en filas largas: código y columna · nombre · situación (último avance y próxima acción) · etapa, entrega y responsables.
 function segCard(it, omitResp){ // omitResp: agrupadas por responsables, el grupo ya los dice
   const c = it.hold ? SEG_HOLD[it.hold][2] : segStC(it.st);
@@ -18371,7 +18390,7 @@ function segIniciativas(){
   const fil = segUI.q || segUI.col || segUI.resp || segUI.st || segUI.prio || segUI.mine || segUI.unconf;
   const pool = (() => { const st = segUI.st; segUI.st = ""; const r = segFilter(all); segUI.st = st; return r; })(); // cuántas hay en cada etapa con los demás filtros
   const chip = (k, l, ic, c, n) => { const on = segUI.st === k; return `<button type="button" class="${on ? "on" : ""}${n ? "" : " zero"}" style="--c:${c}" data-sgpst="${on ? "" : k}" aria-pressed="${on}" title="${on ? "Ver todas" : `Ver solo: ${esc(l)}`}">${icon(ic)}<span>${esc(l)}</span><em>${n}</em></button>`; };
-  const act = [segUI.col ? ["col", "Columna", segCol(segUI.col)[2]] : null, segUI.st ? ["st", "Etapa", SEG_HOLD[segUI.st] ? SEG_HOLD[segUI.st][0] : segSt(segUI.st)[1]] : null, segUI.resp ? ["resp", "Responsable", segUI.resp] : null,
+  const act = [segUI.col ? ["col", "Columna", segCol(segUI.col)[2]] : null, segUI.st ? ["st", "Etapa", SEG_HOLD[segUI.st] ? SEG_HOLD[segUI.st][0] : segSt(segUI.st)[1]] : null, segUI.resp ? ["resp", "Responsable", segFull(segUI.resp)] : null,
     segUI.prio ? ["prio", "Prioridad", segUI.prio] : null, segUI.mine ? ["mine", "", "Mías"] : null, segUI.unconf ? ["unconf", "", "Etapa a confirmar"] : null].filter(Boolean);
   return `<section class="sgsec sgtool">
       <div class="sgfrow"><label class="sgsearch">${icon("search")}<input type="search" data-sgq value="${esc(segUI.q)}" placeholder="Buscar tarea, responsable o palabra…" aria-label="Buscar tarea, responsable o palabra" autocomplete="off"></label>
@@ -18383,7 +18402,7 @@ function segIniciativas(){
       <div class="sgfrow"><div class="sgseg" role="group" aria-label="Agrupar"><span class="sgsegl">Agrupar</span>${[["resp", "Responsables", "users"], ["col", "Columna", "layers"], ["st", "Etapa", "route"], ["none", "Sin agrupar", "layout-grid"]].map(([k, l, ic]) => `<button type="button" class="${segUI.group === k ? "on" : ""}" data-sggroup="${k}" aria-pressed="${segUI.group === k}" title="Agrupar por ${esc(l.toLowerCase())}">${icon(ic)}<span>${esc(l)}</span></button>`).join("")}</div>
         <div class="sgsels">
           <label title="Columna">${icon("layers")}<select class="base" data-sgf="col" aria-label="Columna">${opt("", "Todas las columnas", segUI.col)}${SEG_COLS.map(([k, l, s]) => opt(k, s, segUI.col)).join("")}</select></label>
-          <label title="Responsable">${icon("user")}<select class="base" data-sgf="resp" aria-label="Responsable">${opt("", "Todos", segUI.resp)}${segRespAll().map(r => opt(r, r, segUI.resp)).join("")}</select></label>
+          <label title="Responsable">${icon("user")}<select class="base" data-sgf="resp" aria-label="Responsable">${opt("", "Todos", segUI.resp)}${segRespAll().map(r => opt(r, segFull(r), segUI.resp)).join("")}</select></label>
           <label title="Prioridad">${icon("flame")}<select class="base" data-sgf="prio" aria-label="Prioridad">${opt("", "Todas", segUI.prio)}${SEG_PRIO.map(([p]) => opt(p, p, segUI.prio)).join("")}</select></label>
           <label title="Ordenar">${icon("list-ordered")}<select class="base" data-sgf="sort" aria-label="Ordenar">${[["id", "Código"], ["end", "Fecha de entrega"], ["prio", "Prioridad"], ["st", "Etapa"], ["last", "Último avance"]].map(([k, l]) => opt(k, l, segUI.sort)).join("")}</select></label>
           <button type="button" class="chip solo${segUI.mine ? " on" : ""}" data-sgmine aria-pressed="${segUI.mine}">${icon("user")} Mías</button>${fil ? `<button type="button" class="sglink" data-sgclear>${icon("eraser")} Limpiar</button>` : ""}</div></div></div>` : ""}</section>
@@ -18520,7 +18539,7 @@ function segItemForm(){
         <label class="oflab">Cadena<select class="base" name="chain"><option value="">—</option>${SEG_CHAINS.map(c => `<option ${v("chain", "") === c ? "selected" : ""}>${c}</option>`).join("")}</select></label>
         <label class="oflab">Fuente<select class="base" name="src">${SEG_SRC.map(s => `<option ${v("src", "Reunión") === s ? "selected" : ""}>${s}</option>`).join("")}</select></label>
         <label class="oflab">Solicitante (área o persona)<input class="base" name="req" maxlength="60" value="${esc(v("req", ""))}" placeholder="Ej.: Comercial, gerente de local"></label></div>
-      <fieldset class="sgfs"><legend>Responsable</legend><div class="sgcks">${[...SEG_RESP, ...SEG_RESP_X].map(r => chk("resp", r, resp.has(r))).join("")}</div>
+      <fieldset class="sgfs"><legend>Responsable</legend><div class="sgcks">${[...SEG_RESP, ...SEG_RESP_X].map(r => chk("resp", r, resp.has(r), segFull(r))).join("")}</div>
         <label class="oflab">Otros (separados por coma)<input class="base" name="respx" maxlength="80" value="${esc(segDv(f, "respx", others(resp, [...SEG_RESP, ...SEG_RESP_X])))}"></label></fieldset>
       <label class="oflab">Próxima acción<textarea class="base" name="next" rows="2" maxlength="400">${esc(v("next", ""))}</textarea></label>
       <details class="sgdet2"${it && (it.goal || it.evid || (it.ext || []).length || (it.collab || []).length) ? " open" : ""}><summary>Más datos (objetivo, coordina con, áreas, evidencia)</summary>
@@ -18563,7 +18582,7 @@ function segItemSubmit(form){
 // apareciendo) y los equipos completos de CM y de Diseño gráfico (se tilda el grupo, con los nombres de quienes lo forman).
 const SEG_TEAMS = [["Equipo de CM", "CM", "megaphone"], ["Equipo de Diseño gráfico", "Diseñador", "palette"]];
 const segTeamWho = n => { const t = SEG_TEAMS.find(x => x[0] === n); return t ? PEOPLE.filter(p => p.active !== false && p.role === t[1]).map(p => segShort(p.name)) : []; };
-const segWhoChips = who => (who || []).map(w => { const W = segTeamWho(w); return `<span class="sgwho${W.length ? " team" : ""}"${W.length ? ` title="${esc(W.join(", "))}"` : ""}>${W.length ? icon(SEG_TEAMS.find(x => x[0] === w)[2]) : ""}${esc(w)}</span>`; }).join("");
+const segWhoChips = who => (who || []).map(w => { const W = segTeamWho(w); return `<span class="sgwho${W.length ? " team" : ""}"${W.length ? ` title="${esc(W.join(", "))}"` : ""}>${W.length ? icon(SEG_TEAMS.find(x => x[0] === w)[2]) : ""}${esc(segFull(w))}</span>`; }).join("");
 function segMeetForm(){
   const fm = segUI.mform, m = fm.mode === "edit" ? segMeet(fm.id) : null, f = "mt";
   const who = new Set(segDv(f, "who", m ? m.who || [] : [])), people = SEG_RESP.filter(r => r !== "Fede" || who.has(r)), base = [...people, ...SEG_TEAMS.map(t => t[0])];
@@ -18572,7 +18591,7 @@ function segMeetForm(){
     <div class="sgfgrid"><label class="oflab">Fecha<input class="base" type="date" name="date" required value="${esc(segDv(f, "date", m ? m.date : fm.date || TODAY))}"></label>
       <label class="oflab sgwide">Título<input class="base" name="title" maxlength="80" value="${esc(segDv(f, "title", m ? m.title : "Reunión de procesos de Marketing"))}"></label>
       <label class="oflab">Próxima reunión<input class="base" type="date" name="nextDate" value="${esc(segDv(f, "nextDate", m ? m.nextDate || "" : ""))}"></label></div>
-    <fieldset class="sgfs"><legend>Participantes</legend><div class="sgcks">${people.map(r => `<label class="sgck"><input type="checkbox" name="who" value="${esc(r)}" ${who.has(r) ? "checked" : ""}><span>${esc(r)}</span></label>`).join("")}</div>
+    <fieldset class="sgfs"><legend>Participantes</legend><div class="sgcks">${people.map(r => `<label class="sgck"><input type="checkbox" name="who" value="${esc(r)}" ${who.has(r) ? "checked" : ""}><span>${esc(segFull(r))}</span></label>`).join("")}</div>
       <div class="sgcks sgteams">${SEG_TEAMS.map(([n, , ic]) => { const W = segTeamWho(n); return `<label class="sgck sgteam"><input type="checkbox" name="who" value="${esc(n)}" ${who.has(n) ? "checked" : ""}><span>${icon(ic)}<b>${esc(n)}</b>${W.length ? `<small>${esc(W.join(", "))}</small>` : ""}</span></label>`; }).join("")}</div>
       <label class="oflab">Otros (separados por coma)<input class="base" name="whox" maxlength="120" value="${esc(segDv(f, "whox", [...who].filter(x => !base.includes(x)).join(", ")))}" placeholder="Ej.: Romis, Finanzas"></label></fieldset>
     <label class="oflab">Notas generales<textarea class="base" name="notes" rows="3" maxlength="2000" placeholder="Temas generales, decisiones, acuerdos…">${esc(segDv(f, "notes", m ? m.notes || "" : ""))}</textarea></label>
@@ -18630,7 +18649,7 @@ function segMeetCard(m){
   const pl = (n, a, b) => `${n} ${n === 1 ? a : b}`;
   const S = [P.follow.length ? `se revisaron ${rev} de ${pl(P.follow.length, "tarea", "tareas")}` : "", P.news.length ? pl(P.news.length, "tarea nueva", "tareas nuevas") : "", tem ? pl(tem, "tema anotado", "temas anotados") : "", inf ? pl(inf, "informe", "informes") : "", nR ? pl(nR, "punto resuelto", "puntos resueltos") : ""].filter(Boolean).join(" · ");
   return `<button type="button" class="sgmcard" data-sggomeet="${esc(m.id)}">${segDateBlk(m.date)}
-    <span class="sgmbody"><b>${esc(m.title || "Reunión")}${m.date === TODAY ? ` <em class="sgtoday">hoy</em>` : ""}</b><small>${esc(segLong(m.date))}${m.who?.length ? " · " + esc(m.who.join(", ")) : ""}</small>
+    <span class="sgmbody"><b>${esc(m.title || "Reunión")}${m.date === TODAY ? ` <em class="sgtoday">hoy</em>` : ""}</b><small>${esc(segLong(m.date))}${m.who?.length ? " · " + esc(m.who.map(segFull).join(", ")) : ""}</small>
       <span class="sgmsum">${icon("notebook-pen")}<span><b>Resumen:</b> ${S ? esc(S.charAt(0).toUpperCase() + S.slice(1)) + "." : "todavía sin movimientos."}</span></span>
       ${m.notes ? `<span class="sgmnote">${esc(m.notes.slice(0, 260))}</span>` : ""}</span>${icon("chevron-right")}</button>`;
 }
@@ -18794,10 +18813,10 @@ function segCalEv(x){
 // Cuenta regresiva grande (días que faltan), para las listas de entregas.
 const segCdBig = it => { const c = segCount(it); if (!c) return ""; const n = c.n;
   return `<span class="sgcdbig" style="--c:${segUrgC(it)}">${n < 0 ? `<b>${-n}</b><small>día${n === -1 ? "" : "s"} tarde</small>` : n === 0 ? `<b>Hoy</b><small>entrega</small>` : `<b>${n}</b><small>día${n === 1 ? "" : "s"}</small>`}</span>`; };
-const segDueList = L => `<ul class="sgduel2">${L.map(it => `<li><button type="button" class="sglinkb" data-sgopen="${esc(it.id)}">${segCdBig(it)}<span class="sgdn"><b>${esc(it.name)}</b><small>Entrega ${esc(segLong(segEnd(it)))} · ${esc(it.hold ? SEG_HOLD[it.hold][0] : segSt(it.st)[1])}${(it.resp || []).length ? " · " + esc(it.resp.join(", ")) : ""}</small></span>${icon("chevron-right")}</button></li>`).join("")}</ul>`;
+const segDueList = L => `<ul class="sgduel2">${L.map(it => `<li><button type="button" class="sglinkb" data-sgopen="${esc(it.id)}">${segCdBig(it)}<span class="sgdn"><b>${esc(it.name)}</b><small>Entrega ${esc(segLong(segEnd(it)))} · ${esc(it.hold ? SEG_HOLD[it.hold][0] : segSt(it.st)[1])}${(it.resp || []).length ? " · " + esc(it.resp.map(segFull).join(", ")) : ""}</small></span>${icon("chevron-right")}</button></li>`).join("")}</ul>`;
 function segCalDay(d, ev, meetsBy){
   const E = ev.get(d) || [], ms = (meetsBy.get(d) || []), ends = E.filter(x => x.t === "end"), starts = E.filter(x => x.t === "start");
-  const row = (x, lbl) => { const it = x.it; return `<li><button type="button" class="sglinkb" data-sgopen="${esc(it.id)}"><span class="sgdn"><b>${esc(it.name)}</b><small>${lbl} · ${esc(it.hold ? SEG_HOLD[it.hold][0] : segSt(it.st)[1])}${(it.resp || []).length ? " · " + esc(it.resp.join(", ")) : ""}</small></span></button>${x.t === "end" ? (it.st === "fin" ? segStPill("fin") : segCountTag(it)) : ""}</li>`; };
+  const row = (x, lbl) => { const it = x.it; return `<li><button type="button" class="sglinkb" data-sgopen="${esc(it.id)}"><span class="sgdn"><b>${esc(it.name)}</b><small>${lbl} · ${esc(it.hold ? SEG_HOLD[it.hold][0] : segSt(it.st)[1])}${(it.resp || []).length ? " · " + esc(it.resp.map(segFull).join(", ")) : ""}</small></span></button>${x.t === "end" ? (it.st === "fin" ? segStPill("fin") : segCountTag(it)) : ""}</li>`; };
   return `<section class="sgsec sgcalday" id="sgCalDay"><div class="sghrow"><h3 class="sgh">${icon("calendar-days")} ${esc(segLong(d))}${d === TODAY ? " <span>hoy</span>" : ""}</h3><button type="button" class="btn sm sgib" data-sgcald="" aria-label="Cerrar el día">${icon("x")}</button></div>
     ${ms.length ? `<ul class="sgduel">${ms.map(m => `<li><button type="button" class="sglinkb" ${m.id ? `data-sggomeet="${esc(m.id)}"` : "disabled"}><span class="sgcmeet">${icon("users")}</span><span class="sgdn"><b>${esc(m.next ? "Próxima reunión" : m.title || "Reunión")}</b></span></button></li>`).join("")}</ul>` : ""}
     ${ends.length ? `<h4 class="sgcalh4">${icon("flag")} Entregas <em class="sgn">${ends.length}</em></h4><ul class="sgduel">${ends.map(x => row(x, "Entrega")).join("")}</ul>` : ""}
@@ -18876,7 +18895,7 @@ function segResumen(){
   const kpi = (ic, v, l, sub, cls) => `<div class="sgkp${cls ? " " + cls : ""}">${icon(ic)}<b>${v}</b><span>${l}</span>${sub ? `<small>${sub}</small>` : ""}</div>`;
   const max = Math.max(1, ...P.per.map(x => x.fin)), onp = P.withEnd.length ? Math.round(P.onTime / P.withEnd.length * 100) : null, AIC = { ok:"circle-check", warn:"triangle-alert", bad:"alarm-clock", info:"info" };
   const pRow = ([r, L]) => { const C = P.closed.filter(x => (x.it.resp || []).includes(r)), E = C.filter(x => segEnd(x.it)), on = E.filter(x => x.d <= segEnd(x.it)).length, avg = C.length ? Math.round(C.reduce((a, x) => a + P.dd(x), 0) / C.length) : null;
-    return `<tr><td><button type="button" class="sglink" data-sgresp="${esc(r)}">${esc(r)}</button></td><td class="r">${L.filter(segOpen).length}</td><td class="r">${C.length}</td><td class="r">${E.length ? Math.round(on / E.length * 100) + " %" : "—"}</td><td class="r${L.filter(segLate).length ? " late" : ""}">${L.filter(segLate).length}</td><td class="r">${avg === null ? "—" : avg}</td></tr>`; };
+    return `<tr><td><button type="button" class="sglink" data-sgresp="${esc(r)}">${esc(segFull(r))}</button></td><td class="r">${L.filter(segOpen).length}</td><td class="r">${C.length}</td><td class="r">${E.length ? Math.round(on / E.length * 100) + " %" : "—"}</td><td class="r${L.filter(segLate).length ? " late" : ""}">${L.filter(segLate).length}</td><td class="r">${avg === null ? "—" : avg}</td></tr>`; };
   return `<section class="sgsec sgres1"><div class="sghrow"><div><h2 class="sgh">${icon("trending-up")} Resultados del área</h2><p class="sgmuted">Cómo avanza el trabajo del equipo de Marketing hacia sus objetivos: lo que se cierra, cuánto tarda y qué conviene empujar.</p></div>
         <button type="button" class="btn" data-sgxls title="Descargar en Excel todo el panel, con estos resultados">${icon("file-spreadsheet")} Descargar Excel</button></div>
       <div class="sgkps">${kpi("circle-check", cur.fin, `tareas cerradas en ${segMName(cur.k)}`, `${d > 0 ? "▲ " + d + " más" : d < 0 ? "▼ " + -d + " menos" : "igual"} que en ${segMName(prev.k)}`, d > 0 ? "up" : d < 0 ? "down" : "")}
@@ -18923,6 +18942,11 @@ function segComo(){
       <p class="sglead">Este panel reúne en un solo lugar lo que el equipo de Marketing se propone en cada reunión: <b>tareas, minutas, pedidos y puntos a resolver</b>. Cada proceso tiene un responsable, una fecha y un cierre, para avanzar juntos, con orden y a la vista de todos, hacia los objetivos del área.</p>
       <div class="sgpill4">${PILLARS.map(([ic, t, d]) => `<div class="sgpill"><span class="sgpilli">${icon(ic)}</span><b>${t}</b><span>${d}</span></div>`).join("")}</div>
       <p class="sgquote">${icon("sparkles")}<span>Un equipo que cierra lo que empieza gana tiempo, confianza y resultados. <b>Cada proceso finalizado es un paso más hacia nuestros objetivos.</b></span></p></section>
+    <section class="sgsec"><h3 class="sgh">${icon("share-2")} Flujo general de trabajo</h3><div class="sgflow">
+      <div class="sgfrow4">${[["mail", "Correos"], ["users", "Reuniones, audios y anotaciones"], ["server", "Datos del sistema"], ["clipboard-list", "Formularios y prioridades comerciales"]].map(([ic, t]) => node(ic, t)).join("")}</div>${arrow}
+      ${node("table-2", "Matriz central de Marketing", "este panel: registro, clasificación y prioridad", "main")}${arrow}
+      <div class="sgfrow4">${SEG_COLS.map(([k, l, , ic]) => node(ic, esc(l))).join("")}</div>${arrow}
+      ${node("play", "Ejecución y validación")}${arrow}${node("chart-column", "Medición y resultados", "", "main")}</div></section>
     <section class="sgsec"><h2 class="sgh">${icon("route")} La barra del proceso <em class="sgn">4 etapas</em></h2>
       <ol class="sgsteps" style="--g:${SEG_GRAD}">${SEG_ST.map(([k, l, ic, d, c], i) => `<li style="--c:${c}"><span class="sgpci">${icon(ic)}</span><b>${i + 1}. ${esc(l)}</b><span>${esc(d)}</span></li>`).join("")}</ol>
       <div class="sgholds sgholdsc">${Object.values(SEG_HOLD).map(([l, ic, c, d]) => `<div class="sghc" style="--c:${c}">${icon(ic)}<span><b>${esc(l)}</b> · ${esc(d)}</span></div>`).join("")}</div></section>
@@ -18930,13 +18954,8 @@ function segComo(){
       <section class="sgsec"><h3 class="sgh">${icon("compass")} Cómo se usa</h3><ol class="sghow">${HOW.map(([ic, t, d]) => `<li><span class="sghowi">${icon(ic)}</span><div><b>${t}</b><span>${d}</span></div></li>`).join("")}</ol></section>
       <section class="sgsec"><h3 class="sgh">${icon("building-2")} Estructura del departamento</h3><div class="sgstruct">${SEG_COLS.map(([k, l, , ic, d], i) => `<div class="sgsc"><span class="sgcoli">${icon(ic)}</span><div><b>${i + 1}. ${esc(l)}</b><p>${esc(d)}</p></div></div>`).join("")}</div>
         <p class="sgmuted sgnote2"><b>Redes sociales</b> es una subcategoría de Campañas y estrategias, con operación propia y vínculo con las otras columnas. <b>Tareas administrativas</b> (presupuestos, compras, pagos, documentación) tiene como referente a Marlene.</p></section></div>
-    <section class="sgsec"><h3 class="sgh">${icon("share-2")} Flujo general de trabajo</h3><div class="sgflow">
-      <div class="sgfrow4">${[["mail", "Correos"], ["users", "Reuniones, audios y anotaciones"], ["server", "Datos del sistema"], ["clipboard-list", "Formularios y prioridades comerciales"]].map(([ic, t]) => node(ic, t)).join("")}</div>${arrow}
-      ${node("table-2", "Matriz central de Marketing", "este panel: registro, clasificación y prioridad", "main")}${arrow}
-      <div class="sgfrow4">${SEG_COLS.map(([k, l, , ic]) => node(ic, esc(l))).join("")}</div>${arrow}
-      ${node("play", "Ejecución y validación")}${arrow}${node("chart-column", "Medición y resultados", "", "main")}</div></section>
     <div class="sgtwo">
-      <section class="sgsec"><h3 class="sgh">${icon("users")} Quiénes participan</h3><ul class="sgdl">${WHO.map(([n, d]) => `<li><span class="sgav${segUser(n) ? "" : " nouser"}" aria-hidden="true">${n[0]}</span><div><b>${n}</b><span>${d}</span></div><em class="${segUser(n) ? "sgok" : "sgno"}" title="${segUser(n) ? "Tiene usuario" : "Todavía sin usuario"}">${icon(segUser(n) ? "user-check" : "user-x")}</em></li>`).join("")}</ul>
+      <section class="sgsec"><h3 class="sgh">${icon("users")} Quiénes participan</h3><ul class="sgdl">${WHO.map(([n, d]) => `<li><span class="sgav${segUser(n) ? "" : " nouser"}" aria-hidden="true">${n[0]}</span><div><b>${esc(segFull(n))}</b><span>${d}</span></div><em class="${segUser(n) ? "sgok" : "sgno"}" title="${segUser(n) ? "Tiene usuario" : "Todavía sin usuario"}">${icon(segUser(n) ? "user-check" : "user-x")}</em></li>`).join("")}</ul>
         <details class="sgdet2"><summary>Otros participantes</summary><ul class="sgdl">${OTHERS.map(([n, d]) => `<li><div><b>${n}</b><span>${d}</span></div></li>`).join("")}</ul></details></section>
       <section class="sgsec"><h3 class="sgh">${icon("shield-check")} Perfiles propuestos</h3><ul class="sgdl">${PROFILES.map(([ic, a, b]) => `<li><span class="sghowi">${icon(ic)}</span><div><b>${a}</b><span>${b}</span></div></li>`).join("")}</ul>
         <p class="sgmuted sgsmall">Son una propuesta, no roles asignados. Hoy, quien tiene acceso carga reuniones, tareas y avances; borrar y decidir quién lo ve queda para Admin total (Fede y Alyssa).</p>
@@ -18956,7 +18975,7 @@ function segAccessPanel(){
 const segStName = it => it.hold ? SEG_HOLD[it.hold][0] : segSt(it.st)[1];
 function segRows(list){
   return [["ID", "Tarea", "Columna", "Subcategoría", "Cadena", "Responsable", "Prioridad", "Etapa", "Etapa confirmada", "Inicio", "Entrega", "Cuenta regresiva", "Próxima acción", "Coordina con", "Áreas colaboradoras", "Objetivo", "Evidencia / resultado", "Fuente", "Fecha de alta", "Último avance"],
-    ...list.map(it => [it.id, it.name, segCol(it.col)[2], it.sub || "", it.chain || "", (it.resp || []).join(" y "), it.prio || "", segStName(it), it.conf ? "Sí" : "No (propuesta)", segFD(it.start || ""), segFD(segEnd(it)), segCount(it)?.t || "", it.next || "", (it.ext || []).join(", "), (it.collab || []).map(k => segCol(k)[2]).join(", "), it.goal || "", it.evid || "", it.src || "", segFD(it.since || ""), segFD(segLastD(it))])];
+    ...list.map(it => [it.id, it.name, segCol(it.col)[2], it.sub || "", it.chain || "", (it.resp || []).map(segFull).join(" y "), it.prio || "", segStName(it), it.conf ? "Sí" : "No (propuesta)", segFD(it.start || ""), segFD(segEnd(it)), segCount(it)?.t || "", it.next || "", (it.ext || []).join(", "), (it.collab || []).map(k => segCol(k)[2]).join(", "), it.goal || "", it.evid || "", it.src || "", segFD(it.since || ""), segFD(segLastD(it))])];
 }
 // ---- v386 · Informe de cada reunión, en PDF y en Excel (con el formato del panel de iniciativas de la muestra) ----
 // Las tareas de la reunión (las que venían, las nuevas y las resueltas en ella) por columna; los temas, minutas y pedidos con cómo quedaron;
@@ -18978,7 +18997,7 @@ function segMeetXls(m){
   const stOf = it => segStAt(it, m.date), cnt = (L, f) => L.filter(f).length, T = D.tasks;
   const panel = { name:"Panel de tareas", freeze:1, ht:{ 0:31 }, cols:[12, 35, 20, 27, 23, 15, 21, 75, 18, 19],
     rows:[H(["ID", "Tarea", "Columna", "Subcategoría", "Responsable", "Prioridad", "Estado", "Próxima acción / situación", "Fuente", "Fecha de reunión"]),
-      ...T.map(it => [c4(it.id), c4(it.name), { v:segCol(it.col)[2], s:colS[it.col] || 4 }, c4(it.sub || ""), c4((it.resp || []).join(" y ")), { v:it.prio || "", s:prS[it.prio] || 4 }, c4(stOf(it)), c4(segSituAt(it, m)), c4(it.src || "Reunión"), c4(segFD(m.date))])] };
+      ...T.map(it => [c4(it.id), c4(it.name), { v:segCol(it.col)[2], s:colS[it.col] || 4 }, c4(it.sub || ""), c4((it.resp || []).map(segFull).join(" y ")), { v:it.prio || "", s:prS[it.prio] || 4 }, c4(stOf(it)), c4(segSituAt(it, m)), c4(it.src || "Reunión"), c4(segFD(m.date))])] };
   const temas = { name:"Temas de la reunión", freeze:1, ht:{ 0:31 }, cols:[7, 14, 60, 32, 16, 60, 16, 12],
     rows:[H(["N.º", "Tipo", "Tema, minuta o pedido", "Tarea relacionada", "Cómo quedó", "Qué pasó", "Anotado por", "Fecha"]),
       ...[...D.tem, ...D.inf].map((a, i) => { const it = a.ref ? segItem(a.ref) : null; return [c4(i + 1), c4(segTk(a)[0]), c4(a.t), c4(it ? it.name : ""), c4(a.kind === "info" ? "Registrado" : SEG_AGST[segAgSt(a)][0]), c4(segAgLast(a)?.t || ""), c4(segShort(a.by)), c4(segFD(a.at || ""))]; })] };
@@ -18986,7 +19005,7 @@ function segMeetXls(m){
   const resumen = { name:"Resumen ejecutivo", ht:{ 0:31 }, cols:[70, 16, 16, 16, 16],
     rows:[H(["Área", "Tareas", "Alta prioridad", "En proceso", "Finalizadas"]), ...SEG_COLS.map(([k, , sh]) => row(sh, T.filter(it => it.col === k), 0)), row("TOTAL", T, 11),
       [], [{ v:"Datos de la reunión", s:1 }], [`Reunión: ${m.title || "Reunión de procesos de Marketing"}`], [`Fecha: ${segLong(m.date)}`],
-      ...(m.who?.length ? [[`Participantes: ${m.who.join(", ")}`]] : []), ...(m.nextDate ? [[`Próxima reunión: ${segLong(m.nextDate)}`]] : []),
+      ...(m.who?.length ? [[`Participantes: ${m.who.map(segFull).join(", ")}`]] : []), ...(m.nextDate ? [[`Próxima reunión: ${segLong(m.nextDate)}`]] : []),
       [`Temas, minutas y pedidos: ${D.tem.length} (${D.tem.filter(a => !a.done).length} por resolver, ${D.resT.length} cerrados en esta reunión) · Informes: ${D.inf.length}`],
       [`Tareas: ${D.follow.length} en seguimiento (${D.rev} revisadas), ${D.news.length} nuevas y ${D.res.length} resueltas o canceladas en esta reunión`],
       ...(m.notes ? [[{ v:`Notas: ${m.notes}`, s:2 }]] : []),
@@ -19000,7 +19019,7 @@ function segMeetPdf(m){
   const D = segMeetData(m), e = esc, colC = { lv:"#DCEAFE", ec:"#DEF4E9", cy:"#FFF0DC", ad:"#EDE9FE" }, prC = { Alta:"#FFE2DE", Media:"#FFF5D7" }, stOf = it => segStAt(it, m.date), T = D.tasks;
   const k = (v, l) => `<div class="k"><b>${v}</b><span>${l}</span></div>`, cnt = (L, f) => L.filter(f).length;
   const tem = D.tem.map((a, i) => { const it = a.ref ? segItem(a.ref) : null, st = SEG_AGST[segAgSt(a)]; return `<tr><td class="n">${i + 1}</td><td>${e(a.t)}${it ? `<small>Tarea: ${e(it.name)}</small>` : ""}</td><td><span class="pill" style="border-color:${st[2]}">${e(st[0])}</span></td><td>${e(segAgLast(a)?.t || "")}</td></tr>`; }).join("");
-  const tasks = T.map(it => `<tr><td><b>${e(it.name)}</b><small>${e(it.id)}${it.sub ? " · " + e(it.sub) : ""}</small></td><td style="background:${colC[it.col] || "#fff"}">${e(segCol(it.col)[2])}</td><td>${e((it.resp || []).join(" y "))}</td><td class="nw"${prC[it.prio] ? ` style="background:${prC[it.prio]}"` : ""}>${e(it.prio || "")}</td><td class="nw">${e(stOf(it))}</td><td>${e(segSituAt(it, m)).replace(/\n/g, "<br>")}</td></tr>`).join("");
+  const tasks = T.map(it => `<tr><td><b>${e(it.name)}</b><small>${e(it.id)}${it.sub ? " · " + e(it.sub) : ""}</small></td><td style="background:${colC[it.col] || "#fff"}">${e(segCol(it.col)[2])}</td><td>${e((it.resp || []).map(segFull).join(" y "))}</td><td class="nw"${prC[it.prio] ? ` style="background:${prC[it.prio]}"` : ""}>${e(it.prio || "")}</td><td class="nw">${e(stOf(it))}</td><td>${e(segSituAt(it, m)).replace(/\n/g, "<br>")}</td></tr>`).join("");
   const sum = L => `<td class="r">${L.length}</td><td class="r">${cnt(L, it => it.prio === "Alta")}</td><td class="r">${cnt(L, it => stOf(it) === "En proceso")}</td><td class="r">${cnt(L, it => stOf(it) === "Finalizado")}</td>`;
   w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${e(segMeetFile(m))}</title><style>
     @page{size:A4 landscape;margin:12mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box}
@@ -19016,7 +19035,7 @@ function segMeetPdf(m){
     ul{margin:0;padding-left:18px}li{margin:2px 0}.foot{margin-top:18px;color:#64748b;font-size:10.5px;border-top:1px solid #e2e8f0;padding-top:6px}@media print{body{margin:0}}
   </style></head><body>
     <div class="top"><div><h1>Informe de reunión y seguimiento de procesos</h1><p class="sub">${e(m.title || "Reunión de procesos de Marketing")} · ${e(segLong(m.date))}</p></div><div class="brand">Panel Interactivo de Seguimiento de Marketing<br>Reuniones y seguimiento de procesos</div></div>
-    <div class="meta">${m.who?.length ? `<p><b>Participantes:</b> ${e(m.who.join(", "))}</p>` : ""}${m.nextDate ? `<p><b>Próxima reunión:</b> ${e(segLong(m.nextDate))}</p>` : ""}${m.notes ? `<div class="notes">${e(m.notes)}</div>` : ""}</div>
+    <div class="meta">${m.who?.length ? `<p><b>Participantes:</b> ${e(m.who.map(segFull).join(", "))}</p>` : ""}${m.nextDate ? `<p><b>Próxima reunión:</b> ${e(segLong(m.nextDate))}</p>` : ""}${m.notes ? `<div class="notes">${e(m.notes)}</div>` : ""}</div>
     <div class="ks">${k(D.tem.filter(a => !a.done).length, "temas por resolver")}${k(D.resT.length + D.res.length, "cerrados en esta reunión")}${k(T.filter(segOpen).length, "tareas en seguimiento")}${k(D.follow.length ? `${D.rev} de ${D.follow.length}` : "—", "tareas revisadas de antes")}${k(D.news.length, "tareas nuevas")}</div>
     <h2>Temas, minutas y pedidos</h2>${D.tem.length ? `<table><thead><tr><th>N.º</th><th>Tema, minuta o pedido</th><th>Cómo quedó</th><th>Qué pasó</th></tr></thead><tbody>${tem}</tbody></table>` : "<p>No hubo temas en esta reunión.</p>"}
     ${D.inf.length ? `<h2>Informes</h2><ul>${D.inf.map(a => `<li>${e(a.t)}</li>`).join("")}</ul>` : ""}
@@ -19268,7 +19287,7 @@ function renderNav(){
   const ts = document.getElementById("topSt"); if (ts && viewer) ts.innerHTML = statusChip("top") + (chatUI.status === "top" ? statusMenu() : ""); // compu y tablet: el estado va arriba, al lado de la hora
   const mc = document.getElementById("msgCount"), nm = chatUnreadTotal(); if (mc){ mc.hidden = !nm; mc.textContent = nm; }
   const groups = [...new Set(SECTIONS.map(s => s.g))];
-  const segBtn = can("seguimiento") ? `<a href="#seguimiento" data-page="seguimiento" class="segnav${page === "seguimiento" ? " on" : ""}" title="Panel Interactivo de Seguimiento de Marketing">${icon("chart-gantt")}<span><b>Panel de Seguimiento</b><small>Reuniones y seguimiento de procesos</small></span></a>` : ""; // v375: sección destacada, arriba de todo
+  const segBtn = can("seguimiento") ? `<a href="#seguimiento" data-page="seguimiento" class="segnav${page === "seguimiento" ? " on" : ""}" title="Panel Interactivo de Seguimiento de Marketing">${icon("chart-gantt")}<span><b>Panel de Seguimiento</b><small>Reuniones y seguimiento de procesos</small></span>${(() => { const u = segUrgMine().length; return u ? `<em class="segnavb" title="${u} tarea${u === 1 ? "" : "s"} tuya${u === 1 ? "" : "s"} atrasada${u === 1 ? "" : "s"} o para entregar en 3 días o menos">${u}</em>` : ""; })()}</a>` : ""; // v375: sección destacada, arriba de todo
   $("#nav").innerHTML = segBtn + groups.map(g => {
     const items = SECTIONS.filter(s => s.g === g && can(s.k) && (!s.hide || (isRevisor() && s.k === "inbox")));
     if (!items.length) return "";
