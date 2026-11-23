@@ -1591,6 +1591,7 @@ body.stbox-on{overflow:hidden}
 .up{color:var(--good)!important} .down{color:var(--bad)!important} .warn{color:var(--warn)!important}
 .num{font-variant-numeric:tabular-nums}
 /* pills */
+.pillbtn{all:unset;cursor:pointer;display:inline-flex;border-radius:99px}.pillbtn:hover .pill{filter:brightness(1.12)}.pillbtn:focus-visible{outline:2px solid var(--accent,#22d3ee);outline-offset:2px}
 .pill{display:inline-flex;align-items:center;font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;white-space:nowrap;border:1px solid color-mix(in srgb,var(--c) 60%,white);background:color-mix(in srgb,var(--c) 90%,transparent);color:var(--t,#020617)}
 .brand{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;white-space:nowrap;color:#e2e8f0}
 .brand::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
@@ -5814,7 +5815,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v391";
+const APP_VER = "v392";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -8148,6 +8149,10 @@ const DG_GROUPS = [["pend", "Pendientes", "#ef4444", j => j.status === "Pendient
 const DG_SORTS = [["due", "Fecha límite"], ["req", "Fecha de pedido"], ["brand", "Marca"], ["requester", "Solicitante"], ["piece", "Tipo"], ["owner", "Responsable"], ["title", "Trabajo"]];
 let dgPanUI = { g:null }, dgTblUI = { sort:"due", dir:1 };
 const dgSortVal = (j, k) => k === "due" ? j.due || "" : k === "req" ? j.requestDate || "" : k === "brand" ? jobBrands(j).join(" + ") : k === "requester" ? j.requester || "" : k === "piece" ? cmPiece(j) : k === "owner" ? j.owner || "" : j.title || "";
+// v392 · En la tabla de Planificación, la etapa se cambia ahí mismo (el mismo menú del calendario: quien puede, con sus etapas;
+// Admin total también aprueba o pide cambios desde ahí). Quien no puede cambiarla la ve como siempre.
+const dgStageCell = j => { const t = pill(j.status, JOB_COLOR[j.status] || "#94a3b8");
+  return stageOptions("job", j).length ? `<button type="button" class="pillbtn" data-stagemenu="job:${esc(j.id)}" title="Etapa: ${esc(j.status)} · tocá para cambiarla" aria-label="Cambiar la etapa de ${esc(j.title)}">${t.replace(/<\/span>$/, " ▾</span>")}</button>` : t; };
 function dgTable(list){
   const { sort, dir } = dgTblUI, isDate = sort === "due" || sort === "req";
   const L = list.slice().sort((a, b) => dir * String(dgSortVal(a, sort)).localeCompare(String(dgSortVal(b, sort)), "es", { sensitivity:"base" }) || a.due.localeCompare(b.due));
@@ -8156,7 +8161,7 @@ function dgTable(list){
   return `<div class="dgtblbar"><label>Ordenar por <select class="base sm" data-dgsortsel>${DG_SORTS.map(([k, l]) => `<option value="${k}" ${k === sort ? "selected" : ""}>${l}</option>`).join("")}</select></label>
     <button type="button" class="btn sm" data-dgdir title="Dar vuelta el orden">${icon(dir > 0 ? "chevron-down" : "chevron-up")} ${dirTxt}</button><span class="note">${L.length} ${L.length === 1 ? "trabajo" : "trabajos"}</span></div>
   <div class="tw"><table class="dgtbl"><thead><tr>${th("title", "Trabajo")}${th("brand", "Marca")}${th("piece", "Tipo")}<th>Sección</th>${th("requester", "Solicitante")}${th("owner", "Responsable")}${th("req", "Pedido")}${th("due", "Fecha límite")}<th>Etapa</th></tr></thead><tbody>
-    ${L.map(j => `<tr><td><button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button>${partChip(j)}</td><td>${jobBrandTags(j)}</td><td>${jobPieceTag(j)}</td><td>${esc(DG_SEC[jobSection(j)] || "")}</td><td>${esc(j.requester || "—")}</td><td>${esc(crewOf(j.owner, j).join(" + ") || j.owner)}</td><td class="num">${j.requestDate ? dm(j.requestDate) : "—"}</td><td class="num">${dm(j.due)}</td><td>${pill(j.status, JOB_COLOR[j.status] || "#94a3b8")}</td></tr>`).join("") || `<tr><td colspan="9" class="empty">No hay trabajos en esta etapa.</td></tr>`}
+    ${L.map(j => `<tr><td><button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button>${partChip(j)}</td><td>${jobBrandTags(j)}</td><td>${jobPieceTag(j)}</td><td>${esc(DG_SEC[jobSection(j)] || "")}</td><td>${esc(j.requester || "—")}</td><td>${esc(crewOf(j.owner, j).join(" + ") || j.owner)}</td><td class="num">${j.requestDate ? dm(j.requestDate) : "—"}</td><td class="num">${dm(j.due)}</td><td>${dgStageCell(j)}</td></tr>`).join("") || `<tr><td colspan="9" class="empty">No hay trabajos en esta etapa.</td></tr>`}
   </tbody></table></div>`;
 }
 document.addEventListener("click", e => {
