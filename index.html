@@ -566,7 +566,7 @@ html.nomotion .picon{animation:none}
 .okbox{max-height:calc(100dvh - 32px);overflow:auto}.okbox .okcopy{display:flex;flex-direction:column;gap:8px}.okbox .okcpsheet[hidden]{display:none}
 .fixbox.okbox label.okpubon{flex-direction:row;align-items:flex-start;flex-wrap:wrap;gap:4px 8px;padding:10px 12px;border:1px solid var(--line-3);border-radius:12px;color:var(--ink)}.okbox label.okpubon input{width:auto;margin:2px 0 0}.okbox label.okpubon .note{flex-basis:100%;padding-left:24px}
 .fixbox.okbox label.okcpon{flex-direction:row;align-items:flex-start;flex-wrap:wrap;gap:4px 8px;padding:10px 12px;border:1px solid var(--line-3);border-radius:12px;color:var(--ink)}.okbox label.okcpon input{width:auto;margin:2px 0 0}.okbox label.okcpon .note{flex-basis:100%;padding-left:24px}.okbox .okcpsheet .rtedit{min-height:140px}
-.okbox .okpub[hidden]{display:none}.okbox .okcm{margin:0;display:flex;gap:6px;align-items:center;color:var(--muted)}
+.okbox .okpub[hidden]{display:none}.okbox .okotro{display:flex;flex-direction:column;gap:8px;margin-top:10px;padding:10px 12px;border:1px solid var(--line-3);border-radius:12px}.okbox .okotro[hidden]{display:none}.okbox .okcopy[hidden]{display:none}.jpub .otrolk{margin-top:8px}.okbox .okcm{margin:0;display:flex;gap:6px;align-items:center;color:var(--muted)}
 @media (max-width:520px){.okbox .okgrid{grid-template-columns:1fr}}
 .shhow{grid-column:1/-1;padding:12px 14px;border-radius:12px;border:1px solid color-mix(in srgb,#38bdf8 45%,transparent);background:color-mix(in srgb,#38bdf8 10%,transparent);font-size:14px}
 .shhow b.t{display:block;color:#fff;margin-bottom:6px}.shhow ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}.shhow kbd{font:600 12.5px ui-monospace,Menlo,Consolas,monospace;padding:1px 6px;border-radius:6px;border:1px solid var(--line-3);background:rgba(148,163,184,.12);color:#fff}
@@ -5187,15 +5187,24 @@ const PUB_FMTS = [["Post","Post (feed)"],["Carrusel","Carrusel"],["Reel","Reel"]
 const fmtList = f => Array.isArray(f) ? f : f === POST_HIST ? ["Post", "Historia"] : f ? [f] : [];
 // v357: el Canal de WhatsApp solo si alguna marca del pedido lo tiene (Delimarket no tiene); con varias marcas, dice cuáles.
 const canalFmts = (list, brands) => brands.some(brandHasCanal) ? list : (x => x.length ? x : ["Post"])(list.filter(f => f !== "Canal"));
-const fmtPick = (list, brands = []) => { const cb = brands.filter(brandHasCanal), lbl = (v, l) => v === "Canal" && cb.length < brands.length ? `${l} (solo ${cb.join(" y ")})` : l;
-  list = canalFmts(list, brands); return `<div class="okfmts" style="grid-column:1/-1"><span class="jll">¿Dónde se publica? * <span class="note">(podés elegir varios)</span></span><input type="hidden" id="okFmt" value="${esc(list.join("|"))}">
-  <div class="chips" role="group" aria-label="Dónde se publica">${PUB_FMTS.filter(([v]) => v !== POST_HIST && (v !== "Canal" || !brands.length || cb.length)).map(([v, l]) => `<button type="button" class="chip${list.includes(v) ? " on" : ""}" data-okfmt="${v}" data-l="${esc(lbl(v, l))}" aria-pressed="${list.includes(v)}">${list.includes(v) ? icon("check") + " " : ""}${esc(lbl(v, l))}</button>`).join("")}</div></div>`; };
+// v387 · “Otro”: el material aprobado no va (solo) a redes: se escribe qué se hace con él (ej.: enviarlo a alguien para que lo publique)
+// y se guarda el link (ruta de la compartida, Drive, el PDF del diseño…). A la CM le queda como actividad “Otro” ese día, con el link.
+const OK_OTRO = "Otro", OK_FMT_ORDER = () => [...PUB_FMTS.map(([x]) => x), OK_OTRO];
+const fmtPick = (list, brands = [], ot = {}) => { const cb = brands.filter(brandHasCanal), lbl = (v, l) => v === "Canal" && cb.length < brands.length ? `${l} (solo ${cb.join(" y ")})` : l;
+  const oto = list.includes(OK_OTRO); list = canalFmts(list.filter(f => f !== OK_OTRO), brands); if (oto) list = ot.only ? [OK_OTRO] : [...list, OK_OTRO];
+  return `<div class="okfmts" style="grid-column:1/-1"><span class="jll">¿Dónde se publica? * <span class="note">(podés elegir varios)</span></span><input type="hidden" id="okFmt" value="${esc(list.join("|"))}">
+  <div class="chips" role="group" aria-label="Dónde se publica">${[...PUB_FMTS.filter(([v]) => v !== POST_HIST && (v !== "Canal" || !brands.length || cb.length)), [OK_OTRO, "Otro"]].map(([v, l]) => `<button type="button" class="chip${list.includes(v) ? " on" : ""}" data-okfmt="${v}" data-l="${esc(lbl(v, l))}" aria-pressed="${list.includes(v)}">${list.includes(v) ? icon("check") + " " : ""}${esc(lbl(v, l))}</button>`).join("")}</div>
+  <div class="okotro"${oto ? "" : " hidden"}><label>Otro: ¿qué se hace con este material? *<input class="base" id="okOtroTxt" maxlength="200" value="${esc(ot.txt || "")}" placeholder="Ej.: enviar a Juan Pérez para que lo publique el viernes"></label>
+    <label>Link del material <span class="note">(ruta de la compartida, Drive o el PDF del diseño)</span><input class="base" id="okOtroLink" type="text" spellcheck="false" autocomplete="off" maxlength="300" value="${esc(ot.link || "")}" placeholder="Pegá la ruta \\\\retsvrfs01\\Marketing\\… o un link https://…"></label>
+    <p class="note" style="margin:0">${icon("list-todo")} Le queda a la CM como actividad “Otro” el día y la hora de arriba, con este texto y el link.</p></div></div>`; };
 document.addEventListener("click", e => { const b = e.target.closest("[data-okfmt]"); if (!b) return; e.preventDefault(); const h = document.getElementById("okFmt"); if (!h) return;
   const v = b.dataset.okfmt, cur = h.value.split("|").filter(Boolean), next = cur.includes(v) ? cur.filter(x => x !== v) : [...cur, v];
   if (!next.length) return toast("Elegí al menos un lugar.");
-  h.value = PUB_FMTS.map(([x]) => x).filter(x => next.includes(x)).join("|"); const on = next.includes(v); b.classList.toggle("on", on); b.setAttribute("aria-pressed", on);
+  h.value = OK_FMT_ORDER().filter(x => next.includes(x)).join("|"); const on = next.includes(v); b.classList.toggle("on", on); b.setAttribute("aria-pressed", on);
   b.innerHTML = (on ? icon("check") + " " : "") + esc(b.dataset.l || PUB_FMTS.find(([x]) => x === v)[1]); if (window.lucide) lucide.createIcons();
-  const n = document.querySelector(".okbox .oknet"); if (n) n.hidden = next.every(x => x === "Canal"); });
+  const n = document.querySelector(".okbox .oknet"); if (n) n.hidden = next.every(x => x === "Canal" || x === OK_OTRO);
+  const ot = document.querySelector(".okbox .okotro"); if (ot){ ot.hidden = !next.includes(OK_OTRO); if (v === OK_OTRO && on) document.getElementById("okOtroTxt")?.focus(); }
+  const cp = document.querySelector(".okbox .okcopy"); if (cp) cp.hidden = next.every(x => x === OK_OTRO); }); // v387: con solo “Otro” no hay publicación ni copy
 const pubFmtOf = j => /post \+ historia/i.test(j.piece) ? POST_HIST : /histori/i.test(j.piece) ? "Historia" : /carrusel/i.test(j.piece) ? "Carrusel" : /reel|video|animaci/i.test(j.piece) ? "Reel" : /whatsapp/i.test(j.piece) ? "Canal" : "Post";
 // Aprobar (Diseño gráfico y Gestión de Contenidos): quién aprobó (obligatorio) y la publicación para el CM: qué CM la sube
 // (en Contenidos, el mismo CM que la armó), qué día, en qué formato y red. Se carga sola en su calendario y le llega el aviso.
@@ -5373,10 +5382,11 @@ function approvePart(j, opts = {}){
   const last = partsDone(j), left = partsWait(j); // terminado: aprobadas todas, con el último envío
   (j.changes = j.changes || []).push({ date:TODAY, time:nowTime(), ok:true, part:nm, by:viewer.name, ...(by ? { okBy:by } : {}) });
   NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
-  let xs = [];
+  let xs = [], oa = null; const pf = fmtList(opts.fmt).filter(f => f !== OK_OTRO); // v387: “Otro” no es una publicación
   if (cm && opts.date){
     const rt = shareClean(q.share), pj = { ...j, title:q.auto && P.length === 1 ? j.title : `${j.title} · ${nm}`, pubs:[], pub:null, post:null, ...(rt ? { shares:[{ n:nm, p:rt }], share:rt } : {}) }; // v351: la ruta de esta parte
-    xs = makePub(pj, { ...opts, cm }); q.pubs = pj.pubs;
+    if (opts.otro){ oa = otroAct(j, { ...opts, cm }, pj.title, q.otro); q.otro = oa.id; }
+    if (pf.length){ xs = makePub(pj, { ...opts, fmt:pf, cm }); q.pubs = pj.pubs; }
     if (opts.copy) xs.forEach(p => copyConfSet(p, opts.copy));
     else if (opts.noCopy) xs.forEach(p => { if (!p.noCopy){ Object.assign(p, { noCopy:true, copyConf:false }); copyLogAdd(p, "none"); } });
     xs.forEach(p => notify({ to:cm, type:"pub", job:j.id, post:p.id, canal:!!p.channel }));
@@ -5385,7 +5395,7 @@ function approvePart(j, opts = {}){
   if (last){ j.status = "Aprobado"; if (!j.approved) j.approved = TODAY; if (!j.delivered) j.delivered = TODAY; if (by) j.approvedBy = by; notify({ to:j.owner, type:"approved", job:j.id }); }
   else { partsStatus(j); notify({ to:j.owner, type:"nota", job:j.id, who:viewer.name, text:`“${nm}” aprobada${by ? ` (aprobó ${firstName(by)})` : ""}.${partLastSent(j) ? "" : " Podés seguir mandando las próximas partes (o el Último envío)."}` }); }
   jobUI.form = null; render(); window.RMH?.flushNow?.();
-  toast(`“${nm}” aprobada${by ? ` por ${firstName(by)}` : ""}.${xs.length ? ` ${firstName(cm)} ya la puede subir: quedó en su calendario el ${dm(xs[0].date)}${xs.length > 1 ? ` (${xs.length} publicaciones)` : ""}.` : ""} ${last ? "Estaban todas: el pedido quedó Aprobado." : left.length ? `Falta aprobar: ${left.map(([x, k]) => `“${partName(x, k)}”`).join(", ")}.` : `${firstName(j.owner)} sigue con las próximas partes.`}`);
+  toast(`“${nm}” aprobada${by ? ` por ${firstName(by)}` : ""}.${xs.length ? ` ${firstName(cm)} ya la puede subir: quedó en su calendario el ${dm(xs[0].date)}${xs.length > 1 ? ` (${xs.length} publicaciones)` : ""}.` : ""}${oa ? ` “Otro” quedó como actividad de ${firstName(cm)} el ${dm(oa.date)}.` : ""} ${last ? "Estaban todas: el pedido quedó Aprobado." : left.length ? `Falta aprobar: ${left.map(([x, k]) => `“${partName(x, k)}”`).join(", ")}.` : `${firstName(j.owner)} sigue con las próximas partes.`}`);
 }
 function openApproveModal(j, k){
   if (j.area === "CM") return approveJob(j);
@@ -5394,11 +5404,14 @@ function openApproveModal(j, k){
   const PT = jobParts(j), pi = PT && Number.isInteger(k) && PT[k] && !PT[k].ok ? k : partOpen(j), pLast = PT ? [...PT].reverse().find(q => q.ok) : null; // v348: por partes, lo de la parte anterior como sugerencia
   const cont = j.area === "Contenidos", p = j.post && postById(j.post), x = PT ? partPubs(pLast)[0] || null : pubOf(j) || p, cms = CM_NAMES();
   const fms = [...new Set((PT ? pLast?.pubs || [] : j.pubs || []).map(r => r.canal ? "Canal" : postById(r.id)?.format).filter(Boolean))];
-  const preCm = cont ? j.owner : x?.cm || j.pubCm || "", preDate = PT ? (j.due >= TODAY ? j.due : TODAY) : x?.date || j.pubDate || (j.due >= TODAY ? j.due : TODAY), preTime = x?.time || j.pubTime || "", preFmts = fms.length ? fms : fmtList(pubFmtOf(j));
+  const oa0 = !PT && actById(j.otro); // v387: la actividad “Otro” de una aprobación anterior
+  const preCm = cont ? j.owner : x?.cm || j.pubCm || oa0?.owner || "", preDate = PT ? (j.due >= TODAY ? j.due : TODAY) : x?.date || j.pubDate || oa0?.date || (j.due >= TODAY ? j.due : TODAY), preTime = x?.time || j.pubTime || oa0?.time || "", preFmts = fms.length ? fms : fmtList(pubFmtOf(j));
   const preNet = jobPubsOf(j).find(y => !y.channel && y.format !== "Historia")?.net || x?.net || "IG";
   // v283: en Gestión de Contenidos no todo se publica (coberturas, sesiones de fotos, plantillas…): se puede aprobar sin publicación.
   // Viene destildado si es “Otro” o una plantilla y no tenía publicación cargada.
   const contPub = cont && (jobPubsOf(j).length > 0 || (j.piece !== OTRO && j.piece !== "Plantilla editable"));
+  const oa = oa0, oLink = oa?.link || shareClean(PT && pi >= 0 ? PT[pi].share : "") || shareList(j).find(s => s.p)?.p || ""; // v387: “Otro”
+  const fmts0 = oa ? [...(jobPubsOf(j).length ? preFmts : []), OK_OTRO] : preFmts;
   const w = document.createElement("div"); w.id = "fixpop"; w.className = "fixpop";
   w.innerHTML = `<div class="fixbox okbox" role="dialog" aria-modal="true" aria-labelledby="okh"><h2 id="okh">${cont ? "Aprobar contenido" : "Aprobar diseño"}${PT && pi >= 0 ? ` · ${esc(partName(PT[pi], pi))}` : ""}</h2><p class="note">${esc(j.title)} · ${esc(j.owner)}</p>
     ${PT && pi >= 0 ? `<p class="okpart">${icon("layers")}<span>${PT[pi].last ? (PT.every((q, x) => q.ok || x === pi) ? `Es el <b>último envío</b>: al aprobarlo, el pedido queda Aprobado.` : `Es el <b>último envío</b>: el pedido queda Aprobado cuando estén aprobadas todas las partes.`) : `Al aprobarla, la CM que elijas ya la puede subir. ${esc(firstName(j.owner))} puede seguir mandando las próximas partes.`}</span></p>` : ""}
@@ -5409,17 +5422,18 @@ function openApproveModal(j, k){
     <div class="okpub"${(!cont && !preCm) || (cont && !contPub) ? " hidden" : ""}>
       <div class="okgrid"><label>Fecha de publicación *<input class="base" type="date" id="okDate" value="${esc(preDate)}"></label>
       <label>Hora de publicación *<input class="base" type="time" id="okTime" value="${esc(preTime)}"></label>
-      ${fmtPick(preFmts, jobBrands(j))}
-      <div class="oknet" style="grid-column:1/-1"${canalFmts(preFmts, jobBrands(j)).every(f => f === "Canal") ? " hidden" : ""}>${netPick("okNet", jobBrands(j), preNet)}</div></div>
-      ${cont ? `<div class="okcopy"><b>${icon("file-text")} Copy</b> <span class="note">(se aprueba junto con el diseño y queda en la publicación del CM)</span>${j.noCopy ? `<p class="note" style="margin:4px 0 0">No lleva copy.</p>` : jcopyHas(j) ? (h => `<div class="rtview cpprev${rtBgCls(rtBgOf(h))}"${rtBgStyle(rtBgOf(h))}>${h.replace(/^<!--bg:#[0-9a-f]{6}-->/i, "")}</div>`)(copyHtml(j)) : `<p class="perr" style="margin:4px 0 0">Todavía no tiene copy: el CM lo escribe en su publicación y te llega para aprobar.</p>`}</div>`
-      : viewer.role === "Admin total" ? (cf => `<div class="okcopy"><label class="jcext okcpon"><input type="checkbox" id="okCopyOn"${cf ? " checked" : ""}> <b>Copy confirmado</b> <span class="note">(si ya tenés el copy: lo escribís acá, queda aprobado y la CM solo lo publica)</span></label>
+      ${fmtPick(fmts0, jobBrands(j), { txt:oa?.notes || "", link:oLink, only:!!oa && !jobPubsOf(j).length })}
+      <div class="oknet" style="grid-column:1/-1"${oa && !jobPubsOf(j).length || canalFmts(preFmts, jobBrands(j)).every(f => f === "Canal") ? " hidden" : ""}>${netPick("okNet", jobBrands(j), preNet)}</div></div>
+      ${cont ? `<div class="okcopy"${oa && !jobPubsOf(j).length ? " hidden" : ""}><b>${icon("file-text")} Copy</b> <span class="note">(se aprueba junto con el diseño y queda en la publicación del CM)</span>${j.noCopy ? `<p class="note" style="margin:4px 0 0">No lleva copy.</p>` : jcopyHas(j) ? (h => `<div class="rtview cpprev${rtBgCls(rtBgOf(h))}"${rtBgStyle(rtBgOf(h))}>${h.replace(/^<!--bg:#[0-9a-f]{6}-->/i, "")}</div>`)(copyHtml(j)) : `<p class="perr" style="margin:4px 0 0">Todavía no tiene copy: el CM lo escribe en su publicación y te llega para aprobar.</p>`}</div>`
+      : viewer.role === "Admin total" ? (cf => `<div class="okcopy"${oa && !jobPubsOf(j).length ? " hidden" : ""}><label class="jcext okcpon"><input type="checkbox" id="okCopyOn"${cf ? " checked" : ""}> <b>Copy confirmado</b> <span class="note">(si ya tenés el copy: lo escribís acá, queda aprobado y la CM solo lo publica)</span></label>
         <label class="jcext okcpon okcpnone"><input type="checkbox" id="okNoCopy"${!cf && jobPubsOf(j).length && jobPubsOf(j).every(y => y.noCopy) ? " checked" : ""}> <b>No lleva copy</b> <span class="note">(se publica sin copy: la CM no lo escribe ni hace falta aprobarlo)</span></label>
         <div class="okcpsheet"${cf ? "" : " hidden"}>${copySheet({ copy:cf ? x.copy : "" }, true, "okCopy")}</div></div>`)(!PT && x?.copyConf && x.copySt === "ok") : ""}
-      <p class="note" style="margin:0">${icon("calendar-days")} Se carga sola en el calendario del CM con lo justo para publicar (título, tipo de gráfica, dónde se publica, día, hora y la ruta de la compartida), y le llega el aviso (+1). ${cont ? "El copy de arriba queda aprobado en su publicación: solo la publica." : "Si no marcás “Copy confirmado”, el CM escribe el copy y te llega para aprobarlo."} Si elegís varios lugares (ej.: Post e Historia), se carga una publicación por cada uno.</p></div>
+      <p class="note" style="margin:0">${icon("calendar-days")} Se carga sola en el calendario del CM con lo justo para publicar (título, tipo de gráfica, dónde se publica, día, hora y la ruta de la compartida), y le llega el aviso (+1). ${cont ? "El copy de arriba queda aprobado en su publicación: solo la publica." : "Si no marcás “Copy confirmado”, el CM escribe el copy y te llega para aprobarlo."} Si elegís varios lugares (ej.: Post e Historia), se carga una publicación por cada uno. Con “Otro” escribís qué se hace con el material y guardás su link.</p></div>
     <p class="perr" id="okErr" hidden></p>
     <div class="chips" style="justify-content:flex-end"><button class="btn" type="button" data-fixcancel>Cancelar</button><button class="btn primary" type="button" data-oksend="${j.id}"${PT && pi >= 0 ? ` data-okpart="${pi}"` : ""}>✓ Aprobar</button></div></div>`;
   document.body.appendChild(w);
 }
+document.addEventListener("input", e => { if (e.target.id === "okOtroTxt"){ const el = document.getElementById("okErr"); if (el) el.hidden = true; } }); // v387
 document.addEventListener("change", e => { if (!e.target.closest?.(".okbox")) return;
   if (e.target.id === "okCm"){ const pub = document.querySelector(".okbox .okpub"); if (pub) pub.hidden = !e.target.value; }
   if (e.target.id === "okPubOn"){ const on = e.target.checked, cm = document.getElementById("okCm"), pub = document.querySelector(".okbox .okpub"), who = document.querySelector(".okbox .okcm");
@@ -5435,19 +5449,23 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-okse
   if (cm && !date) return err("Elegí la fecha de publicación.");
   if (cm && !time) return err("Elegí la hora de publicación.");
   if (cm && !MONTHS_APP.some(m => m.v === date.slice(0, 7))) return err(`La fecha (${dm(date)}) está fuera de los meses de la app.`);
+  const otro = cm && fmt.includes(OK_OTRO) ? { txt:v("okOtroTxt").trim().slice(0, 200), link:shareClean(v("okOtroLink")) } : null; // v387
+  if (otro && !otro.txt) return err("Escribí en “Otro” qué se hace con este material (ej.: enviarlo a alguien para que lo publique).");
+  const hasPub = fmt.some(f => f !== OK_OTRO);
   // v222: “Copy confirmado”: Admin total ya tiene el copy; queda aprobado y la CM no lo tiene que escribir
-  const cpOn = cm && document.getElementById("okCopyOn")?.checked, cpEd = document.getElementById("okCopy");
+  const cpOn = cm && hasPub && document.getElementById("okCopyOn")?.checked, cpEd = document.getElementById("okCopy");
   if (cpOn && rtUploading(cpEd)) return err("Esperá que termine de subir la imagen.");
   const copy = cpOn && cpEd ? rtHtml(cpEd) : "";
   if (cpOn && !copyPlain({ copy }).trim() && !/<img/i.test(copy)) return err("Escribí el copy confirmado (o destildá “Copy confirmado” para que lo escriba el CM).");
-  const noCopy = !!cm && !cpOn && !!document.getElementById("okNoCopy")?.checked;
+  const noCopy = !!cm && hasPub && !cpOn && !!document.getElementById("okNoCopy")?.checked;
   const part = b.dataset.okpart !== undefined ? +b.dataset.okpart : null; partApproveAll.pend = null; // v361: la parte que se está aprobando
-  document.getElementById("fixpop")?.remove(); approveJob(j, { by, cm, date, time, fmt, net, ...(cpOn ? { copy } : {}), ...(noCopy ? { noCopy } : {}), ...(Number.isInteger(part) ? { part } : {}) }); }); // aprobar no pide ningún link (pedido de Admin total)
+  document.getElementById("fixpop")?.remove(); approveJob(j, { by, cm, date, time, fmt, net, ...(otro ? { otro } : {}), ...(cpOn ? { copy } : {}), ...(noCopy ? { noCopy } : {}), ...(Number.isInteger(part) ? { part } : {}) }); }); // aprobar no pide ningún link (pedido de Admin total)
 // En la ficha del pedido: la publicación que salió al aprobarlo (CM, fecha, formato) con un botón para abrirla.
-function pubInfo(j){ return (j.pubs || (j.pub ? [j.pub] : [])).map(r => r.canal ? canalById(r.id) : postById(r.id)).filter(Boolean).map(x => pubInfoOne(x)).join(""); }
+function pubInfo(j){ return (j.pubs || (j.pub ? [j.pub] : [])).map(r => r.canal ? canalById(r.id) : postById(r.id)).filter(Boolean).map(x => pubInfoOne(x)).join("")
+  + otroActsOf(j).map(a => `<div class="jpub">${icon("share-2")}<div class="grow"><b>Otro: ${esc(a.notes || a.title)}</b> ${brandTag(a.brand)}<small>${esc(a.owner)} · ${dm(a.date)}${a.time ? " " + esc(a.time) + " h" : ""} · ${esc(a.status)}</small>${otroLinkRow(a.link)}</div><button type="button" class="btn sm" data-pubopen="act:${esc(a.id)}">${icon("arrow-up-right")} Ver actividad</button></div>`).join(""); } // v387
 function pubInfoOne(x){
   return `<div class="jpub">${icon("calendar-days")}<div class="grow"><b>Publicación en redes: ${esc(x.cm)}</b> ${brandTag(x.brand)}<small>${x.channel ? "Canal de WhatsApp" : `${esc(x.net)} · ${esc(x.format)}`} · ${dm(x.date)}${x.time ? " " + esc(x.time) + " h" : ""} · ${esc(x.status)}${x.fromJob ? ` · copy: ${x.noCopy ? "no lleva" : { rev:"esperando aprobación", fix:"en corrección", ok:copyConfOf(x) ? "confirmado por Admin total" : "aprobado" }[copyStOf(x)] || "sin mandar"}` : ""}</small></div>${can(x.channel ? "calcanales" : x.format === "Historia" ? "calhistoria" : "calendario") ? `<button type="button" class="btn sm" data-pubopen="${x.channel ? "canal" : "post"}:${esc(x.id)}">${icon("arrow-up-right")} Ver publicación</button>` : ""}</div>`; }
-document.addEventListener("click", e => { const b = e.target.closest("[data-pubopen]"); if (!b) return; e.stopPropagation(); openPub(b.dataset.pubopen); });
+document.addEventListener("click", e => { const b = e.target.closest("[data-pubopen]"); if (!b) return; e.stopPropagation(); if (b.dataset.pubopen.startsWith("act:")){ goAlert(b.dataset.pubopen); render(); window.scrollTo(0, 0); return; } openPub(b.dataset.pubopen); });
 // Abre la publicación del CM (desde el aviso o la ficha del pedido): va a su calendario, en su mes, con la hoja abierta.
 function openPub(ref){
   const [k, id] = String(ref).split(":"), canal = k === "canal", x = canal ? canalById(id) : postById(id);
@@ -5524,9 +5542,10 @@ function approveJob(j, opts = {}){
   NOTIFS.forEach(n => { if (n.to === "admin" && n.type === "review" && n.job === j.id) n.read = true; });
   notify({ to:j.owner, type:"approved", job:j.id }); jobUI.form = null;
   let x = null;
-  let xs = [];
-  if (cm && j.area !== "CM" && opts.date){ const had = new Map(jobPubsOf(j).map(p => [p.id, p.cm])); NOTIFS.forEach(n => { if (n.job === j.id && ((n.type === "pub" && !n.post) || ((n.type === "pub" || n.type === "listo") && n.to !== cm))) n.read = true; });
-    xs = makePub(j, { ...opts, cm }); x = xs[0]; j.cmNotified = cm; j.pubCm = cm; j.pubDate = opts.date; j.pubTime = opts.time || "";
+  let xs = [], oa = null; const pf = fmtList(opts.fmt).filter(f => f !== OK_OTRO); // v387: “Otro” no es una publicación: es una actividad de la CM
+  if (cm && j.area !== "CM" && opts.date && opts.otro){ oa = otroAct(j, { ...opts, cm }, j.title, j.otro); j.otro = oa.id; } // sin j.pubCm: si no, al editar el pedido se crearía una publicación
+  if (cm && j.area !== "CM" && opts.date && (pf.length || !opts.otro)){ const had = new Map(jobPubsOf(j).map(p => [p.id, p.cm])); NOTIFS.forEach(n => { if (n.job === j.id && ((n.type === "pub" && !n.post) || ((n.type === "pub" || n.type === "listo") && n.to !== cm))) n.read = true; });
+    xs = makePub(j, { ...opts, ...(opts.otro ? { fmt:pf } : {}), cm }); x = xs[0]; j.cmNotified = cm; j.pubCm = cm; j.pubDate = opts.date; j.pubTime = opts.time || "";
     if (opts.copy) xs.forEach(p => copyConfSet(p, opts.copy));
     else if (opts.noCopy) xs.forEach(p => { if (!p.noCopy){ Object.assign(p, { noCopy:true, copyConf:false }); if (p.copySt === "rev" || p.copySt === "fix") p.copySt = ""; copyLogAdd(p, "none"); copyNotifsRead(p, n => n.to === "admin" || n.to === p.cm); } }); // v259: “No lleva copy” desde Aprobar diseño
     else if (contCopy(j)) xs.forEach(p => { // v239: el copy del contenido se aprueba con el diseño
@@ -5534,10 +5553,24 @@ function approveJob(j, opts = {}){
       if (!jcopyHas(j)) return;
       Object.assign(p, { copy:j.copy, copyBg:"", noCopy:false, copySt:"ok", copyBy:j.copyConf ? (j.copyLog || []).filter(c => c.k === "conf").pop()?.by || viewer.name : by || viewer.name, copyConf:!!j.copyConf }); copyLogAdd(p, j.copyConf ? "conf" : "ok"); });
     xs.forEach(p => notify({ to:cm, type:had.get(p.id) === cm ? "listo" : "pub", job:j.id, post:p.id, canal:!!p.channel })); }
-  else if (cm){ notify({ to:cm, type:"listo", job:j.id }); j.cmNotified = cm; }
+  else if (cm && !oa){ notify({ to:cm, type:"listo", job:j.id }); j.cmNotified = cm; }
   render(); window.RMH?.flushNow?.();
-  toast(`Aprobado${j.area === "CM" ? `: quedó en ${j.status}` : ""}${by ? ` por ${firstName(by)}` : ""}. Le avisamos a ${firstName(j.owner)}${x ? `${cm === j.owner ? "" : ` y a ${firstName(cm)} (CM)`}: “${x.title}” quedó en su calendario el ${dm(x.date)}${xs.length > 1 ? ` (${xs.length} publicaciones: ${xs.map(p => `${p.brand} ${p.channel ? "Canal" : p.format}`).join(", ")})` : ""}${opts.copy ? ", con el copy confirmado" : ""}` : cm ? ` y a ${firstName(cm)} (CM)` : ""}.`);
+  toast(`Aprobado${j.area === "CM" ? `: quedó en ${j.status}` : ""}${by ? ` por ${firstName(by)}` : ""}. Le avisamos a ${firstName(j.owner)}${x ? `${cm === j.owner ? "" : ` y a ${firstName(cm)} (CM)`}: “${x.title}” quedó en su calendario el ${dm(x.date)}${xs.length > 1 ? ` (${xs.length} publicaciones: ${xs.map(p => `${p.brand} ${p.channel ? "Canal" : p.format}`).join(", ")})` : ""}${opts.copy ? ", con el copy confirmado" : ""}` : cm ? ` y a ${firstName(cm)} (CM)` : ""}.${oa ? ` “Otro” quedó como actividad de ${firstName(cm)} el ${dm(oa.date)}${oa.link ? ", con el link" : ""}.` : ""}`);
 }
+// v387 · La actividad “Otro” de la CM que sale al aprobar: qué se hace con el material, el día, la hora y el link (si ya estaba, se actualiza).
+function otroAct(j, o, title, oldId){
+  const data = { type:"otro", title, brand:jobBrands(j)[0] || j.brand, owner:o.cm, date:o.date, time:o.time || "", notes:o.otro.txt, link:o.otro.link || "", fromJob:j.id, ...(o.by ? { approvedBy:o.by } : {}) };
+  const a0 = oldId && actById(oldId);
+  if (a0){ const moved = a0.owner !== o.cm; Object.assign(a0, data); if (moved) notify({ to:o.cm, type:"act", act:a0.id }); return a0; }
+  const a = { id:"A" + (Math.max(0, ...CM_ACTS.map(x => +(String(x.id).match(/^A(\d+)$/) || [])[1] || 0)) + 1), ...data, status:"Pendiente", byId:viewer.id, by:viewer.name, at:TODAY };
+  CM_ACTS.push(a); if (o.cm !== viewer.name) notify({ to:o.cm, type:"act", act:a.id }); return a;
+}
+// El link guardado (ruta de la compartida o https://), con Copiar y Abrir.
+function otroLinkRow(v){ v = shareClean(v); if (!v) return ""; const u = safeUrl(v);
+  return `<div class="lkrow share otrolk"><div class="lkname"><span class="lkic">${icon(u ? "link" : "folder-symlink")}</span><span class="lkn-w"><b>Link del material</b></span></div><span class="lkurl">${esc(v)}</span>
+    ${u ? `<button type="button" class="btn lkbtn" data-lkcopy="${esc(u)}">${icon("copy")} Copiar link</button><a class="btn lkbtn" href="${esc(u)}" target="_blank" rel="noopener">${icon("arrow-up-right")} Abrir</a>`
+      : `<button type="button" class="btn lkbtn" data-shcopy="${esc(v)}">${icon("copy")} Copiar link</button><button type="button" class="btn lkbtn" data-shopen="${esc(v)}">${icon("arrow-up-right")} Abrir</button>`}<span></span><div class="shhow" hidden></div></div>`; }
+const otroActsOf = j => [...new Set([j.otro, ...(j.parts || []).map(q => q.otro)].filter(Boolean))].map(actById).filter(Boolean);
 const jobRounds = j => (j.changes || []).filter(c => !c.ok && !c.kind).length; // cuántas veces se pidieron cambios
 function sendJobChanges(j, text, req = "", part = null){
   const P = jobParts(j), k = P ? (Number.isInteger(part) && P[part] && !P[part].ok ? part : partOpen(j)) : -1; // v361: por partes, los cambios son de una parte
@@ -5697,7 +5730,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v386";
+const APP_VER = "v387";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -8624,6 +8657,7 @@ const ACT_TYPES = [
   { k:"ganadores", t:"Contacto con ganadores de sorteos", n:"Ganadores de sorteo", s:"GANADORES", i:"user-check" },
   { k:"premios", t:"Entrega de premios de sorteos", n:"Premios de sorteo", s:"PREMIOS", i:"trophy" },
   { k:"vales", t:"Entrega de vales por encuestas", n:"Vales por encuestas", s:"VALES", i:"badge-percent" },
+  { k:"otro", t:"Otro (envío o uso de un material)", n:"Otro", s:"OTRO", i:"share-2" }, // v387: sale al aprobar un diseño con “Otro”
 ];
 const ACT_SIMPLE = ACT_TYPES.slice(3); // las que se cargan con la hoja simple de actividad
 const actType = k => ACT_TYPES.find(x => x.k === k) || ACT_TYPES[ACT_TYPES.length - 1];
@@ -9032,7 +9066,9 @@ function actForm(){
         <label style="grid-column:1/-1">Actividad *<select class="base" id="acType">${ACT_SIMPLE.map(x => `<option value="${x.k}" ${x.k === a.type ? "selected" : ""}>${esc(x.t)}</option>`).join("")}</select></label>
         <label>Marca *<select class="base" id="acBrand">${opt(myBrands(), a.brand)}</select></label>
         <label>Título *<input class="base" id="acTitle" value="${esc(a.title)}" maxlength="120" placeholder="Ej.: Encuesta de atención Superseis" required></label>
-        <label style="grid-column:1/-1">Detalles <span class="note">(opcional)</span><textarea class="base" id="acNotes" rows="3" placeholder="Ej.: a quiénes, dónde, qué llevar o qué hay que tener en cuenta.">${esc(a.notes || "")}</textarea></label>
+        <label style="grid-column:1/-1">${a.type === "otro" ? "Qué se hace con el material" : "Detalles"} <span class="note">(opcional)</span><textarea class="base" id="acNotes" rows="3" placeholder="Ej.: a quiénes, dónde, qué llevar o qué hay que tener en cuenta.">${esc(a.notes || "")}</textarea></label>
+        <label style="grid-column:1/-1">Link del material <span class="note">(opcional: ruta de la compartida, Drive o el PDF)</span><input class="base" id="acLink" type="text" spellcheck="false" autocomplete="off" maxlength="300" value="${esc(a.link || "")}" placeholder="Pegá la ruta \\\\retsvrfs01\\Marketing\\… o un link https://…"></label>
+        ${a.link ? `<div style="grid-column:1/-1">${otroLinkRow(a.link)}</div>` : ""}${a.fromJob && jobById(a.fromJob) ? `<p class="note" style="grid-column:1/-1;margin:0">${icon("palette")} Sale del pedido aprobado “${esc(jobById(a.fromJob).title)}”${a.approvedBy ? ` (aprobó ${esc(firstName(a.approvedBy))})` : ""}.</p>` : ""}
         ${cfPick("acCamp", a, "act")}
       </div></section>
       <section class="jfs"><h3><i>2</i>Quién y para cuándo</h3><div class="jfg">
@@ -9062,13 +9098,13 @@ document.addEventListener("submit", e => {
   const f = actUI.form, v = id => document.getElementById(id).value, title = v("acTitle").trim(), date = v("acDate");
   if (!title || !date) return toast("Completá el título y la fecha.");
   if (!MONTHS_APP.some(x => x.v === date.slice(0, 7))) return toast(`La fecha (${dm(date)}) está fuera de los meses de la app. Revisá la fecha.`);
-  const data = { type:v("acType"), brand:v("acBrand"), title, owner:v("acOwner"), also:alsoClean({ also:f.act.also }, v("acOwner")).also, date, time:v("acTime"), status:v("acStatus"), notes:v("acNotes").trim() };
+  const data = { type:v("acType"), brand:v("acBrand"), title, owner:v("acOwner"), also:alsoClean({ also:f.act.also }, v("acOwner")).also, date, time:v("acTime"), status:v("acStatus"), notes:v("acNotes").trim(), link:shareClean(v("acLink")) };
   let a = f.mode === "edit" ? actById(f.act.id) : null;
   const prevAlso = a ? [a.owner, ...alsoOf(a)] : [viewer.name];
   const cpv = cfRead("acCamp", [data.brand]); // v344: campaña
   if (a) Object.assign(a, data); else { a = { id:f.act.id, ...data, byId:viewer.id, by:viewer.name, at:TODAY }; if (actById(a.id)) a.id = "A" + Date.now().toString(36); CM_ACTS.push(a); }
   cfSet(a, cpv);
-  if (!a.also) delete a.also;
+  if (!a.also) delete a.also; if (!a.link) delete a.link;
   crewOf(a.owner, a).filter(n => !prevAlso.includes(n) && n !== viewer.name).forEach(n => notify({ to:n, type:"act", act:a.id })); // v309: a quien le asignan la actividad (o la suman)
   actUI.form = null; render(); window.RMH?.flushNow?.(); toast(`${f.mode === "edit" ? "Guardado" : "Cargado"}: “${a.title}” el ${dm(a.date)}.`);
 });
