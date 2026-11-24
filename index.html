@@ -5076,7 +5076,7 @@ const GROUP_COLOR = { Superseis:"var(--b-superseis)", Stock:"var(--b-stock)", De
 const groupOf = b => MAIN_BRANDS.includes(b) ? b : "Otros";
 const SECTIONS = [
   { g:"General", k:"dashboard", l:"Dashboard", i:"layout-dashboard" },
-  { g:"General", k:"videohub", l:"Video Retail MKT Hub", i:"clapperboard", virtual:true }, // v374: el video de presentación de la app (solo Admin total y Admin; el link está en la base, s:APP_VIDEO)
+  { g:"General", k:"videohub", l:"Video Retail MKT Hub", i:"clapperboard", virtual:true }, // v374: el video de presentación de la app (v394: lo ve todo el equipo; el link está en la base, s:APP_VIDEO)
   { g:"General", k:"bienvenida", l:"Bienvenida", i:"hand", virtual:true }, // página provisoria de bienvenida (edición beta), la ven todos
   { g:"General", k:"inicio", l:"Inicio", i:"house" },
   { g:"General", k:"planmes", l:"Planificación del mes", i:"target" },
@@ -5187,7 +5187,7 @@ const REVISOR_SEE = ["inbox","perfil","config","guia"];
 // Comercial (v297). v305: Dashboard limitado, el mismo para cualquier usuario de este rol: solo Superseis, Stock y Delimarket,
 // las publicaciones solo con la fecha y sin “Publicaciones del mes por alcance”. Sin chat, sin el equipo y sin nada del proceso de Diseño o CM: la base tampoco le deja leer otra cosa.
 const isComercial = () => viewer?.role === "Comercial";
-const COMERCIAL_SEE = ["dashboard","comercial","pedcom","perfil","config","guia"]; // v305: con Dashboard limitado (pDashboard)
+const COMERCIAL_SEE = ["dashboard","comercial","pedcom","perfil","config","guia","videohub"]; // v394: también el video de la app // v305: con Dashboard limitado (pDashboard)
 // TV (v266): el usuario de los televisores de la oficina. Solo ve los botones TV 1 a TV 4 y la pantalla que Admin total eligió
 // para cada uno (Vista TV → Pantallas TV). Sin menú, sin chat y sin avisos emergentes; la base no le deja guardar nada más que su presencia.
 const isTV = () => viewer?.role === "TV";
@@ -5815,7 +5815,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v393";
+const APP_VER = "v394";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -7681,7 +7681,7 @@ if (!window.lucide) window.lucide = { createIcons(){ document.querySelectorAll("
 const icon = n => ICONS[n] ? svgIcon(n) : (lucideFull(), `<i data-lucide="${n}"></i>`);
 // Vistas TV, Usuarios y Carga de trabajo: solo Admin total (aunque el permiso esté marcado).
 const ONLY_AT = ["tv","tvredes","tvimpacto","tvconf","tvpant","usuarios","sugerencias","encuestas","aviso","borradoresdg","borradorescm"]; // Encuestas y sugerencias: solo Admin total (también en la base)
-const ONLY_ADMINS = ["historial","historialcm","pauta","reportes","oficina","cronograma","videohub"]; // Historial de Diseño y de CM, Meta Ads e Informe mensual: solo Admin total y Admin
+const ONLY_ADMINS = ["historial","historialcm","pauta","reportes","oficina","cronograma"]; // Historial de Diseño y de CM, Meta Ads e Informe mensual: solo Admin total y Admin
 // Todo el equipo ve los Paneles de Trabajo (y sus categorías), la Planificación, la Carga de trabajo de Diseño y de CM
 // y el Informe Redes (Diseño y CM incluidos). Meta Ads (pauta) y el Informe del mes siguen solo para Admin total y Admin.
 // Lo que cada uno puede cambiar lo sigue decidiendo su rol (cargar pedidos, editar posteos, mover fechas…).
@@ -7689,7 +7689,7 @@ const ALL_SEE = () => ["comercial","paneldg","panelcm","caldg","calcm","cargadis
 const CM_PRIVATE = ["inbox","reclamos","escraches"]; // datos de clientes: solo Admin total, Admin y CM
 const canAdmin = key => key === "oficina" || key === "cronograma" || key === "videohub" ? true : ALL_SEE().includes(key) ? true : CM_PRIVATE.includes(key) ? ["Admin total","Admin","CM"].includes(viewer.role) : key === "encuestas" || key === "sugerencias" ? viewer.id === "fede" && viewer.role === "Admin total" : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "gcm" || key === "calact" ? CM_GEST.some(k => can(k)) : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : key === "tvjunto" ? true : ONLY_AT.includes(key) ? viewer.role === "Admin total" || (["tv","tvredes","tvimpacto"].includes(key) && tvSolo === "tvall") : ONLY_ADMINS.includes(key) ? isAdminAny() && viewer.perms.has(key) : ["bienvenida","sabados","avisos","perfil","mensajes","notas","config","planmes","encuestas","archivos","prompts","guia"].includes(key) || viewer.perms.has(key); // notas y mensajes: todos
 // Admin total y Admin: todo como antes. Las demás personas (CM, Diseñador): solo lo que Admin total les habilitó en Usuarios y permisos.
-const MEMBER_ALWAYS = ["bienvenida","perfil","config","guia"]; // la bienvenida (beta) y su cuenta: entrar a su perfil, cambiar la contraseña y la ayuda
+const MEMBER_ALWAYS = ["bienvenida","perfil","config","guia","videohub"]; // la bienvenida (beta) y su cuenta: entrar a su perfil, cambiar la contraseña y la ayuda · v394: el video de la app
 const canMember = key => ONLY_AT.includes(key) || ONLY_ADMINS.includes(key) ? false : MEMBER_ALWAYS.includes(key) ? true
   : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "gcm" || key === "calact" ? CM_GEST.some(k => can(k))
   : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : viewer.perms.has(key);
@@ -10480,14 +10480,14 @@ function jobForm(){
       <div class="chips" style="grid-column:1/-1;justify-content:flex-end">${f.mode === "edit" && (canCreateJobs() || canDelJob(jobById(j.id))) ? `<button class="btn danger" type="button" data-jdel="${esc(j.id)}" style="margin-right:auto">🗑 Borrar</button>` : ""}<button class="btn" type="button" data-jclose>Cancelar</button><button class="btn primary" type="submit">Guardar trabajo</button></div>
     </form></div>`;
 }
-// v374 · Video Retail MKT Hub (Admin total y Admin): el video de presentación de la app, de Google Drive. El link está en la base
-// (s:APP_VIDEO, que solo leen Admin total y Admin y cambia Admin total), no en el código (el repositorio es público). Se mira en una
+// v374 · Video Retail MKT Hub: el video de presentación de la app, de Google Drive. El link está en la base
+// (s:APP_VIDEO; v394: lo lee todo el equipo, Comercial incluido, y lo cambia solo Admin total), no en el código (el repositorio es público). Se mira en una
 // ventana grande aparte (no se corta cuando la app se actualiza con datos nuevos) y se puede poner en pantalla completa.
 let APP_VIDEO = {}; // { url, title, at, by }
 const vhId = u => (String(u || "").match(/\/d\/([\w-]{20,})/) || String(u || "").match(/[?&]id=([\w-]{20,})/) || [])[1] || "";
 function pVideoHub(){
   const v = APP_VIDEO || {}, id = vhId(v.url), at = viewer.role === "Admin total", t = v.title || "Video Retail MKT Hub";
-  return `<div class="head"><div><h1 class="pmh">${pmIco("clapperboard")}${esc(t)}</h1><p class="sub">El video de presentación de Retail MKT Hub. Lo ven solo Admin total y Admin.</p></div></div>
+  return `<div class="head"><div><h1 class="pmh">${pmIco("clapperboard")}${esc(t)}</h1><p class="sub">El video de presentación de Retail MKT Hub. Lo ve todo el equipo.</p></div></div>
     ${id ? `<div class="panel vhcard"><button type="button" class="vhposter" data-vhplay aria-label="Reproducir ${esc(t)}"><img src="https://drive.google.com/thumbnail?id=${esc(id)}&sz=w1600" alt="" referrerpolicy="no-referrer" onerror="this.remove()"><span class="vhplay">${icon("play")}</span></button>
       <div class="chips vhbtns"><button type="button" class="btn primary" data-vhplay>${icon("play")} Ver video</button><button type="button" class="btn" data-vhplay="full">${icon("maximize-2")} Pantalla completa</button></div></div>`
       : `<div class="panel empty">${icon("clapperboard")} Todavía no hay un video cargado.${at ? " Pegá el link de Google Drive abajo." : ""}</div>`}

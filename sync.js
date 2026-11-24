@@ -88,7 +88,7 @@ const RMH = (() => {
     ESCRACHES:[() => ESCRACHES, v => { ESCRACHES = Array.isArray(v) ? v : []; }], // Búsqueda de Escraches: los cargados y las marcas (solo Admin total, Admin y CM)
     PEDIDOS_COM:[() => PEDIDOS_COM, v => { PEDIDOS_COM = Array.isArray(v) ? v : []; }], // v242: pedidos de activaciones de Comercial (los compradores)
     CAMP_FOLDERS:[() => CAMP_FOLDERS, v => { CAMP_FOLDERS = Array.isArray(v) ? v : CF_DEF.map(c => ({ ...c, brands:[...c.brands] })); }], // v344: campañas (carpetas de la Planificación)
-    APP_VIDEO:[() => APP_VIDEO, v => { APP_VIDEO = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v374: el video de la app (Admin total y Admin)
+    APP_VIDEO:[() => APP_VIDEO, v => { APP_VIDEO = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v374: el video de la app (v394: lo ve todo el equipo; lo cambia Admin total)
     DRAFTS:[() => DRAFTS, v => { DRAFTS = v && typeof v === "object" && !Array.isArray(v) ? v : {}; window.draftsSynced?.(); }], // v369: borradores de pedidos (solo Admin total)
     AGENTS:[() => AGENTS, v => { AGENTS = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v326: entrenamiento y skills de los agentes (Oficina de Agentes)
     AGENT_CHAT:[() => AGENT_CHAT, v => { AGENT_CHAT = Array.isArray(v) ? v : []; }], // v326: las charlas con los agentes
@@ -112,7 +112,7 @@ const RMH = (() => {
   const ATCM_ONLY = new Set(["s:INFLUENCERS", "s:PLAN_TXT"]);
   const isATCM = () => ["Admin total", "CM"].includes(member?.role);
   // Claves que solo usan Admin total y Admin (v326: la Oficina de Agentes): las demás personas no las bajan.
-  const ADM_ONLY = new Set(["s:AGENTS", "s:AGENT_CHAT", "s:CRONOGRAMA", "s:APP_VIDEO"]); // solo Admin total y Admin (también en la base)
+  const ADM_ONLY = new Set(["s:AGENTS", "s:AGENT_CHAT", "s:CRONOGRAMA"]); // solo Admin total y Admin (también en la base) · v394: s:APP_VIDEO lo lee todo el equipo
   const isAdm = () => ["Admin total", "Admin"].includes(member?.role);
   // Claves que todos leen pero solo Admin total guarda. (Los grupos de chat los crea cualquiera: la base controla
   // que cada uno cambie solo los suyos.)
