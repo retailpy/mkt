@@ -4972,6 +4972,21 @@ html.light .sg :is(.sgptn,.sgagnum,.sgstari,.sgppav,.sgstack,.sgpbar2 i){filter:
 .sgurgban > svg{width:20px;height:20px;color:#f87171;flex:none;animation:sgurg 2s ease-in-out infinite}.sgurgban > span{flex:1 1 240px}.sgurgban b{color:#fff}.sgurgban .btn{display:inline-flex;align-items:center;gap:6px}
 @media (prefers-reduced-motion:reduce){.sgti em.urg,.sgmyalb.late > svg:first-child,.sgurgban > svg{animation:none}}
 @media (max-width:640px){.sgmyalb{flex-wrap:wrap;row-gap:2px}.sgmyalb span{flex:1 1 100%;white-space:normal;padding-left:28px}.sgmyalb > svg:last-child{display:none}.sgurgban .btn{flex:1 1 100%;justify-content:center}}
+/* v392 · Resultados: procesos que necesitan avanzar y tiempo en cada etapa */
+.sgneedl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.sgneed{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:grid;grid-template-columns:minmax(0,1.1fr) auto minmax(0,1.4fr);gap:12px;align-items:center;padding:10px 14px;border-radius:12px;background:var(--sgsf);border-left:3px solid var(--c);transition:background .15s}
+.sgneed:hover{background:rgba(148,163,184,.1)}.sgneed:focus-visible{outline:2px solid var(--sgac)}
+.sgneedn{display:flex;flex-direction:column;gap:2px;min-width:0}.sgneedn b{color:#fff;font-size:14px}.sgneedn small{color:var(--faint);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sgneedr{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.sgrsn{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:99px;font-size:11.5px;font-weight:600;color:#e2e8f0;background:color-mix(in srgb,var(--c) 16%,transparent);border:1px solid color-mix(in srgb,var(--c) 45%,transparent);white-space:nowrap}.sgrsn svg{width:12px;height:12px;color:var(--c)}
+.sgneeds > .sglink{align-self:flex-start}
+.sgstgt{display:flex;flex-direction:column;gap:10px}
+.sgstgr{display:grid;grid-template-columns:minmax(120px,1fr) minmax(80px,1.4fr) 64px;gap:12px;align-items:center;position:relative}
+.sgstgl{display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:center}.sgstgl svg{grid-row:1/3;width:18px;height:18px;color:var(--c)}.sgstgl b{color:#fff;font-size:13.5px}.sgstgl small{color:var(--faint);font-size:11.5px}
+.sgstgb{height:10px;border-radius:5px;background:rgba(148,163,184,.14);overflow:hidden}.sgstgb i{display:block;height:100%;border-radius:5px;background:var(--c)}
+.sgstgr em{font-style:normal;text-align:right;color:#e2e8f0;font-weight:700;font-size:13.5px;font-variant-numeric:tabular-nums}
+.sgbn2{grid-column:1 / -1;justify-self:start;font-size:11px;font-weight:700;color:#fb923c;text-transform:uppercase;letter-spacing:.05em;margin-top:-6px}
+@media (max-width:980px){.sgneed{grid-template-columns:minmax(0,1fr) auto}.sgneedr{grid-column:1 / -1;justify-content:flex-start}}
 /* tamaños de pantalla */
 @media (max-width:1100px){.sgstg{grid-template-columns:repeat(3,minmax(0,1fr))}.sgcolg{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:980px){.sgdetg,.sgtwo,.sgtwo-r{grid-template-columns:1fr}.sgdeta{position:static}.sggrid2{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}.sgtiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -5800,7 +5815,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v392";
+const APP_VER = "v393";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -18073,9 +18088,12 @@ const SEG_RESP_X = ["Todo el equipo", "Por confirmar"];
 const SEG_EXT = ["Romis", "Finanzas", "RR. HH.", "Directores", "Gerentes de locales", "Proveedor", "Comercial"];
 const SEG_SRC = ["Reunión", "Minuta de reunión", "Correo", "Audio o anotación", "Datos del sistema", "Formulario comercial", "Otro"];
 const segUI = { tab:"home", q:"", col:"", resp:"", st:"", prio:"", mine:false, unconf:false, sort:"id", open:"", form:null, meet:"", mform:null, rpend:false, rnote:"", acc:false, asked:0, missing:false,
-  group:"resp", sec:{}, stf:"", calM:"", mq:"", att:{}, lb:"", dr:{}, calD:"", dv:"", dvst:"", qk:false, pp:null, flt:false, agr:"", agadd:"" };
+  group:"resp", sec:{}, stf:"", calM:"", mq:"", att:{}, lb:"", dr:{}, calD:"", dv:"", dvst:"", qk:false, pp:null, flt:false, agr:"", agadd:"", needAll:false };
 const segAccess = () => Array.isArray(SEG_ACCESS) ? SEG_ACCESS : SEG_ACCESS_DEF;
-const segCan = () => !!viewer && !["Revisor", "Comercial", "TV"].includes(viewer.role) && (viewer.role === "Admin total" || segAccess().includes(viewer.id));
+// v392 · El panel es solo para los jefes: Admin total siempre y Admin si está en la lista (s:SEG_ACCESS). El equipo de CM y el de
+// Diseño gráfico no lo ven aunque figuren en la lista (la base tampoco les da los datos: 20261123120000_panel_seguimiento_solo_jefes.sql).
+const SEG_ROLES = ["Admin total", "Admin"];
+const segCan = () => !!viewer && (viewer.role === "Admin total" || (viewer.role === "Admin" && segAccess().includes(viewer.id)));
 const segAT = () => viewer?.role === "Admin total";
 const segOk = () => !!SEGUIMIENTO && typeof SEGUIMIENTO === "object" && !Array.isArray(SEGUIMIENTO);
 const segD = () => segOk() ? SEGUIMIENTO : {};
@@ -18873,6 +18891,23 @@ function segProd(){
     late:all.filter(segLate), stale:all.filter(it => segLive(it) && segDays(segLastD(it) || it.since || TODAY) <= -21), noDate:all.filter(it => segLive(it) && !segEnd(it)),
     openT:ag.filter(a => !a.done).length, doneT:ag.filter(a => a.done).length, all, dd };
 }
+// v392 · Los procesos, no las personas: desde cuándo está cada tarea en su etapa, cuánto demora cada etapa (el cuello de botella)
+// y qué tareas hay que destrabar (atrasadas, por vencer, trabadas en una etapa, sin arrancar, sin avances o sin fecha).
+const segStageSince = it => { const l = segLogs(it).filter(x => x.st && (x.from || x.kind === "alta")).pop(); return l ? l.d : it.since || ""; };
+const segStageAge = it => Math.max(0, -segDays(segStageSince(it) || TODAY));
+function segStages(){
+  const live = segItems().filter(segLive);
+  return SEG_ST.filter(s => s[0] !== "fin").map(([k, l, ic, , c]) => { const L = live.filter(it => it.st === k); return { k, l, ic, c, n:L.length, avg:L.length ? Math.round(L.reduce((a, it) => a + segStageAge(it), 0) / L.length) : 0 }; });
+}
+function segNeeds(){
+  return segItems().filter(segLive).map(it => { const c = segCount(it), age = segStageAge(it), quiet = Math.max(0, -segDays(segLastD(it) || it.since || TODAY)), R = [];
+    if (c && c.n < 0) R.push(["bad", "alarm-clock", c.t]); else if (c && c.n <= 3) R.push(["warn", "calendar-clock", c.t]);
+    if (it.st === "pend" && age >= 7) R.push(["warn", "hourglass", `Sin arrancar hace ${age} días`]); else if (age >= 14) R.push(["warn", "route", `${age} días en ${segSt(it.st)[1]}`]);
+    if (quiet >= 21) R.push(["info", "message-circle", `Sin avances hace ${quiet} días`]);
+    if (!segEnd(it)) R.push(["info", "calendar-x", "Sin fecha de entrega"]);
+    return { it, R, score:(c && c.n < 0 ? 1000 - c.n : c && c.n <= 3 ? 500 - c.n : 0) + age + quiet / 2 }; })
+    .filter(x => x.R.some(r => r[0] !== "info") || x.R.length >= 2).sort((a, b) => b.score - a.score || a.it.id.localeCompare(b.it.id, "es", { numeric:true }));
+}
 const segNames = L => { const n = L.slice(0, 3).map(it => segNm(it)).join(", "); return L.length > 3 ? `${n} y ${L.length - 3} más` : n; };
 // El análisis: [tipo (ok, warn, bad, info), texto con <b>] — también va al Excel, sin las negritas.
 function segAnalysis(P){
@@ -18888,6 +18923,10 @@ function segAnalysis(P){
   out.push(P.late.length ? ["bad", `Hay <b>${pl(P.late.length, "tarea atrasada", "tareas atrasadas")}</b>: ${esc(segNames(P.late))}. Son las primeras para la próxima reunión.`] : ["ok", "No hay tareas atrasadas."]);
   if (P.stale.length) out.push(["warn", `<b>${pl(P.stale.length, "tarea lleva", "tareas llevan")}</b> más de 3 semanas sin avances: ${esc(segNames(P.stale))}.`]);
   if (P.noDate.length) out.push(["info", `<b>${pl(P.noDate.length, "tarea en curso no tiene", "tareas en curso no tienen")}</b> fecha de entrega: ponérsela ayuda a medir la puntualidad y el avance.`]);
+  const ST = segStages().filter(x => x.n), bn = ST.slice().sort((a, b) => b.avg - a.avg)[0];
+  if (bn && bn.avg >= 7) out.push(["warn", `El paso que más demora es <b>${esc(bn.l)}</b>: sus ${pl(bn.n, "tarea lleva", "tareas llevan")} en promedio <b>${pl(bn.avg, "día", "días")}</b> ahí. Conviene revisar qué las frena para que avancen.`]);
+  const np = P.all.filter(it => segLive(it) && it.st === "pend" && segStageAge(it) >= 7).length; if (np) out.push(["warn", `<b>${pl(np, "tarea sigue", "tareas siguen")} en Pendiente</b> hace más de una semana: arrancarlas o reprogramarlas.`]);
+  const nv = P.all.filter(it => segLive(it) && it.st === "val" && segStageAge(it) >= 7).length; if (nv) out.push(["info", `<b>${pl(nv, "tarea espera", "tareas esperan")} validación</b> hace más de una semana: definir quién aprueba y cerrarlas.`]);
   const cols = SEG_COLS.map(([k, l]) => [l, P.all.filter(it => it.col === k)]).filter(([, L]) => L.length).map(([l, L]) => [l, segPct(L)]).sort((a, b) => b[1] - a[1]);
   if (cols.length > 1) out.push(["info", `Columna con más avance: <b>${esc(cols[0][0])}</b> (${cols[0][1]} %). La que más empuje necesita: <b>${esc(cols.at(-1)[0])}</b> (${cols.at(-1)[1]} %).`]);
   out.push(P.openT ? ["info", `Quedan <b>${pl(P.openT, "tema, minuta o pedido", "temas, minutas o pedidos")}</b> por resolver en las reuniones (${P.doneT} ya ${P.doneT === 1 ? "se cerró" : "se cerraron"}).`] : ["ok", "No quedan temas de reunión por resolver."]);
@@ -18895,12 +18934,9 @@ function segAnalysis(P){
 }
 function segResumen(){
   const all = segItems(), ms = segMeets(), pa = segPct(all), P = segProd(), A = segAnalysis(P), cur = P.per.at(-1), prev = P.per.at(-2), d = cur.fin - prev.fin;
-  const people = segRespAll().map(r => [r, all.filter(it => (it.resp || []).includes(r))]).filter(([, L]) => L.length);
   const brow = (head, L) => `<div class="sgbrow">${head}<b class="sgbn">${L.length}</b><span class="sgbb">${segStack(L)}<em>${segPct(L)} %</em></span></div>`;
   const kpi = (ic, v, l, sub, cls) => `<div class="sgkp${cls ? " " + cls : ""}">${icon(ic)}<b>${v}</b><span>${l}</span>${sub ? `<small>${sub}</small>` : ""}</div>`;
   const max = Math.max(1, ...P.per.map(x => x.fin)), onp = P.withEnd.length ? Math.round(P.onTime / P.withEnd.length * 100) : null, AIC = { ok:"circle-check", warn:"triangle-alert", bad:"alarm-clock", info:"info" };
-  const pRow = ([r, L]) => { const C = P.closed.filter(x => (x.it.resp || []).includes(r)), E = C.filter(x => segEnd(x.it)), on = E.filter(x => x.d <= segEnd(x.it)).length, avg = C.length ? Math.round(C.reduce((a, x) => a + P.dd(x), 0) / C.length) : null;
-    return `<tr><td><button type="button" class="sglink" data-sgresp="${esc(r)}">${esc(segFull(r))}</button></td><td class="r">${L.filter(segOpen).length}</td><td class="r">${C.length}</td><td class="r">${E.length ? Math.round(on / E.length * 100) + " %" : "—"}</td><td class="r${L.filter(segLate).length ? " late" : ""}">${L.filter(segLate).length}</td><td class="r">${avg === null ? "—" : avg}</td></tr>`; };
   return `<section class="sgsec sgres1"><div class="sghrow"><div><h2 class="sgh">${icon("trending-up")} Resultados del área</h2><p class="sgmuted">Cómo avanza el trabajo del equipo de Marketing hacia sus objetivos: lo que se cierra, cuánto tarda y qué conviene empujar.</p></div>
         <button type="button" class="btn" data-sgxls title="Descargar en Excel todo el panel, con estos resultados">${icon("file-spreadsheet")} Descargar Excel</button></div>
       <div class="sgkps">${kpi("circle-check", cur.fin, `tareas cerradas en ${segMName(cur.k)}`, `${d > 0 ? "▲ " + d + " más" : d < 0 ? "▼ " + -d + " menos" : "igual"} que en ${segMName(prev.k)}`, d > 0 ? "up" : d < 0 ? "down" : "")}
@@ -18912,13 +18948,18 @@ function segResumen(){
       <section class="sgsec"><div class="sghrow"><h3 class="sgh">${icon("chart-column")} Tareas cerradas por mes</h3><span class="sgmuted">últimos 6 meses</span></div>
         <div class="sgbars" role="img" aria-label="${esc(P.per.map(x => `${segMName(x.k)}: ${x.fin} cerradas`).join(", "))}">${P.per.map((x, i) => `<div class="sgbarc${i === P.per.length - 1 ? " cur" : ""}" tabindex="0" data-tip="${esc(`${segMName(x.k)}: ${x.fin} cerradas · ${x.nue} nuevas · ${x.pts} puntos de reunión resueltos`)}"><i style="height:${Math.round(x.fin / max * 100)}%"><span class="sgbarv">${x.fin}</span></i><small>${segMName(x.k).slice(0, 3)}</small></div>`).join("")}</div>
         <p class="sgmuted sgsmall">${icon("info")}<span>En estos 6 meses entraron <b>${P.per.reduce((a, x) => a + x.nue, 0)}</b> tareas nuevas y se cerraron <b>${P.per.reduce((a, x) => a + x.fin, 0)}</b>. Tocá una barra para ver el detalle del mes.</span></p></section></div>
+    ${(() => { const N = segNeeds(), more = N.length > 8 && !segUI.needAll, L = more ? N.slice(0, 8) : N, RC = { bad:"#ef4444", warn:"#f97316", info:"#38bdf8" };
+      return `<section class="sgsec sgneeds"><div class="sghrow"><h2 class="sgh">${icon("route")} Procesos que necesitan avanzar <em class="sgn">${N.length}</em></h2><span class="sgmuted">las tareas que hay que destrabar, de la más urgente a la menos</span></div>
+        ${N.length ? `<ul class="sgneedl">${L.map(x => `<li><button type="button" class="sgneed" data-sgopen="${esc(x.it.id)}" style="--c:${RC[x.R[0][0]]}"><span class="sgneedn"><b>${esc(x.it.name)}</b><small>${esc(segCol(x.it.col)[2])}${x.it.sub ? " · " + esc(x.it.sub) : ""}</small></span>${segStPill(x.it.st, x.it.hold)}<span class="sgneedr">${x.R.map(([k, ic, t]) => `<span class="sgrsn" style="--c:${RC[k]}">${icon(ic)}${esc(t)}</span>`).join("")}</span></button></li>`).join("")}</ul>
+          ${N.length > 8 ? `<button type="button" class="sglink" data-sgneedall>${segUI.needAll ? "Ver menos" : `Ver las ${N.length}`} ${icon(segUI.needAll ? "chevron-up" : "chevron-down")}</button>` : ""}` : `<p class="sgmuted">No hay procesos trabados: todo avanza en tiempo y forma.</p>`}</section>`; })()}
     <section class="sgsec sgprocsec"><div class="sghrow"><h2 class="sgh">${icon("route")} Barra del proceso</h2><span class="sgavg">Avance general <b>${pa} %</b></span></div>${segPipe(all, false)}${segBar(pa, "Avance general", true)}
       <p class="sgmuted sgc">El avance cuenta cuánto del proceso recorrió cada tarea: Pendiente es 0 % y Finalizado 100 % (sin las canceladas).</p></section>
     <div class="sgtwo">
       <section class="sgsec"><h3 class="sgh">${icon("layers")} Por columna</h3><div class="sgblist">${SEG_COLS.map(([k, l, s]) => brow(`<span class="sgbh">${segColIc(k)}<span>${esc(s)}</span></span>`, all.filter(x => x.col === k))).join("")}${brow(`<span class="sgbh"><b>Total</b></span>`, all)}</div>
         <p class="sgmuted sgsmall">Una tarea con apoyo de varias áreas se cuenta una sola vez, en su columna principal.</p></section>
-      <section class="sgsec"><h3 class="sgh">${icon("users")} Por persona</h3><div class="sgtw"><table class="sgptab"><thead><tr><th>Persona</th><th class="r">Pendientes</th><th class="r">Cerradas</th><th class="r">A tiempo</th><th class="r">Atrasadas</th><th class="r">Días prom.</th></tr></thead><tbody>${people.map(pRow).join("")}</tbody></table></div>
-        <p class="sgmuted sgsmall">Una tarea compartida cuenta para cada responsable. “Días prom.”: cuánto tardó en cerrar sus tareas, en promedio.</p></section></div>
+      ${(() => { const ST = segStages(), mx = Math.max(1, ...ST.map(x => x.avg)), bn = ST.filter(x => x.n).sort((a, b) => b.avg - a.avg)[0];
+        return `<section class="sgsec"><h3 class="sgh">${icon("timer")} Tiempo en cada etapa</h3><div class="sgstgt">${ST.map(x => `<div class="sgstgr${bn && bn.k === x.k && x.avg >= 7 ? " bn" : ""}" style="--c:${x.c}"><span class="sgstgl">${icon(x.ic)}<b>${esc(x.l)}</b><small>${x.n} tarea${x.n === 1 ? "" : "s"}</small></span><span class="sgstgb"><i style="width:${Math.round(x.avg / mx * 100)}%"></i></span><em>${x.n ? `${x.avg} días` : "—"}</em>${bn && bn.k === x.k && x.avg >= 7 ? `<span class="sgbn2">más lento</span>` : ""}</div>`).join("")}</div>
+          <p class="sgmuted sgsmall">${icon("info")}<span>Cuántos días llevan, en promedio, las tareas en curso en la etapa donde están. La etapa más lenta es la que más hay que empujar.</span></p></section>`; })()}</div>
     <section class="sgsec"><h3 class="sgh">${icon("history")} Por reunión</h3>${ms.length ? `<div class="sgtw"><table><thead><tr><th>Fecha</th><th>Reunión</th><th class="r">Pendientes revisados</th><th class="r">Tareas nuevas</th><th class="r">Resueltas</th><th class="r">Puntos cerrados</th><th class="r">Avances escritos</th></tr></thead><tbody>
       ${ms.map(m => { const L = segMeetLogs(m.id), P = segMeetParts(m); return `<tr><td>${segFD(m.date)}</td><td><button type="button" class="sglink" data-sggomeet="${esc(m.id)}">${esc(m.title || "Reunión")}</button></td><td class="r">${P.follow.filter(it => L.some(x => x.it.id === it.id)).length}</td><td class="r">${P.news.length}</td><td class="r">${P.res.length}</td><td class="r">${segAgenda().filter(a => a.doneIn === m.id).length}</td><td class="r">${L.filter(x => x.l.kind === "msg" || (x.l.kind === "avance" && x.l.note)).length}</td></tr>`; }).join("")}</tbody></table></div>` : `<p class="sgmuted">Todavía no hay reuniones.</p>`}</section>`;
 }
@@ -18963,18 +19004,18 @@ function segComo(){
       <section class="sgsec"><h3 class="sgh">${icon("users")} Quiénes participan</h3><ul class="sgdl">${WHO.map(([n, d]) => `<li><span class="sgav${segUser(n) ? "" : " nouser"}" aria-hidden="true">${n[0]}</span><div><b>${esc(segFull(n))}</b><span>${d}</span></div><em class="${segUser(n) ? "sgok" : "sgno"}" title="${segUser(n) ? "Tiene usuario" : "Todavía sin usuario"}">${icon(segUser(n) ? "user-check" : "user-x")}</em></li>`).join("")}</ul>
         <details class="sgdet2"><summary>Otros participantes</summary><ul class="sgdl">${OTHERS.map(([n, d]) => `<li><div><b>${n}</b><span>${d}</span></div></li>`).join("")}</ul></details></section>
       <section class="sgsec"><h3 class="sgh">${icon("shield-check")} Perfiles propuestos</h3><ul class="sgdl">${PROFILES.map(([ic, a, b]) => `<li><span class="sghowi">${icon(ic)}</span><div><b>${a}</b><span>${b}</span></div></li>`).join("")}</ul>
-        <p class="sgmuted sgsmall">Son una propuesta, no roles asignados. Hoy, quien tiene acceso carga reuniones, tareas y avances; borrar y decidir quién lo ve queda para Admin total (Fede y Alyssa).</p>
+        <p class="sgmuted sgsmall">Son una propuesta, no roles asignados. El panel lo ven solo los jefes (Admin total y Admin); el equipo de CM y el de Diseño gráfico no. Hoy, quien tiene acceso carga reuniones, tareas y avances; borrar y decidir quién lo ve queda para Admin total (Fede y Alyssa).</p>
         <details class="sgdet2"><summary>Campos de cada tarea</summary><div class="sgtw"><table><tbody>${FIELDS.map(([a, b]) => `<tr><td><b>${a}</b></td><td>${b}</td></tr>`).join("")}</tbody></table></div></details></section></div>`;
 }
 // ---- Quién lo ve (solo Admin total) ----
 function segAccessPanel(){
-  const acc = new Set(segAccess()), list = PEOPLE.filter(p => p.active !== false && !["Revisor", "TV", "Comercial"].includes(p.role)).slice().sort((a, b) => (b.role === "Admin total") - (a.role === "Admin total") || (acc.has(b.id) - acc.has(a.id)) || String(a.name).localeCompare(String(b.name)));
+  const acc = new Set(segAccess()), list = PEOPLE.filter(p => p.active !== false && SEG_ROLES.includes(p.role)).slice().sort((a, b) => (b.role === "Admin total") - (a.role === "Admin total") || (acc.has(b.id) - acc.has(a.id)) || String(a.name).localeCompare(String(b.name)));
   const missing = SEG_RESP.filter(r => !segUser(r));
   return `<section class="sgsec sgacc"><h3 class="sgh">${icon("shield-check")} Quién ve el Panel de Seguimiento <span>${list.filter(p => p.role === "Admin total" || acc.has(p.id)).length} personas</span></h3>
-    <p class="note">Tocá una persona para darle o sacarle el acceso. Admin total lo ve siempre. Quien no está tildado no ve el botón ni baja los datos (la base tampoco se los da).</p>
+    <p class="note">El panel es solo para los <b>jefes</b>: Admin total lo ve siempre y a cada Admin se le da o se le saca el acceso tocándolo. <b>El equipo de CM y el de Diseño gráfico no lo ven.</b> Quien no está tildado no ve el botón ni baja los datos (la base tampoco se los da).</p>
     <div class="sgaccl">${list.map(p => { const at = p.role === "Admin total", on = at || acc.has(p.id);
       return `<button type="button" class="sgaccb${on ? " on" : ""}" data-sgaccp="${esc(p.id)}" ${at ? "disabled" : ""} aria-pressed="${on}">${on ? icon("check") : icon("plus")}<span><b>${esc(p.name)}</b><small>${esc(p.cargo || p.role)}${at ? " · siempre" : ""}</small></span></button>`; }).join("")}</div>
-    ${missing.length ? `<p class="note">${icon("info")} ${esc(missing.join(", "))} todavía no ${missing.length === 1 ? "tiene" : "tienen"} usuario: cuando lo${missing.length === 1 ? "" : "s"} crees en Usuarios y permisos, aparece${missing.length === 1 ? "" : "n"} acá para habilitarl${missing.length === 1 ? "o" : "os"}.</p>` : ""}</section>`;
+    ${missing.length ? `<p class="note">${icon("info")} ${esc(missing.join(", "))} todavía no ${missing.length === 1 ? "tiene" : "tienen"} usuario: cuando lo${missing.length === 1 ? "" : "s"} crees en Usuarios y permisos con el rol Admin, aparece${missing.length === 1 ? "" : "n"} acá para habilitarl${missing.length === 1 ? "o" : "os"}.</p>` : ""}</section>`;
 }
 // ---- Copiar y Excel ----
 const segStName = it => it.hold ? SEG_HOLD[it.hold][0] : segSt(it.st)[1];
@@ -19028,16 +19069,17 @@ function segMeetPdf(m){
   const sum = L => `<td class="r">${L.length}</td><td class="r">${cnt(L, it => it.prio === "Alta")}</td><td class="r">${cnt(L, it => stOf(it) === "En proceso")}</td><td class="r">${cnt(L, it => stOf(it) === "Finalizado")}</td>`;
   w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${e(segMeetFile(m))}</title><style>
     @page{size:A4 landscape;margin:12mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box}
-    body{font:12px/1.45 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#0f172a;margin:24px}
+    /* v392 · letra para leer bien en hoja blanca: Arial, más grande y en negro (nada de grises claros ni trazos finos) */
+    body{font:400 13.5px/1.5 Arial,Helvetica,"Liberation Sans",sans-serif;color:#000;margin:24px;-webkit-font-smoothing:antialiased}
     .top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;border-bottom:3px solid #142941;padding-bottom:10px;margin-bottom:12px}
-    h1{font-size:21px;margin:0;color:#142941}.sub{color:#334155;margin:3px 0 0;font-size:13px}.brand{font-size:11px;color:#64748b;text-align:right;line-height:1.4}
-    h2{font-size:12.5px;margin:18px 0 6px;color:#142941;text-transform:uppercase;letter-spacing:.07em}
-    .meta p{margin:2px 0}.meta b{color:#142941}.notes{white-space:pre-wrap;background:#f1f5f9;border-left:3px solid #142941;padding:8px 10px;margin:8px 0 0}
-    .ks{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px}.k{border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px}.k b{display:block;font-size:18px;color:#142941}.k span{color:#475569;font-size:11px}
-    table{width:100%;border-collapse:collapse}tr{break-inside:avoid}th{background:#142941;color:#fff;text-align:left;padding:6px 8px;font-size:11px;font-weight:700}
-    td{border-bottom:1px solid #e2e8f0;padding:6px 8px;vertical-align:top}td small{display:block;color:#64748b;font-size:10px;margin-top:2px}td.n{width:26px;font-weight:700;color:#142941}.r{text-align:right}.nw{white-space:nowrap}
-    tr.t td{background:#E8F0F8;font-weight:700}.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:10.5px;font-weight:700;border:1.5px solid;white-space:nowrap}
-    ul{margin:0;padding-left:18px}li{margin:2px 0}.foot{margin-top:18px;color:#64748b;font-size:10.5px;border-top:1px solid #e2e8f0;padding-top:6px}@media print{body{margin:0}}
+    h1{font-size:23px;font-weight:700;margin:0;color:#142941}.sub{color:#111;margin:4px 0 0;font-size:14px;font-weight:700}.brand{font-size:12px;color:#222;text-align:right;line-height:1.4;font-weight:700}
+    h2{font-size:14px;font-weight:700;margin:20px 0 7px;color:#142941;text-transform:uppercase;letter-spacing:.05em}
+    .meta p{margin:3px 0}.meta b{color:#142941}.notes{white-space:pre-wrap;background:#eef2f7;border-left:4px solid #142941;padding:9px 11px;margin:9px 0 0;color:#000}
+    .ks{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px}.k{border:1.5px solid #94a3b8;border-radius:8px;padding:8px 10px}.k b{display:block;font-size:20px;color:#142941;font-weight:700}.k span{color:#111;font-size:12px;font-weight:700}
+    table{width:100%;border-collapse:collapse}tr{break-inside:avoid}th{background:#142941;color:#fff;text-align:left;padding:7px 8px;font-size:12px;font-weight:700}
+    td{border-bottom:1px solid #94a3b8;padding:7px 8px;vertical-align:top;color:#000;font-size:13px}td b{font-weight:700}td small{display:block;color:#222;font-size:11.5px;margin-top:2px}td.n{width:28px;font-weight:700;color:#142941}.r{text-align:right}.nw{white-space:nowrap}
+    tr.t td{background:#E8F0F8;font-weight:700}.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11.5px;font-weight:700;border:2px solid;white-space:nowrap;color:#000}
+    ul{margin:0;padding-left:18px}li{margin:3px 0}.foot{margin-top:18px;color:#222;font-size:11.5px;border-top:1px solid #94a3b8;padding-top:7px}@media print{body{margin:0}}
   </style></head><body>
     <div class="top"><div><h1>Informe de reunión y seguimiento de procesos</h1><p class="sub">${e(m.title || "Reunión de procesos de Marketing")} · ${e(segLong(m.date))}</p></div><div class="brand">Panel Interactivo de Seguimiento de Marketing<br>Reuniones y seguimiento de procesos</div></div>
     <div class="meta">${m.who?.length ? `<p><b>Participantes:</b> ${e(m.who.map(segFull).join(", "))}</p>` : ""}${m.nextDate ? `<p><b>Próxima reunión:</b> ${e(segLong(m.nextDate))}</p>` : ""}${m.notes ? `<div class="notes">${e(m.notes)}</div>` : ""}</div>
@@ -19065,7 +19107,9 @@ function segXls(){
       return { name:"Resultados", cols:[34, 14, 14, 22], rows:[[{ v:"Resultados del área de Marketing", s:12 }], [`Al ${segFD(TODAY)}`], [], H3(["Mes", "Tareas nuevas", "Tareas cerradas", "Puntos de reunión resueltos"]),
         ...P.per.map(x => [`${segMName(x.k)} ${x.k.slice(0, 4)}`, x.nue, x.fin, x.pts]), [],
         [{ v:"Días en promedio para cerrar una tarea", s:1 }, P.avg ?? "—"], [{ v:"Entregadas a tiempo", s:1 }, P.withEnd.length ? `${Math.round(P.onTime / P.withEnd.length * 100)} % (${P.onTime} de ${P.withEnd.length})` : "—"],
-        [{ v:"Tareas atrasadas", s:1 }, P.late.length], [{ v:"Temas de reunión por resolver", s:1 }, P.openT], [], [{ v:"Análisis", s:1 }],
+        [{ v:"Tareas atrasadas", s:1 }, P.late.length], [{ v:"Temas de reunión por resolver", s:1 }, P.openT], [],
+        H3(["Etapa", "Tareas en curso", "Días en promedio", ""]), ...segStages().map(x => [x.l, x.n, x.n ? x.avg : "—", ""]), [],
+        H3(["Proceso que necesita avanzar", "Etapa", "Motivo", ""]), ...segNeeds().map(x => [{ v:x.it.name, s:2 }, segStName(x.it), { v:x.R.map(r => r[2]).join(" · "), s:2 }, ""]), [], [{ v:"Análisis", s:1 }],
         ...segAnalysis(P).map(([, t]) => [{ v:"• " + t.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'"), s:2 }])] }; })(),
     { name:"Temas de reuniones", rows:[H(["Reunión", "Tipo", "Tema", "Tarea", "Cómo quedó", "Qué pasó (última respuesta)", "Anotado por", "Cerrado el"]), ...segAgenda().map(a => [a.m ? segFD(segMDate(a.m)) : "Próxima", segTk(a)[0], { v:a.t, s:2 }, a.ref || a.task || "", a.kind === "info" ? "Registrado" : SEG_AGST[segAgSt(a)][0], { v:segAgLast(a)?.t || "", s:2 }, segShort(a.by), segFD(a.doneAt || "")])] },
     { name:"Resumen", rows:[H(["Columna", "Tareas", "En proceso", "Finalizadas", "En pausa", "Canceladas", "Avance %"]), ...SEG_COLS.map(([k, l]) => { const L = all.filter(x => x.col === k); return [l, L.length, L.filter(x => !x.hold && x.st === "proc").length, L.filter(x => x.st === "fin" && !x.hold).length, L.filter(x => x.hold === "pau").length, L.filter(x => x.hold === "can").length, segPct(L)]; }),
@@ -19120,7 +19164,7 @@ document.addEventListener("click", e => {
   if ((b = q("[data-sgjump]"))){ document.getElementById(b.dataset.sgjump)?.scrollIntoView({ behavior:"smooth", block:"start" }); return; }
   if ((b = q("[data-sgcalm]"))){ segUI.calM = b.dataset.sgcalm; render(); return; }
   if (q("[data-sgacc]")){ segUI.acc = !segUI.acc; render(); return; }
-  if ((b = q("[data-sgaccp]")) && segAT()){ const id = b.dataset.sgaccp, s = new Set(segAccess()); s.has(id) ? s.delete(id) : s.add(id); SEG_ACCESS = [...s]; render(); window.RMH?.flushNow?.(); const pp = PEOPLE.find(p => p.id === id); toast(`${pp ? pp.name : id}: ${s.has(id) ? "ahora ve el panel" : "ya no ve el panel"}.`); return; }
+  if ((b = q("[data-sgaccp]")) && segAT() && SEG_ROLES.includes(PEOPLE.find(p => p.id === b.dataset.sgaccp)?.role)){ const id = b.dataset.sgaccp, s = new Set(segAccess()); s.has(id) ? s.delete(id) : s.add(id); SEG_ACCESS = [...s]; render(); window.RMH?.flushNow?.(); const pp = PEOPLE.find(p => p.id === id); toast(`${pp ? pp.name : id}: ${s.has(id) ? "ahora ve el panel" : "ya no ve el panel"}.`); return; }
   if (q("[data-sgxls]")) return segXls();
   if ((b = q("[data-sgmpdf]"))){ const m = segMeet(b.dataset.sgmpdf); if (m) segMeetPdf(m); return; } // v386: informe de la reunión
   if ((b = q("[data-sgmxls]"))){ const m = segMeet(b.dataset.sgmxls); if (m) segMeetXls(m); return; }
@@ -19139,6 +19183,7 @@ document.addEventListener("click", e => {
     segUI.meet = ""; return segSave("Reunión borrada. Los avances quedan en cada tarea, sin reunión."); }
   if ((b = q("[data-sggomeet]"))){ const pt = b.dataset.sgpt; segUI.tab = "reu"; segUI.meet = b.dataset.sggomeet; segUI.open = ""; segUI.form = null; segUI.rnote = ""; render(); // v383: desde un punto, entra a la reunión y lo marca
     const el = pt && document.getElementById("sgag-" + pt); if (el){ el.scrollIntoView({ block:"center" }); el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 2200); } else window.scrollTo(0, 0); return; }
+  if (q("[data-sgneedall]")){ segUI.needAll = !segUI.needAll; render(); return; }
   if ((b = q("[data-sgpp]"))){ const k = b.dataset.sgpp; segUI.pp = { ...(segUI.pp || {}), [k]:!segUI.pp?.[k] }; render(); return; } // v383: las tareas de cada uno (portada)
   if (q("[data-sgmclose]")){ segUI.meet = ""; segUI.rnote = ""; render(); return; }
   if ((b = q("[data-sgcol]"))){ segUI.col = b.dataset.sgcol; render(); return; }
