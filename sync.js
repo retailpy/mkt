@@ -86,7 +86,9 @@ const RMH = (() => {
     PLAN_TXT:[() => PLAN_TXT, v => { PLAN_TXT = Array.isArray(v) ? v : []; }], // Plan de posteo: calendario de texto del mes (v249)
     INFLUENCERS:[() => INFLUENCERS, v => { INFLUENCERS = Array.isArray(v) ? v : []; }], // cumpleaños de influencers de las marcas (solo Admin total y CM)
     ESCRACHES:[() => ESCRACHES, v => { ESCRACHES = Array.isArray(v) ? v : []; }], // Búsqueda de Escraches: los cargados y las marcas (solo Admin total, Admin y CM)
-    PEDIDOS_COM:[() => PEDIDOS_COM, v => { PEDIDOS_COM = Array.isArray(v) ? v : []; }], // v242: pedidos de activaciones de Comercial (los compradores)
+    PEDIDOS_COM:[() => PEDIDOS_COM, v => { PEDIDOS_COM = Array.isArray(v) ? v : []; }],
+    ADM_JOBS:[() => ADM_JOBS, v => { ADM_JOBS = Array.isArray(v) ? v : []; }], // v399: Tablero de trabajos de Administración de Marketing (solo Admin total, Admin y Administración; también en la base)
+    ADM_EVENTS:[() => ADM_EVENTS, v => { ADM_EVENTS = Array.isArray(v) ? v : []; }], // v399: Eventos de Administración (lo mismo) // v242: pedidos de activaciones de Comercial (los compradores)
     CAMP_FOLDERS:[() => CAMP_FOLDERS, v => { CAMP_FOLDERS = Array.isArray(v) ? v : CF_DEF.map(c => ({ ...c, brands:[...c.brands] })); }], // v344: campañas (carpetas de la Planificación)
     APP_VIDEO:[() => APP_VIDEO, v => { APP_VIDEO = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v374: el video de la app (v394: lo ve todo el equipo; lo cambia Admin total)
     DRAFTS:[() => DRAFTS, v => { DRAFTS = v && typeof v === "object" && !Array.isArray(v) ? v : {}; window.draftsSynced?.(); }], // v369: borradores de pedidos (solo Admin total)
@@ -114,6 +116,9 @@ const RMH = (() => {
   // Claves que solo usan Admin total y Admin (v326: la Oficina de Agentes): las demás personas no las bajan.
   const ADM_ONLY = new Set(["s:AGENTS", "s:AGENT_CHAT", "s:CRONOGRAMA"]); // solo Admin total y Admin (también en la base) · v394: s:APP_VIDEO lo lee todo el equipo
   const isAdm = () => ["Admin total", "Admin"].includes(member?.role);
+  // v399: Administración de Marketing: solo la bajan y la guardan Admin total, Admin y el rol Administración (también en la base).
+  const ADMMKT_ONLY = new Set(["s:ADM_JOBS", "s:ADM_EVENTS"]);
+  const isAdmMkt = () => ["Admin total", "Admin", "Administración"].includes(member?.role);
   // Claves que todos leen pero solo Admin total guarda. (Los grupos de chat los crea cualquiera: la base controla
   // que cada uno cambie solo los suyos.)
   const ADMIN_WRITE = new Set(["s:TV_SCREENS", "s:CRONOGRAMA", "s:APP_VIDEO", "s:SEG_ACCESS"]); // v326: el Cronograma de Acciones lo mira Admin y lo cambia Admin total · v374: el video de la app · v375: quién ve el Panel de Seguimiento
@@ -125,7 +130,7 @@ const RMH = (() => {
   const base = new Map(); // clave → { v: versión en el servidor, json: lo último que coincidió con el servidor }
 
   function localKeys(){
-    return [...Object.keys(SHARED).map(k => "s:" + k).filter(k => (isAT() || !ADMIN_ONLY.has(k)) && (isCMish() || !CM_ONLY.has(k)) && (isATCM() || !ATCM_ONLY.has(k)) && (isAdm() || !ADM_ONLY.has(k)) && (k !== "s:SEGUIMIENTO" || segIn())), "notes:" + me, "prompts:" + me, "comchk:" + me,
+    return [...Object.keys(SHARED).map(k => "s:" + k).filter(k => (isAT() || !ADMIN_ONLY.has(k)) && (isCMish() || !CM_ONLY.has(k)) && (isATCM() || !ATCM_ONLY.has(k)) && (isAdm() || !ADM_ONLY.has(k)) && (isAdmMkt() || !ADMMKT_ONLY.has(k)) && (k !== "s:SEGUIMIENTO" || segIn())), "notes:" + me, "prompts:" + me, "comchk:" + me,
       ...THREADS.filter(t => t.a === me || t.b === me).map(t => "thread:" + t.id),
       ...CHAT_GROUPS.filter(g => chatMember(g, { id:me, role:member?.role })).map(g => "chat:" + g.id)]; // siempre con quien inició sesión
   }
