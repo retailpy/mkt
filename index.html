@@ -4343,6 +4343,11 @@ tr.arow td{background:rgba(34,197,94,.08)}
 td svg{width:15px;height:15px;vertical-align:-2px;color:var(--cyan)}
 /* v375 · Panel Interactivo de Seguimiento de Marketing: botón destacado en el menú y página a pantalla completa (sin el menú) */
 /* v376 · más claro y dividido: contenido centrado (máx. 1200 px), secciones con aire, tarjetas y la barra del proceso en color */
+/* v399 · Solicitud de pedidos, destacada en el menú (debajo de Inicio) */
+.nav a.pcnav{border:1px solid rgba(245,158,11,.55);background:linear-gradient(90deg,rgba(245,158,11,.16),rgba(245,158,11,.04));color:#fde68a;font-weight:700}
+.nav a.pcnav > svg{color:#fbbf24}.nav a.pcnav:hover{background:linear-gradient(90deg,rgba(245,158,11,.24),rgba(245,158,11,.08))}
+.nav a.pcnav.on{background:linear-gradient(90deg,#f59e0b,#f97316);color:#1c1003;border-color:transparent}.nav a.pcnav.on > svg{color:#1c1003}
+html.light .nav a.pcnav{color:#92400e;background:linear-gradient(90deg,rgba(245,158,11,.18),rgba(245,158,11,.05))}html.light .nav a.pcnav > svg{color:#b45309}
 .nav a.segnav{position:relative;padding:11px 12px;border:1px solid rgba(34,211,238,.45);background:rgba(34,211,238,.08);color:#e0f2fe}
 .nav a.segnav > svg{color:#67e8f9;width:20px;height:20px;flex:none}
 .nav a.segnav > span{display:flex;flex-direction:column;line-height:1.2;min-width:0}
@@ -5119,12 +5124,12 @@ const SECTIONS = [
   { g:"General", k:"videohub", l:"Video Retail MKT Hub", i:"clapperboard", virtual:true }, // v374: el video de presentación de la app (v394: lo ve todo el equipo; el link está en la base, s:APP_VIDEO)
   { g:"General", k:"bienvenida", l:"Bienvenida", i:"hand", virtual:true }, // página provisoria de bienvenida (edición beta), la ven todos
   { g:"General", k:"inicio", l:"Inicio", i:"house" },
+  { g:"General", k:"pedcom", l:"Solicitud de pedidos", i:"shopping-bag", virtual:true }, // v399: debajo de Inicio y destacado (la ven Admin total, Patricia y Emanuel —Admin— y Comercial) · v397: antes “Pedidos Comercial”; ahora también piden Patricia y Emanuel (rol Admin) // v242: pedidos de activaciones de los compradores (rol Comercial); lo ven Admin total y Admin
   { g:"General", k:"planmes", l:"Planificación del mes", i:"target" },
   { g:"General", k:"alertas", l:"Alertas", i:"bell", hide:true }, // ahora están en Inicio
   { g:"General", k:"avisos", l:"Avisos", i:"megaphone", hide:true }, // se ven en Inicio
   { g:"General", k:"mensajes", l:"Chat Retail MKT", i:"messages-square" },
   { g:"General", k:"comercial", l:"Comercial", i:"tags", virtual:true }, // ofertas publicadas de cada quincena (Excel de Comercial)
-  { g:"General", k:"pedcom", l:"Solicitud de pedidos", i:"shopping-bag", virtual:true }, // v397: antes “Pedidos Comercial”; ahora también piden Patricia y Emanuel (rol Admin) // v242: pedidos de activaciones de los compradores (rol Comercial); lo ven Admin total y Admin
   { g:"General", k:"cronograma", l:"Cronograma de Acciones", i:"calendar-range", virtual:true }, // v326: acciones de comunicación con fechas y medios (Redes, Tótem, TV…); lo ven Admin total y Admin, lo cambia Admin total
   { g:"General", k:"seguimiento", l:"Panel Interactivo de Seguimiento de Marketing", n:"Panel de Seguimiento", i:"chart-gantt", virtual:true, hide:true }, // v375: reuniones de procesos; botón destacado arriba del menú, solo las personas de s:SEG_ACCESS y Admin total; pantalla completa
   { g:"General", k:"copys", l:"Generador de copy", i:"pen-line", virtual:true }, // v334: textos del creativo → copy de ClaudIA (Admin total, Admin y CM)
@@ -5855,7 +5860,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v398";
+const APP_VER = "v399";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -19515,7 +19520,7 @@ function renderNav(){
     const items = SECTIONS.filter(s => s.g === g && can(s.k) && (!s.hide || (isRevisor() && s.k === "inbox")));
     if (!items.length) return "";
     const shut = !isRevisor() && !isComercial() && navClosed.has(g); // el Revisor tiene una sola sección: siempre a la vista
-    return `<div class="nav-group${shut ? " closed" : ""}"><button type="button" class="nav-label navtog" data-navtog="${esc(g)}" aria-expanded="${!shut}">${g}${shut ? items.map(x => navBadge(x.k)).join("") : ""}${icon("chevron-down")}</button>${items.map(s => `<a href="#${s.k}" data-page="${s.k}" title="${esc(s.n || s.l)}" class="${page===s.k || (s.k === "paneldg" && PANEL_DG_KEYS.includes(page)) || (s.k === "panelcm" && PANEL_CM_KEYS.includes(page)) ?"on":""}">${icon(s.i)}<span>${s.n || s.l}</span>${s.k==="mensajes" && chatUnreadTotal() ? `<span class="count msgc">${chatUnreadTotal()}</span>` : ""}${s.k==="alertas" && alerts().length ? `<span class="count">${alerts().length}</span>` : ""}${navBadge(s.k)}</a>`).join("")}</div>`;
+    return `<div class="nav-group${shut ? " closed" : ""}"><button type="button" class="nav-label navtog" data-navtog="${esc(g)}" aria-expanded="${!shut}">${g}${shut ? items.map(x => navBadge(x.k)).join("") : ""}${icon("chevron-down")}</button>${items.map(s => `<a href="#${s.k}" data-page="${s.k}" title="${esc(s.n || s.l)}" class="${page===s.k || (s.k === "paneldg" && PANEL_DG_KEYS.includes(page)) || (s.k === "panelcm" && PANEL_CM_KEYS.includes(page)) ?"on":""}${s.k === "pedcom" ? " pcnav" : ""}">${icon(s.i)}<span>${s.n || s.l}</span>${s.k==="mensajes" && chatUnreadTotal() ? `<span class="count msgc">${chatUnreadTotal()}</span>` : ""}${s.k==="alertas" && alerts().length ? `<span class="count">${alerts().length}</span>` : ""}${navBadge(s.k)}</a>`).join("")}</div>`;
   }).join("");
   document.querySelectorAll('.nav a[data-page="paneldg"], .nav a[data-page="panelcm"]').forEach(a => a.classList.toggle("wknew", workNew(a.dataset.page) > 0));
   const wn = workPend("paneldg") + workPend("panelcm"); if (workLast !== null && wn > workLast) setTimeout(bumpWorkBadges, 0); workLast = wn;
