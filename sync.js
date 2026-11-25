@@ -95,6 +95,7 @@ const RMH = (() => {
     PROMPT_LOG:[() => PROMPT_LOG, v => { PROMPT_LOG = Array.isArray(v) ? v : []; }], // v334: los prompts de imágenes que se generan (sin nombres; SantIAgo)
     COPY_LOG:[() => COPY_LOG, v => { COPY_LOG = Array.isArray(v) ? v : []; }], // v334: los copys del Generador de copy (sin nombres; ClaudIA)
     CRONOGRAMA:[() => CRONOGRAMA, v => { CRONOGRAMA = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v326: Cronograma de Acciones (lo cambia Admin total)
+    RESUMEN_EJEC:[() => RESUMEN_EJEC, v => { RESUMEN_EJEC = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v400: notas del Resumen ejecutivo (reunión con el CEO; Admin total y Admin)
     TV_SCREENS:[() => TV_SCREENS, v => { TV_SCREENS = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v266: qué muestra cada televisor (TV 1 a TV 4); lo cambia Admin total
     // v375 · Panel de Seguimiento: quién lo ve (lo cambia Admin total) y el panel (solo esas personas y Admin total; también en la base).
     // Si a esta persona le dan el acceso, se trae el panel enseguida; si se lo sacan, se borra la copia de este dispositivo.
@@ -112,7 +113,7 @@ const RMH = (() => {
   const ATCM_ONLY = new Set(["s:INFLUENCERS", "s:PLAN_TXT"]);
   const isATCM = () => ["Admin total", "CM"].includes(member?.role);
   // Claves que solo usan Admin total y Admin (v326: la Oficina de Agentes): las demás personas no las bajan.
-  const ADM_ONLY = new Set(["s:AGENTS", "s:AGENT_CHAT", "s:CRONOGRAMA"]); // solo Admin total y Admin (también en la base) · v394: s:APP_VIDEO lo lee todo el equipo
+  const ADM_ONLY = new Set(["s:AGENTS", "s:AGENT_CHAT", "s:CRONOGRAMA", "s:RESUMEN_EJEC"]); // v400: + el Resumen ejecutivo // solo Admin total y Admin (también en la base) · v394: s:APP_VIDEO lo lee todo el equipo
   const isAdm = () => ["Admin total", "Admin"].includes(member?.role);
   // Claves que todos leen pero solo Admin total guarda. (Los grupos de chat los crea cualquiera: la base controla
   // que cada uno cambie solo los suyos.)
