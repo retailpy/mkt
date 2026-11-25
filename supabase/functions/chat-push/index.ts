@@ -93,7 +93,9 @@ async function jobPush(cfg: any, items: any[]) {
     const brands = j ? (Array.isArray(j.brands) && j.brands.length ? j.brands : [j.brand]).filter(Boolean).join(" + ") : "";
     let title = j?.title || "", body = "", go = j ? "job:" + j.id : "";
     let head = "";
-    if (n.copy && n.post) { // v214: copy de la publicación (la CM lo manda → Admin total; Admin total aprueba o pide corrección → la CM)
+    if (n.adm) { // v401: Administración de Marketing: le toca un trabajo del Tablero (el título y el detalle vienen en el aviso)
+      title = short(String(n.title || ""), 120); body = String(n.text || ""); go = "adm:" + String(n.adm); head = "Administración: te toca un trabajo";
+    } else if (n.copy && n.post) { // v214: copy de la publicación (la CM lo manda → Admin total; Admin total aprueba o pide corrección → la CM)
       const x = (n.canal ? canal : posts).find((y) => y.id === n.post);
       if (!x) continue;
       const when = `${dm(x.date)}${x.time ? " a las " + x.time : ""}`, w = people.find((y) => y.name === n.who);
@@ -157,6 +159,8 @@ async function avisoPush(cfg: any, items: any[]) {
 
 // Pedidos Comercial (v242): pedido nuevo de un comprador → a Admin total; pedido publicado → al comprador que lo cargó.
 // v397 · Solicitud de pedidos: también piden Patricia y Emanuel (Admin); a Admin total le llega como “Nueva solicitud de pedido”.
+// v401 · La solicitud de pedido del equipo también le llega a la líder de Administración de Marketing (admLead en su ficha;
+// si nadie está marcado, a todo el rol Administración): trabaja en paralelo con Admin total (compra y producción).
 // Con “No molestar”, sin aviso.
 async function pedidoPush(cfg: any, items: any[]) {
   const list = (Array.isArray(items) ? items : []).filter((p) => p && p.id && p.title).slice(0, 10);
@@ -165,6 +169,14 @@ async function pedidoPush(cfg: any, items: any[]) {
   const { data: admins } = await db.from("members").select("person_id").eq("active", true).eq("role", "Admin total");
   const { data: buyers } = await db.from("members").select("person_id").eq("role", "Comercial"); // v397: los demás (Patricia, Emanuel) mandan “solicitudes de pedido”
   const isBuyer = (id: string) => (buyers || []).some((x) => x.person_id === id);
+  let admLeads: string[] | null = null;
+  const leads = async () => {
+    if (admLeads) return admLeads;
+    const { data: am } = await db.from("members").select("person_id").eq("active", true).eq("role", "Administración");
+    const ids = (am || []).map((x) => x.person_id), people: any[] = ids.length ? (await state("s:PEOPLE")) || [] : [];
+    const marked = ids.filter((id) => people.some((x) => x && x.id === id && x.admLead));
+    return (admLeads = marked.length ? marked : ids);
+  };
   const now = Date.now(), brands = (p: any) => (Array.isArray(p.brands) ? p.brands : []).join(" + ");
   let sent = 0;
   for (const p of list) {
@@ -186,7 +198,8 @@ async function pedidoPush(cfg: any, items: any[]) {
       continue;
     }
     const pub = p.ev === "pub";
-    const to = (pub ? [String(p.by || "")] : (admins || []).map((m) => m.person_id)).filter((id) => id && id !== (pub ? "" : p.by) && !isDnd(presence[id], now));
+    const team = !pub && !isBuyer(String(p.by || "")) ? await leads() : []; // v401: + Administración
+    const to = (pub ? [String(p.by || "")] : [...(admins || []).map((m) => m.person_id), ...team]).filter((id) => id && id !== (pub ? "" : p.by) && !isDnd(presence[id], now));
     if (!to.length) continue;
     const payload = JSON.stringify(pub
       ? { title: "✅ ¡Tu pedido se publicó!", body: short(`${p.title}${brands(p) ? " · " + brands(p) : ""}`, 220), tag: "rmh-pc-" + p.id, open: "", go: "com:" + p.id }
