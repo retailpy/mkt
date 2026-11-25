@@ -4005,6 +4005,10 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
   .acard .ac-m{align-items:flex-start}.acard .ac-m span{white-space:normal;overflow:visible}
   .acard .ac-t{overflow-wrap:break-word;hyphens:auto;-webkit-hyphens:auto}
 }
+/* v398 · Trabajos que se entregan en los meses que vienen */
+.aheadchip{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1px 8px;border-radius:99px;font-size:11.5px;font-weight:600;color:#a5f3fc;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.45);white-space:nowrap;vertical-align:middle}.aheadchip svg{width:13px;height:13px}
+html.light .aheadchip{color:#0e7490;background:rgba(14,116,144,.08)}
+.aheadnote{display:flex;align-items:center;gap:6px 10px;margin:6px 0 10px;flex-wrap:wrap}.aheadnote .btn{margin-left:auto}
 /* v242 · Pedidos Comercial (v397: Solicitud de pedidos) */
 .pctw td small.pcby{display:block;font-size:11px;color:var(--muted)}
 .pcst{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:800;color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent);border:1px solid color-mix(in srgb,var(--c) 45%,transparent)}
@@ -5357,7 +5361,7 @@ function partAutoDrop(){ const p = partApproveAll.pend; partApproveAll.pend = nu
 function partGo(j){ jobUI.ficha = j.id; render(); setTimeout(() => { const i = document.getElementById("bkPart-" + j.id); i?.scrollIntoView({ block:"center" }); i?.focus(); }, 60); }
 const partLbl = j => { const P = jobParts(j); if (!P) return ""; const w = partsWait(j), n = partsOk(j);
   return w.length > 1 ? `${w.length} partes esperando` : w.length ? `${partName(w[0][0], w[0][1])}${w[0][0].last ? " · último envío" : ""}` : partsDone(j) ? `${P.length} ${P.length === 1 ? "parte" : "partes"} · terminado` : n ? `${n} ${n === 1 ? "parte aprobada" : "partes aprobadas"}` : "Por partes"; };
-const partChip = j => jobParts(j) ? `<span class="partchip" title="Se entrega por partes">${icon("layers")} ${esc(partLbl(j))}</span>` : "";
+const partChip = j => (jobParts(j) ? `<span class="partchip" title="Se entrega por partes">${icon("layers")} ${esc(partLbl(j))}</span>` : "") + aheadChip(j); // v398: y “Entrega en <mes>”
 const partPubs = q => (q?.pubs || []).map(r => r.canal ? canalById(r.id) : postById(r.id)).filter(Boolean);
 // v351 · La publicación de una parte ya se puede publicar cuando ESA parte está aprobada (aunque el pedido siga con otras partes).
 const pubPartOf = (x, j) => (jobParts(j) || []).find(q => (q.pubs || []).some(r => r.id === x?.id));
@@ -5851,7 +5855,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v397";
+const APP_VER = "v398";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -6450,6 +6454,16 @@ const isFuture = () => MONTH > CURRENT_MONTH;
 const prevMonth = v => { const [y,m] = v.split("-").map(Number); const d = new Date(y, m-2, 1); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0"); };
 const lastDay = v => { const [y,m] = v.split("-").map(Number); return new Date(y, m, 0).getDate(); };
 const jobMonth = j => (isFin(j) ? (j.delivered || j.due) : j.due).slice(0,7);
+// v398 · Trabajos que se entregan en un mes que viene (diciembre, enero…): mientras no estén terminados, también se ven en el mes
+// en curso (las listas de cada sección, el Panel de Trabajo, la Planificación en Tabla y Gestión de Video), así se arrancan antes y no
+// hay que esperar a que llegue ese mes. Llevan la etiqueta “Entrega en <mes>”. Los informes siguen contando cada trabajo en su mes.
+const jobAhead = j => !!j && !!j.due && !isClosedJob(j) && String(j.due).slice(0, 7) > CURRENT_MONTH;
+const jobInView = (j, M = MONTH) => jobMonth(j) === M || (M === CURRENT_MONTH && jobAhead(j));
+// En las vistas de calendario (la grilla es del mes), un aviso con cuántos se entregan más adelante y el botón para verlos en Tabla.
+const aheadCalNote = (list, attr) => { if (MONTH !== CURRENT_MONTH) return ""; const n = list.filter(jobAhead).length; if (!n) return "";
+  const ms = [...new Set(list.filter(jobAhead).map(j => j.due.slice(0, 7)))].sort().map(monthName);
+  return `<p class="note aheadnote">${icon("calendar-clock")}<span>${n === 1 ? "<b>1</b> trabajo se entrega" : `<b>${n}</b> trabajos se entregan`} en ${ms.join(" y ")}: ya se ${n === 1 ? "puede" : "pueden"} empezar. No entra${n === 1 ? "" : "n"} en este calendario.</span><button type="button" class="btn sm" ${attr}>${icon("table-2")} Ver en Tabla</button></p>`; };
+const aheadChip = j => MONTH === CURRENT_MONTH && jobAhead(j) ? `<span class="aheadchip" title="Se entrega el ${dm(j.due)}: ya se puede ir trabajando">${icon("calendar-clock")} Entrega en ${monthName(j.due.slice(0, 7))}</span>` : "";
 const isDone = p => ["Publicado","Pautado"].includes(p.status);
 // Datos de redes de ejemplo: los meses posteriores muestran el último cargado.
 
@@ -8213,11 +8227,12 @@ const stProgress = (done, total, txt) => { const p = total ? Math.round(done / t
 // v241 · “Con retraso” suma también lo de meses anteriores que sigue sin aprobarse (como las ventanas de entrega).
 const dgLateList = base => base.filter(j => j.area === "Diseño" && !j.ex && j.status !== "Cancelado" && jobLate(j) && j.due.slice(0, 7) <= MONTH);
 function dgPanelBlock(scope){
-  const todo = scope.filter(j => j.area === "Diseño" && jobMonth(j) === MONTH && !j.ex), mes = todo.filter(j => j.status !== CANCEL), fin = mes.filter(isFin).length; // v299: los cancelados, solo en su cuadro
+  const todo = scope.filter(j => j.area === "Diseño" && jobInView(j) && !j.ex), mes = todo.filter(j => j.status !== CANCEL), own = mes.filter(j => jobMonth(j) === MONTH), fin = own.filter(isFin).length; // v398: + lo que se entrega en los meses que vienen // v299: los cancelados, solo en su cuadro
   const late = dgLateList(scope), G = dgPanUI.g === "late" ? ["late", LATE_ST] : DG_GROUPS.find(x => x[0] === dgPanUI.g);
   const pct = mes.length ? Math.round(fin / mes.length * 100) : 0, cards = DG_GROUPS.map(([k, l, c, f]) => `<button type="button" class="pubst ${dgPanUI.g === k ? "on" : ""}" data-dgpan="${esc(k)}" aria-pressed="${dgPanUI.g === k}" style="--c:${c}"><b class="num">${(k === "cancel" ? todo : mes).filter(f).length}</b><span>${l}</span>${k === "all" ? `<small>${fin} ${fin === 1 ? "finalizado" : "finalizados"} · ${pct}%</small>` : ""}</button>`);
   cards.splice(-4, 0, lateCard(late.length, dgPanUI.g === "late", `data-dgpan="late"`, prevMonths(late))); // antes de En pausa, Cancelados, Aprobados y Total del mes
-  return `${stProgress(fin, mes.length, "finalizados (aprobados) en " + monthName(MONTH))}<div class="pubsum dgsum dgpan">${cards.join("")}</div>
+  const ahead = mes.length - own.length;
+  return `${stProgress(fin, own.length, "finalizados (aprobados) en " + monthName(MONTH))}${ahead ? `<p class="note aheadnote">${icon("calendar-clock")} Se suman ${ahead === 1 ? "<b>1</b> trabajo que se entrega" : `<b>${ahead}</b> trabajos que se entregan`} en los meses que vienen: ya se pueden ir haciendo.</p>` : ""}<div class="pubsum dgsum dgpan">${cards.join("")}</div>
   ${G ? `<section class="panel dgpanlist"><div class="head" style="margin-bottom:8px"><h2 class="pmh" style="margin:0">${pmIco(G[0] === "late" ? "alarm-clock" : "table-2")}${G[1]} <span class="note" style="font-weight:500">· ${G[0] === "late" ? "1 día o más de atraso, sin aprobar" : monthName(MONTH)} · Redes, Cartelería, Web y Pantallas</span></h2><button type="button" class="btn sm" data-dgpan="${G[0]}">${icon("x")} Cerrar</button></div>${dgTable(G[0] === "late" ? late : (G[0] === "cancel" ? todo : mes).filter(G[3]))}</section>`
     : `<p class="note dgpanhint">${icon("info")} Tocá un cuadro para ver la lista de esos trabajos (todas las secciones juntas).</p>`}`;
 }
@@ -10715,7 +10730,7 @@ function jobTable(list){
   const at = canCreateJobs() || list.some(j => canEditJob(j)), showOwner = !pedMine(), showReq = viewer.role === "Admin total";
   const cols = 7 + (showOwner ? 1 : 0) + (showReq ? 1 : 0) + (at ? 1 : 0);
   return `<div class="tw"><table><thead><tr><th>Trabajo solicitado</th><th>Marca</th><th>Tipo</th><th>Fecha límite</th><th>Estado</th><th>Prioridad</th><th>Solicitante</th>${showOwner ? "<th>Responsable</th>" : ""}${showReq ? "<th>Solicitud</th>" : ""}${at ? "<th></th>" : ""}</tr></thead><tbody>
-    ${list.map(j => `<tr><td>${j.ex ? `<span class="exbadge sm">Ejemplo</span> ` : ""}<button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button>${j.link ? ` <a class="link-post" href="${esc(j.link)}" target="_blank" rel="noopener">${icon("link")} brief</a>` : ""}</td><td>${jobBrandTags(j)}</td><td>${jobPieceTag(j)}</td><td><div class="chips" style="flex-wrap:nowrap"><span class="num">${dm(j.due)}</span>${urgBadge(j)}</div></td><td>${jobStatusCell(j)}</td><td>${prioTag(j.priority)}</td><td>${esc(j.requester)}</td>${showOwner ? `<td>${esc(crewOf(j.owner, j).join(" + ") || j.owner)}</td>` : ""}${showReq ? `<td class="num">${dm(j.requestDate)}</td>` : ""}${at ? `<td>${jobActions(j)}</td>` : ""}</tr>`).join("") || `<tr><td colspan="${cols}" class="empty">No hay pedidos.</td></tr>`}
+    ${list.map(j => `<tr><td>${j.ex ? `<span class="exbadge sm">Ejemplo</span> ` : ""}<button type="button" class="linkish" data-jficha="${j.id}" title="Ver el pedido completo">${esc(j.title)}</button>${aheadChip(j)}${j.link ? ` <a class="link-post" href="${esc(j.link)}" target="_blank" rel="noopener">${icon("link")} brief</a>` : ""}</td><td>${jobBrandTags(j)}</td><td>${jobPieceTag(j)}</td><td><div class="chips" style="flex-wrap:nowrap"><span class="num">${dm(j.due)}</span>${urgBadge(j)}</div></td><td>${jobStatusCell(j)}</td><td>${prioTag(j.priority)}</td><td>${esc(j.requester)}</td>${showOwner ? `<td>${esc(crewOf(j.owner, j).join(" + ") || j.owner)}</td>` : ""}${showReq ? `<td class="num">${dm(j.requestDate)}</td>` : ""}${at ? `<td>${jobActions(j)}</td>` : ""}</tr>`).join("") || `<tr><td colspan="${cols}" class="empty">No hay pedidos.</td></tr>`}
   </tbody></table></div>`;
 }
 function jobBoard(list, A){
@@ -10726,7 +10741,7 @@ function jobBoard(list, A){
       const p = j.post && postById(j.post);
       const tap = stageOptions("job", j).length;
       return `<div class="card${tap ? " tapstage" : ""}${urgStyle(j)}--c:${BRANDS[j.brand]}"${tap ? ` draggable="true" data-drag="job:${j.id}"` : ""}${canCreateJobs() ? (tap ? ` data-stagemenu="job:${j.id}" role="button" tabindex="0" title="Tocá para cambiar la etapa"` : "") : ` data-jficha="${j.id}" role="button" tabindex="0" title="Tocá para ver el pedido completo"`}><div class="bar-top"></div><div class="in">${urgBadge(j) ? `<div>${urgBadge(j)}</div>` : ""}${j.ex ? `<span class="exbadge sm">Ejemplo</span>` : ""}<div class="t">${esc(j.title)}</div>
-        <div class="m">${jobBrandTags(j)}${jobPieceTag(j)}<span>${isFin({ status:st, area:A }) ? "finalizado " + dm(j.delivered || j.due) : "límite " + dm(j.due)}</span></div>
+        <div class="m">${jobBrandTags(j)}${jobPieceTag(j)}<span>${isFin({ status:st, area:A }) ? "finalizado " + dm(j.delivered || j.due) : "límite " + dm(j.due)}</span>${aheadChip(j)}</div>
         ${p ? `<div class="link-post">↳ Post del ${dm(p.date)} · ${p.net}</div>` : ""}
         <div class="foot"><span>${esc(j.owner)} · ${prioTag(j.priority)}</span>${canEditJob(j) ? `<button class="btn sm ib" data-jedit="${j.id}" title="Editar pedido" aria-label="Editar pedido">${icon("pencil")}</button>` : ""}</div>${designsJob(j) && !tap ? `<div class="dact"><span class="spl" style="color:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}">${j.status}</span>${designerAction(j)}</div>` : A === "CM" || A === "Diseño" || A === "Contenidos" ? `<div class="dact"><span class="spl" style="color:${j.status === "Pendiente" ? "#94a3b8" : JOB_COLOR[j.status]}">● ${j.status}${tap ? " ▾" : ""}</span></div>` : stagePicker(j, canSetAnyStatus(j))}</div></div>`;
     }).join("") || `<div class="empty" style="padding:6px">Vacío</div>`}</div>`; }).join("")}</div>`;
@@ -10977,7 +10992,7 @@ let pedView = "tabla";
 document.addEventListener("click", e => { const b = e.target.closest("[data-pedview]"); if (b){ pedView = b.dataset.pedview; render(); } });
 function pedList(A){
   const cart = MAT_SECS.includes(page), soc = page === "pedidos";
-  return jobs.filter(j => j.area === A && (seesJob(j) || j.ex) && jobMonth(j) === MONTH && j.status !== "Cancelado" && (!cart || inMatPage(j)) && (!soc || !isMaterial(j)) && (!pedMine() || hasJob(j, viewer.name) || j.ex))
+  return jobs.filter(j => j.area === A && (seesJob(j) || j.ex) && jobInView(j) && j.status !== "Cancelado" && (!cart || inMatPage(j)) && (!soc || !isMaterial(j)) && (!pedMine() || hasJob(j, viewer.name) || j.ex))
     .sort((a, b) => !!b.ex - !!a.ex || a.due.localeCompare(b.due)); // el ejemplo, primero
 }
 const pedScopeChips = A => ownsJobs() ? `<div class="chips pedscope"><button type="button" class="chip ${pedMine() ? "on" : ""}" data-pedscope="mine">${icon("user-round")} Mis pedidos</button><button type="button" class="chip ${pedMine() ? "" : "on"}" data-pedscope="team">${icon("users")} Todo el equipo de ${A === "Diseño" ? "Diseño gráfico" : "CM"}</button></div>` : "";
@@ -11261,11 +11276,11 @@ function pCalDG(){
   const lateOn = dgPlanUI.st === LATE_ST, late = dgLateList(base);
   const list = (lateOn ? late : base.filter(j => dgPlanUI.st === "Todos" || j.status === dgPlanUI.st)).sort((a, b) => a.due.localeCompare(b.due));
   const n = list.filter(j => j.due.slice(0, 7) === MONTH).length;
-  const mes = base.filter(j => j.due.slice(0, 7) === MONTH), cnt = st => mes.filter(j => j.status === st).length, done = mes.filter(isFin).length;
+  const own = base.filter(j => j.due.slice(0, 7) === MONTH), mes = base.filter(j => j.due.slice(0, 7) === MONTH || (MONTH === CURRENT_MONTH && jobAhead(j))), cnt = st => mes.filter(j => j.status === st).length, done = own.filter(isFin).length; // v398: las etapas suman lo que viene
   const sts = [...JOB_STAGES, ...new Set(mes.map(j => j.status).filter(st => !JOB_STAGES.includes(st)))]; // las de antes (ej. Entregado), solo si hay
   const summary = `<div class="pubsum dgsum">${sts.map(st => `<button type="button" class="pubst ${dgPlanUI.st === st ? "on" : ""}" data-dgst="${esc(st)}" aria-pressed="${dgPlanUI.st === st}" style="--c:${dgStColor(st)}"><b class="num">${cnt(st)}</b><span>${esc(st)}</span></button>`).join("")}
     ${lateCard(late.length, lateOn, `data-dgst="${LATE_ST}"`, prevMonths(late))}
-    <div class="pubpct"><b class="num">${mes.length ? Math.round(done / mes.length * 100) : 0}%</b><span>del mes ya aprobado (${done} de ${mes.length})</span></div></div>
+    <div class="pubpct"><b class="num">${own.length ? Math.round(done / own.length * 100) : 0}%</b><span>del mes ya aprobado (${done} de ${own.length})</span></div></div>
     ${dgPlanUI.st !== "Todos" ? `<p class="note dgstnote" style="margin:-6px 0 0">${icon("info")} Mostrando solo <b>${esc(dgPlanUI.st)}</b>.${lateOn && dgPlanUI.view !== "tabla" && late.some(j => j.due.slice(0, 7) < MONTH) ? " Los atrasados de meses anteriores se ven en Tabla." : ""} <button type="button" class="linkish" data-dgst="Todos">Ver todas las etapas</button></p>` : ""}`;
   return `<div class="head"><div><h1 class="pmh">${pmIco("calendar-days")}Planificación de entregas</h1><p class="sub">${dgPlanUI.view === "semana" ? `Semana del ${weekLabel(planWk())}` : monthLabel(MONTH)} · cada trabajo de Diseño gráfico (redes, cartelería, web y pantallas) en su fecha de entrega.</p></div></div>
   ${canCreateJobs() ? `<button class="panel cmnew" data-jnew><span class="cmplus">${icon("plus")}</span><span><b>Cargar pedido</b><small>Qué pieza, para qué marca, quién la hace y para cuándo. También podés tocar un día del calendario.</small></span></button>` : ""}
@@ -11273,7 +11288,7 @@ function pCalDG(){
   ${summary}
   ${ownsJobs() ? `<div class="chips pedscope"><button type="button" class="chip ${pedMine() ? "on" : ""}" data-pedscope="mine">${icon("user-round")} Mis trabajos</button><button type="button" class="chip ${pedMine() ? "" : "on"}" data-pedscope="team">${icon("users")} Todo el equipo</button></div>` : ""}
   ${viewTabs(DG_VIEWS, dgPlanUI.view || "calendario", "data-dgview")}
-  ${dgPlanUI.view === "tabla" ? dgTable(lateOn ? list : list.filter(j => j.due.slice(0, 7) === MONTH)) : `${jobDeliveryCal(list, "Diseño", dgPlanUI.view === "semana")}${n || dgPlanUI.view === "semana" ? "" : `<p class="note">No hay entregas en ${monthName(MONTH)}${dgPlanUI.st !== "Todos" ? ` en ${esc(dgPlanUI.st)}` : ""}${pedMine() ? " a tu nombre" : ""}${dgFOn() ? " con estos filtros" : ""}.</p>`}`}
+  ${dgPlanUI.view === "tabla" ? dgTable(lateOn ? list : list.filter(j => j.due.slice(0, 7) === MONTH || (MONTH === CURRENT_MONTH && jobAhead(j)))) : `${lateOn ? "" : aheadCalNote(list, 'data-dgview="tabla"')}${jobDeliveryCal(list, "Diseño", dgPlanUI.view === "semana")}${n || dgPlanUI.view === "semana" ? "" : `<p class="note">No hay entregas en ${monthName(MONTH)}${dgPlanUI.st !== "Todos" ? ` en ${esc(dgPlanUI.st)}` : ""}${pedMine() ? " a tu nombre" : ""}${dgFOn() ? " con estos filtros" : ""}.</p>`}`}
   ${jobForm()}`;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-dgst]"); if (!b) return; const st = b.dataset.dgst; dgPlanUI.st = st === "Todos" || dgPlanUI.st === st ? "Todos" : st; render(); });
@@ -12031,11 +12046,11 @@ function pGestionCM(){
     ${recurringList()}${recDrawer()}`;
   // Igual que Gestión Redes, Historia y Canal: Calendario (predeterminado), Tablero y Tabla, con el proceso de los videos.
   const view = gView(), calName = brandFilter === "Todas" ? "Todas las marcas" : brandFilter === "Otros" ? "Otras marcas" : brandFilter;
-  const list = jobs.filter(j => j.area === "CM" && (seesJob(j) || j.ex) && jobBrands(j).some(inFilter) && jobMonth(j) === MONTH && j.status !== "Cancelado" && (!pedMine() || hasJob(j, viewer.name) || j.ex)).sort((a, b) => !!b.ex - !!a.ex || a.due.localeCompare(b.due));
+  const list = jobs.filter(j => j.area === "CM" && (seesJob(j) || j.ex) && jobBrands(j).some(inFilter) && jobInView(j) && j.status !== "Cancelado" && (!pedMine() || hasJob(j, viewer.name) || j.ex)).sort((a, b) => !!b.ex - !!a.ex || a.due.localeCompare(b.due));
   const head = gHead(`Gestión de Video${view === "calendario" ? " · " + calName : ""}`, `${monthLabel(MONTH)} · los videos de cada día, para redes y para pantallas, con su proceso hasta que se publican y se pautan.`, "clapperboard");
   const adds = canCreateJobs() ? calAdds([['data-jnew', "clapperboard", "Cargar gestión de video", "Qué video, para qué marca, quién lo hace y para cuándo."], ['data-cmtv="repetitivos"', "repeat", "Repetitivos", "Lo que se repite ciertos días de la semana."]]) : "";
   const proc = `<div class="legend">${CM_STAGES.map(st => `<span><span class="sw" style="background:${SEM[semLvl(st)]}"></span>${st}</span>`).join("")}</div>`;
-  const body = view === "calendario" ? jobDeliveryCal(list, "CM") : view === "tablero" ? proc + jobBoard(list, "CM") : jobTable(list);
+  const body = view === "calendario" ? aheadCalNote(list, 'data-gview="tabla"') + jobDeliveryCal(list, "CM") : view === "tablero" ? proc + jobBoard(list, "CM") : jobTable(list);
   return `${head}${adds}${pedScopeChips("CM")}<div class="head"><div class="chips">${brandChips()}</div>${!isViewOnly() && !isLocked() ? `<span class="note">${view === "tablero" ? "Tocá una tarjeta para cambiar su etapa · el lápiz para editar" : view === "tabla" ? "Tocá el trabajo para ver el pedido completo" : ""}</span>` : ""}</div>${body}${jobForm()}${recDrawer()}`;
 }
 const TV_TEAM_MIN = 10;
