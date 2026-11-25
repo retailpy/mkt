@@ -5157,6 +5157,11 @@ html.light .sg :is(.sgptn,.sgagnum,.sgstari,.sgppav,.sgstack,.sgpbar2 i){filter:
 .admqty{display:inline-block;font-size:12px;font-weight:700;color:var(--cyan);background:rgba(34,211,238,.1);border-radius:8px;padding:0 6px}
 .admitf{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:10px}.admitf label{display:flex;flex-direction:column;gap:4px;min-width:0}.admitf label>span{font-size:12px;color:var(--muted)}.admitf input{width:100%;min-width:0}
 .admadd{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.admadd input{flex:1 1 220px;min-width:0}.admadd input.sm{flex:0 1 90px}
+.admkpis{grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr))}.admdelta{display:inline-block;margin-top:6px;font-size:12px;font-weight:700;color:var(--muted)}.admdelta.up{color:#22c55e}.admdelta.down{color:#f87171}
+.admtimes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:10px}.admtimes>div{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:var(--inner-2)}.admtimes b{font-size:20px}.admtimes span{font-size:12.5px;color:var(--ink)}.admtimes small{font-size:11.5px;color:var(--muted)}
+.admatl{display:flex;flex-direction:column;gap:10px}.admat{border-left:3px solid var(--c);padding:4px 0 4px 12px}.admath{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}.admath b{font-size:18px;color:var(--c)}.admat .chip{font-size:12px}
+.admhist{display:flex;gap:10px;align-items:flex-end;justify-content:space-around;min-height:150px}.admhm{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0}.admhm small{text-transform:capitalize;color:var(--muted)}.admhm span{font-size:11px;color:var(--muted);white-space:nowrap}
+.admhb{display:flex;align-items:flex-end;gap:3px;height:110px}.admhb i{width:12px;height:max(3px,var(--h));background:var(--c);border-radius:4px 4px 0 0}.admleg i{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c);margin:0 4px 0 10px;vertical-align:-1px}.admleg i:first-child{margin-left:0}.admb b small{font-weight:500;color:var(--muted);font-size:11px}
 .admbars{display:flex;flex-direction:column;gap:8px}.admb{display:grid;grid-template-columns:minmax(90px,38%) 1fr auto;align-items:center;gap:10px;font-size:13px}.admb span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.admb i{height:10px;border-radius:6px;width:var(--w);min-width:4px;background:var(--c)}.admb b{min-width:24px;text-align:right}
 @media (max-width:640px){.admq{max-width:none;margin-left:0}.admmonth b{min-width:120px}.admit{flex-wrap:wrap}.admit .grow{flex:1 1 60%}}
 </style>
@@ -5975,7 +5980,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v401";
+const APP_VER = "v402";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -20008,52 +20013,128 @@ document.addEventListener("submit", e => {
     const nf = [...document.querySelectorAll("form[data-admadd]")].find(z => z.dataset.admadd === g); nf?.elements.t?.focus(); return; }
 });
 
-/* ----- Informe del mes ----- */
+/* ----- Informe del mes (v402: más completo) ----- */
+// Se arma solo con lo cargado en el Tablero, los Eventos y la Solicitud de pedidos. Cuanto más completos estén los trabajos
+// (fechas, proveedor, locales, factura), más completo sale: lo que falta cargar se avisa al final, con el botón para ir a cargarlo.
+const admDays = (a, b) => /^\d{4}-\d{2}-\d{2}$/.test(a || "") && /^\d{4}-\d{2}-\d{2}$/.test(b || "") ? Math.round((new Date(b + "T12:00") - new Date(a + "T12:00")) / 864e5) : null;
+const admAvg = l => { const v = l.filter(x => x !== null && x >= 0 && x < 400); return v.length ? { d:Math.round(v.reduce((a, x) => a + x, 0) / v.length), n:v.length } : null; };
+const admMonthEnd = m => { const [y, mo] = m.split("-").map(Number); return new Date(Date.UTC(y, mo, 0)).toISOString().slice(0, 10); };
+const admEntM = (j, m) => String(j.fEnt || "").slice(0, 7) === m || (!j.fEnt && admMonthOf(j) === m && j.st === "Entregado");
+const admFactOk = j => /\d{3}\s*-\s*\d{3}\s*-\s*\d+/.test(String(j.fact || "")); // un número de factura de verdad (no “Suspendido”)
 function admReport(m){
-  const inM = d => !!d && String(d).slice(0, 7) === m;
-  const nuevos = ADM_JOBS.filter(j => admMonthOf(j) === m), entregados = ADM_JOBS.filter(j => inM(j.fEnt) || (admMonthOf(j) === m && j.st === "Entregado" && !j.fEnt));
-  const pagados = ADM_JOBS.filter(j => inM(j.fPago)), abiertos = ADM_JOBS.filter(j => admMonthOf(j) <= m && !admClosed(j)), evs = ADM_EVENTS.filter(e => inM(e.date));
+  const inM = d => !!d && String(d).slice(0, 7) === m, cut = m < CURRENT_MONTH ? admMonthEnd(m) : TODAY;
   const by = (l, f) => { const o = {}; l.forEach(j => { const k = f(j) || "Sin dato"; o[k] = (o[k] || 0) + 1; }); return Object.entries(o).sort((a, b) => b[1] - a[1]); };
-  const locs = ADM_LOCS.map(([k, t]) => [ADM_LOC_NAME[k], nuevos.filter(j => (j.loc || {})[k] === 1).length]).filter(x => x[1]);
-  return { nuevos, entregados, pagados, abiertos, evs, estado:by(nuevos, j => j.st || "Sin estado"), proc:by(nuevos, j => j.proc), quien:by(nuevos, j => j.by), prov:by(nuevos, j => j.prov).filter(x => x[0] !== "Sin dato"), locs,
-    susp:nuevos.filter(j => j.st === "Suspendido" || j.st === "Cancelado").length, locTot:nuevos.reduce((a, j) => a + (+j.locs || 0), 0) };
+  const nuevos = ADM_JOBS.filter(j => admMonthOf(j) === m), entregados = ADM_JOBS.filter(j => admEntM(j, m)), pagados = ADM_JOBS.filter(j => inM(j.fPago));
+  const hasta = ADM_JOBS.filter(j => admMonthOf(j) <= m), abiertos = hasta.filter(j => !admClosed(j)), evs = ADM_EVENTS.filter(e => inM(e.date));
+  const sum = (l, f) => l.reduce((a, j) => a + (+f(j) || 0), 0), conLoc = [...new Set([...nuevos, ...entregados])].filter(j => typeof j.locImp === "number");
+  const loc = { imp:sum(conLoc, j => j.locImp), ok:sum(conLoc, j => j.locOk), pend:sum(conLoc, j => admPend(j)), n:conLoc.length };
+  const camino = ADM_STEPS.map(s => [s.t, nuevos.filter(j => admStepDone(j, s.k)).length]);
+  const tiempos = [["De la solicitud al pedido al proveedor", admAvg(nuevos.map(j => admDays(j.at, j.fSolProv)))], ["De la solicitud a la entrega real", admAvg(entregados.map(j => admDays(j.at, j.fEnt)))],
+    ["De la entrega al pago", admAvg(pagados.map(j => admDays(j.fEnt, j.fPago)))], ["De la solicitud al pago", admAvg(pagados.map(j => admDays(j.at, j.fPago)))]];
+  const conComp = entregados.filter(j => j.fComp && j.fEnt), aTiempo = conComp.filter(j => j.fEnt <= j.fComp).length;
+  // Para atender: lo que quedó colgado hasta este mes (de este mes y de los anteriores).
+  const atender = [
+    ["Atrasados (pasó la fecha de compromiso y no se entregó)", abiertos.filter(j => j.fComp && j.fComp < cut && !j.fEnt && j.st !== "Suspendido"), "#ef4444"],
+    ["Entregados sin factura", hasta.filter(j => j.st !== "Cancelado" && (j.fEnt || j.st === "Entregado") && !j.fact), "#f97316"],
+    ["Con factura y sin pagar", hasta.filter(j => j.st !== "Cancelado" && admFactOk(j) && !j.fPago && !j.pago), "#f59e0b"],
+    ["Sin proveedor todavía", abiertos.filter(j => !j.prov && !["Suspendido", "Cancelado"].includes(j.st)), "#38bdf8"],
+    ["Con locales pendientes", abiertos.filter(j => (admPend(j) || 0) > 0), "#a855f7"],
+    ["Suspendidos", abiertos.filter(j => j.st === "Suspendido"), "#94a3b8"],
+  ].filter(x => x[1].length);
+  // Datos que faltan en lo que entró este mes (para que el informe salga completo).
+  const falta = [["sin código", nuevos.filter(j => !j.code)], ["sin estado", nuevos.filter(j => !ADM_ST[j.st])], ["sin tipo de proceso", nuevos.filter(j => !j.proc)], ["sin quién lo pidió", nuevos.filter(j => !j.by)],
+    ["sin fecha de solicitud", nuevos.filter(j => !j.at)], ["sin proveedor", nuevos.filter(j => !j.prov && j.st !== "Cancelado")], ["sin cantidad de locales", nuevos.filter(j => typeof j.locImp !== "number" && !j.locs)],
+    ["entregados sin fecha de entrega real", nuevos.filter(j => j.st === "Entregado" && !j.fEnt)]].filter(x => x[1].length);
+  const peds = PEDIDOS_COM.filter(p => p && pcEq(p) && inM(p.at));
+  const hist = admMonths().filter(x => x <= m).slice(-6).map(x => ({ m:x, nuevos:ADM_JOBS.filter(j => admMonthOf(j) === x).length, ent:ADM_JOBS.filter(j => admEntM(j, x)).length, pag:ADM_JOBS.filter(j => String(j.fPago || "").slice(0, 7) === x).length }));
+  const prev = hist.length > 1 && hist[hist.length - 2].m === addMonths(m, -1) ? hist[hist.length - 2] : null;
+  const evItems = evs.flatMap(e => e.items || []);
+  return { m, cut, nuevos, entregados, pagados, abiertos, evs, loc, camino, tiempos, conComp:conComp.length, aTiempo, atender, falta, hist, prev,
+    estado:by(nuevos, j => j.st || "Sin estado"), proc:by(nuevos, j => j.proc), quien:by(nuevos, j => j.by), compras:by(nuevos, j => j.compras),
+    prov:by([...new Set([...nuevos, ...entregados])], j => j.prov).filter(x => x[0] !== "Sin dato"), relev:by(nuevos.filter(j => j.relev), j => j.relev),
+    marcas:ADM_LOCS.map(([k]) => [ADM_LOC_NAME[k], nuevos.filter(j => (j.loc || {})[k] === 1).length]).filter(x => x[1]),
+    personas:by(abiertos.filter(j => j.resp && !["Suspendido", "Cancelado"].includes(j.st)), j => j.resp),
+    peds:{ n:peds.length, tab:peds.filter(p => p.adm).length, no:peds.filter(p => p.admNo).length, pend:peds.filter(admPcNew).length, list:peds },
+    ev:{ n:evItems.length, ok:evItems.filter(x => x.st === "Listo").length, pendPor:by(evItems.filter(x => x.st !== "Listo" && x.resp), x => x.resp) },
+    susp:nuevos.filter(j => j.st === "Suspendido" || j.st === "Cancelado").length, locTot:sum(nuevos, j => j.locs) };
 }
+const admPct = (a, b) => b ? Math.round(a / b * 100) : 0;
 function pAdmInf(){
-  const m = admUI.infMonth, r = admReport(m);
-  const bars = (title, ic, list, color) => { const max = Math.max(1, ...list.map(x => x[1]));
-    return `<section class="panel"><h2 class="pmh">${pmIco(ic)}${title}</h2>${list.length ? `<div class="admbars">${list.map(([k, n]) => `<div class="admb"><span>${esc(k)}</span><i style="--w:${Math.round(n / max * 100)}%;--c:${typeof color === "function" ? color(k) : color}"></i><b>${n}</b></div>`).join("")}</div>` : `<div class="empty">Sin datos en ${monthName(m)}.</div>`}</section>`; };
-  const kpi = (n, l, d, c = "") => `<div class="panel kpi"><div class="l">${l}</div><div class="n ${c}">${n}</div><div class="d">${d}</div></div>`;
-  const row = j => `<tr data-admopen="${esc(j.id)}" role="button" tabindex="0"><td class="num"><b>${esc(j.code || "—")}</b></td><td><b>${esc(j.title)}</b><small>${esc(j.by || "")}</small></td><td>${esc(j.proc || "—")}</td><td>${admStPill(j)}</td><td>${admDots(j)}</td><td>${esc(j.prov || "—")}</td><td>${esc(j.fact || "—")}</td></tr>`;
-  return `<div class="head"><div><h1 class="pmh">${pmIco("file-text")}Informe del mes</h1><p class="sub">Todo lo que se hizo en el mes: los trabajos que entraron, los que se entregaron y se pagaron, lo que sigue abierto y los eventos.</p></div>
+  const m = admUI.infMonth, r = admReport(m), pm = r.prev ? monthName(r.prev.m) : "";
+  const delta = (n, p) => r.prev ? `<span class="admdelta ${n > p ? "up" : n < p ? "down" : ""}">${n > p ? "▲ " + (n - p) : n < p ? "▼ " + (p - n) : "="} vs ${pm}</span>` : "";
+  const kpi = (n, l, d, extra = "", c = "") => `<div class="panel kpi"><div class="l">${l}</div><div class="n ${c}">${n}</div><div class="d">${d}</div>${extra}</div>`;
+  const bars = (title, ic, list, color, total) => { const max = Math.max(1, ...list.map(x => x[1]));
+    return `<section class="panel"><h2 class="pmh">${pmIco(ic)}${title}</h2>${list.length ? `<div class="admbars">${list.map(([k, n]) => `<div class="admb"><span title="${esc(k)}">${esc(k)}</span><i style="--w:${Math.round(n / max * 100)}%;--c:${typeof color === "function" ? color(k) : color}"></i><b>${n}${total ? ` <small>${admPct(n, total)}%</small>` : ""}</b></div>`).join("")}</div>` : `<div class="empty">Sin datos en ${monthName(m)}.</div>`}</section>`; };
+  const jl = l => l.slice(0, 6).map(j => `<button type="button" class="chip" data-admopen="${esc(j.id)}" title="${esc(j.title)}">${esc(j.code || "—")} · ${esc(j.title.length > 34 ? j.title.slice(0, 33) + "…" : j.title)}</button>`).join("") + (l.length > 6 ? `<span class="note">y ${l.length - 6} más</span>` : "");
+  const row = j => `<tr data-admopen="${esc(j.id)}" role="button" tabindex="0"><td class="num"><b>${esc(j.code || "—")}</b></td><td><b>${esc(j.title)}</b><small>${esc(j.by || "")}${j.at ? " · " + dm(j.at) : ""}</small></td><td>${esc(j.proc || "—")}</td><td>${admStPill(j)}</td><td>${admDots(j)}</td><td>${esc(j.prov || "—")}</td><td class="num">${typeof j.locImp === "number" ? `${j.locOk || 0}/${j.locImp}` : j.locs || "—"}</td><td>${esc(j.fact || "—")}</td></tr>`;
+  const maxH = Math.max(1, ...r.hist.flatMap(h => [h.nuevos, h.ent, h.pag]));
+  const evPct = admPct(r.ev.ok, r.ev.n);
+  return `<div class="head"><div><h1 class="pmh">${pmIco("file-text")}Informe del mes</h1><p class="sub">Se arma solo con lo cargado en el Tablero, los Eventos y la Solicitud de pedidos. Cuanto más completos estén los trabajos (fechas, proveedor, locales y factura), más completo sale.</p></div>
     <div class="chips"><button type="button" class="btn primary" data-adminfxls>${icon("download")} Descargar Excel</button><button type="button" class="btn" data-adminfpdf>${icon("download")} Descargar PDF</button></div></div>
   <div class="admbar">${admMonthNav("infMonth")}</div>
-  <div class="grid kpis">${kpi(r.nuevos.length, "Trabajos que entraron", `en ${monthName(m)} · ${r.locTot} locales en total`)}${kpi(r.entregados.length, "Entregados", "con la entrega real en el mes", "up")}${kpi(r.pagados.length, "Facturas pagadas", "con la fecha de pago en el mes", "up")}${kpi(r.abiertos.length, "Siguen sin terminar", "de este mes y los anteriores")}${kpi(r.evs.length, "Eventos", r.evs.length ? r.evs.map(e => e.name).join(" · ") : "en el mes")}</div>
-  <div class="grid two">${bars("Por estado", "list-checks", r.estado, k => (ADM_ST[k] || { c:"#64748b" }).c)}${bars("Por tipo de proceso", "route", r.proc, "#22d3ee")}${bars("Quién lo pidió", "user-round", r.quien, "#a855f7")}${bars("Proveedores", "store", r.prov.slice(0, 8), "#f59e0b")}${bars("Marcas", "store", r.locs, k => BRANDS[k.replace(/ Express$/, "")] || "#94a3b8")}
-    <section class="panel"><h2 class="pmh">${pmIco("party-popper")}Eventos del mes</h2>${r.evs.length ? `<div class="list">${r.evs.map(e => { const it = e.items || [], ok = it.filter(x => x.st === "Listo").length; return `<div class="row arow ago" data-ago="admev:${e.id}" role="button" tabindex="0"><span class="aico" style="--c:${ok === it.length ? "#22c55e" : "#f59e0b"}">${icon("party-popper")}</span><div class="grow"><div class="t">${esc(e.name)}</div><div class="m">${esc(admEvWhen(e))} · ${ok} de ${it.length} listas</div></div></div>`; }).join("")}</div>` : `<div class="empty">No hay eventos con fecha en ${monthName(m)}.</div>`}</section></div>
-  <section class="panel"><h2 class="pmh">${pmIco("table-2")}Trabajos que entraron en ${monthName(m)} <span class="note">${r.nuevos.length}</span></h2>${r.nuevos.length ? `<div class="tw admtw" style="box-shadow:none"><table><thead><tr><th>ID</th><th>Trabajo</th><th>Proceso</th><th>Estado</th><th>Camino</th><th>Proveedor</th><th>Factura</th></tr></thead><tbody>${r.nuevos.map(row).join("")}</tbody></table></div>` : `<div class="empty">No entraron trabajos en ${monthName(m)}.</div>`}</section>
-  ${r.entregados.length || r.pagados.length ? `<section class="panel"><h2 class="pmh">${pmIco("badge-check")}Entregados y pagados en ${monthName(m)}</h2><div class="list">${[...new Set([...r.entregados, ...r.pagados])].map(j => `<div class="row arow ago" data-ago="adm:${j.id}" role="button" tabindex="0"><span class="aico" style="--c:#22c55e">${icon("badge-check")}</span><div class="grow"><div class="t">${esc(j.title)}</div><div class="m">${esc(j.code || "")}${r.entregados.includes(j) ? ` · entregado${j.fEnt ? " el " + dm(j.fEnt) : ""}` : ""}${r.pagados.includes(j) ? ` · pagado el ${dm(j.fPago)}` : ""}${j.prov ? " · " + esc(j.prov) : ""}</div></div></div>`).join("")}</div></section>` : ""}`;
+  <div class="grid kpis admkpis">${kpi(r.nuevos.length, "Trabajos que entraron", `${r.locTot ? r.locTot + " locales implicados" : "en " + monthName(m)}`, delta(r.nuevos.length, r.prev?.nuevos))}
+    ${kpi(r.entregados.length, "Entregados", r.conComp ? `${admPct(r.aTiempo, r.conComp)}% a tiempo (${r.aTiempo} de ${r.conComp} con fecha de compromiso)` : "con la entrega real en el mes", delta(r.entregados.length, r.prev?.ent), "up")}
+    ${kpi(r.pagados.length, "Facturas pagadas", "con la fecha de pago en el mes", delta(r.pagados.length, r.prev?.pag), "up")}
+    ${kpi(r.abiertos.length, "Siguen sin terminar", "de este mes y los anteriores")}
+    ${kpi(r.loc.imp ? admPct(r.loc.ok, r.loc.imp) + "%" : "—", "Locales en regla", r.loc.imp ? `${r.loc.ok} de ${r.loc.imp} · ${r.loc.pend} pendientes` : "cargá los locales implicados y en regla")}
+    ${kpi(r.evs.length, "Eventos", r.evs.length ? `${evPct}% de la lista lista (${r.ev.ok} de ${r.ev.n})` : "con fecha en el mes")}</div>
+  <div class="grid two">
+    <section class="panel"><h2 class="pmh">${pmIco("route")}Avance del camino <span class="note">de los ${r.nuevos.length} que entraron</span></h2>${r.nuevos.length ? `<div class="admbars">${r.camino.map(([k, n], i) => `<div class="admb"><span>${i + 1}. ${esc(k)}</span><i style="--w:${admPct(n, r.nuevos.length)}%;--c:#22c55e"></i><b>${n} <small>${admPct(n, r.nuevos.length)}%</small></b></div>`).join("")}</div>` : `<div class="empty">No entraron trabajos en ${monthName(m)}.</div>`}</section>
+    <section class="panel"><h2 class="pmh">${pmIco("clock")}Tiempos promedio</h2><div class="admtimes">${r.tiempos.map(([k, v]) => `<div><b>${v ? v.d + (v.d === 1 ? " día" : " días") : "—"}</b><span>${esc(k)}</span><small>${v ? `sobre ${v.n} ${v.n === 1 ? "trabajo" : "trabajos"}` : "faltan las fechas"}</small></div>`).join("")}</div></section></div>
+  <section class="panel admatender"><h2 class="pmh">${pmIco("triangle-alert")}Para atender <span class="note">hasta el ${dm(r.cut)}</span></h2>${r.atender.length ? `<div class="admatl">${r.atender.map(([k, l, c]) => `<div class="admat" style="--c:${c}"><div class="admath"><b>${l.length}</b><span>${esc(k)}</span></div><div class="chips">${jl(l)}</div></div>`).join("")}</div>` : `<div class="empty">${icon("check")} No hay nada colgado.</div>`}</section>
+  <div class="grid two">${bars("Por estado", "list-checks", r.estado, k => (ADM_ST[k] || { c:"#64748b" }).c, r.nuevos.length)}${bars("Por tipo de proceso", "route", r.proc, "#22d3ee", r.nuevos.length)}
+    ${bars("Quién lo pidió", "user-round", r.quien, "#a855f7", r.nuevos.length)}${bars("Compras ByS", "file-check", r.compras, "#14b8a6", r.nuevos.length)}
+    ${bars("Proveedores", "store", r.prov.slice(0, 10), "#f59e0b")}${bars("Marcas (trabajos)", "store", r.marcas, k => BRANDS[k.replace(/ Express$/, "")] || "#94a3b8")}
+    ${bars("Relevamiento en los locales", "store", r.relev, "#38bdf8")}${bars("Lo que tiene cada persona (sin terminar)", "users", r.personas, "#22d3ee")}</div>
+  <div class="grid two">
+    <section class="panel"><h2 class="pmh">${pmIco("shopping-bag")}Solicitud de pedidos del equipo</h2>${r.peds.n ? `<div class="admtimes"><div><b>${r.peds.n}</b><span>pedidos que llegaron en ${monthName(m)}</span></div><div><b>${r.peds.tab}</b><span>pasados al Tablero</span></div><div><b>${r.peds.no}</b><span>no necesitaban Administración</span></div><div><b>${r.peds.pend}</b><span>todavía para tomar</span></div></div>` : `<div class="empty">No llegaron pedidos del equipo en ${monthName(m)}.</div>`}</section>
+    <section class="panel"><h2 class="pmh">${pmIco("chart-column")}Últimos meses</h2>${r.hist.length ? `<div class="admhist">${r.hist.map(h => `<div class="admhm"><div class="admhb"><i style="--h:${Math.round(h.nuevos / maxH * 100)}%;--c:#38bdf8" title="Entraron: ${h.nuevos}"></i><i style="--h:${Math.round(h.ent / maxH * 100)}%;--c:#22c55e" title="Entregados: ${h.ent}"></i><i style="--h:${Math.round(h.pag / maxH * 100)}%;--c:#f59e0b" title="Pagados: ${h.pag}"></i></div><small>${esc(monthName(h.m).slice(0, 3))}</small><span>${h.nuevos} · ${h.ent} · ${h.pag}</span></div>`).join("")}</div>
+      <p class="note admleg"><i style="--c:#38bdf8"></i>Entraron <i style="--c:#22c55e"></i>Entregados <i style="--c:#f59e0b"></i>Pagados</p>` : ""}</section></div>
+  <section class="panel"><h2 class="pmh">${pmIco("party-popper")}Eventos del mes</h2>${r.evs.length ? `<div class="list">${r.evs.map(e => { const it = e.items || [], ok = it.filter(x => x.st === "Listo").length; return `<div class="row arow ago" data-ago="admev:${e.id}" role="button" tabindex="0"><span class="aico" style="--c:${ok === it.length ? "#22c55e" : "#f59e0b"}">${icon("party-popper")}</span><div class="grow"><div class="t">${esc(e.name)}</div><div class="m">${esc(admEvWhen(e))} · ${ok} de ${it.length} listas${it.length - ok ? ` · faltan ${it.length - ok}` : ""}</div></div></div>`; }).join("")}</div>${r.ev.pendPor.length ? `<p class="note" style="margin:10px 0 0">Pendientes por persona: ${r.ev.pendPor.map(([k, n]) => `${esc(k.split(" ")[0])} ${n}`).join(" · ")}</p>` : ""}` : `<div class="empty">No hay eventos con fecha en ${monthName(m)}.</div>`}</section>
+  <section class="panel"><h2 class="pmh">${pmIco("table-2")}Trabajos que entraron en ${monthName(m)} <span class="note">${r.nuevos.length}</span></h2>${r.nuevos.length ? `<div class="tw admtw" style="box-shadow:none"><table><thead><tr><th>ID</th><th>Trabajo</th><th>Proceso</th><th>Estado</th><th>Camino</th><th>Proveedor</th><th>Locales</th><th>Factura</th></tr></thead><tbody>${r.nuevos.map(row).join("")}</tbody></table></div>` : `<div class="empty">No entraron trabajos en ${monthName(m)}.</div>`}</section>
+  ${r.entregados.length || r.pagados.length ? `<section class="panel"><h2 class="pmh">${pmIco("badge-check")}Entregados y pagados en ${monthName(m)}</h2><div class="list">${[...new Set([...r.entregados, ...r.pagados])].map(j => `<div class="row arow ago" data-ago="adm:${j.id}" role="button" tabindex="0"><span class="aico" style="--c:#22c55e">${icon("badge-check")}</span><div class="grow"><div class="t">${esc(j.title)}</div><div class="m">${esc(j.code || "")}${r.entregados.includes(j) ? ` · entregado${j.fEnt ? " el " + dm(j.fEnt) : ""}${j.fComp && j.fEnt ? (j.fEnt <= j.fComp ? " (a tiempo)" : ` (${admDays(j.fComp, j.fEnt)} días tarde)`) : ""}` : ""}${r.pagados.includes(j) ? ` · pagado el ${dm(j.fPago)}` : ""}${j.prov ? " · " + esc(j.prov) : ""}</div></div></div>`).join("")}</div></section>` : ""}
+  ${r.falta.length ? `<section class="panel admfalta"><h2 class="pmh">${pmIco("info")}Para que el informe salga completo</h2><p class="note" style="margin:0 0 10px">De los trabajos que entraron en ${monthName(m)} faltan algunos datos. Completalos en el Tablero y el informe se actualiza solo.</p><div class="admatl">${r.falta.map(([k, l]) => `<div class="admat" style="--c:#64748b"><div class="admath"><b>${l.length}</b><span>${esc(k)}</span></div><div class="chips">${jl(l)}</div></div>`).join("")}</div>
+    <div class="chips" style="margin-top:10px"><button type="button" class="btn sm" data-admtabm="${esc(m)}">${icon("table-2")} Ir al Tablero de ${monthName(m)}</button></div></section>` : ""}`;
 }
 function admInfSheets(m){
-  const r = admReport(m), d = x => x ? `${x.slice(8, 10)}/${x.slice(5, 7)}/${x.slice(0, 4)}` : "", H = a => a.map(v => ({ v, s:1 }));
-  return [{ name:"Resumen", rows:[[{ v:`Informe de Administración de Marketing · ${monthLabel(m)}`, s:1 }], [], H(["Qué", "Cantidad"]), ["Trabajos que entraron", r.nuevos.length], ["Locales implicados (total)", r.locTot], ["Entregados en el mes", r.entregados.length], ["Facturas pagadas en el mes", r.pagados.length], ["Siguen sin terminar", r.abiertos.length], ["Suspendidos o cancelados", r.susp], ["Eventos", r.evs.length],
-      [], H(["Por estado", ""]), ...r.estado, [], H(["Por tipo de proceso", ""]), ...r.proc, [], H(["Quién lo pidió", ""]), ...r.quien, [], H(["Proveedores", ""]), ...r.prov, [], H(["Marcas", ""]), ...r.locs] },
-    { name:"Trabajos del mes", rows:[H(["N°", "ID", "Fecha solicitud", "Solicitado por", "Trabajo", "Proceso", "Estado", "Pasos completos", "Proveedor", "Entrega real", "Factura", "Fecha de pago", "Observaciones"]), ...r.nuevos.map(j => [j.n || "", j.code || "", d(j.at), j.by || "", j.title, j.proc || "", j.st || "", `${admDoneN(j)} de 5`, j.prov || "", d(j.fEnt), j.fact || "", d(j.fPago), { v:j.obs || "", s:2 }])], freeze:1 },
+  const r = admReport(m), d = x => x ? `${x.slice(8, 10)}/${x.slice(5, 7)}/${x.slice(0, 4)}` : "", H = a => a.map(v => ({ v, s:1 })), T = t => [{ v:t, s:1 }];
+  const pairs = (t, l, tot) => [[], T(t), ...l.map(([k, n]) => tot ? [k, n, `${admPct(n, tot)}%`] : [k, n])];
+  return [{ name:"Resumen", cols:[46, 14, 40], rows:[[{ v:`Informe de Administración de Marketing · ${monthLabel(m)}`, s:1 }], [`Generado el ${d(TODAY)}`], [], H(["Qué", "Cantidad", "Detalle"]),
+      ["Trabajos que entraron", r.nuevos.length, r.prev ? `${monthLabel(r.prev.m)}: ${r.prev.nuevos}` : ""], ["Locales implicados (total)", r.locTot, ""],
+      ["Entregados en el mes", r.entregados.length, r.conComp ? `${admPct(r.aTiempo, r.conComp)}% a tiempo (${r.aTiempo} de ${r.conComp})` : ""], ["Facturas pagadas en el mes", r.pagados.length, r.prev ? `${monthLabel(r.prev.m)}: ${r.prev.pag}` : ""],
+      ["Siguen sin terminar", r.abiertos.length, ""], ["Locales en regla", r.loc.ok, r.loc.imp ? `de ${r.loc.imp} (${admPct(r.loc.ok, r.loc.imp)}%) · ${r.loc.pend} pendientes` : ""], ["Suspendidos o cancelados", r.susp, ""],
+      ["Eventos", r.evs.length, r.ev.n ? `${r.ev.ok} de ${r.ev.n} cosas listas` : ""], ["Pedidos del equipo que llegaron", r.peds.n, `${r.peds.tab} al Tablero · ${r.peds.no} sin Administración · ${r.peds.pend} para tomar`],
+      [], T("Avance del camino (de los que entraron)"), ...r.camino.map(([k, n], i) => [`${i + 1}. ${k}`, n, `${admPct(n, r.nuevos.length)}%`]),
+      [], T("Tiempos promedio (días)"), ...r.tiempos.map(([k, v]) => [k, v ? v.d : "", v ? `sobre ${v.n} trabajos` : "faltan las fechas"]),
+      [], T("Para atender"), ...r.atender.map(([k, l]) => [k, l.length, l.slice(0, 8).map(j => j.code || j.title).join(", ")]),
+      ...(r.falta.length ? [[], T("Datos que faltan en lo que entró"), ...r.falta.map(([k, l]) => [k, l.length, ""])] : [])] },
+    { name:"Por categoría", cols:[46, 12, 10], rows:[...pairs("Por estado", r.estado, r.nuevos.length).slice(1), ...pairs("Por tipo de proceso", r.proc, r.nuevos.length), ...pairs("Quién lo pidió", r.quien, r.nuevos.length), ...pairs("Compras ByS", r.compras, r.nuevos.length),
+      ...pairs("Proveedores", r.prov), ...pairs("Marcas (trabajos)", r.marcas), ...pairs("Relevamiento en los locales", r.relev), ...pairs("Lo que tiene cada persona (sin terminar)", r.personas)] },
+    { name:"Trabajos del mes", rows:[H(["N°", "ID", "Fecha solicitud", "Solicitado por", "Trabajo", "Proceso", "Estado", "Pasos completos", "Proveedor", "Fecha compromiso", "Entrega real", "Locales implicados", "En regla", "Factura", "Fecha de pago", "Le toca a", "Observaciones"]),
+      ...r.nuevos.map(j => [j.n || "", j.code || "", d(j.at), j.by || "", j.title, j.proc || "", j.st || "", `${admDoneN(j)} de 5`, j.prov || "", d(j.fComp), d(j.fEnt), j.locImp ?? "", j.locOk ?? "", j.fact || "", d(j.fPago), j.resp || "", { v:j.obs || "", s:2 }])], freeze:1 },
+    { name:"Para atender", rows:[H(["Qué", "ID", "Trabajo", "Mes", "Estado", "Proveedor", "Fecha compromiso", "Le toca a"]), ...r.atender.flatMap(([k, l]) => l.map(j => [k, j.code || "", j.title, monthLabel(admMonthOf(j)), j.st || "", j.prov || "", d(j.fComp), j.resp || ""]))], freeze:1 },
     { name:"Siguen sin terminar", rows:[H(["ID", "Mes", "Trabajo", "Estado", "Le toca a", "Pasos completos"]), ...r.abiertos.map(j => [j.code || "", monthLabel(admMonthOf(j)), j.title, j.st || "", j.resp || "", `${admDoneN(j)} de 5`])], freeze:1 },
+    { name:"Últimos meses", rows:[H(["Mes", "Entraron", "Entregados", "Pagados"]), ...r.hist.map(h => [monthLabel(h.m), h.nuevos, h.ent, h.pag])], freeze:1 },
     { name:"Eventos", rows:[H(["Evento", "Fecha", "Grupo", "Qué hace falta", "Cantidad", "Proveedor o contacto", "Quién se ocupa", "Estado"]), ...r.evs.flatMap(e => (e.items || []).map(y => [e.name, d(e.date), y.g || "", y.t, y.qty || "", y.prov || "", y.resp || "", y.st || "Pendiente"]))], freeze:1 }];
 }
 function admInfPdf(m){
   const r = admReport(m), w = window.open("", "_blank"); if (!w){ toast("El navegador bloqueó la ventana: permití las ventanas emergentes y probá de nuevo."); return; }
   const tb = (h, rows) => `<table><thead><tr>${h.map(x => `<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${rows.map(x => `<tr>${x.map(y => `<td>${esc(String(y ?? ""))}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
-  const li = l => l.length ? `<ul>${l.map(([k, n]) => `<li>${esc(k)}: <b>${n}</b></li>`).join("")}</ul>` : "<p>Sin datos.</p>";
-  w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Informe Administración de Marketing · ${esc(monthLabel(m))}</title><style>body{font:13px/1.45 system-ui,Arial,sans-serif;color:#111;margin:24px}h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:18px 0 6px}.k{display:flex;gap:10px;flex-wrap:wrap}.k div{border:1px solid #ccc;border-radius:8px;padding:8px 12px}.k b{font-size:18px;display:block}table{border-collapse:collapse;width:100%;font-size:11.5px}th,td{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top}th{background:#f1f5f9}.g{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}ul{margin:0;padding-left:18px}@media print{body{margin:10mm}}</style></head><body>
+  const li = (l, tot) => l.length ? `<ul>${l.map(([k, n]) => `<li>${esc(k)}: <b>${n}</b>${tot ? ` (${admPct(n, tot)}%)` : ""}</li>`).join("")}</ul>` : "<p>Sin datos.</p>";
+  const vs = (n, p) => r.prev ? ` <small>(${monthName(r.prev.m)}: ${p})</small>` : "";
+  w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Informe Administración de Marketing · ${esc(monthLabel(m))}</title><style>body{font:12.5px/1.45 system-ui,Arial,sans-serif;color:#111;margin:24px}h1{font-size:20px;margin:0 0 4px}h2{font-size:14.5px;margin:16px 0 6px;border-bottom:1px solid #ddd;padding-bottom:3px}.k{display:flex;gap:8px;flex-wrap:wrap}.k div{border:1px solid #ccc;border-radius:8px;padding:8px 12px;min-width:120px}.k b{font-size:18px;display:block}table{border-collapse:collapse;width:100%;font-size:11px}th,td{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top}th{background:#f1f5f9}.g{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}ul{margin:0;padding-left:18px}small{color:#555}@media print{body{margin:10mm}h2{break-after:avoid}}</style></head><body>
     <h1>Administración de Marketing · Informe de ${esc(monthLabel(m))}</h1><p>Retail S.A. · generado el ${dm(TODAY)}/${TODAY.slice(0, 4)}</p>
-    <div class="k"><div><b>${r.nuevos.length}</b>trabajos que entraron</div><div><b>${r.entregados.length}</b>entregados</div><div><b>${r.pagados.length}</b>facturas pagadas</div><div><b>${r.abiertos.length}</b>siguen sin terminar</div><div><b>${r.evs.length}</b>eventos</div></div>
-    <div class="g"><div><h2>Por estado</h2>${li(r.estado)}</div><div><h2>Por tipo de proceso</h2>${li(r.proc)}</div><div><h2>Quién lo pidió</h2>${li(r.quien)}</div><div><h2>Proveedores</h2>${li(r.prov)}</div><div><h2>Marcas</h2>${li(r.locs)}</div></div>
-    <h2>Trabajos que entraron</h2>${tb(["ID", "Trabajo", "Pidió", "Proceso", "Estado", "Pasos", "Proveedor", "Factura"], r.nuevos.map(j => [j.code || "", j.title, j.by || "", j.proc || "", j.st || "", `${admDoneN(j)}/5`, j.prov || "", j.fact || ""]))}
+    <div class="k"><div><b>${r.nuevos.length}</b>trabajos que entraron${vs(r.nuevos.length, r.prev?.nuevos)}</div><div><b>${r.entregados.length}</b>entregados${r.conComp ? ` · ${admPct(r.aTiempo, r.conComp)}% a tiempo` : ""}</div><div><b>${r.pagados.length}</b>facturas pagadas${vs(r.pagados.length, r.prev?.pag)}</div><div><b>${r.abiertos.length}</b>siguen sin terminar</div><div><b>${r.loc.imp ? admPct(r.loc.ok, r.loc.imp) + "%" : "—"}</b>locales en regla${r.loc.imp ? ` (${r.loc.ok} de ${r.loc.imp})` : ""}</div><div><b>${r.evs.length}</b>eventos</div></div>
+    <div class="g"><div><h2>Avance del camino</h2>${li(r.camino.map(([k, n], i) => [`${i + 1}. ${k}`, n]), r.nuevos.length)}</div><div><h2>Tiempos promedio</h2><ul>${r.tiempos.map(([k, v]) => `<li>${esc(k)}: <b>${v ? v.d + " días" : "—"}</b>${v ? ` <small>(${v.n})</small>` : ""}</li>`).join("")}</ul></div><div><h2>Solicitud de pedidos</h2><ul><li>Llegaron: <b>${r.peds.n}</b></li><li>Al Tablero: <b>${r.peds.tab}</b></li><li>Sin Administración: <b>${r.peds.no}</b></li><li>Para tomar: <b>${r.peds.pend}</b></li></ul></div></div>
+    ${r.atender.length ? `<h2>Para atender (hasta el ${dm(r.cut)})</h2><ul>${r.atender.map(([k, l]) => `<li>${esc(k)}: <b>${l.length}</b> <small>${esc(l.slice(0, 8).map(j => j.code || j.title).join(", "))}</small></li>`).join("")}</ul>` : ""}
+    <div class="g"><div><h2>Por estado</h2>${li(r.estado, r.nuevos.length)}</div><div><h2>Por tipo de proceso</h2>${li(r.proc, r.nuevos.length)}</div><div><h2>Quién lo pidió</h2>${li(r.quien, r.nuevos.length)}</div><div><h2>Compras ByS</h2>${li(r.compras)}</div><div><h2>Proveedores</h2>${li(r.prov)}</div><div><h2>Marcas</h2>${li(r.marcas)}</div><div><h2>Relevamiento</h2>${li(r.relev)}</div><div><h2>Por persona (sin terminar)</h2>${li(r.personas)}</div><div><h2>Últimos meses</h2><ul>${r.hist.map(h => `<li>${esc(monthLabel(h.m))}: ${h.nuevos} entraron · ${h.ent} entregados · ${h.pag} pagados</li>`).join("")}</ul></div></div>
+    <h2>Trabajos que entraron</h2>${tb(["ID", "Trabajo", "Pidió", "Proceso", "Estado", "Pasos", "Proveedor", "Locales", "Factura"], r.nuevos.map(j => [j.code || "", j.title, j.by || "", j.proc || "", j.st || "", `${admDoneN(j)}/5`, j.prov || "", typeof j.locImp === "number" ? `${j.locOk || 0}/${j.locImp}` : j.locs || "", j.fact || ""]))}
     ${r.evs.length ? `<h2>Eventos</h2>${r.evs.map(e => `<p><b>${esc(e.name)}</b> · ${esc(admEvWhen(e))} · ${(e.items || []).filter(x => x.st === "Listo").length} de ${(e.items || []).length} listas</p>`).join("")}` : ""}
+    ${r.falta.length ? `<h2>Datos que faltan cargar</h2><ul>${r.falta.map(([k, l]) => `<li>${l.length} ${esc(k)}</li>`).join("")}</ul>` : ""}
     <script>setTimeout(function(){ window.print(); }, 350);<\/script></body></html>`);
   w.document.close();
 }
+document.addEventListener("click", e => { const b = e.target.closest("[data-admtabm]"); if (!b || !viewer || !admSees()) return; admUI.month = b.dataset.admtabm; admUI.all = false; admUI.carry = false; admUI.st = "Todos"; admUI.q = ""; admUI.form = null; page = "admtab"; render(); window.scrollTo(0, 0); });
 document.addEventListener("click", e => {
   if (!viewer || !admSees()) return;
   if (e.target.closest("[data-adminfxls]")){ admDownload(xlsxBlob(admInfSheets(admUI.infMonth)), `Informe_Administracion_${admUI.infMonth}.xlsx`); return; }
@@ -21551,6 +21632,8 @@ function backTo(){
   if (page === home) return null;
   // v373: con un informe abierto, Volver lleva a las tarjetas del Informe mensual (antes iba a Inicio).
   if (page === "reportes" && reportTab && reportTab !== "analisis") return { k:"reportes", t:"Informe mensual", rep:true };
+  // v402: dentro de Administración de Marketing (Tablero, Eventos, Informe; y Solicitud de pedidos para el rol Administración), Volver = su Panel de Trabajo.
+  if ((ADM_KEYS.includes(page) && page !== "admpanel") || (page === "pedcom" && isAdmRole() && !pcUI.form && !pcUI.open)) return { k:"admpanel", t:"Panel de Trabajo Administración" };
   // Secciones principales del menú (Panel de Trabajo, Planificación, Carga, Tendencias, Dashboard…): Volver = Inicio.
   const top = SECTIONS.some(x => x.k === page && !x.hide) && !pk;
   if (top) return { k:home, t:home === "inicio" ? "Inicio" : "Dashboard" };
@@ -21639,7 +21722,7 @@ function render(){
   else if (postUI.form){ const pf = postForm(); if (pf){ $("#content").innerHTML = pf; if (!canEditPost()) postReadOnly(); if (render.pfOpen !== postUI.form){ render.pfOpen = postUI.form; window.scrollTo(0, 0); } } } // publicación, historia o canal: página completa
   else if (lpFull){ $("#content").innerHTML = lpFullPage(); } // últimas publicaciones en grande: página completa
   else if (!jobUI.ficha && backTo() && !$("#content .pback")){ const b = backTo(), x = [...PANEL_DESIGN, ...PANEL_CM, ...PANEL_TOOLS].find(y => y.k === page);
-    $("#content").insertAdjacentHTML("afterbegin", `<nav class="pcrumb" aria-label="Ubicación"><button type="button" class="btn gback" data-page="${b.k}"${b.back ? " data-back" : ""}${b.rep ? " data-repback" : ""} title="Volver a ${esc(b.t)}">${icon("arrow-left")} Volver</button>${x && b.k.startsWith("panel") ? `<span>›</span><b>${esc(x.t)}</b>` : ""}</nav>`); }
+    $("#content").insertAdjacentHTML("afterbegin", `<nav class="pcrumb" aria-label="Ubicación"><button type="button" class="btn gback" data-page="${b.k}"${b.back ? " data-back" : ""}${b.rep ? " data-repback" : ""} title="Volver a ${esc(b.t)}">${icon("arrow-left")} Volver</button>${x && b.k.startsWith("panel") ? `<span>›</span><b>${esc(x.t)}</b>` : b.k === "admpanel" && ADM_KEYS.includes(page) ? `<span>›</span><b>${esc(SECTIONS.find(y => y.k === page)?.n || "")}</b>` : ""}</nav>`); }
   else if (jobUI.ficha){ const fx = jobFicha(); if (fx) $("#content").innerHTML = fx; else jobUI.ficha = null; } // el pedido se abre como página completa, desde cualquier página
   if (jobUI.ficha || jobUI.form?.mode === "edit") renderNav(); // al abrir un pedido propio, el +N de la botonera baja enseguida
   { const ci = document.getElementById("chatInput"); if (ci && keepChat){ ci.value = keepChat.v; if (keepChat.f){ ci.focus(); ci.setSelectionRange(keepChat.s, keepChat.e); } }
