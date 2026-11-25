@@ -87,8 +87,8 @@ const RMH = (() => {
     INFLUENCERS:[() => INFLUENCERS, v => { INFLUENCERS = Array.isArray(v) ? v : []; }], // cumpleaños de influencers de las marcas (solo Admin total y CM)
     ESCRACHES:[() => ESCRACHES, v => { ESCRACHES = Array.isArray(v) ? v : []; }], // Búsqueda de Escraches: los cargados y las marcas (solo Admin total, Admin y CM)
     PEDIDOS_COM:[() => PEDIDOS_COM, v => { PEDIDOS_COM = Array.isArray(v) ? v : []; }],
-    ADM_JOBS:[() => ADM_JOBS, v => { ADM_JOBS = Array.isArray(v) ? v : []; }], // v399: Tablero de trabajos de Administración de Marketing (solo Admin total, Admin y Administración; también en la base)
-    ADM_EVENTS:[() => ADM_EVENTS, v => { ADM_EVENTS = Array.isArray(v) ? v : []; }], // v399: Eventos de Administración (lo mismo) // v242: pedidos de activaciones de Comercial (los compradores)
+    ADM_JOBS:[() => ADM_JOBS, v => { ADM_JOBS = Array.isArray(v) ? v : []; }], // v401: Tablero de trabajos de Administración de Marketing (solo Admin total, Admin y Administración; también en la base)
+    ADM_EVENTS:[() => ADM_EVENTS, v => { ADM_EVENTS = Array.isArray(v) ? v : []; }], // v401: Eventos de Administración (lo mismo) // v242: pedidos de activaciones de Comercial (los compradores)
     CAMP_FOLDERS:[() => CAMP_FOLDERS, v => { CAMP_FOLDERS = Array.isArray(v) ? v : CF_DEF.map(c => ({ ...c, brands:[...c.brands] })); }], // v344: campañas (carpetas de la Planificación)
     APP_VIDEO:[() => APP_VIDEO, v => { APP_VIDEO = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v374: el video de la app (v394: lo ve todo el equipo; lo cambia Admin total)
     DRAFTS:[() => DRAFTS, v => { DRAFTS = v && typeof v === "object" && !Array.isArray(v) ? v : {}; window.draftsSynced?.(); }], // v369: borradores de pedidos (solo Admin total)
@@ -97,6 +97,7 @@ const RMH = (() => {
     PROMPT_LOG:[() => PROMPT_LOG, v => { PROMPT_LOG = Array.isArray(v) ? v : []; }], // v334: los prompts de imágenes que se generan (sin nombres; SantIAgo)
     COPY_LOG:[() => COPY_LOG, v => { COPY_LOG = Array.isArray(v) ? v : []; }], // v334: los copys del Generador de copy (sin nombres; ClaudIA)
     CRONOGRAMA:[() => CRONOGRAMA, v => { CRONOGRAMA = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v326: Cronograma de Acciones (lo cambia Admin total)
+    RESUMEN_EJEC:[() => RESUMEN_EJEC, v => { RESUMEN_EJEC = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v400: notas del Resumen ejecutivo (reunión con el CEO; Admin total y Admin)
     TV_SCREENS:[() => TV_SCREENS, v => { TV_SCREENS = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v266: qué muestra cada televisor (TV 1 a TV 4); lo cambia Admin total
     // v375 · Panel de Seguimiento: quién lo ve (lo cambia Admin total) y el panel (solo esas personas y Admin total; también en la base).
     // Si a esta persona le dan el acceso, se trae el panel enseguida; si se lo sacan, se borra la copia de este dispositivo.
@@ -114,9 +115,9 @@ const RMH = (() => {
   const ATCM_ONLY = new Set(["s:INFLUENCERS", "s:PLAN_TXT"]);
   const isATCM = () => ["Admin total", "CM"].includes(member?.role);
   // Claves que solo usan Admin total y Admin (v326: la Oficina de Agentes): las demás personas no las bajan.
-  const ADM_ONLY = new Set(["s:AGENTS", "s:AGENT_CHAT", "s:CRONOGRAMA"]); // solo Admin total y Admin (también en la base) · v394: s:APP_VIDEO lo lee todo el equipo
+  const ADM_ONLY = new Set(["s:AGENTS", "s:AGENT_CHAT", "s:CRONOGRAMA", "s:RESUMEN_EJEC"]); // v400: + el Resumen ejecutivo // solo Admin total y Admin (también en la base) · v394: s:APP_VIDEO lo lee todo el equipo
   const isAdm = () => ["Admin total", "Admin"].includes(member?.role);
-  // v399: Administración de Marketing: solo la bajan y la guardan Admin total, Admin y el rol Administración (también en la base).
+  // v401: Administración de Marketing: solo la bajan y la guardan Admin total, Admin y el rol Administración (también en la base).
   const ADMMKT_ONLY = new Set(["s:ADM_JOBS", "s:ADM_EVENTS"]);
   const isAdmMkt = () => ["Admin total", "Admin", "Administración"].includes(member?.role);
   // Claves que todos leen pero solo Admin total guarda. (Los grupos de chat los crea cualquiera: la base controla

@@ -1,4 +1,4 @@
--- v399 · Administración de Marketing (pedido de Admin total).
+-- v401 · Administración de Marketing (pedido de Admin total).
 --   · Rol nuevo “Administración”: la Supervisora administrativa de marketing (Marlene) y su equipo (Diamela, Joel y Vivian).
 --     Como cualquier persona del equipo: chat, lo compartido y su perfil (no es Comercial, Revisor ni TV).
 --   · s:ADM_JOBS (Tablero de trabajos: el Excel de Marlene) y s:ADM_EVENTS (Eventos con su lista de lo que hace falta):

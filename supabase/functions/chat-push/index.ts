@@ -93,7 +93,7 @@ async function jobPush(cfg: any, items: any[]) {
     const brands = j ? (Array.isArray(j.brands) && j.brands.length ? j.brands : [j.brand]).filter(Boolean).join(" + ") : "";
     let title = j?.title || "", body = "", go = j ? "job:" + j.id : "";
     let head = "";
-    if (n.adm) { // v399: Administración de Marketing: le toca un trabajo del Tablero (el título y el detalle vienen en el aviso)
+    if (n.adm) { // v401: Administración de Marketing: le toca un trabajo del Tablero (el título y el detalle vienen en el aviso)
       title = short(String(n.title || ""), 120); body = String(n.text || ""); go = "adm:" + String(n.adm); head = "Administración: te toca un trabajo";
     } else if (n.copy && n.post) { // v214: copy de la publicación (la CM lo manda → Admin total; Admin total aprueba o pide corrección → la CM)
       const x = (n.canal ? canal : posts).find((y) => y.id === n.post);
@@ -159,7 +159,7 @@ async function avisoPush(cfg: any, items: any[]) {
 
 // Pedidos Comercial (v242): pedido nuevo de un comprador → a Admin total; pedido publicado → al comprador que lo cargó.
 // v397 · Solicitud de pedidos: también piden Patricia y Emanuel (Admin); a Admin total le llega como “Nueva solicitud de pedido”.
-// v399 · La solicitud de pedido del equipo también le llega a la líder de Administración de Marketing (admLead en su ficha;
+// v401 · La solicitud de pedido del equipo también le llega a la líder de Administración de Marketing (admLead en su ficha;
 // si nadie está marcado, a todo el rol Administración): trabaja en paralelo con Admin total (compra y producción).
 // Con “No molestar”, sin aviso.
 async function pedidoPush(cfg: any, items: any[]) {
@@ -198,7 +198,7 @@ async function pedidoPush(cfg: any, items: any[]) {
       continue;
     }
     const pub = p.ev === "pub";
-    const team = !pub && !isBuyer(String(p.by || "")) ? await leads() : []; // v399: + Administración
+    const team = !pub && !isBuyer(String(p.by || "")) ? await leads() : []; // v401: + Administración
     const to = (pub ? [String(p.by || "")] : [...(admins || []).map((m) => m.person_id), ...team]).filter((id) => id && id !== (pub ? "" : p.by) && !isDnd(presence[id], now));
     if (!to.length) continue;
     const payload = JSON.stringify(pub
