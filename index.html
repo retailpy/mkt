@@ -4375,6 +4375,12 @@ td svg{width:15px;height:15px;vertical-align:-2px;color:var(--cyan)}
 .requote li{font-size:13px;padding-left:10px;border-left:3px solid var(--line-3);display:flex;flex-direction:column;gap:2px}.requote li.pos{border-color:#34d399}.requote li.neg{border-color:#f87171}.requote li small{color:var(--muted);font-size:11.5px;display:flex;flex-wrap:wrap;gap:4px;align-items:center}.requote small svg{width:12px;height:12px}
 .resug li{display:flex;gap:8px;align-items:flex-start;font-size:13.5px}.resug li svg{color:#facc15;flex:none;width:16px;height:16px;margin-top:2px}
 .refoot{margin:0}#reprintbox{display:none}
+html.reshow .side,html.reshow .brandbar,html.reshow .tabbar,html.reshow .navshow,html.reshow .pcrumb,html.reshow .monthbar{display:none!important}
+html.reshow .main{padding:12px 16px!important;max-width:none!important}html.reshow #content{max-width:none!important}
+html.reshow .reexec{max-width:none;margin:0 auto;transform-origin:top center}
+html.reshow .reacts .btn:not([data-reshow]),html.reshow .resel{display:none}
+.regrid .rewide{grid-column:1/-1}
+@media (min-width:1200px){html.reshow .regrid{grid-template-columns:repeat(3,minmax(0,1fr))}html.reshow .re1{order:1}html.reshow .re3{order:2}html.reshow .re4{order:3}html.reshow .re2{order:4}html.reshow .re5{order:5;grid-column:span 2}}
 @media screen and (max-width:1100px){.rekpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media screen and (max-width:800px){.regrid{grid-template-columns:1fr}.rekpis{grid-template-columns:repeat(2,minmax(0,1fr))}.rehead h1{font-size:22px}.resel select{min-width:0;max-width:100%}}
 @media print{
@@ -19592,36 +19598,37 @@ function pResumen(){
       <h1>Reunión del martes ${+t.slice(8)} de ${monthName(t.slice(0, 7))}</h1>
       <p class="sub">Lo que pasó en las redes la semana ${reRange(w)}${partial ? " · <b>semana en curso: datos parciales</b>" : ""}.</p></div>
     <div class="reacts noprint"><label class="resel">${icon("calendar-days")}<select class="base" data-ret aria-label="Elegir la reunión">${tues.map(x => `<option value="${x}" ${x === t ? "selected" : ""}>Martes ${dm(x)}${x === def ? " (la última)" : x > def ? " (la próxima, parcial)" : ""}</option>`).join("")}</select></label>
-      <button type="button" class="btn" data-reedit>${icon(ed ? "x" : "pencil")} ${ed ? "Cerrar notas" : "Notas de la reunión"}</button><button type="button" class="btn primary" data-reprint>${icon("printer")} Imprimir / PDF</button></div></header>
+      <button type="button" class="btn primary" data-reshow>${icon(reShowOn() ? "minimize-2" : "maximize-2")} ${reShowOn() ? "Salir de pantalla completa" : "Pantalla completa"}</button><button type="button" class="btn" data-reedit>${icon(ed ? "x" : "pencil")} ${ed ? "Cerrar notas" : "Notas de la reunión"}</button><button type="button" class="btn" data-reprint>${icon("printer")} Imprimir / PDF</button></div></header>
   <div class="rekpis">${kpi(dots(posts.length), "publicaciones", "Instagram · 3 marcas")}${kpi(dots(reSum(posts, "reach")), "personas alcanzadas", "suma de sus alcances")}${kpi(dots(reSum(posts, "inter")), "interacciones", "me gusta, comentarios, guardados y compartidos")}${kpi(dots(reSum(posts, "shares")), "veces compartidas")}${kpi(folK ? (folD > 0 ? "+" : "") + dots(folD) : "—", "seguidores nuevos", folK === "semana" ? "en la semana (IG + FB)" : folK ? `en ${monthName(byB.find(x => x.fol)?.fol?.m || CURRENT_MONTH)} (IG + FB)` : "sin datos")}${kpi(`${pos.length} / ${neg.length}`, "positivos / negativos", "mensajes y comentarios")}</div>
   <div class="regrid">
-    <section class="recard"><h2><i>1</i>Publicaciones de mayor impacto</h2>
+    <section class="recard re1"><h2><i>1</i>Publicaciones de mayor impacto</h2>
       ${top.length ? `<ol class="retop">${top.map((p, i) => `<li><span class="ren">${i + 1}</span>${pubThumb(p, "rethumb")}<div class="grow"><b>${esc(p.title)}</b><small>${brandTag(p.brand)} ${esc(p.format)} · ${reDayTxt(p.date)}</small></div><div class="renum"><b>${dots(pubScore(p))}</b><small>${isNum(p.reach) ? "alcance" : "interacciones"}</small>${p.shares ? `<small>${dots(p.shares)} compartidos</small>` : ""}</div>${p.link ? `<a class="btn sm noprint" href="${esc(p.link)}" target="_blank" rel="noopener">${icon("arrow-up-right")}</a>` : ""}</li>`).join("")}</ol>` : empty("No hay publicaciones de Instagram de esa semana.")}
       ${camps.length ? `<div class="recamps"><b>${icon("megaphone")} Campañas pagas activas</b><ul>${camps.slice(0, 5).map(c => `<li>${brandTag(c.brand)} <span>${esc(c.name)}</span><small>${esc(c.obj || "")}${c.start ? ` · ${dm(c.start)} → ${c.end ? dm(c.end) : "sin fin"}` : ""}</small></li>`).join("")}</ul></div>` : ""}</section>
-    <section class="recard"><h2><i>3</i>Las redes en números</h2>
+    <section class="recard re3"><h2><i>3</i>Las redes en números</h2>
       <table class="retab"><thead><tr><th></th><th>Publ.</th><th>Alcance</th><th>Interacc.</th><th>Compart.</th><th>Seguidores</th></tr></thead><tbody>
         ${byB.map(x => `<tr><td>${brandTag(x.b)}</td><td>${x.n}</td><td>${dots(x.reach)}</td><td>${dots(x.inter)}</td><td>${dots(x.shares)}</td><td>${x.fol ? `${dots((x.fol.ig || 0) + (x.fol.fb || 0))}${isNum(x.fol.d) ? `<em class="${x.fol.d > 0 ? "up" : x.fol.d < 0 ? "down" : ""}">${x.fol.d > 0 ? "+" : ""}${dots(x.fol.d)}</em>` : ""}` : "—"}</td></tr>
           <tr class="resub"><td colspan="6">${x.viral ? `${icon("flame")} Más viral: “${esc(x.viral.title)}” · ${dots(x.viral.shares || 0)} compartidos · ${dots(x.viral.inter)} interacciones` : "Sin publicaciones en Instagram"}${x.stN ? ` · ${icon("smartphone")} ${x.stN} historias, ${dots(x.stR)} de alcance` : ""}</td></tr>`).join("")}</tbody></table>
       <p class="note re0">${folK === "semana" ? "Seguidores (Instagram + Facebook) al domingo y cuánto crecieron en la semana." : "Seguidores (Instagram + Facebook) de hoy y cuánto crecieron en el mes (la app guarda el dato de cada día desde esta versión: en unas semanas se ve el crecimiento de cada semana)."}</p></section>
-    <section class="recard"><h2><i>2</i>Competencia y supermercados de referencia</h2>
+    <section class="recard re2"><h2><i>2</i>Competencia y supermercados de referencia</h2>
       ${refs.posts.length ? `<p class="re0">${refs.accs} supermercados de referencia del mundo publicaron <b>${refs.posts.length}</b> veces.${refs.themes.length ? " Temas que más usaron:" : ""}</p>${refs.themes.length ? `<div class="rechips">${refs.themes.slice(0, 5).map(([l, n]) => `<span>${esc(l)} <b>${n}</b></span>`).join("")}</div>` : ""}
         <ul class="rerefs">${refs.posts.slice(0, 4).map(p => `<li><b>${esc(p.acc)}</b> <span>“${esc(capTitle(p.cap) || "Sin texto")}”</span><small>${reDayTxt(pyDate(p.ts))}${p.link ? ` · <a class="noprint" href="${esc(p.link)}" target="_blank" rel="noopener">ver</a>` : ""}</small></li>`).join("")}</ul>` : empty("Sin publicaciones de los supermercados de referencia en esa semana (la app guarda las últimas de cada uno).")}
       <div class="renote"><b>${icon("map-pin")} Competencia local (Paraguay)</b>${ed ? `<textarea class="base" id="reComp" rows="3" maxlength="1500" placeholder="Qué campañas, frases o ideas usó la competencia local esa semana…">${esc(note.comp || "")}</textarea>` : note.comp ? `<p>${esc(note.comp).replace(/\n/g, "<br>")}</p>` : `<p class="note re0">Sin notas. Tocá “Notas de la reunión” para anotar lo que vieron de la competencia local.</p>`}</div></section>
-    <section class="recard"><h2><i>4</i>Lo que dice la gente</h2>
+    <section class="recard re4"><h2><i>4</i>Lo que dice la gente</h2>
       <div class="revoice"><span class="pos">${icon("smile")} <b>${pos.length}</b> positivos</span><span class="neg">${icon("frown")} <b>${neg.length}</b> negativos</span><span>${icon("message-circle")} <b>${voice.length - pos.length - neg.length}</b> consultas y otros</span></div>
       ${pos.length ? `<b class="rek">Lo positivo</b><ul class="requote">${pos.slice(0, 3).map(x => quote(x, "pos")).join("")}</ul>` : ""}
       ${neg.length ? `<b class="rek">Lo negativo</b><ul class="requote">${neg.slice(0, 3).map(x => quote(x, "neg")).join("")}</ul>${sucs.length ? `<div class="rechips neg">${sucs.slice(0, 5).map(([s, n]) => `<span>${icon("map-pin")} ${esc(s)} <b>${n}</b></span>`).join("")}</div>` : ""}` : ""}
       ${!voice.length ? empty("Sin mensajes ni comentarios de esa semana.") : ""}</section>
-  </div>
-  <section class="recard rewide"><h2><i>5</i>Aportes y sugerencias para mejorar la comunicación</h2>
+  <section class="recard rewide re5"><h2><i>5</i>Aportes y sugerencias para mejorar la comunicación</h2>
     ${sug.length ? `<ul class="resug">${sug.map(s => `<li>${icon("lightbulb")}<span>${esc(s)}</span></li>`).join("")}</ul>` : empty("Sin datos suficientes para sugerir.")}
     <div class="renote"><b>${icon("users")} Aportes del equipo</b>${ed ? `<textarea class="base" id="reIdeas" rows="3" maxlength="1500" placeholder="Qué proponemos para esta semana…">${esc(note.ideas || "")}</textarea><div class="chips noprint" style="justify-content:flex-end"><button type="button" class="btn primary" data-resave="${t}">${icon("save")} Guardar notas</button></div>` : note.ideas ? `<p>${esc(note.ideas).replace(/\n/g, "<br>")}</p>` : `<p class="note re0">Sin aportes anotados.</p>`}${note.by ? `<small class="re0">Notas de ${esc(firstName(note.by))}${note.at ? ` · ${dm(String(note.at).slice(0, 10))}` : ""}</small>` : ""}</div></section>
+  </div>
   <p class="note refoot">Fuentes: Meta (Instagram y Facebook) · actualizado ${metaWhen(META_POSTS.updated)} · mensajes, comentarios y supermercados de referencia que guarda la app. El alcance de cada publicación sigue creciendo unos días después de publicada.</p>
 </div>`;
 }
-document.addEventListener("change", e => { const s = e.target.closest?.("[data-ret]"); if (!s || page !== "resumen") return; reUI.t = s.value; reUI.edit = false; render(); });
+document.addEventListener("change", e => { const s = e.target.closest?.("[data-ret]"); if (!s || page !== "resumen") return; reUI.t = s.value; reUI.edit = false; render(); setTimeout(reFit, 60); });
 document.addEventListener("click", e => {
   if (page !== "resumen") return;
+  if (e.target.closest("[data-reshow]")) return reShow(!reShowOn());
   if (e.target.closest("[data-reedit]")){ reUI.edit = !reUI.edit; render(); if (reUI.edit) setTimeout(() => document.getElementById("reComp")?.focus(), 60); return; }
   const sv = e.target.closest("[data-resave]"); if (sv){ if (!reCan() || window.RMH?.previewing) return toast("No se puede guardar en vista previa.");
     const t = sv.dataset.resave, comp = (document.getElementById("reComp")?.value || "").trim().slice(0, 1500), ideas = (document.getElementById("reIdeas")?.value || "").trim().slice(0, 1500);
@@ -19629,6 +19636,25 @@ document.addEventListener("click", e => {
     reUI.edit = false; render(); window.RMH?.flushNow?.(); toast("Notas de la reunión guardadas."); return; }
   if (e.target.closest("[data-reprint]")) reReprint(true);
 });
+// v400 · La presentación es en pantalla: “Pantalla completa” (como la TV) saca el menú y las barras, pone la hoja a pantalla
+// completa y la agranda para que entre entera en la pantalla (si quedara muy chica, se agranda a lo ancho y se baja con la rueda).
+// Esc (o el botón) vuelve. En celulares sin pantalla completa, igual se esconde el menú.
+const reShowOn = () => document.documentElement.classList.contains("reshow");
+function reShow(on){
+  document.documentElement.classList.toggle("reshow", on);
+  try { if (on && !document.fullscreenElement) document.documentElement.requestFullscreen?.()?.catch?.(() => {}); else if (!on && document.fullscreenElement) document.exitFullscreen?.()?.catch?.(() => {}); } catch (e) {}
+  render(); setTimeout(reFit, 80); setTimeout(reFit, 400);
+}
+function reFit(){ const el = document.querySelector("#content .reexec"); if (!el) return;
+  if (!reShowOn()){ el.style.zoom = ""; el.style.width = ""; return; }
+  // Con zoom y ancho automático la hoja se achicaba también a lo ancho: con ancho 100 % usa todo el ancho de la pantalla.
+  const fits = z => { el.style.zoom = z; el.style.width = "100%"; const r = el.getBoundingClientRect(); return r.bottom + scrollY <= innerHeight - 6 && r.right <= innerWidth + 1; };
+  let lo = .6, hi = 1.8; if (!fits(lo)){ el.style.zoom = 1; el.style.width = ""; return; } // ni chiquita entra: tamaño normal y se baja con la rueda
+  for (let i = 0; i < 8; i++){ const m = (lo + hi) / 2; if (fits(m)) lo = m; else hi = m; }
+  fits(lo); window.scrollTo(0, 0); }
+addEventListener("resize", () => { if (reShowOn()) reFit(); });
+document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && reShowOn()){ document.documentElement.classList.remove("reshow"); render(); setTimeout(reFit, 60); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && reShowOn() && !document.fullscreenElement) reShow(false); });
 // Para imprimir: una copia de la hoja sola en la página (lo demás de la app no ocupa lugar), así sale en una sola hoja A4.
 function reReprint(go){ const src = document.querySelector("#content .reexec"); document.getElementById("reprintbox")?.remove(); if (!src) return;
   const box = document.createElement("div"); box.id = "reprintbox"; box.innerHTML = src.outerHTML; document.body.appendChild(box); document.documentElement.classList.add("reprint");
@@ -21053,6 +21079,7 @@ function render(){
   else if (calSL) document.querySelectorAll("#content .calw").forEach((w, i) => { if (calSL[i] != null) w.scrollLeft = calSL[i]; });
   document.documentElement.classList.toggle("chatfull", page === "mensajes" && !!chatUI.mob && !!chatUI.open);
   if (page === "mensajes"){ chatFit(); chatPop(); }
+  if (page === "resumen" && reShowOn()) reFit(); else if (reShowOn() && page !== "resumen"){ document.documentElement.classList.remove("reshow"); try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {} } // v400
   chatNotify(); jobPopCheck(); chatPreviews(); tvKioskUi();
   if (window.lucide) lucide.createIcons();
   if (page === "tendg" || page === "tencm") gcseMount();
