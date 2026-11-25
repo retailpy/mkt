@@ -5001,6 +5001,8 @@ html.light .sg :is(.sgptn,.sgagnum,.sgstari,.sgppav,.sgstack,.sgpbar2 i){filter:
 .sgmyalb{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:color-mix(in srgb,var(--c) 14%,#0b1222);border:1px solid color-mix(in srgb,var(--c) 50%,transparent)}
 .sgmyalb > svg{width:18px;height:18px;color:var(--c);flex:none}.sgmyalb > svg:last-child{width:16px;height:16px;color:var(--faint);margin-left:auto}.sgmyalb.late > svg:first-child{animation:sgurg 2s ease-in-out infinite}
 .sgmyalb b{color:#fff;font-size:13.5px;white-space:nowrap}.sgmyalb span{color:#e2e8f0;font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sgmyalb:hover{filter:brightness(1.15)}.sgmyalb:focus-visible{outline:2px solid var(--sgac)}
+.sgtreat .sgck span small{display:block;font-weight:400}
+.sgnewcard{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:16px;border:1px dashed rgba(34,211,238,.6);background:linear-gradient(90deg,rgba(34,211,238,.12),rgba(37,99,235,.06));color:var(--ink)}.sgnewcard:hover{border-style:solid}.sgnewcard:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}.sgnewcard .grow{display:flex;flex-direction:column;gap:2px;min-width:0}.sgnewcard b{font-size:15.5px}.sgnewcard small{color:var(--muted);font-size:13px}.sgnewic{width:42px;height:42px;flex:none;border-radius:12px;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,#22d3ee,#2563eb)}
 .sgurgban{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border-radius:16px;border:1px solid rgba(239,68,68,.55);background:rgba(239,68,68,.1);color:#fecaca;font-size:13.5px}
 .sgurgban > svg{width:20px;height:20px;color:#f87171;flex:none;animation:sgurg 2s ease-in-out infinite}.sgurgban > span{flex:1 1 240px}.sgurgban b{color:#fff}.sgurgban .btn{display:inline-flex;align-items:center;gap:6px}
 @media (prefers-reduced-motion:reduce){.sgti em.urg,.sgmyalb.late > svg:first-child,.sgurgban > svg{animation:none}}
@@ -5848,7 +5850,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v395";
+const APP_VER = "v396";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -18438,6 +18440,7 @@ function segPortada(){
   const closedI = all.filter(it => it.st === "fin" && it.hold !== "can").length, closedT = segAgenda().filter(a => a.kind !== "info" && a.done).length, late = openI.filter(segLate).length;
   const U = segUrgMine(), uL = U.filter(it => segCount(it).n < 0).length, uS = U.length - uL;
   return `${U.length ? `<div class="sgurgban">${icon("alarm-clock")}<span><b>${uL ? `Tenés ${uL} tarea${uL === 1 ? "" : "s"} atrasada${uL === 1 ? "" : "s"}` : ""}${uL && uS ? " y " : uS ? "Tenés " : ""}${uS ? `${uS} para entregar en 3 días o menos` : ""}.</b> ${esc(segNm(U[0]))}${U.length > 1 ? ` y ${U.length - 1} más` : ""}.</span><button type="button" class="btn sm" data-sgtab="mis">${icon("user")} Ver mis tareas</button></div>` : ""}
+    <button type="button" class="sgnewcard" data-sgnewi><span class="sgnewic">${icon("plus")}</span><span class="grow"><b>Cargar una tarea para seguir</b><small>Cualquiera del panel la carga: elegís los responsables (vos u otras personas) y queda para tratar en las reuniones hasta que se resuelva.</small></span>${icon("chevron-right")}</button>
     <section class="sgsec"><div class="sghrow"><h2 class="sgh">${icon("layers")} Columnas de trabajo</h2><span class="sgmuted">Tocá una para ver sus tareas.</span></div>
       <div class="sgcolg">${SEG_COLS.map(([k, l, , ic]) => { const L = all.filter(x => x.col === k), p = segPct(L);
         return `<button type="button" class="sgcolcard" data-sggo="col:${k}" title="Ver las tareas de ${esc(l)}"><span class="sgcoli">${icon(ic)}</span><span class="sgcoln">${esc(l)}</span><b>${L.filter(segOpen).length}</b>${segStack(L)}<small>${p} % de avance · ${L.filter(x => x.st === "fin").length} finalizadas</small></button>`; }).join("")}</div></section>
@@ -18701,6 +18704,9 @@ function segItemForm(){
       <fieldset class="sgfs"><legend>Responsable</legend><div class="sgcks">${[...SEG_RESP, ...SEG_RESP_X].map(r => chk("resp", r, resp.has(r), segFull(r))).join("")}</div>
         <label class="oflab">Otros (separados por coma)<input class="base" name="respx" maxlength="80" value="${esc(segDv(f, "respx", others(resp, [...SEG_RESP, ...SEG_RESP_X])))}"></label></fieldset>
       <label class="oflab">Próxima acción<textarea class="base" name="next" rows="2" maxlength="400">${esc(v("next", ""))}</textarea></label>
+      ${it || mt || fm.ag ? "" : `<fieldset class="sgfs sgtreat"><legend>${icon("users")} Para la reunión</legend>
+        <label class="sgck"><input type="checkbox" name="treat" value="1" ${[].concat(segDv(f, "treat", ["1"])).includes("1") ? "checked" : ""}><span>Tratarla en las reuniones <small class="sgmuted">(queda como punto para resolver en la próxima reunión y sigue hasta que se responda Resuelto o No se puede)</small></span></label>
+        <label class="oflab">¿Qué hay que tratar? <span class="sgmuted">(opcional)</span><input class="base" name="treatx" maxlength="200" value="${esc(segDv(f, "treatx", ""))}" placeholder="Ej.: definir quién la lleva adelante y la fecha de entrega"></label></fieldset>`}
       <details class="sgdet2"${it && (it.goal || it.evid || (it.ext || []).length || (it.collab || []).length) ? " open" : ""}><summary>Más datos (objetivo, coordina con, áreas, evidencia)</summary>
         <fieldset class="sgfs"><legend>Áreas colaboradoras <span>otras columnas que participan</span></legend><div class="sgcks">${SEG_COLS.map(([k, l]) => chk("collab", k, collab.has(k), l)).join("")}</div></fieldset>
         <fieldset class="sgfs"><legend>Coordina con</legend><div class="sgcks">${SEG_EXT.map(x => chk("ext", x, ext.has(x))).join("")}</div>
@@ -18732,9 +18738,11 @@ function segItemSubmit(form){
   const it = { id:"MKT-" + String(n).padStart(3, "0"), ...vals, hold:"", st:g("st") || "pend", next:"", since:mt ? mt.date : TODAY, meet:mt ? mt.id : "", conf:true, log:[] };
   segAddLog(it, { kind:"alta", d:it.since, m:it.meet, next }); it.log[0].st = it.st;
   d.items.push(it); d.seq = n; segUI.form = null; segDrClear("it");
+  const treat = !mt && !fm.ag && !!form.querySelector('[name="treat"]:checked'); // v396: queda para tratar en las reuniones
+  if (treat){ d.agenda = Array.isArray(d.agenda) ? d.agenda : []; d.agenda.push({ id:segUid("a"), t:g("treatx").slice(0, 200) || `Seguimiento de la tarea: ${name}`, ref:it.id, kind:"tema", done:false, by:viewer.name, at:TODAY, m:"" }); }
   const ag = fm.ag ? d.agenda.find(x => x.id === fm.ag) : null; if (ag) Object.assign(ag, { done:true, doneAt:mt ? mt.date : TODAY, doneIn:mt ? mt.id : "", doneBy:viewer.name, task:it.id });
   if (mt){ segUI.tab = "reu"; segUI.meet = mt.id; } else segUI.open = it.id;
-  segSave(`Tarea ${segNm(it)} sumada.`);
+  segSave(`Tarea ${segNm(it)} sumada.${treat ? " Queda para tratar en la próxima reunión." : ""}`);
 }
 // ---- Reuniones ----
 // v383 · Participantes de la reunión: los responsables (menos Fede, que no está en las reuniones; si una reunión vieja lo tenía, sigue
