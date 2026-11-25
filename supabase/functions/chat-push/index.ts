@@ -156,12 +156,15 @@ async function avisoPush(cfg: any, items: any[]) {
 }
 
 // Pedidos Comercial (v242): pedido nuevo de un comprador → a Admin total; pedido publicado → al comprador que lo cargó.
+// v397 · Solicitud de pedidos: también piden Patricia y Emanuel (Admin); a Admin total le llega como “Nueva solicitud de pedido”.
 // Con “No molestar”, sin aviso.
 async function pedidoPush(cfg: any, items: any[]) {
   const list = (Array.isArray(items) ? items : []).filter((p) => p && p.id && p.title).slice(0, 10);
   if (!list.length) return json({ ok: true, skipped: "sin pedidos" });
   const presence: Record<string, any> = (await state("s:PRESENCE")) || {};
   const { data: admins } = await db.from("members").select("person_id").eq("active", true).eq("role", "Admin total");
+  const { data: buyers } = await db.from("members").select("person_id").eq("role", "Comercial"); // v397: los demás (Patricia, Emanuel) mandan “solicitudes de pedido”
+  const isBuyer = (id: string) => (buyers || []).some((x) => x.person_id === id);
   const now = Date.now(), brands = (p: any) => (Array.isArray(p.brands) ? p.brands : []).join(" + ");
   let sent = 0;
   for (const p of list) {
@@ -187,7 +190,9 @@ async function pedidoPush(cfg: any, items: any[]) {
     if (!to.length) continue;
     const payload = JSON.stringify(pub
       ? { title: "✅ ¡Tu pedido se publicó!", body: short(`${p.title}${brands(p) ? " · " + brands(p) : ""}`, 220), tag: "rmh-pc-" + p.id, open: "", go: "com:" + p.id }
-      : { title: "🛍️ Nuevo pedido de Comercial", body: short([p.title, String(p.byName || ""), brands(p), p.date ? "publicar el " + dm(p.date) : ""].filter(Boolean).join(" · "), 220), tag: "rmh-pc-" + p.id, open: "", go: "com:" + p.id });
+      : isBuyer(String(p.by || ""))
+        ? { title: "🛍️ Nuevo pedido de Comercial", body: short([p.title, String(p.byName || ""), brands(p), p.date ? "publicar el " + dm(p.date) : ""].filter(Boolean).join(" · "), 220), tag: "rmh-pc-" + p.id, open: "", go: "com:" + p.id }
+        : { title: "📝 Nueva solicitud de pedido", body: short([p.title, String(p.byName || ""), brands(p), p.date ? "para el " + dm(p.date) : ""].filter(Boolean).join(" · "), 220), tag: "rmh-pc-" + p.id, open: "", go: "com:" + p.id });
     sent += await send(cfg, [...new Set(to)], () => payload);
   }
   return json({ ok: true, sent });

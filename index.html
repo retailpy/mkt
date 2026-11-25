@@ -4005,7 +4005,8 @@ span.semchip{cursor:default}.semchip svg{width:12px;height:12px;flex:none}.semch
   .acard .ac-m{align-items:flex-start}.acard .ac-m span{white-space:normal;overflow:visible}
   .acard .ac-t{overflow-wrap:break-word;hyphens:auto;-webkit-hyphens:auto}
 }
-/* v242 · Pedidos Comercial */
+/* v242 · Pedidos Comercial (v397: Solicitud de pedidos) */
+.pctw td small.pcby{display:block;font-size:11px;color:var(--muted)}
 .pcst{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:800;color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent);border:1px solid color-mix(in srgb,var(--c) 45%,transparent)}
 .pcst svg{width:14px;height:14px}
 .pckpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
@@ -5119,7 +5120,7 @@ const SECTIONS = [
   { g:"General", k:"avisos", l:"Avisos", i:"megaphone", hide:true }, // se ven en Inicio
   { g:"General", k:"mensajes", l:"Chat Retail MKT", i:"messages-square" },
   { g:"General", k:"comercial", l:"Comercial", i:"tags", virtual:true }, // ofertas publicadas de cada quincena (Excel de Comercial)
-  { g:"General", k:"pedcom", l:"Pedidos Comercial", i:"shopping-bag", virtual:true }, // v242: pedidos de activaciones de los compradores (rol Comercial); lo ven Admin total y Admin
+  { g:"General", k:"pedcom", l:"Solicitud de pedidos", i:"shopping-bag", virtual:true }, // v397: antes “Pedidos Comercial”; ahora también piden Patricia y Emanuel (rol Admin) // v242: pedidos de activaciones de los compradores (rol Comercial); lo ven Admin total y Admin
   { g:"General", k:"cronograma", l:"Cronograma de Acciones", i:"calendar-range", virtual:true }, // v326: acciones de comunicación con fechas y medios (Redes, Tótem, TV…); lo ven Admin total y Admin, lo cambia Admin total
   { g:"General", k:"seguimiento", l:"Panel Interactivo de Seguimiento de Marketing", n:"Panel de Seguimiento", i:"chart-gantt", virtual:true, hide:true }, // v375: reuniones de procesos; botón destacado arriba del menú, solo las personas de s:SEG_ACCESS y Admin total; pantalla completa
   { g:"General", k:"copys", l:"Generador de copy", i:"pen-line", virtual:true }, // v334: textos del creativo → copy de ClaudIA (Admin total, Admin y CM)
@@ -5850,7 +5851,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v396";
+const APP_VER = "v397";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -7883,7 +7884,7 @@ document.addEventListener("click", e => {
 // cancelado y lo que está en pausa, con filtros por estado y por tipo. Tocar un resultado lo abre.
 let gsUI = { open:false, q:"", st:"Todos", area:"Todas", list:null };
 const GS_ST = [["Todos", ""], ["En proceso", "#f59e0b"], ["Pendiente", "#ef4444"], ["En pausa", "#94a3b8"], ["Cancelado", "#64748b"], ["Terminado", "#16a34a"]];
-const GS_AREAS = ["Todas", "Diseño gráfico", "CM", "Contenidos", "Publicaciones", "Canal de WhatsApp", "Actividades", "Pedidos Comercial"];
+const GS_AREAS = ["Todas", "Diseño gráfico", "CM", "Contenidos", "Publicaciones", "Canal de WhatsApp", "Actividades", "Solicitud de pedidos"];
 const gsCan = () => !!viewer && viewer.role !== "TV" && !isComercial();
 const gsNorm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 const gsTxt = h => String(h || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&[a-z]+;/g, " ");
@@ -16554,7 +16555,7 @@ function jobPopInfo(n){
   if (n.type === "compst"){ const p = pcById(n.ped), S = PC_ST[n.st] || PC_ST.Enviado;
     return { ...P, go:"com:" + n.ped, t:`Tu pedido: ${n.st}`, ic:S.ic, c:S.c, title:p?.title || "", m:!p ? "" : p.stNote ? `“${String(p.stNote).slice(0, 160)}”` : PC_ST_TXT[n.st] || "" }; }
   if (n.type === "comped" || n.type === "compub"){ const p = pcById(n.ped);
-    return { ...P, go:"com:" + n.ped, title:p?.title || "", m:!p ? "" : n.type === "comped" ? `${p.byName} · ${pcBrandTxt(p)} · publicar el ${p.date ? dm(p.date) : "—"}${p.marcas ? " · " + p.marcas : ""}` : `${pcBrandTxt(p)} · ya está en las redes` }; }
+    return { ...P, ...(n.type === "comped" && pcEq(p) ? { t:`Nueva solicitud de pedido de ${firstName(p.byName || "")}`, ic:"clipboard-list" } : {}), go:"com:" + n.ped, title:p?.title || "", m:!p ? "" : n.type === "comped" ? `${p.byName} · ${pcBrandTxt(p)} · publicar el ${p.date ? dm(p.date) : "—"}${p.marcas ? " · " + p.marcas : ""}` : `${pcBrandTxt(p)} · ya está en las redes` }; }
   if (n.type === "chat") return { ...P, go:"chat:" + n.open, t:n.name, title:n.from ? `${n.from}: ${n.text}` : n.text, m:n.n > 1 ? `${n.n} mensajes nuevos` : "", ic:n.open.startsWith("g:") ? "messages-square" : "message-circle" };
   if (n.type === "avok"){ const a = n.av, pp = personById(n.who), all = PEOPLE.filter(x => x.active !== false && x.id !== a.by && avFor(a, x)), ok = all.filter(x => a.seen.includes(x.id)).length, at = (a.seenAt || {})[n.who];
     return { ...P, go:"aviso", t:`${pp ? pp.name : "Alguien"} leyó tu aviso`, title:`“${rclShort(String(a.text), 140)}”`, m:`Tocó Entendido${at ? ` a las ${axHM(at)} h` : ""} · lo leyeron ${ok} de ${all.length}` }; }
@@ -16708,6 +16709,15 @@ const PC_PEDIDO = ["Post para redes","Historia","Post + Historia","Carrusel","Re
 const PC_PH = "Ejemplo:\nACCIÓN: Día Internacional de las Pastas, 20% de descuento en Pastas Frescas Envasadas.\nMARCAS: S6: Edward, Quiero Más, De la Nonna… · Stock: Edward, Stock, Bianca…\nTEXTO QUE VA: “20% OFF en pastas frescas”.\nLEGAL: Válido del viernes 23 al domingo 25 de octubre.\nOBSERVACIONES: segmentar por marca participante.";
 let pcUI = { view:"tabla", tab:null, sort:"nuevos", open:null, form:null, busy:0 };
 const pcById = id => PEDIDOS_COM.find(p => p.id === id);
+// v397 · Solicitud de pedidos: además de Comercial, piden los Admin (Patricia y Emanuel). Le llega a Admin total, que lo aprueba,
+// le suma lo que falte y lo pasa a Diseño gráfico o a CM. Quien pide ve sus pedidos, su estado y los mensajes; los Admin ven
+// también los de los demás (solo para ver). p.src: "eq" (lo pidió alguien del equipo) o nada (Comercial, como antes).
+const pcReq = () => isComercial() || viewer?.role === "Admin";
+const pcOwn = p => !!p && pcReq() && p.by === viewer?.id;
+const pcEq = p => p?.src === "eq";
+const PC_PEDIDO_EQ = ["Post para redes", "Historia", "Post + Historia", "Carrusel", "Reel o video", "Canal de WhatsApp", "Cartelería", "Folleto o volante", "Pantallas (TV y tótems)", "Web", "Otro"];
+const pcBrandsFor = p => pcEq(p) || (!isComercial() && !p?.by) ? [...new Set([...PC_BRANDS, ...myBrands(), ...(p?.brands || [])])] : PC_BRANDS;
+const pcKind = p => pcEq(p) ? "Solicitud de pedido" : "Pedido de activación";
 const pcMine = () => (isComercial() ? PEDIDOS_COM.filter(p => p.by === viewer.id) : PEDIDOS_COM).filter(p => p && p.id);
 const pcBrandTxt = p => (p.brands || []).join(" + ") || "Sin supermercado";
 const pcRange = p => p.from && p.until ? (p.from === p.until ? dm(p.from) : `del ${dm(p.from)} al ${dm(p.until)}`) : p.from ? "desde el " + dm(p.from) : p.until ? "hasta el " + dm(p.until) : "";
@@ -16728,9 +16738,9 @@ function pcSetSt(p, st, note){
 // Pestañas de la tabla. Admin total y Admin: Nuevos, Aprobados (y con modificaciones), En curso, Finalizados, No ejecutables.
 // Comercial: En proceso (lo que no terminó), Finalizados y No ejecutables. En las dos, además “Todos”.
 const pcTabs = () => isComercial() ? [["abiertos", "En proceso", "#38bdf8"], ["Finalizado", "Finalizados", "#22c55e"], ["No ejecutable", "No ejecutables", "#ef4444"], ["todos", "Todos", "#94a3b8"]]
-  : [["Enviado", "Nuevos", "#38bdf8"], ["Aprobado", "Aprobados", "#14b8a6"], ["En curso", "En curso", "#a855f7"], ["Finalizado", "Finalizados", "#22c55e"], ["No ejecutable", "No ejecutables", "#ef4444"], ["todos", "Todos", "#94a3b8"]];
-const pcTab = () => pcTabs().some(([k]) => k === pcUI.tab) ? pcUI.tab : isComercial() ? "todos" : "Enviado";
-const pcInTab = (p, k) => { const st = pcSt(p); return k === "todos" || k === st || (k === "Aprobado" && st === "Con modificaciones") || (k === "abiertos" && !pcFinal(p)); };
+  : [...(viewer?.role === "Admin" ? [["mios", "Mis pedidos", "#22d3ee"]] : []), ["Enviado", "Nuevos", "#38bdf8"], ["Aprobado", "Aprobados", "#14b8a6"], ["En curso", "En curso", "#a855f7"], ["Finalizado", "Finalizados", "#22c55e"], ["No ejecutable", "No ejecutables", "#ef4444"], ["todos", "Todos", "#94a3b8"]];
+const pcTab = () => pcTabs().some(([k]) => k === pcUI.tab) ? pcUI.tab : isComercial() ? "todos" : viewer?.role === "Admin" ? "mios" : "Enviado";
+const pcInTab = (p, k) => { const st = pcSt(p); return k === "mios" ? p.by === viewer?.id : k === "todos" || k === st || (k === "Aprobado" && st === "Con modificaciones") || (k === "abiertos" && !pcFinal(p)); };
 // A quién se derivó: la persona responsable del trabajo (Diseño gráfico o CM) y, si todavía no tiene, el área.
 const pcArea = p => p.area === "Contenidos" ? "CM" : "Diseño gráfico";
 const pcWho = p => { const o = p.job && jobById(p.job)?.owner; return o && o !== "Sin asignar" ? o : ""; };
@@ -16740,15 +16750,15 @@ const pcPill = p => `<span class="pcst" style="--c:${pcStColor(p)}">${icon((PC_S
 // En el menú: a Admin total, los pedidos que todavía no pasó; al comprador, sus pedidos publicados que no abrió.
 // Mensajes del pedido (v244): ida y vuelta entre Admin total y el comprador. Cada lado marca hasta cuándo leyó (rdCom / rdAt).
 const pcPrevOk = p => !window.RMH?.previewing || !!p?.demo; // v298: en “ver como”, solo el pedido de ejemplo (no se guarda)
-const pcCanMsg = p => pcPrevOk(p) && (viewer.role === "Admin total" || (isComercial() && p.by === viewer.id));
-const pcUnread = p => !p || !(p.msgs || []).length ? [] : isComercial() ? (p.by === viewer.id ? p.msgs.filter(m => m.by !== viewer.id && String(m.at) > String(p.rdCom || "")) : [])
+const pcCanMsg = p => pcPrevOk(p) && (viewer.role === "Admin total" || pcOwn(p));
+const pcUnread = p => !p || !(p.msgs || []).length ? [] : pcOwn(p) ? p.msgs.filter(m => m.by !== viewer.id && String(m.at) > String(p.rdCom || ""))
   : viewer?.role === "Admin total" ? p.msgs.filter(m => m.by === p.by && String(m.at) > String(p.rdAt || "")) : [];
 // Comercial: un cambio de estado de su pedido que todavía no vio (stSeen guarda el último estado que vio).
-const pcStNew = p => isComercial() && p.by === viewer.id && pcSt(p) !== "Enviado" && p.stSeen !== pcSt(p) && !(p.st === "Publicado" && p.pubSeen);
-const pcBadgeN = () => isComercial() ? pcMine().filter(p => pcStNew(p) || pcUnread(p).length).length : viewer?.role === "Admin total" ? PEDIDOS_COM.filter(p => p.st === "Enviado" || pcUnread(p).length).length : 0;
-const pcCanEdit = p => pcPrevOk(p) && ((isComercial() && p.by === viewer.id && ["Enviado", "Con modificaciones"].includes(pcSt(p))) || viewer.role === "Admin total");
+const pcStNew = p => pcOwn(p) && pcSt(p) !== "Enviado" && p.stSeen !== pcSt(p) && !(p.st === "Publicado" && p.pubSeen);
+const pcBadgeN = () => pcReq() ? PEDIDOS_COM.filter(p => pcOwn(p) && (pcStNew(p) || pcUnread(p).length)).length : viewer?.role === "Admin total" ? PEDIDOS_COM.filter(p => p.st === "Enviado" || pcUnread(p).length).length : 0;
+const pcCanEdit = p => pcPrevOk(p) && ((pcOwn(p) && ["Enviado", "Con modificaciones"].includes(pcSt(p))) || viewer.role === "Admin total");
 const pcSeen = p => { if (!p || window.RMH?.previewing) return; if (pcStNew(p)) p.stSeen = pcSt(p);
-  if (pcUnread(p).length) p[isComercial() ? "rdCom" : "rdAt"] = new Date().toISOString(); };
+  if (pcUnread(p).length) p[pcOwn(p) ? "rdCom" : "rdAt"] = new Date().toISOString(); };
 // El pedido de Admin total para Diseño o CM: sale del pedido de Comercial. Cuando una de sus publicaciones queda Publicada
 // (o Pautada o Programada: el CM la aprobó para publicar), el pedido pasa a Finalizado (lo hace la app de Admin total o del CM).
 function pcLinkJob(j){
@@ -16821,15 +16831,16 @@ const pcFileRow = (p, f, i, edit) => `<div class="jfile"><span class="jfic">${ic
   <button type="button" class="btn sm" data-pcfdl="${esc(p.id)}|${i}">${icon("download")} Ver</button>${edit ? `<button type="button" class="btn ib sm" data-pcfdel="${i}" aria-label="Quitar archivo">${icon("x")}</button>` : ""}</div>`;
 function pcFormPage(){
   const f = pcUI.form, p = f.p, nu = f.mode === "new", sel = (id, list, val) => `<select class="base" id="${id}">${list.map(x => `<option ${x === val ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>`;
+  const eq = pcEq(p) || (nu && !isComercial()); // v397: lo pide alguien del equipo (Patricia, Emanuel o Admin total)
   return `<div class="jpage pcpage"><div class="jp-top"><button class="btn pback" type="button" data-pcclose>${icon("arrow-left")} Volver</button></div>
-  <div class="jp-h"><span class="note">Pedido de activación · Comercial</span><h1 style="margin:4px 0 0">${nu ? "Nuevo pedido" : "Editar pedido"}</h1></div>
+  <div class="jp-h"><span class="note">${eq ? `Solicitud de pedido · ${esc(nu ? viewer.name : p.byName || "")}` : "Pedido de activación · Comercial"}</span><h1 style="margin:4px 0 0">${nu ? (eq ? "Nueva solicitud de pedido" : "Nuevo pedido") : "Editar pedido"}</h1>${eq && nu ? `<p class="note" style="margin:6px 0 0">Le llega a Admin total: lo revisa, le suma lo que falte y lo pasa a Diseño gráfico o a CM. Te avisamos con cada cambio.</p>` : ""}</div>
   <form id="pcForm" class="panel pcform" autocomplete="off">
-    <label class="pcw">Nombre de la acción *<input class="base" id="pcTitle" maxlength="120" required value="${esc(p.title)}" placeholder="Ej.: Día Internacional de las Pastas · 20% OFF"></label>
-    <fieldset class="pcw pcbr"><legend>¿En qué supermercados se publica? *</legend><div class="chips">${PC_BRANDS.map(b => `<label class="pcchk" style="--c:${BRANDS[b]}"><input type="checkbox" name="pcBrand" value="${b}" ${(p.brands || []).includes(b) ? "checked" : ""}><span>${b === "Superseis" ? "Superseis (S6)" : b}</span></label>`).join("")}</div></fieldset>
-    <label class="pcw">Marcas participantes<input class="base" id="pcMarcas" maxlength="300" value="${esc(p.marcas || "")}" placeholder="Ej.: Edward, Quiero Más, De la Nonna, Bianca"><span class="note">Las marcas de los productos (proveedores) que entran en la acción.</span></label>
-    <label>¿Qué necesitás?${sel("pcPedido", PC_PEDIDO, p.pedido)}</label>
+    <label class="pcw">${eq ? "Nombre del pedido" : "Nombre de la acción"} *<input class="base" id="pcTitle" maxlength="120" required value="${esc(p.title)}" placeholder="${eq ? "Ej.: Folleto quincenal del 23/11 al 08/12" : "Ej.: Día Internacional de las Pastas · 20% OFF"}"></label>
+    <fieldset class="pcw pcbr"><legend>${eq ? "¿Para qué marcas? *" : "¿En qué supermercados se publica? *"}</legend><div class="chips">${(eq ? pcBrandsFor({ ...p, src:"eq" }) : PC_BRANDS).map(b => `<label class="pcchk" style="--c:${BRANDS[b]}"><input type="checkbox" name="pcBrand" value="${b}" ${(p.brands || []).includes(b) ? "checked" : ""}><span>${b === "Superseis" ? "Superseis (S6)" : b}</span></label>`).join("")}</div></fieldset>
+    <label class="pcw">${eq ? "Marcas o proveedores <span class=\"note\">(opcional)</span>" : "Marcas participantes"}<input class="base" id="pcMarcas" maxlength="300" value="${esc(p.marcas || "")}" placeholder="Ej.: Edward, Quiero Más, De la Nonna, Bianca"><span class="note">Las marcas de los productos (proveedores) que entran en la acción.</span></label>
+    <label>¿Qué necesitás?${sel("pcPedido", eq ? PC_PEDIDO_EQ : PC_PEDIDO, p.pedido)}</label>
     <label>Si es “Otro”, ¿qué?<input class="base" id="pcOtro" maxlength="120" value="${esc(p.pedOtro || "")}" placeholder="Ej.: gráfica para pantallas"></label>
-    <label>Fecha de publicación que te gustaría *<input class="base" type="date" id="pcDate" required value="${esc(p.date || "")}" min="${TODAY}"><span class="note">También podés tocar el día en el calendario.</span></label>
+    <label>${eq ? "¿Para cuándo lo necesitás?" : "Fecha de publicación que te gustaría"} *<input class="base" type="date" id="pcDate" required value="${esc(p.date || "")}" min="${TODAY}"><span class="note">También podés tocar el día en el calendario.</span></label>
     <div class="pcvig"><label>Vigencia desde<input class="base" type="date" id="pcFrom" value="${esc(p.from || "")}"></label><label>Vigencia hasta<input class="base" type="date" id="pcUntil" value="${esc(p.until || "")}"></label></div>
     <div class="pcw">${cfPick("pcCamp", p, "pc")}</div>
     <div class="pcw"><span class="jll">${icon("file-text")} La hoja del pedido</span><p class="note" style="margin:2px 0 8px">Todo lo que tiene que ir: el texto, los descuentos, las marcas por supermercado, el legal y los bocetos o ejemplos (pegá una captura o una imagen).</p>${rtEditor("pcBrief", p.brief ? cleanRich(p.brief) : "", PC_PH)}</div>
@@ -16839,12 +16850,12 @@ function pcFormPage(){
   </form></div>`;
 }
 // Subir archivos desde el pedido abierto: el comprador (mientras no se publique) y Admin total, siempre.
-const pcCanUp = p => !window.RMH?.previewing && ((isComercial() && p.by === viewer.id && !pcFinal(p)) || viewer.role === "Admin total");
+const pcCanUp = p => !window.RMH?.previewing && ((pcOwn(p) && !pcFinal(p)) || viewer.role === "Admin total");
 function pcMsgs(p){
   const list = p.msgs || [], can = pcCanMsg(p), who = m => m.by === viewer.id ? "Vos" : firstName(m.name || "");
   if (!list.length && !can) return "";
-  const other = isComercial() ? "Marketing" : firstName(p.byName || "Comercial");
-  return `<section class="panel jchain pcmsgs" id="pcMsgs"><h2 class="pmh">${pmIco("messages-square")}Mensajes${isComercial() ? " con Marketing" : " con " + esc(other)}</h2>
+  const own = pcOwn(p), other = own ? (pcEq(p) ? "Admin total" : "Marketing") : firstName(p.byName || "Comercial");
+  return `<section class="panel jchain pcmsgs" id="pcMsgs"><h2 class="pmh">${pmIco("messages-square")}Mensajes con ${esc(other)}</h2>
     ${list.length ? `<ol>${list.map(m => `<li class="msg ${m.by === viewer.id ? "me" : ""}"><div class="bub"><b>${esc(who(m))}</b><p>${esc(m.text).replace(/\n/g, "<br>")}</p><span>${m.at ? dm(String(m.at).slice(0, 10)) + " " + axHM(m.at) : ""}</span></div></li>`).join("")}</ol>` : `<p class="note" style="margin:0 0 8px">${isComercial() ? "Si Marketing necesita algo más de tu pedido, te escribe acá y te avisamos. Vos también podés escribir." : "¿Falta algo? Escribile a " + esc(other) + ": le llega el aviso y contesta acá."}</p>`}
     ${can ? `<div class="jcin"><textarea class="base" id="pcMsgText" rows="2" maxlength="2000" placeholder="Escribí un mensaje para ${esc(other)}…"></textarea><button class="btn primary" type="button" data-pcmsg="${esc(p.id)}">${icon("send")} Enviar</button></div>` : ""}</section>`;
 }
@@ -16869,7 +16880,7 @@ function pcDetail(p){
   const row = (k, v) => v ? `<dt>${k}</dt><dd>${v}</dd>` : "";
   const st = pcSt(p), fin = pcFinal(p), derive = at && !fin && !j, other = firstName(p.byName || "Comercial");
   return `<div class="jpage pcpage"><div class="jp-top"><button class="btn pback" type="button" data-pcback>${icon("arrow-left")} Volver</button></div>
-  <div class="jp-h">${p.demo ? `<span class="exbadge sm">Pedido de ejemplo (vista previa): no se guarda ni le llega a nadie</span> ` : ""}<span class="note">Pedido de activación · ${esc(p.byName || "Comercial")} · ${dm(String(p.at).slice(0, 10))}${!isComercial() && !at ? " · solo para ver" : ""}</span><h1 style="margin:4px 0 6px">${esc(p.title)}</h1>${pcPill(p)}</div>
+  <div class="jp-h">${p.demo ? `<span class="exbadge sm">Pedido de ejemplo (vista previa): no se guarda ni le llega a nadie</span> ` : ""}<span class="note">${pcKind(p)} · ${esc(p.byName || "Comercial")} · ${dm(String(p.at).slice(0, 10))}${!pcOwn(p) && !at ? " · solo para ver" : ""}</span><h1 style="margin:4px 0 6px">${esc(p.title)}</h1>${pcPill(p)}</div>
   ${pcTrack(p)}
   ${at ? `<section class="panel pcact"><h2 class="pmh">${pmIco("list-checks")}Cambiar el estado</h2>
     ${fin ? `<p class="note" style="margin:0 0 10px">El pedido terminó como <b style="color:${pcStColor(p)}">${esc(st)}</b>. Si hace falta, lo podés volver a abrir.</p><div class="chips"><button type="button" class="btn" data-pcst="reabrir">${icon("refresh-cw")} Volver a abrir</button></div>`
@@ -16886,8 +16897,8 @@ function pcDetail(p){
   ${!isComercial() && p.job && !j ? `<p class="note">${icon("triangle-alert")} El trabajo que salió de este pedido ya no está (lo borraron).${at ? ` Podés volver a pasarlo:` : ""}</p>${at ? `<div class="chips"><button type="button" class="btn" data-pcderive="Diseño">${icon("palette")} Pasar a Diseño gráfico</button><button type="button" class="btn" data-pcderive="Contenidos">${icon("shapes")} Pasar a CM</button></div>` : ""}` : ""}
   ${pcSt(p) === "No ejecutable" ? "" : pcTeam(p)}
   <section class="panel"><h2 class="pmh">${pmIco("clipboard-list")}El pedido</h2><dl class="pcdl">
-    ${row("Supermercados", (p.brands || []).map(brandTag).join(" "))}${row("Marcas", esc(p.marcas || ""))}${row("Qué necesita", esc(p.pedido === "Otro" ? p.pedOtro || "Otro" : p.pedido || ""))}
-    ${row("Publicar el", p.date ? `<b>${dm(p.date)}</b> (${["domingo","lunes","martes","miércoles","jueves","viernes","sábado"][new Date(p.date + "T12:00").getDay()]})` : "")}${row("Vigencia", esc(pcRange(p)))}${row("Cargado por", esc(p.byName || ""))}</dl></section>
+    ${row(pcEq(p) ? "Para" : "Supermercados", (p.brands || []).map(brandTag).join(" "))}${row(pcEq(p) ? "Marcas o proveedores" : "Marcas", esc(p.marcas || ""))}${row("Qué necesita", esc(p.pedido === "Otro" ? p.pedOtro || "Otro" : p.pedido || ""))}
+    ${row("Publicar el", p.date ? `<b>${dm(p.date)}</b> (${["domingo","lunes","martes","miércoles","jueves","viernes","sábado"][new Date(p.date + "T12:00").getDay()]})` : "")}${row("Vigencia", esc(pcRange(p)))}${row("Cargado por", esc(p.byName || "") + (pcEq(p) ? "" : " · Comercial"))}</dl></section>
   <section class="panel"><h2 class="pmh">${pmIco("file-text")}La hoja</h2><div class="rtview${rtBgCls(rtBgOf(html))}"${rtBgStyle(rtBgOf(html))}>${html || `<p class="rtempty">Sin texto.</p>`}</div></section>
   <section class="panel"><h2 class="pmh">${pmIco("paperclip")}Bocetos y archivos adjuntos</h2>${(p.files || []).length ? `<div class="jfiles">${p.files.map((x, i) => pcFileRow(p, x, i, false)).join("")}</div>` : `<p class="note" style="margin:0 0 8px">Todavía no hay archivos.</p>`}
     ${pcCanUp(p) ? `<div class="pcup"><label class="btn sm fup">${icon("upload")} ${pcUI.busy ? "Subiendo…" : "Subir boceto o archivo"}<input type="file" multiple data-pcdup="${esc(p.id)}" hidden></label><span class="note">Imágenes, PDF, Excel o textos · hasta 15 MB cada uno${j && viewer.role === "Admin total" ? " · también se suma al trabajo de " + (j.area === "Contenidos" ? "CM" : "Diseño") : ""}</span></div>` : ""}</section>
@@ -16898,19 +16909,20 @@ const pcAsk = p => p.pedido === "Otro" ? p.pedOtro || "Otro" : p.pedido || "";
 function pcTable(list){
   const adm = !isComercial();
   const team = p => { const t = (p.job && jobById(p.job) ? pcTeamOf(jobById(p.job)) : p.team) || {}; return [t.dg, t.cm].filter(Boolean).map(n => esc(n.split(" ")[0])).join(" · ") || (p.job ? "Sin asignar" : "—"); }; // v302
-  return `<div class="tw pctw"><table><thead><tr><th>Pedido</th><th>Supermercado</th><th>Qué pide</th>${adm ? "<th>Comprador</th>" : "<th>Quién lo hace</th>"}<th>Pedido el</th><th>Publicar el</th><th>Vigencia</th><th>Estado</th></tr></thead><tbody>
+  return `<div class="tw pctw"><table><thead><tr><th>Pedido</th><th>${adm ? "Marca" : "Supermercado"}</th><th>Qué pide</th>${adm ? "<th>Lo pidió</th>" : "<th>Quién lo hace</th>"}<th>Pedido el</th><th>${adm ? "Para el" : "Publicar el"}</th><th>Vigencia</th><th>Estado</th></tr></thead><tbody>
     ${list.map(p => `<tr class="${pcSt(p) === "Finalizado" ? "pub" : pcSt(p) === "No ejecutable" ? "nox" : ""}" data-pcopen="${esc(p.id)}" role="button" tabindex="0" title="Tocá para ver el pedido"><td><b>${esc(p.title)}</b>${p.demo ? ` <span class="exbadge sm">Ejemplo · no se guarda</span>` : ""}${pcUnread(p).length ? ` <span class="pcnew">${icon("message-circle")} ${pcUnread(p).length}</span>` : (p.msgs || []).length ? ` <span class="pcnew old">${icon("message-circle")} ${p.msgs.length}</span>` : ""}${p.marcas ? `<small>${esc(p.marcas)}</small>` : ""}</td>
-      <td><div class="chips" style="flex-wrap:nowrap">${(p.brands || []).map(brandTag).join("")}</div></td><td>${esc(pcAsk(p))}</td>${adm ? `<td>${esc(p.byName || "")}</td>` : `<td>${team(p)}</td>`}
+      <td><div class="chips" style="flex-wrap:nowrap">${(p.brands || []).map(brandTag).join("")}</div></td><td>${esc(pcAsk(p))}</td>${adm ? `<td>${esc(p.byName || "")}<small class="pcby">${pcEq(p) ? "Equipo" : "Comercial"}</small></td>` : `<td>${team(p)}</td>`}
       <td class="num">${p.at ? dm(String(p.at).slice(0, 10)) : ""}</td><td class="num"><b>${p.date ? dm(p.date) : "Sin fecha"}</b></td><td>${esc(pcRange(p))}</td><td>${pcPill(p)}</td></tr>`).join("")}
   </tbody></table></div>`;
 }
 function pPedCom(){
   const mine = pcMine(), com = isComercial(), at = viewer.role === "Admin total" && !window.RMH?.previewing;
   if (pcUI.form) return pcFormPage();
-  const op = pcUI.open && pcById(pcUI.open); if (op) return pcDetail(op); pcUI.open = null;
+  const op = pcUI.open && mine.find(p => p.id === pcUI.open); if (op) return pcDetail(op); pcUI.open = null; // v397: Comercial solo abre los suyos
   const vt = [["tabla", "Tabla", "table-2"], ["calendario", "Calendario", "calendar-days"]];
-  const head = `<div class="head"><div><h1 class="pmh">${pmIco("shopping-bag")}${com ? "Mis pedidos de activaciones" : "Pedidos Comercial"}</h1><p class="sub">${com ? "Cargá acá lo que te gustaría que se publique en las redes: el pedido le llega a Marketing y te queda como <b style=\"color:#38bdf8\">Enviado</b>. Elegí el día que te gustaría que salga (también tocando el día en el calendario). En cada pedido ves en qué estado está (Enviado, Aprobado, En curso, Con modificaciones, <b style=\"color:#22c55e\">Finalizado</b> o <b style=\"color:#ef4444\">No ejecutable</b>) y te avisamos con cada cambio." : at ? "Lo que piden los compradores para publicar. Abrí cada pedido nuevo para aprobarlo, pasarlo a Diseño gráfico o a un CM (queda En curso, con la persona responsable), marcarlo Con modificaciones o No ejecutable (con el motivo). Cuando el CM lo aprueba para publicar, pasa a Finalizado. Al comprador le llega el aviso con cada cambio." : "Lo que piden los compradores para publicar, a quién se derivó y si ya salió. Es solo para ver: los pedidos los pasa Admin total."}</p></div>
-    <div class="chips">${viewTabs(vt, pcUI.view, "data-pcview")}${com || at ? `<button type="button" class="btn primary" data-pcnew>${icon("plus")} Nuevo pedido</button>` : ""}</div></div>`;
+  const adm = viewer.role === "Admin" && !window.RMH?.previewing; // v397: Patricia y Emanuel también piden
+  const head = `<div class="head"><div><h1 class="pmh">${pmIco("shopping-bag")}${com ? "Mis pedidos de activaciones" : "Solicitud de pedidos"}</h1><p class="sub">${com ? "Cargá acá lo que te gustaría que se publique en las redes: el pedido le llega a Marketing y te queda como <b style=\"color:#38bdf8\">Enviado</b>. Elegí el día que te gustaría que salga (también tocando el día en el calendario). En cada pedido ves en qué estado está (Enviado, Aprobado, En curso, Con modificaciones, <b style=\"color:#22c55e\">Finalizado</b> o <b style=\"color:#ef4444\">No ejecutable</b>) y te avisamos con cada cambio." : at ? "Lo que piden Comercial (los compradores) y el equipo (Patricia y Emanuel). Abrí cada pedido nuevo para aprobarlo, pasarlo a Diseño gráfico o a un CM (queda En curso, con la persona responsable), marcarlo Con modificaciones o No ejecutable (con el motivo). Cuando el CM lo aprueba para publicar, pasa a Finalizado. Al comprador le llega el aviso con cada cambio." : "Cargá acá lo que necesitás (un pedido gráfico, de CM o de lo que sea): le llega a Admin total, que lo revisa, le suma lo que falte y lo pasa a Diseño gráfico o a CM. En “Mis pedidos” ves en qué estado está cada uno y te avisamos con cada cambio. También ves los pedidos de Comercial y de los demás (solo para ver)."}</p></div>
+    <div class="chips">${viewTabs(vt, pcUI.view, "data-pcview")}${com || at || adm ? `<button type="button" class="btn primary" data-pcnew>${icon("plus")} Nuevo pedido</button>` : ""}</div></div>`;
   if (pcUI.view === "calendario"){
     const day = d => mine.filter(p => p.date === d).map(p => `<div class="ev pcev" style="--c:${pcStColor(p)};--s:${pcStColor(p)}" data-pcopen="${esc(p.id)}" role="button" tabindex="0" title="${esc(p.title)} · ${esc(pcStTxt(p))}"><span>${pcSt(p) === "Finalizado" ? "✓ " : pcSt(p) === "No ejecutable" ? "✕ " : ""}${esc(p.title)}</span></div>`).join("");
     return `${head}${com ? `<p class="draghint">Tocá un día para cargar un pedido para esa fecha. Tocá un pedido para verlo.</p>` : ""}<div class="pccal">${calGrid(day)}</div>`;
@@ -16920,7 +16932,7 @@ function pPedCom(){
   const byAt = (a, b) => String(b.at || "").localeCompare(String(a.at || ""));
   const list = mine.filter(p => pcInTab(p, tab)).sort(pcUI.sort === "fecha" ? (a, b) => String(a.date || "9").localeCompare(String(b.date || "9")) || byAt(a, b) : byAt);
   const sorts = viewTabs([["nuevos", "Más nuevos", "clock"], ["fecha", "Por fecha de publicación", "calendar-clock"]], pcUI.sort, "data-pcsort");
-  const none = !mine.length ? (com ? `Todavía no cargaste pedidos. Tocá <b>Nuevo pedido</b> para empezar.` : "Todavía no hay pedidos de Comercial.") : tab === "Enviado" && !com ? "No hay pedidos nuevos: todo lo que llegó ya tiene estado." : "No hay pedidos acá.";
+  const none = tab === "mios" && !mine.some(p => p.by === viewer.id) ? `Todavía no cargaste pedidos. Tocá <b>Nuevo pedido</b> para empezar.` : !mine.length ? (com ? `Todavía no cargaste pedidos. Tocá <b>Nuevo pedido</b> para empezar.` : "Todavía no hay pedidos.") : tab === "Enviado" && !com ? "No hay pedidos nuevos: todo lo que llegó ya tiene estado." : "No hay pedidos acá.";
   return `${head}${tabs}<div class="head"><span class="note">Tocá un pedido para verlo${at && tab === "Enviado" ? " y aprobarlo o pasarlo" : ""}.</span>${sorts}</div>${list.length ? pcTable(list) : `<div class="panel"><div class="empty">${none}</div></div>`}`;
 }
 document.addEventListener("click", async e => {
@@ -16933,7 +16945,7 @@ document.addEventListener("click", async e => {
   if (t.closest("[data-pcclose]")){ pcUI.form = null; render(); return; }
   if (t.closest("[data-pcback]")){ pcUI.open = null; render(); return; }
   const o = t.closest("[data-pcopen]"); if (o){ const p = pcById(o.dataset.pcopen); if (!p) return; pcUI.open = p.id; pcSeen(p); render(); window.scrollTo(0, 0); return; }
-  const cd = page === "pedcom" && !pcUI.form && !pcUI.open && pcUI.view === "calendario" && (isComercial() || viewer.role === "Admin total") && !t.closest(".ev,button,a") && t.closest(".pccal [data-cdrop]");
+  const cd = page === "pedcom" && !pcUI.form && !pcUI.open && pcUI.view === "calendario" && (pcReq() || viewer.role === "Admin total") && !t.closest(".ev,button,a") && t.closest(".pccal [data-cdrop]");
   if (cd){ const d = cd.dataset.cdrop; if (d < TODAY) return toast("Ese día ya pasó: elegí uno de hoy en adelante."); pcNew(d); render(); window.scrollTo(0, 0); toast(`Nuevo pedido para publicar el ${dm(d)}.`); return; }
   const ed = t.closest("[data-pcedit]"); if (ed){ const p = pcById(ed.dataset.pcedit); if (!p || !pcCanEdit(p)) return; pcUI.form = { mode:"edit", p:JSON.parse(JSON.stringify(p)) }; render(); window.scrollTo(0, 0); return; }
   const dl = t.closest("[data-pcdel]"); if (dl){ const p = pcById(dl.dataset.pcdel); if (!p || !pcCanEdit(p) || (viewer.role !== "Admin total" && pcSt(p) !== "Enviado") || !confirmTap(dl, "pcdel:" + p.id, "¿Seguro? Tocá de nuevo")) return;
@@ -16942,8 +16954,8 @@ document.addEventListener("click", async e => {
   const sm = t.closest("[data-pcmsg]"); if (sm){ const p = pcById(sm.dataset.pcmsg), ta = document.getElementById("pcMsgText"), text = (ta?.value || "").trim(); if (!p || !pcCanMsg(p)) return;
     if (!text) return toast("Escribí el mensaje."); const at = new Date().toISOString();
     (p.msgs = p.msgs || []).push({ id:"M-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), by:viewer.id, name:viewer.name, at, text });
-    p[isComercial() ? "rdCom" : "rdAt"] = at; render(); window.RMH?.flushNow?.(); document.getElementById("pcMsgs")?.scrollIntoView({ block:"end" });
-    toast(`Listo: le llega a ${isComercial() ? "Marketing" : firstName(p.byName || "Comercial")}.`); return; }
+    p[pcOwn(p) ? "rdCom" : "rdAt"] = at; render(); window.RMH?.flushNow?.(); document.getElementById("pcMsgs")?.scrollIntoView({ block:"end" });
+    toast(`Listo: le llega a ${pcOwn(p) ? (pcEq(p) ? "Admin total" : "Marketing") : firstName(p.byName || "Comercial")}.`); return; }
   const jb = t.closest("[data-pcjob]"); if (jb){ goAlert("job:" + jb.dataset.pcjob); return; }
   const sb = t.closest("[data-pcst]"); if (sb){ const p = pcById(pcUI.open); if (!p || viewer.role !== "Admin total" || window.RMH?.previewing) return;
     let st = sb.dataset.pcst; const note = (document.getElementById("pcStNote")?.value || "").trim();
@@ -16997,27 +17009,29 @@ document.addEventListener("submit", e => {
   if (pcUI.busy) return toast("Esperá que terminen de subir los archivos.");
   const p = pcRead();
   if (!p.title) return toast("Poné el nombre de la acción.");
-  if (!p.brands.length) return toast("Elegí al menos un supermercado (Superseis, Stock o Delimarket).");
-  if (!p.date) return toast("Elegí la fecha de publicación que te gustaría.");
+  const eqNew = f.mode === "new" && !isComercial(); // v397: lo pide alguien del equipo
+  if (!p.brands.length) return toast(eqNew || pcEq(p) ? "Elegí al menos una marca." : "Elegí al menos un supermercado (Superseis, Stock o Delimarket).");
+  if (!p.date) return toast(eqNew || pcEq(p) ? "Elegí para cuándo lo necesitás." : "Elegí la fecha de publicación que te gustaría.");
   if (f.mode === "new" && p.date < TODAY) return toast("La fecha de publicación ya pasó: elegí una de hoy en adelante.");
   if (p.from && p.until && p.until < p.from) return toast("La vigencia termina antes de empezar: revisá las fechas.");
   if (p.pedido !== "Otro") delete p.pedOtro;
   const demo = !!window.RMH?.previewing; // v298: en “ver como”, queda de ejemplo: se ve como lo vería el comprador, pero no se guarda ni le llega a nadie
-  if (f.mode === "new"){ PEDIDOS_COM.push({ ...p, by:viewer.id, byName:viewer.name, at:new Date().toISOString(), st:"Enviado", ...(demo ? { demo:true } : {}) }); }
+  if (f.mode === "new"){ PEDIDOS_COM.push({ ...p, by:viewer.id, byName:viewer.name, at:new Date().toISOString(), st:"Enviado", ...(eqNew ? { src:"eq" } : {}), ...(demo ? { demo:true } : {}) }); }
   else { const cur = pcById(p.id); if (!cur || !pcCanEdit(cur)) return toast("Este pedido ya no se puede cambiar."); Object.assign(cur, p, { edAt:new Date().toISOString() }); if (!p.camp) delete cur.camp; }
   const m = p.date.slice(0, 7); if (MONTHS_APP.some(x => x.v === m)) MONTH = m;
   pcUI.form = null; pcUI.open = null; pcUI.view = "tabla"; if (f.mode === "new") pcUI.tab = null; render(); window.RMH?.flushNow?.(); window.scrollTo(0, 0); // vuelve a la tabla, con el pedido como Enviado
-  toast(demo ? `Pedido de ejemplo “${p.title}”: así le queda a ${firstName(viewer.name)}. Es vista previa: no se guarda ni le llega a nadie.` : f.mode === "new" ? `Listo: tu pedido “${p.title}” le llegó a Marketing.` : "Cambios guardados.");
+  toast(demo ? `Pedido de ejemplo “${p.title}”: así le queda a ${firstName(viewer.name)}. Es vista previa: no se guarda ni le llega a nadie.` : f.mode === "new" ? `Listo: tu pedido “${p.title}” le llegó a ${eqNew ? "Admin total" : "Marketing"}.` : "Cambios guardados.");
 });
 // Admin total pasa el pedido: se abre el formulario de Diseño gráfico o de Gestión de Contenidos con lo del comprador.
 function pcToJob(p, area){
   const brands = (p.brands || []).length ? p.brands : [PC_BRANDS[0]], pd = p.date || "";
   const due = pd && addDays(pd, -2) >= TODAY ? addDays(pd, -2) : pd && pd >= TODAY ? pd : TODAY; // para que llegue a publicarse
-  const info = [`<p><b>Pedido de Comercial</b> · ${esc(p.byName || "")} · ${dm(String(p.at).slice(0, 10))}</p>`,
-    `<p><b>Supermercados:</b> ${esc(pcBrandTxt(p))}${p.marcas ? ` · <b>Marcas:</b> ${esc(p.marcas)}` : ""}</p>`,
+  const info = [`<p><b>${pcEq(p) ? "Solicitud de pedido" : "Pedido de Comercial"}</b> · ${esc(p.byName || "")} · ${dm(String(p.at).slice(0, 10))}</p>`,
+    `<p><b>${pcEq(p) ? "Marcas" : "Supermercados"}:</b> ${esc(pcBrandTxt(p))}${p.marcas ? ` · <b>Marcas:</b> ${esc(p.marcas)}` : ""}</p>`,
     `<p><b>Qué necesita:</b> ${esc(p.pedido === "Otro" ? p.pedOtro || "Otro" : p.pedido || "")}${pd ? ` · <b>Publicar el:</b> ${dm(pd)}` : ""}${pcRange(p) ? ` · <b>Vigencia:</b> ${esc(pcRange(p))}` : ""}</p>`].join("");
-  const job = { id:nextJobId(area), area, requestDate:TODAY, requester:"Comercial · " + (p.byName || ""), brand:brands[0], ...(brands.length > 1 ? { brands:[...brands] } : {}),
-    ...(area === "Contenidos" ? { piece:CONT_TYPES[0] } : dgDefault("pedidos")), title:p.title, owner:"Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due, link:"", notes:"", post:null,
+  const sec = /carteler/i.test(p.pedido || "") ? "cartel" : /pantalla/i.test(p.pedido || "") ? "pantallas" : /^web$/i.test(p.pedido || "") ? "web" : "pedidos"; // v397: la sección de Diseño según lo que pidió
+  const job = { id:nextJobId(area), area, requestDate:TODAY, requester:pcEq(p) ? p.byName || "Marketing" : "Comercial · " + (p.byName || ""), brand:brands[0], ...(brands.length > 1 ? { brands:[...brands] } : {}),
+    ...(area === "Contenidos" ? { piece:CONT_TYPES[0] } : dgDefault(sec)), title:p.title, owner:"Sin asignar", status:"Pendiente", priority:"Media", complexity:"Media", due, link:"", notes:"", post:null,
     brief:cleanRich(info + String(p.brief || "").replace(/^<!--bg:#[0-9a-f]{6}-->/i, "")), files:(p.files || []).map(x => ({ ...x })), pubDate:pd, com:p.id };
   jobUI.ficha = null; jobUI.form = { mode:"new", job }; render(); window.scrollTo(0, 0);
   toast(`Completá lo que falte y tocá Guardar: queda en ${area === "Contenidos" ? "Gestión de Contenidos" : "Diseño gráfico"}.`);
