@@ -11,7 +11,7 @@ const cors = {
 };
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
-const ROLES = ["Admin total", "Admin", "Diseñador", "CM", "Revisor", "Comercial", "TV"]; // Revisor: para la revisión de Meta (solo Mensajes de las cuentas) · Comercial: los compradores (v242) · TV: los televisores de la oficina (v266)
+const ROLES = ["Admin total", "Admin", "Diseñador", "CM", "Administración", "Revisor", "Comercial", "TV"]; // Revisor: para la revisión de Meta (solo Mensajes de las cuentas) · Comercial: los compradores (v242) · TV: los televisores de la oficina (v266) · Administración: Administración de Marketing (v401)
 const BAN_FOREVER = "876000h";
 // Usuario de ingreso: letras, números, punto o guion (sin espacios ni "_" / "%", que en ilike son comodines).
 const USER_RE = /^[A-Za-z][A-Za-z0-9.-]{1,29}$/; // v266: desde 2 letras (ej. “tv”, el usuario de los televisores)
