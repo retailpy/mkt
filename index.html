@@ -74,7 +74,7 @@ html.light .logo-wide{background:#0f172a;border-radius:12px;padding:6px 10px;box
 @media (max-width:1024px){.brandbar{padding:14px 16px 0}.logo-wide{width:200px}.brandlogos{height:24px}}
 .nav{display:flex;flex-direction:column;gap:14px}
 .nav-group{display:flex;flex-direction:column;gap:4px}
-/* v426 · Menú: “Cerrar todo” */
+/* v427 · Menú: “Cerrar todo” */
 .navcloseall{display:flex;align-items:center;justify-content:flex-end;gap:5px;width:100%;margin:2px 0 6px;padding:5px 12px;border:0;background:none;color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer;border-radius:8px}
 .navcloseall:hover{color:var(--ink);background:rgba(148,163,184,.08)}.navcloseall svg{width:14px;height:14px}
 html.navmini .navcloseall{justify-content:center;padding:6px 0}html.navmini .navcloseall span{display:none}
@@ -6202,7 +6202,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v426";
+const APP_VER = "v427";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -17114,7 +17114,8 @@ function pcExample(){
 }
 // v421 · Quién pide: los Admin (Patricia, Emanuel), la líder de Administración y cualquiera que ya haya pedido; los que más piden, arriba.
 function pcNavPeople(){ const by = new Map(); PEDIDOS_COM.filter(p => p && pcEq(p) && !p.demo && p.by).forEach(p => by.set(p.by, (by.get(p.by) || 0) + 1));
-  return PEOPLE.filter(pp => pp.active !== false && pp.role !== "Administración" && (pp.role === "Admin" || by.has(pp.id))).sort((a, b) => (by.get(b.id) || 0) - (by.get(a.id) || 0) || a.name.localeCompare(b.name)); }
+  const rk = pp => pp.role === "Admin" ? 0 : admIsLead(pp) ? 1 : 2; // v426: Patricia y Emanuel, después Marlene (la líder de Administración también pide), después los demás
+  return PEOPLE.filter(pp => pp.active !== false && (pp.role === "Admin" || admIsLead(pp) || (pp.role !== "Administración" && by.has(pp.id)))).sort((a, b) => rk(a) - rk(b) || (by.get(b.id) || 0) - (by.get(a.id) || 0) || a.name.localeCompare(b.name)); }
 // Lo que espera a quien mira, de los pedidos de esa persona: a quien pidió, sus novedades; a Admin total, lo nuevo o con mensaje; a la líder de Administración, lo que no tomó.
 const pcBadgeWho = id => PEDIDOS_COM.filter(p => p && pcEq(p) && p.by === id && !p.demo).filter(p => pcOwn(p) ? pcStNew(p) || pcUnread(p).length || pcFinalWait(p) : viewer?.role === "Admin total" ? p.st === "Enviado" || pcUnread(p).length : admIsLead(viewer) && admPcNew(p)).length;
 function pcNavGroup(items, shut){
@@ -17358,7 +17359,7 @@ function pcFlow(p){
       txt:p.finalOk ? `${own ? "Lo aprobaste" : byN + " lo aprobó"} el ${pcWhen(p.finalOk.at)}${p.finalOk.note ? `: “${esc(p.finalOk.note)}”` : "."}` : pcFinalWait(p) ? (own ? "Te toca: mirá el diseño abajo y aprobalo, o pedí cambios." : `Esperando que ${byN} lo apruebe (el diseño ya lo aprobó ${coordN}).`)
         : `Cuando ${coordN} apruebe el diseño, ${own ? "te llega para que lo apruebes" : "le llega a " + byN + " para que lo apruebe"}: recién ahí se manda a imprimir o se publica.`,
       extra:fx.length ? `<small class="pcfn">${own ? "Pediste" : "Pidió"} cambios ${fx.length === 1 ? "1 vez" : fx.length + " veces"} · último: “${esc(fx[fx.length - 1].text)}”</small>` : "" }); }
-  if (pcEq(p) && !admOff() && p.admReq !== false && (p.adm || p.admNo || admTeam().length)){ // v426: a Alyssa no le sale Administración
+  if (pcEq(p) && !admOff() && p.admReq !== false && (p.adm || p.admNo || admTeam().length)){ // v427: a Alyssa no le sale Administración
     const a = p.adm && admById(p.adm), gate = !j || pcGateOk(j) && appr;
     if (p.admNo) add({ ic:"briefcase", c:"#94a3b8", t:"Administración de Marketing", who:null, s:"no", txt:`${esc(pcFirst(p.admNoBy) || pcAdmLeadN())} marcó que no necesita Administración (no hay compra ni producción).` });
     else if (!a) add({ ic:"briefcase", c:"#22d3ee", t:`${pcAdmLeadN()} · Administración de Marketing`, who:admLeads()[0] || null, s:"cur", txt:`Le llegó el pedido para el presupuesto y la impresión: todavía no lo pasó al Tablero de trabajos.` });
@@ -17487,7 +17488,7 @@ function pPedCom(){
   const vt = [["tabla", "Tabla", "table-2"], ["calendario", "Calendario", "calendar-days"]];
   const adm = viewer.role === "Admin" && !window.RMH?.previewing; // v397: Patricia y Emanuel también piden
   const whoChips = pcPanel() + (eqS && who ? `<div class="chips pcwhoc"><button type="button" class="chip" data-pcwhochip="">${icon("list")} Ver todas las solicitudes</button></div>` : ""); // v424: el panel con Patricia, Emanuel y Comercial
-  const head = eqS ? `<div class="head"><div><h1 class="pmh">${pmIco("clipboard-list")}Solicitud de pedidos${who ? ` · ${esc(who.name)}` : ""}</h1><p class="sub">${at ? `Lo que pide el equipo (Patricia y Emanuel). Abrí cada pedido nuevo para aprobarlo y pasarlo a Diseño gráfico o a un CM${admOff() ? "" : "; Administración de Marketing se ocupa en paralelo del presupuesto y la impresión"}. Los pedidos de los compradores están aparte, en Pedidos Comercial.` : `Cargá acá lo que necesitás (un pedido gráfico, de CM o de lo que sea): le llega a ${esc(pcCoordN())} (Coordinación de Diseño gráfico), que lo revisa, le suma lo que falte y lo pasa a Diseño gráfico o a CM. En cada pedido ves todo el seguimiento (quién lo diseña, Administración de Marketing, el proveedor y la CM) y, cuando el diseño está aprobado, te llega para tu aprobación final. También ves los pedidos de los demás del equipo (solo para ver).`}</p></div>
+  const head = eqS ? `<div class="head"><div><h1 class="pmh">${pmIco("clipboard-list")}Solicitud de pedidos${who ? ` · ${esc(who.name)}` : ""}</h1><p class="sub">${at ? `Lo que pide el equipo (Patricia, Emanuel y Marlene). Abrí cada pedido nuevo para aprobarlo y pasarlo a Diseño gráfico o a un CM${admOff() ? "" : "; Administración de Marketing se ocupa en paralelo del presupuesto y la impresión"}. Los pedidos de los compradores están aparte, en Pedidos Comercial.` : `Cargá acá lo que necesitás (un pedido gráfico, de CM o de lo que sea): le llega a ${esc(pcCoordN())} (Coordinación de Diseño gráfico), que lo revisa, le suma lo que falte y lo pasa a Diseño gráfico o a CM. En cada pedido ves todo el seguimiento (quién lo diseña, Administración de Marketing, el proveedor y la CM) y, cuando el diseño está aprobado, te llega para tu aprobación final. También ves los pedidos de los demás del equipo (solo para ver).`}</p></div>
     <div class="chips">${viewTabs(vt, pcUI.view, "data-pcview")}${at || adm || isAdmRole() ? `<button type="button" class="btn primary" data-pcnew>${icon("plus")} Nuevo pedido</button>` : ""}</div></div>`
     : `<div class="head"><div><h1 class="pmh">${pmIco("shopping-bag")}${com ? "Mis pedidos de activaciones" : "Pedidos Comercial"}</h1><p class="sub">${com ? "Cargá acá lo que te gustaría que se publique en las redes: el pedido le llega a Marketing y te queda como <b style=\"color:#38bdf8\">Enviado</b>. Elegí el día que te gustaría que salga (también tocando el día en el calendario). En cada pedido ves en qué estado está (Enviado, Aprobado, En curso, Con modificaciones, <b style=\"color:#22c55e\">Finalizado</b> o <b style=\"color:#ef4444\">No ejecutable</b>) y te avisamos con cada cambio." : at ? "Lo que piden los compradores para publicar. Abrí cada pedido nuevo para aprobarlo, pasarlo a Diseño gráfico o a un CM (queda En curso, con la persona responsable), marcarlo Con modificaciones o No ejecutable (con el motivo). Cuando el CM lo aprueba para publicar, pasa a Finalizado. Al comprador le llega el aviso con cada cambio." : "Lo que piden los compradores para publicar, a quién se derivó y si ya salió. Es solo para ver: los pedidos los pasa Admin total."}</p></div>
     <div class="chips">${viewTabs(vt, pcUI.view, "data-pcview")}${com || at ? `<button type="button" class="btn primary" data-pcnew>${icon("plus")} Nuevo pedido</button>` : ""}</div></div>`;
@@ -20055,7 +20056,7 @@ let ADM_JOBS = JSON.parse(JSON.stringify(ADM_SEED_JOBS)); // de arranque (si la 
 let ADM_EVENTS = JSON.parse(JSON.stringify(ADM_SEED_EVENTS));
 const ADM_KEYS = ["admpanel", "admtab", "admev", "admfotos", "adminf"];
 const isAdmRole = () => viewer?.role === "Administración";
-// v426 · Alyssa no ve nada de Administración de Marketing (pedido de Admin total): ni el menú, ni las alertas, ni el cuadro en los pedidos.
+// v427 · Alyssa no ve nada de Administración de Marketing (pedido de Admin total): ni el menú, ni las alertas, ni el cuadro en los pedidos.
 const ADM_HIDE = ["alyssa"], admOff = () => ADM_HIDE.includes(viewer?.id);
 const admSees = () => !!viewer && !admOff() && (isAdmRole() || isAdminAny());
 const admEdit = () => !!viewer && !window.RMH?.previewing && !admOff() && (isAdmRole() || isAdminAny()); // v405: también los Admin (Patricia completa el proveedor confirmado)
@@ -20124,7 +20125,7 @@ const admEvMine = (e, pp = viewer) => admEvPend(e).filter(x => x.resp && pp && (
 
 // Alertas del área (Inicio y ventanas): pedidos nuevos para la líder, eventos que se vienen y lo que le toca a cada uno.
 function admAlerts(){
-  if (!viewer || admOff()) return []; // v426
+  if (!viewer || admOff()) return []; // v427
   const apr = admEvApprover() ? ADM_EVENTS.filter(e => admEvSt(e) === "Propuesta").map(e => ({ go:"admev:" + e.id, key:`admevap:${e.id}`, ic:"hourglass", sev:"#a855f7", rank:-4, t:`Evento para aprobar: ${e.name}`, m:`${(e.items || []).length} cosas elegidas${e.date ? " · " + dm(e.date) : ""} · al aprobarlo le avisamos a Vivian para los presupuestos` })) : []; // v416
   if (!(isAdmRole() || viewer.role === "Admin total")) return apr;
   const out = [...apr, ...admPcForMe().map(p => ({ go:"com:" + p.id, key:"admpc:" + p.id, ic:"clipboard-list", sev:"#38bdf8", rank:-5, t:`Nueva solicitud de pedido: ${p.title}`, m:`${p.byName || ""} · ${pcBrandTxt(p)}${p.date ? " · para el " + dm(p.date) : ""} · pasalo al Tablero de trabajos` }))];
@@ -20160,7 +20161,7 @@ function pAdmPanel(){
   // El camino de un pedido, con quién hace cada paso.
   const who = f => { const pp = admByFunc(f); return pp ? `${avatarHTML(pp, "admav")}<span>${esc(pp.name.split(" ")[0])}</span>` : `<span class="note">Sin asignar</span>`; };
   const flow = `<section class="panel admflow"><h2 class="pmh">${pmIco("route")}Cómo trabajamos un pedido</h2>
-    <ol class="admsteps"><li><span class="dot">${icon("send")}</span><b>Llega el pedido</b><small>Patricia o Emanuel lo cargan en Solicitud de pedidos. Le llega a Alyssa (diseño) y a ${esc((admLeads()[0]?.name || "la líder del área").split(" ")[0])} a la vez.</small></li>
+    <ol class="admsteps"><li><span class="dot">${icon("send")}</span><b>Llega el pedido</b><small>Patricia, Emanuel o ${esc((admLeads()[0]?.name || "la líder del área").split(" ")[0])} lo cargan en Solicitud de pedidos. Le llega a Alyssa (diseño) y a ${esc((admLeads()[0]?.name || "la líder del área").split(" ")[0])} a la vez.</small></li>
     ${ADM_STEPS.map(s => `<li><span class="dot">${icon(s.ic)}</span><b>${esc(s.t)}</b><small>${esc(s.d)}</small><span class="admwho">${who(s.f)}</span></li>`).join("")}</ol>
     <p class="note" style="margin:10px 0 0">El diseño (Alyssa y el equipo de Diseño gráfico) y la compra (Administración) van en paralelo. En cada trabajo se ve en qué está el diseño.</p></section>`;
   const team = admTeam(), at = viewer.role === "Admin total" && !window.RMH?.previewing;
@@ -21466,7 +21467,7 @@ function navResetFor(role){
   navClosed.clear(); [...new Set(SECTIONS.map(s => s.g))].filter(g => !open.has(g)).forEach(g => navClosed.add(g));
   try { localStorage.setItem("rmh-navclosed2", JSON.stringify([...navClosed])); localStorage.removeItem("rmh-navreset"); } catch {}
 }
-// v426 · “Cerrar todo”: se cierran todos los grupos del menú (cada uno se vuelve a abrir tocando su título).
+// v427 · “Cerrar todo”: se cierran todos los grupos del menú (cada uno se vuelve a abrir tocando su título).
 document.addEventListener("click", e => { if (!e.target.closest("[data-navcloseall]")) return; e.preventDefault();
   [...new Set(SECTIONS.map(s => s.g))].forEach(g => navClosed.add(g)); try { localStorage.setItem("rmh-navclosed2", JSON.stringify([...navClosed])); } catch {} renderNav(); if (window.lucide) lucide.createIcons(); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-navtog]"); if (!b) return; e.preventDefault(); const g = b.dataset.navtog;
@@ -21502,7 +21503,7 @@ function renderNav(){
   const segBtn = can("seguimiento") ? `<a href="#seguimiento" data-page="seguimiento" class="segnav${page === "seguimiento" ? " on" : ""}" title="Panel Interactivo de Seguimiento de Marketing">${icon("chart-gantt")}<span><b>Panel de Seguimiento</b><small>Reuniones y seguimiento de procesos</small></span>${(() => { const u = segUrgMine().length; return u ? `<em class="segnavb" title="${u} tarea${u === 1 ? "" : "s"} tuya${u === 1 ? "" : "s"} atrasada${u === 1 ? "" : "s"} o para entregar en 3 días o menos">${u}</em>` : ""; })()}</a>` : ""; // v375: sección destacada, arriba de todo
   const reBtn = can("resumen") ? `<a href="#resumen" data-page="resumen" class="segnav renav${page === "resumen" ? " on" : ""}" title="Resumen ejecutivo de las redes de Superseis, Stock y Delimarket">${icon("presentation")}<span><b>Resumen ejecutivo</b><small>Superseis, Stock y Delimarket</small></span></a>` : ""; // v400
   const navG = groups.filter(g => SECTIONS.some(s => s.g === g && can(s.k) && (!s.hide || (isRevisor() && s.k === "inbox")))), anyOpen = !isRevisor() && !isComercial() && navG.some(g => g !== "Solicitud de pedidos" && !navClosed.has(g)); // Solicitud de pedidos es un solo botón (no se despliega)
-  const closeAll = anyOpen ? `<button type="button" class="navcloseall" data-navcloseall title="Cerrar todos los grupos del menú">${icon("chevron-up")}<span>Cerrar todo</span></button>` : ""; // v426
+  const closeAll = anyOpen ? `<button type="button" class="navcloseall" data-navcloseall title="Cerrar todos los grupos del menú">${icon("chevron-up")}<span>Cerrar todo</span></button>` : ""; // v427
   $("#nav").innerHTML = segBtn + reBtn + closeAll + groups.map(g => {
     const items = SECTIONS.filter(s => s.g === g && can(s.k) && (!s.hide || (isRevisor() && s.k === "inbox")));
     if (!items.length) return "";
@@ -21801,7 +21802,7 @@ const comAllOf = key => { const l = Object.values(COMERCIAL.files || {}).filter(
   for (const f of l) if (f.final){ const k = f.from + "|" + f.to; if (!fin[k] || mejor(f, fin[k]) > 0) fin[k] = f; }
   return l.filter(f => { const k = f.from + "|" + f.to; return fin[k] ? fin[k] === f : true; }); };
 const comAll = () => comAllOf(comUI.cat);
-const comPeriods = () => { const r = { vig:0, prox:1, fin:2 }; return comAll().filter(f => f.from.slice(0, 7) <= MONTH && f.to.slice(0, 7) >= MONTH)
+const comPeriods = () => { const r = { vig:0, prox:1, fin:2 }; return comAll().filter(f => f.cat === "especial" || (f.from.slice(0, 7) <= MONTH && f.to.slice(0, 7) >= MONTH)) // v427: la especial se ve siempre (no depende del mes)
   .sort((a, b) => r[comState(a)] - r[comState(b)] || (comState(a) === "fin" ? b.from.localeCompare(a.from) : a.from.localeCompare(b.from))); };
 const COM_ST = { vig:"Vigente", prox:"Oferta quincenal", fin:"Terminó" };
 const comStName = (st, f) => st === "prox" && (f?.cat || "quincenal") !== "quincenal" ? "Próxima" : COM_ST[st];
