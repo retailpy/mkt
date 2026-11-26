@@ -66,7 +66,8 @@ async function competenciaLocal(me){
 
 const POR_CUENTA = 8;   // publicaciones guardadas por cuenta
 const DIAS = 45;        // solo lo reciente (lo de la temporada)
-const FIELDS = (u) => `business_discovery.username(${u}){username,name,media.limit(18){media_type,media_product_type,media_url,permalink,caption,timestamp}}`;
+// v405: también seguidores, me gusta y comentarios (Resumen ejecutivo → Internacional: lo que más les funcionó).
+const FIELDS = (u) => `business_discovery.username(${u}){username,name,followers_count,media.limit(18){media_type,media_product_type,media_url,permalink,caption,timestamp,like_count,comments_count}}`;
 
 module.exports = async (req, res) => {
   const who = await cronOrUser(req);
@@ -93,8 +94,10 @@ module.exports = async (req, res) => {
           .filter(m => m.media_product_type !== "REELS" && m.media_product_type !== "STORY" && (m.media_type === "IMAGE" || m.media_type === "CAROUSEL_ALBUM"))
           .filter(m => m.media_url && /^https:\/\//.test(m.media_url) && new Date(m.timestamp).getTime() >= desde)
           .slice(0, POR_CUENTA)
-          .map(m => ({ img: m.media_url, link: m.permalink, ts: m.timestamp, type: m.media_type === "CAROUSEL_ALBUM" ? "Carrusel" : "Post", cap: Array.from(String(m.caption || "")).slice(0, 160).join("") }));
-        accounts[u] = { name, cc, err: null, posts };
+          .map(m => ({ img: m.media_url, link: m.permalink, ts: m.timestamp, type: m.media_type === "CAROUSEL_ALBUM" ? "Carrusel" : "Post", cap: Array.from(String(m.caption || "")).slice(0, 160).join(""),
+            likes: Number.isFinite(m.like_count) ? m.like_count : null, comments: Number.isFinite(m.comments_count) ? m.comments_count : null }));
+        const fol = j.business_discovery?.followers_count;
+        accounts[u] = { name, cc, err: null, fol: Number.isFinite(fol) ? fol : null, posts };
         summary[u] = posts.length;
       } catch (e){
         accounts[u] = { name, cc, err: e.message, posts: [] };
