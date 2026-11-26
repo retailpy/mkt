@@ -27,15 +27,15 @@ const CUENTAS = {
 // que Instagram encuentra (si ninguno, queda el error y la pantalla lo dice).
 const LOCALES = [
   ["casarica", "Casa Rica", ["casaricapy"]],
-  ["real", "Real", ["real_py", "supermercadosrealpy", "superrealpy"]],
+  ["real", "Real", ["cadenareal"]], // v407: confirmado por Admin total
   ["luisito", "Luisito", ["hipermercadosluisitopy", "hipermercados_luisito"]],
-  ["pueblo", "Pueblo", ["hiperpueblo", "supermercadospueblo", "grupopueblo"]], // v404: Hiper Pueblo (Grupo Pueblo)
+  ["pueblo", "Pueblo", ["hiperpueblo"]], // v404: Hiper Pueblo (Grupo Pueblo) · v407: confirmado
   ["arete", "Areté", ["aretesupermercados", "aretepy"]],
   ["losjardines", "Los Jardines", ["losjardinespy"]],
   ["fortis", "Fortis", ["fortispy", "fortisparaguay"]],
   ["supermas", "SuperMás", ["supermas.py"]],
   ["kingo", "Kingo", ["kingosupermercados"]],
-  ["plub", "Plub", ["plub.py", "plubpy", "plub_py"]],
+  ["plub", "Plub", ["somos_plub"]], // v407: confirmado por Admin total
 ];
 const L_POSTS = 30, L_DIAS = 40; // lo de los últimos 40 días (para ver la semana y el mes), hasta 30 por cadena
 const L_FIELDS = (u) => `business_discovery.username(${u}){username,name,followers_count,media_count,media.limit(30){media_type,media_product_type,media_url,thumbnail_url,permalink,caption,timestamp,like_count,comments_count}}`;
