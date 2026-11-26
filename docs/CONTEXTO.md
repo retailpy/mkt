@@ -197,6 +197,7 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 ---
 
 ## 5. Otras cosas recientes (v137–v160)
+- **v425 · Resumen ejecutivo: historias subidas de cada marca (26/11/2026):** pedido de Admin total (“subir también la cantidad de historias subidas en redes de cada marca”). En **En pocas palabras** hay una tarjeta nueva, **Historias subidas** (el total y cuántas subió Superseis, Stock y Delimarket), y una línea “N historias subidas: Superseis X, Stock Y y Delimarket Z”. En **Las 3 cuentas**, cada marca tiene una franja con sus **historias subidas, vistas y alcance**, debajo de los números de publicaciones. El conteo sale de `reStoryN(b, w)`: del mes en curso, las historias guardadas una por una (`st:`); de los meses cerrados, el resumen de cada día (`sum:AAAA-MM` → `d:{ "DD":[cantidad, vistas, alcance] }`), así sirve también por semana y por mes. Son historias de **Instagram** (las mide `/api/seguidores?que=historias` desde el 18/11/2026). Si el período empieza antes de que se midieran, aclara “medidas desde el 18/11”, y si no hay ninguna medida, muestra “—”. Pruebas: `t401.js` (81).
 - **v424 · Sin Planificación del mes ni Generador de copy; Patricia, Emanuel y Comercial adentro del panel de pedidos (26/11/2026):**
   pedido de Admin total. **Planificación del mes** (`planmes`) y **Generador de copy** (`copys`) se sacaron de la app para todos
   (`GONE_KEYS` en `can()`: no salen en el menú, ni en Usuarios y permisos, ni en la Guía; el link viejo no abre). El código y lo guardado
