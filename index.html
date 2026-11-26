@@ -5357,6 +5357,12 @@ html.light .sg :is(.sgptn,.sgagnum,.sgstari,.sgppav,.sgstack,.sgpbar2 i){filter:
 .nav-group.pcgrp > .nav-label > span{flex:1;text-align:left}.nav-group.pcgrp > .nav-label > svg:first-child{width:17px;height:17px;color:#fbbf24;flex:none}.nav-group.pcgrp > .nav-label:hover{background:linear-gradient(90deg,rgba(245,158,11,.28),rgba(245,158,11,.08))}
 html.light .nav-group.pcgrp > .nav-label{color:#92400e;background:linear-gradient(90deg,rgba(245,158,11,.2),rgba(245,158,11,.06))}html.light .nav-group.pcgrp > .nav-label > svg:first-child{color:#b45309}
 .pcwhoc{margin:-6px 0 2px}.pcwhoc .chip b{color:#f87171}
+/* v424: botón amarillo único en el menú y panel de quien pide adentro de la página */
+.nav-group.pcgrp > .pcone{width:100%;cursor:pointer;font:inherit;font-weight:700}.nav-group.pcgrp > .pcone > .count{flex:none;width:auto;margin-left:auto}.nav-group.pcgrp > .pcone.on{border-color:#f59e0b;background:linear-gradient(90deg,rgba(245,158,11,.36),rgba(245,158,11,.12));color:#fef3c7}
+html.light .nav-group.pcgrp > .pcone.on{color:#78350f}
+.pcpanel{grid-template-columns:repeat(auto-fit,minmax(min(130px,100%),1fr));gap:10px 14px;padding:2px 0 16px}.pcpanel .pring{width:clamp(74px,9vw,96px)}.pcpanel .picon b{font-size:16px;margin-top:2px}.pcpanel .picon small{font-size:12.5px}
+.pcpanel .picon.on{--pc:#f59e0b}.pcpanel .picon.on b{color:#fbbf24}html.light .pcpanel .picon.on b{color:#b45309}
+@media (max-width:600px){.pcpanel{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:0 0 12px}.pcpanel .picon{padding:4px 2px;gap:4px}.pcpanel .pring{width:62px}.pcpanel .picon small{display:none}.pcpanel .picon b{font-size:13px;line-height:1.25}.pcpanel .pring .ibc{font-size:11.5px;min-width:24px;height:22px;padding:0 6px;top:-4%;right:-10%}}
 .admbars{display:flex;flex-direction:column;gap:8px}.admb{display:grid;grid-template-columns:minmax(90px,38%) 1fr auto;align-items:center;gap:10px;font-size:13px}.admb span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.admb i{height:10px;border-radius:6px;width:var(--w);min-width:4px;background:var(--c)}.admb b{min-width:24px;text-align:right}
 @media (max-width:640px){.admq{max-width:none;margin-left:0}.admmonth b{min-width:120px}.admit{flex-wrap:wrap}.admit .grow{flex:1 1 60%}}
 </style>
@@ -6183,7 +6189,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v423";
+const APP_VER = "v424";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -8076,7 +8082,8 @@ const MEMBER_ALWAYS = ["bienvenida","perfil","config","guia","videohub"]; // la 
 const canMember = key => ONLY_AT.includes(key) || ONLY_ADMINS.includes(key) ? false : MEMBER_ALWAYS.includes(key) ? true
   : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "gcm" || key === "calact" ? CM_GEST.some(k => can(k))
   : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : viewer.perms.has(key);
-const can = key => isTV() ? TV_SEE.includes(key) : key === "postext" ? ["Admin total","CM"].includes(viewer?.role) : isRevisor() ? REVISOR_SEE.includes(key) : isComercial() ? COMERCIAL_SEE.includes(key) : ADM_KEYS.includes(key) ? admSees() : key === "seguimiento" ? segCan() : key === "resumen" ? reCan() : key === "compnac" ? cnCan() : key === "pedcom" ? isAdminAny() : key === "solped" ? isAdminAny() || isAdmRole() : key === "copys" ? ["Admin total","Admin","CM"].includes(viewer?.role) : key === "mensajes" && viewer?.noChat ? false : isAdminAny() ? canAdmin(key) : canMember(key); // noChat: sin Chat Retail MKT (Usuarios y permisos)
+const GONE_KEYS = ["planmes","copys"]; // v424: Planificación del mes y Generador de copy se sacaron de la app (pedido de Admin total; lo guardado en la base queda)
+const can = key => GONE_KEYS.includes(key) ? false : isTV() ? TV_SEE.includes(key) : key === "postext" ? ["Admin total","CM"].includes(viewer?.role) : isRevisor() ? REVISOR_SEE.includes(key) : isComercial() ? COMERCIAL_SEE.includes(key) : ADM_KEYS.includes(key) ? admSees() : key === "seguimiento" ? segCan() : key === "resumen" ? reCan() : key === "compnac" ? cnCan() : key === "pedcom" ? isAdminAny() : key === "solped" ? isAdminAny() || isAdmRole() : key === "copys" ? ["Admin total","Admin","CM"].includes(viewer?.role) : key === "mensajes" && viewer?.noChat ? false : isAdminAny() ? canAdmin(key) : canMember(key); // noChat: sin Chat Retail MKT (Usuarios y permisos)
 const myGroups = () => viewer.brands || GROUPS;
 const seesBrand = b => myGroups().includes(groupOf(b));
 const myBrands = () => Object.keys(BRANDS).filter(seesBrand);
@@ -13921,7 +13928,7 @@ document.addEventListener("click", async e => {
 // Hoja de permisos: una tarjeta por persona con lo que ve, agrupado por sección. Un toque prende o apaga cada cosa.
 // Admin total y Admin ven todo (no hace falta marcarles nada). CM y Diseñador arrancan viendo todo menos lo de Admin (ROLE_CM / ROLE_DESIGN).
 const PERM_EXTRA = ["comercial","inbox","reclamos","escraches","ideas"]; // secciones “virtuales” que también se pueden habilitar a mano
-const permSections = () => SECTIONS.filter(sc => (!sc.virtual || PERM_EXTRA.includes(sc.k)) && !ONLY_AT.includes(sc.k) && !ONLY_ADMINS.includes(sc.k));
+const permSections = () => SECTIONS.filter(sc => !GONE_KEYS.includes(sc.k) && (!sc.virtual || PERM_EXTRA.includes(sc.k)) && !ONLY_AT.includes(sc.k) && !ONLY_ADMINS.includes(sc.k));
 function permSheet(){
   const secs = permSections(), groups = [...new Set(secs.map(sc => sc.g))];
   const members = PEOPLE.filter(pp => pp.active && !["Admin total","Admin","Revisor","Comercial","TV"].includes(pp.role)), admins = PEOPLE.filter(pp => pp.active && (pp.role === "Admin total" || pp.role === "Admin"));
@@ -16162,7 +16169,7 @@ const GUIDE = [
 ];
 let guideQ = "";
 function pGuia(){
-  const q = guideQ.trim().toLowerCase(), groups = GUIDE.map(([g, items]) => [g, items.filter(([, t, d]) => !({ Encuestas:1, Sugerencias:1, Aviso:1 }[t] && !can(t.toLowerCase())) && (!q || (t + " " + d).toLowerCase().includes(q)))]).filter(([, it]) => it.length);
+  const q = guideQ.trim().toLowerCase(), groups = GUIDE.map(([g, items]) => [g, items.filter(([, t, d]) => !SECTIONS.some(x => x.l === t && GONE_KEYS.includes(x.k)) && !({ Encuestas:1, Sugerencias:1, Aviso:1 }[t] && !can(t.toLowerCase())) && (!q || (t + " " + d).toLowerCase().includes(q)))]).filter(([, it]) => it.length);
   return `<div class="head"><div><h1>Guía de uso</h1><p class="sub">Qué es cada parte de Retail MKT Hub y para qué sirve. Si recién empezás, arrancá por “Primeros pasos”.</p></div></div>
   <input class="base guideq" id="guideQ" value="${esc(guideQ)}" placeholder="Buscar: mensajes, pauta, cumpleaños…" aria-label="Buscar en la guía">
   ${groups.map(([g, items]) => `<section class="pmsec"><h2 style="margin:0">${g}</h2><div class="ggrid">${items.map(([ic, t, d]) => { const sec = SECTIONS.find(x => x.l === t) || ({ "Encuestas":{ k:"encuestas" }, "Sugerencias":{ k:"sugerencias" }, "Mi perfil":{ k:"perfil" }, "Configuración":{ k:"config" }, "Completá tu perfil":{ k:"perfil" }, "Elegí cómo ver la app":{ k:"config" }, "Revisá Alertas todos los días":{ k:"alertas" } })[t];
@@ -17101,16 +17108,25 @@ function pcNavGroup(items, shut){
   const g = "Solicitud de pedidos", n = c => c ? `<span class="count ibc">+${c > 99 ? 99 : c}</span>` : "";
   if (isAdmRole()) return ""; // v423: Administración lo ve en su área (Panel de Trabajo → Solicitud de pedidos)
   if (isComercial()) return `<div class="nav-group"><span class="nav-label">Pedidos</span><a href="#pedcom" data-page="pedcom" class="${page === "pedcom" ? "on" : ""}">${icon("shopping-bag")}<span>Mis pedidos de activaciones</span>${navBadge("pedcom")}</a></div>`;
-  const ppl = items.some(s => s.k === "solped") ? pcNavPeople() : [], com = items.some(s => s.k === "pedcom");
-  const tot = ppl.reduce((a, pp) => a + pcBadgeWho(pp.id), 0) + (com ? pcBadgeN("com") : 0);
-  const links = ppl.map(pp => { const c = pcBadgeWho(pp.id); return `<a href="#solped" data-page="solped" data-pcwho="${esc(pp.id)}" title="Pedidos de ${esc(pp.name)}" class="${page === "solped" && pcUI.who === pp.id ? "on" : ""}">${icon("user-round")}<span>${esc(pp.name)}</span>${n(c)}</a>`; }).join("")
-    + (com ? `<a href="#pedcom" data-page="pedcom" title="Pedidos de activaciones de Comercial" class="${page === "pedcom" ? "on" : ""}">${icon("shopping-bag")}<span>${isComercial() ? "Mis pedidos" : "Comercial"}</span>${navBadge("pedcom")}</a>` : "");
-  return `<div class="nav-group pcgrp${shut ? " closed" : ""}"><button type="button" class="nav-label navtog" data-navtog="${esc(g)}" aria-expanded="${!shut}">${icon("clipboard-list")}<span>${g}</span>${shut ? n(tot) : ""}${icon("chevron-down")}</button>${links}</div>`;
+  const ppl = items.some(s => s.k === "solped") ? pcNavPeople() : [], com = items.some(s => s.k === "pedcom"); if (!ppl.length && !com && !items.length) return "";
+  const tot = ppl.reduce((a, pp) => a + pcBadgeWho(pp.id), 0) + (com ? pcBadgeN("com") : 0), to = items.some(s => s.k === "solped") ? "solped" : "pedcom";
+  // v424: un solo botón (Patricia, Emanuel y Comercial están adentro, en el panel de arriba de la página)
+  return `<div class="nav-group pcgrp"><button type="button" class="nav-label pcone${page === "solped" || page === "pedcom" ? " on" : ""}" data-page="${to}" data-pcwho="" title="Solicitud de pedidos: Patricia, Emanuel y Comercial">${icon("clipboard-list")}<span>${g}</span>${n(tot)}</button></div>`;
 }
 // Tocar una persona del menú (o “Todas”) filtra la Solicitud de pedidos; lo demás la muestra entera.
 document.addEventListener("click", e => { const a = e.target.closest?.('[data-page="solped"], [data-page="pedcom"], [data-pcwhochip]'); if (!a) return;
   pcUI.who = a.dataset.pcwhochip !== undefined ? a.dataset.pcwhochip || null : a.dataset.pcwho || null; pcUI.open = null; pcUI.form = null;
   if (a.dataset.pcwhochip !== undefined){ e.preventDefault(); render(); } }, true);
+// v424 · Panel de arriba de Solicitud de pedidos y de Pedidos Comercial: quien pide (Patricia, Emanuel…) y Comercial, con su +N.
+// Antes estaban en el menú; ahora el menú tiene un solo botón amarillo. Comercial y Administración no lo ven (tienen lo suyo).
+function pcPanel(){
+  if (!viewer || isComercial() || isAdmRole()) return "";
+  const ppl = can("solped") ? pcNavPeople() : [], com = can("pedcom"), cur = page === "pedcom" ? "com" : page === "solped" ? pcUI.who || "" : "";
+  const tile = (k, attrs, ic, t, d, c, i) => `<button type="button" class="picon${cur === k ? " on" : ""}" ${attrs} style="--i:${i}" aria-pressed="${cur === k}"><span class="pring" aria-hidden="true">${icon(ic)}${c ? `<span class="count ibc new">+${c > 99 ? 99 : c}</span>` : ""}</span><b>${esc(t)}</b><small>${d}</small></button>`;
+  const tiles = [...ppl.map((pp, i) => tile(pp.id, `data-page="solped" data-pcwho="${esc(pp.id)}"`, "user-round", pp.name, "Sus solicitudes de pedido", pcBadgeWho(pp.id), i)),
+    ...(com ? [tile("com", `data-page="pedcom"`, "shopping-bag", "Comercial", "Pedidos de activaciones (Superseis, Stock y Delimarket)", pcBadgeN("com"), ppl.length)] : [])];
+  return tiles.length > 1 ? `<div class="picons pcpanel" role="group" aria-label="De quién son los pedidos">${tiles.join("")}</div>` : "";
+}
 const pcBrandTxt = p => (p.brands || []).join(" + ") || "Sin supermercado";
 const pcRange = p => p.from && p.until ? (p.from === p.until ? dm(p.from) : `del ${dm(p.from)} al ${dm(p.until)}`) : p.from ? "desde el " + dm(p.from) : p.until ? "hasta el " + dm(p.until) : "";
 // Estados (v246). Enviado (lo manda el comprador) → Aprobado (Admin total) → En curso (pasado a Diseño gráfico o CM) →
@@ -17457,8 +17473,8 @@ function pPedCom(){
   const op = pcUI.open && scoped.find(p => p.id === pcUI.open); if (op) return pcDetail(op); pcUI.open = null; // v397: Comercial solo abre los suyos
   const vt = [["tabla", "Tabla", "table-2"], ["calendario", "Calendario", "calendar-days"]];
   const adm = viewer.role === "Admin" && !window.RMH?.previewing; // v397: Patricia y Emanuel también piden
-  const ppl = eqS ? pcNavPeople() : [], whoChips = eqS && ppl.length ? `<div class="chips pcwhoc" role="group" aria-label="Quién lo pidió">${[null, ...ppl].map(pp => `<button type="button" class="chip ${(pp ? pp.id : null) === (who ? who.id : null) ? "on" : ""}" data-pcwhochip="${pp ? esc(pp.id) : ""}">${pp ? esc(pp.name) : "Todas"}${pp && pcBadgeWho(pp.id) ? ` <b>+${pcBadgeWho(pp.id)}</b>` : ""}</button>`).join("")}</div>` : "";
-  const head = eqS ? `<div class="head"><div><h1 class="pmh">${pmIco("clipboard-list")}Solicitud de pedidos${who ? ` · ${esc(who.name)}` : ""}</h1><p class="sub">${at ? "Lo que pide el equipo (Patricia, Emanuel, Marlene). Abrí cada pedido nuevo para aprobarlo y pasarlo a Diseño gráfico o a un CM; Administración de Marketing se ocupa en paralelo del presupuesto y la impresión. Los pedidos de los compradores están aparte, en Pedidos Comercial." : `Cargá acá lo que necesitás (un pedido gráfico, de CM o de lo que sea): le llega a ${esc(pcCoordN())} (Coordinación de Diseño gráfico), que lo revisa, le suma lo que falte y lo pasa a Diseño gráfico o a CM. En cada pedido ves todo el seguimiento (quién lo diseña, Administración de Marketing, el proveedor y la CM) y, cuando el diseño está aprobado, te llega para tu aprobación final. También ves los pedidos de los demás del equipo (solo para ver).`}</p></div>
+  const whoChips = pcPanel() + (eqS && who ? `<div class="chips pcwhoc"><button type="button" class="chip" data-pcwhochip="">${icon("list")} Ver todas las solicitudes</button></div>` : ""); // v424: el panel con Patricia, Emanuel y Comercial
+  const head = eqS ? `<div class="head"><div><h1 class="pmh">${pmIco("clipboard-list")}Solicitud de pedidos${who ? ` · ${esc(who.name)}` : ""}</h1><p class="sub">${at ? "Lo que pide el equipo (Patricia y Emanuel). Abrí cada pedido nuevo para aprobarlo y pasarlo a Diseño gráfico o a un CM; Administración de Marketing se ocupa en paralelo del presupuesto y la impresión. Los pedidos de los compradores están aparte, en Pedidos Comercial." : `Cargá acá lo que necesitás (un pedido gráfico, de CM o de lo que sea): le llega a ${esc(pcCoordN())} (Coordinación de Diseño gráfico), que lo revisa, le suma lo que falte y lo pasa a Diseño gráfico o a CM. En cada pedido ves todo el seguimiento (quién lo diseña, Administración de Marketing, el proveedor y la CM) y, cuando el diseño está aprobado, te llega para tu aprobación final. También ves los pedidos de los demás del equipo (solo para ver).`}</p></div>
     <div class="chips">${viewTabs(vt, pcUI.view, "data-pcview")}${at || adm || isAdmRole() ? `<button type="button" class="btn primary" data-pcnew>${icon("plus")} Nuevo pedido</button>` : ""}</div></div>`
     : `<div class="head"><div><h1 class="pmh">${pmIco("shopping-bag")}${com ? "Mis pedidos de activaciones" : "Pedidos Comercial"}</h1><p class="sub">${com ? "Cargá acá lo que te gustaría que se publique en las redes: el pedido le llega a Marketing y te queda como <b style=\"color:#38bdf8\">Enviado</b>. Elegí el día que te gustaría que salga (también tocando el día en el calendario). En cada pedido ves en qué estado está (Enviado, Aprobado, En curso, Con modificaciones, <b style=\"color:#22c55e\">Finalizado</b> o <b style=\"color:#ef4444\">No ejecutable</b>) y te avisamos con cada cambio." : at ? "Lo que piden los compradores para publicar. Abrí cada pedido nuevo para aprobarlo, pasarlo a Diseño gráfico o a un CM (queda En curso, con la persona responsable), marcarlo Con modificaciones o No ejecutable (con el motivo). Cuando el CM lo aprueba para publicar, pasa a Finalizado. Al comprador le llega el aviso con cada cambio." : "Lo que piden los compradores para publicar, a quién se derivó y si ya salió. Es solo para ver: los pedidos los pasa Admin total."}</p></div>
     <div class="chips">${viewTabs(vt, pcUI.view, "data-pcview")}${com || at ? `<button type="button" class="btn primary" data-pcnew>${icon("plus")} Nuevo pedido</button>` : ""}</div></div>`;
@@ -18495,7 +18511,7 @@ function ofPanelAgent(a){
   const pick = a.id === "claudia" ? `<label class="oflab">Publicación<select class="base" data-agpost><option value="">— Elegí una publicación —</option>${posts14.map(p => `<option value="${esc(p.id)}" ${p.id === ofUI.post ? "selected" : ""}>${dm(p.date)} · ${esc(p.brand)} · ${esc(p.format || "Post")} · ${esc(agPlain(p.title).slice(0, 50))}</option>`).join("")}</select></label>` : "";
   const nokey = ofUI.errCode === "nokey", bye = ofUI.errCode === "limit";
   const sant = a.id === "santiago" ? `<p class="note ofcnt">Prompts de imágenes que hicieron todos los usuarios:</p>${ofKpiLog(PROMPT_LOG, "prompts")}<div class="chips"><button type="button" class="btn" data-page="prompts">${icon("wand-sparkles")} Abrir Prompts de imágenes</button></div>` : "";
-  const cgen = a.id === "claudia" ? `<p class="note ofcnt">Copys que armó para todos los usuarios (Generador de copy y chat):</p>${ofKpiLog(COPY_LOG, "copys")}<div class="chips"><button type="button" class="btn" data-page="copys">${icon("pen-line")} Abrir el Generador de copy</button></div>` : "";
+  const cgen = a.id === "claudia" ? `<p class="note ofcnt">Copys que armó para todos los usuarios (Generador de copy y chat):</p>${ofKpiLog(COPY_LOG, "copys")}${can("copys") ? `<div class="chips"><button type="button" class="btn" data-page="copys">${icon("pen-line")} Abrir el Generador de copy</button></div>` : ""}` : "";
   return `${head}${pick}${sant}${cgen}
     <div class="agmsgs" aria-live="polite">${msgs.length ? "" : `<div class="agmsg a hello"><div class="agtxt"><p>${esc(a.hello)}</p></div></div>`}${msgs.map(m => m.r === "user"
       ? `<div class="agmsg u"><div class="agtxt"><p>${esc(m.t)}</p></div><small>${esc(firstName(m.by || ""))}</small></div>`

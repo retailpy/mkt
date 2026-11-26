@@ -197,6 +197,12 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 ---
 
 ## 5. Otras cosas recientes (v137–v160)
+- **v424 · Sin Planificación del mes ni Generador de copy; Patricia, Emanuel y Comercial adentro del panel de pedidos (26/11/2026):**
+  pedido de Admin total. **Planificación del mes** (`planmes`) y **Generador de copy** (`copys`) se sacaron de la app para todos
+  (`GONE_KEYS` en `can()`: no salen en el menú, ni en Usuarios y permisos, ni en la Guía; el link viejo no abre). El código y lo guardado
+  en la base quedan (si se quieren volver, se sacan de `GONE_KEYS`). Menú: **un solo botón amarillo «Solicitud de pedidos»** (`pcNavGroup`,
+  `.pcone`, con el +N total); **Patricia, Emanuel y Comercial** están adentro, en el panel de arriba de Solicitud de pedidos y de Pedidos
+  Comercial (`pcPanel()`, `.pcpanel`, cada uno con su +N; el que está abierto, en amarillo; “Ver todas las solicitudes” vuelve a todo el equipo).
 - **v423 · Comercial es otro departamento: solo Dashboard, sus pedidos, el video y la bienvenida (26/11/2026):** pedido de Admin total.
   El rol **Comercial** ve solo Dashboard, **Mis pedidos de activaciones** (`pedcom`), Video Retail MKT Hub y Bienvenida (`COMERCIAL_SEE`;
   ya no ve las ofertas de `comercial`; en la base no se cambió nada). Entra directo a sus pedidos (tabla primero; también Calendario) y la
