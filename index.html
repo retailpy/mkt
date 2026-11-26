@@ -4498,6 +4498,10 @@ td svg{width:15px;height:15px;vertical-align:-2px;color:var(--cyan)}
 .recth,.recbest .pthumb.recth{width:44px;height:44px;border-radius:8px;object-fit:cover;flex:none}.recth.ph{display:grid;place-items:center;background:var(--line-2);font-size:10px;color:var(--faint)}
 .recbest span{font-size:12px;line-height:1.35;color:var(--muted);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .recps{display:flex;flex-direction:column;gap:12px}
+.recps.big .recp{padding:14px;gap:20px}.recps.big .recpimg{width:210px;height:210px;border-radius:12px}
+.recps.big .recacc{font-size:17px}.recps.big .rep5m small{font-size:13px}.recps.big .recabout{font-size:17px;line-height:1.45}
+.recps.big .recpcap{font-size:14.5px;line-height:1.5;-webkit-line-clamp:5;color:var(--muted)}.recps.big .recpk{font-size:13px}.recps.big .recpk svg{width:14px;height:14px}
+.rectab tr.recgo{cursor:pointer}.rectab tr.recgo:hover td{background:var(--racbg)}
 .recp{display:flex;gap:14px;border:1px solid var(--line-2);border-radius:12px;padding:10px;text-decoration:none;color:inherit;min-width:0}.recp:hover{border-color:var(--racln)}
 .recpimg{width:104px;height:104px;border-radius:10px;object-fit:cover;flex:none;display:block}.recpimg.ph{display:grid;place-items:center;background:var(--line-2);color:var(--faint)}
 .recpb{display:flex;flex-direction:column;gap:5px;min-width:0}.recacc{font-size:13.5px;font-weight:600}
@@ -20678,11 +20682,11 @@ function admSeed(){
 // impacto con su imagen grande y cada cuenta), 2) La gente y los medios (mensajes y comentarios con su texto completo y lo
 // que salió en los medios sobre los supermercados), 3) La competencia (la nacional, desde Instagram: s:META_REFS.local, y
 // los supermercados de referencia del mundo) y 4) Pauta e ideas (campañas, sugerencias que salen de los datos y aportes del
-// equipo). v410: celeste (con color) y más despejado. v409: más limpio y sobrio, números en palabras y competencia por tasa de interacción. v405: sin comparar con la semana o el mes anterior (las flechitas ▲▼ se sacaron). v401: “Las 3 cuentas” va en su propia página. v405: competencia nacional e internacional en páginas separadas,
+// equipo). v411: pauta sin dólares, pedidos de trabajo (CV) fuera de positivos/quejas y competencia en detalle con ◀ ▶. v410: celeste (con color) y más despejado. v409: más limpio y sobrio, números en palabras y competencia por tasa de interacción. v405: sin comparar con la semana o el mes anterior (las flechitas ▲▼ se sacaron). v401: “Las 3 cuentas” va en su propia página. v405: competencia nacional e internacional en páginas separadas,
 // sin nuestras marcas, y lo que más les funcionó es una publicación por cadena con “de qué se trata” (6 páginas en total). Todo sale de los datos reales de la app (Meta); no se inventa nada. Las notas quedan en s:RESUMEN_EJEC →
 // { "AAAA-MM-DD" (martes) | "m:AAAA-MM" (mes): { comp, ideas, by, at } }. Solo en pantalla (v401: sin Imprimir).
 let RESUMEN_EJEC = {};
-let reUI = { t:"", m:"", mode:"sem", pg:0, edit:false, all:{}, vw:"pos", vp:0 }; // vw/vp: vista y página de La gente y los medios
+let reUI = { t:"", m:"", mode:"sem", pg:0, edit:false, all:{}, vw:"pos", vp:0, cp:0, ip:0 }; // vw/vp: vista y página de La gente y los medios · cp/ip: página de lo que más les funcionó (nacional / internacional)
 const RE_BRANDS = ["Superseis", "Stock", "Delimarket"];
 const RE_PAGES = [["layout-dashboard", "En pocas palabras"], ["chart-column", "Las 3 cuentas"], ["message-circle", "La gente y los medios"], ["store", "Competencia nacional"], ["globe", "Internacional"], ["lightbulb", "Pauta e ideas"]];
 const reCan = () => !!viewer && ["Admin total", "Admin"].includes(viewer.role);
@@ -20770,6 +20774,8 @@ function reAbout(p){
 const reTimes = r => String(Math.round(r * 10) / 10).replace(".", ",");
 const rePct = v => (v >= 10 ? String(Math.round(v)) : String(Math.round(v * 10) / 10).replace(".", ",")) + " %";
 // Lo que dice la gente: mensajes (Instagram y Facebook) y comentarios que arroban a la marca, del período. Texto completo.
+// v411 · Pedidos de trabajo (mandar el CV, postularse, buscar empleo): no son quejas ni felicitaciones, van a “otros”.
+const RE_JOB = /\bcv\b|c\.v\.|curricul|hoja de vida|\bvacante|postular|postulo|postulac|busco (trabajo|empleo)|buscan (personal|gente|empleados)|oportunidad (laboral|de trabajo)|trabajar (con|en|para) (ustedes|uds)|recursos humanos|\brrhh\b|(enviar|mandar|dejar|entregar|acercar|llevar)( mi| el| un)? (cv|curriculum|carpeta)/;
 const RE_POS = /gracias|excelente|me encant|genial|buenisim|hermos|riquisim|felicit|lo mejor|recomiend|super bien|muy buen|que rico|que lindo|espectacular|increible|\bamo\b|❤|😍|🥰|👏|🙌|💯/;
 function reVoice(w){
   const out = [];
@@ -20777,7 +20783,7 @@ function reVoice(w){
     inboxConvs(b).forEach(c => (c.msgs || []).forEach(m => { if (!m.me && m.t && m.ts && reInWk(pyDate(m.ts), w)) out.push({ b, src:c.net === "FB" ? "Facebook" : "Instagram", t:m.t, ts:m.ts }); }));
     (META_IG_ACT?.[b]?.items || []).forEach(it => { if (it && !it.mine && it.t && it.ts && reInWk(pyDate(it.ts), w)) out.push({ b, src:"comentario de Instagram", t:it.t, ts:it.ts }); });
   });
-  return out.map(x => { const neg = rclIs(x.t), all = rclFold(x.t); return { ...x, neg, pos:!neg && RE_POS.test(all), suc:neg ? rclSuc(x.t) : "", mot:neg ? rclPick(RCL_MOTIVO, x.t) : "" }; })
+  return out.map(x => { const all = rclFold(x.t), job = RE_JOB.test(all), neg = !job && rclIs(x.t); return { ...x, job, neg, pos:!job && !neg && RE_POS.test(all), suc:neg ? rclSuc(x.t) : "", mot:neg ? rclPick(RCL_MOTIVO, x.t) : "" }; })
     .sort((a, c) => String(c.ts).localeCompare(String(a.ts)));
 }
 const reFull = t => String(t || "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
@@ -20794,7 +20800,6 @@ function reNews(w){
 const reCamps = w => { const seen = new Set(), m = w.to.slice(0, 7);
   return (Array.isArray(CAMPAIGNS) ? CAMPAIGNS : []).filter(c => c && c.name && RE_BRANDS.includes(c.brand) && (c.start || "") <= w.to && (c.end || "9999") >= w.from)
     .sort((a, c) => Number(c.month === m) - Number(a.month === m) || (c.spend || 0) - (a.spend || 0)).filter(c => !seen.has(c.brand + c.name) && seen.add(c.brand + c.name)); };
-const reMoney = (v, cur) => { if (!isNum(v)) return ""; if (cur === "PYG") return "Gs. " + dots(v); const [a, b] = v.toFixed(2).split("."); return "US$ " + dots(+a) + "," + b; };
 // Sugerencias: salen de los números del período (si no hay datos, no se sugiere nada).
 function reSuggest(D){
   const S = [], P = D.posts.filter(p => isNum(p.reach));
@@ -20823,12 +20828,15 @@ function reWeeksOf(P){ const out = []; let d = P.from;
 function pResumen(){
   if (!reCan()) return `<div class="panel empty">${icon("lock")} El resumen ejecutivo lo ven solo Admin total y Admin.</div>`;
   const P = rePeriod(), w = { from:P.from, to:P.to }, note = RESUMEN_EJEC[P.key] || {}, ed = reUI.edit && !window.RMH?.previewing, pg = Math.max(0, Math.min(RE_PAGES.length - 1, reUI.pg || 0));
-  const posts = rePosts(w).sort((a, c) => pubScore(c) - pubScore(a)), top = posts.slice(0, 5);
+  const posts = rePosts(w).sort((a, c) => pubScore(c) - pubScore(a));
+  // v411: las 5 de mayor impacto con la mejor de cada marca (así Delimarket, más chica, también aparece) y las otras por alcance.
+  const top = (() => { const firsts = RE_BRANDS.map(b => posts.find(p => p.brand === b)).filter(Boolean), rest = posts.filter(p => !firsts.includes(p));
+    return [...firsts, ...rest.slice(0, Math.max(0, 5 - firsts.length))].sort((a, c) => pubScore(c) - pubScore(a)); })();
   const byB = RE_BRANDS.map(b => { const L = posts.filter(p => p.brand === b), st = reStories(b, w);
     return { b, n:L.length, reach:reSum(L, "reach"), inter:reSum(L, "inter"), shares:reSum(L, "shares"),
       lc:L.reduce((n, p) => n + (p.likes || 0) + (p.comments || 0), 0), viral:[...L].sort((a, c) => (c.shares || 0) - (a.shares || 0) || c.inter - a.inter)[0], fol:reFol(b, w), stN:st.length, stR:reSum(st, "r"), L }; });
   const comp = reComp(w, META_REFS?.local?.accounts, { fair:true }), intl = reComp(w, META_REFS?.accounts, { fair:true }), voice = reVoice(w), camps = reCamps(w), news = reNews(w);
-  const pos = voice.filter(x => x.pos), neg = voice.filter(x => x.neg), other = voice.length - pos.length - neg.length;
+  const pos = voice.filter(x => x.pos), neg = voice.filter(x => x.neg), other = voice.length - pos.length - neg.length, jobs = voice.filter(x => x.job).length;
   const sug = reSuggest({ posts, top, byB, intl, voice, comp, kind:P.kind, per:P.per });
   const folK = byB.find(x => x.fol)?.fol?.kind, folD = byB.reduce((n, x) => n + (isNum(x.fol?.d) ? x.fol.d : 0), 0), folM = byB.find(x => x.fol)?.fol?.m;
   const empty = (t2, ic = "info") => `<p class="re0 reempty">${icon(ic)}<span>${t2}</span></p>`;
@@ -20879,7 +20887,7 @@ function pResumen(){
     ${x.stN ? `<p class="rebst2">${icon("smartphone")} <b>${x.stN}</b> ${x.stN === 1 ? "historia" : "historias"} · ${dots(x.stR)} de alcance</p>` : ""}</article>`;
   const p1 = `<div class="repage re-p1">${kpis}
     ${brief.length ? `<ul class="rebrief" aria-label="En pocas palabras">${brief.map(([ic, t2]) => `<li>${icon(ic)}<span>${t2}</span></li>`).join("")}</ul>` : ""}
-    <section class="resec">${head("trophy", "Las 5 publicaciones de mayor impacto", `Instagram de las 3 marcas ${P.per}, por alcance. Tocá una para verla.`)}
+    <section class="resec">${head("trophy", "Las 5 publicaciones de mayor impacto", `Instagram ${P.per}: la mejor de cada marca (Superseis, Stock y Delimarket) y las que siguen por alcance. Tocá una para verla.`)}
       ${top.length ? `<div class="retop5">${top.map(card5).join("")}</div>` : empty(`No hay publicaciones de Instagram ${P.per}.`)}</section>
   </div>`;
   const pB = `<div class="repage re-pb"><section class="resec">${head("chart-column", "Las 3 cuentas", `Instagram ${P.per}.`)}
@@ -20898,7 +20906,7 @@ function pResumen(){
   const p2 = `<div class="repage re-p2">
     <div class="revws" role="tablist" aria-label="Qué ver">${VW.map(([k, ic, l, n, c]) => `<button type="button" role="tab" class="revw${k === vw ? " on" : ""}" data-revw="${k}" aria-selected="${k === vw}" style="--kc:${c}"><span class="rekl">${icon(ic)} ${l}</span><b>${n}</b></button>`).join("")}</div>
     <section class="resec">${vw === "neg" && negSuc.length ? `<div class="rechips neg">${negSuc.slice(0, 8).map(([s2, n]) => `<span>${icon("map-pin")} ${esc(s2)} <b>${n}</b></span>`).join("")}</div>` : ""}${vbody}${vpager}
-      ${vw !== "news" && other ? `<p class="note re0">Además hubo ${other} ${other === 1 ? "consulta u otro mensaje" : "consultas y otros mensajes"} (preguntas, pedidos de información).</p>` : ""}${vw === "news" ? `<p class="note re0">Notas de ABC, Última Hora, La Nación y otros medios que nombran a Superseis, Stock o Delimarket. Tocá una para leerla.</p>` : ""}</section>
+      ${vw !== "news" && other ? `<p class="note re0">Además hubo ${other} ${other === 1 ? "mensaje" : "mensajes"} que no son ni felicitación ni queja (consultas y pedidos de información)${jobs ? `, entre ellos ${jobs} ${jobs === 1 ? "pedido" : "pedidos"} de trabajo (gente que quiere mandar su CV)` : ""}.</p>` : ""}${vw === "news" ? `<p class="note re0">Notas de ABC, Última Hora, La Nación y otros medios que nombran a Superseis, Stock o Delimarket. Tocá una para leerla.</p>` : ""}</section>
   </div>`;
   // ----- páginas 4 y 5: competencia nacional e internacional (sin nuestras marcas) -----
   const compImg = (p, cls) => safeUrl(p.img) ? `<img class="${cls}" src="${esc(safeUrl(p.img))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'${cls} ph',textContent:'IG'}))">` : `<span class="${cls} ph">IG</span>`;
@@ -20909,30 +20917,34 @@ function pResumen(){
   const RE_PIN = "paodeacucar", intlPin = intl.list.find(x => x.k === RE_PIN);
   const ctable = (C, intl) => { const pin = intl ? intlPin : null, L = intl ? [pin, ...C.list.filter(x => x !== pin && x.posts.length)].filter(Boolean).slice(0, 10) : C.list; let n = 0;
     return `<div class="rectabw"><table class="rectab"><thead><tr><th></th><th>Cadena</th><th>Publicaciones</th><th title="Promedio de me gusta y comentarios por publicación">Reacciones por<br>publicación</th>${C.byRate ? `<th title="De cada 100 seguidores, cuántos dieron me gusta o comentaron en cada publicación">Tasa de<br>interacción</th>` : ""}<th>Lo mejor</th></tr></thead><tbody>
-    ${L.map(x => `<tr class="${x === pin ? "repinr" : ""}${x.err && !x.posts.length ? " rerr" : ""}"><td>${x === pin ? `<span class="ren" title="Siempre primero">★</span>` : `<span class="ren">${++n}</span>`}</td><td><b>${accName(x, intl)}</b>${x.err && !x.posts.length ? `<small class="rewarn" title="${esc(x.err)}">@${esc(x.u)} · no se encontró en Instagram</small>` : x.u ? `<small>@${esc(x.u)}${isNum(x.fol) ? ` · ${dots(x.fol)} seguidores` : ""}</small>` : ""}</td>
+    ${L.map(x => `<tr class="${x === pin ? "repinr" : ""}${x.err && !x.posts.length ? " rerr" : ""}${x.best || (x === pin && x.last) ? " recgo" : ""}"${x.best || (x === pin && x.last) ? ` data-recgo="${intl ? "i" : "n"}|${esc(x.k)}" title="Ver en detalle lo que mejor le funcionó"` : ""}><td>${x === pin ? `<span class="ren" title="Siempre primero">★</span>` : `<span class="ren">${++n}</span>`}</td><td><b>${accName(x, intl)}</b>${x.err && !x.posts.length ? `<small class="rewarn" title="${esc(x.err)}">@${esc(x.u)} · no se encontró en Instagram</small>` : x.u ? `<small>@${esc(x.u)}${isNum(x.fol) ? ` · ${dots(x.fol)} seguidores` : ""}</small>` : ""}</td>
       <td>${x.posts.length}</td><td>${C.hasEng && x.posts.length ? dots(x.avgPost) : "—"}</td>${C.byRate ? `<td class="rerate">${x.rate !== null ? `<b>${rePct(x.rate)}</b>` : "—"}</td>` : ""}<td>${rowBest(x, x === pin)}</td></tr>`).join("")}</tbody></table></div>`; };
   const ccard = (p, intl) => `<a class="recp" data-acc="${esc(p.k || "")}" ${p.link ? `href="${esc(p.link)}" target="_blank" rel="noopener"` : ""} title="${esc(p.cap || "")}">${compImg(p, "recpimg")}<span class="recpb"><span class="rep5m"><b class="recacc">${accName(p, intl)}</b><small>${esc(p.type || "Post")} · ${p.old ? `lo último que publicó (${dm(pyDate(p.ts))})` : reDayTxt(pyDate(p.ts))}</small></span>
-    <span class="recabout"><b>De qué se trata:</b> ${esc(reAbout(p))}</span>
+    <span class="recabout"><b>De qué se trata:</b> ${esc(reAbout(p))}</span>${p.cap ? `<span class="recpcap">“${esc(reFull(p.cap))}”</span>` : ""}
     <small class="recpk">${p.rate !== null && p.rate !== undefined ? `<b>Reaccionó el ${rePct(p.rate)} de sus seguidores</b> · ` : ""}${icon("heart")} ${isNum(p.likes) ? dots(p.likes) : "—"} · ${icon("message-circle")} ${isNum(p.comments) ? dots(p.comments) : "—"}${p.avg > 0 && p.eng / p.avg >= 1.3 ? ` · <b class="reupx">${reTimes(p.eng / p.avg)} veces más que lo habitual</b>` : ""}</small></span></a>`;
-  const ctops = (C, intl) => { const pc = intl && intlPin ? intlPin.best || intlPin.last : null, L = [pc, ...C.top.filter(p => !pc || p.k !== RE_PIN)].filter(Boolean).slice(0, 4);
-    return L.length ? `<div class="recps">${L.map(p => ccard(p, intl)).join("")}</div>` : empty(`Sin publicaciones ${P.per}.`, intl ? "globe" : "store"); };
+  const ctopsL = (C, intl) => { const pc = intl && intlPin ? intlPin.best || intlPin.last : null; return [pc, ...C.top.filter(p => !pc || p.k !== RE_PIN)].filter(Boolean); };
+  const CPER = 2; // v411: en detalle, 2 por pantalla, con ◀ ▶ (como los mensajes de la gente)
+  const ctops = (C, intl) => { const L = ctopsL(C, intl), pk = intl ? "ip" : "cp", pages = Math.max(1, Math.ceil(L.length / CPER)), cp = Math.min(Math.max(0, reUI[pk] || 0), pages - 1);
+    if (!L.length) return empty(`Sin publicaciones ${P.per}.`, intl ? "globe" : "store");
+    return `<div class="recps big">${L.slice(cp * CPER, cp * CPER + CPER).map(p => ccard(p, intl)).join("")}</div>${L.length > CPER ? `<div class="repager"><button type="button" class="btn" data-recp="${pk}|${cp - 1}" ${cp === 0 ? "disabled" : ""}>${icon("chevron-left")} Anteriores</button><span>${cp * CPER + 1}–${Math.min(L.length, cp * CPER + CPER)} de ${L.length} cadenas</span><button type="button" class="btn" data-recp="${pk}|${cp + 1}" ${cp >= pages - 1 ? "disabled" : ""}>Siguientes ${icon("chevron-right")}</button></div>` : ""}`; };
   const cthemes = C => C.themes.length ? `<div><b class="rek">Temas que más usaron</b><div class="rechips">${C.themes.slice(0, 6).map(([l, n]) => `<span>${esc(l)} <b>${n}</b></span>`).join("")}</div></div>` : "";
   const cfmts = C => C.fmts.length ? `Formatos que más usaron: ${C.fmts.slice(0, 3).map(([f, n]) => `${esc(f)} (${n})`).join(" · ")}. ` : "";
   const hasLocal = !!META_REFS?.local?.accounts, hasIntl = !!Object.keys(META_REFS?.accounts || {}).length;
+  window.__reTops = { n:ctopsL(comp, false).map(p => p.k), i:ctopsL(intl, true).map(p => p.k) };
   const p3 = `<div class="repage re-p3"><div class="recols2">
       <section class="resec">${head("store", "Competencia nacional", `Lo que publicaron en Instagram ${P.per} los supermercados de Paraguay: Casa Rica, Real, Luisito, Pueblo, Areté, Los Jardines, Fortis, SuperMás, Kingo y Plub.`, `<span class="resh-act">${metaBtn("referentes?set=local", "Competencia", "Competencia actualizada con lo último de Instagram.")}</span>`)}
         ${hasLocal ? ctable(comp, false) : empty(META_REFS?.localError ? `No se pudo leer la competencia: ${esc(META_REFS.localError)}.` : "Todavía no se leyó la competencia en Instagram. Se trae sola dos veces por día; tocá “Actualizar” para traerla ahora.", "store")}
         ${hasLocal ? `<p class="note re0">${comp.byRate ? "Ordenadas por <b>tasa de interacción</b>: de cada 100 seguidores, cuántos dieron me gusta o comentaron en cada publicación. Así se comparan cadenas grandes y chicas por igual." : "Ordenadas por reacciones (me gusta y comentarios) por publicación."} ${cfmts(comp)}Actualizado ${metaWhen(META_REFS.local.updated)}.</p>` : ""}</section>
-      <section class="resec">${head("trophy", "Lo que más les funcionó", "Lo que más se destacó de cada cadena (una por cadena), según cuánto reaccionó su gente.")}${ctops(comp, false)}${cthemes(comp)}</section>
+      <section class="resec">${head("trophy", "Lo que más les funcionó", "Lo que más se destacó de cada cadena, en detalle. Pasá con ◀ ▶ o tocá una cadena de la tabla.")}${ctops(comp, false)}${cthemes(comp)}</section>
     </div></div>`;
   const pInt = `<div class="repage re-pi"><div class="recols2">
       <section class="resec">${head("globe", "Internacional", `Supermercados de referencia del mundo (Brasil, España, Estados Unidos, Reino Unido, Francia y otros): lo que publicaron en Instagram ${P.per}, para inspirarse. Pão de Açúcar va siempre primero.`, `<span class="resh-act">${metaBtn("referentes", "Internacional", "Internacional actualizado con lo último de Instagram.")}</span>`)}
         ${intl.all.length || intlPin ? ctable(intl, true) : empty(hasIntl ? `Sin publicaciones de los supermercados de afuera ${P.per} (la app guarda las últimas de cada uno).` : "Todavía no se leyeron los supermercados de afuera.", "globe")}
         ${intl.all.length || intlPin ? `<p class="note re0">${cfmts(intl)}${intl.byRate ? "Ordenadas por <b>tasa de interacción</b> (de cada 100 seguidores, cuántos reaccionaron); Pão de Açúcar siempre primero." : intl.hasEng ? "Ordenadas por reacciones por publicación; Pão de Açúcar siempre primero." : "Los me gusta y comentarios de las cadenas de afuera se ven después de la próxima lectura (todos los días, 6:50 y 12:50)."} Actualizado ${metaWhen(META_REFS.updated)}.</p>` : ""}</section>
-      <section class="resec">${head("trophy", "Lo que más funcionó afuera", intl.hasEng ? "Lo que más se destacó de cada cadena (una por cadena)." : "Lo último de cada cadena (una por cadena).")}${ctops(intl, true)}${cthemes(intl)}</section>
+      <section class="resec">${head("trophy", "Lo que más funcionó afuera", `${intl.hasEng ? "Lo que más se destacó de cada cadena" : "Lo último de cada cadena"}, en detalle. Pasá con ◀ ▶ o tocá una cadena de la tabla.`)}${ctops(intl, true)}${cthemes(intl)}</section>
     </div></div>`;
   // ----- página 4: pauta e ideas -----
-  const campRow = c => `<li>${brandTag(c.brand)}<b>${esc(c.name)}</b><small>${esc(c.obj || "")}${c.start ? ` · ${dm(c.start)} → ${c.end ? dm(c.end) : "sin fin"}` : ""}</small>${isNum(c.spend) || isNum(c.reach) ? `<span class="recampk">${c.month ? `<small>En ${monthName(c.month)}:</small>` : ""}${isNum(c.spend) ? `<span>${reMoney(c.spend, c.cur)}</span>` : ""}${isNum(c.reach) ? `<span>${dots(c.reach)} personas</span>` : ""}${isNum(c.results) && !(c.results === c.reach && /persona|alcance/i.test(c.unit || "")) ? `<span>${dots(c.results)} ${esc(c.unit || "resultados")}</span>` : ""}</span>` : ""}</li>`;
+  const campRow = c => `<li>${brandTag(c.brand)}<b>${esc(c.name)}</b><small>${esc(c.obj || "")}${c.start ? ` · ${dm(c.start)} → ${c.end ? dm(c.end) : "sin fin"}` : ""}</small>${isNum(c.reach) || isNum(c.results) ? `<span class="recampk">${c.month ? `<small>En ${monthName(c.month)}:</small>` : ""}${isNum(c.reach) ? `<span>${dots(c.reach)} personas</span>` : ""}${isNum(c.results) && !(c.results === c.reach && /persona|alcance/i.test(c.unit || "")) ? `<span>${dots(c.results)} ${esc(c.unit || "resultados")}</span>` : ""}</span>` : ""}</li>`;
   const p4 = `<div class="repage re-p4"><div class="recols3">
     <section class="resec">${head("megaphone", "Campañas pagas activas", `Meta Ads ${P.per}.`)}${camps.length ? `<ul class="recamps">${camps.slice(0, 8).map(campRow).join("")}</ul>` : empty(`Sin campañas pagas ${P.per}.`, "megaphone")}</section>
     <section class="resec">${head("lightbulb", "Sugerencias", "Salen de los números del resumen.")}${sug.length ? `<ul class="resug">${sug.map(([ic, s]) => `<li>${icon(ic)}<span>${esc(s)}</span></li>`).join("")}</ul>` : empty("Sin datos suficientes para sugerir.")}</section>
@@ -20951,15 +20963,18 @@ function pResumen(){
 const reGo = n => { reUI.pg = Math.max(0, Math.min(RE_PAGES.length - 1, n)); render(); window.scrollTo(0, 0); setTimeout(reFit, 60); };
 document.addEventListener("change", e => {
   if (page !== "resumen") return;
-  const s = e.target.closest?.("[data-ret]"); if (s){ reUI.t = s.value; reUI.m = ""; reUI.edit = false; reUI.all = {}; reUI.vp = 0; render(); setTimeout(reFit, 60); return; }
-  const m = e.target.closest?.("[data-rem]"); if (m){ reUI.m = m.value; reUI.edit = false; reUI.all = {}; reUI.vp = 0; render(); setTimeout(reFit, 60); }
+  const s = e.target.closest?.("[data-ret]"); if (s){ reUI.t = s.value; reUI.m = ""; reUI.edit = false; reUI.all = {}; reUI.vp = 0; reUI.cp = 0; reUI.ip = 0; render(); setTimeout(reFit, 60); return; }
+  const m = e.target.closest?.("[data-rem]"); if (m){ reUI.m = m.value; reUI.edit = false; reUI.all = {}; reUI.vp = 0; reUI.cp = 0; reUI.ip = 0; render(); setTimeout(reFit, 60); }
 });
 document.addEventListener("click", e => {
   if (page !== "resumen") return;
   if (e.target.closest("[data-reshow]")) return reShow(!reShowOn());
   const g = e.target.closest("[data-repg]"); if (g && !g.disabled) return reGo(+g.dataset.repg);
-  const md = e.target.closest("[data-remode]"); if (md){ reUI.mode = md.dataset.remode; reUI.edit = false; reUI.all = {}; reUI.vp = 0; render(); setTimeout(reFit, 60); return; }
+  const md = e.target.closest("[data-remode]"); if (md){ reUI.mode = md.dataset.remode; reUI.edit = false; reUI.all = {}; reUI.vp = 0; reUI.cp = 0; reUI.ip = 0; render(); setTimeout(reFit, 60); return; }
   const vwb = e.target.closest("[data-revw]"); if (vwb){ reUI.vw = vwb.dataset.revw; reUI.vp = 0; render(); setTimeout(reFit, 60); return; }
+  const cpb = e.target.closest("[data-recp]"); if (cpb && !cpb.disabled){ const [k, n] = cpb.dataset.recp.split("|"); reUI[k === "ip" ? "ip" : "cp"] = Math.max(0, +n || 0); render(); setTimeout(reFit, 60); return; }
+  const cg = e.target.closest("[data-recgo]"); if (cg && !e.target.closest("a")){ const [k, acc] = cg.dataset.recgo.split("|"); // salta a la página donde está esa cadena
+    const order = window.__reTops?.[k] || []; const i = order.indexOf(acc); if (i >= 0){ reUI[k === "i" ? "ip" : "cp"] = Math.floor(i / 2); render(); setTimeout(reFit, 60); } return; }
   const vpb = e.target.closest("[data-revp]"); if (vpb && !vpb.disabled){ reUI.vp = Math.max(0, +vpb.dataset.revp || 0); render(); setTimeout(reFit, 60); return; }
   if (e.target.closest("[data-reedit]")){ reUI.edit = !reUI.edit; if (reUI.edit) reUI.pg = RE_PAGES.length - 1; render(); if (reUI.edit) setTimeout(() => document.getElementById("reIdeas")?.focus(), 60); return; }
   const sv = e.target.closest("[data-resave]"); if (sv){ if (!reCan() || window.RMH?.previewing) return toast("No se puede guardar en vista previa.");
