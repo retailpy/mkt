@@ -5304,6 +5304,12 @@ html.light .sg :is(.sgptn,.sgagnum,.sgstari,.sgppav,.sgstack,.sgpbar2 i){filter:
 .admfview{position:fixed;inset:0;z-index:80;background:rgba(2,6,23,.86);display:grid;place-items:center;padding:16px}.admfvbox{position:relative;max-width:min(980px,100%);max-height:100%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:12px}.admfvbox>img{display:block;max-width:100%;max-height:70vh;margin:0 auto;border-radius:12px}
 .admfvx{position:absolute;top:10px;right:10px;z-index:1}.admfvi{display:flex;flex-direction:column;gap:4px;padding:10px 4px 2px}.admfvi span{color:var(--muted);font-size:13px}
 .pcadm{display:flex;flex-direction:column;gap:8px}.pcadmo{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;cursor:pointer}.pcadmo input{margin-top:3px;width:18px;height:18px;flex:none}
+.admpick{display:flex;flex-direction:column;gap:10px;margin-top:4px}.admpkh{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}.admpkh>div:first-child{display:flex;flex-direction:column}.admpkh b{font-size:16px}.admpkh span{color:var(--muted);font-size:12.5px}
+.admpkg{border:1px solid var(--line);border-radius:14px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}.admpkg h3{margin:2px 0 6px;font-size:14px;display:flex;align-items:center;gap:6px}.admpkg h3 svg{width:16px;height:16px;color:var(--cyan)}.admpkg summary{cursor:pointer;font-weight:700;padding:2px 0}.admpkg[open] summary{margin-bottom:6px}
+.admpk{display:flex;align-items:center;gap:8px;padding:6px 4px;border-top:1px solid var(--line-2)}.admpk:first-of-type{border-top:0}.admpk .grow{flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}.admpk em{font-style:normal;font-size:11px;font-weight:700;color:var(--cyan);background:rgba(34,211,238,.1);border-radius:8px;padding:1px 7px}
+.admpk.si b{color:#4ade80}.admpk.no b{color:var(--muted);text-decoration:line-through;text-decoration-color:rgba(148,163,184,.5)}.admpk input.sm{width:84px;flex:none;border:1px solid var(--line-3);background:var(--inner);border-radius:10px;padding:5px 8px;color:var(--ink);font:inherit;font-size:13px}
+.admyn{display:inline-flex;border:1px solid var(--line-3);border-radius:11px;overflow:hidden;flex:none}.admyn button{border:0;background:transparent;color:var(--muted);padding:6px 12px;font-weight:700;font-size:13px}.admyn button+button{border-left:1px solid var(--line-3)}.admyn .si.on{background:#16a34a;color:#fff}.admyn .no.on{background:#475569;color:#fff}
+.admevt{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}.admev.off{opacity:.6}.admevprop{display:flex;align-items:center;gap:10px;border-color:rgba(168,85,247,.5)}.admevprop svg{color:#a855f7;flex:none}.admevapok{margin:0}.admevapok svg{width:14px;height:14px;color:#22c55e;vertical-align:-2px}.admqty.gs{color:#4ade80;background:rgba(34,197,94,.12)}
 .admbars{display:flex;flex-direction:column;gap:8px}.admb{display:grid;grid-template-columns:minmax(90px,38%) 1fr auto;align-items:center;gap:10px;font-size:13px}.admb span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.admb i{height:10px;border-radius:6px;width:var(--w);min-width:4px;background:var(--c)}.admb b{min-width:24px;text-align:right}
 @media (max-width:640px){.admq{max-width:none;margin-left:0}.admmonth b{min-width:120px}.admit{flex-wrap:wrap}.admit .grow{flex:1 1 60%}}
 </style>
@@ -8116,7 +8122,7 @@ function notifAlerts(){
     return { go:"job:" + j.id, key:"n:" + n.id, sev:"#a855f7", rank:-5, ic:"circle-check", t:`${n.who} ${n.fix ? "terminó las correcciones" : j.area === "CM" ? "terminó su trabajo" : contCopy(j) ? "terminó el boceto y el copy" : "terminó el boceto"}: ${j.title}`, m:`${j.brand} · ${j.piece} · listo para revisar${contCopy(j) ? " · " + jcopyShort(j) : ""} · ${dm(n.date)} ${n.time}${j.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}`,
       acts:`<button class="btn primary" data-nact="approve" data-nid="${n.id}">${j.area === "CM" ? "Aprobar" : "✓ Aprobar"}</button><button class="btn" data-nact="fix" data-nid="${n.id}">Pedir cambios</button><button class="btn" data-jficha="${j.id}">Ver pedido</button>` };
   });
-  return myNotifs().map(n => n.ped ? pcNotifAlert(n) : n.adm ? { go:"adm:" + n.adm, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:"table-2", t:`Te toca: ${admById(n.adm)?.title || n.title || ""}`, m:`${n.text ? n.text + " · " : ""}Administración de Marketing · tocá para verlo` } : n.dsg ? dsgAlert(n) : n.copy ? copyAlert(n) : n.type === "pub" ? pubAlert(n) : n.type === "act" ? actAlert(n) : n.type === "nuevo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:"inbox", t:`Nuevo pedido para vos: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""} · fecha límite ${jobById(n.job) ? dm(jobById(n.job).due) : ""} · tocá para ver todo` }
+  return myNotifs().map(n => n.ped ? pcNotifAlert(n) : n.admev ? { go:"admev:" + n.admev, key:"n:" + n.id, sev:"#22c55e", rank:-6, ic:"calendar-check", t:`Evento: ${admEvById(n.admev)?.name || n.title || ""}`, m:`${n.text || ""} · Administración de Marketing · tocá para verlo` } : n.adm ? { go:"adm:" + n.adm, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:"table-2", t:`Te toca: ${admById(n.adm)?.title || n.title || ""}`, m:`${n.text ? n.text + " · " : ""}Administración de Marketing · tocá para verlo` } : n.dsg ? dsgAlert(n) : n.copy ? copyAlert(n) : n.type === "pub" ? pubAlert(n) : n.type === "act" ? actAlert(n) : n.type === "nuevo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:"inbox", t:`Nuevo pedido para vos: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""} · fecha límite ${jobById(n.job) ? dm(jobById(n.job).due) : ""} · tocá para ver todo` }
     : n.type === "listo" && n.post ? listoAlert(n)
     : n.type === "listo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#10b981", rank:-6, ic:"badge-check", t:`Diseño listo para tu grilla: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""}${jobById(n.job)?.designLink ? " · tiene el link del diseño" : ""} · sumalo a tu calendario` }
     : n.type === "nota" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#94a3b8", rank:-4, ic:"message-circle", t:`Admin total comentó en: ${jobById(n.job)?.title || ""}`, m:`“${n.text}” · ${dm(n.date)} ${n.time}` } : ({ go:"job:" + n.job, key:"n:" + n.id, sev:n.type === "approved" ? "#10b981" : "#f97316", rank:-5, ic:n.type === "approved" ? "badge-check" : "pencil", t:n.type === "approved" ? `Admin total aprobó tu ${jobDone(jobById(n.job) || {})}: ${jobById(n.job)?.title}` : `Admin total pidió cambios: ${jobById(n.job)?.title}`, m:`${n.type === "fix" && n.text ? `“${n.text}” · ` : ""}${dm(n.date)} ${n.time}${n.type === "fix" ? ` · cuando termines, tocá “${jobById(n.job)?.area === "CM" ? "Terminé las correcciones" : "Corrección realizada"}”` : ""}`, acts:`${n.type === "fix" ? `<button class="btn primary" data-jdone="${n.job}">✓ ${jobById(n.job)?.area === "CM" ? "Terminé las correcciones" : "Corrección realizada"}</button>` : ""}<button class="btn" data-jficha="${n.job}">Ver pedido</button>` }));
@@ -16837,6 +16843,7 @@ function chatPopItems(keys, cur){
 // Texto de cada aviso (el mismo en la ventana, en la notificación del sistema y en el push).
 function jobPopInfo(n){
   const P = JOBPOP[n.type], j = n.job ? jobById(n.job) : null;
+  if (n.admev) return { ...P, go:"admev:" + n.admev, t:"Administración: evento aprobado", ic:"calendar-check", title:admEvById(n.admev)?.name || n.title || "", m:n.text || "" }; // v416
   if (n.adm) return { ...P, go:"adm:" + n.adm, t:"Administración: te toca un trabajo", ic:"table-2", title:admById(n.adm)?.title || n.title || "", m:n.text || "" }; // v401
   if (n.type === "entrega"){ const d = n.demo ? -2 : n.d;
     if (n.sum) return { ...P, go:n.cm ? "panelcm" : "paneldg", t:"¡Atención! Más entregas", c:dueColor(d), title:`Y ${n.sum} ${n.sum === 1 ? "entrega más" : "entregas más"} para hoy o atrasadas`,
@@ -19995,8 +20002,10 @@ const admEvMine = (e, pp = viewer) => admEvPend(e).filter(x => x.resp && pp && (
 
 // Alertas del área (Inicio y ventanas): pedidos nuevos para la líder, eventos que se vienen y lo que le toca a cada uno.
 function admAlerts(){
-  if (!viewer || !(isAdmRole() || viewer.role === "Admin total")) return [];
-  const out = admPcForMe().map(p => ({ go:"com:" + p.id, key:"admpc:" + p.id, ic:"clipboard-list", sev:"#38bdf8", rank:-5, t:`Nueva solicitud de pedido: ${p.title}`, m:`${p.byName || ""} · ${pcBrandTxt(p)}${p.date ? " · para el " + dm(p.date) : ""} · pasalo al Tablero de trabajos` }));
+  if (!viewer) return [];
+  const apr = admEvApprover() ? ADM_EVENTS.filter(e => admEvSt(e) === "Propuesta").map(e => ({ go:"admev:" + e.id, key:`admevap:${e.id}`, ic:"hourglass", sev:"#a855f7", rank:-4, t:`Evento para aprobar: ${e.name}`, m:`${(e.items || []).length} cosas elegidas${e.date ? " · " + dm(e.date) : ""} · al aprobarlo le avisamos a Vivian para los presupuestos` })) : []; // v416
+  if (!(isAdmRole() || viewer.role === "Admin total")) return apr;
+  const out = [...apr, ...admPcForMe().map(p => ({ go:"com:" + p.id, key:"admpc:" + p.id, ic:"clipboard-list", sev:"#38bdf8", rank:-5, t:`Nueva solicitud de pedido: ${p.title}`, m:`${p.byName || ""} · ${pcBrandTxt(p)}${p.date ? " · para el " + dm(p.date) : ""} · pasalo al Tablero de trabajos` }))];
   ADM_JOBS.filter(j => j.dsgOk && !j.fSolProv && !admClosed(j) && j.st !== "Suspendido" && (j.resp ? j.resp === viewer.name : admIsLead(viewer))).forEach(j => out.push({ go:"adm:" + j.id, key:`admdsg:${j.id}`, ic:"palette", sev:"#22c55e", rank:-4, t:`Diseño aprobado: ${j.title}`, m:`${j.prov ? `Ya se puede enviar a ${j.prov}` : "Falta elegir el proveedor"} · ${j.code || ""}` })); // v405
   ADM_EVENTS.forEach(e => { const d = admEvDays(e); if (d === null || d < 0 || d > 7) return;
     const pend = admEvPend(e), mine = admEvMine(e);
@@ -20012,7 +20021,7 @@ function pAdmPanel(){
   const evs = ADM_EVENTS.filter(e => admEvDays(e) === null || admEvDays(e) >= 0), evPend = evs.reduce((a, e) => a + admEvPend(e).length, 0);
   const tiles = [
     { k:"admtab", i:"table-2", t:"Tablero de trabajos", d:"Cada pedido de materiales, su camino y a quién le toca", m:`${open.length} sin terminar`, n:mine.length },
-    { k:"admev", i:"calendar-check", t:"Eventos", d:"Lo que hace falta para cada evento, con su lista", m:`${evs.length} ${evs.length === 1 ? "evento" : "eventos"} · ${evPend} cosas pendientes`, n:ADM_EVENTS.reduce((a, e) => a + admEvMine(e).length, 0) },
+    { k:"admev", i:"calendar-check", t:"Eventos", d:"Lo que hace falta para cada evento, con su lista", m:`${evs.length} ${evs.length === 1 ? "evento" : "eventos"} · ${evPend} cosas pendientes${ADM_EVENTS.some(e => admEvSt(e) === "Propuesta") ? ` · ${ADM_EVENTS.filter(e => admEvSt(e) === "Propuesta").length} para aprobar` : ""}`, n:ADM_EVENTS.reduce((a, e) => a + admEvMine(e).length, 0) },
     { k:"admfotos", i:"camera", t:"Fotos en los locales", d:"Los productos en los supermercados, mes a mes", m:`${ADM_FOTOS.filter(x => x.month === CURRENT_MONTH).length} fotos en ${monthName(CURRENT_MONTH)}` },
     { k:"adminf", i:"file-text", t:"Informe del mes", d:"Todo lo que se hizo en el mes, para descargar", m:monthLabel(CURRENT_MONTH) },
     { k:"pedcom", i:"shopping-bag", t:"Solicitud de pedidos", d:"Lo que piden Patricia y Emanuel (y lo que pedís vos)", m:newPc.length ? `${newPc.length} para tomar` : "", n:newPc.length },
@@ -20339,71 +20348,170 @@ const ADM_EV_ST = { "Pendiente":{ c:"#94a3b8", ic:"circle-dashed" }, "En gestió
 const admEvWhen = e => { const d = admEvDays(e); if (d === null) return "Fecha a confirmar"; const wd = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"][new Date(e.date + "T12:00").getDay()];
   return `${wd} ${dm(e.date)}${e.time ? ` · ${e.time} h` : ""} · ${d === 0 ? "hoy" : d === 1 ? "mañana" : d > 1 ? `en ${d} días` : d === -1 ? "fue ayer" : `fue hace ${-d} días`}`; };
 const admEvGroups = e => [...new Set((e.items || []).map(x => x.g || "Lo que hace falta"))];
+// v416 · Al crear un evento: el tipo (Día de la Madre, Cocina en vivo, lanzamiento…) y el catálogo de lo que suele hacer falta,
+// con Sí / No en cada cosa (los sugeridos del tipo, arriba). Queda “Para aprobar”; cuando Admin total o un Admin lo aprueba,
+// le llega el aviso a Vivian (y a la líder) para pedir los presupuestos de lo que va. Cada cosa puede llevar su presupuesto (Gs.).
+const ADM_EV_CAT = [
+  ["Lugar y montaje", [["sala", "Alquiler de sala o espacio"], ["mesas", "Mesas y sillas"], ["carpa", "Carpa o toldo"], ["escenario", "Escenario o tarima"], ["decoracion", "Ambientación y decoración"], ["globos", "Globos"], ["mantel", "Mantelería"], ["generador", "Generador eléctrico"]]],
+  ["Sonido, imagen y show", [["sonido", "Sonido"], ["luces", "Luces"], ["pantalla", "Pantalla o proyector"], ["cables", "Cables para proyectar"], ["puntero", "Puntero"], ["microfonos", "Micrófonos"], ["dj", "DJ"], ["animador", "Animador o locutor"], ["batucada", "Batucada o banda en vivo"], ["fuegos", "Fuegos artificiales"]]],
+  ["Personal", [["promotoras", "Promotoras"], ["uniformes", "Uniformes para promotoras"], ["remeras_staff", "Remeras para el staff"], ["chef", "Chef o cocinero"], ["seguridad", "Seguridad"], ["limpieza", "Limpieza"], ["ambulancia", "Ambulancia o primeros auxilios"]]],
+  ["Gastronomía", [["bocaditos", "Bocaditos o catering"], ["bebidas", "Bebidas"], ["refrigerio", "Refrigerio"], ["torta", "Torta"], ["degustacion", "Productos para degustación"], ["cocina", "Cocina o anafe"], ["ingredientes", "Ingredientes"], ["utensilios", "Utensilios de cocina"]]],
+  ["Gráfica y materiales", [["banner", "Banner o roll up"], ["estaticas", "Estáticas"], ["banderolas", "Banderolas o pasacalles"], ["backing", "Backing o photocall"], ["volantes", "Volantes"], ["dipticos", "Dípticos para clientes"], ["colgantes", "Carteles colgantes"], ["adhesivos", "Adhesivos"], ["remeras", "Remeras para participantes"]]],
+  ["Regalos y premios", [["obsequios", "Obsequios"], ["bolsitas", "Bolsitas"], ["kits", "Kits para participantes"], ["flores", "Flores"], ["sorteo", "Sorteo"], ["vales", "Vales de compra o premios"], ["sobres", "Sobres para premios"]]],
+  ["Comunicación y prensa", [["foto", "Cobertura fotográfica"], ["video", "Video o filmación"], ["prensa", "Invitación a la prensa"], ["diarios", "Reserva en diarios"], ["tv", "Pauta en TV o radio"], ["influencers", "Influencers"]]],
+  ["Trámites y logística", [["permisos", "Permisos municipales"], ["flete", "Flete o traslados"], ["seguro", "Seguro"], ["vale_enc", "Vale para encargados (cine, sala)"]]],
+];
+const ADM_EV_TIPOS = [
+  ["Lanzamiento de producto", ["sala", "sonido", "pantalla", "microfonos", "promotoras", "uniformes", "bocaditos", "bebidas", "obsequios", "bolsitas", "adhesivos", "dipticos", "colgantes", "backing", "foto", "video", "prensa", "diarios"]],
+  ["Fecha especial (Día de la Madre, del Padre, del Niño…)", ["decoracion", "globos", "sonido", "animador", "promotoras", "obsequios", "flores", "sorteo", "vales", "volantes", "banner", "colgantes", "foto", "diarios"]],
+  ["Cocina en vivo", ["cocina", "chef", "ingredientes", "utensilios", "mesas", "mantel", "degustacion", "sonido", "microfonos", "animador", "promotoras", "uniformes", "banner", "foto", "video", "limpieza"]],
+  ["Corrida o evento deportivo", ["estaticas", "banderolas", "banner", "remeras", "remeras_staff", "kits", "bolsitas", "sobres", "vales", "sonido", "dj", "batucada", "bocaditos", "promotoras", "foto", "prensa", "tv", "permisos", "seguridad", "ambulancia"]],
+  ["Apertura o aniversario de local", ["decoracion", "globos", "sonido", "animador", "dj", "promotoras", "bocaditos", "bebidas", "torta", "fuegos", "obsequios", "sorteo", "volantes", "banner", "foto", "prensa", "diarios"]],
+  ["Conferencia de prensa", ["sala", "sonido", "pantalla", "microfonos", "backing", "bocaditos", "bebidas", "foto", "video", "prensa"]],
+  ["Capacitación o reunión", ["sala", "pantalla", "cables", "puntero", "sonido", "refrigerio", "foto", "vale_enc"]],
+  ["Activación en local", ["promotoras", "uniformes", "degustacion", "mesas", "mantel", "banner", "volantes", "obsequios", "sorteo", "sonido", "foto"]],
+  ["Otro", []],
+];
+const ADM_EV_ITEM = Object.fromEntries(ADM_EV_CAT.flatMap(([g, l]) => l.map(([k, t]) => [k, { g, t }])));
+const admEvSug = tipo => (ADM_EV_TIPOS.find(x => x[0] === tipo) || [null, []])[1];
+const ADM_EV_EST = { "Propuesta":{ c:"#a855f7", ic:"hourglass", t:"Para aprobar" }, "Aprobado":{ c:"#22c55e", ic:"badge-check", t:"Aprobado" }, "Cancelado":{ c:"#ef4444", ic:"ban", t:"No se hace" } };
+const admEvSt = e => ADM_EV_EST[e?.st] ? e.st : "Aprobado"; // los de antes (sin estado) ya estaban en marcha
+const admEvPill = e => { const S = ADM_EV_EST[admEvSt(e)]; return `<span class="pcst sm" style="--c:${S.c}">${icon(S.ic)}${esc(S.t)}</span>`; };
+const admEvApprover = () => !!viewer && !window.RMH?.previewing && isAdminAny(); // aprueban Admin total y los Admin (gerencia)
+const admEvTotal = e => (e.items || []).reduce((a, x) => a + (+x.monto || 0), 0);
+// El catálogo con Sí / No. pk: { sel:{ clave:true|false }, qty:{ clave:"…" }, extra:[{ t, qty }] } · have: lo que el evento ya tiene (no se repite).
+function admPickHTML(pk, tipo, have = new Set()){
+  const sug = admEvSug(tipo).filter(k => ADM_EV_ITEM[k] && !have.has(ADM_EV_ITEM[k].t)), sugS = new Set(sug);
+  const vals = Object.entries(pk.sel), si = vals.filter(([, v]) => v === true).length + (pk.extra || []).length, no = vals.filter(([, v]) => v === false).length;
+  const row = k => { const it = ADM_EV_ITEM[k], v = pk.sel[k];
+    return `<div class="admpk${v === true ? " si" : v === false ? " no" : ""}"><span class="grow"><b>${esc(it.t)}</b>${sugS.has(k) ? `<em>Sugerido</em>` : ""}</span>${v === true ? `<input class="base sm" name="pq.${k}" value="${esc(pk.qty[k] || "")}" placeholder="Cant." maxlength="30" aria-label="Cantidad de ${esc(it.t)}">` : ""}
+      <span class="admyn" role="group" aria-label="${esc(it.t)}"><button type="button" class="si${v === true ? " on" : ""}" data-admpk="${k}|1" aria-pressed="${v === true}">Sí</button><button type="button" class="no${v === false ? " on" : ""}" data-admpk="${k}|0" aria-pressed="${v === false}">No</button></span></div>`; };
+  const groups = ADM_EV_CAT.map(([g, l]) => [g, l.map(x => x[0]).filter(k => !sugS.has(k) && !have.has(ADM_EV_ITEM[k].t))]).filter(([, l]) => l.length);
+  return `<div class="admpick"><div class="admpkh"><div><b>¿Qué va a necesitar?</b><span>${si} sí · ${no} no · ${sug.length + groups.reduce((a, [, l]) => a + l.length, 0) - vals.filter(([k]) => ADM_EV_ITEM[k] && !have.has(ADM_EV_ITEM[k].t)).length} sin elegir</span></div>
+      <div class="chips">${sug.length ? `<button type="button" class="btn sm" data-admpksug>${icon("check")} Los sugeridos, Sí</button>` : ""}<button type="button" class="btn sm" data-admpkrest>Lo que falta, No</button></div></div>
+    ${sug.length ? `<div class="admpkg"><h3>${icon("sparkles")} Sugeridos para ${esc(tipo.split(" (")[0])}</h3>${sug.map(row).join("")}</div>` : `<p class="note" style="margin:0">${tipo ? "Elegí en el catálogo lo que haga falta." : "Elegí el tipo de evento para ver lo sugerido, o marcá en el catálogo."}</p>`}
+    ${groups.map(([g, l]) => { const n = l.filter(k => pk.sel[k] === true).length; return `<details class="admpkg"${n || !sug.length ? " open" : ""}><summary>${esc(g)} <span class="note">${n ? n + " sí · " : ""}${l.length} elementos</span></summary>${l.map(row).join("")}</details>`; }).join("")}
+    <div class="admpkg"><h3>${icon("plus")} Otro que no está en la lista</h3>${(pk.extra || []).map((x, i) => `<div class="admpk si"><span class="grow"><b>${esc(x.t)}</b></span>${x.qty ? `<span class="admqty">${esc(x.qty)}</span>` : ""}<button type="button" class="btn ib sm" data-admpkx="${i}" aria-label="Quitar ${esc(x.t)}">${icon("x")}</button></div>`).join("")}
+      <div class="admadd" style="margin-top:6px"><input class="base" id="admPkNew" maxlength="120" placeholder="Ej.: Alquiler de vajilla" aria-label="Otro elemento"><input class="base sm" id="admPkNewQ" maxlength="30" placeholder="Cant." aria-label="Cantidad"><button type="button" class="btn sm" data-admpkadd>${icon("plus")} Agregar</button></div></div></div>`;
+}
+// Los elementos elegidos (Sí), listos para la lista del evento.
+const admPickItems = pk => [...Object.entries(pk.sel).filter(([k, v]) => v === true && ADM_EV_ITEM[k]).map(([k]) => ({ id:admItId(), g:ADM_EV_ITEM[k].g, t:ADM_EV_ITEM[k].t, ...(pk.qty[k] ? { qty:pk.qty[k] } : {}), st:"Pendiente" })),
+  ...(pk.extra || []).map(x => ({ id:admItId(), g:"Otros", t:x.t, ...(x.qty ? { qty:x.qty } : {}), st:"Pendiente" }))];
+// Lo escrito en la hoja del evento queda en admUI (así no se pierde al tocar Sí / No).
+function admEvRead(){
+  const fm = document.getElementById("admEvForm") || document.getElementById("admEvPick"), f = admUI.evForm, pk = f?.pk || admUI.evPick; if (!fm || !pk) return;
+  if (f && fm.id === "admEvForm") ["name", "date", "time", "place", "notes", "tipo", "from"].forEach(n => { if (fm.elements[n]) f.e[n] = String(fm.elements[n].value || "").trim(); });
+  fm.querySelectorAll('[name^="pq."]').forEach(el => { const k = el.name.slice(3), v = el.value.trim(); if (v) pk.qty[k] = v; else delete pk.qty[k]; });
+}
 function pAdmEv(){
   if (admUI.evForm) return admEvFormPage();
   if (admUI.ev && admEvById(admUI.ev)) return admEvPage(admEvById(admUI.ev));
-  const tab = admUI.evTab, ed = admEdit();
+  const tab = admUI.evTab, ed = admEdit(), prop = ADM_EVENTS.filter(e => admEvSt(e) === "Propuesta");
   const list = ADM_EVENTS.filter(e => { const d = admEvDays(e); return tab === "todos" || (tab === "prox" ? d === null || d >= 0 : d !== null && d < 0); })
     .sort((a, b) => tab === "pas" ? String(b.date).localeCompare(String(a.date)) : (a.date || "9999").localeCompare(b.date || "9999"));
-  const card = e => { const it = e.items || [], ok = it.filter(x => x.st === "Listo").length, pct = it.length ? Math.round(ok / it.length * 100) : 0, d = admEvDays(e), mine = admEvMine(e);
-    return `<button type="button" class="panel admev" data-admev="${esc(e.id)}" style="--p:${pct}%;--c:${d !== null && d >= 0 && d <= 3 && ok < it.length ? "#f97316" : pct === 100 ? "#22c55e" : "#22d3ee"}"><span class="admevd">${e.date ? `<b>${e.date.slice(8, 10)}</b><small>${MONTHS_ES[+e.date.slice(5, 7) - 1].slice(0, 3)}</small>` : `<b>?</b><small>fecha</small>`}</span>
-      <span class="grow"><b>${esc(e.name)}</b><small>${esc(admEvWhen(e))}${e.place ? " · " + esc(e.place) : ""}</small><span class="admbar2"><i></i></span><small>${ok} de ${it.length} listas${it.length - ok ? ` · faltan ${it.length - ok}` : ""}${mine.length ? ` · ${mine.length} ${mine.length === 1 ? "es tuya" : "son tuyas"}` : ""}</small></span>${icon("chevron-right")}</button>`; };
-  return `<div class="head"><div><h1 class="pmh">${pmIco("calendar-check")}Eventos</h1><p class="sub">Cargá el evento y todo lo que hace falta: cantidad, proveedor o contacto y quién se ocupa. Se marca cada cosa cuando está lista; unos días antes llega el recordatorio.</p></div>
+  const card = e => { const it = e.items || [], ok = it.filter(x => x.st === "Listo").length, pct = it.length ? Math.round(ok / it.length * 100) : 0, d = admEvDays(e), mine = admEvMine(e), tot = admEvTotal(e);
+    return `<button type="button" class="panel admev${admEvSt(e) === "Cancelado" ? " off" : ""}" data-admev="${esc(e.id)}" style="--p:${pct}%;--c:${admEvSt(e) === "Propuesta" ? "#a855f7" : d !== null && d >= 0 && d <= 3 && ok < it.length ? "#f97316" : pct === 100 ? "#22c55e" : "#22d3ee"}"><span class="admevd">${e.date ? `<b>${e.date.slice(8, 10)}</b><small>${MONTHS_ES[+e.date.slice(5, 7) - 1].slice(0, 3)}</small>` : `<b>?</b><small>fecha</small>`}</span>
+      <span class="grow"><span class="admevt"><b>${esc(e.name)}</b>${admEvPill(e)}</span><small>${esc(admEvWhen(e))}${e.place ? " · " + esc(e.place) : ""}${e.tipo ? " · " + esc(e.tipo.split(" (")[0]) : ""}</small><span class="admbar2"><i></i></span><small>${ok} de ${it.length} listas${it.length - ok ? ` · faltan ${it.length - ok}` : ""}${tot ? ` · ${admGs(tot)}` : ""}${mine.length ? ` · ${mine.length} ${mine.length === 1 ? "es tuya" : "son tuyas"}` : ""}</small></span>${icon("chevron-right")}</button>`; };
+  return `<div class="head"><div><h1 class="pmh">${pmIco("calendar-check")}Eventos</h1><p class="sub">Cargá el evento y elegí lo que va a necesitar (Sí / No). Cuando se aprueba, le avisamos a Vivian para los presupuestos. Se marca cada cosa cuando está lista; unos días antes llega el recordatorio.</p></div>
     ${ed ? `<button type="button" class="btn primary" data-admevnew>${icon("plus")} Nuevo evento</button>` : ""}</div>
+  ${prop.length && admEvApprover() ? `<div class="panel admevprop">${icon("hourglass")}<span><b>${prop.length === 1 ? "1 evento para aprobar" : `${prop.length} eventos para aprobar`}:</b> ${prop.map(e => `<button type="button" class="linkish" data-admev="${esc(e.id)}">${esc(e.name)}</button>`).join(", ")}</span></div>` : ""}
   ${viewTabs([["prox", "Próximos", "calendar-days"], ["pas", "Pasados", "history"], ["todos", "Todos", "list"]], tab, "data-admevtab")}
   ${list.length ? `<div class="admevs">${list.map(card).join("")}</div>` : `<div class="panel"><div class="empty">${tab === "pas" ? "No hay eventos pasados." : `No hay eventos cargados.${ed ? " Tocá <b>Nuevo evento</b>." : ""}`}</div></div>`}`;
 }
 function admEvPage(e){
-  const ed = admEdit(), it = e.items || [], ok = it.filter(x => x.st === "Listo").length, groups = admEvGroups(e);
+  const ed = admEdit(), it = e.items || [], ok = it.filter(x => x.st === "Listo").length, groups = admEvGroups(e), st = admEvSt(e), tot = admEvTotal(e), niv = admNivel(tot), fac = admByFunc("factura");
   const people = [...new Set([...admTeam(), ...PEOPLE.filter(pp => pp.active !== false && ["Admin", "Admin total"].includes(pp.role))].map(pp => pp.name))];
   const row = x => { const S = ADM_EV_ST[x.st] || ADM_EV_ST.Pendiente;
     if (admUI.evItem === x.id && ed) return `<li class="admit edit"><form class="admitf" data-admitform="${esc(x.id)}">
       <label class="admw"><span>Qué hace falta</span><input class="base" name="t" value="${esc(x.t)}" maxlength="200" required></label>
       <label><span>Cantidad</span><input class="base" name="qty" value="${esc(x.qty || "")}" maxlength="30" placeholder="Ej.: 200"></label>
       <label><span>Proveedor o contacto</span><input class="base" name="prov" value="${esc(x.prov || "")}" maxlength="120" list="admProvL2"></label>
+      <label><span>Presupuesto (Gs.)</span><input class="base" name="monto" type="number" min="0" step="1" value="${x.monto ?? ""}" placeholder="Total con IVA"></label>
       <label><span>Quién se ocupa</span><input class="base" name="resp" value="${esc(x.resp || "")}" maxlength="80" list="admRespL"></label>
       <label><span>Grupo</span><input class="base" name="g" value="${esc(x.g || "")}" maxlength="80" list="admGrpL"></label>
       <label class="admw"><span>Nota</span><input class="base" name="note" value="${esc(x.note || "")}" maxlength="400"></label>
       <div class="chips admw"><button type="button" class="btn sm danger" data-admitdel="${esc(x.id)}">${icon("trash-2")} Quitar</button><span class="grow"></span><button type="button" class="btn sm" data-admitcancel>Cancelar</button><button type="submit" class="btn sm primary">${icon("check")} Guardar</button></div></form></li>`;
     return `<li class="admit st-${S === ADM_EV_ST.Listo ? "ok" : S === ADM_EV_ST["En gestión"] ? "mid" : "no"}"><button type="button" class="admck" style="--c:${S.c}" data-admitst="${esc(x.id)}"${ed ? "" : " disabled"} title="${esc(x.st || "Pendiente")}${ed ? " · tocá para cambiar" : ""}" aria-label="${esc(x.t)}: ${esc(x.st || "Pendiente")}">${icon(S.ic)}</button>
-      <div class="grow"><span class="admitt"><b>${esc(x.t)}</b>${x.qty ? `<span class="admqty">${esc(x.qty)}${/^\d+$/.test(x.qty) ? " u." : ""}</span>` : ""}</span><small>${[x.prov ? `${icon("store")} ${esc(x.prov)}` : "", x.resp ? `${icon("user-round")} ${esc(x.resp)}` : "", x.note ? esc(x.note) : ""].filter(Boolean).join(" · ")}</small></div>
+      <div class="grow"><span class="admitt"><b>${esc(x.t)}</b>${x.qty ? `<span class="admqty">${esc(x.qty)}${/^\d+$/.test(x.qty) ? " u." : ""}</span>` : ""}${x.monto ? `<span class="admqty gs">${admGs(x.monto)}</span>` : ""}</span><small>${[x.prov ? `${icon("store")} ${esc(x.prov)}` : "", x.resp ? `${icon("user-round")} ${esc(x.resp)}` : "", x.note ? esc(x.note) : ""].filter(Boolean).join(" · ")}</small></div>
       <span class="pcst sm" style="--c:${S.c}">${esc(x.st || "Pendiente")}</span>${ed ? `<button type="button" class="btn ib sm" data-admitedit="${esc(x.id)}" aria-label="Editar">${icon("pencil")}</button>` : ""}</li>`; };
+  const apBox = st === "Propuesta" ? `<section class="panel admnext" style="--c:#a855f7"><span class="admsi">${icon("hourglass")}</span><div class="grow"><small>Para aprobar</small><b>¿Se hace este evento?</b><span>${it.length} ${it.length === 1 ? "cosa elegida" : "cosas elegidas"}${e.no?.length ? ` · ${e.no.length} que no van` : ""}. Al aprobarlo le avisamos a ${fac ? admFirst(fac) : "Administración"} para pedir los presupuestos a los proveedores.</span></div>
+      ${admEvApprover() ? `<div class="chips"><button type="button" class="btn primary" data-admevap="${esc(e.id)}">${icon("badge-check")} Aprobar el evento</button><button type="button" class="btn danger" data-admevno="${esc(e.id)}">${icon("ban")} No se hace</button></div>` : `<span class="note">Lo aprueba Admin total o un Admin.</span>`}</section>`
+    : st === "Cancelado" ? `<section class="panel admnext" style="--c:#ef4444"><span class="admsi">${icon("ban")}</span><div class="grow"><small>Estado</small><b>No se hace</b><span>${e.apBy ? `Lo decidió ${esc(e.apBy.split(" ")[0])}${e.apAt ? " el " + dm(String(e.apAt).slice(0, 10)) : ""}.` : ""}</span></div>${admEvApprover() ? `<button type="button" class="btn" data-admevre="${esc(e.id)}">${icon("rotate-ccw")} Volver a “Para aprobar”</button>` : ""}</section>`
+    : e.apAt ? `<p class="note admevapok">${icon("badge-check")} Aprobado por ${esc(String(e.apBy || "").split(" ")[0])} el ${dm(String(e.apAt).slice(0, 10))}${fac ? ` · se le avisó a ${esc(admFirst(fac))} para los presupuestos` : ""}.</p>` : "";
+  const pick = admUI.evPick && ed ? `<section class="panel"><form id="admEvPick" onsubmit="return false">${admPickHTML(admUI.evPick, e.tipo || "", new Set(it.map(x => x.t)))}</form><div class="chips" style="justify-content:flex-end;margin-top:10px"><button type="button" class="btn" data-admevpickx>Cancelar</button><button type="button" class="btn primary" data-admevpickok>${icon("check")} Agregar los elegidos</button></div></section>` : "";
   return `<div class="jpage admpage"><div class="jp-top"><button class="btn pback" type="button" data-admevback>${icon("arrow-left")} Volver a Eventos</button></div>
-  <div class="jp-h"><span class="note">Administración de Marketing · Evento</span><h1 style="margin:4px 0 4px">${esc(e.name)}</h1><p class="note" style="margin:0">${icon("calendar-days")} ${esc(admEvWhen(e))}${e.place ? ` · ${icon("map-pin")} ${esc(e.place)}` : ""}</p>${e.notes ? `<p style="margin:8px 0 0">${esc(e.notes)}</p>` : ""}
+  <div class="jp-h"><span class="note">Administración de Marketing · Evento${e.tipo ? " · " + esc(e.tipo) : ""}</span><h1 style="margin:4px 0 4px">${esc(e.name)}</h1><div class="chips">${admEvPill(e)}<span class="note">${icon("calendar-days")} ${esc(admEvWhen(e))}${e.place ? ` · ${icon("map-pin")} ${esc(e.place)}` : ""}</span></div>${e.notes ? `<p style="margin:8px 0 0">${esc(e.notes)}</p>` : ""}
     <div class="admevprog" style="--p:${it.length ? Math.round(ok / it.length * 100) : 0}%"><span class="admbar2"><i></i></span><b>${ok} de ${it.length} listas</b></div>
-    <div class="chips" style="margin-top:8px">${ed ? `<button type="button" class="btn sm" data-admevedit="${esc(e.id)}">${icon("pencil")} Editar datos del evento</button>` : ""}<button type="button" class="btn sm" data-admevcopy="${esc(e.id)}">${icon("copy")} Copiar la lista</button><button type="button" class="btn sm" data-admevxls="${esc(e.id)}">${icon("download")} Excel</button></div></div>
+    ${tot ? `<p class="admniv">${icon("receipt")} <b>Presupuesto: ${admGs(tot)}</b> (${it.filter(x => +x.monto).length} de ${it.length} con monto)${niv ? ` · ${esc(niv.n)}: ${esc(niv.d)}` : ""}</p>` : ""}
+    <div class="chips" style="margin-top:8px">${ed ? `<button type="button" class="btn sm" data-admevedit="${esc(e.id)}">${icon("pencil")} Editar datos del evento</button><button type="button" class="btn sm" data-admevpick>${icon("list-checks")} Elegir más elementos</button>` : ""}<button type="button" class="btn sm" data-admevcopy="${esc(e.id)}">${icon("copy")} Copiar la lista</button><button type="button" class="btn sm" data-admevxls="${esc(e.id)}">${icon("download")} Excel</button></div></div>
+  ${apBox}${pick}
   <datalist id="admRespL">${people.map(n => `<option value="${esc(n)}">`).join("")}</datalist><datalist id="admProvL2">${[...new Set([...ADM_EVENTS.flatMap(x => (x.items || []).map(y => y.prov)), ...ADM_JOBS.map(x => x.prov)].filter(Boolean))].sort().map(n => `<option value="${esc(n)}">`).join("")}</datalist><datalist id="admGrpL">${groups.map(g => `<option value="${esc(g)}">`).join("")}</datalist>
   ${groups.map(g => { const l = it.filter(x => (x.g || "Lo que hace falta") === g), gok = l.filter(x => x.st === "Listo").length;
     return `<section class="panel admgrp"><h2 class="pmh">${pmIco("list-checks")}${esc(g)} <span class="note">${gok} de ${l.length}</span></h2><ul class="admits">${l.map(row).join("")}</ul>
       ${ed ? `<form class="admadd" data-admadd="${esc(g)}"><input class="base" name="t" maxlength="200" placeholder="Agregar algo que hace falta…" aria-label="Agregar a ${esc(g)}"><input class="base sm" name="qty" maxlength="30" placeholder="Cant." aria-label="Cantidad"><button type="submit" class="btn sm">${icon("plus")} Agregar</button></form>` : ""}</section>`; }).join("")}
-  ${!groups.length ? `<div class="panel"><div class="empty">Todavía no hay nada en la lista.</div></div>` : ""}
+  ${!groups.length ? `<div class="panel"><div class="empty">Todavía no hay nada en la lista.${ed ? " Tocá <b>Elegir más elementos</b>." : ""}</div></div>` : ""}
+  ${e.no?.length ? `<p class="note">${icon("ban")} No van: ${e.no.map(esc).join(", ")}.</p>` : ""}
   ${ed ? `<section class="panel"><form class="admadd" data-admadd=""><input class="base" name="g" maxlength="80" placeholder="Nuevo grupo (ej.: Capacitación, Reserva en diarios)" aria-label="Nuevo grupo"><input class="base" name="t" maxlength="200" placeholder="Primera cosa del grupo" aria-label="Primera cosa"><button type="submit" class="btn sm">${icon("plus")} Agregar grupo</button></form></section>
     <div class="chips" style="justify-content:flex-end"><button type="button" class="btn danger" data-admevdel="${esc(e.id)}">${icon("trash-2")} Borrar el evento</button></div>` : ""}</div>`;
 }
 function admEvFormPage(){
   const f = admUI.evForm, e = f.e, nu = f.mode === "new";
+  if (nu && !f.pk) f.pk = { sel:{}, qty:{}, extra:[] };
   return `<div class="jpage admpage"><div class="jp-top"><button class="btn pback" type="button" data-admevcancel>${icon("arrow-left")} Volver</button></div>
-  <div class="jp-h"><span class="note">Administración de Marketing · Eventos</span><h1 style="margin:4px 0 0">${nu ? "Nuevo evento" : "Editar evento"}</h1></div>
+  <div class="jp-h"><span class="note">Administración de Marketing · Eventos</span><h1 style="margin:4px 0 0">${nu ? "Nuevo evento" : "Editar evento"}</h1>${nu ? `<p class="note" style="margin:6px 0 0">Elegí el tipo y marcá Sí o No en lo que va a necesitar. Queda <b>para aprobar</b>; cuando se aprueba, le avisamos a Vivian para los presupuestos.</p>` : ""}</div>
   <form id="admEvForm" class="panel admform"><div class="admgrid">
-    <label class="admw"><span>Nombre del evento *</span><input class="base" name="name" value="${esc(e.name || "")}" maxlength="140" required placeholder="Ej.: Corrida San Bernardino 2027"></label>
+    <label class="admw"><span>Nombre del evento *</span><input class="base" name="name" value="${esc(e.name || "")}" maxlength="140" required placeholder="Ej.: Día de la Madre en Superseis España"></label>
+    <label><span>Tipo de evento</span><select class="base" name="tipo" data-admevtipo><option value="">Elegí el tipo</option>${ADM_EV_TIPOS.map(([t]) => `<option ${t === e.tipo ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></label>
     <label><span>Fecha</span><input class="base" type="date" name="date" value="${esc(e.date || "")}"><small class="note">Si todavía no está, dejala vacía.</small></label>
     <label><span>Hora</span><input class="base" type="time" name="time" value="${esc(e.time || "")}"></label>
-    <label><span>Lugar</span><input class="base" name="place" value="${esc(e.place || "")}" maxlength="140" placeholder="Ej.: San Bernardino"></label>
+    <label><span>Lugar</span><input class="base" name="place" value="${esc(e.place || "")}" maxlength="140" placeholder="Ej.: Superseis España"></label>
     <label class="admw"><span>Notas</span><textarea class="base" name="notes" rows="2" maxlength="1000" placeholder="Ej.: capacitación el día anterior, fecha a confirmar">${esc(e.notes || "")}</textarea></label>
-    ${nu && ADM_EVENTS.length ? `<label class="admw"><span>Copiar la lista de otro evento <small class="note">(opcional: todo vuelve a Pendiente)</small></span><select class="base" name="from"><option value="">No, empiezo de cero</option>${ADM_EVENTS.map(x => `<option value="${esc(x.id)}">${esc(x.name)} (${(x.items || []).length} cosas)</option>`).join("")}</select></label>` : ""}
+    ${nu ? `<div class="admw">${admPickHTML(f.pk, e.tipo || "")}</div>` : ""}
+    ${nu && ADM_EVENTS.length ? `<label class="admw"><span>Sumar también la lista de otro evento <small class="note">(opcional: todo vuelve a Pendiente)</small></span><select class="base" name="from"><option value="">No</option>${ADM_EVENTS.map(x => `<option value="${esc(x.id)}" ${x.id === e.from ? "selected" : ""}>${esc(x.name)} (${(x.items || []).length} cosas)</option>`).join("")}</select></label>` : ""}
   </div><div class="chips" style="justify-content:flex-end;margin-top:12px"><button type="button" class="btn" data-admevcancel>Cancelar</button><button type="submit" class="btn primary">${icon("check")} ${nu ? "Crear evento" : "Guardar"}</button></div></form></div>`;
 }
-const admEvText = e => [`${e.name}${e.date ? " · " + admEvWhen(e) : ""}${e.place ? " · " + e.place : ""}`, ...admEvGroups(e).flatMap(g => ["", g.toUpperCase(), ...(e.items || []).filter(x => (x.g || "Lo que hace falta") === g).map(x => `${x.st === "Listo" ? "✅" : x.st === "En gestión" ? "⏳" : "⬜"} ${x.t}${x.qty ? ` (${x.qty})` : ""}${x.prov ? ` · ${x.prov}` : ""}${x.resp ? ` · ${x.resp}` : ""}${x.note ? ` · ${x.note}` : ""}`)])].join("\n");
+// Sí / No del catálogo, el tipo de evento, aprobar y elegir más elementos.
+document.addEventListener("click", e => {
+  if (!viewer || !admSees() || !admEdit()) return; const t = e.target, pk = admUI.evForm?.pk || admUI.evPick;
+  const b = t.closest("[data-admpk]"); if (b && pk){ admEvRead(); const [k, v] = b.dataset.admpk.split("|"), val = v === "1"; if (pk.sel[k] === val) delete pk.sel[k]; else pk.sel[k] = val; render(); return; }
+  if (t.closest("[data-admpksug]") && pk){ admEvRead(); admEvSug(admUI.evForm?.e?.tipo || admEvById(admUI.ev)?.tipo || "").forEach(k => { if (pk.sel[k] === undefined) pk.sel[k] = true; }); render(); return; }
+  if (t.closest("[data-admpkrest]") && pk){ admEvRead(); const have = new Set((admEvById(admUI.ev)?.items || []).map(x => x.t)); Object.keys(ADM_EV_ITEM).forEach(k => { if (pk.sel[k] === undefined && !(admUI.evPick && have.has(ADM_EV_ITEM[k].t))) pk.sel[k] = false; }); render(); return; }
+  if (t.closest("[data-admpkadd]") && pk){ admEvRead(); const n = document.getElementById("admPkNew"), q = document.getElementById("admPkNewQ"), tt = String(n?.value || "").trim(); if (!tt){ toast("Escribí qué hace falta."); n?.focus(); return; }
+    (pk.extra = pk.extra || []).push({ t:tt, ...(q?.value.trim() ? { qty:q.value.trim() } : {}) }); render(); setTimeout(() => document.getElementById("admPkNew")?.focus(), 0); return; }
+  const x = t.closest("[data-admpkx]"); if (x && pk){ admEvRead(); pk.extra.splice(+x.dataset.admpkx, 1); render(); return; }
+  if (t.closest("[data-admevpick]")){ admUI.evPick = { sel:{}, qty:{}, extra:[] }; render(); return; }
+  if (t.closest("[data-admevpickx]")){ admUI.evPick = null; render(); return; }
+  if (t.closest("[data-admevpickok]")){ const ev = admEvById(admUI.ev); if (!ev || !admUI.evPick) return; admEvRead(); const add = admPickItems(admUI.evPick), no = Object.entries(admUI.evPick.sel).filter(([, v]) => v === false).map(([k]) => ADM_EV_ITEM[k]?.t).filter(Boolean);
+    if (!add.length && !no.length){ toast("Marcá Sí en lo que haga falta."); return; }
+    (ev.items = ev.items || []).push(...add); if (no.length) ev.no = [...new Set([...(ev.no || []), ...no])]; admUI.evPick = null; render(); window.RMH?.flushNow?.(); toast(add.length ? `Se sumaron ${add.length} ${add.length === 1 ? "cosa" : "cosas"} a la lista.` : "Listo."); return; }
+  const ap = t.closest("[data-admevap]"); if (ap){ if (!admEvApprover()) return; const ev = admEvById(ap.dataset.admevap); if (!ev) return; admEvApprove(ev); return; }
+  const no = t.closest("[data-admevno]"); if (no){ if (!admEvApprover()) return; const ev = admEvById(no.dataset.admevno); if (!ev) return;
+    if (admUI.delSure !== "no" + ev.id || Date.now() - (admUI.delAt || 0) > 6000){ admUI.delSure = "no" + ev.id; admUI.delAt = Date.now(); toast("¿Marcar que no se hace? Tocá “No se hace” de nuevo para confirmar."); return; }
+    Object.assign(ev, { st:"Cancelado", apAt:new Date().toISOString(), apBy:viewer.name }); render(); window.RMH?.flushNow?.(); toast(`“${ev.name}”: no se hace.`); return; }
+  const re = t.closest("[data-admevre]"); if (re){ if (!admEvApprover()) return; const ev = admEvById(re.dataset.admevre); if (!ev) return; ev.st = "Propuesta"; delete ev.apAt; delete ev.apBy; render(); window.RMH?.flushNow?.(); return; }
+});
+document.addEventListener("change", e => { if (!e.target.closest?.("[data-admevtipo]") || !admUI.evForm) return; admEvRead(); render(); });
+// Aprobar: lo que va y todavía no tiene proveedor queda a nombre de Vivian (“Pedir presupuesto”) y le llega el aviso (también a la líder).
+function admEvApprove(ev){
+  const fac = admByFunc("factura"), lead = admLeads()[0], open = (ev.items || []).filter(x => x.st !== "Listo" && !x.prov);
+  if (fac) open.forEach(x => { if (!x.resp) x.resp = fac.name; if (!/presupuesto/i.test(x.note || "")) x.note = "Pedir presupuesto" + (x.note ? " · " + x.note : ""); });
+  Object.assign(ev, { st:"Aprobado", apAt:new Date().toISOString(), apBy:viewer.name });
+  const text = `Evento aprobado${ev.date ? " para el " + dm(ev.date) : ""} · pedí los presupuestos de ${open.length} ${open.length === 1 ? "cosa" : "cosas"}`;
+  [...new Set([fac?.name, lead?.name].filter(n => n && n !== viewer.name))].forEach(to => notify({ to, type:"nuevo", admev:ev.id, title:ev.name, text }));
+  render(); window.RMH?.flushNow?.();
+  toast(`Aprobado: “${ev.name}”.${fac && fac.name !== viewer.name ? ` Le avisamos a ${admFirst(fac)} para los presupuestos (${open.length}).` : ""}`);
+}
+const admEvText = e => [`${e.name}${e.date ? " · " + admEvWhen(e) : ""}${e.place ? " · " + e.place : ""}`, ...admEvGroups(e).flatMap(g => ["", g.toUpperCase(), ...(e.items || []).filter(x => (x.g || "Lo que hace falta") === g).map(x => `${x.st === "Listo" ? "✅" : x.st === "En gestión" ? "⏳" : "⬜"} ${x.t}${x.qty ? ` (${x.qty})` : ""}${x.prov ? ` · ${x.prov}` : ""}${x.monto ? ` · ${admGs(x.monto)}` : ""}${x.resp ? ` · ${x.resp}` : ""}${x.note ? ` · ${x.note}` : ""}`)])].join("\n");
 const admItId = () => "i" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 document.addEventListener("click", e => {
   if (!viewer || !admSees()) return;
   const t = e.target;
   const ev = t.closest("[data-admev]"); if (ev){ admUI.ev = ev.dataset.admev; admUI.evItem = null; clearDocAlerts("admev:" + admUI.ev); render(); window.scrollTo(0, 0); return; }
   const tb = t.closest("[data-admevtab]"); if (tb){ admUI.evTab = tb.dataset.admevtab; render(); return; }
-  if (t.closest("[data-admevback]")){ admUI.ev = null; admUI.evItem = null; render(); return; }
+  if (t.closest("[data-admevback]")){ admUI.ev = null; admUI.evItem = null; admUI.evPick = null; render(); return; }
   if (t.closest("[data-admevcopy]")){ const x = admEvById(t.closest("[data-admevcopy]").dataset.admevcopy); if (x) navigator.clipboard?.writeText(admEvText(x)).then(() => toast("Lista copiada: pegala en WhatsApp o en un correo."), () => toast("No se pudo copiar.")); return; }
   const xl = t.closest("[data-admevxls]"); if (xl){ const x = admEvById(xl.dataset.admevxls); if (!x) return;
-    admDownload(xlsxBlob([{ name:"Evento", rows:[[{ v:x.name, s:1 }], [admEvWhen(x) + (x.place ? " · " + x.place : "")], [], ["Grupo", "Qué hace falta", "Cantidad", "Proveedor o contacto", "Quién se ocupa", "Estado", "Nota"].map(v => ({ v, s:1 })), ...(x.items || []).map(y => [y.g || "", y.t, y.qty || "", y.prov || "", y.resp || "", y.st || "Pendiente", { v:y.note || "", s:2 }])], freeze:4 }]), `Evento_${x.name.replace(/[^\wÀ-ÿ]+/g, "_").slice(0, 50)}.xlsx`); return; }
+    admDownload(xlsxBlob([{ name:"Evento", rows:[[{ v:x.name, s:1 }], [admEvWhen(x) + (x.place ? " · " + x.place : "")], [], ["Grupo", "Qué hace falta", "Cantidad", "Proveedor o contacto", "Presupuesto (Gs.)", "Quién se ocupa", "Estado", "Nota"].map(v => ({ v, s:1 })), ...(x.items || []).map(y => [y.g || "", y.t, y.qty || "", y.prov || "", +y.monto || "", y.resp || "", y.st || "Pendiente", { v:y.note || "", s:2 }]), ...(admEvTotal(x) ? [[], ["", "Total", "", "", admEvTotal(x)]] : [])], freeze:4 }]), `Evento_${admFileName(x.name).slice(0, 50)}.xlsx`); return; }
   if (!admEdit()) return;
   if (t.closest("[data-admevnew]")){ admUI.evForm = { mode:"new", e:{} }; render(); window.scrollTo(0, 0); return; }
   const eed = t.closest("[data-admevedit]"); if (eed){ const x = admEvById(eed.dataset.admevedit); if (x){ admUI.evForm = { mode:"edit", e:{ ...x } }; render(); } return; }
@@ -20421,14 +20529,19 @@ document.addEventListener("submit", e => {
   const fm = e.target;
   if (fm.id === "admEvForm"){ e.preventDefault(); if (!admEdit()) return;
     const v = n => String(fm.elements[n]?.value || "").trim(), f = admUI.evForm; if (!v("name")){ toast("Escribí el nombre del evento."); return; }
-    const data = { name:v("name"), date:v("date"), time:v("time"), place:v("place"), notes:v("notes") };
-    if (f.mode === "new"){ const src = v("from") && admEvById(v("from"));
-      const x = { id:"ev-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 4), ...data, by:viewer.name, at:new Date().toISOString(), items:src ? (src.items || []).map(y => ({ id:admItId(), g:y.g, t:y.t, ...(y.qty ? { qty:y.qty } : {}), ...(y.prov ? { prov:y.prov } : {}), ...(y.resp ? { resp:y.resp } : {}), ...(y.note ? { note:y.note } : {}), st:"Pendiente" })) : [] };
-      ADM_EVENTS.push(x); admUI.ev = x.id; toast(`Evento creado: “${x.name}”${src ? ` con la lista de “${src.name}” (${x.items.length} cosas)` : ""}.`); }
+    const data = { name:v("name"), date:v("date"), time:v("time"), place:v("place"), notes:v("notes"), tipo:v("tipo") }; if (!data.tipo) delete data.tipo;
+    if (f.mode === "new"){ admEvRead(); const src = v("from") && admEvById(v("from")), pk = f.pk || { sel:{}, qty:{}, extra:[] }, mine = admPickItems(pk), have = new Set(mine.map(y => y.t));
+      const copied = src ? (src.items || []).filter(y => !have.has(y.t)).map(y => ({ id:admItId(), g:y.g, t:y.t, ...(y.qty ? { qty:y.qty } : {}), ...(y.prov ? { prov:y.prov } : {}), ...(y.resp ? { resp:y.resp } : {}), ...(y.note ? { note:y.note } : {}), st:"Pendiente" })) : [];
+      if (!mine.length && !copied.length){ toast("Marcá Sí en al menos una cosa que haga falta (o sumá la lista de otro evento)."); return; }
+      const no = Object.entries(pk.sel).filter(([, val]) => val === false).map(([k]) => ADM_EV_ITEM[k]?.t).filter(Boolean);
+      const x = { id:"ev-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 4), ...data, st:"Propuesta", by:viewer.name, at:new Date().toISOString(), items:[...mine, ...copied], ...(no.length ? { no } : {}) };
+      ADM_EVENTS.push(x); admUI.ev = x.id; admUI.evPick = null;
+      toast(`Evento creado: “${x.name}” con ${x.items.length} ${x.items.length === 1 ? "cosa" : "cosas"}. Queda para aprobar${admEvApprover() ? ": tocá “Aprobar el evento” para avisarle a Vivian." : "."}`); }
     else { const x = admEvById(f.e.id); if (x) Object.assign(x, data); toast("Guardado."); }
     admUI.evForm = null; render(); window.RMH?.flushNow?.(); return; }
   if (fm.matches?.("[data-admitform]")){ e.preventDefault(); if (!admEdit()) return; const x = admEvById(admUI.ev), y = x && (x.items || []).find(z => z.id === fm.dataset.admitform); if (!y) return;
     ["t", "qty", "prov", "resp", "g", "note"].forEach(k => { const val = String(fm.elements[k]?.value || "").trim(); if (val) y[k] = val; else if (k !== "t") delete y[k]; });
+    { const mv = String(fm.elements.monto?.value || "").trim(); if (mv === "") delete y.monto; else y.monto = Math.max(0, Math.round(+mv) || 0); } // v416: presupuesto de cada cosa
     admUI.evItem = null; render(); window.RMH?.flushNow?.(); return; }
   if (fm.matches?.("[data-admadd]")){ e.preventDefault(); if (!admEdit()) return; const x = admEvById(admUI.ev); if (!x) return;
     const tt = String(fm.elements.t?.value || "").trim(), g = fm.dataset.admadd || String(fm.elements.g?.value || "").trim(), qty = String(fm.elements.qty?.value || "").trim();
@@ -20503,7 +20616,9 @@ function admFotoView(){
     <img data-admsrc="${esc(x.p)}" alt="${esc(c.local)}"><div class="admfvi"><b>${esc(c.local)}</b><span>${c.marca ? esc(c.marca) + " · " : ""}${dm(x.date)}/${x.date.slice(0, 4)} · subió ${esc(x.by || "")}</span>${x.note ? `<span>${esc(x.note)}</span>` : ""}
     <div class="chips">${c.job ? `<button type="button" class="btn sm" data-admopen="${esc(c.job.id)}">${icon("table-2")} ${esc(c.job.code || "Ver el trabajo")}</button>` : ""}<button type="button" class="btn sm" data-admfdl="${esc(x.id)}">${icon("download")} Descargar</button>${canDel ? `<button type="button" class="btn sm danger" data-admfdel="${esc(x.id)}">${icon("trash-2")} Borrar</button>` : ""}</div></div></div></div>`;
 }
-const admFotoName = x => { const c = admFotoCap(x); return `${x.date}_${c.marca || "Local"}_${c.local}${c.job?.code ? "_" + c.job.code : ""}_${x.id.slice(-4)}`.replace(/[^\wÀ-ÿ.-]+/g, "_").slice(0, 90) + ".jpg"; };
+// Nombres de archivo sin tildes ni símbolos (algunos navegadores cambian por “download” un nombre con “ó”).
+const admFileName = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w.-]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+const admFotoName = x => { const c = admFotoCap(x); return admFileName(`${x.date}_${c.marca || "Local"}_${c.local}${c.job?.code ? "_" + c.job.code : ""}_${x.id.slice(-4)}`).slice(0, 90) + ".jpg"; };
 async function admFotoBlob(x){ const u = await admUrl(x.p); if (!u) return null; try { const r = await fetch(u); return r.ok ? await r.blob() : null; } catch { return null; } }
 document.addEventListener("click", async e => {
   if (!viewer || !admSees()) return; const t = e.target;
@@ -22469,7 +22584,7 @@ function render(){
   // Si se cambió de sección y el pedido abierto es el mismo de antes, se cierra (el pedido o el formulario no “persiguen” a la persona).
   if (render.prevPage && page !== render.prevPage) lpFull = null;
   if (render.prevPage === "admtab" && page !== "admtab") admUI.form = null; // v401: al salir del tablero se cierra el trabajo abierto
-  if (render.prevPage === "admev" && page !== "admev"){ admUI.ev = null; admUI.evForm = null; admUI.evItem = null; }
+  if (render.prevPage === "admev" && page !== "admev"){ admUI.ev = null; admUI.evForm = null; admUI.evItem = null; admUI.evPick = null; }
   if (render.prevPage === "pedcom" && page !== "pedcom"){ pcUI.form = null; pcUI.open = null; pcUI.view = "tabla"; } // Pedidos Comercial: al salir se cierra el pedido abierto y se vuelve a entrar por la tabla
   if (render.prevPage && page !== render.prevPage){ if (!render.goingBack){ navHist.push(render.prevPage); if (navHist.length > 30) navHist.shift(); } if (jobUI.ficha && jobUI.ficha === render.prevFicha) jobUI.ficha = null; if (jobUI.form && jobUI.form === render.prevForm) jobUI.form = null; }
   if (page === "seguimiento" && render.prevPage !== "seguimiento"){ segUI.acc = false; segUI.fx = "open"; } // v375: al entrar al panel, “Quién lo ve” cerrado (lo demás queda donde estaba) · v380: con animación de entrada
