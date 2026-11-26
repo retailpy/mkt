@@ -5420,6 +5420,14 @@ html.light .nav-group.pcgrp > .pcone.on{color:#78350f}
 .iflnumsb{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:8px}.iflnumsb div{border:1px solid var(--line-2);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column}.iflnumsb b{font-size:18px;font-variant-numeric:tabular-nums}.iflnumsb span{font-size:11.5px;color:var(--muted)}
 .iflhow{margin:0;font-size:13.5px;line-height:1.55}.iflhow svg{width:14px;height:14px;vertical-align:-2px;color:var(--muted)}.iflok{color:#4ade80}.iflok svg{color:#4ade80}.iflpend{color:var(--warn)}
 .iflviews{display:flex;align-items:flex-end;gap:8px}.iflviews .ifllbl{flex:1}
+.iflchecks{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr));gap:8px}
+.iflchk{display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;border:1px solid var(--line-3);border-radius:14px;background:transparent;color:var(--ink);font:inherit;cursor:pointer;min-height:56px}
+.iflchk:hover:not([disabled]){border-color:var(--muted)}.iflchk:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}.iflchk[disabled]{cursor:default;opacity:.75}
+.iflchk b{display:block;font-size:15px}.iflchk small{display:block;font-size:12px;color:var(--muted);margin-top:1px}
+.iflbox{flex:none;width:26px;height:26px;border-radius:8px;border:2px solid var(--line-3);display:grid;place-items:center;color:#fff}.iflbox svg{width:17px;height:17px}
+.iflchk.on{border-color:rgba(34,211,238,.55);background:rgba(34,211,238,.08)}.iflchk.on .iflbox{background:var(--cyan);border-color:var(--cyan);color:#020617}
+.iflchk[data-iflver].on{border-color:rgba(52,211,153,.55);background:rgba(52,211,153,.08)}.iflchk[data-iflver].on .iflbox{background:#16a34a;border-color:#16a34a;color:#fff}
+.toast .ifltu{margin-left:8px;padding:4px 12px;vertical-align:middle}.iflhid .linkish{font-weight:700}
 @media (max-width:640px){.iflcard{padding:14px}.ifllab{flex-basis:92px}.iflslot{width:42px;height:42px}.iflsc b{font-size:21px}}
 .pcpanel{grid-template-columns:repeat(auto-fit,minmax(min(130px,100%),1fr));gap:10px 14px;padding:2px 0 16px}.pcpanel .pring{width:clamp(74px,9vw,96px)}.pcpanel .picon b{font-size:16px;margin-top:2px}.pcpanel .picon small{font-size:12.5px}
 .pcpanel .picon.on{--pc:#f59e0b}.pcpanel .picon.on b{color:#fbbf24}html.light .pcpanel .picon.on b{color:#b45309}
@@ -6251,7 +6259,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v430";
+const APP_VER = "v431";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -21553,7 +21561,7 @@ function iflStories(month){
 // Lo subido por un influencer en el mes: lo marcado a mano, lo que la app encontró en Instagram y las menciones en historias.
 function iflDeliv(x, month = MONTH){
   const users = new Set((x.ig || []).map(iflU).filter(Boolean)), out = [], marks = iflMarks().filter(m => m.inf === x.id && m.month === month);
-  const over = new Map(marks.filter(m => m.auto).map(m => [m.auto, m])), manual = marks.filter(m => !m.auto && !m.skip);
+  const over = new Map(marks.filter(m => m.auto).map(m => [m.auto, m])), manual = marks.filter(m => !m.auto && !m.skip && !m.off);
   const okB = b => !(x.brands || []).length || x.brands.includes(b);
   const bucket = META_INFLU?.["m" + month], posts = bucket && typeof bucket === "object" ? Object.values(bucket).filter(p => p && users.has(iflU(p.u))) : [];
   const byCode = new Map(posts.map(p => [iflCode(p.link), p]).filter(e => e[0])), manualCodes = new Set(manual.map(m => iflCode(m.link)).filter(Boolean));
@@ -21616,6 +21624,7 @@ function iflCard(r, past, i){
     ${groups}
     ${extra.length ? `<div class="iflrow"><span class="ifllab">${icon("plus")}Extra<small>${extra.length} de más</small></span><div class="iflslots">${extra.map(d => iflDCell(d, `data-iflkey="${esc(x.id)}|${esc(d.key)}"`, "Extra: ")).join("")}</div></div>` : ""}
     ${errs.length ? `<p class="iflwarn">${icon("info")} No se pudo leer ${errs.map(u => "@" + esc(u)).join(" ni ")} en Instagram (puede ser una cuenta personal o privada): cargá el link a mano.</p>` : ""}
+    ${(() => { const h = iflMarks().filter(m => m.auto && m.skip && m.inf === x.id && m.month === MONTH).length; return h && iflCanMark() ? `<p class="iflwarn iflhid">${icon("info")} ${h === 1 ? "1 publicación que encontró la app no cuenta" : `${h} publicaciones que encontró la app no cuentan`}. <button type="button" class="linkish" data-iflunskip="${esc(x.id)}">Volver a contarlas</button></p>` : ""; })()}
     <footer class="iflf"><span class="iflnums">${nums.join("<i>·</i>") || `<span class="note">${r.up ? "Sin números todavía" : ""}</span>`}</span>
       <span class="chips">${iflCanVer() && r.pend ? `<button type="button" class="btn sm" data-iflverall="${esc(x.id)}">${icon("check-check")} Verificar ${r.pend === 1 ? "la subida" : `las ${r.pend}`}</button>` : ""}${iflCanVer() ? `<button type="button" class="btn sm ib" data-iflpe="${esc(x.id)}" aria-label="Editar a ${esc(x.name)}" title="Editar">${icon("pencil")}</button>` : ""}</span></footer></article>`;
 }
@@ -21647,10 +21656,11 @@ function iflModal(){
   const where = `${esc(x.name)} · ${s ? esc(iflSlotLbl(s)) + (s.n > 1 ? ` de ${s.n}` : "") : "Extra"} · ${monthLabel(MONTH)}`;
   if (!d){
     if (!iflCanMark() || MONTH > CURRENT_MONTH) return wrap(MONTH > CURRENT_MONTH ? "Todavía no empezó el mes" : "Todavía no se subió", `<p class="isub">${where}</p><p>${MONTH > CURRENT_MONTH ? "Se puede marcar desde que empieza el mes." : "Cuando la suba, CM o Admin total la marcan acá."}</p>`);
-    const m = o.edit ? iflMarks().find(y => y.id === o.edit) : null, t = s.t, kinds = IFL_FIT[t] || ["post"], brands = (x.brands || []).length ? x.brands : MAIN_BRANDS, nets = (x.nets || ["IG"]).filter(n => IFL_NETS[n]);
+    const t = s.t, prev = o.edit ? null : iflMarks().filter(y => !y.auto && y.off && y.inf === x.id && y.month === MONTH && y.slot === t).sort((a, c) => String(c.offAt || c.at || "").localeCompare(String(a.offAt || a.at || "")))[0] || null;
+    const m = o.edit ? iflMarks().find(y => y.id === o.edit) : prev; kinds = IFL_FIT[t] || ["post"], brands = (x.brands || []).length ? x.brands : MAIN_BRANDS, nets = (x.nets || ["IG"]).filter(n => IFL_NETS[n]);
     const first = MONTH + "-01", last = MONTH + "-" + String(lastDay(MONTH)).padStart(2, "0"), def = m?.date || (TODAY >= first && TODAY <= last ? TODAY : last);
     const pick = (name, list, cur, lbl) => `<fieldset class="iflpick"><legend>${lbl}</legend>${list.map(([v, l], k) => `<label><input type="radio" name="${name}" value="${esc(v)}" ${(cur ? cur === v : k === 0) ? "checked" : ""}><span>${esc(l)}</span></label>`).join("")}</fieldset>`;
-    return wrap(m ? "Editar lo subido" : "Marcar como subida", `<p class="isub">${where}</p><form id="iflForm" class="iflform" novalidate>
+    return wrap(o.edit ? "Editar lo subido" : "Marcar como subida", `<p class="isub">${where}</p>${prev ? `<p class="note" style="margin:0">${icon("info")} Se completó con lo que se había marcado antes en esta casilla.</p>` : ""}<form id="iflForm" class="iflform" novalidate>
       ${brands.length > 1 ? pick("brand", brands.map(b => [b, b]), m?.brand, "¿Con qué marca?") : `<input type="hidden" name="brand" value="${esc(brands[0])}">`}
       ${kinds.length > 1 ? pick("kind", kinds.map(k => [k, IFL_KINDS[k]]), m?.kind, "¿Qué subió?") : ""}
       ${nets.length > 1 ? pick("net", nets.map(n => [n, IFL_NETS[n]]), m?.net, "¿Dónde?") : `<input type="hidden" name="net" value="${esc(nets[0] || "IG")}">`}
@@ -21658,7 +21668,7 @@ function iflModal(){
       <div class="iflf2"><label class="ifllbl">Fecha<input type="date" name="date" min="${first}" max="${last}" value="${esc(def)}"></label><label class="ifllbl">Vistas o alcance <small>(opcional)</small><input type="number" name="views" min="0" step="1" inputmode="numeric" placeholder="Ej.: 3500" value="${isNum(m?.views) ? m.views : ""}"></label></div>
       <p class="note" style="margin:0">Las vistas y el alcance los ve solo quien publicó: pedile la captura al influencer.</p>
       <p class="iflerr" id="iflErr" hidden></p>
-      <div class="chips"><button type="submit" class="btn primary">${icon("check")} ${m ? "Guardar" : "Marcar como subida"}</button><button type="button" class="btn" data-iflclose>Cancelar</button></div></form>`);
+      <div class="chips"><button type="submit" class="btn primary">${icon("check")} ${o.edit ? "Guardar" : "Marcar como subida"}</button><button type="button" class="btn" data-iflclose>Cancelar</button></div></form>`);
   }
   const fol = iflFol(x), rate = iflRate(d, fol), mk = d.mark, nums = [];
   if (isNum(d.likes)) nums.push(`<div><b>${dots(d.likes)}</b><span>me gusta</span></div>`);
@@ -21666,17 +21676,17 @@ function iflModal(){
   if (isNum(d.views)) nums.push(`<div><b>${dots(d.views)}</b><span>vistas</span></div>`);
   if (isNum(rate)) nums.push(`<div><b>${rePct(rate)}</b><span>interacción</span></div>`);
   const how = d.auto ? (d.src === "story" ? "La encontró la app: mencionó a la marca en su historia" : "La encontró la app en Instagram") : `La marcó ${esc(iflWho(d.by))}${d.at ? " el " + dm(pyDate(d.at)) : ""}`;
-  return wrap(`${esc(IFL_KINDS[d.kind] || "Publicación")} con ${esc(d.brand || "la marca")}`, `<p class="isub">${where}</p>
+  const chk = (attr, on, can, t, sub) => `<button type="button" class="iflchk${on ? " on" : ""}" ${attr} aria-pressed="${on}" ${can ? "" : "disabled"}><span class="iflbox">${on ? icon("check") : ""}</span><span><b>${t}</b><small>${sub}</small></span></button>`;
+  const checks = `<div class="iflchecks">${chk("data-iflup", true, iflCanMark(), "Subida", iflCanMark() ? (d.auto ? "Tocá para desmarcar si no cuenta" : "Tocá para desmarcar si te equivocaste") : "La marcan CM y Admin total")}${chk("data-iflver", !!d.ver, iflCanVer(), "Verificada", d.ver ? `Por ${esc(iflWho(d.ver.by))}${d.ver.at ? " el " + dm(pyDate(d.ver.at)) : ""}${iflCanVer() ? " · tocá para quitarla" : ""}` : iflCanVer() ? "Tocá para verificar" : "La verifica Admin total")}</div>`;
+  return wrap(`${esc(IFL_KINDS[d.kind] || "Publicación")} con ${esc(d.brand || "la marca")}`, `<p class="isub">${where}</p>${checks}
     <p class="iflmeta">${brandTag(d.brand)}<span>${d.date ? dm(d.date) : ""} · ${esc(IFL_NETS[d.net] || d.net || "")}${d.u ? " · @" + esc(d.u) : ""}</span></p>
     ${d.img ? `<a class="iflbig" ${safeUrl(d.link) ? `href="${esc(safeUrl(d.link))}" target="_blank" rel="noopener"` : ""}>${iflImg(d.img)}</a>` : ""}
     ${d.cap ? `<p class="iflcap">“${esc(String(d.cap).slice(0, 220))}${String(d.cap).length > 220 ? "…" : ""}”</p>` : ""}
     ${nums.length ? `<div class="iflnumsb">${nums.join("")}</div>` : `<p class="note" style="margin:0">${d.net === "IG" && d.link && !d.auto ? "Los me gusta y comentarios aparecen cuando la app la encuentre en Instagram (dos veces por día)." : "Sin números: si tenés la captura, cargá las vistas."}</p>`}
-    <p class="iflhow">${icon(d.auto ? "sparkles" : "user-round")} ${how}.<br>${d.ver ? `<b class="iflok">${icon("check-check")} Verificada por ${esc(iflWho(d.ver.by))}${d.ver.at ? " el " + dm(pyDate(d.ver.at)) : ""}</b>` : `<b class="iflpend">Sin verificar</b>`}</p>
+    <p class="iflhow">${icon(d.auto ? "sparkles" : "user-round")} ${how}.</p>
     ${iflCanMark() ? `<form id="iflViews" class="iflviews"><label class="ifllbl">Vistas o alcance <small>(de la captura)</small><input type="number" name="views" min="0" step="1" inputmode="numeric" value="${isNum(d.views) ? d.views : ""}" placeholder="Ej.: 3500"></label><button type="submit" class="btn sm">${icon("check")} Guardar</button></form>` : ""}
     <div class="chips">${safeUrl(d.link) ? `<a class="btn sm" href="${esc(safeUrl(d.link))}" target="_blank" rel="noopener">${icon("external-link")} Ver publicación</a>` : ""}
-      ${iflCanVer() ? `<button type="button" class="btn sm ${d.ver ? "" : "primary"}" data-iflver>${icon(d.ver ? "x" : "check-check")} ${d.ver ? "Quitar verificación" : "Verificar"}</button>` : ""}
-      ${iflCanMark() && mk && s ? `<button type="button" class="btn sm" data-ifledit="${esc(mk.id)}">${icon("pencil")} Editar</button>` : ""}
-      ${iflCanMark() ? `<button type="button" class="btn sm danger" data-ifldel>${icon("trash-2")} ${d.auto ? "No cuenta" : "Quitar"}</button>` : ""}</div>`);
+      ${iflCanMark() && mk && s ? `<button type="button" class="btn sm" data-ifledit="${esc(mk.id)}">${icon("pencil")} Editar</button>` : ""}</div>`);
 }
 function iflPlanModal(id){
   const x = id ? INFLU_PLAN.find(y => y && y.id === id) : null, q = t => (x ? iflQuota(x).find(z => z.t === t)?.n : 0) || "";
@@ -21696,6 +21706,19 @@ function iflPlanModal(id){
 }
 const iflNewId = () => "f" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 const iflDone = msg => { render(); window.RMH?.flushNow?.(); if (msg) toast(msg); };
+// v431 · Todo lo que se marca, desmarca o verifica se puede deshacer: el aviso trae “Deshacer” unos segundos.
+function iflChange(fn, msg){
+  const before = new Map(iflMarks().map(m => [m.id, m])); fn();
+  const after = new Map(iflMarks().map(m => [m.id, m])), diff = [];
+  new Set([...before.keys(), ...after.keys()]).forEach(id => { const a = before.get(id), b = after.get(id); if (JSON.stringify(a) !== JSON.stringify(b)) diff.push([id, a || null]); });
+  iflUI.undo = diff.length ? diff : null; render(); window.RMH?.flushNow?.();
+  toast(msg); const t = document.getElementById("toast"); if (!t || !iflUI.undo) return;
+  const b = document.createElement("button"); b.type = "button"; b.className = "btn sm ifltu"; b.dataset.iflundo = ""; b.textContent = "Deshacer"; t.append(" ", b);
+  clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, 8000);
+}
+function iflUndo(){ const u = iflUI.undo; if (!u) return; let L = iflMarks();
+  u.forEach(([id, prev]) => { const i = L.findIndex(m => m.id === id); if (prev) L = i >= 0 ? L.map((m, k) => k === i ? prev : m) : [...L, prev]; else L = L.filter(m => m.id !== id); });
+  INFLU_MARKS = L; iflUI.undo = null; const t = document.getElementById("toast"); if (t) t.hidden = true; iflDone("Listo: quedó como estaba."); }
 // Lo que se cambia sobre algo que encontró la app (verificar, vistas, “no cuenta”) se guarda aparte, con su número.
 function iflOver(x, d, patch){
   const id = "a:" + d.autoId, cur = iflMarks().find(m => m.id === id), nx = { ...(cur || { id, auto:d.autoId, inf:x.id, month:MONTH }), ...patch };
@@ -21709,19 +21732,21 @@ document.addEventListener("click", e => {
   const sl = e.target.closest("[data-iflslot]"); if (sl){ const [inf, t, i] = sl.dataset.iflslot.split("|"); iflUI.open = { inf, t, i:+i }; render(); setTimeout(() => document.querySelector(".iflmod .iflx")?.focus(), 30); return; }
   const k = e.target.closest("[data-iflkey]"); if (k){ const [inf, ...key] = k.dataset.iflkey.split("|"); iflUI.open = { inf, key:key.join("|") }; render(); setTimeout(() => document.querySelector(".iflmod .iflx")?.focus(), 30); return; }
   if (e.target.closest("[data-iflclose]")){ iflUI.open = null; render(); return; }
+  if (e.target.closest("[data-iflundo]")){ iflUndo(); return; }
   const pe = e.target.closest("[data-iflpe]"); if (pe && iflCanVer()){ iflUI.open = { plan:pe.dataset.iflpe }; render(); setTimeout(() => document.querySelector("#iflPlan input")?.focus(), 30); return; }
   const dl = e.target.closest("[data-ifldl]"); if (dl){ dl.dataset.ifldl === "pdf" ? iflPdf() : iflExcel(); return; }
   const va = e.target.closest("[data-iflverall]"); if (va && iflCanVer()){ const r = iflRows().find(r => r.x.id === va.dataset.iflverall); if (!r) return;
-    const L = r.all.filter(d => !d.ver); L.forEach(d => iflVerify(r.x, d, true)); iflDone(`Verificaste ${L.length === 1 ? "lo subido" : `las ${L.length} subidas`} de ${r.x.name}.`); return; }
+    const L = r.all.filter(d => !d.ver); iflChange(() => L.forEach(d => iflVerify(r.x, d, true)), `Verificaste ${L.length === 1 ? "lo subido" : `las ${L.length} subidas`} de ${r.x.name}.`); return; }
+  const us = e.target.closest("[data-iflunskip]"); if (us && iflCanMark()){ const id = us.dataset.iflunskip, x = INFLU_PLAN.find(y => y && y.id === id);
+    iflChange(() => { INFLU_MARKS = iflMarks().map(m => m.auto && m.inf === id && m.month === MONTH && m.skip ? { ...m, skip:false } : m); }, `Vuelven a contar las publicaciones de ${x?.name || "este influencer"}.`); return; }
   const rm = e.target.closest("[data-iflrm]"); if (rm && iflCanVer()){ const x = INFLU_PLAN.find(y => y && y.id === rm.dataset.iflrm); if (!x || !confirm(`¿Sacar a ${x.name} de la lista? Deja de contar desde ${monthName(MONTH)}; los meses anteriores quedan igual.`)) return;
     INFLU_PLAN = x.from && x.from >= MONTH ? INFLU_PLAN.filter(y => y.id !== x.id) : INFLU_PLAN.map(y => y.id === x.id ? { ...y, off:MONTH } : y); iflUI.open = null; iflDone(`${x.name} ya no está en la lista desde ${monthName(MONTH)}.`); return; }
   const ed = e.target.closest("[data-ifledit]"); if (ed && iflCanMark()){ const c = iflCur(); if (!c?.s) return; iflUI.open = { inf:c.x.id, t:c.s.t, i:c.s.i, form:true, edit:ed.dataset.ifledit }; render(); return; }
-  const c = (e.target.closest("[data-iflver],[data-ifldel]") && iflCur()) || null; if (!c?.d) return;
-  if (e.target.closest("[data-iflver]") && iflCanVer()){ const on = !c.d.ver; iflVerify(c.x, c.d, on); iflUI.open = null; iflDone(on ? `Verificada: ${IFL_KINDS[c.d.kind] || "publicación"} de ${c.x.name}.` : "Se quitó la verificación."); return; }
-  if (e.target.closest("[data-ifldel]") && iflCanMark()){
-    if (c.d.auto){ if (!confirm("¿No cuenta para el acuerdo? Esta publicación deja de contarse en este mes.")) return; iflOver(c.x, c.d, { skip:true }); }
-    else { if (!confirm("¿Quitar lo que se marcó? La casilla vuelve a quedar vacía.")) return; INFLU_MARKS = iflMarks().filter(m => m.id !== c.d.mark.id); }
-    iflUI.open = null; iflDone("Listo, se quitó."); }
+  const c = (e.target.closest("[data-iflver],[data-iflup]") && iflCur()) || null; if (!c?.d) return;
+  const what = `${IFL_KINDS[c.d.kind] || "Publicación"} de ${c.x.name}`;
+  if (e.target.closest("[data-iflver]") && iflCanVer()){ const on = !c.d.ver; iflUI.open = null; iflChange(() => iflVerify(c.x, c.d, on), on ? `Verificada: ${what}.` : `Se quitó la verificación: ${what}.`); return; }
+  if (e.target.closest("[data-iflup]") && iflCanMark()){ iflUI.open = null; // desmarcar: lo cargado a mano queda guardado (off) por si se vuelve a marcar
+    iflChange(() => c.d.auto ? iflOver(c.x, c.d, { skip:true, ver:null }) : iflPatchMark(c.d.mark.id, { off:true, offAt:new Date().toISOString(), ver:null }), `Desmarcada: ${what}. La casilla quedó libre.`); }
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && page === "influencers" && iflUI.open){ iflUI.open = null; render(); } });
 document.addEventListener("submit", e => {
@@ -21730,8 +21755,7 @@ document.addEventListener("submit", e => {
   const views = String(f.get("views") ?? "").trim() === "" ? null : Math.max(0, Math.round(+f.get("views")));
   if (views !== null && !isFinite(views)) return err("Las vistas tienen que ser un número.");
   if (e.target.id === "iflViews"){ const c = iflCur(); if (!c?.d || !iflCanMark()) return;
-    if (c.d.auto) iflOver(c.x, c.d, { views }); else iflPatchMark(c.d.mark.id, { views });
-    return iflDone(views === null ? "Se borraron las vistas." : `Guardado: ${dots(views)} vistas.`); }
+    return iflChange(() => c.d.auto ? iflOver(c.x, c.d, { views }) : iflPatchMark(c.d.mark.id, { views }), views === null ? "Se borraron las vistas." : `Guardado: ${dots(views)} vistas.`); }
   if (e.target.id === "iflForm"){ const c = iflCur(); if (!c?.s || !iflCanMark()) return;
     const link = String(f.get("link") || "").trim(), t = c.s.t, kinds = IFL_FIT[t] || ["post"];
     if (link && !/^https?:\/\/\S+\.\S+/i.test(link)) return err("El link tiene que empezar con https://");
@@ -21739,12 +21763,14 @@ document.addEventListener("submit", e => {
     const first = MONTH + "-01", last = MONTH + "-" + String(lastDay(MONTH)).padStart(2, "0");
     let date = String(f.get("date") || ""); if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < first || date > last) date = TODAY >= first && TODAY <= last ? TODAY : last;
     const kind = kinds.includes(f.get("kind")) ? f.get("kind") : kinds[0], brand = String(f.get("brand") || c.x.brands?.[0] || "Superseis"), net = IFL_NETS[f.get("net")] ? f.get("net") : iflNetOf(link) || "IG";
-    const dup = link && iflCode(link) && iflMarks().find(m => m.id !== iflUI.open.edit && m.month === MONTH && iflCode(m.link) === iflCode(link));
+    const prev = iflUI.open.edit ? null : iflMarks().filter(y => !y.auto && y.off && y.inf === c.x.id && y.month === MONTH && y.slot === t).sort((a, z) => String(z.offAt || z.at || "").localeCompare(String(a.offAt || a.at || "")))[0] || null;
+    const dup = link && iflCode(link) && iflMarks().find(m => !m.off && m.id !== iflUI.open.edit && m.month === MONTH && iflCode(m.link) === iflCode(link));
     if (dup) return err("Ese link ya está cargado en este mes.");
     const data = { inf:c.x.id, month:MONTH, slot:t, kind, brand, net, link, date, views };
-    if (iflUI.open.edit) iflPatchMark(iflUI.open.edit, data);
-    else INFLU_MARKS = [...iflMarks(), { id:iflNewId(), ...data, by:viewer.id, at:new Date().toISOString(), ver:null }];
-    const was = iflUI.open.edit, n = `${IFL_KINDS[kind]} de ${c.x.name}`; iflUI.open = null; return iflDone(was ? "Guardado." : `Listo: ${n} marcada como subida${iflCanVer() ? "" : ". Admin total la va a verificar"}.`); }
+    const was = iflUI.open.edit, n = `${IFL_KINDS[kind]} de ${c.x.name}`; iflUI.open = null;
+    return iflChange(() => { if (was) iflPatchMark(was, data); else if (prev) iflPatchMark(prev.id, { ...data, off:false, offAt:null, by:viewer.id, at:new Date().toISOString(), ver:null });
+      else INFLU_MARKS = [...iflMarks(), { id:iflNewId(), ...data, by:viewer.id, at:new Date().toISOString(), ver:null }]; },
+      was ? "Guardado." : `Listo: ${n} marcada como subida${iflCanVer() ? "" : ". Admin total la va a verificar"}.`); }
   if (!iflCanVer()) return;
   const id = iflUI.open?.plan, name = String(f.get("name") || "").trim().replace(/\s+/g, " ");
   if (!name) return err("Escribí el nombre.");
