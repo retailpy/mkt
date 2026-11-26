@@ -74,6 +74,10 @@ html.light .logo-wide{background:#0f172a;border-radius:12px;padding:6px 10px;box
 @media (max-width:1024px){.brandbar{padding:14px 16px 0}.logo-wide{width:200px}.brandlogos{height:24px}}
 .nav{display:flex;flex-direction:column;gap:14px}
 .nav-group{display:flex;flex-direction:column;gap:4px}
+/* v426 · Menú: “Cerrar todo” */
+.navcloseall{display:flex;align-items:center;justify-content:flex-end;gap:5px;width:100%;margin:2px 0 6px;padding:5px 12px;border:0;background:none;color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer;border-radius:8px}
+.navcloseall:hover{color:var(--ink);background:rgba(148,163,184,.08)}.navcloseall svg{width:14px;height:14px}
+html.navmini .navcloseall{justify-content:center;padding:6px 0}html.navmini .navcloseall span{display:none}
 .nav-label{font-size:12.5px;font-weight:400;text-transform:uppercase;letter-spacing:.16em;padding:0 12px 2px;color:rgba(34,211,238,.75)}
 .nav-group.big .nav-label{display:flex;flex-direction:column;align-items:flex-start;gap:6px;white-space:nowrap}
 .navtog{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;font-size:12.5px;text-transform:uppercase;letter-spacing:.16em;padding:4px 12px;color:rgba(34,211,238,.75);border-radius:8px}
@@ -6193,7 +6197,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v424";
+const APP_VER = "v426";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -17261,7 +17265,7 @@ function pcFormPage(){
     <label>¿Qué necesitás?${sel("pcPedido", eq ? PC_PEDIDO_EQ : PC_PEDIDO, p.pedido)}</label>
     <label>Si es “Otro”, ¿qué?<input class="base" id="pcOtro" maxlength="120" value="${esc(p.pedOtro || "")}" placeholder="Ej.: gráfica para pantallas"></label>
     ${eq ? `<fieldset class="pcw pcadm"><legend>¿Quién lo trabaja?</legend><label class="pcadmo"><input type="checkbox" checked disabled><span><b>Diseño gráfico</b> · le llega a ${esc(pcCoordN())} (Coordinación de Diseño gráfico)</span></label>
-      ${admTeam().length ? `<label class="pcadmo"><input type="checkbox" id="pcAdm" ${admReqOf(p) ? "checked" : ""}><span><b>También Administración de Marketing</b> · le llega a ${esc(admLeads().map(x => x.name.split(" ")[0]).join(" y ") || "Administración")} para el presupuesto y la impresión, en paralelo con el diseño</span></label>` : ""}</fieldset>` : ""}
+      ${admTeam().length && !admOff() ? `<label class="pcadmo"><input type="checkbox" id="pcAdm" ${admReqOf(p) ? "checked" : ""}><span><b>También Administración de Marketing</b> · le llega a ${esc(admLeads().map(x => x.name.split(" ")[0]).join(" y ") || "Administración")} para el presupuesto y la impresión, en paralelo con el diseño</span></label>` : ""}</fieldset>` : ""}
     <label>${eq ? "¿Para cuándo lo necesitás?" : "Fecha de publicación que te gustaría"} *<input class="base" type="date" id="pcDate" required value="${esc(p.date || "")}" min="${TODAY}"><span class="note">También podés tocar el día en el calendario.</span></label>
     <div class="pcvig"><label>Vigencia desde<input class="base" type="date" id="pcFrom" value="${esc(p.from || "")}"></label><label>Vigencia hasta<input class="base" type="date" id="pcUntil" value="${esc(p.until || "")}"></label></div>
     <div class="pcw">${cfPick("pcCamp", p, "pc")}</div>
@@ -17312,7 +17316,7 @@ const pcByName = p => personById(p?.by)?.name || p?.byName || "";
 const pcNeedsFinal = p => !!p && pcEq(p) && !p.demo && personById(p.by)?.role !== "Admin total" && pcJob(p)?.area === "Diseño";
 const pcFinalWait = p => pcNeedsFinal(p) && !pcFinal(p) && jobApproved(pcJob(p)) && !p.finalOk;
 const pcGateOk = j => { const p = j?.com && pcById(j.com); return !p || !pcNeedsFinal(p) || !!p.finalOk || pcFinal(p); };
-const pcAdmOn = p => pcEq(p) && p.admReq !== false && !p.admNo && (!!p.adm || admTeam().length > 0);
+const pcAdmOn = p => !admOff() && pcEq(p) && p.admReq !== false && !p.admNo && (!!p.adm || admTeam().length > 0);
 const pcWhen = iso => iso ? `${dm(String(iso).slice(0, 10))}${String(iso).length > 10 ? " " + axHM(iso) : ""}` : "";
 // Lo último que subió el diseñador (para mirarlo sin salir del pedido).
 function pcDesignView(j){
@@ -17349,7 +17353,7 @@ function pcFlow(p){
       txt:p.finalOk ? `${own ? "Lo aprobaste" : byN + " lo aprobó"} el ${pcWhen(p.finalOk.at)}${p.finalOk.note ? `: “${esc(p.finalOk.note)}”` : "."}` : pcFinalWait(p) ? (own ? "Te toca: mirá el diseño abajo y aprobalo, o pedí cambios." : `Esperando que ${byN} lo apruebe (el diseño ya lo aprobó ${coordN}).`)
         : `Cuando ${coordN} apruebe el diseño, ${own ? "te llega para que lo apruebes" : "le llega a " + byN + " para que lo apruebe"}: recién ahí se manda a imprimir o se publica.`,
       extra:fx.length ? `<small class="pcfn">${own ? "Pediste" : "Pidió"} cambios ${fx.length === 1 ? "1 vez" : fx.length + " veces"} · último: “${esc(fx[fx.length - 1].text)}”</small>` : "" }); }
-  if (pcEq(p) && p.admReq !== false && (p.adm || p.admNo || admTeam().length)){
+  if (pcEq(p) && !admOff() && p.admReq !== false && (p.adm || p.admNo || admTeam().length)){ // v426: a Alyssa no le sale Administración
     const a = p.adm && admById(p.adm), gate = !j || pcGateOk(j) && appr;
     if (p.admNo) add({ ic:"briefcase", c:"#94a3b8", t:"Administración de Marketing", who:null, s:"no", txt:`${esc(pcFirst(p.admNoBy) || pcAdmLeadN())} marcó que no necesita Administración (no hay compra ni producción).` });
     else if (!a) add({ ic:"briefcase", c:"#22d3ee", t:`${pcAdmLeadN()} · Administración de Marketing`, who:admLeads()[0] || null, s:"cur", txt:`Le llegó el pedido para el presupuesto y la impresión: todavía no lo pasó al Tablero de trabajos.` });
@@ -17452,7 +17456,7 @@ function pcDetail(p){
   ${!isComercial() && p.job && !j ? `<p class="note">${icon("triangle-alert")} El trabajo que salió de este pedido ya no está (lo borraron).${at ? ` Podés volver a pasarlo:` : ""}</p>${at ? `<div class="chips"><button type="button" class="btn" data-pcderive="Diseño">${icon("palette")} Pasar a Diseño gráfico</button><button type="button" class="btn" data-pcderive="Contenidos">${icon("shapes")} Pasar a CM</button></div>` : ""}` : ""}
   ${pcSt(p) === "No ejecutable" || pcEq(p) ? "" : pcTeam(p)}
   <section class="panel"><h2 class="pmh">${pmIco("clipboard-list")}El pedido</h2><dl class="pcdl">
-    ${row(pcEq(p) ? "Para" : "Supermercados", (p.brands || []).map(brandTag).join(" "))}${row(pcEq(p) ? "Marcas o proveedores" : "Marcas", esc(p.marcas || ""))}${row("Qué necesita", esc(p.pedido === "Otro" ? p.pedOtro || "Otro" : p.pedido || ""))}${pcEq(p) ? row("Quién lo trabaja", `Diseño gráfico${p.admReq !== false ? " + Administración de Marketing (presupuesto e impresión)" : " (sin Administración)"}`) : ""}
+    ${row(pcEq(p) ? "Para" : "Supermercados", (p.brands || []).map(brandTag).join(" "))}${row(pcEq(p) ? "Marcas o proveedores" : "Marcas", esc(p.marcas || ""))}${row("Qué necesita", esc(p.pedido === "Otro" ? p.pedOtro || "Otro" : p.pedido || ""))}${pcEq(p) ? row("Quién lo trabaja", `Diseño gráfico${admOff() ? "" : p.admReq !== false ? " + Administración de Marketing (presupuesto e impresión)" : " (sin Administración)"}`) : ""}
     ${row("Publicar el", p.date ? `<b>${dm(p.date)}</b> (${["domingo","lunes","martes","miércoles","jueves","viernes","sábado"][new Date(p.date + "T12:00").getDay()]})` : "")}${row("Vigencia", esc(pcRange(p)))}${row("Cargado por", esc(p.byName || "") + (pcEq(p) ? "" : " · Comercial"))}</dl></section>
   <section class="panel"><h2 class="pmh">${pmIco("file-text")}La hoja</h2><div class="rtview${rtBgCls(rtBgOf(html))}"${rtBgStyle(rtBgOf(html))}>${html || `<p class="rtempty">Sin texto.</p>`}</div></section>
   <section class="panel"><h2 class="pmh">${pmIco("paperclip")}Bocetos y archivos adjuntos</h2>${(p.files || []).length ? `<div class="jfiles">${p.files.map((x, i) => pcFileRow(p, x, i, false)).join("")}</div>` : `<p class="note" style="margin:0 0 8px">Todavía no hay archivos.</p>`}
@@ -17478,7 +17482,7 @@ function pPedCom(){
   const vt = [["tabla", "Tabla", "table-2"], ["calendario", "Calendario", "calendar-days"]];
   const adm = viewer.role === "Admin" && !window.RMH?.previewing; // v397: Patricia y Emanuel también piden
   const whoChips = pcPanel() + (eqS && who ? `<div class="chips pcwhoc"><button type="button" class="chip" data-pcwhochip="">${icon("list")} Ver todas las solicitudes</button></div>` : ""); // v424: el panel con Patricia, Emanuel y Comercial
-  const head = eqS ? `<div class="head"><div><h1 class="pmh">${pmIco("clipboard-list")}Solicitud de pedidos${who ? ` · ${esc(who.name)}` : ""}</h1><p class="sub">${at ? "Lo que pide el equipo (Patricia y Emanuel). Abrí cada pedido nuevo para aprobarlo y pasarlo a Diseño gráfico o a un CM; Administración de Marketing se ocupa en paralelo del presupuesto y la impresión. Los pedidos de los compradores están aparte, en Pedidos Comercial." : `Cargá acá lo que necesitás (un pedido gráfico, de CM o de lo que sea): le llega a ${esc(pcCoordN())} (Coordinación de Diseño gráfico), que lo revisa, le suma lo que falte y lo pasa a Diseño gráfico o a CM. En cada pedido ves todo el seguimiento (quién lo diseña, Administración de Marketing, el proveedor y la CM) y, cuando el diseño está aprobado, te llega para tu aprobación final. También ves los pedidos de los demás del equipo (solo para ver).`}</p></div>
+  const head = eqS ? `<div class="head"><div><h1 class="pmh">${pmIco("clipboard-list")}Solicitud de pedidos${who ? ` · ${esc(who.name)}` : ""}</h1><p class="sub">${at ? `Lo que pide el equipo (Patricia y Emanuel). Abrí cada pedido nuevo para aprobarlo y pasarlo a Diseño gráfico o a un CM${admOff() ? "" : "; Administración de Marketing se ocupa en paralelo del presupuesto y la impresión"}. Los pedidos de los compradores están aparte, en Pedidos Comercial.` : `Cargá acá lo que necesitás (un pedido gráfico, de CM o de lo que sea): le llega a ${esc(pcCoordN())} (Coordinación de Diseño gráfico), que lo revisa, le suma lo que falte y lo pasa a Diseño gráfico o a CM. En cada pedido ves todo el seguimiento (quién lo diseña, Administración de Marketing, el proveedor y la CM) y, cuando el diseño está aprobado, te llega para tu aprobación final. También ves los pedidos de los demás del equipo (solo para ver).`}</p></div>
     <div class="chips">${viewTabs(vt, pcUI.view, "data-pcview")}${at || adm || isAdmRole() ? `<button type="button" class="btn primary" data-pcnew>${icon("plus")} Nuevo pedido</button>` : ""}</div></div>`
     : `<div class="head"><div><h1 class="pmh">${pmIco("shopping-bag")}${com ? "Mis pedidos de activaciones" : "Pedidos Comercial"}</h1><p class="sub">${com ? "Cargá acá lo que te gustaría que se publique en las redes: el pedido le llega a Marketing y te queda como <b style=\"color:#38bdf8\">Enviado</b>. Elegí el día que te gustaría que salga (también tocando el día en el calendario). En cada pedido ves en qué estado está (Enviado, Aprobado, En curso, Con modificaciones, <b style=\"color:#22c55e\">Finalizado</b> o <b style=\"color:#ef4444\">No ejecutable</b>) y te avisamos con cada cambio." : at ? "Lo que piden los compradores para publicar. Abrí cada pedido nuevo para aprobarlo, pasarlo a Diseño gráfico o a un CM (queda En curso, con la persona responsable), marcarlo Con modificaciones o No ejecutable (con el motivo). Cuando el CM lo aprueba para publicar, pasa a Finalizado. Al comprador le llega el aviso con cada cambio." : "Lo que piden los compradores para publicar, a quién se derivó y si ya salió. Es solo para ver: los pedidos los pasa Admin total."}</p></div>
     <div class="chips">${viewTabs(vt, pcUI.view, "data-pcview")}${com || at ? `<button type="button" class="btn primary" data-pcnew>${icon("plus")} Nuevo pedido</button>` : ""}</div></div>`;
@@ -20046,8 +20050,10 @@ let ADM_JOBS = JSON.parse(JSON.stringify(ADM_SEED_JOBS)); // de arranque (si la 
 let ADM_EVENTS = JSON.parse(JSON.stringify(ADM_SEED_EVENTS));
 const ADM_KEYS = ["admpanel", "admtab", "admev", "admfotos", "adminf"];
 const isAdmRole = () => viewer?.role === "Administración";
-const admSees = () => !!viewer && (isAdmRole() || isAdminAny());
-const admEdit = () => !!viewer && !window.RMH?.previewing && (isAdmRole() || isAdminAny()); // v405: también los Admin (Patricia completa el proveedor confirmado)
+// v426 · Alyssa no ve nada de Administración de Marketing (pedido de Admin total): ni el menú, ni las alertas, ni el cuadro en los pedidos.
+const ADM_HIDE = ["alyssa"], admOff = () => ADM_HIDE.includes(viewer?.id);
+const admSees = () => !!viewer && !admOff() && (isAdmRole() || isAdminAny());
+const admEdit = () => !!viewer && !window.RMH?.previewing && !admOff() && (isAdmRole() || isAdminAny()); // v405: también los Admin (Patricia completa el proveedor confirmado)
 const admTeam = () => PEOPLE.filter(pp => pp.active !== false && pp.role === "Administración");
 // Quién recibe los pedidos nuevos: la líder (admLead en su ficha); si nadie está marcado, todo el equipo del área.
 const admLeads = () => { const t = admTeam(), l = t.filter(pp => pp.admLead); return l.length ? l : t; };
@@ -20113,7 +20119,7 @@ const admEvMine = (e, pp = viewer) => admEvPend(e).filter(x => x.resp && pp && (
 
 // Alertas del área (Inicio y ventanas): pedidos nuevos para la líder, eventos que se vienen y lo que le toca a cada uno.
 function admAlerts(){
-  if (!viewer) return [];
+  if (!viewer || admOff()) return []; // v426
   const apr = admEvApprover() ? ADM_EVENTS.filter(e => admEvSt(e) === "Propuesta").map(e => ({ go:"admev:" + e.id, key:`admevap:${e.id}`, ic:"hourglass", sev:"#a855f7", rank:-4, t:`Evento para aprobar: ${e.name}`, m:`${(e.items || []).length} cosas elegidas${e.date ? " · " + dm(e.date) : ""} · al aprobarlo le avisamos a Vivian para los presupuestos` })) : []; // v416
   if (!(isAdmRole() || viewer.role === "Admin total")) return apr;
   const out = [...apr, ...admPcForMe().map(p => ({ go:"com:" + p.id, key:"admpc:" + p.id, ic:"clipboard-list", sev:"#38bdf8", rank:-5, t:`Nueva solicitud de pedido: ${p.title}`, m:`${p.byName || ""} · ${pcBrandTxt(p)}${p.date ? " · para el " + dm(p.date) : ""} · pasalo al Tablero de trabajos` }))];
@@ -20488,7 +20494,7 @@ const admEvSug = tipo => (ADM_EV_TIPOS.find(x => x[0] === tipo) || [null, []])[1
 const ADM_EV_EST = { "Propuesta":{ c:"#a855f7", ic:"hourglass", t:"Para aprobar" }, "Aprobado":{ c:"#22c55e", ic:"badge-check", t:"Aprobado" }, "Cancelado":{ c:"#ef4444", ic:"ban", t:"No se hace" } };
 const admEvSt = e => ADM_EV_EST[e?.st] ? e.st : "Aprobado"; // los de antes (sin estado) ya estaban en marcha
 const admEvPill = e => { const S = ADM_EV_EST[admEvSt(e)]; return `<span class="pcst sm" style="--c:${S.c}">${icon(S.ic)}${esc(S.t)}</span>`; };
-const admEvApprover = () => !!viewer && !window.RMH?.previewing && isAdminAny(); // aprueban Admin total y los Admin (gerencia)
+const admEvApprover = () => !!viewer && !window.RMH?.previewing && !admOff() && isAdminAny(); // aprueban Admin total y los Admin (gerencia)
 const admEvTotal = e => (e.items || []).reduce((a, x) => a + (+x.monto || 0), 0);
 // El catálogo con Sí / No. pk: { sel:{ clave:true|false }, qty:{ clave:"…" }, extra:[{ t, qty }] } · have: lo que el evento ya tiene (no se repite).
 function admPickHTML(pk, tipo, have = new Set()){
@@ -21455,6 +21461,9 @@ function navResetFor(role){
   navClosed.clear(); [...new Set(SECTIONS.map(s => s.g))].filter(g => !open.has(g)).forEach(g => navClosed.add(g));
   try { localStorage.setItem("rmh-navclosed2", JSON.stringify([...navClosed])); localStorage.removeItem("rmh-navreset"); } catch {}
 }
+// v426 · “Cerrar todo”: se cierran todos los grupos del menú (cada uno se vuelve a abrir tocando su título).
+document.addEventListener("click", e => { if (!e.target.closest("[data-navcloseall]")) return; e.preventDefault();
+  [...new Set(SECTIONS.map(s => s.g))].forEach(g => navClosed.add(g)); try { localStorage.setItem("rmh-navclosed2", JSON.stringify([...navClosed])); } catch {} renderNav(); if (window.lucide) lucide.createIcons(); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-navtog]"); if (!b) return; e.preventDefault(); const g = b.dataset.navtog;
   navClosed.has(g) ? navClosed.delete(g) : navClosed.add(g); try { localStorage.setItem("rmh-navclosed2", JSON.stringify([...navClosed])); } catch {} renderNav(); if (window.lucide) lucide.createIcons(); });
 // Menú lateral en computadora: completo → reducido (solo íconos) → oculto, y de vuelta. El contenido usa el espacio libre.
@@ -21487,7 +21496,9 @@ function renderNav(){
   const groups = [...new Set(SECTIONS.map(s => s.g))];
   const segBtn = can("seguimiento") ? `<a href="#seguimiento" data-page="seguimiento" class="segnav${page === "seguimiento" ? " on" : ""}" title="Panel Interactivo de Seguimiento de Marketing">${icon("chart-gantt")}<span><b>Panel de Seguimiento</b><small>Reuniones y seguimiento de procesos</small></span>${(() => { const u = segUrgMine().length; return u ? `<em class="segnavb" title="${u} tarea${u === 1 ? "" : "s"} tuya${u === 1 ? "" : "s"} atrasada${u === 1 ? "" : "s"} o para entregar en 3 días o menos">${u}</em>` : ""; })()}</a>` : ""; // v375: sección destacada, arriba de todo
   const reBtn = can("resumen") ? `<a href="#resumen" data-page="resumen" class="segnav renav${page === "resumen" ? " on" : ""}" title="Resumen ejecutivo de las redes de Superseis, Stock y Delimarket">${icon("presentation")}<span><b>Resumen ejecutivo</b><small>Superseis, Stock y Delimarket</small></span></a>` : ""; // v400
-  $("#nav").innerHTML = segBtn + reBtn + groups.map(g => {
+  const navG = groups.filter(g => SECTIONS.some(s => s.g === g && can(s.k) && (!s.hide || (isRevisor() && s.k === "inbox")))), anyOpen = !isRevisor() && !isComercial() && navG.some(g => g !== "Solicitud de pedidos" && !navClosed.has(g)); // Solicitud de pedidos es un solo botón (no se despliega)
+  const closeAll = anyOpen ? `<button type="button" class="navcloseall" data-navcloseall title="Cerrar todos los grupos del menú">${icon("chevron-up")}<span>Cerrar todo</span></button>` : ""; // v426
+  $("#nav").innerHTML = segBtn + reBtn + closeAll + groups.map(g => {
     const items = SECTIONS.filter(s => s.g === g && can(s.k) && (!s.hide || (isRevisor() && s.k === "inbox")));
     if (!items.length) return "";
     const shut = !isRevisor() && !isComercial() && navClosed.has(g); // el Revisor tiene una sola sección: siempre a la vista
