@@ -5512,7 +5512,7 @@ const ROLE_DEFAULTS = {
   "CM": ROLE_CM,
   "Diseñador": ROLE_DESIGN,
   "Revisor": ["inbox"],
-  "Comercial": ["dashboard","comercial","pedcom"],
+  "Comercial": ["dashboard","pedcom"], // v423
   "TV": ["tvpant"],
   "Administración": ["dashboard","inicio","planmes","mensajes","comercial","notas","redes"], // v421: lo general, su área (siempre), la Solicitud de pedidos (siempre) e Informe Redes; sin Informe mensual, Pauta Meta Ads, Recursos ni Equipo
 };
@@ -5553,7 +5553,7 @@ const REVISOR_SEE = ["inbox","perfil","config","guia"];
 // Comercial (v297). v305: Dashboard limitado, el mismo para cualquier usuario de este rol: solo Superseis, Stock y Delimarket,
 // las publicaciones solo con la fecha y sin “Publicaciones del mes por alcance”. Sin chat, sin el equipo y sin nada del proceso de Diseño o CM: la base tampoco le deja leer otra cosa.
 const isComercial = () => viewer?.role === "Comercial";
-const COMERCIAL_SEE = ["dashboard","comercial","pedcom","perfil","config","guia","videohub"]; // v394: también el video de la app // v305: con Dashboard limitado (pDashboard)
+const COMERCIAL_SEE = ["dashboard","pedcom","videohub","bienvenida","perfil","config","guia"]; // v423: Comercial es otro departamento: Dashboard, sus pedidos, el video y la bienvenida (sin las ofertas) // v394: también el video de la app // v305: con Dashboard limitado (pDashboard)
 // TV (v266): el usuario de los televisores de la oficina. Solo ve los botones TV 1 a TV 4 y la pantalla que Admin total eligió
 // para cada uno (Vista TV → Pantallas TV). Sin menú, sin chat y sin avisos emergentes; la base no le deja guardar nada más que su presencia.
 const isTV = () => viewer?.role === "TV";
@@ -6183,7 +6183,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v422";
+const APP_VER = "v423";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -17068,6 +17068,7 @@ const PC_PEDIDO = ["Post para redes","Historia","Post + Historia","Carrusel","Re
 const PC_PH = "Ejemplo:\nACCIÓN: Día Internacional de las Pastas, 20% de descuento en Pastas Frescas Envasadas.\nMARCAS: S6: Edward, Quiero Más, De la Nonna… · Stock: Edward, Stock, Bianca…\nTEXTO QUE VA: “20% OFF en pastas frescas”.\nLEGAL: Válido del viernes 23 al domingo 25 de octubre.\nOBSERVACIONES: segmentar por marca participante.";
 let pcUI = { view:"tabla", tab:null, sort:"nuevos", open:null, form:null, busy:0 };
 const pcById = id => PEDIDOS_COM.find(p => p.id === id);
+const pcFind = id => pcById(id) || (id === "PC-ejemplo" && isComercial() ? pcExample() : null); // v423: también el de ejemplo de Comercial (solo para ver)
 // v397 · Solicitud de pedidos: además de Comercial, piden los Admin (Patricia y Emanuel). Le llega a Admin total, que lo aprueba,
 // le suma lo que falte y lo pasa a Diseño gráfico o a CM. Quien pide ve sus pedidos, su estado y los mensajes; los Admin ven
 // también los de los demás (solo para ver). p.src: "eq" (lo pidió alguien del equipo) o nada (Comercial, como antes).
@@ -17083,13 +17084,23 @@ const pcMine = () => (isComercial() ? PEDIDOS_COM.filter(p => p.by === viewer.id
 const pcScope = () => page === "solped" ? "eq" : "com";
 const pcInScope = p => !!p && (pcScope() === "eq" ? pcEq(p) : !pcEq(p));
 const pcPageOf = p => pcEq(p) ? "solped" : "pedcom";
+// v423 · El pedido de ejemplo que ve Comercial en su tabla y su calendario (no se guarda, no se puede editar ni le llega a nadie).
+let pcExampleObj = null;
+function pcExample(){
+  if (pcExampleObj) return pcExampleObj; const d2 = addDays(TODAY, 2), d = d2.slice(0, 7) === TODAY.slice(0, 7) ? d2 : TODAY; // pasado mañana (si es de este mes, que se vea en el calendario)
+  return pcExampleObj = { id:"PC-ejemplo", demo:true, title:"Ejemplo · Día de las Pastas 20% OFF", brands:["Superseis", "Stock"], marcas:"Edward, Quiero Más, De la Nonna, Bianca", pedido:"Post + Historia",
+    date:d, from:d, until:addDays(d, 2), files:[], st:"Aprobado", by:"ejemplo", byName:"Ejemplo (así se ve un pedido)", at:new Date().toISOString(), log:[{ id:"L-ej", st:"Aprobado", at:new Date().toISOString(), by:"Marketing" }],
+    brief:"<p><b>ACCIÓN:</b> Día Internacional de las Pastas: 20% de descuento en pastas frescas envasadas.</p><p><b>MARCAS:</b> Superseis: Edward, Quiero Más, De la Nonna · Stock: Edward, Stock, Bianca.</p><p><b>TEXTO QUE VA:</b> “20% OFF en pastas frescas”.</p><p><b>LEGAL:</b> Válido del viernes al domingo. Hasta agotar stock.</p><p><b>OBSERVACIONES:</b> segmentar por marca participante.</p>" };
+}
 // v421 · Quién pide: los Admin (Patricia, Emanuel), la líder de Administración y cualquiera que ya haya pedido; los que más piden, arriba.
 function pcNavPeople(){ const by = new Map(); PEDIDOS_COM.filter(p => p && pcEq(p) && !p.demo && p.by).forEach(p => by.set(p.by, (by.get(p.by) || 0) + 1));
-  return PEOPLE.filter(pp => pp.active !== false && (pp.role === "Admin" || admIsLead(pp) || by.has(pp.id))).sort((a, b) => (by.get(b.id) || 0) - (by.get(a.id) || 0) || a.name.localeCompare(b.name)); }
+  return PEOPLE.filter(pp => pp.active !== false && pp.role !== "Administración" && (pp.role === "Admin" || by.has(pp.id))).sort((a, b) => (by.get(b.id) || 0) - (by.get(a.id) || 0) || a.name.localeCompare(b.name)); }
 // Lo que espera a quien mira, de los pedidos de esa persona: a quien pidió, sus novedades; a Admin total, lo nuevo o con mensaje; a la líder de Administración, lo que no tomó.
 const pcBadgeWho = id => PEDIDOS_COM.filter(p => p && pcEq(p) && p.by === id && !p.demo).filter(p => pcOwn(p) ? pcStNew(p) || pcUnread(p).length || pcFinalWait(p) : viewer?.role === "Admin total" ? p.st === "Enviado" || pcUnread(p).length : admIsLead(viewer) && admPcNew(p)).length;
 function pcNavGroup(items, shut){
   const g = "Solicitud de pedidos", n = c => c ? `<span class="count ibc">+${c > 99 ? 99 : c}</span>` : "";
+  if (isAdmRole()) return ""; // v423: Administración lo ve en su área (Panel de Trabajo → Solicitud de pedidos)
+  if (isComercial()) return `<div class="nav-group"><span class="nav-label">Pedidos</span><a href="#pedcom" data-page="pedcom" class="${page === "pedcom" ? "on" : ""}">${icon("shopping-bag")}<span>Mis pedidos de activaciones</span>${navBadge("pedcom")}</a></div>`;
   const ppl = items.some(s => s.k === "solped") ? pcNavPeople() : [], com = items.some(s => s.k === "pedcom");
   const tot = ppl.reduce((a, pp) => a + pcBadgeWho(pp.id), 0) + (com ? pcBadgeN("com") : 0);
   const links = ppl.map(pp => { const c = pcBadgeWho(pp.id); return `<a href="#solped" data-page="solped" data-pcwho="${esc(pp.id)}" title="Pedidos de ${esc(pp.name)}" class="${page === "solped" && pcUI.who === pp.id ? "on" : ""}">${icon("user-round")}<span>${esc(pp.name)}</span>${n(c)}</a>`; }).join("")
@@ -17220,7 +17231,7 @@ const pcFileRow = (p, f, i, edit) => `<div class="jfile"><span class="jfic">${ic
   <button type="button" class="btn sm" data-pcfdl="${esc(p.id)}|${i}">${icon("download")} Ver</button>${edit ? `<button type="button" class="btn ib sm" data-pcfdel="${i}" aria-label="Quitar archivo">${icon("x")}</button>` : ""}</div>`;
 function pcFormPage(){
   const f = pcUI.form, p = f.p, nu = f.mode === "new", sel = (id, list, val) => `<select class="base" id="${id}">${list.map(x => `<option ${x === val ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>`;
-  const eq = pcEq(p) || (nu && !isComercial()); // v397: lo pide alguien del equipo (Patricia, Emanuel o Admin total)
+  const eq = pcEq(p) || (nu && pcScope() === "eq"); // v397: lo pide alguien del equipo (v423: solo si se carga en Solicitud de pedidos; en Pedidos Comercial es el formulario de antes)
   return `<div class="jpage pcpage"><div class="jp-top"><button class="btn pback" type="button" data-pcclose>${icon("arrow-left")} Volver</button></div>
   <div class="jp-h"><span class="note">${eq ? `Solicitud de pedido · ${esc(nu ? viewer.name : p.byName || "")}` : "Pedido de activación · Comercial"}</span><h1 style="margin:4px 0 0">${nu ? (eq ? "Nueva solicitud de pedido" : "Nuevo pedido") : "Editar pedido"}</h1>${eq && nu ? `<p class="note" style="margin:6px 0 0">Le llega a ${esc(pcCoordN())} (Coordinación de Diseño gráfico): lo revisa, le suma lo que falte y lo pasa a Diseño gráfico o a CM.${admLeads().some(x => x.id !== viewer.id) ? ` A la vez le llega a ${esc(admLeads().filter(x => x.id !== viewer.id).map(x => x.name.split(" ")[0]).join(" y "))} (Administración de Marketing), que se ocupa de la compra o la producción.` : ""}${viewer.role === "Admin total" ? "" : ` En el pedido ves todo el seguimiento: quién lo diseña, en qué etapa está y, cuando ${esc(pcCoordN())} apruebe el diseño, te llega para tu aprobación final.`} Te avisamos con cada cambio.</p>` : ""}</div>
   <form id="pcForm" class="panel pcform" autocomplete="off">
@@ -17403,7 +17414,7 @@ function pcDetail(p){
   const row = (k, v) => v ? `<dt>${k}</dt><dd>${v}</dd>` : "";
   const st = pcSt(p), fin = pcFinal(p), derive = at && !fin && !j, other = firstName(p.byName || "Comercial");
   return `<div class="jpage pcpage"><div class="jp-top"><button class="btn pback" type="button" data-pcback>${icon("arrow-left")} Volver</button></div>
-  <div class="jp-h">${p.demo ? `<span class="exbadge sm">Pedido de ejemplo (vista previa): no se guarda ni le llega a nadie</span> ` : ""}<span class="note">${pcKind(p)} · ${esc(p.byName || "Comercial")} · ${dm(String(p.at).slice(0, 10))}${!pcOwn(p) && !at ? " · solo para ver" : ""}</span><h1 style="margin:4px 0 6px">${esc(p.title)}</h1>${pcPill(p)}</div>
+  <div class="jp-h">${p.id === "PC-ejemplo" ? `<span class="exbadge sm">Pedido de ejemplo: así se ve un pedido. Para cargar el tuyo, volvé y tocá Nuevo pedido</span> ` : p.demo ? `<span class="exbadge sm">Pedido de ejemplo (vista previa): no se guarda ni le llega a nadie</span> ` : ""}<span class="note">${pcKind(p)} · ${esc(p.byName || "Comercial")} · ${dm(String(p.at).slice(0, 10))}${!pcOwn(p) && !at ? " · solo para ver" : ""}</span><h1 style="margin:4px 0 6px">${esc(p.title)}</h1>${pcPill(p)}</div>
   ${pcEq(p) ? pcFlowBox(p) + pcFinalBox(p) : pcTrack(p)}
   ${pcEq(p) && p.adm && admById(p.adm) && !isAdmRole() ? "" : pcAdmBox(p)}
   ${at ? `<section class="panel pcact"><h2 class="pmh">${pmIco("list-checks")}Cambiar el estado</h2>
@@ -17440,7 +17451,7 @@ function pcTable(list){
   </tbody></table></div>`;
 }
 function pPedCom(){
-  const eqS = pcScope() === "eq", scoped = pcMine().filter(pcInScope), com = isComercial(), at = viewer.role === "Admin total" && !window.RMH?.previewing;
+  const eqS = pcScope() === "eq", com = isComercial(), scoped = [...pcMine().filter(pcInScope), ...(com && !eqS ? [pcExample()] : [])], at = viewer.role === "Admin total" && !window.RMH?.previewing; // v423: + el ejemplo para Comercial
   const who = eqS && pcUI.who ? personById(pcUI.who) : null, mine = who ? scoped.filter(p => p.by === who.id) : scoped; // v421: los pedidos de una persona
   if (pcUI.form) return pcFormPage();
   const op = pcUI.open && scoped.find(p => p.id === pcUI.open); if (op) return pcDetail(op); pcUI.open = null; // v397: Comercial solo abre los suyos
@@ -17472,7 +17483,7 @@ document.addEventListener("click", async e => {
   if (t.closest("[data-pcnew]")){ pcNew(); render(); window.scrollTo(0, 0); return; }
   if (t.closest("[data-pcclose]")){ pcUI.form = null; render(); return; }
   if (t.closest("[data-pcback]")){ pcUI.open = null; render(); return; }
-  const o = t.closest("[data-pcopen]"); if (o){ const p = pcById(o.dataset.pcopen); if (!p) return; pcUI.open = p.id; pcSeen(p); render(); window.scrollTo(0, 0); return; }
+  const o = t.closest("[data-pcopen]"); if (o){ const p = pcFind(o.dataset.pcopen); if (!p) return; pcUI.open = p.id; pcSeen(p); render(); window.scrollTo(0, 0); return; }
   const cd = (page === "pedcom" || page === "solped") && !pcUI.form && !pcUI.open && pcUI.view === "calendario" && (pcReq() || viewer.role === "Admin total") && !t.closest(".ev,button,a") && t.closest(".pccal [data-cdrop]");
   if (cd){ const d = cd.dataset.cdrop; if (d < TODAY) return toast("Ese día ya pasó: elegí uno de hoy en adelante."); pcNew(d); render(); window.scrollTo(0, 0); toast(`Nuevo pedido para publicar el ${dm(d)}.`); return; }
   const ed = t.closest("[data-pcedit]"); if (ed){ const p = pcById(ed.dataset.pcedit); if (!p || !pcCanEdit(p)) return; pcUI.form = { mode:"edit", p:JSON.parse(JSON.stringify(p)) }; render(); window.scrollTo(0, 0); return; }
@@ -21392,7 +21403,7 @@ const tbIcon = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 function renderTabbar(){
   const tb = document.getElementById("tabbar"); if (!tb) return;
   const work = isRevisor() ? ["inbox","Mensajes","messages-square"] : isDesigner() ? ["paneldg","Trabajo","layout-grid"] : viewer.role === "CM" ? ["panelcm","Trabajo","layout-grid"] : isAdmRole() ? ["admpanel","Trabajo","layout-grid"] : ["dashboard","Dashboard","layout-dashboard"];
-  const tabs = (isComercial() ? [["dashboard","Dashboard","layout-dashboard"],["comercial","Comercial","tags"],["pedcom","Mis pedidos","list-checks"]] : [["inicio","Inicio","house"],work,["mensajes","Chat","messages-square"]]).filter(([k]) => can(k));
+  const tabs = (isComercial() ? [["pedcom","Mis pedidos","list-checks"],["dashboard","Dashboard","layout-dashboard"]] : [["inicio","Inicio","house"],work,["mensajes","Chat","messages-square"]]).filter(([k]) => can(k));
   const cnt = k => { const w = k === "paneldg" || k === "panelcm", n = k === "inicio" ? alerts().length : k === "mensajes" ? chatUnreadTotal() : k === "pedcom" ? pcBadgeN() : workPend(k);
     return n ? `<span class="tbc"${w ? ` title="${k === "paneldg" ? `${n} pedido${n === 1 ? "" : "s"} sin terminar` : `${n} pedido${n === 1 ? "" : "s"} sin abrir`}"` : ""}>${w ? "+" : ""}${n > 99 ? "99+" : n}</span>` : ""; };
   const open = document.querySelector(".side")?.classList.contains("open");
@@ -22692,7 +22703,7 @@ let navHist = [];
 const pageName = k => k === "inicio" ? "Inicio" : k === "config" ? "Configuración" : k === "mensajes" ? "Chat" : (SECTIONS.find(s => s.k === k) || {}).l || k;
 function backTo(){
   if (isRevisor()) return null; // el Revisor solo tiene Mensajes de las cuentas
-  const home = can("inicio") ? "inicio" : isComercial() ? "comercial" : "dashboard", pk = panelOf(page);
+  const home = can("inicio") ? "inicio" : isComercial() ? "pedcom" : "dashboard", pk = panelOf(page);
   if (page === home) return null;
   // v373: con un informe abierto, Volver lleva a las tarjetas del Informe mensual (antes iba a Inicio).
   if (page === "reportes" && reportTab && reportTab !== "analisis") return { k:"reportes", t:"Informe mensual", rep:true };
@@ -22746,7 +22757,7 @@ function render(){
   if (page === "seguimiento" && render.prevPage !== "seguimiento"){ segUI.acc = false; segUI.fx = "open"; } // v375: al entrar al panel, “Quién lo ve” cerrado (lo demás queda donde estaba) · v380: con animación de entrada
   render.goingBack = false; render.prevPage = page; render.prevFicha = jobUI.ficha; render.prevForm = jobUI.form;
   if (page === "perfil"){ page = "config"; cfgTab = "perfil"; } // Mi Perfil se edita solo en Configuración // y el de redes, dentro de Diseño para Redes
-  if (!can(page)) page = isTV() ? "tvpant" : can("dashboard") ? "dashboard" : can("inicio") ? "inicio" : isComercial() ? "comercial" : can("inbox") ? "inbox" : "perfil";
+  if (!can(page)) page = isTV() ? "tvpant" : can("dashboard") ? "dashboard" : can("inicio") ? "inicio" : isComercial() ? "pedcom" : can("inbox") ? "inbox" : "perfil";
   if (tvOn()){ const v = tvCurView(); if (page !== v) page = v; } // v266: un televisor muestra siempre lo que eligió Admin total (si lo cambia, se cambia solo)
   document.documentElement.classList.toggle("tvrole", isTV()); document.documentElement.classList.toggle("tvkiosk", tvOn());
   if (page !== "reportes" && reportTab === "analisis") reportTab = ""; // v319: el Análisis (pantalla completa) se cierra al ir a otra sección
@@ -22838,7 +22849,7 @@ document.addEventListener("click", e => {
 });
 function enterApp(){ setTimeout(() => { if (draftsMerge()) render(); }, 1200); // v369: borradores que quedaron solo en el dispositivo
   try { if (localStorage.getItem("rmh-navreset") || !localStorage.getItem("rmh-navclosed2")) navResetFor(viewer.role); } catch {} setTimeout(seedExamples, 0); setTimeout(() => { const a = spawnRepeats(), b = spawnPostRepeats(); if (a || b) render(); }, 1500); loadPrefs(viewer); applyPrefs(); loadWeather(); presenceOnEnter(); viewer.last = "hoy " + new Date().toTimeString().slice(0,5);
-  const want = enterApp.done ? "" : START_PAGE; enterApp.done = true; page = PAGES[want] && can(want) ? want : isTV() ? "tvpant" : isComercial() ? "comercial" : "dashboard"; render.lastKey = null; brandFilter = "Todas"; $("#login").hidden = true; $("#changeForm").hidden = true; $("#loginForm").hidden = false; $("#loginMsg").hidden = true; render(); toast(`${hello()}. Entraste como ${viewer.role}.`);
+  const want = enterApp.done ? "" : START_PAGE; enterApp.done = true; page = PAGES[want] && can(want) ? want : isTV() ? "tvpant" : isComercial() ? "pedcom" : "dashboard"; render.lastKey = null; brandFilter = "Todas"; $("#login").hidden = true; $("#changeForm").hidden = true; $("#loginForm").hidden = false; $("#loginMsg").hidden = true; render(); toast(`${hello()}. Entraste como ${viewer.role}.`);
   if (notifOn() && notifSupported() && Notification.permission === "granted") pushSubscribe().then(ok => { if (ok && page === "config") render(); });
   const oc = new URLSearchParams(location.search).get("chat"); if (oc){ history.replaceState(null, "", location.pathname + "#mensajes"); openChatFrom(oc); }
   const og = new URLSearchParams(location.search).get("go"); if (og){ history.replaceState(null, "", location.pathname); goAlert(og); } }
