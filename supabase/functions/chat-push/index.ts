@@ -177,6 +177,10 @@ async function pedidoPush(cfg: any, items: any[]) {
     const marked = ids.filter((id) => people.some((x) => x && x.id === id && x.admLead));
     return (admLeads = marked.length ? marked : ids);
   };
+  // v405: quien pide elige si también le llega a Administración (admReq: false = solo Diseño). El aviso de la base no trae
+  // ese dato: se lee el pedido (solo para las solicitudes nuevas del equipo, que son pocas).
+  let peds: any[] | null = null;
+  const wantsAdm = async (id: string) => { if (!peds) peds = (await state("s:PEDIDOS_COM")) || []; const x = (peds || []).find((y: any) => y && y.id === id); return !x || x.admReq !== false; };
   const now = Date.now(), brands = (p: any) => (Array.isArray(p.brands) ? p.brands : []).join(" + ");
   let sent = 0;
   for (const p of list) {
@@ -198,7 +202,7 @@ async function pedidoPush(cfg: any, items: any[]) {
       continue;
     }
     const pub = p.ev === "pub";
-    const team = !pub && !isBuyer(String(p.by || "")) ? await leads() : []; // v401: + Administración
+    const team = !pub && !isBuyer(String(p.by || "")) && await wantsAdm(String(p.id)) ? await leads() : []; // v401: + Administración (v405: si quien pidió lo marcó)
     const to = (pub ? [String(p.by || "")] : [...(admins || []).map((m) => m.person_id), ...team]).filter((id) => id && id !== (pub ? "" : p.by) && !isDnd(presence[id], now));
     if (!to.length) continue;
     const payload = JSON.stringify(pub
