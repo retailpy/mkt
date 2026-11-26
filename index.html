@@ -7555,9 +7555,9 @@ function staffSat(pp){
   const l = satList(SAT_TURN[CURRENT_MONTH] || {}, pp.id);
   return `<dt>Sábados de ${MONTHS_ES[+CURRENT_MONTH.slice(5) - 1]}</dt><dd>${l.length ? l.map(dm).join(", ").replace(/, ([^,]*)$/, " y $1") : ""}${!l.length ? `<span class="satmiss" data-page="sabados" role="link" tabindex="0">${icon("triangle-alert")} Todavía no eligió sus sábados</span>` : ""}</dd>`;
 }
-const STAFF_GROUPS = [["Jefa de Marketing", pp => pp.role === "Admin total" || pp.role === "Admin"], ["Diseñador gráfico", pp => pp.role === "Diseñador"], ["Community Manager", pp => pp.role === "CM"]];
+const STAFF_GROUPS = [["Jefa de Marketing", pp => pp.role === "Admin total" || pp.role === "Admin"], ["Diseñador gráfico", pp => pp.role === "Diseñador"], ["Community Manager", pp => pp.role === "CM"], ["Administración de Marketing", pp => pp.role === "Administración"]]; // v422: + Administración de Marketing (Marlene, Diamela, Joel, Vivian…)
 // Cómo se nombra cada puesto en Team MKT (sin siglas ni nombres internos de permisos).
-const CARGO_OF = { "Admin total":"Jefa de Marketing", "Admin":"Jefa de Marketing", "CM":"Community Manager", "Diseñador":"Diseñador gráfico", "Comercial":"Comercial" };
+const CARGO_OF = { "Admin total":"Jefa de Marketing", "Admin":"Jefa de Marketing", "CM":"Community Manager", "Diseñador":"Diseñador gráfico", "Comercial":"Comercial", "Administración":"Administración de Marketing" };
 const cargoOf = pp => { const c = (pp.cargo || "").trim(); return !c || CARGO_OF[c] ? CARGO_OF[c || pp.role] || pp.role : c; };
 function pStaff(){
   const sup = viewer.role === "Admin total";
@@ -7581,7 +7581,7 @@ function pStaff(){
     <div class="facts" style="display:flex;gap:6px;flex-wrap:wrap">${(pp.skills || []).map(sk => `<span class="skill">${esc(sk)}</span>`).join("") || `<span class="note">Sin habilidades cargadas</span>`}</div>${me ? `<p class="myedit">${icon("pencil")} Tocá tu tarjeta para editar tu perfil</p>` : `<button type="button" class="btn sm schat" data-chatwith="${pp.id}">${icon("messages-square")} Chatear con ${esc(nickOf(pp) || gname(pp.name))}</button>`}${sup ? `<div class="svisrow"><button class="btn sm" data-staffedit="${pp.id}">${icon("pencil")} Editar datos</button><button class="btn sm" data-staffvis="${pp.id}">${pp.staffHidden ? `${icon("eye-off")} Oculto · mostrar` : `${icon("eye")} Visible · ocultar`}</button></div>` : ""}</div>`; };
   const hidden = PEOPLE.filter(pp => pp.active && pp.staffHidden).length;
   return `<div><h1>Team MKT</h1><p class="sub">Las personas que forman parte de Retail MKT, para que todos se conozcan.${sup ? ` Como Admin total podés editar los datos de cada persona y elegir quién aparece (“Visible” / “Oculto”)${hidden ? ` · ${hidden} ${hidden === 1 ? "oculta" : "ocultas"}` : ""}.` : ""}</p></div>
-  ${STAFF_GROUPS.map(([title, f]) => { const list = PEOPLE.filter(pp => pp.active && f(pp) && (sup || !pp.staffHidden)); return list.length ? `<h2 style="margin:6px 0 -8px;font-size:18px">${title} <span class="note">· ${list.length}</span></h2><div class="staff-grid">${list.map(card).join("")}</div>` : ""; }).join("")}
+  ${STAFF_GROUPS.map(([title, f]) => { const list = PEOPLE.filter(pp => pp.active && f(pp) && (sup || !pp.staffHidden)).sort((a, c) => Number(!!c.admLead) - Number(!!a.admLead)); return list.length ? `<h2 style="margin:6px 0 -8px;font-size:18px">${title} <span class="note">· ${list.length}</span></h2><div class="staff-grid">${list.map(card).join("")}</div>` : ""; }).join("")}
   <p class="note">Cada persona completa su foto, frase, teléfonos, email personal y habilidades en Mi perfil. El email de la empresa y el usuario de ingreso los carga un admin.</p>${staffDrawer()}`;
 }
 // Admin total edita los datos de cualquier persona del Staff (el rol se cambia en Usuarios).
