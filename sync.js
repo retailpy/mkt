@@ -88,7 +88,8 @@ const RMH = (() => {
     ESCRACHES:[() => ESCRACHES, v => { ESCRACHES = Array.isArray(v) ? v : []; }], // Búsqueda de Escraches: los cargados y las marcas (solo Admin total, Admin y CM)
     PEDIDOS_COM:[() => PEDIDOS_COM, v => { PEDIDOS_COM = Array.isArray(v) ? v : []; }],
     ADM_JOBS:[() => ADM_JOBS, v => { ADM_JOBS = Array.isArray(v) ? v : []; }], // v401: Tablero de trabajos de Administración de Marketing (solo Admin total, Admin y Administración; también en la base)
-    ADM_EVENTS:[() => ADM_EVENTS, v => { ADM_EVENTS = Array.isArray(v) ? v : []; }], // v401: Eventos de Administración (lo mismo) // v242: pedidos de activaciones de Comercial (los compradores)
+    ADM_EVENTS:[() => ADM_EVENTS, v => { ADM_EVENTS = Array.isArray(v) ? v : []; }], // v401: Eventos de Administración (lo mismo)
+    ADM_FOTOS:[() => ADM_FOTOS, v => { ADM_FOTOS = Array.isArray(v) ? v : []; }], // v405: Fotos en los locales (lo mismo) // v242: pedidos de activaciones de Comercial (los compradores)
     CAMP_FOLDERS:[() => CAMP_FOLDERS, v => { CAMP_FOLDERS = Array.isArray(v) ? v : CF_DEF.map(c => ({ ...c, brands:[...c.brands] })); }], // v344: campañas (carpetas de la Planificación)
     APP_VIDEO:[() => APP_VIDEO, v => { APP_VIDEO = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }], // v374: el video de la app (v394: lo ve todo el equipo; lo cambia Admin total)
     DRAFTS:[() => DRAFTS, v => { DRAFTS = v && typeof v === "object" && !Array.isArray(v) ? v : {}; window.draftsSynced?.(); }], // v369: borradores de pedidos (solo Admin total)
@@ -118,7 +119,7 @@ const RMH = (() => {
   const ADM_ONLY = new Set(["s:AGENTS", "s:AGENT_CHAT", "s:CRONOGRAMA", "s:RESUMEN_EJEC"]); // v400: + el Resumen ejecutivo // solo Admin total y Admin (también en la base) · v394: s:APP_VIDEO lo lee todo el equipo
   const isAdm = () => ["Admin total", "Admin"].includes(member?.role);
   // v401: Administración de Marketing: solo la bajan y la guardan Admin total, Admin y el rol Administración (también en la base).
-  const ADMMKT_ONLY = new Set(["s:ADM_JOBS", "s:ADM_EVENTS"]);
+  const ADMMKT_ONLY = new Set(["s:ADM_JOBS", "s:ADM_EVENTS", "s:ADM_FOTOS"]); // v405: + las fotos de los locales
   const isAdmMkt = () => ["Admin total", "Admin", "Administración"].includes(member?.role);
   // Claves que todos leen pero solo Admin total guarda. (Los grupos de chat los crea cualquiera: la base controla
   // que cada uno cambie solo los suyos.)
