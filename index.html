@@ -5442,7 +5442,7 @@ const SECTIONS = [
   { g:"General", k:"oficina", l:"Oficina de Agentes", i:"building-2", virtual:true }, // v326: agentes de IA (SofIA, MatIAs, ClaudIA) y el equipo en una oficina dibujada; solo Admin total y Admin
   { g:"General", k:"notas", l:"Bloc de notas", i:"notebook-pen" },
   { g:"General", k:"aviso", l:"Aviso", i:"siren", virtual:true }, // solo Admin total: mensaje emergente al momento, con sonido y vibración (a personas, CM, Diseño o todos)
-  // v420 · Grupo “Solicitud de pedidos” (título amarillo): en el menú, una entrada por quien pide (Patricia, Emanuel, Marlene…, con su +N;
+  // v421 · Grupo “Solicitud de pedidos” (título amarillo): en el menú, una entrada por quien pide (Patricia, Emanuel, Marlene…, con su +N;
   // pcNavGroup) y “Comercial” (los pedidos de activaciones de los compradores, como antes de v397).
   { g:"Solicitud de pedidos", k:"solped", l:"Solicitud de pedidos", n:"Solicitudes del equipo", i:"clipboard-list", virtual:true }, // lo ven Admin total, Admin y Administración
   { g:"Solicitud de pedidos", k:"pedcom", l:"Pedidos Comercial", n:"Comercial", i:"shopping-bag", virtual:true }, // lo ven Admin total y Admin (y Comercial, los suyos)
@@ -6183,7 +6183,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v419";
+const APP_VER = "v421";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -8203,7 +8203,7 @@ function alerts(){
   if (viewer.role === "Admin total" && !isViewOnly()){ // v301: lo que está en pausa se le recuerda solo a Admin total
     jobs.filter(j => j.status === PAUSE && !j.ex && seesJob(j)).forEach(j => out.push({ go:"job:" + j.id, key:"hold:" + j.id + ":" + TODAY, ic:"pause", sev:"#94a3b8", rank:90, t:`En pausa: ${j.title}`, m:`${areaName(j.area)} · ${jobBrands(j).join(" + ")} · ${firstName(j.owner)}${j.holdAt ? ` · desde el ${dm(j.holdAt)}` : ""}${j.holdFrom ? ` · estaba en ${j.holdFrom}` : ""} · tocá para reanudarlo` }));
     [...posts.map(p => [p, "post"]), ...CHANNEL_POSTS.map(k => [k, "canal"])].filter(([p]) => p.status === PAUSE && !p.ex && seesBrand(p.brand)).forEach(([p, k]) => out.push({ go:"pub:" + k + ":" + p.id, key:"hold:" + k + p.id + ":" + TODAY, ic:"pause", sev:"#94a3b8", rank:90, t:`En pausa: ${p.title}`, m:`${k === "canal" ? "Canal de WhatsApp" : `${p.net || "IG"} ${p.format || "Post"}`} · ${p.brand} · ${firstName(p.cm || "")}${p.holdAt ? ` · desde el ${dm(p.holdAt)}` : ""} · tocá para reanudarla` })); }
-  if (viewer.role === "Admin total") PEDIDOS_COM.filter(p => p.st === "Enviado").forEach(p => out.push({ go:"com:" + p.id, key:"pc:" + p.id, ic:pcEq(p) ? "clipboard-list" : "shopping-bag", sev:"#38bdf8", rank:-5, t:`${pcEq(p) ? "Nueva solicitud de pedido" : "Nuevo pedido de Comercial"}: ${p.title}`, m:`${p.byName} · ${pcBrandTxt(p)} · ${pcEq(p) ? "para el" : "publicar el"} ${p.date ? dm(p.date) : "—"} · pasalo a Diseño gráfico o a un CM` })); // v420: la del equipo, con su nombre
+  if (viewer.role === "Admin total") PEDIDOS_COM.filter(p => p.st === "Enviado").forEach(p => out.push({ go:"com:" + p.id, key:"pc:" + p.id, ic:pcEq(p) ? "clipboard-list" : "shopping-bag", sev:"#38bdf8", rank:-5, t:`${pcEq(p) ? "Nueva solicitud de pedido" : "Nuevo pedido de Comercial"}: ${p.title}`, m:`${p.byName} · ${pcBrandTxt(p)} · ${pcEq(p) ? "para el" : "publicar el"} ${p.date ? dm(p.date) : "—"} · pasalo a Diseño gráfico o a un CM` })); // v421: la del equipo, con su nombre
   if (pcReq()) PEDIDOS_COM.filter(p => pcOwn(p) && pcFinalWait(p)).forEach(p => out.push({ go:"com:" + p.id, key:"pcfin:" + p.id + ":" + (pcJob(p)?.approved || ""), ic:"user-check", sev:"#f59e0b", rank:-7, t:`Aprobá el diseño final: ${p.title}`, m:`${pcCoordN()} ya aprobó el diseño de ${pcFirst(pcJob(p)?.owner)}: miralo y aprobalo, o pedí cambios · tocá para verlo` })); // v412
   if (viewer.role === "Admin total") resetRequests.forEach(id => { const pp = PEOPLE.find(x => x.id === id); if (pp) out.push({ go:"usuarios", sev:"#22d3ee", rank:-1, ic:"key-round", t:`${pp.name} pidió restablecer su contraseña`, m:"Andá a Usuarios y permisos → Restablecer contraseña" }); });
   if (satPeople().includes(viewer) && !isViewOnly()){ const n = satList(SAT_TURN[CURRENT_MONTH] || {}, viewer.id).length;
@@ -8303,7 +8303,7 @@ function goAlert(go){
   else if (go.startsWith("act:")){ const a = actById(go.slice(4)); if (!a) return toast("No se encontró la actividad (quizás la borraron)."); postUI.form = null; jobUI.form = null; jobUI.ficha = null; actUI.form = { mode:"edit", act:{ ...a } }; actSeen(a); page = ["gcm", "calact", "gestioncm"].find(can) || page; }
   else if (go.startsWith("adm:")){ const j = admById(go.slice(4)); if (!j) return toast("No se encontró el trabajo (quizás lo borraron)."); postUI.form = null; jobUI.form = null; jobUI.ficha = null; admUI.form = { mode:"edit", j:JSON.parse(JSON.stringify(j)) }; page = "admtab"; clearDocAlerts(go); } // v401
   else if (go.startsWith("admev:")){ postUI.form = null; jobUI.form = null; jobUI.ficha = null; admUI.evForm = null; admUI.evItem = null; admUI.ev = go.slice(6); page = "admev"; clearDocAlerts(go); }
-  else if (go.startsWith("com:")){ postUI.form = null; jobUI.form = null; jobUI.ficha = null; pcUI.form = null; pcUI.open = go.slice(4); page = pcPageOf(pcById(pcUI.open)); pcUI.who = null; /* v420: a su sección */ pcSeen(pcById(pcUI.open)); }
+  else if (go.startsWith("com:")){ postUI.form = null; jobUI.form = null; jobUI.ficha = null; pcUI.form = null; pcUI.open = go.slice(4); page = pcPageOf(pcById(pcUI.open)); pcUI.who = null; /* v421: a su sección */ pcSeen(pcById(pcUI.open)); }
   else if (go.startsWith("chat:")) return openChatFrom(go.slice(5));
   else if (go.startsWith("seg:")){ postUI.form = null; jobUI.form = null; jobUI.ficha = null; page = "seguimiento"; Object.assign(segUI, { tab:"ini", open:go.slice(4), form:null, meet:"", mform:null, stf:"", qk:false }); clearDocAlerts(go); }
   else if (go.startsWith("sug")) page = "sugerencias";
@@ -17078,12 +17078,12 @@ const PC_PEDIDO_EQ = ["Post para redes", "Historia", "Post + Historia", "Carruse
 const pcBrandsFor = p => pcEq(p) || (!isComercial() && !p?.by) ? [...new Set([...PC_BRANDS, ...myBrands(), ...(p?.brands || [])])] : PC_BRANDS;
 const pcKind = p => pcEq(p) ? "Solicitud de pedido" : "Pedido de activación";
 const pcMine = () => (isComercial() ? PEDIDOS_COM.filter(p => p.by === viewer.id) : PEDIDOS_COM).filter(p => p && p.id);
-// v420 · Dos secciones con los mismos datos: Solicitud de pedidos (page "solped": lo que pide el equipo, pcEq) y Pedidos Comercial
+// v421 · Dos secciones con los mismos datos: Solicitud de pedidos (page "solped": lo que pide el equipo, pcEq) y Pedidos Comercial
 // (page "pedcom": lo de los compradores, como antes de v397).
 const pcScope = () => page === "solped" ? "eq" : "com";
 const pcInScope = p => !!p && (pcScope() === "eq" ? pcEq(p) : !pcEq(p));
 const pcPageOf = p => pcEq(p) ? "solped" : "pedcom";
-// v420 · Quién pide: los Admin (Patricia, Emanuel), la líder de Administración y cualquiera que ya haya pedido; los que más piden, arriba.
+// v421 · Quién pide: los Admin (Patricia, Emanuel), la líder de Administración y cualquiera que ya haya pedido; los que más piden, arriba.
 function pcNavPeople(){ const by = new Map(); PEDIDOS_COM.filter(p => p && pcEq(p) && !p.demo && p.by).forEach(p => by.set(p.by, (by.get(p.by) || 0) + 1));
   return PEOPLE.filter(pp => pp.active !== false && (pp.role === "Admin" || admIsLead(pp) || by.has(pp.id))).sort((a, b) => (by.get(b.id) || 0) - (by.get(a.id) || 0) || a.name.localeCompare(b.name)); }
 // Lo que espera a quien mira, de los pedidos de esa persona: a quien pidió, sus novedades; a Admin total, lo nuevo o con mensaje; a la líder de Administración, lo que no tomó.
@@ -17137,7 +17137,7 @@ const pcUnread = p => !p || !(p.msgs || []).length ? [] : pcOwn(p) ? p.msgs.filt
   : viewer?.role === "Admin total" ? p.msgs.filter(m => m.by === p.by && String(m.at) > String(p.rdAt || "")) : [];
 // Comercial: un cambio de estado de su pedido que todavía no vio (stSeen guarda el último estado que vio).
 const pcStNew = p => pcOwn(p) && pcSt(p) !== "Enviado" && p.stSeen !== pcSt(p) && !(p.st === "Publicado" && p.pubSeen);
-const pcBadgeN = sc => { const inS = p => !sc || (sc === "eq" ? pcEq(p) : !pcEq(p)); // v420: por sección ("eq" Solicitud, "com" Comercial)
+const pcBadgeN = sc => { const inS = p => !sc || (sc === "eq" ? pcEq(p) : !pcEq(p)); // v421: por sección ("eq" Solicitud, "com" Comercial)
   return pcReq() ? PEDIDOS_COM.filter(p => inS(p) && pcOwn(p) && (pcStNew(p) || pcUnread(p).length || pcFinalWait(p))).length + (sc !== "com" ? admPcForMe().length : 0) : viewer?.role === "Admin total" ? PEDIDOS_COM.filter(p => inS(p) && (p.st === "Enviado" || pcUnread(p).length)).length : 0; };
 const pcCanEdit = p => pcPrevOk(p) && ((pcOwn(p) && ["Enviado", "Con modificaciones"].includes(pcSt(p))) || viewer.role === "Admin total");
 const pcSeen = p => { if (!p || window.RMH?.previewing) return; if (pcStNew(p)) p.stSeen = pcSt(p);
@@ -17441,7 +17441,7 @@ function pcTable(list){
 }
 function pPedCom(){
   const eqS = pcScope() === "eq", scoped = pcMine().filter(pcInScope), com = isComercial(), at = viewer.role === "Admin total" && !window.RMH?.previewing;
-  const who = eqS && pcUI.who ? personById(pcUI.who) : null, mine = who ? scoped.filter(p => p.by === who.id) : scoped; // v420: los pedidos de una persona
+  const who = eqS && pcUI.who ? personById(pcUI.who) : null, mine = who ? scoped.filter(p => p.by === who.id) : scoped; // v421: los pedidos de una persona
   if (pcUI.form) return pcFormPage();
   const op = pcUI.open && scoped.find(p => p.id === pcUI.open); if (op) return pcDetail(op); pcUI.open = null; // v397: Comercial solo abre los suyos
   const vt = [["tabla", "Tabla", "table-2"], ["calendario", "Calendario", "calendar-days"]];
@@ -17537,7 +17537,7 @@ document.addEventListener("submit", e => {
   if (pcUI.busy) return toast("Esperá que terminen de subir los archivos.");
   const p = pcRead();
   if (!p.title) return toast("Poné el nombre de la acción.");
-  const eqNew = f.mode === "new" && pcScope() === "eq"; // v397: lo pide alguien del equipo (v420: el que se carga en Solicitud de pedidos)
+  const eqNew = f.mode === "new" && pcScope() === "eq"; // v397: lo pide alguien del equipo (v421: el que se carga en Solicitud de pedidos)
   if (!p.brands.length) return toast(eqNew || pcEq(p) ? "Elegí al menos una marca." : "Elegí al menos un supermercado (Superseis, Stock o Delimarket).");
   if (!p.date) return toast(eqNew || pcEq(p) ? "Elegí para cuándo lo necesitás." : "Elegí la fecha de publicación que te gustaría.");
   if (f.mode === "new" && p.date < TODAY) return toast("La fecha de publicación ya pasó: elegí una de hoy en adelante.");
@@ -21446,7 +21446,7 @@ function renderNav(){
     const items = SECTIONS.filter(s => s.g === g && can(s.k) && (!s.hide || (isRevisor() && s.k === "inbox")));
     if (!items.length) return "";
     const shut = !isRevisor() && !isComercial() && navClosed.has(g); // el Revisor tiene una sola sección: siempre a la vista
-    if (g === "Solicitud de pedidos") return pcNavGroup(items, shut); // v420
+    if (g === "Solicitud de pedidos") return pcNavGroup(items, shut); // v421
     return `<div class="nav-group${shut ? " closed" : ""}"><button type="button" class="nav-label navtog" data-navtog="${esc(g)}" aria-expanded="${!shut}">${g}${shut ? items.map(x => navBadge(x.k)).join("") : ""}${icon("chevron-down")}</button>${items.map(s => `<a href="#${s.k}" data-page="${s.k}" title="${esc(s.n || s.l)}" class="${page===s.k || (s.k === "paneldg" && PANEL_DG_KEYS.includes(page)) || (s.k === "panelcm" && PANEL_CM_KEYS.includes(page)) ?"on":""}${s.k === "solped" ? " pcnav" : ""}">${icon(s.i)}<span>${s.n || s.l}</span>${s.k==="mensajes" && chatUnreadTotal() ? `<span class="count msgc">${chatUnreadTotal()}</span>` : ""}${s.k==="alertas" && alerts().length ? `<span class="count">${alerts().length}</span>` : ""}${navBadge(s.k)}</a>`).join("")}</div>`;
   }).join("");
   document.querySelectorAll('.nav a[data-page="paneldg"], .nav a[data-page="panelcm"]').forEach(a => a.classList.toggle("wknew", workNew(a.dataset.page) > 0));
