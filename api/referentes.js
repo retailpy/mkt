@@ -21,7 +21,7 @@ const CUENTAS = {
   monoprix: ["Monoprix", "FR"], albertheijn: ["Albert Heijn", "NL"], lidlespana: ["Lidl", "DE"], jumbochile: ["Jumbo", "CL"],
 };
 // v401 · Competencia nacional (Paraguay), para el Resumen ejecutivo (reunión con el CEO): qué publican Casa Rica, Real,
-// Luisito, Areté, Los Jardines, Fortis, SuperMás, Kingo y Plub. Se lee aparte (?set=local, con su propio horario) para no
+// Luisito, Pueblo, Areté, Los Jardines, Fortis, SuperMás, Kingo y Plub. Se lee aparte (?set=local, con su propio horario) para no
 // pasar el límite de tiempo de Vercel, y se guarda en s:META_REFS.local (la base junta por arriba: no pisa los de afuera; si falla todo, queda lo anterior y el motivo en localError,
 // y Tendencias sigue mostrando solo los de afuera). Cada cadena tiene sus usuarios de Instagram posibles: vale el primero
 // que Instagram encuentra (si ninguno, queda el error y la pantalla lo dice).
@@ -29,6 +29,7 @@ const LOCALES = [
   ["casarica", "Casa Rica", ["casaricapy"]],
   ["real", "Real", ["real_py", "supermercadosrealpy", "superrealpy"]],
   ["luisito", "Luisito", ["hipermercadosluisitopy", "hipermercados_luisito"]],
+  ["pueblo", "Pueblo", ["hiperpueblo", "supermercadospueblo", "grupopueblo"]], // v404: Hiper Pueblo (Grupo Pueblo)
   ["arete", "Areté", ["aretesupermercados", "aretepy"]],
   ["losjardines", "Los Jardines", ["losjardinespy"]],
   ["fortis", "Fortis", ["fortispy", "fortisparaguay"]],
