@@ -4450,7 +4450,7 @@ td svg{width:15px;height:15px;vertical-align:-2px;color:var(--cyan)}
 .rectab td{text-align:right;padding:4px 6px;border-top:1px solid var(--line-2);vertical-align:middle}
 .rectab th:nth-child(-n+2),.rectab td:nth-child(-n+2),.rectab th:last-child,.rectab td:last-child{text-align:left}
 .rectab td:nth-child(2) b{display:block;white-space:nowrap}.rectab td small{display:block;font-size:11px;color:var(--muted)}
-.rectab tr.rerr td{opacity:.8}
+.rectab tr.rerr td{opacity:.8}.rectab tr.repinr td{background:var(--racbg)}.reold{font-style:normal;color:var(--muted)}
 .ren{width:22px;height:22px;border-radius:99px;display:grid;place-items:center;font-size:12px;font-weight:700;background:var(--racbg);color:var(--racs);flex:none}
 .recbest{display:flex;gap:8px;align-items:center;text-decoration:none;color:inherit;min-width:200px}
 .recth,.recbest .pthumb.recth{width:38px;height:38px;border-radius:8px;object-fit:cover;flex:none}.recth.ph{display:grid;place-items:center;background:var(--line-2);font-size:10px;color:var(--faint)}
@@ -20551,7 +20551,8 @@ function reComp(w, acc){
     const every = (a?.posts || []).filter(p => p?.ts).map(mk), posts = every.filter(p => reInWk(pyDate(p.ts), w));
     const avg = every.length ? reSum(every, "eng") / every.length : 0; // su promedio con todo lo guardado (para ver si se destacó)
     const best = [...posts].sort((x, y) => y.eng - x.eng || String(y.ts).localeCompare(String(x.ts)))[0];
-    return { k, name:a?.name || k, u:a?.u || k, cc:a?.cc, fol:a?.fol, err:a?.err, posts, eng:reSum(posts, "eng"), best:best ? { ...best, avg } : null }; })
+    const last = [...every].sort((x, y) => String(y.ts).localeCompare(String(x.ts)))[0]; // lo último que publicó (aunque sea de antes)
+    return { k, name:a?.name || k, u:a?.u || k, cc:a?.cc, fol:a?.fol, err:a?.err, posts, eng:reSum(posts, "eng"), best:best ? { ...best, avg } : null, last:last ? { ...last, avg, old:true } : null }; })
     .sort((a, c) => c.eng - a.eng || c.posts.length - a.posts.length || a.name.localeCompare(c.name, "es"));
   const all = list.flatMap(x => x.posts), fm = {};
   all.forEach(p => { fm[p.type || "Post"] = (fm[p.type || "Post"] || 0) + 1; });
@@ -20712,16 +20713,19 @@ function pResumen(){
   // ----- páginas 4 y 5: competencia nacional e internacional (sin nuestras marcas) -----
   const compImg = (p, cls) => safeUrl(p.img) ? `<img class="${cls}" src="${esc(safeUrl(p.img))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'${cls} ph',textContent:'IG'}))">` : `<span class="${cls} ph">IG</span>`;
   const accName = (x, intl) => `${intl && x.cc ? flagOf(x.cc) + " " : ""}${esc(x.name || x.acc)}`;
-  const rowBest = x => { const b = x.best; if (!b) return `<span class="note">—</span>`;
-    return `<a class="recbest" ${b.link ? `href="${esc(b.link)}" target="_blank" rel="noopener"` : ""} title="${esc(b.cap || "")}">${compImg(b, "recth")}<span>${esc(reAbout(b))}</span></a>`; };
-  const ctable = (C, intl) => { const L = intl ? C.list.filter(x => x.posts.length).slice(0, 10) : C.list;
+  const rowBest = (x, pin) => { const b = x.best || (pin ? x.last : null); if (!b) return `<span class="note">—</span>`;
+    return `<a class="recbest" ${b.link ? `href="${esc(b.link)}" target="_blank" rel="noopener"` : ""} title="${esc(b.cap || "")}">${compImg(b, "recth")}<span>${b.old ? `<em class="reold">Lo último que publicó (${dm(pyDate(b.ts))}):</em> ` : ""}${esc(reAbout(b))}</span></a>`; };
+  // v408: en Internacional, Pão de Açúcar va siempre (primero), aunque no haya publicado en el período.
+  const RE_PIN = "paodeacucar", intlPin = intl.list.find(x => x.k === RE_PIN);
+  const ctable = (C, intl) => { const pin = intl ? intlPin : null, L = intl ? [pin, ...C.list.filter(x => x !== pin && x.posts.length)].filter(Boolean).slice(0, 10) : C.list; let n = 0;
     return `<div class="rectabw"><table class="rectab"><thead><tr><th></th><th>Cadena</th>${intl ? "" : `<th title="Seguidores en Instagram">Seguidores</th>`}<th title="Publicaciones en Instagram">Publ.</th><th title="Me gusta y comentarios">Me gusta + coment.</th><th title="Promedio de me gusta y comentarios por publicación">Promedio</th><th>Lo que mejor le funcionó</th></tr></thead><tbody>
-    ${L.map((x, i) => `<tr class="${x.err && !x.posts.length ? "rerr" : ""}"><td><span class="ren">${i + 1}</span></td><td><b>${accName(x, intl)}</b>${x.err && !x.posts.length ? `<small class="rewarn" title="${esc(x.err)}">@${esc(x.u)} · no se encontró en Instagram</small>` : x.u ? `<small>@${esc(x.u)}</small>` : ""}</td>
-      ${intl ? "" : `<td>${isNum(x.fol) ? dots(x.fol) : "—"}</td>`}<td>${x.posts.length}</td><td>${C.hasEng ? dots(x.eng) : "—"}</td><td>${C.hasEng && x.posts.length ? dots(x.eng / x.posts.length) : "—"}</td><td>${rowBest(x)}</td></tr>`).join("")}</tbody></table></div>`; };
-  const ccard = (p, intl) => `<a class="recp" ${p.link ? `href="${esc(p.link)}" target="_blank" rel="noopener"` : ""}>${compImg(p, "recpimg")}<span class="recpb"><span class="rep5m"><b class="recacc">${accName(p, intl)}</b><small>${esc(p.type || "Post")} · ${reDayTxt(pyDate(p.ts))}</small></span>
+    ${L.map(x => `<tr class="${x === pin ? "repinr" : ""}${x.err && !x.posts.length ? " rerr" : ""}"><td>${x === pin ? `<span class="ren" title="Siempre primero">★</span>` : `<span class="ren">${++n}</span>`}</td><td><b>${accName(x, intl)}</b>${x.err && !x.posts.length ? `<small class="rewarn" title="${esc(x.err)}">@${esc(x.u)} · no se encontró en Instagram</small>` : x.u ? `<small>@${esc(x.u)}</small>` : ""}</td>
+      ${intl ? "" : `<td>${isNum(x.fol) ? dots(x.fol) : "—"}</td>`}<td>${x.posts.length}</td><td>${C.hasEng ? dots(x.eng) : "—"}</td><td>${C.hasEng && x.posts.length ? dots(x.eng / x.posts.length) : "—"}</td><td>${rowBest(x, x === pin)}</td></tr>`).join("")}</tbody></table></div>`; };
+  const ccard = (p, intl) => `<a class="recp" ${p.link ? `href="${esc(p.link)}" target="_blank" rel="noopener"` : ""}>${compImg(p, "recpimg")}<span class="recpb"><span class="rep5m"><b class="recacc">${accName(p, intl)}</b><small>${esc(p.type || "Post")} · ${p.old ? `lo último que publicó (${dm(pyDate(p.ts))})` : reDayTxt(pyDate(p.ts))}</small></span>
     <span class="recabout"><b>De qué se trata:</b> ${esc(reAbout(p))}</span>${p.cap ? `<span class="recpcap" title="${esc(p.cap)}">“${esc(reFull(p.cap))}”</span>` : ""}
     <small class="recpk">${icon("heart")} ${isNum(p.likes) ? dots(p.likes) : "—"} · ${icon("message-circle")} ${isNum(p.comments) ? dots(p.comments) : "—"}${p.avg > 0 && p.eng / p.avg >= 1.3 ? ` · <b class="reupx">${reTimes(p.eng / p.avg)} veces su promedio</b>` : ""}</small></span></a>`;
-  const ctops = (C, intl) => C.top.length ? `<div class="recps">${C.top.slice(0, 4).map(p => ccard(p, intl)).join("")}</div>` : empty(`Sin publicaciones ${P.per}.`, intl ? "globe" : "store");
+  const ctops = (C, intl) => { const pc = intl && intlPin ? intlPin.best || intlPin.last : null, L = [pc, ...C.top.filter(p => !pc || p.k !== RE_PIN)].filter(Boolean).slice(0, 4);
+    return L.length ? `<div class="recps">${L.map(p => ccard(p, intl)).join("")}</div>` : empty(`Sin publicaciones ${P.per}.`, intl ? "globe" : "store"); };
   const cthemes = C => C.themes.length ? `<div><b class="rek">Temas que más usaron</b><div class="rechips">${C.themes.slice(0, 6).map(([l, n]) => `<span>${esc(l)} <b>${n}</b></span>`).join("")}</div></div>` : "";
   const cfmts = C => C.fmts.length ? `Formatos que más usaron: ${C.fmts.slice(0, 3).map(([f, n]) => `${esc(f)} (${n})`).join(" · ")}. ` : "";
   const hasLocal = !!META_REFS?.local?.accounts, hasIntl = !!Object.keys(META_REFS?.accounts || {}).length;
@@ -20732,9 +20736,9 @@ function pResumen(){
       <section class="resec">${head("trophy", "Lo que más les funcionó", "Lo mejor de cada cadena (una por cadena), con de qué se trata y su texto.")}${ctops(comp, false)}${cthemes(comp)}</section>
     </div></div>`;
   const pInt = `<div class="repage re-pi"><div class="recols2">
-      <section class="resec">${head("globe", "Internacional", `Supermercados de referencia del mundo (Brasil, España, Estados Unidos, Reino Unido, Francia y otros): lo que publicaron en Instagram ${P.per}, para inspirarse.`, `<span class="resh-act">${metaBtn("referentes", "Internacional", "Internacional actualizado con lo último de Instagram.")}</span>`)}
-        ${intl.all.length ? ctable(intl, true) : empty(hasIntl ? `Sin publicaciones de los supermercados de afuera ${P.per} (la app guarda las últimas de cada uno).` : "Todavía no se leyeron los supermercados de afuera.", "globe")}
-        ${intl.all.length ? `<p class="note re0">${cfmts(intl)}${intl.hasEng ? "Me gusta y comentarios: lo que muestra Instagram." : "Los me gusta y comentarios de las cadenas de afuera se guardan desde esta versión: se ven después de la próxima lectura (todos los días, 6:50 y 12:50)."} Actualizado ${metaWhen(META_REFS.updated)}.</p>` : ""}</section>
+      <section class="resec">${head("globe", "Internacional", `Supermercados de referencia del mundo (Brasil, España, Estados Unidos, Reino Unido, Francia y otros): lo que publicaron en Instagram ${P.per}, para inspirarse. Pão de Açúcar va siempre primero.`, `<span class="resh-act">${metaBtn("referentes", "Internacional", "Internacional actualizado con lo último de Instagram.")}</span>`)}
+        ${intl.all.length || intlPin ? ctable(intl, true) : empty(hasIntl ? `Sin publicaciones de los supermercados de afuera ${P.per} (la app guarda las últimas de cada uno).` : "Todavía no se leyeron los supermercados de afuera.", "globe")}
+        ${intl.all.length || intlPin ? `<p class="note re0">${cfmts(intl)}${intl.hasEng ? "Me gusta y comentarios: lo que muestra Instagram." : "Los me gusta y comentarios de las cadenas de afuera se guardan desde esta versión: se ven después de la próxima lectura (todos los días, 6:50 y 12:50)."} Actualizado ${metaWhen(META_REFS.updated)}.</p>` : ""}</section>
       <section class="resec">${head("trophy", "Lo que más funcionó afuera", intl.hasEng ? "Lo mejor de cada cadena (una por cadena), con de qué se trata y su texto." : "Lo último de cada cadena (una por cadena), con de qué se trata y su texto.")}${ctops(intl, true)}${cthemes(intl)}</section>
     </div></div>`;
   // ----- página 4: pauta e ideas -----
