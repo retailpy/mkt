@@ -93,7 +93,9 @@ async function jobPush(cfg: any, items: any[]) {
     const brands = j ? (Array.isArray(j.brands) && j.brands.length ? j.brands : [j.brand]).filter(Boolean).join(" + ") : "";
     let title = j?.title || "", body = "", go = j ? "job:" + j.id : "";
     let head = "";
-    if (n.adm) { // v401: Administración de Marketing: le toca un trabajo del Tablero (el título y el detalle vienen en el aviso)
+    if (n.ped) { // v410: Solicitud de pedidos: aprobación final del diseño (a quien lo pidió) y su respuesta (a Admin total y al diseñador)
+      title = short(String(n.title || ""), 120); body = String(n.text || ""); go = "com:" + String(n.ped); head = short(String(n.head || "Solicitud de pedidos"), 80);
+    } else if (n.adm) { // v401: Administración de Marketing: le toca un trabajo del Tablero (el título y el detalle vienen en el aviso)
       title = short(String(n.title || ""), 120); body = String(n.text || ""); go = "adm:" + String(n.adm); head = "Administración: te toca un trabajo";
     } else if (n.copy && n.post) { // v214: copy de la publicación (la CM lo manda → Admin total; Admin total aprueba o pide corrección → la CM)
       const x = (n.canal ? canal : posts).find((y) => y.id === n.post);
