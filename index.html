@@ -5453,7 +5453,7 @@ const SECTIONS = [
   { g:"Community Manager", k:"cargacm", l:"Carga de trabajo CM", n:"Carga de trabajo", i:"gauge" },
   { g:"Community Manager", k:"tencm", l:"Tendencias Community Manager", n:"Tendencias", i:"sparkles", virtual:true }, // 10 novedades de redes y campañas de supermercados, con su link
   { g:"Community Manager", k:"noticias", l:"Noticias", n:"Noticias", i:"newspaper", virtual:true }, // lo que sale en los medios de Paraguay sobre Retail S.A. y sus marcas (en la botonera, debajo de Tendencias)
-  { g:"Community Manager", k:"compnac", l:"Competencia Nacional", n:"Competencia Nacional", i:"store", virtual:true }, // v407: los supermercados de Paraguay en Instagram (CM, Admin total y Admin)
+  { g:"Community Manager", k:"compnac", l:"Competencia", n:"Competencia", i:"store", virtual:true }, // v419: se llama “Competencia” · v407: los supermercados de Paraguay en Instagram (CM, Admin total y Admin)
   { g:"Community Manager", k:"plan", l:"Plan de posteo", i:"list-checks", hide:true },
   { g:"Community Manager", k:"gcm", l:"Gestión de Comunicación y Marketing", n:"Gestión", i:"layers", hide:true, virtual:true }, // v220: todo el trabajo de CM en una tabla (redes, historias, WhatsApp, videos, contenidos y actividades)
   { g:"Community Manager", k:"postext", l:"Plan de posteo", n:"Plan de posteo", i:"table-2", hide:true, virtual:true }, // v249: calendario de texto del mes (Admin total y CM)
@@ -6171,7 +6171,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v416";
+const APP_VER = "v419";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -21287,13 +21287,13 @@ function cnAnalysis(C, w){
 }
 const lcFirst = t => t ? t[0].toLowerCase() + t.slice(1) : t;
 function pCompNac(){
-  if (!cnCan()) return `<div class="panel empty">${icon("lock")} Competencia Nacional la ven CM, Admin total y Admin.</div>`;
+  if (!cnCan()) return `<div class="panel empty">${icon("lock")} Competencia la ven CM, Admin total y Admin.</div>`;
   const intl = cnUI.tab === "int", L = intl ? (Object.keys(META_REFS?.accounts || {}).length ? { accounts:META_REFS.accounts, updated:META_REFS.updated } : null) : META_REFS?.local;
   const w = cnPeriod(), C = reComp(w, L?.accounts || {}, { fair:true }), an = cnAnalysis(C, w), withPosts = C.list.filter(x => x.posts.length);
   const pin = intl ? C.list.find(x => x.k === CN_PIN) : null, rows = intl ? [pin, ...C.list.filter(x => x !== pin && x.posts.length)].filter(Boolean) : C.list;
   const names = Object.entries(L?.accounts || {}).map(([k, a]) => a?.name || k), nameTxt = names.length > 1 ? names.slice(0, -1).join(", ") + " y " + names[names.length - 1] : names.join("");
   const tabs = viewTabs([["py", "Paraguay", "store"], ["int", "Internacional", "globe"]], cnUI.tab, "data-cntab");
-  const head = `<div class="head"><div><h1 class="pmh">${pmIco("store")}Competencia Nacional</h1><p class="sub">${intl ? "Supermercados de referencia del mundo (Brasil, España, Estados Unidos, Reino Unido, Francia y otros): qué publican en Instagram y qué les funciona, para inspirarse. Pão de Açúcar va siempre primero." : `Lo que publican en Instagram los supermercados de Paraguay${names.length ? ` (${esc(nameTxt)})` : ""}: qué hacen, qué les funciona y qué podemos aprender.`} ${L?.updated ? `Actualizado ${metaWhen(L.updated)}.` : ""}</p></div>
+  const head = `<div class="head"><div><h1 class="pmh">${pmIco("store")}Competencia</h1><p class="sub">${intl ? "Supermercados de referencia del mundo (Brasil, España, Estados Unidos, Reino Unido, Francia y otros): qué publican en Instagram y qué les funciona, para inspirarse. Pão de Açúcar va siempre primero." : `Lo que publican en Instagram los supermercados de Paraguay${names.length ? ` (${esc(nameTxt)})` : ""}: qué hacen, qué les funciona y qué podemos aprender.`} ${L?.updated ? `Actualizado ${metaWhen(L.updated)}.` : ""}</p></div>
     <div class="chips">${tabs}${viewTabs(CN_PERS.map(([k, l]) => [k, l, k === "all" ? "infinity" : "calendar-days"]), cnUI.per, "data-cnper")}${intl ? metaBtn("referentes", "Internacional", "Internacional actualizado con lo último de Instagram.") : metaBtn("referentes?set=local", "Competencia", "Competencia actualizada con lo último de Instagram.")}</div></div>`;
   if (!L?.accounts) return `${head}<div class="panel empty">${icon(intl ? "globe" : "store")} ${!intl && META_REFS?.localError ? `No se pudo leer la competencia: ${esc(META_REFS.localError)}.` : `Todavía no se leyeron ${intl ? "los supermercados de afuera" : "la competencia"} en Instagram. Se trae sola dos veces por día; tocá “Actualizar” para traerla ahora.`}</div>`;
   const kpi = (v, l, s = "") => `<div class="cnkpi"><b>${v}</b><span>${l}</span>${s ? `<small>${s}</small>` : ""}</div>`;
