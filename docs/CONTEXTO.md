@@ -197,6 +197,7 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 ---
 
 ## 5. Otras cosas recientes (v137–v160)
+- **v427 · Resumen ejecutivo: fotos de la competencia en 4:5, tamaño mediano (26/11/2026):** pedido de Admin total (“que se vea la imagen de la competencia en 4:5 vertical… no hace falta tan grande, pequeño mediano pero que se vea bien”). En Competencia nacional e Internacional: la **Galería** muestra **6 por pantalla** (antes 4 muy grandes; `GPER = 6`, `.regal` de 6 columnas, 2 en celular); en **Lo que más les funcionó** la foto es más chica (`clamp(150px,12vw,220px)`); el **Ranking** y **Temas** usan miniaturas en 4:5 (60×75 y 56×70). Todas enteras, sin recortar (`object-fit: contain`, fondo `#0b1322`). `APP_VER` vuelve a coincidir con la caché de `sw.js`. Pruebas: `t401.js` (82).
 - **v426 · Marlene también pide (26/11/2026):** pedido de Admin total. En el panel de Solicitud de pedidos están **Patricia, Emanuel,
   Marlene y Comercial** (`pcNavPeople`: los Admin, después la líder de Administración —`admLead`—, después cualquiera que ya haya pedido,
   menos el resto de Administración). Marlene carga sus pedidos desde su área (Panel de Trabajo → Solicitud de pedidos → Nuevo pedido);
