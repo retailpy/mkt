@@ -6124,7 +6124,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v412";
+const APP_VER = "v413";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -10937,8 +10937,11 @@ document.addEventListener("click", e => {
 const draftT0 = Date.now();
 function draftAlert(){
   if (!draftOn() || !enterApp.done || draftAlert.done || jobUI.form) return;
+  if (viewer.id !== "alyssa") return; // v413: la ventana, solo a Alyssa (a los demás les queda el número rojo en el menú)
   const old = draftsMine().filter(d => Date.parse(d.at) < draftT0); if (!old.length) return;
   draftAlert.done = true; if (document.getElementById("draftBar")) return;
+  const dk = "rmh-drafta-" + viewer.id; let seen = ""; try { seen = localStorage.getItem(dk) || ""; } catch {}
+  if (seen === TODAY) return; try { localStorage.setItem(dk, TODAY); } catch {} // v413: una vez por día; después queda el número rojo en el menú
   const b = document.createElement("div"); b.id = "draftBar"; b.setAttribute("role", "alert");
   b.innerHTML = `<span>${icon("file-pen")} Tenés <b>${old.length} ${old.length === 1 ? "pedido en borrador" : "pedidos en borrador"}</b> que todavía no ${old.length === 1 ? "se envió" : "se enviaron"} (quedó guardado, aunque se haya cortado internet o la luz).</span><button type="button" class="btn primary sm" data-drview>Ver borradores</button><button type="button" class="btn sm" data-drbarx aria-label="Cerrar">${icon("x")}</button>`;
   document.body.appendChild(b);
