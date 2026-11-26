@@ -4421,7 +4421,7 @@ td svg{width:15px;height:15px;vertical-align:-2px;color:var(--cyan)}
 .re0{margin:0}
 .reempty{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:13.5px;padding:12px 14px;border:1px dashed var(--line-3);border-radius:12px}.reempty svg{width:16px;height:16px;flex:none}
 /* números de arriba: el número grande y abajo qué es, en palabras */
-.rekpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.rekpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
 .revts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .rekpi{border:1px solid var(--line-2);border-top:3px solid var(--kc,var(--rac));border-radius:12px;padding:14px 16px;background:var(--panel);display:flex;flex-direction:column;gap:4px;min-width:0}
 .rekl{display:flex;gap:6px;align-items:center;font-size:12.5px;font-weight:600;color:var(--muted)}.rekl svg{width:16px;height:16px;flex:none;color:var(--kc,var(--rac))}
@@ -4451,6 +4451,10 @@ td svg{width:15px;height:15px;vertical-align:-2px;color:var(--cyan)}
 .rebgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px}
 .rebst{display:flex;flex-direction:column;gap:2px;min-width:0}.rebst > span{font-size:12px;color:var(--muted);display:flex;gap:5px;align-items:center;white-space:nowrap;overflow:hidden}.rebst svg{width:13px;height:13px;flex:none}
 .rebst b{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
+.rebsto{display:flex;align-items:stretch;gap:20px;padding:9px 14px;border-radius:12px;background:var(--resf);border:1px solid var(--line-2)}
+.rebsto > svg{width:22px;height:22px;flex:none;color:#818cf8;align-self:center}
+.rebsto > div{display:flex;flex-direction:column;justify-content:flex-end;gap:1px;min-width:0}.rebsto b{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
+.rebsto span{font-size:12px;color:var(--muted);white-space:nowrap}.rebsto-n b{font-size:24px;color:#a5b4fc}
 .rebtop{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.rebtop a{display:flex;flex-direction:column;gap:4px;text-decoration:none;color:inherit;min-width:0}
 .rebtop .pthumb.rebt{width:100%;height:auto;aspect-ratio:4/5;border-radius:10px;object-fit:contain;background:#0b1322}.rebtop .pthumb.ph.rebt{display:grid}.rebtop a:hover .pthumb{outline:2px solid var(--racln)}
 .rebtop small{font-size:11.5px;color:var(--muted)}.rebtop small b{color:var(--text,inherit);font-size:13px}
@@ -20844,7 +20848,7 @@ function admSeed(){
 // impacto con su imagen grande y cada cuenta), 2) La gente y los medios (mensajes y comentarios con su texto completo y lo
 // que salió en los medios sobre los supermercados), 3) La competencia (la nacional, desde Instagram: s:META_REFS.local, y
 // los supermercados de referencia del mundo) y 4) Pauta e ideas (campañas, sugerencias que salen de los datos y aportes del
-// equipo; v412: sin Notas). v420: fotos de las publicaciones en 4:5, enteras (sin recortar). La gente = Comentarios y mensajes (con etiqueta) · Quejas · En los medios. v418: competencia con Galería de fotos grandes, detalle y ranking con fotos más grandes. v416: tabla de competencia de a 5 (◀ ▶) y campañas más grandes (sugerencias en su parte). v412: campañas con la imagen de su anuncio, mejor clasificación (preguntas = consultas, “gracias” solo no es positivo), “Ver la publicación”, logros y competencia en tres partes. v411: pauta sin dólares, pedidos de trabajo (CV) fuera de positivos/quejas y competencia en detalle con ◀ ▶. v410: celeste (con color) y más despejado. v409: más limpio y sobrio, números en palabras y competencia por tasa de interacción. v405: sin comparar con la semana o el mes anterior (las flechitas ▲▼ se sacaron). v401: “Las 3 cuentas” va en su propia página. v405: competencia nacional e internacional en páginas separadas,
+// equipo; v412: sin Notas). v421: historias subidas de cada marca. v420: fotos de las publicaciones en 4:5, enteras (sin recortar). La gente = Comentarios y mensajes (con etiqueta) · Quejas · En los medios. v418: competencia con Galería de fotos grandes, detalle y ranking con fotos más grandes. v416: tabla de competencia de a 5 (◀ ▶) y campañas más grandes (sugerencias en su parte). v412: campañas con la imagen de su anuncio, mejor clasificación (preguntas = consultas, “gracias” solo no es positivo), “Ver la publicación”, logros y competencia en tres partes. v411: pauta sin dólares, pedidos de trabajo (CV) fuera de positivos/quejas y competencia en detalle con ◀ ▶. v410: celeste (con color) y más despejado. v409: más limpio y sobrio, números en palabras y competencia por tasa de interacción. v405: sin comparar con la semana o el mes anterior (las flechitas ▲▼ se sacaron). v401: “Las 3 cuentas” va en su propia página. v405: competencia nacional e internacional en páginas separadas,
 // sin nuestras marcas, y lo que más les funcionó es una publicación por cadena con “de qué se trata” (6 páginas en total). Todo sale de los datos reales de la app (Meta); no se inventa nada. Las notas quedan en s:RESUMEN_EJEC →
 // { "AAAA-MM-DD" (martes) | "m:AAAA-MM" (mes): { comp, ideas, by, at } }. Solo en pantalla (v401: sin Imprimir).
 let RESUMEN_EJEC = {};
@@ -20875,7 +20879,17 @@ function rePeriod(){
 }
 // Publicaciones de Instagram del período (las tres marcas), con alcance e interacciones.
 const rePosts = w => [...new Set([w.from.slice(0, 7), w.to.slice(0, 7)])].flatMap(m => publicationsFor(m)).filter(p => RE_BRANDS.includes(p.brand) && reInWk(p.date, w));
-const reStories = (b, w) => Object.entries(META_STORIES || {}).filter(([k, x]) => k.startsWith("st:") && x && x.b === b && x.ts && reInWk(pyDate(x.ts), w)).map(([, x]) => x);
+// v421: historias que subió una marca en el período (cantidad, vistas y alcance). Del mes en curso están una por una (st:);
+// de los meses cerrados queda el resumen de cada día (sum:AAAA-MM → d:{ "DD":[cantidad, vistas, alcance] }).
+function reStoryN(b, w){
+  const o = { n:0, v:0, r:0 }, S = META_STORIES || {};
+  for (const m of new Set([w.from.slice(0, 7), w.to.slice(0, 7)])){
+    const L = Object.entries(S).filter(([k, x]) => k.startsWith("st:") && x && x.b === b && x.ts && pyDate(x.ts).slice(0, 7) === m).map(([, x]) => x);
+    if (L.length) L.forEach(x => { if (reInWk(pyDate(x.ts), w)){ o.n++; o.v += x.v || 0; o.r += x.r || 0; } });
+    else Object.entries(S["sum:" + m]?.[b]?.d || {}).forEach(([d, a]) => { if (Array.isArray(a) && reInWk(m + "-" + d, w)){ o.n += a[0] || 0; o.v += a[1] || 0; o.r += a[2] || 0; } });
+  }
+  return o;
+}
 // Seguidores: si hay foto del día (d:AAAA-MM-DD, desde v400) se compara el período; si no, el mes contra el anterior.
 function reFol(b, w){
   const snap = d => { for (let i = 0; i < 4; i++){ const x = META_FOLLOWERS?.["d:" + addDays(d, -i)]?.[b]; if (x) return x; } return null; };
@@ -21017,9 +21031,12 @@ function pResumen(){
   // v411: las 5 de mayor impacto con la mejor de cada marca (así Delimarket, más chica, también aparece) y las otras por alcance.
   const top = (() => { const firsts = RE_BRANDS.map(b => posts.find(p => p.brand === b)).filter(Boolean), rest = posts.filter(p => !firsts.includes(p));
     return [...firsts, ...rest.slice(0, Math.max(0, 5 - firsts.length))].sort((a, c) => pubScore(c) - pubScore(a)); })();
-  const byB = RE_BRANDS.map(b => { const L = posts.filter(p => p.brand === b), st = reStories(b, w);
+  const byB = RE_BRANDS.map(b => { const L = posts.filter(p => p.brand === b), st = reStoryN(b, w);
     return { b, n:L.length, reach:reSum(L, "reach"), inter:reSum(L, "inter"), shares:reSum(L, "shares"),
-      lc:L.reduce((n, p) => n + (p.likes || 0) + (p.comments || 0), 0), viral:[...L].sort((a, c) => (c.shares || 0) - (a.shares || 0) || c.inter - a.inter)[0], fol:reFol(b, w), stN:st.length, stR:reSum(st, "r"), L }; });
+      lc:L.reduce((n, p) => n + (p.likes || 0) + (p.comments || 0), 0), viral:[...L].sort((a, c) => (c.shares || 0) - (a.shares || 0) || c.inter - a.inter)[0], fol:reFol(b, w), stN:st.n, stV:st.v, stR:st.r, L }; });
+  // Historias: se miden desde que se activó la lectura (META_STORIES.since); antes de esa fecha no hay datos.
+  const stT = byB.reduce((n, x) => n + x.stN, 0), stSince = META_STORIES?.since ? pyDate(META_STORIES.since) : "";
+  const stOk = stT > 0 || (!!stSince && stSince <= w.to), stPart = stOk && !!stSince && stSince > w.from && stSince <= w.to;
   const comp = reComp(w, META_REFS?.local?.accounts, { fair:true }), intl = reComp(w, META_REFS?.accounts, { fair:true }), voice = reVoice(w), camps = reCampCards(w), news = reNews(w);
   const pos = voice.filter(x => x.pos), neg = voice.filter(x => x.neg), other = voice.length - pos.length - neg.length, jobs = voice.filter(x => x.job).length;
   const sug = reSuggest({ posts, top, byB, intl, voice, comp, kind:P.kind, per:P.per });
@@ -21045,13 +21062,14 @@ function pResumen(){
       <button type="button" class="btn" data-reshow>${icon(reShowOn() ? "minimize-2" : "maximize-2")} ${reShowOn() ? "Salir" : "Pantalla completa"}</button></div>
     ${tabs}</header>`;
   // ----- página 1: nuestras redes -----
-  const KPI_C = { images:"#38bdf8", eye:"#60a5fa", heart:"#fb923c", "share-2":"#2dd4bf", "user-plus":"#facc15", smile:"#4ade80", "message-square-warning":"#f87171", "message-circle-question":"#38bdf8", newspaper:"#60a5fa" };
+  const KPI_C = { images:"#38bdf8", eye:"#60a5fa", heart:"#fb923c", "share-2":"#2dd4bf", "user-plus":"#facc15", smartphone:"#818cf8", smile:"#4ade80", "message-square-warning":"#f87171", "message-circle-question":"#38bdf8", newspaper:"#60a5fa" };
   const kpi = (ic, v, l, s = "", cls = "") => `<div class="rekpi${cls ? " " + cls : ""}" style="--kc:${KPI_C[ic] || "#38bdf8"}"><span class="rekl">${icon(ic)} ${l}</span><b>${v}</b>${s ? `<small>${s}</small>` : ""}</div>`;
   const tR = reSum(posts, "reach"), tI = reSum(posts, "inter"), tS = reSum(posts, "shares");
-  const kpis = `<div class="rekpis">${kpi("images", dots(posts.length), "Publicaciones", "en Instagram de las 3 marcas")}${kpi("eye", dots(tR), "Personas alcanzadas", "sumando el alcance de cada publicación")}${kpi("heart", dots(tI), "Interacciones", "me gusta, comentarios, guardados y compartidos")}${kpi("share-2", dots(tS), "Veces compartidas", "la gente la mandó a otros")}${kpi("user-plus", folK ? (folD > 0 ? "+" : "") + dots(folD) : "—", "Seguidores nuevos", folK === "per" ? `${P.per}, Instagram + Facebook` : folK ? `en ${monthName(folM || CURRENT_MONTH)}, Instagram + Facebook` : "sin datos")}</div>`;
+  const kpis = `<div class="rekpis">${kpi("images", dots(posts.length), "Publicaciones", "en Instagram de las 3 marcas")}${kpi("eye", dots(tR), "Personas alcanzadas", "sumando el alcance de cada publicación")}${kpi("heart", dots(tI), "Interacciones", "me gusta, comentarios, guardados y compartidos")}${kpi("share-2", dots(tS), "Veces compartidas", "la gente la mandó a otros")}${kpi("smartphone", stOk ? dots(stT) : "—", "Historias subidas", stOk ? `${byB.map(x => `${esc(x.b)} ${dots(x.stN)}`).join(" · ")}${stPart ? ` · medidas desde el ${dm(stSince)}` : ""}` : "todavía no se medían")}${kpi("user-plus", folK ? (folD > 0 ? "+" : "") + dots(folD) : "—", "Seguidores nuevos", folK === "per" ? `${P.per}, Instagram + Facebook` : folK ? `en ${monthName(folM || CURRENT_MONTH)}, Instagram + Facebook` : "sin datos")}</div>`;
   const best = top[0], negSuc = Object.entries(neg.reduce((o, x) => { if (x.suc) o[x.suc] = (o[x.suc] || 0) + 1; return o; }, {})).sort((a, c) => c[1] - a[1]);
   const brief = [
     posts.length ? ["chart-column", `<b>${dots(posts.length)}</b> publicaciones que llegaron a <b>${dots(tR)}</b> personas.`] : null,
+    stT ? ["smartphone", `<b>${dots(stT)}</b> ${stT === 1 ? "historia subida" : "historias subidas"}: ${byB.map(x => `${esc(x.b)} <b>${dots(x.stN)}</b>`).join(", ").replace(/, ([^,]*)$/, " y $1")}${stPart ? ` (se miden desde el ${dm(stSince)})` : ""}.`] : null,
     best ? ["trophy", `La que más funcionó: <b>“${esc(best.title)}”</b> de ${esc(best.brand)}.`] : null,
     voice.length ? ["message-circle", `La gente: <b>${voice.length - neg.length}</b> comentarios y mensajes${pos.length ? ` (${pos.length} de felicitación)` : ""} y <b>${neg.length}</b> ${neg.length === 1 ? "queja" : "quejas"}${negSuc[0] ? ` (la mayoría de ${esc(negSuc[0][0])})` : ""}.`] : null,
     news.length ? ["newspaper", `Salieron <b>${news.length}</b> ${news.length === 1 ? "nota" : "notas"} en los medios sobre nuestros supermercados.`] : null,
@@ -21066,10 +21084,10 @@ function pResumen(){
   const bstat = (ic, l, v) => `<div class="rebst"><span>${icon(ic)} ${l}</span><b>${v}</b></div>`;
   const brandCard = x => `<article class="rebrand" style="--c:${BRANDS[x.b]}"><div class="rebh">${brandTag(x.b)}<span class="rebfol" title="${x.fol ? `Instagram ${isNum(x.fol.ig) ? dots(x.fol.ig) : "—"} · Facebook ${isNum(x.fol.fb) ? dots(x.fol.fb) : "—"}` : ""}">${icon("users")} ${x.fol ? `<b>${dots((x.fol.ig || 0) + (x.fol.fb || 0))}</b> seguidores${isNum(x.fol.d) ? ` <em class="${x.fol.d > 0 ? "up" : x.fol.d < 0 ? "down" : ""}" title="${x.fol.kind === "per" ? P.per : `en ${monthName(x.fol.m || CURRENT_MONTH)}`}">${x.fol.d > 0 ? "+" : ""}${dots(x.fol.d)}</em>` : ""}` : "sin datos de seguidores"}</span></div>
     <div class="rebgrid">${bstat("images", "Publicaciones", dots(x.n))}${bstat("eye", "Alcance", dots(x.reach))}${bstat("heart", "Interacciones", dots(x.inter))}${bstat("share-2", "Compartidos", dots(x.shares))}</div>
+    <div class="rebsto" title="${stPart ? `Las historias se miden desde el ${dm(stSince)}` : "Historias de Instagram"}">${icon("smartphone")}<div class="rebsto-n"><b>${stOk ? dots(x.stN) : "—"}</b><span>${x.stN === 1 ? "historia subida" : "historias subidas"}</span></div>${x.stN ? `<div><b>${dots(x.stV)}</b><span>vistas</span></div><div><b>${dots(x.stR)}</b><span>de alcance</span></div>` : stOk ? "" : `<div><span>todavía no se medían</span></div>`}</div>
     ${bars(x)}
     ${x.L.length ? `<div><b class="rek">Sus publicaciones de mayor alcance</b><div class="rebtop">${[...x.L].sort((a, c) => pubScore(c) - pubScore(a)).slice(0, 3).map(p => `<a ${p.link ? `href="${esc(p.link)}" target="_blank" rel="noopener"` : ""} title="${esc(p.title)}">${pubThumb(p, "rebt")}<small><b>${dots(pubScore(p))}</b> ${isNum(p.reach) ? "alcance" : "interacc."}</small></a>`).join("")}</div></div>` : ""}
-    ${x.viral ? `<p class="rebst2">${icon("share-2")}<span>La más compartida: <b>“${esc(x.viral.title)}”</b> (${dots(x.viral.shares || 0)} veces)</span></p>` : `<p class="re0 note">Sin publicaciones en Instagram ${P.per}.</p>`}
-    ${x.stN ? `<p class="rebst2">${icon("smartphone")} <b>${x.stN}</b> ${x.stN === 1 ? "historia" : "historias"} · ${dots(x.stR)} de alcance</p>` : ""}</article>`;
+    ${x.viral ? `<p class="rebst2">${icon("share-2")}<span>La más compartida: <b>“${esc(x.viral.title)}”</b> (${dots(x.viral.shares || 0)} veces)</span></p>` : `<p class="re0 note">Sin publicaciones en Instagram ${P.per}.</p>`}</article>`;
   // v412 · Logros del período: solo los que salen de los datos (récord de alcance, cifra grande, número redondo de seguidores,
   // mucho compartida, sin quejas). Si no hay ninguno, no se muestra nada.
   const wins = (() => { const W = [], m0 = P.to.slice(0, 7);
