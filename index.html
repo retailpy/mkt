@@ -6193,7 +6193,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v424";
+const APP_VER = "v426";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -17105,7 +17105,8 @@ function pcExample(){
 }
 // v421 · Quién pide: los Admin (Patricia, Emanuel), la líder de Administración y cualquiera que ya haya pedido; los que más piden, arriba.
 function pcNavPeople(){ const by = new Map(); PEDIDOS_COM.filter(p => p && pcEq(p) && !p.demo && p.by).forEach(p => by.set(p.by, (by.get(p.by) || 0) + 1));
-  return PEOPLE.filter(pp => pp.active !== false && pp.role !== "Administración" && (pp.role === "Admin" || by.has(pp.id))).sort((a, b) => (by.get(b.id) || 0) - (by.get(a.id) || 0) || a.name.localeCompare(b.name)); }
+  const rk = pp => pp.role === "Admin" ? 0 : admIsLead(pp) ? 1 : 2; // v426: Patricia y Emanuel, después Marlene (la líder de Administración también pide), después los demás
+  return PEOPLE.filter(pp => pp.active !== false && (pp.role === "Admin" || admIsLead(pp) || (pp.role !== "Administración" && by.has(pp.id)))).sort((a, b) => rk(a) - rk(b) || (by.get(b.id) || 0) - (by.get(a.id) || 0) || a.name.localeCompare(b.name)); }
 // Lo que espera a quien mira, de los pedidos de esa persona: a quien pidió, sus novedades; a Admin total, lo nuevo o con mensaje; a la líder de Administración, lo que no tomó.
 const pcBadgeWho = id => PEDIDOS_COM.filter(p => p && pcEq(p) && p.by === id && !p.demo).filter(p => pcOwn(p) ? pcStNew(p) || pcUnread(p).length || pcFinalWait(p) : viewer?.role === "Admin total" ? p.st === "Enviado" || pcUnread(p).length : admIsLead(viewer) && admPcNew(p)).length;
 function pcNavGroup(items, shut){
@@ -17478,7 +17479,7 @@ function pPedCom(){
   const vt = [["tabla", "Tabla", "table-2"], ["calendario", "Calendario", "calendar-days"]];
   const adm = viewer.role === "Admin" && !window.RMH?.previewing; // v397: Patricia y Emanuel también piden
   const whoChips = pcPanel() + (eqS && who ? `<div class="chips pcwhoc"><button type="button" class="chip" data-pcwhochip="">${icon("list")} Ver todas las solicitudes</button></div>` : ""); // v424: el panel con Patricia, Emanuel y Comercial
-  const head = eqS ? `<div class="head"><div><h1 class="pmh">${pmIco("clipboard-list")}Solicitud de pedidos${who ? ` · ${esc(who.name)}` : ""}</h1><p class="sub">${at ? "Lo que pide el equipo (Patricia y Emanuel). Abrí cada pedido nuevo para aprobarlo y pasarlo a Diseño gráfico o a un CM; Administración de Marketing se ocupa en paralelo del presupuesto y la impresión. Los pedidos de los compradores están aparte, en Pedidos Comercial." : `Cargá acá lo que necesitás (un pedido gráfico, de CM o de lo que sea): le llega a ${esc(pcCoordN())} (Coordinación de Diseño gráfico), que lo revisa, le suma lo que falte y lo pasa a Diseño gráfico o a CM. En cada pedido ves todo el seguimiento (quién lo diseña, Administración de Marketing, el proveedor y la CM) y, cuando el diseño está aprobado, te llega para tu aprobación final. También ves los pedidos de los demás del equipo (solo para ver).`}</p></div>
+  const head = eqS ? `<div class="head"><div><h1 class="pmh">${pmIco("clipboard-list")}Solicitud de pedidos${who ? ` · ${esc(who.name)}` : ""}</h1><p class="sub">${at ? "Lo que pide el equipo (Patricia, Emanuel y Marlene). Abrí cada pedido nuevo para aprobarlo y pasarlo a Diseño gráfico o a un CM; Administración de Marketing se ocupa en paralelo del presupuesto y la impresión. Los pedidos de los compradores están aparte, en Pedidos Comercial." : `Cargá acá lo que necesitás (un pedido gráfico, de CM o de lo que sea): le llega a ${esc(pcCoordN())} (Coordinación de Diseño gráfico), que lo revisa, le suma lo que falte y lo pasa a Diseño gráfico o a CM. En cada pedido ves todo el seguimiento (quién lo diseña, Administración de Marketing, el proveedor y la CM) y, cuando el diseño está aprobado, te llega para tu aprobación final. También ves los pedidos de los demás del equipo (solo para ver).`}</p></div>
     <div class="chips">${viewTabs(vt, pcUI.view, "data-pcview")}${at || adm || isAdmRole() ? `<button type="button" class="btn primary" data-pcnew>${icon("plus")} Nuevo pedido</button>` : ""}</div></div>`
     : `<div class="head"><div><h1 class="pmh">${pmIco("shopping-bag")}${com ? "Mis pedidos de activaciones" : "Pedidos Comercial"}</h1><p class="sub">${com ? "Cargá acá lo que te gustaría que se publique en las redes: el pedido le llega a Marketing y te queda como <b style=\"color:#38bdf8\">Enviado</b>. Elegí el día que te gustaría que salga (también tocando el día en el calendario). En cada pedido ves en qué estado está (Enviado, Aprobado, En curso, Con modificaciones, <b style=\"color:#22c55e\">Finalizado</b> o <b style=\"color:#ef4444\">No ejecutable</b>) y te avisamos con cada cambio." : at ? "Lo que piden los compradores para publicar. Abrí cada pedido nuevo para aprobarlo, pasarlo a Diseño gráfico o a un CM (queda En curso, con la persona responsable), marcarlo Con modificaciones o No ejecutable (con el motivo). Cuando el CM lo aprueba para publicar, pasa a Finalizado. Al comprador le llega el aviso con cada cambio." : "Lo que piden los compradores para publicar, a quién se derivó y si ya salió. Es solo para ver: los pedidos los pasa Admin total."}</p></div>
     <div class="chips">${viewTabs(vt, pcUI.view, "data-pcview")}${com || at ? `<button type="button" class="btn primary" data-pcnew>${icon("plus")} Nuevo pedido</button>` : ""}</div></div>`;
@@ -20149,7 +20150,7 @@ function pAdmPanel(){
   // El camino de un pedido, con quién hace cada paso.
   const who = f => { const pp = admByFunc(f); return pp ? `${avatarHTML(pp, "admav")}<span>${esc(pp.name.split(" ")[0])}</span>` : `<span class="note">Sin asignar</span>`; };
   const flow = `<section class="panel admflow"><h2 class="pmh">${pmIco("route")}Cómo trabajamos un pedido</h2>
-    <ol class="admsteps"><li><span class="dot">${icon("send")}</span><b>Llega el pedido</b><small>Patricia o Emanuel lo cargan en Solicitud de pedidos. Le llega a Alyssa (diseño) y a ${esc((admLeads()[0]?.name || "la líder del área").split(" ")[0])} a la vez.</small></li>
+    <ol class="admsteps"><li><span class="dot">${icon("send")}</span><b>Llega el pedido</b><small>Patricia, Emanuel o ${esc((admLeads()[0]?.name || "la líder del área").split(" ")[0])} lo cargan en Solicitud de pedidos. Le llega a Alyssa (diseño) y a ${esc((admLeads()[0]?.name || "la líder del área").split(" ")[0])} a la vez.</small></li>
     ${ADM_STEPS.map(s => `<li><span class="dot">${icon(s.ic)}</span><b>${esc(s.t)}</b><small>${esc(s.d)}</small><span class="admwho">${who(s.f)}</span></li>`).join("")}</ol>
     <p class="note" style="margin:10px 0 0">El diseño (Alyssa y el equipo de Diseño gráfico) y la compra (Administración) van en paralelo. En cada trabajo se ve en qué está el diseño.</p></section>`;
   const team = admTeam(), at = viewer.role === "Admin total" && !window.RMH?.previewing;
