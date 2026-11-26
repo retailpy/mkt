@@ -7,8 +7,10 @@
 //
 // La llaman: el cron diario de Vercel y el botón “Actualizar” de Tendencias (con la sesión de Admin total, Admin o CM).
 // Con ?set=local trae la competencia nacional (Resumen ejecutivo; ver LOCALES).
+// Con ?set=influ (v428) trae las publicaciones de los influencers de las marcas → s:META_INFLU (ver _lib/influencers.js).
 // Probar sin guardar:  /api/referentes?dry=1&secret=EL_CRON_SECRET
-const { ORDEN, cronOrUser, graph, brandPages, save, tokenHint } = require("./_lib/meta");
+const { ORDEN, cronOrUser, graph, brandPages, save, readMeta, tokenHint } = require("./_lib/meta");
+const { influencers } = require("./_lib/influencers");
 
 // Cuenta de Instagram → nombre de la cadena y país (para la banderita). Si un usuario no existe, queda el error y sigue.
 // Solo supermercados de afuera: la idea es inspirarse con gráficas internacionales (nada de Paraguay).
@@ -73,11 +75,16 @@ module.exports = async (req, res) => {
   const who = await cronOrUser(req);
   if (!who) return res.status(401).json({ ok: false, error: "No autorizado" });
   if (!process.env.META_TOKEN) return res.status(500).json({ ok: false, error: "Falta la variable META_TOKEN en Vercel" });
-  const dry = req.query.dry === "1" && who === "cron", local = req.query.set === "local";
+  const dry = req.query.dry === "1" && who === "cron", local = req.query.set === "local", influ = req.query.set === "influ";
   try {
     const { byBrand } = await brandPages();
     const me = ORDEN.map(b => byBrand[b]?.igId).find(Boolean); // cualquier Instagram de empresa nuestro sirve para consultar
     if (!me) throw new Error("No hay ninguna cuenta de Instagram de empresa vinculada a las páginas");
+    if (influ){ // v428: influencers → s:META_INFLU
+      const r = await influencers({ me, byBrand, graph, save, readMeta, dry });
+      console.log(`[referentes influ] ${JSON.stringify(r)}${dry ? " (prueba, sin guardar)" : " guardadas"}`);
+      return res.status(200).json({ ok: true, dry, saved: !dry, ...r });
+    }
     if (local){ // v401: competencia nacional → s:META_REFS.local
       const { accounts, summary } = await competenciaLocal(me);
       if (!dry) await save("s:META_REFS", { local: { updated: new Date().toISOString(), accounts }, localError: null });
@@ -113,7 +120,8 @@ module.exports = async (req, res) => {
   } catch (e){
     console.error(`[${req.url}] ERROR: ${e.message}${e.code ? ` (código ${e.code})` : ""}`);
     const why = `${e.message}${tokenHint(e) ? " — " + tokenHint(e) : ""}`;
-    if (!dry) await save("s:META_REFS", local ? { localError: why, localErrorAt: new Date().toISOString() } : { error: why, errorAt: new Date().toISOString() }).catch(() => {}); // la app muestra el motivo
+    if (!dry && influ) await save("s:META_INFLU", { error: why, errorAt: new Date().toISOString() }).catch(() => {});
+    else if (!dry) await save("s:META_REFS", local ? { localError: why, localErrorAt: new Date().toISOString() } : { error: why, errorAt: new Date().toISOString() }).catch(() => {}); // la app muestra el motivo
     return res.status(500).json({ ok: false, error: e.message, hint: tokenHint(e) });
   }
 };
