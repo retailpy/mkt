@@ -4343,6 +4343,19 @@ tr.arow td{background:rgba(34,197,94,.08)}
 td svg{width:15px;height:15px;vertical-align:-2px;color:var(--cyan)}
 /* v375 · Panel Interactivo de Seguimiento de Marketing: botón destacado en el menú y página a pantalla completa (sin el menú) */
 /* v376 · más claro y dividido: contenido centrado (máx. 1200 px), secciones con aire, tarjetas y la barra del proceso en color */
+/* v407 · Competencia Nacional (CM) */
+.cnac{display:flex;flex-direction:column;gap:14px}
+.cnkpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.cnkpi{border:1px solid var(--line-2);border-radius:14px;padding:12px 14px;background:var(--panel);display:flex;flex-direction:column;gap:2px;min-width:0}
+.cnkpi b{font-size:22px;line-height:1.15;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cnkpi span{font-size:13px;font-weight:600}.cnkpi small{font-size:11.5px;color:var(--muted)}
+.cngrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:14px;align-items:start}
+.cnsec{margin:0}.cnsec .pmh{margin:0 0 10px}
+.cnlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}.cnlist li{display:flex;gap:9px;align-items:flex-start;font-size:14px;line-height:1.45}.cnlist li svg{width:17px;height:17px;flex:none;margin-top:2px;color:#22d3ee}
+.cnlist.idea li svg{color:#facc15}.cnh3{display:flex;gap:7px;align-items:center;font-size:14px;margin:14px 0 8px}.cnh3 svg{width:16px;height:16px}
+.cnps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.cntab tbody tr{cursor:pointer}.cntab tbody tr:hover td{background:rgba(148,163,184,.06)}.cntab tbody tr.on td{background:rgba(34,211,238,.08)}
+@media (max-width:1100px){.cngrid{grid-template-columns:1fr}.cnkpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:700px){.cnkpis{grid-template-columns:repeat(2,minmax(0,1fr))}.cnps{grid-template-columns:1fr}}
 /* v400 · Resumen ejecutivo · v401: en páginas (una por pantalla), para la pantalla horizontal */
 .nav a.renav{margin-top:8px;border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.09)}.nav a.renav > svg{color:#c4b5fd}
 .reexec{--rac:#a78bfa;--racs:#c4b5fd;--racbg:rgba(167,139,250,.12);--racgr:linear-gradient(135deg,#a78bfa,#6366f1);--reup:#34d399;--redown:#f87171;display:flex;flex-direction:column;gap:14px;max-width:1440px}
@@ -5347,6 +5360,7 @@ const SECTIONS = [
   { g:"Community Manager", k:"cargacm", l:"Carga de trabajo CM", n:"Carga de trabajo", i:"gauge" },
   { g:"Community Manager", k:"tencm", l:"Tendencias Community Manager", n:"Tendencias", i:"sparkles", virtual:true }, // 10 novedades de redes y campañas de supermercados, con su link
   { g:"Community Manager", k:"noticias", l:"Noticias", n:"Noticias", i:"newspaper", virtual:true }, // lo que sale en los medios de Paraguay sobre Retail S.A. y sus marcas (en la botonera, debajo de Tendencias)
+  { g:"Community Manager", k:"compnac", l:"Competencia Nacional", n:"Competencia Nacional", i:"store", virtual:true }, // v407: los supermercados de Paraguay en Instagram (CM, Admin total y Admin)
   { g:"Community Manager", k:"plan", l:"Plan de posteo", i:"list-checks", hide:true },
   { g:"Community Manager", k:"gcm", l:"Gestión de Comunicación y Marketing", n:"Gestión", i:"layers", hide:true, virtual:true }, // v220: todo el trabajo de CM en una tabla (redes, historias, WhatsApp, videos, contenidos y actividades)
   { g:"Community Manager", k:"postext", l:"Plan de posteo", n:"Plan de posteo", i:"table-2", hide:true, virtual:true }, // v249: calendario de texto del mes (Admin total y CM)
@@ -6064,7 +6078,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v405";
+const APP_VER = "v407";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -7956,7 +7970,7 @@ const MEMBER_ALWAYS = ["bienvenida","perfil","config","guia","videohub"]; // la 
 const canMember = key => ONLY_AT.includes(key) || ONLY_ADMINS.includes(key) ? false : MEMBER_ALWAYS.includes(key) ? true
   : key === "tendg" ? can("paneldg") : key === "tencm" || key === "noticias" ? can("panelcm") : key === "caldg" ? ["pedidos","cartel","web","pantallas"].some(k => can(k)) : key === "calcm" ? can("plan") : key === "gcm" || key === "calact" ? CM_GEST.some(k => can(k))
   : key === "paneldg" ? PANEL_DG_KEYS.some(k => can(k)) : key === "panelcm" ? PANEL_CM_KEYS.some(k => can(k)) : viewer.perms.has(key);
-const can = key => isTV() ? TV_SEE.includes(key) : key === "postext" ? ["Admin total","CM"].includes(viewer?.role) : isRevisor() ? REVISOR_SEE.includes(key) : isComercial() ? COMERCIAL_SEE.includes(key) : ADM_KEYS.includes(key) ? admSees() : key === "seguimiento" ? segCan() : key === "resumen" ? reCan() : key === "pedcom" ? isAdminAny() || isAdmRole() : key === "copys" ? ["Admin total","Admin","CM"].includes(viewer?.role) : key === "mensajes" && viewer?.noChat ? false : isAdminAny() ? canAdmin(key) : canMember(key); // noChat: sin Chat Retail MKT (Usuarios y permisos)
+const can = key => isTV() ? TV_SEE.includes(key) : key === "postext" ? ["Admin total","CM"].includes(viewer?.role) : isRevisor() ? REVISOR_SEE.includes(key) : isComercial() ? COMERCIAL_SEE.includes(key) : ADM_KEYS.includes(key) ? admSees() : key === "seguimiento" ? segCan() : key === "resumen" ? reCan() : key === "compnac" ? cnCan() : key === "pedcom" ? isAdminAny() || isAdmRole() : key === "copys" ? ["Admin total","Admin","CM"].includes(viewer?.role) : key === "mensajes" && viewer?.noChat ? false : isAdminAny() ? canAdmin(key) : canMember(key); // noChat: sin Chat Retail MKT (Usuarios y permisos)
 const myGroups = () => viewer.brands || GROUPS;
 const seesBrand = b => myGroups().includes(groupOf(b));
 const myBrands = () => Object.keys(BRANDS).filter(seesBrand);
@@ -20788,7 +20802,83 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && reShowOn()
 // Las imágenes llegan después de dibujar: al cargar, se vuelve a acomodar la hoja a la pantalla.
 document.addEventListener("load", e => { if (page === "resumen" && reShowOn() && e.target?.tagName === "IMG" && e.target.closest?.(".reexec")){ clearTimeout(reFit.t); reFit.t = setTimeout(reFit, 120); } }, true);
 
-const PAGES = { admpanel:pAdmPanel, admtab:pAdmTab, admev:pAdmEv, admfotos:pAdmFotos, adminf:pAdmInf, resumen:pResumen, seguimiento:pSeguimiento, videohub:pVideoHub, borradoresdg:() => pBorradores("Diseño"), borradorescm:() => pBorradores("CM"), copys:pCopys, cronograma:pCronograma, oficina:pOficina, tvpant:pTvPant, tvjunto:pTvJunto, tvconf:pTvConf, postext:pPlanTxt, pedcom:pPedCom, gcm:pGestCM, calact:pCalAct, contenidos:pContenidos, escraches:pEscraches, bienvenida:pBienvenida, ideas:pIdeas, inbox:pInbox, reclamos:pReclamos, noticias:pNoticias, comercial:pComercial, tendg:() => pTend("dg"), tencm:() => pTend("cm"), paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), caldg:pCalDG, calcm:pPlan, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, aviso:pAviso, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
+// ---------- v407 · Competencia Nacional (Community Manager) ----------
+// Lo que publican en Instagram los supermercados de Paraguay (s:META_REFS.local, lo trae /api/referentes?set=local dos veces
+// por día: Casa Rica, Real, Luisito, Pueblo, Areté, Los Jardines, Fortis, SuperMás, Kingo y Plub). Es la misma competencia del
+// Resumen ejecutivo, pero para el equipo de CM y con más detalle: ranking de cadenas, lo que más les funcionó, qué formatos,
+// temas y días les rinden, y un análisis con ideas para nosotros. Todo sale de los datos (me gusta y comentarios: lo que Instagram
+// muestra de otras cuentas; el alcance de los demás no se ve). Lo ven CM, Admin total y Admin.
+let cnUI = { per:"30", acc:"" };
+const CN_PERS = [["7", "Últimos 7 días"], ["30", "Últimos 30 días"], ["all", "Todo lo guardado"]];
+const cnCan = () => ["Admin total", "Admin", "CM"].includes(viewer?.role);
+const cnPeriod = () => cnUI.per === "all" ? { from:"2000-01-01", to:TODAY, per:"en lo guardado" } : { from:addDays(TODAY, -(+cnUI.per - 1)), to:TODAY, per:`en los últimos ${cnUI.per} días` };
+const cnAvg = L => L.length ? L.reduce((n, p) => n + p.eng, 0) / L.length : 0;
+const cnImg = (p, cls) => safeUrl(p.img) ? `<img class="${cls}" src="${esc(safeUrl(p.img))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'${cls} ph',textContent:'IG'}))">` : `<span class="${cls} ph">IG</span>`;
+// Análisis: frases cortas que salen de los números (si no hay datos para algo, esa frase no sale).
+function cnAnalysis(C, w){
+  const A = [], I = [], all = C.all, avgAll = cnAvg(all), days = Math.max(1, Math.round((Date.parse(w.to) - Date.parse(w.from > "2001" ? w.from : (all.map(p => pyDate(p.ts)).sort()[0] || w.to))) / 864e5) + 1);
+  const act = C.list.filter(x => x.posts.length).sort((a, c) => c.posts.length - a.posts.length)[0];
+  if (act) A.push(["megaphone", `La más activa fue <b>${esc(act.name)}</b>: ${act.posts.length} publicaciones (${String(Math.round(act.posts.length / days * 7 * 10) / 10).replace(".", ",")} por semana).`]);
+  const eff = C.list.filter(x => x.posts.length >= 2).map(x => ({ ...x, a:cnAvg(x.posts) })).sort((a, c) => c.a - a.a);
+  if (eff[0]) A.push(["trophy", `La que más interacción logra por publicación es <b>${esc(eff[0].name)}</b>: ${dots(eff[0].a)} me gusta y comentarios en promedio${eff.length > 1 ? ` (la que menos: ${esc(eff[eff.length - 1].name)}, ${dots(eff[eff.length - 1].a)})` : ""}.`]);
+  const rel = C.list.filter(x => x.posts.length >= 2 && isNum(x.fol) && x.fol > 0).map(x => ({ ...x, r:cnAvg(x.posts) / x.fol * 1000 })).sort((a, c) => c.r - a.r);
+  if (rel.length > 1) A.push(["users", `Para su cantidad de seguidores, la comunidad más activa es la de <b>${esc(rel[0].name)}</b> (${String(Math.round(rel[0].r * 10) / 10).replace(".", ",")} interacciones por cada 1.000 seguidores; ${esc(rel[rel.length - 1].name)}: ${String(Math.round(rel[rel.length - 1].r * 10) / 10).replace(".", ",")}).`]);
+  const byT = {}; all.forEach(p => { (byT[p.type || "Post"] = byT[p.type || "Post"] || []).push(p); });
+  const fm = Object.entries(byT).filter(([, L]) => L.length >= 2).map(([t, L]) => [t, cnAvg(L), L.length]).sort((a, c) => c[1] - a[1]);
+  if (fm.length > 1 && fm[1][1] > 0) { A.push(["layers", `El formato que mejor les rinde es el <b>${esc(fm[0][0].toLowerCase())}</b>: ${dots(fm[0][1])} de promedio, ${reTimes(fm[0][1] / fm[1][1])} veces lo del ${esc(fm[1][0].toLowerCase())} (${dots(fm[1][1])}).`]);
+    I.push(`Probar más ${fm[0][0] === "Carrusel" ? "carruseles" : fm[0][0] === "Reel" ? "reels" : fm[0][0].toLowerCase() + "s"}: es lo que más interacción le da a la competencia.`); }
+  const th = RE_THEMES.map(([l, re]) => { const L = all.filter(p => re.test(rclFold(p.cap || ""))); return [l, L.length, cnAvg(L)]; }).filter(x => x[1] >= 2);
+  const many = [...th].sort((a, c) => c[1] - a[1]), best = [...th].sort((a, c) => c[2] - a[2]);
+  if (many[0]) A.push(["tags", `De lo que más hablaron: ${many.slice(0, 3).map(([l, n]) => `${esc(l.toLowerCase())} (${n})`).join(", ")}.`]);
+  if (best[0] && avgAll > 0 && best[0][2] > avgAll * 1.15) { A.push(["sparkles", `Lo que más interacción genera son las publicaciones de <b>${esc(best[0][0].toLowerCase())}</b>: ${dots(best[0][2])} de promedio, ${reTimes(best[0][2] / avgAll)} veces el promedio general.`]);
+    I.push(`Las publicaciones de ${best[0][0].toLowerCase()} son las que más mueven a la gente de la competencia: pensar una nuestra.`); }
+  const byD = {}; all.forEach(p => { const k = wdOf(pyDate(p.ts)); (byD[k] = byD[k] || []).push(p); });
+  const ds = Object.entries(byD).filter(([, L]) => L.length >= 2).map(([k, L]) => [+k, cnAvg(L)]).sort((a, c) => c[1] - a[1]);
+  if (ds.length >= 3) A.push(["calendar-days", `El día que más interacción les da es el <b>${WEEKDAYS[ds[0][0]].toLowerCase()}</b> (${dots(ds[0][1])} de promedio); el que menos, el ${WEEKDAYS[ds[ds.length - 1][0]].toLowerCase()}.`]);
+  const pr = all.filter(p => /gs\.?\s?\d|₲|\d{1,3}(\.\d{3})+\s?(gs|₲)?|\d{1,2}\s?%/i.test(String(p.cap || ""))).length;
+  if (all.length >= 5) A.push(["badge-percent", `${Math.round(pr / all.length * 100)} % de sus publicaciones muestran precios o descuentos.`]);
+  const top = C.top[0]; if (top) I.push(`Mirar la que más funcionó: ${esc(top.acc)} con ${esc(lcFirst(reAbout(top)))} (${dots(top.eng)} me gusta y comentarios).`);
+  return { A, I };
+}
+const lcFirst = t => t ? t[0].toLowerCase() + t.slice(1) : t;
+function pCompNac(){
+  if (!cnCan()) return `<div class="panel empty">${icon("lock")} Competencia Nacional la ven CM, Admin total y Admin.</div>`;
+  const L = META_REFS?.local, w = cnPeriod(), C = reComp(w, L?.accounts || {}), an = cnAnalysis(C, w), withPosts = C.list.filter(x => x.posts.length);
+  const head = `<div class="head"><div><h1 class="pmh">${pmIco("store")}Competencia Nacional</h1><p class="sub">Lo que publican en Instagram los supermercados de Paraguay: qué hacen, qué les funciona y qué podemos aprender. ${L?.updated ? `Actualizado ${metaWhen(L.updated)}.` : ""}</p></div>
+    <div class="chips">${viewTabs(CN_PERS.map(([k, l]) => [k, l, k === "all" ? "infinity" : "calendar-days"]), cnUI.per, "data-cnper")}${metaBtn("referentes?set=local", "Competencia", "Competencia actualizada con lo último de Instagram.")}</div></div>`;
+  if (!L?.accounts) return `${head}<div class="panel empty">${icon("store")} ${META_REFS?.localError ? `No se pudo leer la competencia: ${esc(META_REFS.localError)}.` : "Todavía no se leyó la competencia en Instagram. Se trae sola dos veces por día; tocá “Actualizar” para traerla ahora."}</div>`;
+  const kpi = (v, l, s = "") => `<div class="cnkpi"><b>${v}</b><span>${l}</span>${s ? `<small>${s}</small>` : ""}</div>`;
+  const effTop = C.list.filter(x => x.posts.length >= 2).sort((a, c) => cnAvg(c.posts) - cnAvg(a.posts))[0];
+  const kpis = `<div class="cnkpis">${kpi(withPosts.length, "cadenas publicaron", `de ${C.list.length} que seguimos`)}${kpi(dots(C.all.length), "publicaciones", w.per)}${kpi(dots(reSum(C.all, "eng")), "me gusta y comentarios", "todas juntas")}${kpi(dots(cnAvg(C.all)), "promedio por publicación")}${kpi(effTop ? esc(effTop.name) : "—", "la que más interacción logra", effTop ? `${dots(cnAvg(effTop.posts))} por publicación` : "")}</div>`;
+  const rel = x => x.posts.length && isNum(x.fol) && x.fol > 0 ? String(Math.round(cnAvg(x.posts) / x.fol * 1000 * 10) / 10).replace(".", ",") : "—";
+  const table = `<section class="panel cnsec"><h2 class="pmh">${pmIco("list-ordered")}Ranking de cadenas</h2><div class="rectabw"><table class="rectab cntab"><thead><tr><th></th><th>Cadena</th><th>Seguidores</th><th>Publ.</th><th>Me gusta + coment.</th><th>Promedio</th><th title="Interacciones promedio por cada 1.000 seguidores">Cada 1.000 seg.</th><th>Lo que mejor le funcionó</th></tr></thead><tbody>
+    ${C.list.map((x, i) => `<tr class="${x.err && !x.posts.length ? "rerr" : ""}${cnUI.acc === x.k ? " on" : ""}" data-cnacc="${esc(x.k)}" role="button" tabindex="0" title="Ver sus publicaciones"><td><span class="ren">${i + 1}</span></td><td><b>${esc(x.name)}</b>${x.err && !x.posts.length ? `<small class="rewarn" title="${esc(x.err)}">@${esc(x.u)} · no se encontró en Instagram</small>` : `<small>@${esc(x.u)}</small>`}</td>
+      <td>${isNum(x.fol) ? dots(x.fol) : "—"}</td><td>${x.posts.length}</td><td>${dots(x.eng)}</td><td>${x.posts.length ? dots(x.eng / x.posts.length) : "—"}</td><td>${rel(x)}</td>
+      <td>${x.best ? `<a class="recbest" ${x.best.link ? `href="${esc(x.best.link)}" target="_blank" rel="noopener"` : ""} title="${esc(x.best.cap || "")}">${cnImg(x.best, "recth")}<span>${esc(reAbout(x.best))} <b>${dots(x.best.eng)}</b></span></a>` : `<span class="note">—</span>`}</td></tr>`).join("")}</tbody></table></div>
+    <p class="note" style="margin:6px 0 0">Tocá una cadena para ver todas sus publicaciones. Me gusta y comentarios: lo que Instagram muestra de otras cuentas (el alcance de los demás no se ve).</p></section>`;
+  const card = p => `<a class="recp" ${p.link ? `href="${esc(p.link)}" target="_blank" rel="noopener"` : ""}>${cnImg(p, "recpimg")}<span class="recpb"><span class="rep5m"><b class="recacc">${esc(p.acc)}</b><small>${esc(p.type || "Post")} · ${reDayTxt(pyDate(p.ts))}${pyDate(p.ts).slice(0, 7) !== CURRENT_MONTH ? " de " + monthName(pyDate(p.ts).slice(0, 7)) : ""}</small></span>
+    <span class="recabout"><b>De qué se trata:</b> ${esc(reAbout(p))}</span>${p.cap ? `<span class="recpcap" title="${esc(p.cap)}">“${esc(reFull(p.cap))}”</span>` : ""}
+    <small class="recpk">${icon("heart")} ${isNum(p.likes) ? dots(p.likes) : "—"} · ${icon("message-circle")} ${isNum(p.comments) ? dots(p.comments) : "—"}${p.avg > 0 && p.eng / p.avg >= 1.3 ? ` · <b class="reupx">${reTimes(p.eng / p.avg)} veces su promedio</b>` : ""}</small></span></a>`;
+  // Lo que más funcionó: las de más interacción, hasta 2 por cadena (para ver de todos).
+  const per = {}, best = [...C.all].sort((a, c) => c.eng - a.eng).filter(p => (per[p.k] = (per[p.k] || 0) + 1) <= 2).slice(0, 8)
+    .map(p => { const x = C.list.find(y => y.k === p.k), every = (L.accounts[p.k]?.posts || []).map(q => (q.likes || 0) + (q.comments || 0)); return { ...p, avg:every.length ? every.reduce((a, b) => a + b, 0) / every.length : 0, fol:x?.fol }; });
+  const tops = `<section class="panel cnsec"><h2 class="pmh">${pmIco("trophy")}Lo que más les funcionó</h2><p class="note" style="margin:-4px 0 10px">Las publicaciones con más me gusta y comentarios ${w.per} (hasta 2 por cadena), con de qué se trata y su texto.</p>${best.length ? `<div class="recps cnps">${best.map(card).join("")}</div>` : `<div class="empty">Sin publicaciones ${w.per}.</div>`}</section>`;
+  const anal = `<section class="panel cnsec cnan"><h2 class="pmh">${pmIco("lightbulb")}Análisis</h2>${an.A.length ? `<ul class="cnlist">${an.A.map(([ic, t]) => `<li>${icon(ic)}<span>${t}</span></li>`).join("")}</ul>` : `<div class="empty">Sin datos suficientes ${w.per}.</div>`}
+    ${an.I.length ? `<h3 class="cnh3">${icon("rocket")} Ideas para nosotros</h3><ul class="cnlist idea">${an.I.map(t => `<li>${icon("arrow-right")}<span>${t}</span></li>`).join("")}</ul>` : ""}
+    ${C.themes.length ? `<h3 class="cnh3">${icon("tags")} Temas que más usaron</h3><div class="rechips">${C.themes.slice(0, 8).map(([l, n]) => `<span>${esc(l)} <b>${n}</b></span>`).join("")}</div>` : ""}</section>`;
+  const sel = cnUI.acc && C.list.find(x => x.k === cnUI.acc);
+  const one = sel ? `<section class="panel cnsec" id="cnAcc"><div class="head" style="margin:0 0 8px"><h2 class="pmh" style="margin:0">${pmIco("store")}${esc(sel.name)} <span class="note" style="font-weight:400">@${esc(sel.u)}${isNum(sel.fol) ? ` · ${dots(sel.fol)} seguidores` : ""} · ${sel.posts.length} publicaciones ${w.per}</span></h2><button type="button" class="btn sm" data-cnacc="">${icon("x")} Cerrar</button></div>
+    ${sel.posts.length ? `<div class="recps cnps">${[...sel.posts].sort((a, c) => String(c.ts).localeCompare(String(a.ts))).map(p => card({ ...p, avg:cnAvg(sel.posts) })).join("")}</div>` : `<div class="empty">${sel.err ? `No se encontró la cuenta @${esc(sel.u)} en Instagram.` : `Sin publicaciones ${w.per}.`}</div>`}</section>` : "";
+  return `<div class="cnac">${head}${kpis}${table}${one}<div class="cngrid">${anal}${tops}</div></div>`;
+}
+document.addEventListener("click", e => {
+  if (page !== "compnac") return;
+  const p = e.target.closest("[data-cnper]"); if (p){ cnUI.per = p.dataset.cnper; render(); return; }
+  const a = e.target.closest("[data-cnacc]"); if (a && !e.target.closest("a")){ cnUI.acc = cnUI.acc === a.dataset.cnacc ? "" : a.dataset.cnacc; render(); if (cnUI.acc) setTimeout(() => document.getElementById("cnAcc")?.scrollIntoView({ behavior:"smooth", block:"start" }), 60); }
+});
+document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("tr[data-cnacc]")){ e.preventDefault(); e.target.click(); } });
+
+const PAGES = { compnac:pCompNac, admpanel:pAdmPanel, admtab:pAdmTab, admev:pAdmEv, admfotos:pAdmFotos, adminf:pAdmInf, resumen:pResumen, seguimiento:pSeguimiento, videohub:pVideoHub, borradoresdg:() => pBorradores("Diseño"), borradorescm:() => pBorradores("CM"), copys:pCopys, cronograma:pCronograma, oficina:pOficina, tvpant:pTvPant, tvjunto:pTvJunto, tvconf:pTvConf, postext:pPlanTxt, pedcom:pPedCom, gcm:pGestCM, calact:pCalAct, contenidos:pContenidos, escraches:pEscraches, bienvenida:pBienvenida, ideas:pIdeas, inbox:pInbox, reclamos:pReclamos, noticias:pNoticias, comercial:pComercial, tendg:() => pTend("dg"), tencm:() => pTend("cm"), paneldg:() => pPanel("dg"), panelcm:() => pPanel("cm"), caldg:pCalDG, calcm:pPlan, web:pPedidos, pantallas:pPedidos, sabados:pSabados, caldiseno:pCalDiseno, cartel:pPedidos, calcartel:pMateriales, historialcm:pHistorialCM, gestioncm:pGestionCM, avisos:pAvisos, aviso:pAviso, prompts:pPrompts, guia:pGuia, archivos:pArchivos, encuestas:pEncuestas, planmes:pPlanMes, notas:pNotas, mensajes:pMensajes, sugerencias:pSugerencias, tvimpacto:pTVImpacto, tvredes:pTVRedes, dashboard:pDashboard, staff:pStaff, perfil:pPerfil, cumples:pCumples, inicio:pInicio, alertas:pAlertas, calendario:pCalendario, calhistoria:pCalHistoria, calcanales:pCalCanales, cargadiseno:() => pCarga("Diseño"), cargacm:() => pCarga("CM"), plan:pPlan, pedidos:pPedidos, tv:pTV, historial:pHistorial, pauta:pPauta, redes:pRedes, reportes:pReportes, usuarios:pUsuarios, config:pConfig };
 
 /* ---------- render ---------- */
 // Barra de pestañas abajo (celular), como en cualquier app: lo que más usa cada rol + “Más” para el menú completo.
@@ -22185,7 +22275,7 @@ function render(){
   const demo = window.RMH?.previewing ? `<div class="panel demo">${icon("info")}<div><b>Vista previa como ${esc(viewer.name)}.</b> <span>Lo que cambies acá no se guarda. Volvé a tu usuario en “ver como” (abajo a la izquierda).</span></div></div>` : "";
   const i = MONTHS_APP.findIndex(m => m.v === MONTH);
   const est = isClosed() ? (isLocked() ? pill("🔒 Cerrado", "#334155") : pill(`🔓 ${monthOpenN()} sin terminar`, "#0e7490")) : isFuture() ? pill("En planificación", "#d946ef") : "";
-  const bar = ["admpanel","admtab","admev","admfotos","adminf","seguimiento","resumen","videohub","borradoresdg","borradorescm","copys","oficina","cronograma","tvpant","tvjunto","tvconf","gcm","calact","usuarios","config","tv","perfil","staff","tvredes","tvimpacto","sugerencias","mensajes","inbox","noticias","notas","prompts","guia","avisos","tendg","tencm","ideas"].includes(page) || (page === "pedcom" && (pcUI.form || pcUI.open || pcUI.view !== "calendario")) ? "" : `<div class="monthbar"><div class="mb-c"><b>${monthLabel(MONTH)}</b>${est}</div><div class="mb-n"><button class="btn" data-month="-1" ${i === 0 ? "disabled" : ""}>‹ Anterior</button><button class="btn" data-month="1" ${i === MONTHS_APP.length-1 ? "disabled" : ""}>Siguiente ›</button></div></div>`;
+  const bar = ["compnac","admpanel","admtab","admev","admfotos","adminf","seguimiento","resumen","videohub","borradoresdg","borradorescm","copys","oficina","cronograma","tvpant","tvjunto","tvconf","gcm","calact","usuarios","config","tv","perfil","staff","tvredes","tvimpacto","sugerencias","mensajes","inbox","noticias","notas","prompts","guia","avisos","tendg","tencm","ideas"].includes(page) || (page === "pedcom" && (pcUI.form || pcUI.open || pcUI.view !== "calendario")) ? "" : `<div class="monthbar"><div class="mb-c"><b>${monthLabel(MONTH)}</b>${est}</div><div class="mb-n"><button class="btn" data-month="-1" ${i === 0 ? "disabled" : ""}>‹ Anterior</button><button class="btn" data-month="1" ${i === MONTHS_APP.length-1 ? "disabled" : ""}>Siguiente ›</button></div></div>`;
   const viewKey = [page, MONTH, viewer.id, calCM, reportTab, redesBrand, brandFilter, jobUI.view, cmUI.tview, cartUI.view, soloYo].join("|");
   if (animate0(page)) { jobUI.owner = "Todos"; jobUI.q = ""; if (!stagesOf(jobArea()).includes(jobUI.status)) jobUI.status = jobUI.status === "Todos" ? "Todos" : "Activos"; }
   const animate = viewKey !== render.lastKey; render.lastKey = viewKey; if (animate) render.visit = (render.visit || 0) + 1;
