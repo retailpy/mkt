@@ -93,7 +93,7 @@ async function jobPush(cfg: any, items: any[]) {
     const brands = j ? (Array.isArray(j.brands) && j.brands.length ? j.brands : [j.brand]).filter(Boolean).join(" + ") : "";
     let title = j?.title || "", body = "", go = j ? "job:" + j.id : "";
     let head = "";
-    if (n.ped) { // v411: Solicitud de pedidos: aprobación final del diseño (a quien lo pidió) y su respuesta (a Admin total y al diseñador)
+    if (n.ped) { // v412: Solicitud de pedidos: aprobación final del diseño (a quien lo pidió) y su respuesta (a Admin total y al diseñador)
       title = short(String(n.title || ""), 120); body = String(n.text || ""); go = "com:" + String(n.ped); head = short(String(n.head || "Solicitud de pedidos"), 80);
     } else if (n.adm) { // v401: Administración de Marketing: le toca un trabajo del Tablero (el título y el detalle vienen en el aviso)
       title = short(String(n.title || ""), 120); body = String(n.text || ""); go = "adm:" + String(n.adm); head = "Administración: te toca un trabajo";
