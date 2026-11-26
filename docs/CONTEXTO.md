@@ -197,6 +197,14 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 ---
 
 ## 5. Otras cosas recientes (v137–v160)
+- **v423 · Comercial es otro departamento: solo Dashboard, sus pedidos, el video y la bienvenida (26/11/2026):** pedido de Admin total.
+  El rol **Comercial** ve solo Dashboard, **Mis pedidos de activaciones** (`pedcom`), Video Retail MKT Hub y Bienvenida (`COMERCIAL_SEE`;
+  ya no ve las ofertas de `comercial`; en la base no se cambió nada). Entra directo a sus pedidos (tabla primero; también Calendario) y la
+  barra del celular es Mis pedidos + Dashboard. Ve un **pedido de ejemplo** (`pcExample()`, id `PC-ejemplo`, “Ejemplo · no se guarda”):
+  solo para ver, no se guarda ni le llega a nadie (`pcFind` lo abre). El formulario de **Pedidos Comercial** vuelve a ser el de antes
+  también para Admin total (solo Superseis, Stock y Delimarket, sin “¿Quién lo trabaja?”): `eq` en `pcFormPage` mira `pcScope()`.
+  Botón amarillo «Solicitud de pedidos»: los Admin (Patricia, Emanuel), quien haya pedido (menos Administración) y Comercial; las personas
+  de Administración (Marlene y su equipo) **no** tienen ese grupo: llegan a la Solicitud desde su Panel de Trabajo.
 - **v421 · Solicitud de pedidos y Pedidos Comercial otra vez aparte, menú por persona y permisos de Administración (26/11/2026):** pedido de Admin total.
   - **Dos secciones con los mismos datos** (`s:PEDIDOS_COM`): **Solicitud de pedidos** (`solped`: lo que pide el equipo, `pcEq`; Patricia, Emanuel, Marlene) y **Pedidos Comercial** (`pedcom`: los pedidos de activaciones de los compradores, **como antes de v397**: encabezado, texto y “Nuevo pedido” solo para Comercial y Admin total). `pcScope`/`pcInScope`/`pcPageOf`: cada una muestra lo suyo, el aviso `com:` abre la que corresponde, “Mis pedidos” solo en la Solicitud, el pedido nuevo es del equipo si se carga en la Solicitud (`eqNew`), numeritos aparte (`pcBadgeN("eq"|"com")`) y la alerta de Admin total dice “Nueva solicitud de pedido” o “Nuevo pedido de Comercial”. Pedidos Comercial lo ven Admin total y Admin (y Comercial, los suyos); la Solicitud, Admin total, Admin y Administración.
   - **Menú:** grupo **“Solicitud de pedidos”** con el **título amarillo** (como un botón; `pcNavGroup`, `.pcgrp`) debajo de General y abierto de entrada: una entrada **por persona** que pide (`pcNavPeople`: los Admin, la líder de Administración y quien ya pidió; los que más piden, arriba) con su **+N** (`pcBadgeWho`), y al final **“Comercial”**. Tocar una persona muestra solo sus pedidos (`pcUI.who`; arriba, fichitas “Todas · Patricia Chapp · Emanuel Goia…”). Al cargar un pedido, se ve la lista de quien lo cargó.
