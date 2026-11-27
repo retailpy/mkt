@@ -6331,7 +6331,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v439";
+const APP_VER = "v440";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -21713,7 +21713,7 @@ const iflWho = id => { const pp = personById(id); return pp ? String(nickOf(pp))
 const iflMarks = () => Array.isArray(INFLU_MARKS) ? INFLU_MARKS.filter(m => m && m.id) : [];
 const iflQuotaTxt = x => iflQuota(x).map(q => `${q.n} ${(q.n === 1 ? IFL_TYPES[q.t][0] : IFL_TYPES[q.t][1]).toLowerCase()}`).join(" · ");
 const iflImg = u => safeUrl(u) ? `<img src="${esc(safeUrl(u))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : "";
-// v436 · Las imágenes de Instagram (sobre todo las de historias) vencen a las horas o días: apenas llegan se copian achicadas a
+// v440 · Las imágenes de Instagram (sobre todo las de historias) vencen a las horas o días: apenas llegan se copian achicadas a
 // Google Drive (iflKeep, como las historias de las marcas) y su id queda en s:STORY_IMGS con la clave "i:<id>". Se muestra la de Drive.
 const iflImgKey = d => d.auto ? "i:" + d.autoId : d.mark ? "i:m:" + d.mark.id : null;
 const iflSrc = (d, w = 400) => { const k = iflImgKey(d), id = k && STORY_IMGS?.[k]; return id ? driveSrc(id, w) : d.img || ""; };
@@ -21729,7 +21729,7 @@ function iflStories(month){
   const map = new Map(), add = (w, x) => { if (!map.has(w)) map.set(w, []); map.get(w).push(x); };
   Object.entries(META_DM || {}).forEach(([b, convs]) => { if (!convs || typeof convs !== "object" || !BRANDS[b]) return;
     Object.values(convs).forEach(c => { const w = iflU(c?.who); if (!w || !Array.isArray(c.msgs)) return; let lastPub = 0;
-      // v436: cuando la marca le contesta la historia, Instagram manda el link de su imagen: sirve para la mención sin imagen de antes (24 h).
+      // v440: cuando la marca le contesta la historia, Instagram manda el link de su imagen: sirve para la mención sin imagen de antes (24 h).
       const echo = c.msgs.filter(m => m && m.me && m.a === "story_mention" && /^https:\/\//.test(m.u || "") && m.ts).sort((a, z) => String(a.ts).localeCompare(String(z.ts))), used = new Set();
       [...c.msgs].sort((a, z) => String(a?.ts || "").localeCompare(String(z?.ts || ""))).forEach(m => { if (!m || m.me || !m.ts) return;
         const story = /mencion[oó] en su historia/i.test(m.t || "") || m.a === "story_mention", pub = !story && m.att === true && !m.t;
