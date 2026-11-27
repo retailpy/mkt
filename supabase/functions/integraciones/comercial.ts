@@ -174,7 +174,7 @@ const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "
 export function nombreOfertas(f: any){
   const [a, b] = [f.from, f.to].map((d: string) => ({ d: +d.slice(8, 10), m: +d.slice(5, 7) - 1 }));
   const rango = a.m === b.m ? `${a.d} al ${b.d} de ${MESES[b.m]}` : `${a.d} de ${MESES[a.m]} al ${b.d} de ${MESES[b.m]}`;
-  const cat = ({ fds: " fin de semana", express: " Express", imbatibles: " Imbatibles" } as Record<string, string>)[f.cat] || "";
+  const cat = f.cat === "especial" ? ` Especial ${f.tema || ""}`.trimEnd() : ({ fds: " fin de semana", express: " Express", imbatibles: " Imbatibles" } as Record<string, string>)[f.cat] || ""; // v433: “Ofertas Especial Navidad Superseis del …”
   return `Ofertas${cat} ${f.brand || "Superseis"} del ${rango}${f.folleto ? ` (Folleto ${f.folleto})` : ""}`;
 }
 // Excel armado con lo guardado (cuando el original ya no está en Drive), en base64. Una hoja por hoja del original.
