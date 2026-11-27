@@ -395,7 +395,7 @@ async function comercialSync(c: any, minAge: number){
   for (let intento = 0; intento < 2; intento++){
     const { data: row } = await db.from("app_state").select("data, version").eq("key", "s:COMERCIAL").maybeSingle();
     const prev = row?.data || {};
-    // v427 · Ofertas especiales (ej.: Especial Navidad de Superseis y Stock): Excel que Comercial manda aparte, cargados en
+    // v433 · Ofertas especiales (ej.: Especial Navidad de Superseis y Stock): Excel que Comercial manda aparte, cargados en
     // s:COM_ESP_RAW ([{ name, b64, tema }]). Se leen con el mismo lector, quedan guardados aparte (cat "especial") y el Excel
     // original va a la carpeta de respaldos de Drive. Si hay alguno esperando, se lee aunque se haya revisado hace poco.
     const { data: rawRow } = await db.from("app_state").select("data").eq("key", "s:COM_ESP_RAW").maybeSingle();
@@ -487,19 +487,19 @@ async function comercialSync(c: any, minAge: number){
     const finalEnDrive = new Set((Object.values(files) as any[]).filter((x) => x.final && x.inDrive && x.v === PARSE_V).map((x) => quincena(x.brand, x.cat, x)));
     for (const [id, x] of Object.entries(files) as [string, any][]) if (x.cat === "quincenal" && !x.inDrive && finalEnDrive.has(quincena(x.brand, x.cat, x))) delete files[id];
     // Las quincenas quedan completas siempre; de fin de semana, Express e Imbatibles, los últimos 2 meses.
-    for (const [id, x] of Object.entries(files) as [string, any][]) if (x.cat !== "quincenal" && x.cat !== "especial" && x.to && x.to < limiteDe(x.cat)) delete files[id]; // v427: las especiales quedan, como las quincenas
+    for (const [id, x] of Object.entries(files) as [string, any][]) if (x.cat !== "quincenal" && x.cat !== "especial" && x.to && x.to < limiteDe(x.cat)) delete files[id]; // v433: las especiales quedan, como las quincenas
     // Respaldo en Drive de las quincenales de Superseis (como antes): el día que empieza la oferta (o después), una sola vez por archivo.
     let respaldos = 0;
     const canBackup = sv >= 5;
     if (canBackup) for (const x of Object.values(files) as any[]){
-      if (x.backup?.url || !x.from || !(x.cat === "especial" || (x.cat === "quincenal" && x.brand === "Superseis" && x.from <= hoy))) continue; // v427: + las especiales (si no se pudo al cargarlas)
+      if (x.backup?.url || !x.from || !(x.cat === "especial" || (x.cat === "quincenal" && x.brand === "Superseis" && x.from <= hoy))) continue; // v433: + las especiales (si no se pudo al cargarlas)
       const name = nombreOfertas(x) + ".xlsx", ym = x.from.slice(0, 7);
       try {
         const j = x.inDrive ? await scriptPost(c, { kind: "backup_copy", id: x.id, name, ym }) : await scriptPost(c, { kind: "backup_file", name, ym, data: excelOfertas(x) });
         if (j.ok && j.url){ x.backup = { at: now, id: j.id, url: j.url }; respaldos++; }
       } catch { /* se reintenta en la próxima revisión */ }
     }
-    // v427 · Ofertas especiales: se leen, se guardan aparte y el Excel original va a la carpeta de respaldos de Drive.
+    // v433 · Ofertas especiales: se leen, se guardan aparte y el Excel original va a la carpeta de respaldos de Drive.
     let especiales = 0;
     for (const e of espRaw){
       try {
@@ -519,7 +519,7 @@ async function comercialSync(c: any, minAge: number){
     for (const fu of FUENTES) if (!src[fu.id]) src[fu.id] = { at: now, old: true };
     const data = { v: 1, updated: nuevos || respaldos || especiales || !prev.updated ? now : prev.updated, syncedAt: now, backupScript: canBackup, scriptV: sv, files, src, pending: pending.slice(0, 80) };
     const res = { ok: true, nuevos, agregados, errores, respaldos, especiales, n, faltan, pendientes: pending.length, carpetasConError: Object.values(src).filter((x: any) => x.err).length, scriptViejo: sv < 8 }; // las ofertas necesitan la 8 (la 9 es para los bocetos grandes)
-    const listo = async () => { if (espRaw.length) await db.from("app_state").delete().eq("key", "s:COM_ESP_RAW"); return res; }; // v427: ya quedaron guardadas
+    const listo = async () => { if (espRaw.length) await db.from("app_state").delete().eq("key", "s:COM_ESP_RAW"); return res; }; // v433: ya quedaron guardadas
     if (!row){ const { error } = await db.from("app_state").insert({ key: "s:COMERCIAL", data }); if (!error) return await listo(); continue; }
     const { data: up } = await db.from("app_state").update({ data, version: row.version + 1, updated_at: now }).eq("key", "s:COMERCIAL").eq("version", row.version).select("version");
     if (up && up.length) return await listo();

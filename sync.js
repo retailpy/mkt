@@ -85,6 +85,10 @@ const RMH = (() => {
     CM_ACTS:[() => CM_ACTS, v => { CM_ACTS = Array.isArray(v) ? v : []; }], // actividades de CM (encuestas, fotos, DL, regalos, sorteos, vales) (v220)
     PLAN_TXT:[() => PLAN_TXT, v => { PLAN_TXT = Array.isArray(v) ? v : []; }], // Plan de posteo: calendario de texto del mes (v249)
     INFLUENCERS:[() => INFLUENCERS, v => { INFLUENCERS = Array.isArray(v) ? v : []; }], // cumpleaños de influencers de las marcas (solo Admin total y CM)
+    // v428 · Influencers (CM): la lista con lo que sube cada uno por mes, lo marcado y verificado, y lo que trae Instagram (solo lectura)
+    INFLU_PLAN:[() => INFLU_PLAN, v => { INFLU_PLAN = Array.isArray(v) ? v : JSON.parse(JSON.stringify(IFL_DEF)); }],
+    INFLU_MARKS:[() => INFLU_MARKS, v => { INFLU_MARKS = Array.isArray(v) ? v : []; }],
+    META_INFLU:[() => META_INFLU, v => { META_INFLU = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }],
     ESCRACHES:[() => ESCRACHES, v => { ESCRACHES = Array.isArray(v) ? v : []; }], // Búsqueda de Escraches: los cargados y las marcas (solo Admin total, Admin y CM)
     PEDIDOS_COM:[() => PEDIDOS_COM, v => { PEDIDOS_COM = Array.isArray(v) ? v : []; }],
     ADM_JOBS:[() => ADM_JOBS, v => { ADM_JOBS = Array.isArray(v) ? v : []; }], // v401: Tablero de trabajos de Administración de Marketing (solo Admin total, Admin y Administración; también en la base)
@@ -110,7 +114,7 @@ const RMH = (() => {
   // Claves que solo existen para Admin total (la base no se las deja leer ni guardar al resto).
   const ADMIN_ONLY = new Set(["s:SUGGESTIONS", "s:SURVEYS", "s:DRAFTS"]); // v369: los borradores de pedidos
   // Claves que solo existen para Admin total, Admin y CM (reclamos de clientes: tienen nombres y datos personales).
-  const CM_ONLY = new Set(["s:RECLAMOS", "s:ESCRACHES", "s:META_DM", "s:META_DM_LOG", "s:META_IG_ACT"]);
+  const CM_ONLY = new Set(["s:RECLAMOS", "s:ESCRACHES", "s:META_DM", "s:META_DM_LOG", "s:META_IG_ACT", "s:INFLU_PLAN", "s:INFLU_MARKS", "s:META_INFLU"]); // v428: Influencers (en la base los lee el equipo; acá solo los bajan quienes ven la sección)
   const isCMish = () => ["Admin total", "Admin", "CM"].includes(member?.role);
   // Claves que solo leen y guardan Admin total y CM (Admin, no): los cumpleaños de influencers.
   const ATCM_ONLY = new Set(["s:INFLUENCERS", "s:PLAN_TXT"]);
@@ -213,7 +217,7 @@ const RMH = (() => {
   let flushing = null, lastSeen = "", changedAt = 0, dirtySince = 0, rerenderPending = false, saveErrShown = false, retryAt = 0;
   // Pendiente de guardar: cambió desde lo último del servidor, o todavía no existe en la base (v 0: se crea).
   // De solo lectura: las escriben las funciones de Meta; la app las lee pero nunca las guarda.
-  const READONLY = new Set(["s:META_FOLLOWERS", "s:META_DEMO", "s:META_POSTS", "s:META_CREATIVES", "s:META_INBOX", "s:META_REFS", "s:COMERCIAL", "s:META_DM", "s:META_DM_LOG", "s:META_IG_ACT", "s:META_STORIES"]);
+  const READONLY = new Set(["s:META_FOLLOWERS", "s:META_DEMO", "s:META_POSTS", "s:META_CREATIVES", "s:META_INBOX", "s:META_REFS", "s:COMERCIAL", "s:META_DM", "s:META_DM_LOG", "s:META_IG_ACT", "s:META_STORIES", "s:META_INFLU"]);
   // El Revisor (usuario de la revisión de Meta) solo guarda “contestado” y su presencia: la base tampoco le deja otra cosa.
   const REVISOR_SAVE = new Set(["s:INBOX_DONE", "s:PRESENCE"]);
   // Comercial (los compradores) solo guarda sus pedidos, su presencia y su perfil: la base tampoco le deja otra cosa.
