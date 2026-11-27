@@ -177,7 +177,12 @@ module.exports = async (req, res) => {
         const who = me ? null : await whoIs(uid, tok), mts = isoOf(m.timestamp);
         // Mención en una historia: llega como mensaje con un adjunto "story_mention".
         const story = !me && (msg.attachments || []).some(a => a && a.type === "story_mention");
-        await ingest(brand, uid, { net: "IG", uid, who }, { mid: msg.mid, t: short(msg.text || (story ? "Te mencionó en su historia" : "")), me, ts: mts, att: !msg.text && !story });
+        // v433: de qué es el adjunto (historia, publicación o reel compartido): tipo, link y número de la publicación, para que
+        // Influencers reconozca lo que mandan los influencers aunque no nombren a la marca en el texto.
+        const at0 = (msg.attachments || []).find(a => a && a.type === "story_mention") || (msg.attachments || []).find(a => a && a.type) || null, pl = (at0 && at0.payload) || {};
+        const extra = at0 ? { a: String(at0.type).slice(0, 30), ...(typeof pl.url === "string" && /^https:\/\//.test(pl.url) ? { u: pl.url.slice(0, 600) } : {}),
+          ...(pl.reel_video_id || pl.id ? { rid: String(pl.reel_video_id || pl.id).slice(0, 40) } : {}), ...(pl.title ? { ti: short(pl.title, 120) } : {}) } : {};
+        await ingest(brand, uid, { net: "IG", uid, who }, { mid: msg.mid, t: short(msg.text || (story ? "Te mencionó en su historia" : "")), me, ts: mts, att: !msg.text && !story, ...extra });
         n++;
       }
       for (const c of acts){ try { items.push(...await actItems(c, brandId, handle, ts, posts)); } catch (err){ skipped.push(`${c.field}: ${String(err.message).slice(0, 60)}`); } }
