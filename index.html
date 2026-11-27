@@ -6279,7 +6279,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v433";
+const APP_VER = "v434";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -21553,7 +21553,7 @@ const IFL_KINDS = { historia:"Historia", post:"Post", carrusel:"Carrusel", reel:
 const IFL_FIT = { historia:["historia"], feed:["post", "carrusel", "reel", "pub"], reel:["reel", "pub"], reelcar:["reel", "carrusel", "pub"] }; // qué cuenta para cada casilla (lo primero, mejor)
 const IFL_NETS = { IG:"Instagram", X:"X", FB:"Facebook", TT:"TikTok" };
 const IFL_BRANDS = ["Superseis", "Delimarket", "Bianca", "Stock"];
-const IFL_DEF = [ // la lista de arranque (pedido de Admin total, noviembre 2026) · v433: Tania es solo Delimarket; los demás, solo Superseis
+const IFL_DEF = [ // la lista de arranque (pedido de Admin total, noviembre 2026) · v434: Tania es solo Delimarket; los demás, solo Superseis
   { id:"tania", name:"Tania Domaniczky", ig:["taniadoma"], nets:["IG"], brands:["Delimarket"], quota:[{ t:"historia", n:4 }, { t:"reelcar", n:2 }] },
   { id:"carlos", name:"Carlos Ortellado", ig:["carlitosortellado"], nets:["IG", "X", "FB"], brands:["Superseis"], quota:[{ t:"feed", n:3 }, { t:"historia", n:3 }] },
   { id:"pedro", name:"Pedro Rüger", note:"Chef Bianca · Superseis", ig:["enelhornoconpeta"], nets:["IG", "X", "FB", "TT"], brands:["Superseis"], quota:[{ t:"feed", n:1 }, { t:"historia", n:2 }, { t:"reel", n:1 }] },
@@ -21585,7 +21585,7 @@ const iflRate = (d, fol) => { const f = isNum(iflAcc(d.u)?.fol) ? iflAcc(d.u).fo
 
 // Menciones de la marca en historias (llegan como mensaje), por usuario de Instagram: se arma una vez por cada cambio de META_DM.
 let iflStoryMemo = null;
-// v433: también los avisos de publicaciones (cuando un influencer publica un posteo o reel que arroba a la marca, a la marca le
+// v434: también los avisos de publicaciones (cuando un influencer publica un posteo o reel que arroba a la marca, a la marca le
 // llega un mensaje con un adjunto a los pocos segundos; los que llegan seguidos son uno solo). Por usuario: [{ b, m, d, img, pub }].
 function iflStories(month){
   if (iflStoryMemo && iflStoryMemo.dm === META_DM && iflStoryMemo.m === month) return iflStoryMemo.map;
@@ -21633,7 +21633,7 @@ function iflSlots(x, month = MONTH){
   return { slots, extra };
 }
 const iflSum = (L, k) => L.reduce((a, d) => a + (isNum(d[k]) ? d[k] : 0), 0);
-// v433 · Alcance aproximado de cada publicación (el de otras cuentas Instagram no lo da): las vistas cargadas de la captura, si
+// v434 · Alcance aproximado de cada publicación (el de otras cuentas Instagram no lo da): las vistas cargadas de la captura, si
 // hay; si no, en posteos y reels las interacciones ÷ 4 % (de cada 100 personas que ven la publicación de un creador, unas 4
 // reaccionan), con tope en 1,5 veces sus seguidores; en historias, el 5 % de sus seguidores (lo habitual que ve una historia) o lo que
 // suelen alcanzar sus posteos, lo que sea menos.
@@ -21683,7 +21683,7 @@ function iflCard(r, past, i){
   const groups = iflQuota(x).map(q => { const ss = slots.filter(s => s.t === q.t), up = ss.filter(s => s.d).length;
     return `<div class="iflrow"><span class="ifllab">${icon(IFL_TYPES[q.t][2])}${esc(IFL_TYPES[q.t][+q.n === 1 ? 0 : 1])}<small>${up} de ${q.n}</small></span><div class="iflslots">${ss.map(s => iflCell(x, s, past)).join("")}</div></div>`; }).join("");
   const pct = r.tot ? Math.round(r.up / r.tot * 100) : 0, eng = r.likes + r.comments;
-  // v433 · Impacto del mes (aproximado) y las publicaciones en grande, en 4:5 vertical.
+  // v434 · Impacto del mes (aproximado) y las publicaciones en grande, en 4:5 vertical.
   const imp = r.all.length ? `<div class="iflimp" aria-label="Impacto del mes"><div><b>${r.reach ? "≈ " + dots(r.reach) : "—"}</b><span>alcance aprox.</span></div><div><b>${eng ? dots(eng) : "—"}</b><span>me gusta y comentarios</span></div><div><b>${isNum(r.rate) ? rePct(r.rate) : "—"}</b><span>interacción${r.grade ? ` · <em class="iflgr ${r.grade[1]}">${r.grade[0]}</em>` : ""}</span></div></div>` : "";
   const gal = r.all.length ? `<div class="iflgal">${r.all.map(d => { const rc = iflReach(d, r.fol), e = (d.likes || 0) + (d.comments || 0);
       return `<button type="button" class="iflg" data-iflkey="${esc(x.id)}|${esc(d.key)}" title="Ver la ficha"><span class="iflgi" style="--c:${BRANDS[d.brand] || "var(--cyan)"}"><span class="iflgph">${icon(d.kind === "historia" ? "smartphone" : d.kind === "reel" ? "clapperboard" : "image")}</span>${iflImg(d.img)}<em class="iflgt">${esc(IFL_KINDS[d.kind] || "")}</em>${d.ver ? `<span class="iflgv" title="Verificada">${icon("check")}</span>` : ""}</span>

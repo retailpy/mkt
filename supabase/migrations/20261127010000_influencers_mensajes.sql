@@ -1,4 +1,4 @@
--- v433 · Influencers: la búsqueda de Instagram (/api/referentes?set=influ) lee también los mensajes de Instagram (s:META_DM)
+-- v434 · Influencers: la búsqueda de Instagram (/api/referentes?set=influ) lee también los mensajes de Instagram (s:META_DM)
 -- para reconocer los reels y publicaciones que los influencers le mandan a la marca por mensaje (el webhook guarda el número
 -- del reel o el link). Solo se agrega 's:META_DM' a la lista de read_meta; lo demás queda igual.
 create or replace function public.read_meta(p_key text, p_secret text)
