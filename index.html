@@ -6259,7 +6259,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v431";
+const APP_VER = "v432";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -8252,7 +8252,7 @@ function notifAlerts(){
     return { go:"job:" + j.id, key:"n:" + n.id, sev:"#a855f7", rank:-5, ic:"circle-check", t:`${n.who} ${n.fix ? "terminó las correcciones" : j.area === "CM" ? "terminó su trabajo" : contCopy(j) ? "terminó el boceto y el copy" : "terminó el boceto"}: ${j.title}`, m:`${j.brand} · ${j.piece} · listo para revisar${contCopy(j) ? " · " + jcopyShort(j) : ""} · ${dm(n.date)} ${n.time}${j.rounds ? ` · ronda de correcciones ${j.rounds}` : ""}`,
       acts:`<button class="btn primary" data-nact="approve" data-nid="${n.id}">${j.area === "CM" ? "Aprobar" : "✓ Aprobar"}</button><button class="btn" data-nact="fix" data-nid="${n.id}">Pedir cambios</button><button class="btn" data-jficha="${j.id}">Ver pedido</button>` };
   });
-  return myNotifs().map(n => n.ped ? pcNotifAlert(n) : n.admev ? { go:"admev:" + n.admev, key:"n:" + n.id, sev:"#22c55e", rank:-6, ic:"calendar-check", t:`Evento: ${admEvById(n.admev)?.name || n.title || ""}`, m:`${n.text || ""} · Administración de Marketing · tocá para verlo` } : n.adm ? { go:"adm:" + n.adm, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:"table-2", t:`Te toca: ${admById(n.adm)?.title || n.title || ""}`, m:`${n.text ? n.text + " · " : ""}Administración de Marketing · tocá para verlo` } : n.dsg ? dsgAlert(n) : n.copy ? copyAlert(n) : n.type === "pub" ? pubAlert(n) : n.type === "act" ? actAlert(n) : n.type === "nuevo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:"inbox", t:`Nuevo pedido para vos: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""} · fecha límite ${jobById(n.job) ? dm(jobById(n.job).due) : ""} · tocá para ver todo` }
+  return myNotifs().map(n => n.ped ? pcNotifAlert(n) : n.admev ? { go:"admev:" + n.admev, key:"n:" + n.id, sev:n.evNew ? "#a855f7" : "#22c55e", rank:-6, ic:"calendar-check", t:`${n.evNew ? "Nuevo evento" : "Evento"}: ${admEvById(n.admev)?.name || n.title || ""}`, m:`${n.text || ""} · Administración de Marketing · tocá para verlo` } : n.adm ? { go:"adm:" + n.adm, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:"table-2", t:`Te toca: ${admById(n.adm)?.title || n.title || ""}`, m:`${n.text ? n.text + " · " : ""}Administración de Marketing · tocá para verlo` } : n.dsg ? dsgAlert(n) : n.copy ? copyAlert(n) : n.type === "pub" ? pubAlert(n) : n.type === "act" ? actAlert(n) : n.type === "nuevo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#22d3ee", rank:-6, ic:"inbox", t:`Nuevo pedido para vos: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""} · fecha límite ${jobById(n.job) ? dm(jobById(n.job).due) : ""} · tocá para ver todo` }
     : n.type === "listo" && n.post ? listoAlert(n)
     : n.type === "listo" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#10b981", rank:-6, ic:"badge-check", t:`Diseño listo para tu grilla: ${jobById(n.job)?.title || ""}`, m:`${jobById(n.job)?.brand || ""} · ${jobById(n.job)?.piece || ""}${jobById(n.job)?.designLink ? " · tiene el link del diseño" : ""} · sumalo a tu calendario` }
     : n.type === "nota" ? { go:"job:" + n.job, key:"n:" + n.id, sev:"#94a3b8", rank:-4, ic:"message-circle", t:`Admin total comentó en: ${jobById(n.job)?.title || ""}`, m:`“${n.text}” · ${dm(n.date)} ${n.time}` } : ({ go:"job:" + n.job, key:"n:" + n.id, sev:n.type === "approved" ? "#10b981" : "#f97316", rank:-5, ic:n.type === "approved" ? "badge-check" : "pencil", t:n.type === "approved" ? `Admin total aprobó tu ${jobDone(jobById(n.job) || {})}: ${jobById(n.job)?.title}` : `Admin total pidió cambios: ${jobById(n.job)?.title}`, m:`${n.type === "fix" && n.text ? `“${n.text}” · ` : ""}${dm(n.date)} ${n.time}${n.type === "fix" ? ` · cuando termines, tocá “${jobById(n.job)?.area === "CM" ? "Terminé las correcciones" : "Corrección realizada"}”` : ""}`, acts:`${n.type === "fix" ? `<button class="btn primary" data-jdone="${n.job}">✓ ${jobById(n.job)?.area === "CM" ? "Terminé las correcciones" : "Corrección realizada"}</button>` : ""}<button class="btn" data-jficha="${n.job}">Ver pedido</button>` }));
@@ -16974,7 +16974,7 @@ function chatPopItems(keys, cur){
 // Texto de cada aviso (el mismo en la ventana, en la notificación del sistema y en el push).
 function jobPopInfo(n){
   const P = JOBPOP[n.type], j = n.job ? jobById(n.job) : null;
-  if (n.admev) return { ...P, go:"admev:" + n.admev, t:"Administración: evento aprobado", ic:"calendar-check", title:admEvById(n.admev)?.name || n.title || "", m:n.text || "" }; // v416
+  if (n.admev) return { ...P, go:"admev:" + n.admev, t:n.evNew ? "Administración: nuevo evento" : "Administración: evento aprobado", ic:"calendar-check", title:admEvById(n.admev)?.name || n.title || "", m:n.text || "" }; // v416
   if (n.adm) return { ...P, go:"adm:" + n.adm, t:"Administración: te toca un trabajo", ic:"table-2", title:admById(n.adm)?.title || n.title || "", m:n.text || "" }; // v401
   if (n.type === "entrega"){ const d = n.demo ? -2 : n.d;
     if (n.sum) return { ...P, go:n.cm ? "panelcm" : "paneldg", t:"¡Atención! Más entregas", c:dueColor(d), title:`Y ${n.sum} ${n.sum === 1 ? "entrega más" : "entregas más"} para hoy o atrasadas`,
@@ -17198,6 +17198,15 @@ function pcPanel(){
   const tiles = [...ppl.map((pp, i) => tile(pp.id, `data-page="solped" data-pcwho="${esc(pp.id)}"`, "user-round", pp.name, "Sus solicitudes de pedido", pcBadgeWho(pp.id), i)),
     ...(com ? [tile("com", `data-page="pedcom"`, "shopping-bag", "Comercial", "Pedidos de activaciones (Superseis, Stock y Delimarket)", pcBadgeN("com"), ppl.length)] : [])];
   return tiles.length > 1 ? `<div class="picons pcpanel" role="group" aria-label="De quién son los pedidos">${tiles.join("")}</div>` : "";
+}
+// v432 · Eventos cargados desde la Solicitud de pedidos (Patricia, Emanuel…): la lista con Sí / No le llega a la líder de Administración
+// para que lo tenga en cuenta. Siguen en Administración de Marketing → Eventos (para aprobar; al aprobarlo, Vivian pide los presupuestos).
+function pcEvBox(who){
+  if (!admSees()) return "";
+  const evs = ADM_EVENTS.filter(e => e && e.src === "solped" && (!who || e.by === who.name) && (admEvDays(e) === null || admEvDays(e) >= -7)).sort((a, b) => String(a.date || "9").localeCompare(String(b.date || "9")));
+  if (!evs.length) return ""; const lead = admLeads()[0];
+  return `<section class="panel pcevbox"><h2 class="pmh">${pmIco("calendar-check")}Eventos cargados <span class="note">${evs.length} · ${lead ? `le llegan a ${esc(lead.name.split(" ")[0])} (Administración de Marketing)` : "Administración de Marketing"}</span></h2>
+    <div class="list">${evs.map(e => `<div class="row arow" data-ago="admev:${esc(e.id)}" role="button" tabindex="0" title="Tocá para ver el evento y su lista"><span class="aico" style="--c:${ADM_EV_EST[admEvSt(e)].c}">${icon("calendar-check")}</span><div class="grow"><div class="t">${esc(e.name)}</div><div class="m">${esc(admEvWhen(e))}${e.tipo ? " · " + esc(e.tipo) : ""} · ${(e.items || []).length} ${(e.items || []).length === 1 ? "cosa" : "cosas"} · lo cargó ${esc(String(e.by || "").split(" ")[0])}</div></div>${admEvPill(e)}</div>`).join("")}</div></section>`;
 }
 const pcBrandTxt = p => (p.brands || []).join(" + ") || "Sin supermercado";
 const pcRange = p => p.from && p.until ? (p.from === p.until ? dm(p.from) : `del ${dm(p.from)} al ${dm(p.until)}`) : p.from ? "desde el " + dm(p.from) : p.until ? "hasta el " + dm(p.until) : "";
@@ -17541,13 +17550,14 @@ function pcTable(list){
 function pPedCom(){
   const eqS = pcScope() === "eq", com = isComercial(), scoped = [...pcMine().filter(pcInScope), ...(com && !eqS ? [pcExample()] : [])], at = viewer.role === "Admin total" && !window.RMH?.previewing; // v423: + el ejemplo para Comercial
   const who = eqS && pcUI.who ? personById(pcUI.who) : null, mine = who ? scoped.filter(p => p.by === who.id) : scoped; // v421: los pedidos de una persona
+  if (eqS && admUI.evForm?.from === "solped" && admEdit()) return admEvFormPage(); // v432: un evento con su lista, cargado desde la Solicitud
   if (pcUI.form) return pcFormPage();
   const op = pcUI.open && scoped.find(p => p.id === pcUI.open); if (op) return pcDetail(op); pcUI.open = null; // v397: Comercial solo abre los suyos
   const vt = [["tabla", "Tabla", "table-2"], ["calendario", "Calendario", "calendar-days"]];
   const adm = viewer.role === "Admin" && !window.RMH?.previewing; // v397: Patricia y Emanuel también piden
   const whoChips = pcPanel() + (eqS && who ? `<div class="chips pcwhoc"><button type="button" class="chip" data-pcwhochip="">${icon("list")} Ver todas las solicitudes</button></div>` : ""); // v424: el panel con Patricia, Emanuel y Comercial
   const head = eqS ? `<div class="head"><div><h1 class="pmh">${pmIco("clipboard-list")}Solicitud de pedidos${who ? ` · ${esc(who.name)}` : ""}</h1><p class="sub">${at ? "Lo que pide el equipo (Patricia, Emanuel y Marlene). Abrí cada pedido nuevo para aprobarlo y pasarlo a Diseño gráfico o a un CM; Administración de Marketing se ocupa en paralelo del presupuesto y la impresión. Los pedidos de los compradores están aparte, en Pedidos Comercial." : `Cargá acá lo que necesitás (un pedido gráfico, de CM o de lo que sea): le llega a ${esc(pcCoordN())} (Coordinación de Diseño gráfico), que lo revisa, le suma lo que falte y lo pasa a Diseño gráfico o a CM. En cada pedido ves todo el seguimiento (quién lo diseña, Administración de Marketing, el proveedor y la CM) y, cuando el diseño está aprobado, te llega para tu aprobación final. También ves los pedidos de los demás del equipo (solo para ver).`}</p></div>
-    <div class="chips">${viewTabs(vt, pcUI.view, "data-pcview")}${at || adm || isAdmRole() ? `<button type="button" class="btn primary" data-pcnew>${icon("plus")} Nuevo pedido</button>` : ""}</div></div>`
+    <div class="chips">${viewTabs(vt, pcUI.view, "data-pcview")}${at || adm || isAdmRole() ? `<button type="button" class="btn primary" data-pcnew>${icon("plus")} Nuevo pedido</button>` : ""}${admEdit() && admSees() ? `<button type="button" class="btn" data-pcevnew title="Un evento con todo lo que va a hacer falta (Sí / No): le llega a Administración de Marketing">${icon("calendar-check")} Nuevo evento</button>` : ""}</div></div>`
     : `<div class="head"><div><h1 class="pmh">${pmIco("shopping-bag")}${com ? "Mis pedidos de activaciones" : "Pedidos Comercial"}</h1><p class="sub">${com ? "Cargá acá lo que te gustaría que se publique en las redes: el pedido le llega a Marketing y te queda como <b style=\"color:#38bdf8\">Enviado</b>. Elegí el día que te gustaría que salga (también tocando el día en el calendario). En cada pedido ves en qué estado está (Enviado, Aprobado, En curso, Con modificaciones, <b style=\"color:#22c55e\">Finalizado</b> o <b style=\"color:#ef4444\">No ejecutable</b>) y te avisamos con cada cambio." : at ? "Lo que piden los compradores para publicar. Abrí cada pedido nuevo para aprobarlo, pasarlo a Diseño gráfico o a un CM (queda En curso, con la persona responsable), marcarlo Con modificaciones o No ejecutable (con el motivo). Cuando el CM lo aprueba para publicar, pasa a Finalizado. Al comprador le llega el aviso con cada cambio." : "Lo que piden los compradores para publicar, a quién se derivó y si ya salió. Es solo para ver: los pedidos los pasa Admin total."}</p></div>
     <div class="chips">${viewTabs(vt, pcUI.view, "data-pcview")}${com || at ? `<button type="button" class="btn primary" data-pcnew>${icon("plus")} Nuevo pedido</button>` : ""}</div></div>`;
   if (pcUI.view === "calendario"){
@@ -17560,7 +17570,7 @@ function pPedCom(){
   const list = mine.filter(p => pcInTab(p, tab)).sort(pcUI.sort === "fecha" ? (a, b) => String(a.date || "9").localeCompare(String(b.date || "9")) || byAt(a, b) : byAt);
   const sorts = viewTabs([["nuevos", "Más nuevos", "clock"], ["fecha", "Por fecha de publicación", "calendar-clock"]], pcUI.sort, "data-pcsort");
   const none = tab === "mios" && !mine.some(p => p.by === viewer.id) ? `Todavía no cargaste pedidos. Tocá <b>Nuevo pedido</b> para empezar.` : !mine.length ? (com ? `Todavía no cargaste pedidos. Tocá <b>Nuevo pedido</b> para empezar.` : "Todavía no hay pedidos.") : tab === "Enviado" && !com ? "No hay pedidos nuevos: todo lo que llegó ya tiene estado." : "No hay pedidos acá.";
-  return `${head}${whoChips}${tabs}<div class="head"><span class="note">Tocá un pedido para verlo${at && tab === "Enviado" ? " y aprobarlo o pasarlo" : ""}.</span>${sorts}</div>${list.length ? pcTable(list) : `<div class="panel"><div class="empty">${none}</div></div>`}`;
+  return `${head}${whoChips}${eqS ? pcEvBox(who) : ""}${tabs}<div class="head"><span class="note">Tocá un pedido para verlo${at && tab === "Enviado" ? " y aprobarlo o pasarlo" : ""}.</span>${sorts}</div>${list.length ? pcTable(list) : `<div class="panel"><div class="empty">${none}</div></div>`}`;
 }
 document.addEventListener("click", async e => {
   if (!viewer || !(can("pedcom") || can("solped"))) return;
@@ -17569,6 +17579,7 @@ document.addEventListener("click", async e => {
   const tb = t.closest("[data-pctab]"); if (tb){ pcUI.tab = tb.dataset.pctab; render(); return; }
   const so = t.closest("[data-pcsort]"); if (so){ pcUI.sort = so.dataset.pcsort; render(); return; }
   if (t.closest("[data-pcnew]")){ pcNew(); render(); window.scrollTo(0, 0); return; }
+  if (t.closest("[data-pcevnew]")){ if (!admEdit() || !admSees()) return; pcUI.form = null; pcUI.open = null; admUI.evPick = null; admUI.evForm = { mode:"new", e:{}, from:"solped" }; render(); window.scrollTo(0, 0); return; } // v432
   if (t.closest("[data-pcclose]")){ pcUI.form = null; render(); return; }
   if (t.closest("[data-pcback]")){ pcUI.open = null; render(); return; }
   const o = t.closest("[data-pcopen]"); if (o){ const p = pcFind(o.dataset.pcopen); if (!p) return; pcUI.open = p.id; pcSeen(p); render(); window.scrollTo(0, 0); return; }
@@ -20637,7 +20648,7 @@ function admEvFormPage(){
   const f = admUI.evForm, e = f.e, nu = f.mode === "new";
   if (nu && !f.pk) f.pk = { sel:{}, qty:{}, extra:[] };
   return `<div class="jpage admpage"><div class="jp-top"><button class="btn pback" type="button" data-admevcancel>${icon("arrow-left")} Volver</button></div>
-  <div class="jp-h"><span class="note">Administración de Marketing · Eventos</span><h1 style="margin:4px 0 0">${nu ? "Nuevo evento" : "Editar evento"}</h1>${nu ? `<p class="note" style="margin:6px 0 0">Elegí el tipo y marcá Sí o No en lo que va a necesitar. Queda <b>para aprobar</b>; cuando se aprueba, le avisamos a Vivian para los presupuestos.</p>` : ""}</div>
+  <div class="jp-h"><span class="note">${f.from === "solped" ? "Solicitud de pedidos · Evento para Administración de Marketing" : "Administración de Marketing · Eventos"}</span><h1 style="margin:4px 0 0">${nu ? "Nuevo evento" : "Editar evento"}</h1>${nu ? `<p class="note" style="margin:6px 0 0">${f.from === "solped" ? `Elegí el tipo y marcá Sí o No en todo lo que va a hacer falta. Le llega a <b>${esc((admLeads()[0]?.name || "Administración de Marketing").split(" ")[0])}</b> para que lo tenga en cuenta. Queda <b>para aprobar</b>; cuando se aprueba, Vivian pide los presupuestos.` : `Elegí el tipo y marcá Sí o No en lo que va a necesitar. Queda <b>para aprobar</b>; cuando se aprueba, le avisamos a Vivian para los presupuestos.`}</p>` : ""}</div>
   <form id="admEvForm" class="panel admform"><div class="admgrid">
     <label class="admw"><span>Nombre del evento *</span><input class="base" name="name" value="${esc(e.name || "")}" maxlength="140" required placeholder="Ej.: Día de la Madre en Superseis España"></label>
     <label><span>Tipo de evento</span><select class="base" name="tipo" data-admevtipo><option value="">Elegí el tipo</option>${ADM_EV_TIPOS.map(([t]) => `<option ${t === e.tipo ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></label>
@@ -20713,9 +20724,11 @@ document.addEventListener("submit", e => {
       const copied = src ? (src.items || []).filter(y => !have.has(y.t)).map(y => ({ id:admItId(), g:y.g, t:y.t, ...(y.qty ? { qty:y.qty } : {}), ...(y.prov ? { prov:y.prov } : {}), ...(y.resp ? { resp:y.resp } : {}), ...(y.note ? { note:y.note } : {}), st:"Pendiente" })) : [];
       if (!mine.length && !copied.length){ toast("Marcá Sí en al menos una cosa que haga falta (o sumá la lista de otro evento)."); return; }
       const no = Object.entries(pk.sel).filter(([, val]) => val === false).map(([k]) => ADM_EV_ITEM[k]?.t).filter(Boolean);
-      const x = { id:"ev-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 4), ...data, st:"Propuesta", by:viewer.name, at:new Date().toISOString(), items:[...mine, ...copied], ...(no.length ? { no } : {}) };
-      ADM_EVENTS.push(x); admUI.ev = x.id; admUI.evPick = null;
-      toast(`Evento creado: “${x.name}” con ${x.items.length} ${x.items.length === 1 ? "cosa" : "cosas"}. Queda para aprobar${admEvApprover() ? ": tocá “Aprobar el evento” para avisarle a Vivian." : "."}`); }
+      const fromSol = f.from === "solped", x = { id:"ev-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 4), ...data, st:"Propuesta", by:viewer.name, at:new Date().toISOString(), items:[...mine, ...copied], ...(no.length ? { no } : {}), ...(fromSol ? { src:"solped" } : {}) };
+      ADM_EVENTS.push(x); if (!fromSol) admUI.ev = x.id; admUI.evPick = null;
+      const lead = admLeads()[0], told = lead && lead.name !== viewer.name; // v432: le llega a Marlene para que lo tenga en cuenta
+      if (told) notify({ to:lead.name, type:"nuevo", admev:x.id, evNew:1, title:x.name, text:`Nuevo evento de ${String(viewer.name).split(" ")[0]}${x.date ? " para el " + dm(x.date) : ""} · ${x.items.length} ${x.items.length === 1 ? "cosa" : "cosas"} para tener en cuenta` });
+      toast(`Evento creado: “${x.name}” con ${x.items.length} ${x.items.length === 1 ? "cosa" : "cosas"}.${told ? ` Le avisamos a ${admFirst(lead)}.` : ""} Queda para aprobar${admEvApprover() ? (fromSol ? ": lo aprobás en Administración de Marketing → Eventos." : ": tocá “Aprobar el evento” para avisarle a Vivian.") : "."}`); }
     else { const x = admEvById(f.e.id); if (x) Object.assign(x, data); toast("Guardado."); }
     admUI.evForm = null; render(); window.RMH?.flushNow?.(); return; }
   if (fm.matches?.("[data-admitform]")){ e.preventDefault(); if (!admEdit()) return; const x = admEvById(admUI.ev), y = x && (x.items || []).find(z => z.id === fm.dataset.admitform); if (!y) return;
@@ -23200,6 +23213,7 @@ function render(){
   if (render.prevPage && page !== render.prevPage) lpFull = null;
   if (render.prevPage === "admtab" && page !== "admtab") admUI.form = null; // v401: al salir del tablero se cierra el trabajo abierto
   if (render.prevPage === "admev" && page !== "admev"){ admUI.ev = null; admUI.evForm = null; admUI.evItem = null; admUI.evPick = null; }
+  if (render.prevPage === "solped" && page !== "solped" && admUI.evForm?.from === "solped") admUI.evForm = null; // v432
   if ((render.prevPage === "pedcom" || render.prevPage === "solped") && page !== render.prevPage){ pcUI.form = null; pcUI.open = null; pcUI.view = "tabla"; } // Pedidos Comercial: al salir se cierra el pedido abierto y se vuelve a entrar por la tabla
   if (render.prevPage && page !== render.prevPage){ if (!render.goingBack){ navHist.push(render.prevPage); if (navHist.length > 30) navHist.shift(); } if (jobUI.ficha && jobUI.ficha === render.prevFicha) jobUI.ficha = null; if (jobUI.form && jobUI.form === render.prevForm) jobUI.form = null; }
   if (page === "seguimiento" && render.prevPage !== "seguimiento"){ segUI.acc = false; segUI.fx = "open"; } // v375: al entrar al panel, “Quién lo ve” cerrado (lo demás queda donde estaba) · v380: con animación de entrada
