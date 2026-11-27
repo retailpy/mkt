@@ -29,11 +29,16 @@ const DEFAULT = [
 // Palabras que cuentan como la marca aunque no la arroben (sin mayúsculas ni acentos). Stock es muy común como palabra:
 // cuenta solo su @. Bianca solo si el influencer trabaja con Bianca (también es un nombre).
 const PALABRAS = { Superseis: ["superseis", "super seis", "super6"], Delimarket: ["delimarket", "deli market"], Bianca: ["bianca"] };
-const MEDIA = 36;          // últimas publicaciones que se piden por cuenta
+// v442: “S6” y “Super 6” (así le dicen muchos a Superseis), como palabra suelta.
+const RX = { Superseis: /(^|[^a-z0-9_@.])(s6|super ?6)([^a-z0-9_]|$)/ };
+// v442: de a 50 y página por página hasta cubrir el mes anterior (antes, solo las últimas 36: a quien publica mucho le quedaban afuera las de
+// principio de mes). Hasta 5 páginas (250 publicaciones) por cuenta.
+const MEDIA = 50, PAGES = 5;
+const page = (after) => `media${after ? `.after(${after})` : ""}.limit(${MEDIA})`;
 const FIELDS = [
-  (u) => `business_discovery.username(${u}){username,name,followers_count,media_count,profile_picture_url,media.limit(${MEDIA}){id,media_type,media_product_type,media_url,thumbnail_url,permalink,caption,timestamp,like_count,comments_count}}`,
-  (u) => `business_discovery.username(${u}){username,name,followers_count,media_count,media.limit(${MEDIA}){id,media_type,media_product_type,media_url,thumbnail_url,permalink,caption,timestamp,like_count,comments_count}}`,
-  (u) => `business_discovery.username(${u}){username,name,followers_count,media.limit(${MEDIA}){media_type,media_product_type,media_url,permalink,caption,timestamp,like_count,comments_count}}`,
+  (u, a) => `business_discovery.username(${u}){username,name,followers_count,media_count,profile_picture_url,${page(a)}{id,media_type,media_product_type,media_url,thumbnail_url,permalink,caption,timestamp,like_count,comments_count}}`,
+  (u, a) => `business_discovery.username(${u}){username,name,followers_count,media_count,${page(a)}{id,media_type,media_product_type,media_url,thumbnail_url,permalink,caption,timestamp,like_count,comments_count}}`,
+  (u, a) => `business_discovery.username(${u}){username,name,followers_count,${page(a)}{media_type,media_product_type,media_url,permalink,caption,timestamp,like_count,comments_count}}`,
 ];
 
 // “Fotos en las que te etiquetaron” de cada marca (si Meta no conoce algún campo, se pide con menos).
@@ -58,10 +63,10 @@ function brandsIn(cap, handles, allowed){
   const t = fold(cap), out = [];
   for (const [b, h] of Object.entries(handles)){
     const at = h && new RegExp(`@${h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![a-z0-9_]|\\.[a-z0-9_])`).test(t);
-    const word = (PALABRAS[b] || []).some((w) => (b !== "Bianca" || allowed.has("Bianca")) && t.includes(w));
+    const word = (PALABRAS[b] || []).some((w) => (b !== "Bianca" || allowed.has("Bianca")) && t.includes(w)) || !!(RX[b] && RX[b].test(t));
     if (at || word) out.push(b);
   }
-  for (const b of Object.keys(PALABRAS)) if (!out.includes(b) && !handles[b] && (b !== "Bianca" || allowed.has("Bianca")) && PALABRAS[b].some((w) => t.includes(w))) out.push(b);
+  for (const b of Object.keys(PALABRAS)) if (!out.includes(b) && !handles[b] && (b !== "Bianca" || allowed.has("Bianca")) && (PALABRAS[b].some((w) => t.includes(w)) || (RX[b] && RX[b].test(t)))) out.push(b);
   return out;
 }
 
@@ -92,21 +97,37 @@ async function influencers({ me, byBrand, graph, save, readMeta, dry }){
     if (!allBr.length && !fresh[mo][id].ln && !fresh[mo][id].dm) delete fresh[mo][id];
     return true;
   };
+  const desde = new Date(months[0] + "-01T03:00:00Z").getTime();
   const una = async (u) => {
     let err = null;
     for (const f of FIELDS){
       try {
-        const bd = (await conTiempo(graph(`/${me}`, { fields: f(u) }), 9000)).business_discovery || {};
+        // Página por página hasta llegar al mes anterior (si falla una página después de la primera, queda lo que se leyó).
+        let bd = null, after = null, all = [];
+        for (let pg = 0; pg < PAGES; pg++){
+          let j; try { j = (await conTiempo(graph(`/${me}`, { fields: f(u, after) }), 9000)).business_discovery || {}; } catch (e){ if (!pg) throw e; break; }
+          if (!bd) bd = j;
+          const L = j.media?.data || []; all.push(...L); after = j.media?.paging?.cursors?.after;
+          const oldest = L.length ? Math.min(...L.map((m) => Date.parse(m.timestamp) || Date.now())) : 0;
+          if (!after || !L.length || oldest < desde) break;
+        }
         let n = 0;
         const got = sent.get(u) || new Map();
-        (bd.media?.data || []).forEach((m) => {
+        all.forEach((m) => {
           if (!m || !m.timestamp || m.media_product_type === "STORY") return;
           const br = brandsIn(m.caption, handles, users.get(u) || new Set()), c = code(m.permalink), ln = !!(c && linked.has(c));
           const dmB = got.get(String(m.id || "")) || (c && got.get(c)) || null;
           if (!br.length && !ln && !dmB) return;
           if (put(u, m, dmB && !br.includes(dmB) ? [...br, dmB] : br, { ...(ln && !br.length ? { ln: true } : {}), ...(dmB ? { dm: true } : {}) })) n++;
         });
-        accounts[u] = { u: bd.username || u, name: bd.name || null, fol: num(bd.followers_count), n: num(bd.media_count), pic: /^https:\/\//.test(bd.profile_picture_url || "") ? bd.profile_picture_url : null, err: null, at: new Date().toISOString() };
+        // v442: todo lo que publicó en el mes y el anterior (aunque no nombre a la marca), para verlo en la tarjeta y marcarlo con un toque.
+        const recent = all.filter((m) => m && m.timestamp && m.media_product_type !== "STORY" && fresh[pyMonth(m.timestamp)])
+          .sort((a, c) => String(c.timestamp).localeCompare(String(a.timestamp))).slice(0, 40)
+          .map((m) => ({ id: String(m.id || code(m.permalink) || m.timestamp), ts: m.timestamp, type: TYPE(m), link: m.permalink || null, cap: short(m.caption, 100),
+            img: /^https:\/\//.test(m.thumbnail_url || "") ? m.thumbnail_url : /^https:\/\//.test(m.media_url || "") && m.media_type !== "VIDEO" ? m.media_url : "",
+            likes: num(m.like_count), comments: num(m.comments_count) }));
+        const oldest = all.length ? new Date(Math.min(...all.map((m) => Date.parse(m.timestamp) || Date.now()))).toISOString() : null;
+        accounts[u] = { u: bd.username || u, name: bd.name || null, fol: num(bd.followers_count), n: num(bd.media_count), pic: /^https:\/\//.test(bd.profile_picture_url || "") ? bd.profile_picture_url : null, err: null, at: new Date().toISOString(), seen: all.length, from: oldest, recent };
         summary[u] = n; return;
       } catch (e){
         err = e.message;
@@ -120,7 +141,7 @@ async function influencers({ me, byBrand, graph, save, readMeta, dry }){
   const q = [...users.keys()];
   await Promise.all(Array.from({ length: Math.min(4, q.length) }, async () => { while (q.length) await una(q.shift()); }));
   // v435 · Publicaciones de los influencers donde etiquetaron a la marca (en la foto o el video), aunque no la nombren en el texto.
-  const tags = {}, desde = new Date(months[0] + "-01T03:00:00Z").getTime();
+  const tags = {};
   await Promise.all(Object.entries(byBrand || {}).filter(([, p]) => p && p.igId).map(async ([b, p]) => {
     let n = 0, err = null, fi = 0;
     try {
