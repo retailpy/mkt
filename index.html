@@ -6358,7 +6358,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v446";
+const APP_VER = "v447";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -21830,7 +21830,7 @@ document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === 
 // Meta dice quién la mencionó (con el acceso avanzado). Las historias de otras cuentas no se pueden leer: se marcan a mano.
 const IFL_TYPES = { historia:["Historia", "Historias", "smartphone"], feed:["Feed", "Feed", "image"], reel:["Reel", "Reels", "clapperboard"], reelcar:["Reel o carrusel", "Reel o carrusel", "layers"] };
 const IFL_KINDS = { historia:"Historia", post:"Post", carrusel:"Carrusel", reel:"Reel", pub:"Publicación" };
-const IFL_FIT = { historia:["historia"], feed:["post", "carrusel", "reel", "pub"], reel:["reel", "pub"], reelcar:["reel", "carrusel", "pub"] }; // qué cuenta para cada casilla (lo primero, mejor)
+const IFL_FIT = { historia:["historia"], feed:["post", "carrusel", "reel", "pub"], reel:["reel", "pub"], reelcar:["reel", "carrusel", "pub"], add:["historia", "reel", "post", "carrusel"] }; // add (v447): “+ Agregar”, algo más aunque las casillas estén llenas // qué cuenta para cada casilla (lo primero, mejor)
 const IFL_NETS = { IG:"Instagram", X:"X", FB:"Facebook", TT:"TikTok" };
 const IFL_BRANDS = ["Superseis", "Delimarket", "Bianca", "Stock"];
 const IFL_DEF = [ // la lista de arranque (pedido de Admin total, noviembre 2026) · v435: Tania es solo Delimarket; los demás, solo Superseis
@@ -22011,7 +22011,7 @@ function iflCard(r, past, i){
     ${errs.length ? `<p class="iflwarn">${icon("info")} No se pudo leer ${errs.map(u => "@" + esc(u)).join(" ni ")} en Instagram (puede ser una cuenta personal o privada): cargá el link a mano.</p>` : ""}
     ${(() => { const h = iflMarks().filter(m => m.auto && m.skip && m.inf === x.id && m.month === MONTH).length; return h && iflCanMark() ? `<p class="iflwarn iflhid">${icon("info")} ${h === 1 ? "1 publicación que encontró la app no cuenta" : `${h} publicaciones que encontró la app no cuentan`}. <button type="button" class="linkish" data-iflunskip="${esc(x.id)}">Volver a contarlas</button></p>` : ""; })()}
     <footer class="iflf"><span class="iflnums">${r.fol ? `${icon("users")} ${dots(r.fol)} seguidores` : ""}</span>
-      <span class="chips">${iflCanVer() && r.pend ? `<button type="button" class="btn sm" data-iflverall="${esc(x.id)}">${icon("check-check")} Verificar ${r.pend === 1 ? "la subida" : `las ${r.pend}`}</button>` : ""}${iflCanVer() ? `<button type="button" class="btn sm ib" data-iflpe="${esc(x.id)}" aria-label="Editar a ${esc(x.name)}" title="Editar">${icon("pencil")}</button>` : ""}</span></footer></article>`;
+      <span class="chips">${iflCanMark() && MONTH <= CURRENT_MONTH ? `<button type="button" class="btn sm" data-ifladd="${esc(x.id)}" title="Sumar algo que subió y la app no tomó sola (aunque las casillas estén llenas)">${icon("plus")} Agregar</button>` : ""}${iflCanVer() && r.pend ? `<button type="button" class="btn sm" data-iflverall="${esc(x.id)}">${icon("check-check")} Verificar ${r.pend === 1 ? "la subida" : `las ${r.pend}`}</button>` : ""}${iflCanVer() ? `<button type="button" class="btn sm ib" data-iflpe="${esc(x.id)}" aria-label="Editar a ${esc(x.name)}" title="Editar">${icon("pencil")}</button>` : ""}</span></footer></article>`;
 }
 function pInflu(){
   if (!iflCan()) return `<div class="panel empty">${icon("lock")} Influencers lo ven CM, Admin total y Admin.</div>`;
@@ -22034,24 +22034,25 @@ function pInflu(){
 const iflOpenX = () => iflUI.open && INFLU_PLAN.find(x => x && x.id === iflUI.open.inf);
 function iflCur(){ const o = iflUI.open, x = iflOpenX(); if (!o || !x) return null;
   const { slots, extra } = iflSlots(x); if (o.key) { const d = [...slots.map(s => s.d), ...extra].find(d => d && d.key === o.key); return { x, d, s:slots.find(s => s.d === d) || null }; }
+  if (o.add) return { x, s:{ t:"add", i:0, n:1, d:null }, d:null }; // v447: “+ Agregar”
   const s = slots.find(s => s.t === o.t && s.i === +o.i); return s ? { x, s, d:o.form ? null : s.d } : null; }
 function iflModal(){
   const o = iflUI.open; if (!o) return "";
   if (o.plan !== undefined) return iflPlanModal(o.plan);
   const c = iflCur(); if (!c){ iflUI.open = null; return ""; }
   const { x, s, d } = c, wrap = (h, inner) => `<div class="imodal-bg" data-iflclose></div><div class="imodal iflmod" role="dialog" aria-modal="true" aria-labelledby="iflMT"><button type="button" class="btn sm ib iflx" data-iflclose aria-label="Cerrar">${icon("x")}</button><h2 id="iflMT">${h}</h2>${inner}</div>`;
-  const where = `${esc(x.name)} · ${s ? esc(iflSlotLbl(s)) + (s.n > 1 ? ` de ${s.n}` : "") : "Extra"} · ${monthLabel(MONTH)}`;
+  const where = `${esc(x.name)} · ${s ? (s.t === "add" ? "Algo más del mes" : esc(iflSlotLbl(s)) + (s.n > 1 ? ` de ${s.n}` : "")) : "Extra"} · ${monthLabel(MONTH)}`;
   if (!d){
     if (!iflCanMark() || MONTH > CURRENT_MONTH) return wrap(MONTH > CURRENT_MONTH ? "Todavía no empezó el mes" : "Todavía no se subió", `<p class="isub">${where}</p><p>${MONTH > CURRENT_MONTH ? "Se puede marcar desde que empieza el mes." : "Cuando la suba, CM o Admin total la marcan acá."}</p>`);
     const t = s.t, prev = o.edit ? null : iflMarks().filter(y => !y.auto && y.off && y.inf === x.id && y.month === MONTH && y.slot === t).sort((a, c) => String(c.offAt || c.at || "").localeCompare(String(a.offAt || a.at || "")))[0] || null;
-    const m = o.edit ? iflMarks().find(y => y.id === o.edit) : prev; kinds = IFL_FIT[t] || ["post"], brands = (x.brands || []).length ? x.brands : MAIN_BRANDS, nets = (x.nets || ["IG"]).filter(n => IFL_NETS[n]);
+    const m = o.edit ? iflMarks().find(y => y.id === o.edit) : prev, kinds = IFL_FIT[t] || ["post"], brands = (x.brands || []).length ? x.brands : MAIN_BRANDS, nets = (x.nets || ["IG"]).filter(n => IFL_NETS[n]);
     const first = MONTH + "-01", last = MONTH + "-" + String(lastDay(MONTH)).padStart(2, "0"), def = m?.date || (TODAY >= first && TODAY <= last ? TODAY : last);
     const pick = (name, list, cur, lbl) => `<fieldset class="iflpick"><legend>${lbl}</legend>${list.map(([v, l], k) => `<label><input type="radio" name="${name}" value="${esc(v)}" ${(cur ? cur === v : k === 0) ? "checked" : ""}><span>${esc(l)}</span></label>`).join("")}</fieldset>`;
-    return wrap(o.edit ? "Editar lo subido" : "Marcar como subida", `<p class="isub">${where}</p>${prev ? `<p class="note" style="margin:0">${icon("info")} Se completó con lo que se había marcado antes en esta casilla.</p>` : ""}<form id="iflForm" class="iflform" novalidate>
+    return wrap(o.edit ? "Editar lo subido" : t === "add" ? "Agregar lo que subió" : "Marcar como subida", `<p class="isub">${where}</p>${t === "add" ? `<p class="note" style="margin:0">${icon("info")} Para sumar algo que la app no tomó sola (por ejemplo, una historia que Meta no avisó), aunque las casillas del mes ya estén llenas: queda como Extra.</p>` : ""}${prev ? `<p class="note" style="margin:0">${icon("info")} Se completó con lo que se había marcado antes en esta casilla.</p>` : ""}<form id="iflForm" class="iflform" novalidate>
       ${brands.length > 1 ? pick("brand", brands.map(b => [b, b]), m?.brand, "¿Con qué marca?") : `<input type="hidden" name="brand" value="${esc(brands[0])}">`}
       ${kinds.length > 1 ? pick("kind", kinds.map(k => [k, IFL_KINDS[k]]), m?.kind, "¿Qué subió?") : ""}
       ${nets.length > 1 ? pick("net", nets.map(n => [n, IFL_NETS[n]]), m?.net, "¿Dónde?") : `<input type="hidden" name="net" value="${esc(nets[0] || "IG")}">`}
-      <label class="ifllbl">Link del posteo ${t === "historia" ? `<small>(si lo tenés)</small>` : `<small>(obligatorio)</small>`}<input type="url" name="link" inputmode="url" placeholder="https://www.instagram.com/p/…" value="${esc(m?.link || "")}" ${t === "historia" ? "" : "required"}></label>
+      <label class="ifllbl">Link del posteo ${t === "historia" ? `<small>(si lo tenés)</small>` : t === "add" ? `<small>(obligatorio en posteos y reels; en historias, si lo tenés)</small>` : `<small>(obligatorio)</small>`}<input type="url" name="link" inputmode="url" placeholder="https://www.instagram.com/p/…" value="${esc(m?.link || "")}" ${t === "historia" || t === "add" ? "" : "required"}></label>
       <div class="iflf2"><label class="ifllbl">Fecha<input type="date" name="date" min="${first}" max="${last}" value="${esc(def)}"></label><label class="ifllbl">Vistas o alcance <small>(opcional)</small><input type="number" name="views" min="0" step="1" inputmode="numeric" placeholder="Ej.: 3500" value="${isNum(m?.views) ? m.views : ""}"></label></div>
       <p class="note" style="margin:0">Las vistas y el alcance los ve solo quien publicó: pedile la captura al influencer.</p>
       <p class="iflerr" id="iflErr" hidden></p>
@@ -22145,6 +22146,7 @@ document.addEventListener("click", e => {
   const k = e.target.closest("[data-iflkey]"); if (k){ const [inf, ...key] = k.dataset.iflkey.split("|"); iflUI.open = { inf, key:key.join("|") }; render(); setTimeout(() => document.querySelector(".iflmod .iflx")?.focus(), 30); return; }
   if (e.target.closest("[data-iflclose]")){ iflUI.open = null; render(); return; }
   if (e.target.closest("[data-iflundo]")){ iflUndo(); return; }
+  const ad = e.target.closest("[data-ifladd]"); if (ad && iflCanMark()){ iflUI.open = { inf:ad.dataset.ifladd, add:true }; render(); setTimeout(() => document.querySelector(".iflmod .iflx")?.focus(), 30); return; }
   const mo = e.target.closest("[data-iflmore]"); if (mo){ const id = mo.dataset.iflmore; iflUI.more.has(id) ? iflUI.more.delete(id) : iflUI.more.add(id); render(); return; }
   const ct = e.target.closest("[data-iflcount]"); if (ct && iflCanMark()){ const [inf, u, pid] = ct.dataset.iflcount.split("|"), x = INFLU_PLAN.find(y => y && y.id === inf), p = (iflAcc(u)?.recent || []).find(q => String(q.id) === pid); if (!x || !p) return;
     const kind = iflKindOf(p.type), { slots } = iflSlots(x), free = slots.find(s2 => !s2.d && (IFL_FIT[s2.t] || []).includes(kind)) || slots.find(s2 => (IFL_FIT[s2.t] || []).includes(kind));
@@ -22176,14 +22178,16 @@ document.addEventListener("submit", e => {
   if (e.target.id === "iflForm"){ const c = iflCur(); if (!c?.s || !iflCanMark()) return;
     const link = String(f.get("link") || "").trim(), t = c.s.t, kinds = IFL_FIT[t] || ["post"];
     if (link && !/^https?:\/\/\S+\.\S+/i.test(link)) return err("El link tiene que empezar con https://");
-    if (!link && t !== "historia") return err("Pegá el link del posteo (en feed, reel y carrusel es obligatorio).");
+    const kind0 = kinds.includes(f.get("kind")) ? f.get("kind") : kinds[0];
+    if (!link && kind0 !== "historia") return err("Pegá el link del posteo (en feed, reel y carrusel es obligatorio).");
     const first = MONTH + "-01", last = MONTH + "-" + String(lastDay(MONTH)).padStart(2, "0");
     let date = String(f.get("date") || ""); if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < first || date > last) date = TODAY >= first && TODAY <= last ? TODAY : last;
-    const kind = kinds.includes(f.get("kind")) ? f.get("kind") : kinds[0], brand = String(f.get("brand") || c.x.brands?.[0] || "Superseis"), net = IFL_NETS[f.get("net")] ? f.get("net") : iflNetOf(link) || "IG";
+    const kind = kind0, brand = String(f.get("brand") || c.x.brands?.[0] || "Superseis"), net = IFL_NETS[f.get("net")] ? f.get("net") : iflNetOf(link) || "IG";
     const prev = iflUI.open.edit ? null : iflMarks().filter(y => !y.auto && y.off && y.inf === c.x.id && y.month === MONTH && y.slot === t).sort((a, z) => String(z.offAt || z.at || "").localeCompare(String(a.offAt || a.at || "")))[0] || null;
     const dup = link && iflCode(link) && iflMarks().find(m => !m.off && m.id !== iflUI.open.edit && m.month === MONTH && iflCode(m.link) === iflCode(link));
     if (dup) return err("Ese link ya está cargado en este mes.");
-    const data = { inf:c.x.id, month:MONTH, slot:t, kind, brand, net, link, date, views };
+    const slot = t !== "add" ? t : kind === "historia" ? "historia" : iflQuota(c.x).map(q => q.t).find(q => (IFL_FIT[q] || []).includes(kind)) || null;
+    const data = { inf:c.x.id, month:MONTH, slot, kind, brand, net, link, date, views };
     const was = iflUI.open.edit, n = `${IFL_KINDS[kind]} de ${c.x.name}`; iflUI.open = null;
     return iflChange(() => { if (was) iflPatchMark(was, data); else if (prev) iflPatchMark(prev.id, { ...data, off:false, offAt:null, by:viewer.id, at:new Date().toISOString(), ver:null });
       else INFLU_MARKS = [...iflMarks(), { id:iflNewId(), ...data, by:viewer.id, at:new Date().toISOString(), ver:null }]; },
