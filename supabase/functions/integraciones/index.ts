@@ -12,7 +12,7 @@
 //   tendencias {area:"dg"|"cm"|"ideas", force?}                      → campañas, piezas y contenidos con foto, en español (force: solo Admin total)
 //   noticias {force?}                                                → lo que sale en los medios de Paraguay sobre Retail S.A. y sus marcas (3 meses)
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { parseOfertas, periodo, PARSE_V, nombreOfertas, excelOfertas, FUENTES, FOLLETOS_ID, VIEJA_S6_ID, clasificar } from "./comercial.ts";
+import { parseOfertas, periodo, PARSE_V, nombreOfertas, excelOfertas, FUENTES, FOLLETOS_ID, VIEJA_S6_ID, clasificar, marcaDe } from "./comercial.ts";
 import { armar } from "./tendencias.ts";
 import { buscarNoticias, juntarNoticias } from "./noticias.ts";
 
@@ -395,7 +395,12 @@ async function comercialSync(c: any, minAge: number){
   for (let intento = 0; intento < 2; intento++){
     const { data: row } = await db.from("app_state").select("data, version").eq("key", "s:COMERCIAL").maybeSingle();
     const prev = row?.data || {};
-    if (prev.syncedAt && Date.now() - Date.parse(prev.syncedAt) < minAge) return { ok: true, skipped: true };
+    // v433 · Ofertas especiales (ej.: Especial Navidad de Superseis y Stock): Excel que Comercial manda aparte, cargados en
+    // s:COM_ESP_RAW ([{ name, b64, tema }]). Se leen con el mismo lector, quedan guardados aparte (cat "especial") y el Excel
+    // original va a la carpeta de respaldos de Drive. Si hay alguno esperando, se lee aunque se haya revisado hace poco.
+    const { data: rawRow } = await db.from("app_state").select("data").eq("key", "s:COM_ESP_RAW").maybeSingle();
+    const espRaw: any[] = Array.isArray(rawRow?.data) ? rawRow.data.filter((x: any) => x && x.name && x.b64) : [];
+    if (!espRaw.length && prev.syncedAt && Date.now() - Date.parse(prev.syncedAt) < minAge) return { ok: true, skipped: true };
     const now = new Date().toISOString(), hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date());
     const dia = (dias: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date(Date.now() - dias * 864e5));
     const limites: Record<string, string> = { quincenal: dia(COM_DIAS.quincenal), otras: dia(COM_DIAS.otras) }, limiteDe = (cat: string) => limites[cat] || limites.otras;
@@ -482,25 +487,42 @@ async function comercialSync(c: any, minAge: number){
     const finalEnDrive = new Set((Object.values(files) as any[]).filter((x) => x.final && x.inDrive && x.v === PARSE_V).map((x) => quincena(x.brand, x.cat, x)));
     for (const [id, x] of Object.entries(files) as [string, any][]) if (x.cat === "quincenal" && !x.inDrive && finalEnDrive.has(quincena(x.brand, x.cat, x))) delete files[id];
     // Las quincenas quedan completas siempre; de fin de semana, Express e Imbatibles, los últimos 2 meses.
-    for (const [id, x] of Object.entries(files) as [string, any][]) if (x.cat !== "quincenal" && x.to && x.to < limiteDe(x.cat)) delete files[id];
+    for (const [id, x] of Object.entries(files) as [string, any][]) if (x.cat !== "quincenal" && x.cat !== "especial" && x.to && x.to < limiteDe(x.cat)) delete files[id]; // v433: las especiales quedan, como las quincenas
     // Respaldo en Drive de las quincenales de Superseis (como antes): el día que empieza la oferta (o después), una sola vez por archivo.
     let respaldos = 0;
     const canBackup = sv >= 5;
     if (canBackup) for (const x of Object.values(files) as any[]){
-      if (x.cat !== "quincenal" || x.brand !== "Superseis" || !x.from || x.from > hoy || x.backup?.url) continue;
+      if (x.backup?.url || !x.from || !(x.cat === "especial" || (x.cat === "quincenal" && x.brand === "Superseis" && x.from <= hoy))) continue; // v433: + las especiales (si no se pudo al cargarlas)
       const name = nombreOfertas(x) + ".xlsx", ym = x.from.slice(0, 7);
       try {
         const j = x.inDrive ? await scriptPost(c, { kind: "backup_copy", id: x.id, name, ym }) : await scriptPost(c, { kind: "backup_file", name, ym, data: excelOfertas(x) });
         if (j.ok && j.url){ x.backup = { at: now, id: j.id, url: j.url }; respaldos++; }
       } catch { /* se reintenta en la próxima revisión */ }
     }
+    // v433 · Ofertas especiales: se leen, se guardan aparte y el Excel original va a la carpeta de respaldos de Drive.
+    let especiales = 0;
+    for (const e of espRaw){
+      try {
+        const bin = atob(String(e.b64)), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const p = parseOfertas(bytes), per: any = periodo(String(e.name), new Date()), brand = marcaDe(String(e.name));
+        if (!p.count || !per.from || !per.to || !["Superseis", "Stock", "Delimarket"].includes(brand)) continue;
+        const tema = String(e.tema || "Navidad").slice(0, 40), id = `esp-${brand}-${per.from}-${per.to}`.toLowerCase(), o = files[id];
+        const x: any = { id, name: String(e.name).slice(0, 200), brand, cat: "especial", tema, src: "especial", path: `Especial ${tema}`, ...per, folleto: p.folleto, title: p.title,
+          modified: now, v: PARSE_V, inDrive: false, manual: true, n: p.count, at: now, sheets: p.sheets };
+        if (o && o.v === PARSE_V){ const keys = productosNuevos(o.sheets, p.sheets); if (keys.length) x.added = { n: keys.length, at: now, keys: keys.slice(0, 300) }; }
+        if (canBackup) try { const j = await scriptPost(c, { kind: "backup_file", name: nombreOfertas(x) + ".xlsx", ym: per.from.slice(0, 7), data: String(e.b64) }); if (j.ok && j.url) x.backup = { at: now, id: j.id, url: j.url }; } catch { /* queda sin respaldo: se reintenta abajo en la próxima revisión */ }
+        if (!x.backup && o?.backup) x.backup = o.backup;
+        files[id] = x; especiales++;
+      } catch { /* Excel que no se pudo leer: se deja de lado */ }
+    }
     // Carpetas que todavía no se leen porque falta actualizar el script de Drive.
     for (const fu of FUENTES) if (!src[fu.id]) src[fu.id] = { at: now, old: true };
-    const data = { v: 1, updated: nuevos || respaldos || !prev.updated ? now : prev.updated, syncedAt: now, backupScript: canBackup, scriptV: sv, files, src, pending: pending.slice(0, 80) };
-    const res = { ok: true, nuevos, agregados, errores, respaldos, n, faltan, pendientes: pending.length, carpetasConError: Object.values(src).filter((x: any) => x.err).length, scriptViejo: sv < 8 }; // las ofertas necesitan la 8 (la 9 es para los bocetos grandes)
-    if (!row){ const { error } = await db.from("app_state").insert({ key: "s:COMERCIAL", data }); if (!error) return res; continue; }
+    const data = { v: 1, updated: nuevos || respaldos || especiales || !prev.updated ? now : prev.updated, syncedAt: now, backupScript: canBackup, scriptV: sv, files, src, pending: pending.slice(0, 80) };
+    const res = { ok: true, nuevos, agregados, errores, respaldos, especiales, n, faltan, pendientes: pending.length, carpetasConError: Object.values(src).filter((x: any) => x.err).length, scriptViejo: sv < 8 }; // las ofertas necesitan la 8 (la 9 es para los bocetos grandes)
+    const listo = async () => { if (espRaw.length) await db.from("app_state").delete().eq("key", "s:COM_ESP_RAW"); return res; }; // v433: ya quedaron guardadas
+    if (!row){ const { error } = await db.from("app_state").insert({ key: "s:COMERCIAL", data }); if (!error) return await listo(); continue; }
     const { data: up } = await db.from("app_state").update({ data, version: row.version + 1, updated_at: now }).eq("key", "s:COMERCIAL").eq("version", row.version).select("version");
-    if (up && up.length) return res;
+    if (up && up.length) return await listo();
   }
   return { ok: false, error: "Se estaba actualizando al mismo tiempo: probá de nuevo." };
 }
