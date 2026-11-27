@@ -98,6 +98,8 @@ Carpeta de respaldos: `1A_WCm2AkSN9H6GdNazCk-9L4ngoaNWfZ` (el Excel de cada quin
 “Desmarcar todas” (`data-comckclr`). Es personal: `COM_CHECKS[persona][idDelArchivo][hoja|cod|desc] = 1`, guardado en la clave
 `comchk:<persona>` (solo la lee y la cambia su dueño; `sync.js` y `private.can_access_state`). No toca `s:COMERCIAL`.
 
+**Ofertas especiales (v433, Especial Navidad):** Excel que Comercial manda aparte (no están en las carpetas). Se cargan en la clave `s:COM_ESP_RAW` (`[{ name, b64, tema }]`: el nombre con las fechas como siempre, el Excel en base64 y el tema, ej. "Navidad") y en la próxima revisión `comercialSync` los lee con `parseOfertas`, los guarda en `s:COMERCIAL.files` con `cat:"especial"`, `tema`, `src:"especial"`, `inDrive:false`, `manual:true` (id `esp-<marca>-<desde>-<hasta>`), sube **el Excel original** a Respaldos (`backup_file`) y borra `s:COM_ESP_RAW`. También acepta `{ gz }` (las ofertas ya leídas, en JSON comprimido con gzip y base64): se guardan igual y el respaldo en Drive lo arma la misma revisión con `excelOfertas` (así se cargó la Especial Navidad del 9/12 al 3/1, porque los Excel llegaron por el chat). No se borran por fecha. En la app: sección aparte arriba (`comEspHub`, `comTema`, `comCatOf`), sin “Abrir carpeta en Drive”, se ven en cualquier mes.
+
 ## 2. Cómo viajan los datos
 
 ```
