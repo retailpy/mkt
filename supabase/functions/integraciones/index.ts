@@ -399,7 +399,7 @@ async function comercialSync(c: any, minAge: number){
     // s:COM_ESP_RAW ([{ name, b64, tema }]). Se leen con el mismo lector, quedan guardados aparte (cat "especial") y el Excel
     // original va a la carpeta de respaldos de Drive. Si hay alguno esperando, se lee aunque se haya revisado hace poco.
     const { data: rawRow } = await db.from("app_state").select("data").eq("key", "s:COM_ESP_RAW").maybeSingle();
-    const espRaw: any[] = Array.isArray(rawRow?.data) ? rawRow.data.filter((x: any) => x && x.name && x.b64) : [];
+    const espRaw: any[] = Array.isArray(rawRow?.data) ? rawRow.data.filter((x: any) => x && ((x.name && x.b64) || x.gz)) : []; // b64: el Excel · gz: ya leídas (JSON comprimido)
     if (!espRaw.length && prev.syncedAt && Date.now() - Date.parse(prev.syncedAt) < minAge) return { ok: true, skipped: true };
     const now = new Date().toISOString(), hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date());
     const dia = (dias: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(new Date(Date.now() - dias * 864e5));
@@ -488,6 +488,32 @@ async function comercialSync(c: any, minAge: number){
     for (const [id, x] of Object.entries(files) as [string, any][]) if (x.cat === "quincenal" && !x.inDrive && finalEnDrive.has(quincena(x.brand, x.cat, x))) delete files[id];
     // Las quincenas quedan completas siempre; de fin de semana, Express e Imbatibles, los últimos 2 meses.
     for (const [id, x] of Object.entries(files) as [string, any][]) if (x.cat !== "quincenal" && x.cat !== "especial" && x.to && x.to < limiteDe(x.cat)) delete files[id]; // v433: las especiales quedan, como las quincenas
+    // v433 · Ofertas especiales: se leen, se guardan aparte y el Excel original va a la carpeta de respaldos de Drive.
+    let especiales = 0;
+    for (const e of espRaw.filter((x: any) => x.gz)){ // ofertas ya leídas (las carga Claude desde los Excel que mandaron por el chat): el respaldo lo hace la revisión de abajo
+      try {
+        const gz = atob(String(e.gz)), zb = new Uint8Array(gz.length); for (let i = 0; i < gz.length; i++) zb[i] = gz.charCodeAt(i);
+        const m: any = JSON.parse(await new Response(new Blob([zb]).stream().pipeThrough(new DecompressionStream("gzip"))).text());
+        for (const [id, x] of Object.entries(m || {}) as [string, any][]){
+          if (!x || x.cat !== "especial" || !Array.isArray(x.sheets) || !x.from || !x.to || !/^esp-/.test(id)) continue;
+          files[id] = { ...x, id, inDrive: false, manual: true, at: now, modified: now, ...(files[id]?.backup ? { backup: files[id].backup } : {}) }; especiales++;
+        }
+      } catch { /* no se pudo leer: se deja de lado */ }
+    }
+    for (const e of espRaw.filter((x: any) => !x.gz)){
+      try {
+        const bin = atob(String(e.b64)), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const p = parseOfertas(bytes), per: any = periodo(String(e.name), new Date()), brand = marcaDe(String(e.name));
+        if (!p.count || !per.from || !per.to || !["Superseis", "Stock", "Delimarket"].includes(brand)) continue;
+        const tema = String(e.tema || "Navidad").slice(0, 40), id = `esp-${brand}-${per.from}-${per.to}`.toLowerCase(), o = files[id];
+        const x: any = { id, name: String(e.name).slice(0, 200), brand, cat: "especial", tema, src: "especial", path: `Especial ${tema}`, ...per, folleto: p.folleto, title: p.title,
+          modified: now, v: PARSE_V, inDrive: false, manual: true, n: p.count, at: now, sheets: p.sheets };
+        if (o && o.v === PARSE_V){ const keys = productosNuevos(o.sheets, p.sheets); if (keys.length) x.added = { n: keys.length, at: now, keys: keys.slice(0, 300) }; }
+        if (sv >= 5) try { const j = await scriptPost(c, { kind: "backup_file", name: nombreOfertas(x) + ".xlsx", ym: per.from.slice(0, 7), data: String(e.b64) }); if (j.ok && j.url) x.backup = { at: now, id: j.id, url: j.url }; } catch { /* queda sin respaldo: se reintenta abajo en la próxima revisión */ }
+        if (!x.backup && o?.backup) x.backup = o.backup;
+        files[id] = x; especiales++;
+      } catch { /* Excel que no se pudo leer: se deja de lado */ }
+    }
     // Respaldo en Drive de las quincenales de Superseis (como antes): el día que empieza la oferta (o después), una sola vez por archivo.
     let respaldos = 0;
     const canBackup = sv >= 5;
@@ -498,22 +524,6 @@ async function comercialSync(c: any, minAge: number){
         const j = x.inDrive ? await scriptPost(c, { kind: "backup_copy", id: x.id, name, ym }) : await scriptPost(c, { kind: "backup_file", name, ym, data: excelOfertas(x) });
         if (j.ok && j.url){ x.backup = { at: now, id: j.id, url: j.url }; respaldos++; }
       } catch { /* se reintenta en la próxima revisión */ }
-    }
-    // v433 · Ofertas especiales: se leen, se guardan aparte y el Excel original va a la carpeta de respaldos de Drive.
-    let especiales = 0;
-    for (const e of espRaw){
-      try {
-        const bin = atob(String(e.b64)), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        const p = parseOfertas(bytes), per: any = periodo(String(e.name), new Date()), brand = marcaDe(String(e.name));
-        if (!p.count || !per.from || !per.to || !["Superseis", "Stock", "Delimarket"].includes(brand)) continue;
-        const tema = String(e.tema || "Navidad").slice(0, 40), id = `esp-${brand}-${per.from}-${per.to}`.toLowerCase(), o = files[id];
-        const x: any = { id, name: String(e.name).slice(0, 200), brand, cat: "especial", tema, src: "especial", path: `Especial ${tema}`, ...per, folleto: p.folleto, title: p.title,
-          modified: now, v: PARSE_V, inDrive: false, manual: true, n: p.count, at: now, sheets: p.sheets };
-        if (o && o.v === PARSE_V){ const keys = productosNuevos(o.sheets, p.sheets); if (keys.length) x.added = { n: keys.length, at: now, keys: keys.slice(0, 300) }; }
-        if (canBackup) try { const j = await scriptPost(c, { kind: "backup_file", name: nombreOfertas(x) + ".xlsx", ym: per.from.slice(0, 7), data: String(e.b64) }); if (j.ok && j.url) x.backup = { at: now, id: j.id, url: j.url }; } catch { /* queda sin respaldo: se reintenta abajo en la próxima revisión */ }
-        if (!x.backup && o?.backup) x.backup = o.backup;
-        files[id] = x; especiales++;
-      } catch { /* Excel que no se pudo leer: se deja de lado */ }
     }
     // Carpetas que todavía no se leen porque falta actualizar el script de Drive.
     for (const fu of FUENTES) if (!src[fu.id]) src[fu.id] = { at: now, old: true };
