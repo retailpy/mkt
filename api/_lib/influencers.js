@@ -5,21 +5,26 @@
 // Las historias de otras cuentas no se pueden leer así (llegan solo como mención por el webhook, en s:META_DM).
 //
 // Lee de la base (read_meta): la lista de influencers que se carga en la app (s:INFLU_PLAN: [{ id, name, ig:[usuarios], brands }]),
-// los links que se cargaron a mano (s:INFLU_MARKS) y lo que ya se guardó (s:META_INFLU). Si no puede leer la lista, usa DEFAULT.
+// los links que se cargaron a mano (s:INFLU_MARKS), lo que ya se guardó (s:META_INFLU) y los mensajes de Instagram (s:META_DM,
+// para lo que mandan por mensaje). Si no puede leer la lista, usa DEFAULT.
 // Guarda en s:META_INFLU (la base junta por arriba, así que cada mes es una clave aparte y no se pisa):
 //   { updated, error, accounts: { <usuario>: { u, name, fol, n, pic, err, at } },
 //     "m2026-11": { <id>: { id, u, ts, type, link, cap, likes, comments, img, br:[marcas], ln } } }
-// Se guarda solo lo que nombra a una marca (Superseis, Delimarket, Bianca…: su @ o su nombre en el texto) o lo que alguien
-// ya cargó a mano con su link (ln: true), del mes actual y del anterior. Los meses de hace más de 14 meses se borran.
+// Se guarda, del mes actual y del anterior, lo que:
+//   · nombra a una marca en el texto (Superseis, Delimarket, Bianca…: su @ o su nombre),
+//   · etiqueta a la marca en la foto o el video (v435: /{cuenta de la marca}/tags, “fotos en las que te etiquetaron”; tg: true),
+//   · el influencer le mandó a la marca por mensaje (v435: el webhook guarda el número del reel o publicación; dm: true),
+//   · o alguien ya cargó a mano con su link (ln: true).
+// Los meses de hace más de 14 meses se borran. tags: { Marca: cuántas etiquetas de influencers encontró | "error: …" }.
 
 const DEFAULT = [
-  { name: "Tania Domaniczky", ig: ["taniadoma"], brands: ["Superseis", "Delimarket"] },
-  { name: "Carlos Ortellado", ig: ["carlitosortellado"], brands: ["Superseis", "Delimarket"] },
-  { name: "Pedro Rüger", ig: ["enelhornoconpeta"], brands: ["Superseis", "Bianca"] },
-  { name: "Ale Vargas", ig: ["alevargasasiain"], brands: ["Superseis", "Delimarket"] },
-  { name: "Edu Vargas", ig: ["dhudux"], brands: ["Superseis", "Delimarket"] },
-  { name: "Silvia Romero", ig: ["silromeroo"], brands: ["Superseis", "Delimarket"] },
-  { name: "Tito Torres y Stephanie Ríos", ig: ["ivan_torres11", "stephaniertg"], brands: ["Superseis", "Delimarket"] },
+  { name: "Tania Domaniczky", ig: ["taniadoma"], brands: ["Delimarket"] }, // v435: Tania es solo Delimarket; los demás, solo Superseis
+  { name: "Carlos Ortellado", ig: ["carlitosortellado"], brands: ["Superseis"] },
+  { name: "Pedro Rüger", ig: ["enelhornoconpeta"], brands: ["Superseis"] },
+  { name: "Ale Vargas", ig: ["alevargasasiain"], brands: ["Superseis"] },
+  { name: "Edu Vargas", ig: ["dhudux"], brands: ["Superseis"] },
+  { name: "Silvia Romero", ig: ["silromeroo"], brands: ["Superseis"] },
+  { name: "Tito Torres y Stephanie Ríos", ig: ["ivan_torres11", "stephaniertg"], brands: ["Superseis"] },
 ];
 // Palabras que cuentan como la marca aunque no la arroben (sin mayúsculas ni acentos). Stock es muy común como palabra:
 // cuenta solo su @. Bianca solo si el influencer trabaja con Bianca (también es un nombre).
@@ -31,6 +36,9 @@ const FIELDS = [
   (u) => `business_discovery.username(${u}){username,name,followers_count,media.limit(${MEDIA}){media_type,media_product_type,media_url,permalink,caption,timestamp,like_count,comments_count}}`,
 ];
 
+// “Fotos en las que te etiquetaron” de cada marca (si Meta no conoce algún campo, se pide con menos).
+const TAG_FIELDS = ["id,username,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count,media_url,thumbnail_url",
+  "id,username,caption,media_type,permalink,timestamp,like_count,comments_count,media_url"];
 const fold = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const user = (u) => String(u || "").trim().replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/[/?#].*$/, "").toLowerCase();
 const okUser = (u) => /^[a-z0-9._]{1,30}$/.test(u);
@@ -58,7 +66,7 @@ function brandsIn(cap, handles, allowed){
 }
 
 async function influencers({ me, byBrand, graph, save, readMeta, dry }){
-  const [plan, marks, prev] = await Promise.all(["s:INFLU_PLAN", "s:INFLU_MARKS", "s:META_INFLU"].map((k) => readMeta(k).catch(() => null)));
+  const [plan, marks, prev, dms] = await Promise.all(["s:INFLU_PLAN", "s:INFLU_MARKS", "s:META_INFLU", "s:META_DM"].map((k) => readMeta(k).catch(() => null)));
   const list = Array.isArray(plan) && plan.some((x) => x && Array.isArray(x.ig) && x.ig.length) ? plan.filter((x) => x && !x.off) : DEFAULT;
   const users = new Map(); // usuario → marcas con las que trabaja
   list.forEach((x) => (x.ig || []).map(user).filter(okUser).forEach((u) => users.set(u, new Set([...(users.get(u) || []), ...(x.brands || [])]))));
@@ -66,22 +74,37 @@ async function influencers({ me, byBrand, graph, save, readMeta, dry }){
   const handles = {};
   Object.entries(byBrand || {}).forEach(([b, p]) => { const h = String(p?.handle || "").replace(/^@/, "").toLowerCase(); if (h) handles[b] = h; });
   const cur = pyMonth(Date.now()), months = [prevMonth(cur), cur], fresh = Object.fromEntries(months.map((m) => [m, {}]));
+  // Lo que cada influencer le mandó a una marca por mensaje (reel o publicación): número o código del link → marca.
+  const sent = new Map(); // usuario → Map(número o código → marca)
+  Object.entries(dms && typeof dms === "object" ? dms : {}).forEach(([b, convs]) => { if (!convs || typeof convs !== "object" || Array.isArray(convs)) return;
+    Object.values(convs).forEach((c) => { const u = user(c && c.who); if (!u || !users.has(u) || !Array.isArray(c.msgs)) return;
+      c.msgs.forEach((m) => { if (!m || m.me || !m.a || m.a === "story_mention" || !m.ts || !fresh[pyMonth(m.ts)]) return;
+        const k = [m.rid, code(m.u)].filter(Boolean); if (!k.length) return;
+        if (!sent.has(u)) sent.set(u, new Map()); k.forEach((x) => sent.get(u).set(String(x), b)); }); }); });
   const accounts = {}, summary = {};
+  const put = (u, m, br, flags) => { // guarda una publicación (si ya estaba, suma marcas y señales)
+    const mo = pyMonth(m.timestamp); if (!fresh[mo]) return false;
+    const c = code(m.permalink), id = String(m.id || c || m.permalink || m.timestamp), old = fresh[mo][id];
+    const img = /^https:\/\//.test(m.thumbnail_url || "") ? m.thumbnail_url : /^https:\/\//.test(m.media_url || "") && m.media_type !== "VIDEO" ? m.media_url : "";
+    const allBr = [...new Set([...(old ? old.br : []), ...br])];
+    fresh[mo][id] = { ...(old || {}), id, u, ts: m.timestamp, type: TYPE(m), link: m.permalink || old?.link || null, cap: short(m.caption, 300) || old?.cap || "",
+      likes: num(m.like_count) ?? old?.likes ?? null, comments: num(m.comments_count) ?? old?.comments ?? null, img: img || old?.img || "", br: allBr, ...flags };
+    if (!allBr.length && !fresh[mo][id].ln && !fresh[mo][id].dm) delete fresh[mo][id];
+    return true;
+  };
   const una = async (u) => {
     let err = null;
     for (const f of FIELDS){
       try {
         const bd = (await conTiempo(graph(`/${me}`, { fields: f(u) }), 9000)).business_discovery || {};
         let n = 0;
+        const got = sent.get(u) || new Map();
         (bd.media?.data || []).forEach((m) => {
           if (!m || !m.timestamp || m.media_product_type === "STORY") return;
-          const mo = pyMonth(m.timestamp); if (!fresh[mo]) return;
           const br = brandsIn(m.caption, handles, users.get(u) || new Set()), c = code(m.permalink), ln = !!(c && linked.has(c));
-          if (!br.length && !ln) return;
-          const id = String(m.id || c || m.permalink || m.timestamp);
-          const img = /^https:\/\//.test(m.thumbnail_url || "") ? m.thumbnail_url : /^https:\/\//.test(m.media_url || "") && m.media_type !== "VIDEO" ? m.media_url : "";
-          fresh[mo][id] = { id, u, ts: m.timestamp, type: TYPE(m), link: m.permalink || null, cap: short(m.caption, 300), likes: num(m.like_count), comments: num(m.comments_count), img, br, ...(ln && !br.length ? { ln: true } : {}) };
-          n++;
+          const dmB = got.get(String(m.id || "")) || (c && got.get(c)) || null;
+          if (!br.length && !ln && !dmB) return;
+          if (put(u, m, dmB && !br.includes(dmB) ? [...br, dmB] : br, { ...(ln && !br.length ? { ln: true } : {}), ...(dmB ? { dm: true } : {}) })) n++;
         });
         accounts[u] = { u: bd.username || u, name: bd.name || null, fol: num(bd.followers_count), n: num(bd.media_count), pic: /^https:\/\//.test(bd.profile_picture_url || "") ? bd.profile_picture_url : null, err: null, at: new Date().toISOString() };
         summary[u] = n; return;
@@ -96,12 +119,30 @@ async function influencers({ me, byBrand, graph, save, readMeta, dry }){
   };
   const q = [...users.keys()];
   await Promise.all(Array.from({ length: Math.min(4, q.length) }, async () => { while (q.length) await una(q.shift()); }));
-  const payload = { updated: new Date().toISOString(), error: null, accounts };
+  // v435 · Publicaciones de los influencers donde etiquetaron a la marca (en la foto o el video), aunque no la nombren en el texto.
+  const tags = {}, desde = new Date(months[0] + "-01T03:00:00Z").getTime();
+  await Promise.all(Object.entries(byBrand || {}).filter(([, p]) => p && p.igId).map(async ([b, p]) => {
+    let n = 0, err = null, fi = 0;
+    try {
+      let after = null;
+      for (let page = 0; page < 4; page++){
+        let j = null;
+        for (;;){ try { j = await conTiempo(graph(`/${p.igId}/tags`, { fields: TAG_FIELDS[fi], limit: "100", ...(after ? { after } : {}) }), 9000); break; }
+          catch (e){ if (e.code === 100 && fi < TAG_FIELDS.length - 1){ fi++; continue; } throw e; } }
+        const L = (j && j.data) || [];
+        L.forEach((m) => { const u = user(m && m.username); if (!u || !users.has(u) || !m.timestamp) return; if (put(u, m, [b], { tg: true })) n++; });
+        after = j?.paging?.cursors?.after; const oldest = L.length ? Math.min(...L.map((m) => new Date(m.timestamp).getTime() || Date.now())) : 0;
+        if (!after || !L.length || oldest < desde) break;
+      }
+    } catch (e){ err = e.message; }
+    tags[b] = err ? `error: ${String(err).slice(0, 160)}` : n;
+  }));
+  const payload = { updated: new Date().toISOString(), error: null, accounts, tags };
   months.forEach((m) => { const old = prev && prev["m" + m] && typeof prev["m" + m] === "object" ? prev["m" + m] : {}; payload["m" + m] = { ...old, ...fresh[m] }; });
   const cutoff = monthsBack(cur, 14);
   Object.keys(prev || {}).forEach((k) => { if (/^m\d{4}-\d{2}$/.test(k) && k.slice(1) < cutoff) payload[k] = null; }); // la base borra las claves en null
   if (!dry) await save("s:META_INFLU", payload);
-  return { summary, posts: months.map((m) => Object.keys(fresh[m]).length), plan: list === DEFAULT ? "lista de arranque" : "lista de la app" };
+  return { summary, tags, sent: sent.size, posts: months.map((m) => Object.keys(fresh[m]).length), plan: list === DEFAULT ? "lista de arranque" : "lista de la app" };
 }
 
 module.exports = { influencers, brandsIn, code, user, DEFAULT };
