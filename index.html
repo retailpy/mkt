@@ -6358,7 +6358,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v448";
+const APP_VER = "v449";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -7314,7 +7314,7 @@ function liveStories(b){
   return Object.entries(META_STORIES).filter(([k, x]) => k.startsWith("st:") && x && x.b === b && x.ts && x.at === at && now - new Date(x.ts) < 864e5)
     .map(([k, x]) => ({ ...x, id:k.slice(3) })).sort((a, c) => new Date(c.ts) - new Date(a.ts)); // v364: la más nueva primero
 }
-// v448 · Historias de la marca que son reposteos: cuando la marca comparte en su historia una mención (“Agregar a tu historia”),
+// v449 · Historias de la marca que son reposteos: cuando la marca comparte en su historia una mención (“Agregar a tu historia”),
 // Instagram deja en la conversación con esa persona un mensaje de la marca con la historia mencionada (me:true, a:"story_mention",
 // lo guarda el webhook desde v435). Si llega hasta 3 min después de subida la historia de la marca, es ese reposteo.
 let stRepMemo = null;
@@ -21904,7 +21904,7 @@ function iflStories(month){
         let rpTs = "";
         if (story){ const t = Date.parse(m.ts), e = echo.find(x => !used.has(x) && Date.parse(x.ts) >= t && Date.parse(x.ts) - t < 864e5); if (e){ used.add(e); rpTs = e.ts; if (!img) img = e.u; } }
         add(w, { b, m, d, pub, link, img, rpTs }); });
-      // v448: un reposteo de la marca sin la mención (Meta no la avisó): igual es una historia que subió arrobando a la marca.
+      // v449: un reposteo de la marca sin la mención (Meta no la avisó): igual es una historia que subió arrobando a la marca.
       echo.filter(e => !used.has(e)).forEach(e => { const d = pyDate(e.ts); if (d.slice(0, 7) === month) add(w, { b, m:e, d, pub:false, link:"", img:e.u, rpTs:e.ts, rp:true }); }); }); });
   iflStoryMemo = { dm:META_DM, m:month, map }; return map;
 }
