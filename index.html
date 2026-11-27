@@ -4397,7 +4397,13 @@ td svg{width:15px;height:15px;vertical-align:-2px;color:var(--cyan)}
 .cnlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}.cnlist li{display:flex;gap:9px;align-items:flex-start;font-size:14px;line-height:1.45}.cnlist li svg{width:17px;height:17px;flex:none;margin-top:2px;color:#22d3ee}
 .cnlist.idea li svg{color:#facc15}.cnh3{display:flex;gap:7px;align-items:center;font-size:14px;margin:14px 0 8px}.cnh3 svg{width:16px;height:16px}
 .cnps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.cnac{--racs:#7dd3fc;--racbg:rgba(56,189,248,.10)} /* v412: los colores del Resumen (tasa y Pão de Açúcar) */
+.cnac{--racs:#7dd3fc;--racbg:rgba(56,189,248,.10)}
+/* v438 · Competencia (CM) con el aspecto del Resumen ejecutivo */
+.cnre{--rac:#38bdf8;--racs:#7dd3fc;--racbg:rgba(56,189,248,.10);--racln:rgba(56,189,248,.38);--resf:rgba(125,211,252,.05);display:flex;flex-direction:column;gap:16px}
+.cnre .revws.cnvws{grid-template-columns:repeat(4,minmax(0,1fr))}.cnre .revw{padding:12px 16px;gap:2px}.cnre .revw b{font-size:26px}
+.cnre .recad.cnflash{box-shadow:0 0 0 3px var(--rac);border-color:var(--rac)}
+.cnre .cntab tbody tr{cursor:pointer}.cnre .cngrid1{max-width:900px}
+@media screen and (max-width:900px){.cnre .revws.cnvws{grid-template-columns:repeat(2,minmax(0,1fr))}} /* v412: los colores del Resumen (tasa y Pão de Açúcar) */
 .cntab tbody tr{cursor:pointer}.cntab tbody tr:hover td{background:rgba(148,163,184,.06)}.cntab tbody tr.on td{background:rgba(34,211,238,.08)}
 @media (max-width:1100px){.cngrid{grid-template-columns:1fr}.cnkpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:700px){.cnkpis{grid-template-columns:repeat(2,minmax(0,1fr))}.cnps{grid-template-columns:1fr}}
@@ -6318,7 +6324,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v437";
+const APP_VER = "v438";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -21503,7 +21509,7 @@ document.addEventListener("load", e => { if (page === "resumen" && reShowOn() &&
 // Resumen ejecutivo, pero para el equipo de CM y con más detalle: ranking de cadenas, lo que más les funcionó, qué formatos,
 // temas y días les rinden, y un análisis con ideas para nosotros. Todo sale de los datos (me gusta y comentarios: lo que Instagram
 // muestra de otras cuentas; el alcance de los demás no se ve). Lo ven CM, Admin total y Admin.
-let cnUI = { per:"30", acc:"", tab:"py" };
+let cnUI = { per:"30", acc:"", tab:"py", vw:"cad", gp:0 }; // vw: cad (Qué hizo cada cadena) | gal | rank | an
 const CN_PERS = [["7", "Últimos 7 días"], ["30", "Últimos 30 días"], ["all", "Todo lo guardado"]];
 const CN_PIN = "paodeacucar"; // v412: como en el Resumen ejecutivo, Pão de Açúcar va siempre primero en Internacional
 const cnCan = () => ["Admin total", "Admin", "CM"].includes(viewer?.role);
@@ -21540,49 +21546,69 @@ function cnAnalysis(C, w){
   return { A, I };
 }
 const lcFirst = t => t ? t[0].toLowerCase() + t.slice(1) : t;
+// v438 · Competencia (CM) igual que en el Resumen ejecutivo: en partes (Qué hizo cada cadena, con la foto grande en 4:5 de lo que
+// más le funcionó · Todas las publicaciones · Ranking) y además el Análisis. Con TODAS las cadenas de las dos listas (Paraguay e
+// Internacional; en el Resumen, Internacional muestra 15): también las que no publicaron en el período, con lo último que subieron.
+const CN_VIEWS = [["cad", "store", "Qué hizo cada cadena", "#38bdf8"], ["gal", "images", "Todas las publicaciones", "#fb923c"], ["rank", "list-ordered", "Ranking", "#facc15"], ["an", "lightbulb", "Análisis e ideas", "#a78bfa"]];
+const CN_GPER = 12; // publicaciones por página en “Todas las publicaciones”
 function pCompNac(){
   if (!cnCan()) return `<div class="panel empty">${icon("lock")} Competencia la ven CM, Admin total y Admin.</div>`;
   const intl = cnUI.tab === "int", L = intl ? (Object.keys(META_REFS?.accounts || {}).length ? { accounts:META_REFS.accounts, updated:META_REFS.updated } : null) : META_REFS?.local;
-  const w = cnPeriod(), C = reComp(w, L?.accounts || {}, { fair:true }), an = cnAnalysis(C, w), withPosts = C.list.filter(x => x.posts.length);
-  const pin = intl ? C.list.find(x => x.k === CN_PIN) : null, rows = intl ? [pin, ...C.list.filter(x => x !== pin && x.posts.length)].filter(Boolean) : C.list;
+  const w = cnPeriod(), C = reComp(w, L?.accounts || {}, { fair:true }), pin = intl ? C.list.find(x => x.k === CN_PIN) : null;
+  const rows = intl && pin ? [pin, ...C.list.filter(x => x !== pin)] : C.list; // todas, de la que más reacción tuvo a la que menos (las que no publicaron, al final)
   const names = Object.entries(L?.accounts || {}).map(([k, a]) => a?.name || k), nameTxt = names.length > 1 ? names.slice(0, -1).join(", ") + " y " + names[names.length - 1] : names.join("");
-  const tabs = viewTabs([["py", "Paraguay", "store"], ["int", "Internacional", "globe"]], cnUI.tab, "data-cntab");
-  const head = `<div class="head"><div><h1 class="pmh">${pmIco("store")}Competencia</h1><p class="sub">${intl ? "Supermercados de referencia del mundo (Brasil, España, Estados Unidos, Reino Unido, Francia y otros): qué publican en Instagram y qué les funciona, para inspirarse. Pão de Açúcar va siempre primero." : `Lo que publican en Instagram los supermercados de Paraguay${names.length ? ` (${esc(nameTxt)})` : ""}: qué hacen, qué les funciona y qué podemos aprender.`} ${L?.updated ? `Actualizado ${metaWhen(L.updated)}.` : ""}</p></div>
-    <div class="chips">${tabs}${viewTabs(CN_PERS.map(([k, l]) => [k, l, k === "all" ? "infinity" : "calendar-days"]), cnUI.per, "data-cnper")}${intl ? metaBtn("referentes", "Internacional", "Internacional actualizado con lo último de Instagram.") : metaBtn("referentes?set=local", "Competencia", "Competencia actualizada con lo último de Instagram.")}</div></div>`;
-  if (!L?.accounts) return `${head}<div class="panel empty">${icon(intl ? "globe" : "store")} ${!intl && META_REFS?.localError ? `No se pudo leer la competencia: ${esc(META_REFS.localError)}.` : `Todavía no se leyeron ${intl ? "los supermercados de afuera" : "la competencia"} en Instagram. Se trae sola dos veces por día; tocá “Actualizar” para traerla ahora.`}</div>`;
-  const kpi = (v, l, s = "") => `<div class="cnkpi"><b>${v}</b><span>${l}</span>${s ? `<small>${s}</small>` : ""}</div>`;
-  const rt = withPosts.filter(x => x.rate !== null).sort((a, c) => c.rate - a.rate)[0];
-  const kpis = `<div class="cnkpis">${kpi(withPosts.length, "cadenas publicaron", `de ${C.list.length} que seguimos`)}${kpi(dots(C.all.length), "publicaciones", w.per)}${kpi(dots(reSum(C.all, "eng")), "me gusta y comentarios", "todas juntas")}${kpi(dots(cnAvg(C.all)), "reacciones por publicación", "en promedio")}${kpi(rt ? cnName(rt, intl) : "—", "la que mejor conecta con su gente", rt ? `reacciona el ${rePct(rt.rate)} de sus seguidores` : "")}</div>`;
-  const best = (x, isPin) => { const b = x.best || (isPin ? x.last : null); if (!b) return `<span class="note">—</span>`;
-    return `<a class="recbest" ${b.link ? `href="${esc(b.link)}" target="_blank" rel="noopener"` : ""} title="${esc(b.cap || "")}">${cnImg(b, "recth")}<span>${b.old ? `<small class="note">Lo último que publicó (${dm(pyDate(b.ts))}):</small> ` : ""}${esc(reAbout(b))}${b.rate !== null && b.rate !== undefined && !b.old ? ` · reaccionó el <b>${rePct(b.rate)}</b>` : C.hasEng ? ` · <b>${dots(b.eng)}</b> reacciones` : ""}</span></a>`; };
+  const head = `<div class="head"><div><h1 class="pmh">${pmIco("store")}Competencia</h1><p class="sub">${intl ? "Supermercados de referencia del mundo (Brasil, España, Estados Unidos, Reino Unido, Francia y otros): lo que publican en Instagram, para inspirarse. Pão de Açúcar va siempre primero." : `Lo que publican en Instagram los supermercados de Paraguay${names.length ? `: ${esc(nameTxt)}` : ""}.`} Igual que en el Resumen ejecutivo, con todas las cadenas.${L?.updated ? ` Actualizado ${metaWhen(L.updated)}.` : ""}</p></div>
+    <div class="chips">${viewTabs([["py", "Paraguay", "store"], ["int", "Internacional", "globe"]], cnUI.tab, "data-cntab")}${viewTabs(CN_PERS.map(([k, l]) => [k, l, k === "all" ? "infinity" : "calendar-days"]), cnUI.per, "data-cnper")}${intl ? metaBtn("referentes", "Internacional", "Internacional actualizado con lo último de Instagram.") : metaBtn("referentes?set=local", "Competencia", "Competencia actualizada con lo último de Instagram.")}</div></div>`;
+  if (!L?.accounts) return `<div class="cnac cnre">${head}<div class="panel empty">${icon(intl ? "globe" : "store")} ${!intl && META_REFS?.localError ? `No se pudo leer la competencia: ${esc(META_REFS.localError)}.` : `Todavía no se leyeron ${intl ? "los supermercados de afuera" : "la competencia"} en Instagram. Se trae sola dos veces por día; tocá “Actualizar” para traerla ahora.`}</div></div>`;
+  const img = (p, cls) => cnImg(p, cls), accName = x => cnName(x, intl), per = w.per;
+  const likes = p => `${icon("heart")} ${isNum(p.likes) ? dots(p.likes) : "—"} · ${icon("message-circle")} ${isNum(p.comments) ? dots(p.comments) : "—"}`;
+  const cur = CN_VIEWS.some(([k]) => k === cnUI.vw) ? cnUI.vw : "cad", an = cnAnalysis(C, w);
+  const cnt = { cad:rows.length, gal:C.all.length, rank:rows.length, an:an.A.length + an.I.length };
+  const unit = (k, n) => k === "gal" ? (n === 1 ? " publicación" : " publicaciones") : k === "an" ? (n === 1 ? " punto" : " puntos") : (n === 1 ? " cadena" : " cadenas");
+  const tiles = `<div class="revws cnvws" role="tablist" aria-label="Qué ver">${CN_VIEWS.map(([k, ic, l, c]) => `<button type="button" role="tab" class="revw${k === cur ? " on" : ""}" data-cnvw="${k}" aria-selected="${k === cur}" style="--kc:${c}"><span class="rekl">${icon(ic)} ${l}</span><b>${cnt[k]}<small>${unit(k, cnt[k])}</small></b></button>`).join("")}</div>`;
+  // Qué hizo cada cadena: una tarjeta por cadena con la foto (4:5) de lo que más le funcionó (o lo último que subió).
   let n = 0;
-  const table = `<section class="panel cnsec"><h2 class="pmh">${pmIco("list-ordered")}Ranking de cadenas</h2><div class="rectabw"><table class="rectab cntab"><thead><tr><th></th><th>Cadena</th><th>Publicaciones</th><th title="Promedio de me gusta y comentarios por publicación">Reacciones por publicación</th>${C.byRate ? `<th title="De cada 100 seguidores, cuántos dieron me gusta o comentaron en cada publicación">Tasa de interacción</th>` : ""}<th>Lo que mejor le funcionó</th></tr></thead><tbody>
-    ${rows.map(x => `<tr class="${x === pin ? "repinr" : ""}${x.err && !x.posts.length ? " rerr" : ""}${cnUI.acc === x.k ? " on" : ""}" data-cnacc="${esc(x.k)}" role="button" tabindex="0" title="Ver sus publicaciones"><td>${x === pin ? `<span class="ren" title="Siempre primero">★</span>` : `<span class="ren">${++n}</span>`}</td><td><b>${cnName(x, intl)}</b>${x.err && !x.posts.length ? `<small class="rewarn" title="${esc(x.err)}">@${esc(x.u)} · no se encontró en Instagram</small>` : `<small>${intl ? "" : "@" + esc(x.u) + " · "}${isNum(x.fol) ? dots(x.fol) + " seguidores" : "seguidores sin dato"}</small>`}</td>
-      <td>${x.posts.length}</td><td>${x.posts.length && C.hasEng ? dots(x.avgPost) : "—"}</td>${C.byRate ? `<td class="rerate">${x.rate !== null ? `<b>${rePct(x.rate)}</b>` : "—"}</td>` : ""}<td>${best(x, x === pin)}</td></tr>`).join("")}</tbody></table></div>
-    <p class="note" style="margin:6px 0 0">${C.byRate ? "Ordenadas por <b>tasa de interacción</b>: de cada 100 seguidores, cuántos dieron me gusta o comentaron en cada publicación. Así se comparan cadenas grandes y chicas por igual (como en el Resumen ejecutivo)." : "Ordenadas por reacciones (me gusta y comentarios) por publicación."}${intl ? " Pão de Açúcar siempre primero." : ""} Tocá una cadena para ver todas sus publicaciones. El alcance de las otras cuentas no se ve: solo me gusta y comentarios.</p></section>`;
-  const card = (p, avg, fol) => { const r = p.rate ?? (isNum(fol) && fol > 0 ? p.eng / fol * 100 : null), a = p.avg ?? avg;
-    return `<a class="recp" ${p.link ? `href="${esc(p.link)}" target="_blank" rel="noopener"` : ""}>${cnImg(p, "recpimg")}<span class="recpb"><span class="rep5m"><b class="recacc">${cnName(p, intl)}</b><small>${esc(p.type || "Post")} · ${p.old ? `lo último que publicó (${dm(pyDate(p.ts))})` : reDayTxt(pyDate(p.ts))}${!p.old && pyDate(p.ts).slice(0, 7) !== CURRENT_MONTH ? " de " + monthName(pyDate(p.ts).slice(0, 7)) : ""}</small></span>
-    <span class="recabout"><b>De qué se trata:</b> ${esc(reAbout(p))}</span>${p.cap ? `<span class="recpcap" title="${esc(p.cap)}">“${esc(reFull(p.cap))}”</span>` : ""}
-    <small class="recpk">${r !== null && C.hasEng ? `<b>Reaccionó el ${rePct(r)} de sus seguidores</b> · ` : ""}${icon("heart")} ${isNum(p.likes) ? dots(p.likes) : "—"} · ${icon("message-circle")} ${isNum(p.comments) ? dots(p.comments) : "—"}${a > 0 && p.eng / a >= 1.3 ? ` · <b class="reupx">${reTimes(p.eng / a)} veces más que lo habitual</b>` : ""}</small></span></a>`; };
-  // Lo que más les funcionó: una por cadena (lo que más se destacó de cada una, según cuánto reaccionó su gente), como en el Resumen.
-  const pc = pin ? pin.best || pin.last : null, tl = [pc, ...C.top.filter(p => !pc || p.k !== CN_PIN)].filter(Boolean).slice(0, 10);
-  const tops = `<section class="panel cnsec"><h2 class="pmh">${pmIco("trophy")}Lo que más les funcionó</h2><p class="note" style="margin:-4px 0 10px">Lo que más se destacó de cada cadena ${w.per} (una por cadena), según cuánto reaccionó su gente: de qué se trata y su texto.</p>${tl.length ? `<div class="recps cnps">${tl.map(p => card(p)).join("")}</div>` : `<div class="empty">Sin publicaciones ${w.per}.</div>`}</section>`;
-  const anal = `<section class="panel cnsec cnan"><h2 class="pmh">${pmIco("lightbulb")}Análisis</h2>${an.A.length ? `<ul class="cnlist">${an.A.map(([ic, t]) => `<li>${icon(ic)}<span>${t}</span></li>`).join("")}</ul>` : `<div class="empty">Sin datos suficientes ${w.per}.</div>`}
+  const card = x => { const isPin = x === pin, b = x.best || x.last, num = isPin ? "★" : String(++n);
+    return `<a class="recad${isPin ? " pin" : ""}${b?.link ? "" : " nolink"}" id="cnc-${esc(x.k)}" data-acc="${esc(x.k)}" ${b?.link ? `href="${esc(b.link)}" target="_blank" rel="noopener"` : ""} title="${esc(b?.cap || "")}">
+      <span class="recadimg">${b ? img(b, "recdimg") : `<span class="recdimg ph">IG</span>`}<span class="rep5n"${isPin ? ` title="Siempre primero"` : ""}>${num}</span>${b && (b.type === "Reel" || b.type === "Video") ? `<span class="rep5f">${icon("circle-play")} ${esc(b.type)}</span>` : ""}</span>
+      <span class="recadb"><b class="recacc">${accName(x)}</b><small>${x.u && !intl ? "@" + esc(x.u) : ""}${isNum(x.fol) ? `${x.u && !intl ? " · " : ""}${dots(x.fol)} seguidores` : ""}</small>
+        <span class="recadn">${x.posts.length ? `<b>${x.posts.length}</b> ${x.posts.length === 1 ? "publicación" : "publicaciones"} ${per}` : x.err ? `<span class="rewarn">No se encontró en Instagram</span>` : `No publicó ${per}`}</span>
+        ${b ? `<span class="recadt"><em>${x.best ? "Lo que más le funcionó" : `Lo último que publicó (${dm(pyDate(b.ts))})`}:</em> ${esc(reAbout(b))}</span><small class="recpk">${icon("heart")} ${isNum(b.likes) ? dots(b.likes) : "—"} me gusta · ${icon("message-circle")} ${isNum(b.comments) ? dots(b.comments) : "—"} comentarios</small>` : ""}</span></a>`; };
+  const act = C.list.filter(x => x.posts.length), top = [...C.all].sort((a, c) => c.eng - a.eng)[0];
+  const sum = act.length ? `<p class="recsum">${icon("sparkles")}<span><b>${C.all.length}</b> ${C.all.length === 1 ? "publicación" : "publicaciones"} de ${act.length} ${act.length === 1 ? "cadena" : "cadenas"} ${per}${top ? ` · la que más gustó: <b>${accName(top)}</b>, ${esc(lcFirst(reAbout(top)).replace(/\.$/, ""))} (${dots(top.likes || 0)} me gusta y ${dots(top.comments || 0)} comentarios)` : ""}.</span></p>` : "";
+  const cads = rows.length ? `${sum}<div class="recadg">${rows.map(card).join("")}</div>` : `<div class="empty">Sin cadenas cargadas.</div>`;
+  // Todas las publicaciones: con su foto, de la que más reacción tuvo a la que menos (de a 12, con ◀ ▶).
+  const folOf = k => C.list.find(x => x.k === k)?.fol, sc = p => C.byRate && folOf(p.k) ? p.eng / folOf(p.k) : p.eng;
+  const GL = [...C.all].sort((a, c) => sc(c) - sc(a) || String(c.ts).localeCompare(String(a.ts))), gpages = Math.max(1, Math.ceil(GL.length / CN_GPER)), gp = Math.min(Math.max(0, cnUI.gp || 0), gpages - 1);
+  const gcard = p => `<a class="regcard" ${p.link ? `href="${esc(p.link)}" target="_blank" rel="noopener"` : ""} title="${esc(p.cap || "")}">${img(p, "regimg")}${p.type === "Reel" || p.type === "Video" ? `<span class="rep5f">${icon("circle-play")} ${esc(p.type)}</span>` : ""}
+    <span class="regb"><span class="rep5m"><b>${cnName(p, intl)}</b><small>${esc(p.type || "Post")} · ${reDayTxt(pyDate(p.ts))}</small></span><span class="regab">${esc(reAbout(p))}</span><small class="recpk">${likes(p)}</small></span></a>`;
+  const gal = GL.length ? `<div class="regal">${GL.slice(gp * CN_GPER, gp * CN_GPER + CN_GPER).map(gcard).join("")}</div>${GL.length > CN_GPER ? `<div class="repager"><button type="button" class="btn" data-cngp="${gp - 1}" ${gp === 0 ? "disabled" : ""}>${icon("chevron-left")} Anteriores</button><span>${gp * CN_GPER + 1}–${Math.min(GL.length, gp * CN_GPER + CN_GPER)} de ${GL.length} publicaciones</span><button type="button" class="btn" data-cngp="${gp + 1}" ${gp >= gpages - 1 ? "disabled" : ""}>Siguientes ${icon("chevron-right")}</button></div>` : ""}` : `<div class="empty">Sin publicaciones ${per}.</div>`;
+  // Ranking: todas las cadenas, con lo que mejor le funcionó (tocá una para ver su tarjeta).
+  let m = 0;
+  const rowBest = x => { const b = x.best || x.last; if (!b) return `<span class="note">—</span>`;
+    return `<a class="recbest" ${b.link ? `href="${esc(b.link)}" target="_blank" rel="noopener"` : ""} title="Abrir en Instagram">${img(b, "recth")}<span>${x.best ? "" : `<em class="reold">Lo último (${dm(pyDate(b.ts))}):</em> `}${esc(reAbout(b))}<small class="recpk">${likes(b)}</small></span></a>`; };
+  const rank = `<div class="rectabw"><table class="rectab big cntab"><thead><tr><th></th><th>Cadena</th><th>Publicaciones</th><th>Lo que mejor le funcionó</th></tr></thead><tbody>
+    ${rows.map(x => `<tr class="${x === pin ? "repinr" : ""}${x.err && !x.posts.length ? " rerr" : ""} recgo" data-cnrow="${esc(x.k)}" role="button" tabindex="0" title="Ver lo que hizo esta cadena"><td>${x === pin ? `<span class="ren" title="Siempre primero">★</span>` : `<span class="ren">${++m}</span>`}</td><td><b>${accName(x)}</b>${x.err && !x.posts.length ? `<small class="rewarn" title="${esc(x.err)}">@${esc(x.u)} · no se encontró en Instagram</small>` : `<small>${x.u && !intl ? "@" + esc(x.u) : ""}${isNum(x.fol) ? `${x.u && !intl ? " · " : ""}${dots(x.fol)} seguidores` : ""}</small>`}</td>
+      <td>${x.posts.length}</td><td>${rowBest(x)}</td></tr>`).join("")}</tbody></table></div>
+    <p class="note re0">${C.byRate ? "Ordenadas de la que más reacción tuvo a la que menos, en proporción a sus seguidores (así se comparan cadenas grandes y chicas por igual)." : "Ordenadas por me gusta y comentarios por publicación."}${intl ? " Pão de Açúcar siempre primero." : ""} Tocá una cadena para ver su tarjeta.${L?.updated ? ` Actualizado ${metaWhen(L.updated)}.` : ""}</p>`;
+  const anal = `<div class="cngrid1">${an.A.length ? `<ul class="cnlist">${an.A.map(([ic, t]) => `<li>${icon(ic)}<span>${t}</span></li>`).join("")}</ul>` : `<div class="empty">Sin datos suficientes ${per}.</div>`}
     ${an.I.length ? `<h3 class="cnh3">${icon("rocket")} Ideas para nosotros</h3><ul class="cnlist idea">${an.I.map(t => `<li>${icon("arrow-right")}<span>${t}</span></li>`).join("")}</ul>` : ""}
-    ${C.themes.length ? `<h3 class="cnh3">${icon("tags")} Temas que más usaron</h3><div class="rechips">${C.themes.slice(0, 8).map(([l, n]) => `<span>${esc(l)} <b>${n}</b></span>`).join("")}</div>` : ""}
-    ${C.fmts.length ? `<p class="note" style="margin:10px 0 0">Formatos que más usaron: ${C.fmts.slice(0, 3).map(([f, k]) => `${esc(f)} (${k})`).join(" · ")}.</p>` : ""}</section>`;
-  const sel = cnUI.acc && C.list.find(x => x.k === cnUI.acc);
-  const one = sel ? `<section class="panel cnsec" id="cnAcc"><div class="head" style="margin:0 0 8px"><h2 class="pmh" style="margin:0">${pmIco(intl ? "globe" : "store")}${cnName(sel, intl)} <span class="note" style="font-weight:400">${intl ? "" : "@" + esc(sel.u) + " · "}${isNum(sel.fol) ? `${dots(sel.fol)} seguidores · ` : ""}${sel.posts.length} publicaciones ${w.per}${sel.rate !== null ? ` · tasa de interacción ${rePct(sel.rate)}` : ""}</span></h2><button type="button" class="btn sm" data-cnacc="">${icon("x")} Cerrar</button></div>
-    ${sel.posts.length ? `<div class="recps cnps">${[...sel.posts].sort((a, c) => String(c.ts).localeCompare(String(a.ts))).map(p => card(p, sel.best?.avg || cnAvg(sel.posts), sel.fol)).join("")}</div>` : `<div class="empty">${sel.err ? `No se encontró la cuenta @${esc(sel.u)} en Instagram.` : `Sin publicaciones ${w.per}.`}</div>`}</section>` : "";
-  return `<div class="cnac">${head}${kpis}${table}${one}<div class="cngrid">${anal}${tops}</div></div>`;
+    ${C.themes.length ? `<h3 class="cnh3">${icon("tags")} Temas que más usaron</h3><div class="rechips">${C.themes.slice(0, 8).map(([l, k]) => `<span>${esc(l)} <b>${k}</b></span>`).join("")}</div>` : ""}
+    ${C.fmts.length ? `<p class="note" style="margin:10px 0 0">Formatos que más usaron: ${C.fmts.slice(0, 3).map(([f, k]) => `${esc(f)} (${k})`).join(" · ")}.</p>` : ""}</div>`;
+  const TT = { cad:["Qué hizo cada cadena", "Cada cadena con lo que más le funcionó, de la que más reacción tuvo a la que menos. Tocá una para verla en Instagram."], gal:["Todas las publicaciones", `Todo lo que publicaron ${per}, con su foto: de lo que más reacción tuvo a lo que menos. Tocá una para verla en Instagram.`],
+    rank:["Ranking", "Todas las cadenas, con lo que mejor le funcionó."], an:["Análisis e ideas", `Lo que dicen los números ${per} y qué podemos aprender.`] }[cur];
+  const body = { cad:cads, gal, rank, an:anal }[cur];
+  return `<div class="cnac cnre">${head}${tiles}<section class="resec"><div class="resh"><span class="reic">${icon(CN_VIEWS.find(v => v[0] === cur)[1])}</span><div><h2>${intl ? "Internacional" : "Competencia nacional"} · ${TT[0]}</h2><p>${TT[1]}</p></div></div>${body}</section></div>`;
 }
 document.addEventListener("click", e => {
   if (page !== "compnac") return;
-  const t = e.target.closest("[data-cntab]"); if (t){ cnUI.tab = t.dataset.cntab; cnUI.acc = ""; render(); return; }
-  const p = e.target.closest("[data-cnper]"); if (p){ cnUI.per = p.dataset.cnper; render(); return; }
-  const a = e.target.closest("[data-cnacc]"); if (a && !e.target.closest("a")){ cnUI.acc = cnUI.acc === a.dataset.cnacc ? "" : a.dataset.cnacc; render(); if (cnUI.acc) setTimeout(() => document.getElementById("cnAcc")?.scrollIntoView({ behavior:"smooth", block:"start" }), 60); }
+  const t = e.target.closest("[data-cntab]"); if (t){ cnUI.tab = t.dataset.cntab; cnUI.gp = 0; render(); return; }
+  const p = e.target.closest("[data-cnper]"); if (p){ cnUI.per = p.dataset.cnper; cnUI.gp = 0; render(); return; }
+  const v = e.target.closest("[data-cnvw]"); if (v){ cnUI.vw = v.dataset.cnvw; render(); return; }
+  const g = e.target.closest("[data-cngp]"); if (g && !g.disabled){ cnUI.gp = Math.max(0, +g.dataset.cngp || 0); render(); document.querySelector(".cnre .resec")?.scrollIntoView({ behavior:"smooth", block:"start" }); return; }
+  const r = e.target.closest("[data-cnrow]"); if (r && !e.target.closest("a")){ cnUI.vw = "cad"; render(); setTimeout(() => { const c = document.getElementById("cnc-" + r.dataset.cnrow); if (c){ c.scrollIntoView({ behavior:"smooth", block:"center" }); c.classList.add("cnflash"); setTimeout(() => c.classList.remove("cnflash"), 1600); } }, 60); }
 });
-document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("tr[data-cnacc]")){ e.preventDefault(); e.target.click(); } });
+document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("tr[data-cnrow]")){ e.preventDefault(); e.target.click(); } });
 
 // ---------- v428 · Influencers (Community Manager) ----------
 // Lo que cada influencer tiene que subir por mes (historias, feed, reels…) con Superseis, Delimarket o Bianca, y si lo subió.
