@@ -177,7 +177,7 @@ module.exports = async (req, res) => {
         const who = me ? null : await whoIs(uid, tok), mts = isoOf(m.timestamp);
         // Mención en una historia: llega como mensaje con un adjunto "story_mention".
         const story = !me && (msg.attachments || []).some(a => a && a.type === "story_mention");
-        // v434: de qué es el adjunto (historia, publicación o reel compartido): tipo, link y número de la publicación, para que
+        // v435: de qué es el adjunto (historia, publicación o reel compartido): tipo, link y número de la publicación, para que
         // Influencers reconozca lo que mandan los influencers aunque no nombren a la marca en el texto.
         const at0 = (msg.attachments || []).find(a => a && a.type === "story_mention") || (msg.attachments || []).find(a => a && a.type) || null, pl = (at0 && at0.payload) || {};
         const extra = at0 ? { a: String(at0.type).slice(0, 30), ...(typeof pl.url === "string" && /^https:\/\//.test(pl.url) ? { u: pl.url.slice(0, 600) } : {}),

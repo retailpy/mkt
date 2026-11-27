@@ -12,13 +12,13 @@
 //     "m2026-11": { <id>: { id, u, ts, type, link, cap, likes, comments, img, br:[marcas], ln } } }
 // Se guarda, del mes actual y del anterior, lo que:
 //   · nombra a una marca en el texto (Superseis, Delimarket, Bianca…: su @ o su nombre),
-//   · etiqueta a la marca en la foto o el video (v434: /{cuenta de la marca}/tags, “fotos en las que te etiquetaron”; tg: true),
-//   · el influencer le mandó a la marca por mensaje (v434: el webhook guarda el número del reel o publicación; dm: true),
+//   · etiqueta a la marca en la foto o el video (v435: /{cuenta de la marca}/tags, “fotos en las que te etiquetaron”; tg: true),
+//   · el influencer le mandó a la marca por mensaje (v435: el webhook guarda el número del reel o publicación; dm: true),
 //   · o alguien ya cargó a mano con su link (ln: true).
 // Los meses de hace más de 14 meses se borran. tags: { Marca: cuántas etiquetas de influencers encontró | "error: …" }.
 
 const DEFAULT = [
-  { name: "Tania Domaniczky", ig: ["taniadoma"], brands: ["Delimarket"] }, // v434: Tania es solo Delimarket; los demás, solo Superseis
+  { name: "Tania Domaniczky", ig: ["taniadoma"], brands: ["Delimarket"] }, // v435: Tania es solo Delimarket; los demás, solo Superseis
   { name: "Carlos Ortellado", ig: ["carlitosortellado"], brands: ["Superseis"] },
   { name: "Pedro Rüger", ig: ["enelhornoconpeta"], brands: ["Superseis"] },
   { name: "Ale Vargas", ig: ["alevargasasiain"], brands: ["Superseis"] },
@@ -119,7 +119,7 @@ async function influencers({ me, byBrand, graph, save, readMeta, dry }){
   };
   const q = [...users.keys()];
   await Promise.all(Array.from({ length: Math.min(4, q.length) }, async () => { while (q.length) await una(q.shift()); }));
-  // v434 · Publicaciones de los influencers donde etiquetaron a la marca (en la foto o el video), aunque no la nombren en el texto.
+  // v435 · Publicaciones de los influencers donde etiquetaron a la marca (en la foto o el video), aunque no la nombren en el texto.
   const tags = {}, desde = new Date(months[0] + "-01T03:00:00Z").getTime();
   await Promise.all(Object.entries(byBrand || {}).filter(([, p]) => p && p.igId).map(async ([b, p]) => {
     let n = 0, err = null, fi = 0;
