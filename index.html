@@ -1610,6 +1610,18 @@ body.stbox-on{overflow:hidden}
 @media (max-width:700px){.stbox{align-items:flex-start;overflow-y:auto;padding:10px}.stbox-in{flex-direction:column;gap:14px;padding:14px}.stbox-pic{width:min(260px,62vw)}.stbox-nav.prev{left:-12px}.stbox-nav.next{right:-12px}}.strow{padding:10px 0;border-top:1px solid var(--line-2)}.strow:first-of-type{border-top:0}
 .stkpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:8px 0 10px}.stkpis div{border:1px solid var(--line-2);border-radius:12px;padding:8px 10px}.stkpis b{display:block;font-size:20px;color:#fff}.stkpis span{font-size:12px;color:var(--muted)}
 .stgrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+/* v444 · Historias que volvimos a subir */
+.stshb{margin-top:12px;border:1px dashed rgba(236,72,153,.45);border-radius:14px;padding:10px 12px;background:rgba(236,72,153,.04)}
+.stshh{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.stshh>svg{width:17px;height:17px;color:#f472b6}.stshh .note{flex:1;min-width:180px}
+.stshgrid{margin-top:10px}.stsh .stimg{display:flex;align-items:center;justify-content:center}.stsh .stimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.stshw{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px;text-align:center;color:#fff;font-size:12.5px;overflow-wrap:anywhere}.stshw svg{width:22px;height:22px;opacity:.85}.stsh .stimg img~.stshw{display:none}
+.stshed{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:end;margin-top:6px}.stshed label{display:flex;flex-direction:column;gap:2px;font-size:11.5px;color:var(--muted)}.stshed input{padding:5px 7px;font-size:13px;min-width:0}
+.stshpick{margin-top:10px;border-top:1px solid var(--line-2);padding-top:10px}
+.stshlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto}.stshlist li{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line-2);border-radius:10px;padding:7px 10px}
+.stshlist li>span{display:flex;align-items:center;gap:7px;min-width:0;flex-wrap:wrap}.stshlist li>span svg{width:15px;height:15px;color:#f472b6}.stshlist small{color:var(--muted)}
+.stshman{display:grid;grid-template-columns:2fr 1.3fr 1fr 1fr auto;gap:8px;align-items:end}.stshman label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+.stshinc{margin:-4px 0 8px}.stsh .stimg em{display:inline-flex;align-items:center;gap:4px}.stsh .stimg em svg{width:12px;height:12px}
+@media (max-width:700px){.stshman{grid-template-columns:1fr 1fr}.stshman button{grid-column:1/-1}}
 .stcard{min-width:0}.stimg{position:relative;display:block;aspect-ratio:9/16;border-radius:12px;overflow:hidden;background:linear-gradient(160deg,rgba(249,115,22,.35),rgba(236,72,153,.35),rgba(124,58,237,.35));box-shadow:0 0 0 2px rgba(236,72,153,.55)}
 .stimg img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover}.stimg>i{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.75)}.stimg>i svg{width:26px;height:26px}
 .stimg em{position:absolute;top:6px;left:6px;font-style:normal;font-weight:800;font-size:12px;background:rgba(0,0,0,.65);color:#fff;border-radius:999px;padding:2px 8px}
@@ -6338,7 +6350,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v443";
+const APP_VER = "v444";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -7090,6 +7102,7 @@ function metaAdsPanel(simple = false){
 // Seguidores y público reales de Meta: los escriben las funciones diarias en Supabase (solo lectura en la app).
 // META_FOLLOWERS = { updated, "AAAA-MM": { Marca: { ig, fb, handle, page } } } · META_DEMO = { updated, Marca: { handle, foll, cities, ages, gender } } (cantidades).
 let META_FOLLOWERS = {}, META_DEMO = {}, META_POSTS = {}, META_CREATIVES = {}, META_INBOX = {}, META_REFS = {}, META_STORIES = {}; // v362: META_STORIES (historias)
+let STORY_SHARES = {}; // v444: historias que volvimos a subir (las de otras cuentas que nos arrobaron); las agrega la CM
 let STORY_IMGS = {}; // v364: id de la historia → id de su imagen en Google Drive (la de Instagram vence); la escribe la app (storyKeep)
 let META_DM = {}; // mensajes de Instagram que llegan en vivo (webhook de Meta → /api/webhook-meta → s:META_DM)
 let META_IG_ACT = {}; // comentarios, comentarios en vivo y menciones de Instagram (webhook y /api/interacciones → s:META_IG_ACT)
@@ -7318,11 +7331,62 @@ const storyReg = (b, top, key, m = MONTH) => !top.length ? "" : `<details class=
   <div class="tw"><table class="sttab streg-t"><thead><tr><th>#</th><th></th><th>Subida</th><th class="r">Alcance</th><th class="r">Vistas</th><th class="r">Respuestas</th><th class="r">Compartidas</th><th class="r">Salieron</th></tr></thead>
   <tbody>${top.map((x, i) => `<tr class="stregr" data-stopen="${esc(key)}|${i}" title="Ver en grande"><td class="num">${i + 1}</td><td><span class="stmini">${stImg(x, "", 160)}</span></td><td>${dm(pyDate(x.ts))} · ${stTime(x.ts)} h${x.ty === "Video" ? ` <span class="note">· video</span>` : ""}</td><td class="r num"><b>${stNum(x.r)}</b></td><td class="r num">${stNum(x.v)}</td><td class="r num">${stNum(x.rp)}</td><td class="r num">${stNum(x.sh)}</td><td class="r num">${isNum(x.ne) && x.v ? `${Math.round(x.ne / x.v * 100)}%` : "—"}</td></tr>`).join("")}</tbody></table></div></details>`;
 document.addEventListener("toggle", e => { const d = e.target; if (!d?.matches?.("details[data-streg]")) return; d.open ? stRegOpen.add(d.dataset.streg) : stRegOpen.delete(d.dataset.streg); }, true);
+// v444 · Historias que volvimos a subir: cuando una cuenta nos arroba en su historia y decidimos compartirla en la nuestra.
+// Instagram no da esas historias (ni sus números) por la API, así que la CM (o Admin total) la agrega: elige la mención de la
+// lista (los mensajes “Te mencionó en su historia” de s:META_DM) o la carga a mano, y puede poner las vistas y el alcance que
+// muestra Instagram. En el Dashboard salen solo esas (no todas las menciones) y se suman a las historias del mes.
+// s:STORY_SHARES = { id: { b, ts, who, mid?, u?, v?, r?, by, at } }
+const stShCan = () => ["Admin total", "CM"].includes(viewer?.role) && !window.RMH?.previewing;
+let stShUI = { b:"", man:false }; // b: la marca con el selector abierto · man: carga a mano
+const stShares = (b, m = MONTH) => Object.entries(STORY_SHARES || {}).filter(([, x]) => x && x.b === b && x.ts && pyDate(x.ts).slice(0, 7) === m).map(([id, x]) => ({ ...x, id })).sort((a, c) => String(c.ts).localeCompare(String(a.ts)));
+// Las menciones en historias (de los mensajes de Instagram) de una marca y un mes, que todavía no se agregaron.
+function stMentions(b, m = MONTH){
+  const used = new Set(Object.values(STORY_SHARES || {}).map(x => x?.mid).filter(Boolean)), out = [];
+  Object.values(META_DM?.[b] || {}).forEach(c => { if (!c || typeof c !== "object" || !Array.isArray(c.msgs)) return;
+    c.msgs.forEach(x => { if (!x || x.me || !x.mid || used.has(x.mid) || !(x.a === "story_mention" || /mencion[oó] en su historia/i.test(x.t || ""))) return;
+      if (!x.ts || pyDate(x.ts).slice(0, 7) !== m) return; out.push({ mid:x.mid, ts:x.ts, who:String(c.who || "una cuenta"), u:x.u || "" }); }); });
+  return out.sort((a, c) => String(c.ts).localeCompare(String(a.ts)));
+}
+const stShTotals = L => ({ n:L.length, v:L.reduce((t, x) => t + (+x.v || 0), 0), r:L.reduce((t, x) => t + (+x.r || 0), 0) });
+const stShCard = (x, ed) => `<div class="stcard stsh"><span class="stimg">${x.u ? `<img src="${esc(x.u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}<span class="stshw">${icon("repeat")}<b>${esc(x.who)}</b></span><em>${icon("repeat")} Compartida</em></span>
+  <span class="stm"><b>${icon("users")} ${stNum(isNum(x.r) ? x.r : null)}</b><small>alcance · ${stNum(isNum(x.v) ? x.v : null)} vistas<br>${dm(pyDate(x.ts))} · de ${esc(x.who)}</small></span>
+  ${ed ? `<span class="stshed"><label>Vistas<input class="base" type="number" min="0" step="1" inputmode="numeric" value="${isNum(x.v) ? x.v : ""}" data-stshnum="${esc(x.id)}|v"></label><label>Alcance<input class="base" type="number" min="0" step="1" inputmode="numeric" value="${isNum(x.r) ? x.r : ""}" data-stshnum="${esc(x.id)}|r"></label><button type="button" class="btn ib sm" data-stshdel="${esc(x.id)}" aria-label="Quitar" title="Quitar">${icon("trash-2")}</button></span>` : ""}</div>`;
+function stShBlock(b){
+  const L = stShares(b), ed = stShCan(), open = ed && stShUI.b === b; if (!L.length && !ed) return "";
+  const men = open ? stMentions(b) : [];
+  const pick = open ? `<div class="stshpick"><p class="note" style="margin:0 0 8px">${stShUI.man ? "Cargala a mano: de qué cuenta era y cuándo la subimos." : men.length ? `Elegí la que volvimos a subir (de las cuentas que nos arrobaron en su historia en ${monthName(MONTH)}):` : `No hay menciones en historias de ${monthName(MONTH)} para elegir. Podés cargarla a mano.`}</p>
+    ${stShUI.man ? `<div class="stshman"><label>Cuenta<input class="base" id="stshWho" maxlength="60" placeholder="@usuario"></label><label>Fecha<input class="base" type="date" id="stshDay" value="${TODAY.slice(0, 7) === MONTH ? TODAY : MONTH + "-01"}"></label><label>Vistas<input class="base" type="number" min="0" id="stshV"></label><label>Alcance<input class="base" type="number" min="0" id="stshR"></label><button type="button" class="btn primary sm" data-stshman="${esc(b)}">${icon("check")} Agregar</button></div>`
+      : men.length ? `<ul class="stshlist">${men.slice(0, 30).map(x => `<li><span>${icon("at-sign")}<b>${esc(x.who)}</b><small>${dm(pyDate(x.ts))} · ${stTime(x.ts)} h</small></span><button type="button" class="btn sm primary" data-stshadd="${esc(b)}|${esc(x.mid)}">${icon("repeat")} La subimos</button></li>`).join("")}</ul>` : ""}
+    <div class="chips" style="margin-top:8px">${stShUI.man ? `<button type="button" class="btn sm" data-stshmode="list">Elegir de las menciones</button>` : `<button type="button" class="btn sm" data-stshmode="man">${icon("plus")} Cargar a mano</button>`}<button type="button" class="btn sm" data-stshclose>Cerrar</button></div></div>` : "";
+  return `<div class="stshb"><div class="stshh">${icon("repeat")}<b>Historias que volvimos a subir</b><span class="note">${L.length ? `${L.length} en ${monthName(MONTH)} · de cuentas que nos arrobaron y compartimos en nuestra historia` : "Ninguna todavía este mes"}</span>${ed && !open ? `<button type="button" class="btn sm" data-stshopen="${esc(b)}">${icon("plus")} Agregar una que subimos</button>` : ""}</div>
+    ${L.length ? `<div class="stgrid stshgrid">${L.map(x => stShCard(x, ed)).join("")}</div>` : ""}${pick}
+    ${ed && L.length ? `<p class="note" style="margin:6px 0 0">Instagram no da los números de las historias compartidas: si querés que sumen, copiá las vistas y el alcance que muestra Instagram en esa historia.</p>` : ""}</div>`;
+}
+document.addEventListener("click", e => {
+  const t = e.target; if (!t.closest?.(".stshb")) return;
+  const o = t.closest("[data-stshopen]"); if (o){ if (!stShCan()) return; stShUI = { b:o.dataset.stshopen, man:false }; render(); return; }
+  if (t.closest("[data-stshclose]")){ stShUI = { b:"", man:false }; render(); return; }
+  const md = t.closest("[data-stshmode]"); if (md){ stShUI.man = md.dataset.stshmode === "man"; render(); return; }
+  const a = t.closest("[data-stshadd]"); if (a){ if (!stShCan()) return; const [b, mid] = a.dataset.stshadd.split("|"), x = stMentions(b).find(y => y.mid === mid); if (!x) return;
+    STORY_SHARES = { ...STORY_SHARES, ["sh-" + mid.slice(-24)]:{ b, ts:x.ts, who:x.who, mid, ...(x.u ? { u:x.u } : {}), by:viewer.name, at:new Date().toISOString() } };
+    stShUI = { b:"", man:false }; render(); window.RMH?.flushNow?.(); toast(`Listo: la historia de ${x.who} quedó en el Dashboard. Si querés, cargale las vistas y el alcance.`); return; }
+  const mn = t.closest("[data-stshman]"); if (mn){ if (!stShCan()) return; const b = mn.dataset.stshman, who = (document.getElementById("stshWho")?.value || "").trim().replace(/^@?/, "@").slice(0, 60), day = document.getElementById("stshDay")?.value || "";
+    if (who.length < 2) return toast("Escribí de qué cuenta era la historia."); if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return toast("Elegí la fecha.");
+    const num = id => { const v = document.getElementById(id)?.value; return v === "" || v == null ? undefined : Math.max(0, Math.round(+v)) || 0; }, v = num("stshV"), r = num("stshR");
+    STORY_SHARES = { ...STORY_SHARES, ["shm-" + Date.now().toString(36)]:{ b, ts:day + "T15:00:00.000Z", who, ...(isNum(v) ? { v } : {}), ...(isNum(r) ? { r } : {}), by:viewer.name, at:new Date().toISOString() } };
+    stShUI = { b:"", man:false }; render(); window.RMH?.flushNow?.(); toast("Listo: quedó en el Dashboard."); return; }
+  const d = t.closest("[data-stshdel]"); if (d){ if (!stShCan() || !confirmTap(d, "stsh:" + d.dataset.stshdel, "¿Quitar? Tocá de nuevo")) return; const S = { ...STORY_SHARES }; delete S[d.dataset.stshdel]; STORY_SHARES = S; render(); window.RMH?.flushNow?.(); toast("Quitada del Dashboard."); }
+});
+document.addEventListener("change", e => { const i = e.target.closest?.("[data-stshnum]"); if (!i || !stShCan()) return; const [id, k] = i.dataset.stshnum.split("|"), x = STORY_SHARES?.[id]; if (!x) return;
+  const v = i.value === "" ? null : Math.max(0, Math.round(+i.value) || 0), y = { ...x }; if (v === null) delete y[k]; else y[k] = v;
+  STORY_SHARES = { ...STORY_SHARES, [id]:y }; render(); window.RMH?.flushNow?.(); });
 function storiesPanel(bs){
-  const rows = bs.map(b => ({ b, ...storyData(b) })), any = rows.some(r => r.sum?.n || r.top.length);
+  const rows = bs.map(b => ({ b, ...storyData(b), sh:stShares(b) })), any = rows.some(r => r.sum?.n || r.top.length || r.sh.length) || stShCan(); // v444: + las que volvimos a subir
+  const withSh = r => { const t = stShTotals(r.sh); return t.n ? { ...(r.sum || {}), n:(r.sum?.n || 0) + t.n, v:(r.sum?.v || 0) + t.v, r:(r.sum?.r || 0) + t.r } : r.sum; };
   return `<div class="panel flush stpanel"><div class="panel-h story"><h2 class="pmh">${pmIco("trophy")}Top historias de Instagram del mes · más alcance</h2><div class="tag-row"><span class="tag">${monthLabel(MONTH)}</span><span class="tag">Fuente: Meta</span></div></div>
     <div class="panel-b">${storyNote()}${any ? rows.map(r => { const key = stKey(`top:${MONTH}:${r.b}`, r.top.slice(0, 12));
-      return `<div class="strow"><div class="lph">${brandTag(r.b)}</div>${r.sum?.n || r.top.length ? `${r.sum?.n ? storyKpis(r.sum) : ""}<div class="stgrid">${r.top.slice(0, 6).map((x, i) => storyCard(x, i, key)).join("")}</div>${storyReg(r.b, r.top.slice(0, 12), key)}` : `<p class="note" style="margin:0">Todavía sin historias medidas en ${monthName(MONTH)}.${viewer.role === "Admin total" && META_STORIES?.["err:" + r.b] ? ` <span class="sterr">${icon("triangle-alert")} Meta: ${esc(META_STORIES["err:" + r.b])}</span>` : ""}</p>`}</div>`; }).join("")
+      const S = withSh(r);
+      return `<div class="strow"><div class="lph">${brandTag(r.b)}</div>${S?.n ? storyKpis(S) + (r.sh.length ? `<p class="note stshinc">${icon("repeat")} Incluye ${r.sh.length === 1 ? "1 historia que volvimos a subir" : r.sh.length + " historias que volvimos a subir"} (de otras cuentas).</p>` : "") : ""}${r.top.length ? `<div class="stgrid">${r.top.slice(0, 6).map((x, i) => storyCard(x, i, key)).join("")}</div>${storyReg(r.b, r.top.slice(0, 12), key)}` : !r.sum?.n ? `<p class="note" style="margin:0">Todavía sin historias medidas en ${monthName(MONTH)}.${viewer.role === "Admin total" && META_STORIES?.["err:" + r.b] ? ` <span class="sterr">${icon("triangle-alert")} Meta: ${esc(META_STORIES["err:" + r.b])}</span>` : ""}</p>` : ""}${stShBlock(r.b)}</div>`; }).join("")
       : `<div class="empty">${META_STORIES?.since ? `Todavía no hay historias medidas de ${monthName(MONTH)}.` : "Las historias se empiezan a medir apenas se active la lectura de Instagram (varias veces por día): acá van a salir las de más alcance del mes."}</div>`}</div></div>`;
 }
 // v364 · Historia en grande: la imagen vertical, sus números y el link a Instagram (mientras está publicada abre la historia;
