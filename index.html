@@ -1615,12 +1615,12 @@ body.stbox-on{overflow:hidden}
 .stshh{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.stshh>svg{width:17px;height:17px;color:#f472b6}.stshh .note{flex:1;min-width:180px}
 .stshgrid{margin-top:10px}.stsh .stimg{display:flex;align-items:center;justify-content:center}.stsh .stimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .stshw{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px;text-align:center;color:#fff;font-size:12.5px;overflow-wrap:anywhere}.stshw svg{width:22px;height:22px;opacity:.85}.stsh .stimg img~.stshw{display:none}
-.stshed{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:end;margin-top:6px}.stshed label{display:flex;flex-direction:column;gap:2px;font-size:11.5px;color:var(--muted)}.stshed input{padding:5px 7px;font-size:13px;min-width:0}
+.stsh{display:flex;flex-direction:column;min-width:0}.stshed{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:6px;align-items:end;margin-top:6px;min-width:0}.stshed label{min-width:0}.stshed input{width:100%;box-sizing:border-box}.stshed label{display:flex;flex-direction:column;gap:2px;font-size:11.5px;color:var(--muted)}.stshed input{padding:5px 7px;font-size:13px;min-width:0}
 .stshpick{margin-top:10px;border-top:1px solid var(--line-2);padding-top:10px}
 .stshlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto}.stshlist li{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line-2);border-radius:10px;padding:7px 10px}
 .stshlist li>span{display:flex;align-items:center;gap:7px;min-width:0;flex-wrap:wrap}.stshlist li>span svg{width:15px;height:15px;color:#f472b6}.stshlist small{color:var(--muted)}
 .stshman{display:grid;grid-template-columns:2fr 1.3fr 1fr 1fr auto;gap:8px;align-items:end}.stshman label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
-.stshinc{margin:-4px 0 8px}.stsh .stimg em{display:inline-flex;align-items:center;gap:4px}.stsh .stimg em svg{width:12px;height:12px}
+.stshinc{margin:-4px 0 8px}.stshu{color:var(--ink);font-weight:700;overflow-wrap:anywhere}.stshinf{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:700;color:#f59e0b}.stshinf svg{width:11px;height:11px}.iflauto.sh{background:#ec4899;color:#fff}.stsh .stimg em{display:inline-flex;align-items:center;gap:4px}.stsh .stimg em svg{width:12px;height:12px}
 @media (max-width:700px){.stshman{grid-template-columns:1fr 1fr}.stshman button{grid-column:1/-1}}
 .stcard{min-width:0}.stimg{position:relative;display:block;aspect-ratio:9/16;border-radius:12px;overflow:hidden;background:linear-gradient(160deg,rgba(249,115,22,.35),rgba(236,72,153,.35),rgba(124,58,237,.35));box-shadow:0 0 0 2px rgba(236,72,153,.55)}
 .stimg img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover}.stimg>i{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.75)}.stimg>i svg{width:26px;height:26px}
@@ -6350,7 +6350,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v444";
+const APP_VER = "v445";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -7347,16 +7347,18 @@ function stMentions(b, m = MONTH){
       if (!x.ts || pyDate(x.ts).slice(0, 7) !== m) return; out.push({ mid:x.mid, ts:x.ts, who:String(c.who || "una cuenta"), u:x.u || "" }); }); });
   return out.sort((a, c) => String(c.ts).localeCompare(String(a.ts)));
 }
+const stShWho = w => { const t = String(w || "").trim(); return !t ? "una cuenta" : /\s/.test(t) ? t : "@" + t.replace(/^@/, ""); }; // v445: el usuario que nos arrobó
+const stShInf = w => { const u = iflU(w); return u ? (Array.isArray(INFLU_PLAN) ? INFLU_PLAN : []).find(x => x && x.name && (x.ig || []).some(g => iflU(g) === u)) || null : null; };
 const stShTotals = L => ({ n:L.length, v:L.reduce((t, x) => t + (+x.v || 0), 0), r:L.reduce((t, x) => t + (+x.r || 0), 0) });
-const stShCard = (x, ed) => `<div class="stcard stsh"><span class="stimg">${x.u ? `<img src="${esc(x.u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}<span class="stshw">${icon("repeat")}<b>${esc(x.who)}</b></span><em>${icon("repeat")} Compartida</em></span>
-  <span class="stm"><b>${icon("users")} ${stNum(isNum(x.r) ? x.r : null)}</b><small>alcance · ${stNum(isNum(x.v) ? x.v : null)} vistas<br>${dm(pyDate(x.ts))} · de ${esc(x.who)}</small></span>
+const stShCard = (x, ed) => `<div class="stcard stsh"><span class="stimg">${x.u ? `<img src="${esc(x.u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}<span class="stshw">${icon("repeat")}<b>${esc(stShWho(x.who))}</b></span><em>${icon("repeat")} Compartida</em></span>
+  <span class="stm"><b>${icon("users")} ${stNum(isNum(x.r) ? x.r : null)}</b><small>alcance · ${stNum(isNum(x.v) ? x.v : null)} vistas<br>${dm(pyDate(x.ts))} · de <span class="stshu">${esc(stShWho(x.who))}</span>${stShInf(x.who) ? `<br><span class="stshinf">${icon("star")} Influencer: ${esc(stShInf(x.who).name)}</span>` : ""}</small></span>
   ${ed ? `<span class="stshed"><label>Vistas<input class="base" type="number" min="0" step="1" inputmode="numeric" value="${isNum(x.v) ? x.v : ""}" data-stshnum="${esc(x.id)}|v"></label><label>Alcance<input class="base" type="number" min="0" step="1" inputmode="numeric" value="${isNum(x.r) ? x.r : ""}" data-stshnum="${esc(x.id)}|r"></label><button type="button" class="btn ib sm" data-stshdel="${esc(x.id)}" aria-label="Quitar" title="Quitar">${icon("trash-2")}</button></span>` : ""}</div>`;
 function stShBlock(b){
   const L = stShares(b), ed = stShCan(), open = ed && stShUI.b === b; if (!L.length && !ed) return "";
   const men = open ? stMentions(b) : [];
   const pick = open ? `<div class="stshpick"><p class="note" style="margin:0 0 8px">${stShUI.man ? "Cargala a mano: de qué cuenta era y cuándo la subimos." : men.length ? `Elegí la que volvimos a subir (de las cuentas que nos arrobaron en su historia en ${monthName(MONTH)}):` : `No hay menciones en historias de ${monthName(MONTH)} para elegir. Podés cargarla a mano.`}</p>
     ${stShUI.man ? `<div class="stshman"><label>Cuenta<input class="base" id="stshWho" maxlength="60" placeholder="@usuario"></label><label>Fecha<input class="base" type="date" id="stshDay" value="${TODAY.slice(0, 7) === MONTH ? TODAY : MONTH + "-01"}"></label><label>Vistas<input class="base" type="number" min="0" id="stshV"></label><label>Alcance<input class="base" type="number" min="0" id="stshR"></label><button type="button" class="btn primary sm" data-stshman="${esc(b)}">${icon("check")} Agregar</button></div>`
-      : men.length ? `<ul class="stshlist">${men.slice(0, 30).map(x => `<li><span>${icon("at-sign")}<b>${esc(x.who)}</b><small>${dm(pyDate(x.ts))} · ${stTime(x.ts)} h</small></span><button type="button" class="btn sm primary" data-stshadd="${esc(b)}|${esc(x.mid)}">${icon("repeat")} La subimos</button></li>`).join("")}</ul>` : ""}
+      : men.length ? `<ul class="stshlist">${men.slice(0, 30).map(x => `<li><span>${icon("at-sign")}<b>${esc(stShWho(x.who))}</b>${stShInf(x.who) ? `<span class="stshinf">${icon("star")} ${esc(stShInf(x.who).name)}</span>` : ""}<small>${dm(pyDate(x.ts))} · ${stTime(x.ts)} h</small></span><button type="button" class="btn sm primary" data-stshadd="${esc(b)}|${esc(x.mid)}">${icon("repeat")} La subimos</button></li>`).join("")}</ul>` : ""}
     <div class="chips" style="margin-top:8px">${stShUI.man ? `<button type="button" class="btn sm" data-stshmode="list">Elegir de las menciones</button>` : `<button type="button" class="btn sm" data-stshmode="man">${icon("plus")} Cargar a mano</button>`}<button type="button" class="btn sm" data-stshclose>Cerrar</button></div></div>` : "";
   return `<div class="stshb"><div class="stshh">${icon("repeat")}<b>Historias que volvimos a subir</b><span class="note">${L.length ? `${L.length} en ${monthName(MONTH)} · de cuentas que nos arrobaron y compartimos en nuestra historia` : "Ninguna todavía este mes"}</span>${ed && !open ? `<button type="button" class="btn sm" data-stshopen="${esc(b)}">${icon("plus")} Agregar una que subimos</button>` : ""}</div>
     ${L.length ? `<div class="stgrid stshgrid">${L.map(x => stShCard(x, ed)).join("")}</div>` : ""}${pick}
@@ -7369,12 +7371,12 @@ document.addEventListener("click", e => {
   const md = t.closest("[data-stshmode]"); if (md){ stShUI.man = md.dataset.stshmode === "man"; render(); return; }
   const a = t.closest("[data-stshadd]"); if (a){ if (!stShCan()) return; const [b, mid] = a.dataset.stshadd.split("|"), x = stMentions(b).find(y => y.mid === mid); if (!x) return;
     STORY_SHARES = { ...STORY_SHARES, ["sh-" + mid.slice(-24)]:{ b, ts:x.ts, who:x.who, mid, ...(x.u ? { u:x.u } : {}), by:viewer.name, at:new Date().toISOString() } };
-    stShUI = { b:"", man:false }; render(); window.RMH?.flushNow?.(); toast(`Listo: la historia de ${x.who} quedó en el Dashboard. Si querés, cargale las vistas y el alcance.`); return; }
+    stShUI = { b:"", man:false }; render(); window.RMH?.flushNow?.(); const inf = stShInf(x.who); toast(`Listo: la historia de ${stShWho(x.who)} quedó en el Dashboard${inf ? ` y como historia subida de ${inf.name} en Influencers` : ""}. Si querés, cargale las vistas y el alcance.`); return; }
   const mn = t.closest("[data-stshman]"); if (mn){ if (!stShCan()) return; const b = mn.dataset.stshman, who = (document.getElementById("stshWho")?.value || "").trim().replace(/^@?/, "@").slice(0, 60), day = document.getElementById("stshDay")?.value || "";
     if (who.length < 2) return toast("Escribí de qué cuenta era la historia."); if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return toast("Elegí la fecha.");
     const num = id => { const v = document.getElementById(id)?.value; return v === "" || v == null ? undefined : Math.max(0, Math.round(+v)) || 0; }, v = num("stshV"), r = num("stshR");
     STORY_SHARES = { ...STORY_SHARES, ["shm-" + Date.now().toString(36)]:{ b, ts:day + "T15:00:00.000Z", who, ...(isNum(v) ? { v } : {}), ...(isNum(r) ? { r } : {}), by:viewer.name, at:new Date().toISOString() } };
-    stShUI = { b:"", man:false }; render(); window.RMH?.flushNow?.(); toast("Listo: quedó en el Dashboard."); return; }
+    stShUI = { b:"", man:false }; render(); window.RMH?.flushNow?.(); const inf = stShInf(who); toast(`Listo: quedó en el Dashboard${inf ? ` y como historia subida de ${inf.name} en Influencers` : ""}.`); return; }
   const d = t.closest("[data-stshdel]"); if (d){ if (!stShCan() || !confirmTap(d, "stsh:" + d.dataset.stshdel, "¿Quitar? Tocá de nuevo")) return; const S = { ...STORY_SHARES }; delete S[d.dataset.stshdel]; STORY_SHARES = S; render(); window.RMH?.flushNow?.(); toast("Quitada del Dashboard."); }
 });
 document.addEventListener("change", e => { const i = e.target.closest?.("[data-stshnum]"); if (!i || !stShCan()) return; const [id, k] = i.dataset.stshnum.split("|"), x = STORY_SHARES?.[id]; if (!x) return;
@@ -21858,6 +21860,12 @@ function iflDeliv(x, month = MONTH){
       out.push({ key:"a:" + id, autoId:id, auto:true, src:"dm", kind:iflKindA(m.a), brand:o.brand || b, date:d, img, link, views:isNum(o.views) ? o.views : null, u:w, net:"IG", ver:o.ver || null, dm:true }); return; }
     const id = "s:" + (m.mid || m.ts), o = over.get(id) || {}; if (o.skip) return;
     out.push({ key:"a:" + id, autoId:id, auto:true, src:"story", kind:"historia", brand:o.brand || b, date:d, img, views:isNum(o.views) ? o.views : null, u:w, net:"IG", ver:o.ver || null }); }));
+  // v445 · Las historias suyas que nosotros volvimos a subir en nuestra historia (Dashboard, s:STORY_SHARES): cuentan como historia
+  // subida. Si es la misma mención que ya contó sola, no se cuenta dos veces: se le anota que la compartimos.
+  Object.entries(STORY_SHARES || {}).forEach(([sid, sh]) => { if (!sh || !sh.ts || pyDate(sh.ts).slice(0, 7) !== month || !users.has(iflU(sh.who)) || !okB(sh.b)) return;
+    const same = sh.mid && out.find(d => d.autoId === "s:" + sh.mid); if (same){ same.shared = true; if (!isNum(same.views) && isNum(sh.v)) same.views = sh.v; if (!same.img && sh.u) same.img = sh.u; return; }
+    const id = "sh:" + sid, o = over.get(id) || {}; if (o.skip) return;
+    out.push({ key:"a:" + id, autoId:id, auto:true, src:"share", shared:true, kind:"historia", brand:o.brand || sh.b, date:pyDate(sh.ts), img:sh.u || "", views:isNum(o.views) ? o.views : isNum(sh.v) ? sh.v : null, u:iflU(sh.who), net:"IG", ver:o.ver || null }); });
   manual.forEach(m => { const p = byCode.get(iflCode(m.link));
     out.push({ key:"m:" + m.id, mark:m, auto:false, kind:m.kind || "historia", slot:m.slot, brand:m.brand, link:m.link || "", date:m.date || "", net:m.net || iflNetOf(m.link) || "IG", views:isNum(m.views) ? m.views : null,
       likes:p ? p.likes : null, comments:p ? p.comments : null, img:p?.img || "", cap:p?.cap || "", u:p ? iflU(p.u) : (x.ig || [])[0], ver:m.ver || null, by:m.by, at:m.at }); });
@@ -21912,8 +21920,8 @@ function iflCell(x, s, past){
   return iflDCell(d, attr, `${n}: `);
 }
 function iflDCell(d, attr, pre = ""){
-  const t = `${pre}${IFL_KINDS[d.kind] || "Publicación"} con ${d.brand || "la marca"}${d.date ? " del " + dm(d.date) : ""}${d.ver ? " · verificado" : " · sin verificar"}${d.auto ? " · la encontró la app" : ""}`;
-  return `<button type="button" class="iflslot ${d.ver ? "ok" : "up"}" style="--c:${BRANDS[d.brand] || "var(--cyan)"}" ${attr} title="${esc(t)}" aria-label="${esc(t)}"><b>${esc(String(d.brand || "?")[0])}</b>${iflImg(iflSrc(d, 120))}<span class="iflst">${icon(d.ver ? "check-check" : "check")}</span>${d.auto ? `<span class="iflauto" aria-hidden="true">${d.src === "story" ? "@" : "IG"}</span>` : ""}</button>`;
+  const t = `${pre}${IFL_KINDS[d.kind] || "Publicación"} con ${d.brand || "la marca"}${d.date ? " del " + dm(d.date) : ""}${d.ver ? " · verificado" : " · sin verificar"}${d.shared ? " · la volvimos a subir en nuestra historia" : d.auto ? " · la encontró la app" : ""}`;
+  return `<button type="button" class="iflslot ${d.ver ? "ok" : "up"}" style="--c:${BRANDS[d.brand] || "var(--cyan)"}" ${attr} title="${esc(t)}" aria-label="${esc(t)}"><b>${esc(String(d.brand || "?")[0])}</b>${iflImg(iflSrc(d, 120))}<span class="iflst">${icon(d.ver ? "check-check" : "check")}</span>${d.auto ? `<span class="iflauto${d.shared ? " sh" : ""}" aria-hidden="true">${d.shared ? "↻" : d.src === "story" ? "@" : "IG"}</span>` : ""}</button>`;
 }
 const iflProf = (net, x) => { const l = x.links?.[net]; return safeUrl(l) ? `<a href="${esc(safeUrl(l))}" target="_blank" rel="noopener" class="iflnet">${esc(net === "TT" ? "TikTok" : net === "FB" ? "Facebook" : net)}</a>` : `<span class="iflnet">${esc(net === "TT" ? "TikTok" : net === "FB" ? "Facebook" : net)}</span>`; };
 // v442 · Todo lo que publicó en Instagram en el mes (lo trae la búsqueda aunque no nombre a la marca): si publicó para la marca y
