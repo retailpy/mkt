@@ -4440,7 +4440,7 @@ td svg{width:15px;height:15px;vertical-align:-2px;color:var(--cyan)}
 .rebrief{list-style:none;margin:0;padding:14px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px 28px;border-left:3px solid var(--rac);border-radius:0 12px 12px 0;background:rgba(56,189,248,.07)}
 .rebrief li{display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.45}.rebrief svg{width:16px;height:16px;color:var(--racs);flex:none;margin-top:3px}
 /* página 1: las 5 de mayor impacto, con la imagen grande */
-.retop5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}.re-p1 .retop5{grid-template-columns:repeat(5,minmax(0,250px));justify-content:center} /* v433: tamaño fijo, así entra todo en la pantalla */
+.retop5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}.re-p1 .retop5{grid-template-columns:repeat(5,minmax(0,250px));justify-content:center} /* v434: tamaño fijo, así entra todo en la pantalla */
 .rep5{display:flex;flex-direction:column;border:1px solid var(--line-2);border-radius:12px;overflow:hidden;text-decoration:none;color:inherit;min-width:0;transition:border-color .15s}
 .rep5:hover{border-color:var(--racln)}.rep5.nolink{cursor:default}
 .rep5img{position:relative;display:block}
@@ -6299,7 +6299,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v433";
+const APP_VER = "v434";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -21036,7 +21036,7 @@ function admSeed(){
 // impacto con su imagen grande y cada cuenta), 2) La gente y los medios (mensajes y comentarios con su texto completo y lo
 // que salió en los medios sobre los supermercados), 3) La competencia (la nacional, desde Instagram: s:META_REFS.local, y
 // los supermercados de referencia del mundo) y 4) Pauta e ideas (campañas, sugerencias que salen de los datos y aportes del
-// equipo; v412: sin Notas). v429: competencia con “Qué hizo cada cadena” y fotos que llenan el 4:5. v427: fotos de la competencia en 4:5, tamaño mediano. v425: historias subidas de cada marca. v420: fotos de las publicaciones en 4:5, enteras (sin recortar). La gente = Comentarios y mensajes (con etiqueta) · Quejas · En los medios. v418: competencia con Galería de fotos grandes, detalle y ranking con fotos más grandes. v416: tabla de competencia de a 5 (◀ ▶) y campañas más grandes (sugerencias en su parte). v412: campañas con la imagen de su anuncio, mejor clasificación (preguntas = consultas, “gracias” solo no es positivo), “Ver la publicación”, logros y competencia en tres partes. v411: pauta sin dólares, pedidos de trabajo (CV) fuera de positivos/quejas y competencia en detalle con ◀ ▶. v410: celeste (con color) y más despejado. v409: más limpio y sobrio, números en palabras y competencia por tasa de interacción. v405: sin comparar con la semana o el mes anterior (las flechitas ▲▼ se sacaron). v401: “Las 3 cuentas” va en su propia página. v405: competencia nacional e internacional en páginas separadas,
+// equipo; v412: sin Notas). v434: la gente en cuadrantes por áreas, temas en pocas palabras, alcance con historias, barras por día, sin Sugerencias. v429: competencia con “Qué hizo cada cadena” y fotos que llenan el 4:5. v427: fotos de la competencia en 4:5, tamaño mediano. v425: historias subidas de cada marca. v420: fotos de las publicaciones en 4:5, enteras (sin recortar). La gente = Comentarios y mensajes (con etiqueta) · Quejas · En los medios. v418: competencia con Galería de fotos grandes, detalle y ranking con fotos más grandes. v416: tabla de competencia de a 5 (◀ ▶) y campañas más grandes (sugerencias en su parte). v412: campañas con la imagen de su anuncio, mejor clasificación (preguntas = consultas, “gracias” solo no es positivo), “Ver la publicación”, logros y competencia en tres partes. v411: pauta sin dólares, pedidos de trabajo (CV) fuera de positivos/quejas y competencia en detalle con ◀ ▶. v410: celeste (con color) y más despejado. v409: más limpio y sobrio, números en palabras y competencia por tasa de interacción. v405: sin comparar con la semana o el mes anterior (las flechitas ▲▼ se sacaron). v401: “Las 3 cuentas” va en su propia página. v405: competencia nacional e internacional en páginas separadas,
 // sin nuestras marcas, y lo que más les funcionó es una publicación por cadena con “de qué se trata” (6 páginas en total). Todo sale de los datos reales de la app (Meta); no se inventa nada. Las notas quedan en s:RESUMEN_EJEC →
 // { "AAAA-MM-DD" (martes) | "m:AAAA-MM" (mes): { comp, ideas, by, at } }. Solo en pantalla (v401: sin Imprimir).
 let RESUMEN_EJEC = {};
@@ -21070,7 +21070,7 @@ function rePeriod(){
 const rePosts = w => [...new Set([w.from.slice(0, 7), w.to.slice(0, 7)])].flatMap(m => publicationsFor(m)).filter(p => RE_BRANDS.includes(p.brand) && reInWk(p.date, w));
 // v425: historias que subió una marca en el período (cantidad, vistas y alcance). Del mes en curso están una por una (st:);
 // de los meses cerrados queda el resumen de cada día (sum:AAAA-MM → d:{ "DD":[cantidad, vistas, alcance] }).
-function reStoryDays(b, w){ // v433: por día (también sirve para las barras y para ver qué se subió ese día)
+function reStoryDays(b, w){ // v434: por día (también sirve para las barras y para ver qué se subió ese día)
   const o = {}, S = META_STORIES || {}, add = (d, n, v, r, sh, ti, x) => { const k = o[d] || (o[d] = { n:0, v:0, r:0, sh:0, ti:0, L:[] }); k.n += n; k.v += v; k.r += r; k.sh += sh; k.ti += ti; if (x) k.L.push(x); };
   for (const m of new Set([w.from.slice(0, 7), w.to.slice(0, 7)])){
     const L = Object.entries(S).filter(([k, x]) => k.startsWith("st:") && x && x.b === b && x.ts && pyDate(x.ts).slice(0, 7) === m).map(([k, x]) => ({ ...x, id:k.slice(3) }));
@@ -21163,7 +21163,7 @@ function reVoice(w){
   return out.map(x => { const k = reKind(x.t), y = { ...x, ...k, suc:k.neg ? rclSuc(x.t) : "", mot:k.neg ? rclPick(RCL_MOTIVO, x.t) : "" }; const areas = reArea(y); return { ...y, areas, area:areas[0] }; })
     .sort((a, c) => String(c.ts).localeCompare(String(a.ts)));
 }
-// v433 · Áreas de lo que escribió la gente (aproximado, por palabras), para ver de qué se habló y en qué tono.
+// v434 · Áreas de lo que escribió la gente (aproximado, por palabras), para ver de qué se habló y en qué tono.
 // Formato de “escucha social”: cada área se ubica por cuánto se habló (% de los mensajes) y por su tono neto
 // (positivos − negativos, sobre el total del área): mucho y bien = fortaleza; mucho y mal = atender primero.
 const RE_AREAS = [["Precios y ofertas", /precio|cuanto (sale|cuesta|esta|vale)|oferta|promo|descuento|\bcar[oa]s?\b|barat|rebaja|cuotas|% ?off/],
@@ -21223,7 +21223,7 @@ function pResumen(){
   const byB = RE_BRANDS.map(b => { const L = posts.filter(p => p.brand === b), st = reStoryN(b, w);
     return { b, n:L.length, reach:reSum(L, "reach"), inter:reSum(L, "inter"), shares:reSum(L, "shares"),
       lc:L.reduce((n, p) => n + (p.likes || 0) + (p.comments || 0), 0), viral:[...L].sort((a, c) => (c.shares || 0) - (a.shares || 0) || c.inter - a.inter)[0], fol:reFol(b, w), stN:st.n, stV:st.v, stR:st.r, stSh:st.sh, stTi:st.ti, SD:reStoryDays(b, w), L }; });
-  // v433: lo de cada marca “todo junto”: publicaciones + historias (alcance, interacciones y compartidos).
+  // v434: lo de cada marca “todo junto”: publicaciones + historias (alcance, interacciones y compartidos).
   byB.forEach(x => { x.reachT = x.reach + x.stR; x.interT = x.inter + x.stTi; x.sharesT = x.shares + x.stSh; });
   // Historias: se miden desde que se activó la lectura (META_STORIES.since); antes de esa fecha no hay datos.
   const stT = byB.reduce((n, x) => n + x.stN, 0), stSince = META_STORIES?.since ? pyDate(META_STORIES.since) : "";
@@ -21267,7 +21267,7 @@ function pResumen(){
     <span class="rep5b"><span class="rep5m">${brandTag(p.brand)}<small>${esc(p.format)} · ${reDayTxt(p.date)}</small></span><b>${esc(p.title)}</b>
     <span class="rep5k"><strong>${dots(pubScore(p))}</strong><small>${isNum(p.reach) ? "personas alcanzadas" : "interacciones"}</small></span>
     <span class="rep5s">${isNum(p.reach) ? `${icon("heart")} ${dots(p.inter)} · ` : ""}${icon("share-2")} ${dots(p.shares || 0)} compartidos</span></span></a>`;
-  // v433 · Alcance por día (o por semana en el mes): publicaciones + historias, apilado. Tocar una barra muestra qué se publicó
+  // v434 · Alcance por día (o por semana en el mes): publicaciones + historias, apilado. Tocar una barra muestra qué se publicó
   // ese día (solo al tocar). Debajo, otra fila: cuántas publicaciones hubo por día, de cada tipo (feed, reel, historia).
   const bucks = () => P.kind === "mes" ? reWeeksOf(P) : Array.from({ length:7 }, (_, i) => { const d = addDays(P.from, i); return { from:d, to:d }; });
   const FMT_C = { feed:"#38bdf8", reel:"#fb923c", hist:"#a78bfa" };
@@ -21304,10 +21304,10 @@ function pResumen(){
     const sh = [...posts].sort((a, c) => (c.shares || 0) - (a.shares || 0))[0]; if (sh && sh.shares >= 500) W.push(["share-2", `“${esc(sh.title)}” (${esc(sh.brand)}) se compartió <b>${dots(sh.shares)} veces</b>.`]);
     if (voice.length >= 5 && !neg.length) W.push(["smile", `<b>Ninguna queja en redes</b> ${P.per} (${voice.length} mensajes y comentarios).`]);
     return W.slice(0, 4); })();
-  // v433: “en pocas palabras” en una franja (los números ya están arriba) y los logros al lado de los cuadros de temas.
+  // v434: “en pocas palabras” en una franja (los números ya están arriba) y los logros al lado de los cuadros de temas.
   const briefUl = brief.length ? `<ul class="rebrief strip" aria-label="En pocas palabras">${brief.map(([ic, t2]) => `<li>${icon(ic)}<span>${t2}</span></li>`).join("")}</ul>` : "";
   const winsBox = wins.length ? `<div class="rewins"><b class="rewinh">${icon("trophy")} ${P.kind === "mes" ? "Logros del mes" : "Logros de la semana"}</b><ul>${wins.map(([ic, t2]) => `<li>${icon(ic)}<span>${t2}</span></li>`).join("")}</ul></div>` : "";
-  // v433 · De qué se habló: nosotros (Superseis, Stock y Delimarket), la competencia nacional y la internacional, por temas.
+  // v434 · De qué se habló: nosotros (Superseis, Stock y Delimarket), la competencia nacional y la internacional, por temas.
   const talk = (ic, t2, sub, L, c) => { const T = reThemesOf(L).slice(0, 3), tot = L.length;
     const ex = T.length ? (() => { const re = (RE_THEMES.find(t => t[0] === T[0][0]) || [])[1], q = re ? [...L].filter(p => re.test(rclFold(p.cap || ""))).sort((a, c2) => (c2.eng ?? pubScore(c2)) - (a.eng ?? pubScore(a)))[0] : null;
       return q ? `<small class="retalkx">Ej.: <b>${esc(q.acc || q.brand)}</b> — “${esc(capTitle(q.cap))}”</small>` : ""; })() : "";
@@ -21322,8 +21322,8 @@ function pResumen(){
   </div>`;
   const pB = `<div class="repage re-pb"><section class="resec">${head("chart-column", "Las 3 cuentas", `Instagram ${P.per}: publicaciones e historias, todo junto.${stPart ? ` Las historias se miden desde el ${dm(stSince)}.` : ""}`)}
       <div class="rebrands">${byB.map(brandCard).join("")}</div></section></div>`;
-  // ----- página 3: la gente y los medios · v433: cuadrantes por áreas (antes, los mensajes uno por uno) -----
-  // v433 · La gente: sin los mensajes; cuadrantes por áreas (cuánto se habló y en qué tono), por súper o las 3 juntas.
+  // ----- página 3: la gente y los medios · v434: cuadrantes por áreas (antes, los mensajes uno por uno) -----
+  // v434 · La gente: sin los mensajes; cuadrantes por áreas (cuánto se habló y en qué tono), por súper o las 3 juntas.
   const VW = [["all", "layers", "Las 3 marcas", voice.length, "#38bdf8"], ...RE_BRANDS.map(b => [b, "", b, voice.filter(x => x.b === b).length, BRANDS[b]]), ["news", "newspaper", "En los medios", news.length, "#60a5fa"]];
   const vw = VW.some(([k]) => k === reUI.vw) ? reUI.vw : "all", per = 3;
   const pctS = (n, t) => t ? Math.round(n / t * 100) : 0;
@@ -21446,7 +21446,7 @@ function pResumen(){
     <div class="recampb">${brandTag(c.brand)}<b>${esc(c.name)}</b><small>${c.obj ? `Objetivo: ${esc(c.obj)}` : ""}${c.start ? `${c.obj ? " · " : ""}del ${dm(c.start)} ${c.end ? `al ${dm(c.end)}` : "sin fin"}` : ""}</small>
     ${isNum(c.reach) || res ? `<div class="recampn">${isNum(c.reach) ? `<span><strong>${dots(c.reach)}</strong><small>personas alcanzadas</small></span>` : ""}${res ? `<span><strong>${dots(c.results)}</strong><small>${esc(c.unit || "resultados")}</small></span>` : ""}</div>${c.month ? `<small class="recampm">Datos de ${monthName(c.month)}</small>` : ""}` : ""}</div></article>`; };
   const KPER = 4, kpages = Math.max(1, Math.ceil(camps.length / KPER)), kp = Math.min(Math.max(0, reUI.kp || 0), kpages - 1);
-  // v433: solo las campañas (sin Sugerencias).
+  // v434: solo las campañas (sin Sugerencias).
   const p4 = `<div class="repage re-p4"><section class="resec">${head("megaphone", "Campañas pagas activas", `Meta Ads ${P.per}, con la imagen de su anuncio.`)}${camps.length ? `<div class="recampg">${camps.slice(kp * KPER, kp * KPER + KPER).map(campCard).join("")}</div>${camps.length > KPER ? `<div class="repager"><button type="button" class="btn" data-rekp="${kp - 1}" ${kp === 0 ? "disabled" : ""}>${icon("chevron-left")} Anteriores</button><span>${kp * KPER + 1}–${Math.min(camps.length, kp * KPER + KPER)} de ${camps.length} campañas</span><button type="button" class="btn" data-rekp="${kp + 1}" ${kp >= kpages - 1 ? "disabled" : ""}>Siguientes ${icon("chevron-right")}</button></div>` : ""}` : empty(`Sin campañas pagas ${P.per}.`, "megaphone")}</section></div>`;
   return `<div class="reexec" data-repage="${pg}">${header}${[p1, pB, p2, p3, pInt, p4][pg]}
   <p class="note refoot">${icon("info")} Fuentes: Meta (Instagram y Facebook) · actualizado ${metaWhen(META_POSTS.updated)} · mensajes, comentarios, noticias y competencia que guarda la app. El alcance de cada publicación sigue creciendo unos días después de publicada. Página ${pg + 1} de ${RE_PAGES.length}: usá las flechas ← → del teclado.</p>
