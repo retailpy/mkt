@@ -198,6 +198,13 @@ where key = 's:META_IG_ACT' and jsonb_typeof(v) = 'object';
 ---
 
 ## 5. Otras cosas recientes (v137–v160)
+- **v434 · El evento va adentro de «Nuevo pedido» (27/11/2026):** pedido de Admin total («si no, se confunde»). Ya no hay botón aparte
+  «Nuevo evento» ni el cuadro «Eventos cargados»: en **Solicitud de pedidos → Nuevo pedido** arriba se elige **«Un pedido»** o **«Un
+  evento (con la lista de lo que hace falta)»** (`pcKindPick`, `data-pckind`; el nombre y la fecha pasan de uno al otro). El evento sigue
+  guardándose en `s:ADM_EVENTS` (`src:"solped"`), le avisa a Marlene y queda para aprobar (v432). Los eventos salen **en la misma lista**
+  que los pedidos, con la etiqueta «Evento» (`pcEvRows`, `pcEvRow`: Para aprobar → Nuevos, Aprobado, No se hace → No ejecutables; por
+  persona y en el calendario); tocarlos abre el evento y «Volver» trae de vuelta (`admUI.evBack`). Al elegir una persona del panel se
+  ven **todos** sus pedidos (pestaña Todos; antes quedaba en Nuevos o Mis pedidos y parecía que se borraba lo demás); «Ver todas» vuelve.
 - **v432 · Nuevo evento desde la Solicitud de pedidos (27/11/2026):** pedido de Admin total. En **Solicitud de pedidos**, al lado de
   «Nuevo pedido», está **«Nuevo evento»** (para quien edita Administración: Admin total, Admin —Patricia, Emanuel— y Administración). Abre
   ahí mismo el formulario de eventos con el catálogo Sí / No (`admEvFormPage`, `admUI.evForm.from = "solped"`); el evento queda en
