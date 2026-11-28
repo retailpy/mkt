@@ -1,4 +1,4 @@
--- v453 · Encuestas y Sugerencias (s:SURVEYS, s:SUGGESTIONS): solo Fede (antes, cualquier Admin total). s:DRAFTS sigue para Admin total.
+-- v454 · Encuestas y Sugerencias (s:SURVEYS, s:SUGGESTIONS): solo Fede (antes, cualquier Admin total). s:DRAFTS sigue para Admin total.
 -- Parte de la función que estaba en la base (28/11/2026); solo cambia esa línea.
 CREATE OR REPLACE FUNCTION private.can_access_state(p_key text, p_data jsonb)
  RETURNS boolean

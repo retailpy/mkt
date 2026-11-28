@@ -130,7 +130,7 @@ const RMH = (() => {
   // que cada uno cambie solo los suyos.)
   const ADMIN_WRITE = new Set(["s:TV_SCREENS", "s:CRONOGRAMA", "s:APP_VIDEO", "s:SEG_ACCESS"]); // v326: el Cronograma de Acciones lo mira Admin y lo cambia Admin total · v374: el video de la app · v375: quién ve el Panel de Seguimiento
   const isAT = () => member?.role === "Admin total";
-  // v453 · Encuestas y Sugerencias: solo Fede (ni los otros Admin total las bajan ni las guardan; también en la base).
+  // v454 · Encuestas y Sugerencias: solo Fede (ni los otros Admin total las bajan ni las guardan; también en la base).
   const FEDE_ONLY = new Set(["s:SUGGESTIONS", "s:SURVEYS"]), isFede = () => isAT() && me === "fede";
   // v375: el Panel de Seguimiento (s:SEGUIMIENTO) lo bajan y lo guardan solo las personas de s:SEG_ACCESS y Admin total.
   const segIn = () => !!member && !["Revisor", "Comercial", "TV"].includes(member.role) && (isAT() || (Array.isArray(SEG_ACCESS) ? SEG_ACCESS : []).includes(me));
@@ -661,7 +661,7 @@ const RMH = (() => {
     const { data: m, error } = await sb.from("members").select("*").eq("user_id", user.id).maybeSingle();
     if (error || !m || !m.active){ await sb.auth.signOut({ scope:"local" }); showLogin(); msg(error ? "No se pudo conectar. Probá de nuevo." : "Tu usuario no tiene acceso a la app. Pedíselo a un Admin total.", true); return; }
     member = m; me = m.person_id;
-    if (m.role !== "Admin total" || m.person_id !== "fede"){ SUGGESTIONS = []; SURVEYS = []; } // v453: no se muestran ni se guardan: son solo de Fede
+    if (m.role !== "Admin total" || m.person_id !== "fede"){ SUGGESTIONS = []; SURVEYS = []; } // v454: no se muestran ni se guardan: son solo de Fede
     try { await loadAll(); }
     catch (e){ console.error(e); showLogin(); msg("No se pudieron cargar los datos. Revisá la conexión y probá de nuevo.", true); return; }
     const pp = PEOPLE.find(x => x.id === me);
