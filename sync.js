@@ -130,6 +130,8 @@ const RMH = (() => {
   // que cada uno cambie solo los suyos.)
   const ADMIN_WRITE = new Set(["s:TV_SCREENS", "s:CRONOGRAMA", "s:APP_VIDEO", "s:SEG_ACCESS"]); // v326: el Cronograma de Acciones lo mira Admin y lo cambia Admin total · v374: el video de la app · v375: quién ve el Panel de Seguimiento
   const isAT = () => member?.role === "Admin total";
+  // v451 · Encuestas y Sugerencias: solo Fede (ni los otros Admin total las bajan ni las guardan; también en la base).
+  const FEDE_ONLY = new Set(["s:SUGGESTIONS", "s:SURVEYS"]), isFede = () => isAT() && me === "fede";
   // v375: el Panel de Seguimiento (s:SEGUIMIENTO) lo bajan y lo guardan solo las personas de s:SEG_ACCESS y Admin total.
   const segIn = () => !!member && !["Revisor", "Comercial", "TV"].includes(member.role) && (isAT() || (Array.isArray(SEG_ACCESS) ? SEG_ACCESS : []).includes(me));
 
@@ -137,7 +139,7 @@ const RMH = (() => {
   const base = new Map(); // clave → { v: versión en el servidor, json: lo último que coincidió con el servidor }
 
   function localKeys(){
-    return [...Object.keys(SHARED).map(k => "s:" + k).filter(k => (isAT() || !ADMIN_ONLY.has(k)) && (isCMish() || !CM_ONLY.has(k)) && (isATCM() || !ATCM_ONLY.has(k)) && (isAdm() || !ADM_ONLY.has(k)) && (isAdmMkt() || !ADMMKT_ONLY.has(k)) && (k !== "s:SEGUIMIENTO" || segIn())), "notes:" + me, "prompts:" + me, "comchk:" + me,
+    return [...Object.keys(SHARED).map(k => "s:" + k).filter(k => (isAT() || !ADMIN_ONLY.has(k)) && (isFede() || !FEDE_ONLY.has(k)) && (isCMish() || !CM_ONLY.has(k)) && (isATCM() || !ATCM_ONLY.has(k)) && (isAdm() || !ADM_ONLY.has(k)) && (isAdmMkt() || !ADMMKT_ONLY.has(k)) && (k !== "s:SEGUIMIENTO" || segIn())), "notes:" + me, "prompts:" + me, "comchk:" + me,
       ...THREADS.filter(t => t.a === me || t.b === me).map(t => "thread:" + t.id),
       ...CHAT_GROUPS.filter(g => chatMember(g, { id:me, role:member?.role })).map(g => "chat:" + g.id)]; // siempre con quien inició sesión
   }
@@ -225,7 +227,7 @@ const RMH = (() => {
   const COMERCIAL_SAVE = new Set(["s:PEDIDOS_COM", "s:PRESENCE", "s:PEOPLE"]);
   // TV (v266, los televisores de la oficina) solo guarda su presencia y su perfil: la base tampoco le deja otra cosa.
   const TV_SAVE = new Set(["s:PRESENCE", "s:PEOPLE"]);
-  const noSave = k => READONLY.has(k) || (ADMIN_WRITE.has(k) && !isAT()) || (member?.role === "Revisor" && !REVISOR_SAVE.has(k)) || (member?.role === "Comercial" && !COMERCIAL_SAVE.has(k)) || (member?.role === "TV" && !TV_SAVE.has(k));
+  const noSave = k => READONLY.has(k) || (ADMIN_WRITE.has(k) && !isAT()) || (FEDE_ONLY.has(k) && !isFede()) || (member?.role === "Revisor" && !REVISOR_SAVE.has(k)) || (member?.role === "Comercial" && !COMERCIAL_SAVE.has(k)) || (member?.role === "TV" && !TV_SAVE.has(k));
   function dirtyKeys(){ return localKeys().filter(k => { if (noSave(k) || getLocal(k) === undefined) return false; const b = base.get(k); return !b || b.v === 0 || C(enc(getLocal(k))) !== b.json; }); }
   async function saveKey(key){
     if (noSave(key)) return;
@@ -659,7 +661,7 @@ const RMH = (() => {
     const { data: m, error } = await sb.from("members").select("*").eq("user_id", user.id).maybeSingle();
     if (error || !m || !m.active){ await sb.auth.signOut({ scope:"local" }); showLogin(); msg(error ? "No se pudo conectar. Probá de nuevo." : "Tu usuario no tiene acceso a la app. Pedíselo a un Admin total.", true); return; }
     member = m; me = m.person_id;
-    if (m.role !== "Admin total"){ SUGGESTIONS = []; SURVEYS = []; } // no se muestran ni se guardan: son solo de Admin total
+    if (m.role !== "Admin total" || m.person_id !== "fede"){ SUGGESTIONS = []; SURVEYS = []; } // v451: no se muestran ni se guardan: son solo de Fede
     try { await loadAll(); }
     catch (e){ console.error(e); showLogin(); msg("No se pudieron cargar los datos. Revisá la conexión y probá de nuevo.", true); return; }
     const pp = PEOPLE.find(x => x.id === me);
