@@ -1604,7 +1604,9 @@ body.stbox-on{overflow:hidden}
 .stbox-pic{position:relative;flex:0 0 auto;width:min(340px,42vh)}.stbox-pic .stimg{border-radius:14px}.stbox-pic .stimg>i svg{width:40px;height:40px}
 .stbox-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:38px;height:38px;border-radius:999px;border:0;background:rgba(0,0,0,.6);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}.stbox-nav.prev{left:-14px}.stbox-nav.next{right:-14px}.stbox-nav:disabled{opacity:.25;cursor:default}
 .stbox-x{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:999px;border:1px solid var(--line-2);background:rgba(255,255,255,.06);color:inherit;display:flex;align-items:center;justify-content:center;cursor:pointer}
-.strep{display:flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:#f472b6;line-height:1.3;margin-top:2px}.strep svg{width:12px;height:12px;flex:none}b.strep{display:inline-flex;font-size:13px}
+.strep{display:flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:#f472b6;line-height:1.3;margin-top:2px}.strep svg{width:12px;height:12px;flex:none}b.strep{display:inline-flex;font-size:13px}b.strep.inf{color:#f59e0b}
+.strepov{position:absolute;left:5px;right:5px;bottom:6px;display:flex;align-items:center;justify-content:center;gap:3px;padding:3px 6px;border-radius:10px;background:rgba(2,6,23,.8);color:#fff;font-size:10.5px;font-weight:800;line-height:1.2;text-align:center}
+.strepov b{min-width:0;word-break:break-all;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.stimg.hasrep .stvid{top:6px;bottom:auto}.strepov svg{width:11px;height:11px;flex:none}.strepov.inf{background:#f59e0b;color:#1c1300}.stmini .strepov{display:none}
 .stbox-d{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px}.stbox-d .lph{display:flex;gap:8px;align-items:center}.stbox-when{margin:0;line-height:1.5}
 .stbox-st{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.stbox-st div{border:1px solid var(--line-2);border-radius:12px;padding:8px 10px;display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:center}.stbox-st svg{width:16px;height:16px;grid-row:span 2;opacity:.8}.stbox-st b{font-size:18px}.stbox-st span{font-size:12px;color:var(--muted)}
 .stbox-d .btn{align-self:flex-start}
@@ -5489,6 +5491,7 @@ html.light .nav-group.pcgrp > .pcone.on{color:#78350f}
 .iflgi > img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}.iflgph{position:absolute;inset:0;display:grid;place-items:center;color:var(--c)}.iflgph svg{width:22px;height:22px;opacity:.7}
 .iflgpic{position:absolute;left:50%;top:50%;width:44%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;object-fit:cover;border:2px solid var(--c);opacity:.9}
 .iflgt{position:absolute;left:5px;top:5px;font-style:normal;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:999px;background:rgba(2,6,23,.72);color:#fff}
+.iflgrep{position:absolute;left:4px;right:4px;bottom:4px;display:flex;align-items:center;justify-content:center;gap:3px;padding:2px 4px;border-radius:999px;background:#f59e0b;color:#1c1300;font-size:9.5px;font-weight:800;white-space:nowrap;overflow:hidden}.iflgrep svg{width:10px;height:10px;flex:none}
 .iflgv{position:absolute;right:5px;top:5px;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:#16a34a;color:#fff}.iflgv svg{width:13px;height:13px}
 .iflg:hover .iflgi{border-color:var(--muted)}.iflgm{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.iflgm b{color:var(--ink)}
 .iflgn{font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:4px;min-height:16px}.iflgn svg{width:12px;height:12px;color:var(--muted)}.iflgn > span{color:var(--muted);font-weight:500}
@@ -6373,7 +6376,7 @@ function calMoveTo(kind, id, to){
 }
 
 // Versión de la app (la misma que la caché de sw.js): se ve en Configuración para comparar entre dispositivos.
-const APP_VER = "v450";
+const APP_VER = "v451";
 // v229: cuando hay una versión nueva, la app se actualiza sola si no se está escribiendo nada (al ir a otra app o volver);
 // si se está escribiendo, sale el botón “Actualizar” y se actualiza apenas se deja la app de lado.
 const safeToReload = () => !jobUI?.form && !postUI?.form && !pcUI?.form && !document.querySelector("input:focus, textarea:focus, [contenteditable=true]:focus, .imodal, #fixpop, .drawer")
@@ -7309,14 +7312,14 @@ function storyData(b, m = MONTH){
 const stNum = v => isNum(v) ? dots(v) : "—";
 // La imagen: la copia de Drive si ya está (no vence), si no la de Instagram (sirve los primeros días).
 const stSrc = (x, w = 480) => STORY_IMGS?.[x?.id] ? driveSrc(STORY_IMGS[x.id], w) : x?.img || "";
-const stImg = (x, badge, w) => { const src = stSrc(x, w);
-  return `<span class="stimg"><i>${icon(x.ty === "Video" ? "clapperboard" : "image")}</i>${src ? `<img src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="${STORY_IMGS?.[x.id] ? "imgRetry(this)" : "this.remove()"}">` : ""}${badge ? `<em>${badge}</em>` : ""}${x.ty === "Video" ? `<span class="stvid">${icon("play")}</span>` : ""}</span>`; };
+const stImg = (x, badge, w, rep) => { const src = stSrc(x, w), pill = rep ? stRepPill(x) : "";
+  return `<span class="stimg${pill ? " hasrep" : ""}"><i>${icon(x.ty === "Video" ? "clapperboard" : "image")}</i>${src ? `<img src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="${STORY_IMGS?.[x.id] ? "imgRetry(this)" : "this.remove()"}">` : ""}${badge ? `<em>${badge}</em>` : ""}${pill}${x.ty === "Video" ? `<span class="stvid">${icon("play")}</span>` : ""}</span>`; };
 // Las listas que se ven en pantalla, para abrir una historia en grande y pasar a la anterior o la siguiente.
 const ST_LISTS = {};
 const stKey = (key, list) => { ST_LISTS[key] = list; return key; };
 // Top del mes: ordenadas por alcance (el número grande), con las vistas abajo.
-const storyCard = (x, i, key) => `<button type="button" class="stcard" data-stopen="${esc(key)}|${i}" title="${esc(`Ver en grande · ${dm(pyDate(x.ts))} ${stTime(x.ts)} h · alcance ${stNum(x.r)} · ${stNum(x.v)} vistas`)}">${stImg(x, i < 3 ? `${i + 1}°` : "")}
-  <span class="stm"><b>${icon("users")} ${stNum(stReach(x))}</b><small>alcance · ${stNum(x.v)} vistas<br>${dm(pyDate(x.ts))} · ${stTime(x.ts)} h</small>${stRepHTML(x)}</span></button>`;
+const storyCard = (x, i, key) => `<button type="button" class="stcard" data-stopen="${esc(key)}|${i}" title="${esc(`Ver en grande · ${dm(pyDate(x.ts))} ${stTime(x.ts)} h · alcance ${stNum(x.r)} · ${stNum(x.v)} vistas`)}">${stImg(x, i < 3 ? `${i + 1}°` : "", undefined, true)}
+  <span class="stm"><b>${icon("users")} ${stNum(stReach(x))}</b><small>alcance · ${stNum(x.v)} vistas<br>${dm(pyDate(x.ts))} · ${stTime(x.ts)} h</small></span></button>`;
 const storyKpis = s => `<div class="stkpis"><div><b>${stNum(s.n)}</b><span>historias</span></div><div><b>${stNum(s.v)}</b><span>vistas</span></div><div><b>${stNum(s.r)}</b><span>alcance (suma)</span></div><div><b>${s.n ? stNum(Math.round(s.v / s.n)) : "—"}</b><span>vistas por historia</span></div></div>`;
 const storyNote = () => `<p class="note stnote">${icon("info")} Aparte de las publicaciones: las historias duran 24 horas y Meta da sus números solo mientras están publicadas, por eso se miden varias veces por día. Tocá una historia para verla en grande.${META_STORIES?.since ? ` Medidas desde el ${dm(pyDate(META_STORIES.since))}.` : ""}</p>`;
 // El usuario de Instagram de la marca (para el link): de las publicaciones o de los seguidores.
@@ -7345,10 +7348,12 @@ const stRepostOf = x => { if (!x?.b || !x.ts) return null; const t = Date.parse(
 const stRepLabel = x => { const r = stRepostOf(x); if (!r) return "";
   const u = String(r.who || "").replace(/^@/, "").toLowerCase(), inf = u && typeof iflList === "function" ? iflList(pyDate(x.ts).slice(0, 7)).find(y => (y.ig || []).map(iflU).includes(u)) : null;
   return u ? `Reposteada de @${u}${inf ? ` · ${inf.name} (influencer)` : ""}` : "Reposteada de una mención"; };
-const stRepHTML = x => { const l = stRepLabel(x); return l ? `<small class="strep">${icon("repeat")} ${esc(l)}</small>` : ""; };
+// v451: sobre la parte de abajo de la imagen (la tarjeta no cambia de alto); si es influencer, en ámbar con estrella (como “Historias que volvimos a subir”).
+const stRepPill = x => { const r = stRepostOf(x); if (!r) return ""; const u = String(r.who || "").replace(/^@/, "").toLowerCase(), inf = u ? stShInf(u) : null;
+  return `<span class="strepov${inf ? " inf" : ""}" title="${esc(stRepLabel(x))}">${icon(inf ? "star" : "repeat")}<b>${esc(u ? "@" + u : "Reposteada")}</b></span>`; };
 const liveLeft = ts => { const h = Math.round(24 - (Date.now() - new Date(ts)) / 36e5); return h >= 1 ? `quedan ${h} h` : "se va en menos de 1 h"; };
-const liveCard = (x, i, key) => `<button type="button" class="stcard" data-stopen="${esc(key)}|${i}" title="${esc(`Ver en grande · subida ${dm(pyDate(x.ts))} ${stTime(x.ts)} h · ${stNum(stViews(x))} vistas${isNum(x.r) ? ` · alcance ${dots(x.r)}` : ""}`)}">${stImg(x, String(i + 1))}
-  <span class="stm"><b>${icon("eye")} ${stNum(stViews(x))}</b><small>Subida ${stTime(x.ts)} h · ${liveLeft(x.ts)}${isNum(x.r) ? `<br>alcance ${dots(x.r)}` : ""}</small>${stRepHTML(x)}</span></button>`;
+const liveCard = (x, i, key) => `<button type="button" class="stcard" data-stopen="${esc(key)}|${i}" title="${esc(`Ver en grande · subida ${dm(pyDate(x.ts))} ${stTime(x.ts)} h · ${stNum(stViews(x))} vistas${isNum(x.r) ? ` · alcance ${dots(x.r)}` : ""}`)}">${stImg(x, String(i + 1), undefined, true)}
+  <span class="stm"><b>${icon("eye")} ${stNum(stViews(x))}</b><small>Subida ${stTime(x.ts)} h · ${liveLeft(x.ts)}${isNum(x.r) ? `<br>alcance ${dots(x.r)}` : ""}</small></span></button>`;
 function liveStoriesPanel(bs){
   if (MONTH !== CURRENT_MONTH) return ""; // es lo de este momento: en otro mes no va
   const rows = bs.map(b => ({ b, list:liveStories(b) })), n = rows.reduce((t, r) => t + r.list.length, 0), adm = viewer.role === "Admin total";
@@ -7447,7 +7452,7 @@ function stBoxDraw(){
     <button type="button" class="stbox-x" data-stclose aria-label="Cerrar">${icon("x")}</button>
     <div class="stbox-pic">${n > 1 ? `<button type="button" class="stbox-nav prev" data-stnav="-1" aria-label="Anterior"${i ? "" : " disabled"}>${icon("chevron-left")}</button>` : ""}${stImg(x, "", 1080)}${n > 1 ? `<button type="button" class="stbox-nav next" data-stnav="1" aria-label="Siguiente"${i < n - 1 ? "" : " disabled"}>${icon("chevron-right")}</button>` : ""}</div>
     <div class="stbox-d"><div class="lph">${brandTag(x.b)}${n > 1 ? `<span class="note">${i + 1} de ${n}</span>` : ""}</div>
-      <p class="stbox-when"><b>Subida el ${dm(pyDate(x.ts))} a las ${stTime(x.ts)} h</b>${x.ty === "Video" ? " · video" : ""}${stRepLabel(x) ? `<br><b class="strep">${icon("repeat")} ${esc(stRepLabel(x))}</b>` : ""}<br><span class="note">${live ? `Publicada ahora · ${liveLeft(x.ts)}` : "Ya no está publicada (las historias duran 24 h)"}</span></p>
+      <p class="stbox-when"><b>Subida el ${dm(pyDate(x.ts))} a las ${stTime(x.ts)} h</b>${x.ty === "Video" ? " · video" : ""}${stRepLabel(x) ? `<br><b class="strep${/\(influencer\)/.test(stRepLabel(x)) ? " inf" : ""}">${icon(/\(influencer\)/.test(stRepLabel(x)) ? "star" : "repeat")} ${esc(stRepLabel(x))}</b>` : ""}<br><span class="note">${live ? `Publicada ahora · ${liveLeft(x.ts)}` : "Ya no está publicada (las historias duran 24 h)"}</span></p>
       <div class="stbox-st">${st.map(([ic, l, v]) => `<div>${icon(ic)}<b>${dots(v)}</b><span>${l}</span></div>`).join("") || `<p class="note">Sin números de Meta todavía.</p>`}</div>
       ${x.at ? `<p class="note">Números de la lectura del ${metaWhen(x.at)}${isNum(x.h) ? ` (tenía ${Math.round(x.h)} h publicada)` : ""}.</p>` : ""}
       ${link ? `<a class="btn" href="${esc(link)}" target="_blank" rel="noopener">${icon("instagram")} ${live ? "Ver la historia en Instagram" : `Ver el perfil de @${esc(u)} en Instagram`}</a>${live ? "" : `<p class="note">Si la guardaron en destacadas, está en el perfil.</p>`}` : ""}
@@ -22010,11 +22015,12 @@ function iflDeliv(x, month = MONTH){
       out.push({ key:"a:" + id, autoId:id, auto:true, src:"dm", kind:iflKindA(m.a), brand:o.brand || b, date:d, img, link, views:isNum(o.views) ? o.views : null, u:w, net:"IG", ver:o.ver || null, dm:true }); return; }
     const id = "s:" + (m.mid || m.ts), o = over.get(id) || {}; if (o.skip) return;
     const rs = rpTs ? iflRepStory(b, rpTs) : null, rImg = rs ? (STORY_IMGS?.[rs.id] ? driveSrc(STORY_IMGS[rs.id], 480) : rs.img || "") : "";
-    out.push({ key:"a:" + id, autoId:id, auto:true, src:"story", kind:"historia", brand:o.brand || b, date:d, img:img || rImg, rp:!!rp, rep:rs, views:isNum(o.views) ? o.views : null, u:w, net:"IG", ver:o.ver || null }); }));
+    out.push({ key:"a:" + id, autoId:id, auto:true, src:"story", kind:"historia", brand:o.brand || b, date:d, img:rImg || img, rp:!!rp, rep:rs, views:isNum(o.views) ? o.views : null, u:w, net:"IG", ver:o.ver || null }); }));
   // v445 · Las historias suyas que nosotros volvimos a subir en nuestra historia (Dashboard, s:STORY_SHARES): cuentan como historia
   // subida. Si es la misma mención que ya contó sola, no se cuenta dos veces: se le anota que la compartimos.
   Object.entries(STORY_SHARES || {}).forEach(([sid, sh]) => { if (!sh || !sh.ts || pyDate(sh.ts).slice(0, 7) !== month || !users.has(iflU(sh.who)) || !okB(sh.b)) return;
-    const same = sh.mid && out.find(d => d.autoId === "s:" + sh.mid); if (same){ same.shared = true; if (!isNum(same.views) && isNum(sh.v)) same.views = sh.v; if (!same.img && sh.u) same.img = sh.u; return; }
+    // v451: también si es el reposteo que la app ya vio sola (mismo momento, hasta 1 h): no se cuenta dos veces.
+    const same = (sh.mid && out.find(d => d.autoId === "s:" + sh.mid)) || out.find(d => d.src === "story" && d.rp && Math.abs(Date.parse(d.rep?.ts || d.date) - Date.parse(sh.ts)) < 36e5); if (same){ same.shared = true; if (!isNum(same.views) && isNum(sh.v)) same.views = sh.v; if (!same.img && sh.u) same.img = sh.u; return; }
     const id = "sh:" + sid, o = over.get(id) || {}; if (o.skip) return;
     out.push({ key:"a:" + id, autoId:id, auto:true, src:"share", shared:true, kind:"historia", brand:o.brand || sh.b, date:pyDate(sh.ts), img:sh.u || "", views:isNum(o.views) ? o.views : isNum(sh.v) ? sh.v : null, u:iflU(sh.who), net:"IG", ver:o.ver || null }); });
   manual.forEach(m => { const p = byCode.get(iflCode(m.link));
@@ -22071,7 +22077,7 @@ function iflCell(x, s, past){
   return iflDCell(d, attr, `${n}: `);
 }
 function iflDCell(d, attr, pre = ""){
-  const t = `${pre}${IFL_KINDS[d.kind] || "Publicación"} con ${d.brand || "la marca"}${d.date ? " del " + dm(d.date) : ""}${d.ver ? " · verificado" : " · sin verificar"}${d.shared ? " · la volvimos a subir en nuestra historia" : d.auto ? " · la encontró la app" : ""}`;
+  const t = `${pre}${IFL_KINDS[d.kind] || "Publicación"} con ${d.brand || "la marca"}${d.date ? " del " + dm(d.date) : ""}${d.ver ? " · verificado" : " · sin verificar"}${d.shared || d.rep || d.rp ? " · la volvimos a subir en nuestra historia" : d.auto ? " · la encontró la app" : ""}`;
   return `<button type="button" class="iflslot ${d.ver ? "ok" : "up"}" style="--c:${BRANDS[d.brand] || "var(--cyan)"}" ${attr} title="${esc(t)}" aria-label="${esc(t)}"><b>${esc(String(d.brand || "?")[0])}</b>${iflImg(iflSrc(d, 120))}<span class="iflst">${icon(d.ver ? "check-check" : "check")}</span>${d.auto ? `<span class="iflauto${d.shared ? " sh" : ""}" aria-hidden="true">${d.shared ? "↻" : d.src === "story" ? "@" : "IG"}</span>` : ""}</button>`;
 }
 const iflProf = (net, x) => { const l = x.links?.[net]; return safeUrl(l) ? `<a href="${esc(safeUrl(l))}" target="_blank" rel="noopener" class="iflnet">${esc(net === "TT" ? "TikTok" : net === "FB" ? "Facebook" : net)}</a>` : `<span class="iflnet">${esc(net === "TT" ? "TikTok" : net === "FB" ? "Facebook" : net)}</span>`; };
@@ -22101,7 +22107,7 @@ function iflCard(r, past, i){
   // v435 · Impacto del mes (aproximado) y las publicaciones en grande, en 4:5 vertical.
   const imp = r.all.length ? `<div class="iflimp" aria-label="Impacto del mes"><div><b>${r.reach ? "≈ " + dots(r.reach) : "—"}</b><span>alcance aprox.</span></div><div><b>${eng ? dots(eng) : "—"}</b><span>me gusta y comentarios</span></div><div><b>${isNum(r.rate) ? rePct(r.rate) : "—"}</b><span>interacción${r.grade ? ` · <em class="iflgr ${r.grade[1]}">${r.grade[0]}</em>` : ""}</span></div></div>` : "";
   const gal = r.all.length ? `<div class="iflgal">${r.all.map(d => { const rc = iflReach(d, r.fol), e = (d.likes || 0) + (d.comments || 0);
-      return `<button type="button" class="iflg" data-iflkey="${esc(x.id)}|${esc(d.key)}" title="Ver la ficha"><span class="iflgi" style="--c:${BRANDS[d.brand] || "var(--cyan)"}"><span class="iflgph">${icon(d.kind === "historia" ? "smartphone" : d.kind === "reel" ? "clapperboard" : "image")}</span>${!iflSrc(d) && safeUrl(iflAcc(d.u)?.pic) ? `<img class="iflgpic" src="${esc(iflAcc(d.u).pic)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}${iflImg(iflSrc(d, 240))}<em class="iflgt">${esc(IFL_KINDS[d.kind] || "")}</em>${d.ver ? `<span class="iflgv" title="Verificada">${icon("check")}</span>` : ""}</span>
+      return `<button type="button" class="iflg" data-iflkey="${esc(x.id)}|${esc(d.key)}" title="Ver la ficha"><span class="iflgi" style="--c:${BRANDS[d.brand] || "var(--cyan)"}"><span class="iflgph">${icon(d.kind === "historia" ? "smartphone" : d.kind === "reel" ? "clapperboard" : "image")}</span>${!iflSrc(d) && safeUrl(iflAcc(d.u)?.pic) ? `<img class="iflgpic" src="${esc(iflAcc(d.u).pic)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}${iflImg(iflSrc(d, 240))}<em class="iflgt">${esc(IFL_KINDS[d.kind] || "")}</em>${d.ver ? `<span class="iflgv" title="Verificada">${icon("check")}</span>` : ""}${d.rep || d.rp || d.shared ? `<span class="iflgrep" title="La reposteó ${esc(d.brand || "la marca")} en su historia${d.rep?.ts ? ` (${dm(pyDate(d.rep.ts))} ${stTime(d.rep.ts)} h)` : ""}">${icon("repeat")} ${esc(d.brand || "Marca")}</span>` : ""}</span>
         <span class="iflgm"><b>${d.date ? dm(d.date) : ""}</b></span><span class="iflgn">${isNum(d.likes) || isNum(d.comments) ? `${icon("heart")} ${dots(e)}` : ""}${rc ? ` <span>≈ ${dots(rc)}</span>` : ""}</span></button>`; }).join("")}</div>` : "";
   return `<article class="panel iflcard${r.tot && r.up >= r.tot ? " full" : ""}" style="--i:${i}">
     <header class="iflh"><span class="iflav">${pic ? `<img src="${esc(pic)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}<i>${esc(ini || "?")}</i></span>
@@ -22168,8 +22174,8 @@ function iflModal(){
   if (isNum(d.views)) nums.push(`<div><b>${dots(d.views)}</b><span>vistas</span></div>`);
   if (isNum(rate)) nums.push(`<div><b>${rePct(rate)}</b><span>interacción</span></div>`);
   { const rc = iflReach(d, fol); if (rc && !(isNum(d.views) && d.views > 0)) nums.push(`<div><b>≈ ${dots(rc)}</b><span>alcance aprox.</span></div>`); }
-  if (d.rep && isNum(d.rep.v)) nums.push(`<div><b>${dots(d.rep.v)}</b><span>vistas del reposteo en ${esc(d.brand)}${isNum(d.rep.r) ? ` · alcance ${dots(d.rep.r)}` : ""}</span></div>`);
-  const how = d.auto ? (d.src === "story" ? (d.rp ? "La encontró la app: la marca reposteó su historia (Meta no avisó la mención)" : d.rep ? "La encontró la app: mencionó a la marca en su historia y la marca la reposteó" : "La encontró la app: mencionó a la marca en su historia") : d.tg ? "La encontró la app: etiquetó a la marca en la publicación" : d.dm ? (d.src === "dm" ? "La encontró la app: Instagram avisó que publicó algo arrobando a la marca (abrí su perfil para ver cuál)" : "La encontró la app: se la mandó a la marca por mensaje") : "La encontró la app: nombró a la marca en el texto") : `La marcó ${esc(iflWho(d.by))}${d.at ? " el " + dm(pyDate(d.at)) : ""}`;
+  if (d.rep && isNum(d.rep.v)) nums.push(`<div><b>${dots(d.rep.v)}</b><span>vistas del reposteo en ${esc(d.brand)}${isNum(d.rep.r) ? ` · alcance ${dots(d.rep.r)}` : ""}${d.rep.ts ? ` (${dm(pyDate(d.rep.ts))} ${stTime(d.rep.ts)} h)` : ""}</span></div>`);
+  const how = d.auto ? (d.src === "story" ? (d.src === "share" ? "La cargó la CM en “Historias que volvimos a subir” (Dashboard)" : d.rp ? "La encontró la app: la marca reposteó su historia (Meta no avisó la mención)" : d.rep ? "La encontró la app: mencionó a la marca en su historia y la marca la reposteó" : "La encontró la app: mencionó a la marca en su historia") : d.tg ? "La encontró la app: etiquetó a la marca en la publicación" : d.dm ? (d.src === "dm" ? "La encontró la app: Instagram avisó que publicó algo arrobando a la marca (abrí su perfil para ver cuál)" : "La encontró la app: se la mandó a la marca por mensaje") : "La encontró la app: nombró a la marca en el texto") : `La marcó ${esc(iflWho(d.by))}${d.at ? " el " + dm(pyDate(d.at)) : ""}`;
   const chk = (attr, on, can, t, sub) => `<button type="button" class="iflchk${on ? " on" : ""}" ${attr} aria-pressed="${on}" ${can ? "" : "disabled"}><span class="iflbox">${on ? icon("check") : ""}</span><span><b>${t}</b><small>${sub}</small></span></button>`;
   const checks = `<div class="iflchecks">${chk("data-iflup", true, iflCanMark(), "Subida", iflCanMark() ? (d.auto ? "Tocá para desmarcar si no cuenta" : "Tocá para desmarcar si te equivocaste") : "La marcan CM y Admin total")}${chk("data-iflver", !!d.ver, iflCanVer(), "Verificada", d.ver ? `Por ${esc(iflWho(d.ver.by))}${d.ver.at ? " el " + dm(pyDate(d.ver.at)) : ""}${iflCanVer() ? " · tocá para quitarla" : ""}` : iflCanVer() ? "Tocá para verificar" : "La verifica Admin total")}</div>`;
   return wrap(`${esc(IFL_KINDS[d.kind] || "Publicación")} con ${esc(d.brand || "la marca")}`, `<p class="isub">${where}</p>${checks}
@@ -22326,7 +22332,7 @@ function iflExcel(){
       [{ v:"Total", s:1 }, "", "", "", "", T.up, T.tot - T.up, T.tot ? Math.round(T.up / T.tot * 100) : 0, T.ver, R.reduce((a, r) => a + r.extra.length, 0), T.fol || "", T.likes, T.comments, T.views || "", R.reduce((a, r) => a + r.reach, 0) || "", "", ""]] },
     { name:"Publicaciones", rows:[H(["Fecha", "Influencer", "Casilla", "Qué subió", "Marca", "Red", "Link", "Me gusta", "Comentarios", "Vistas", "Alcance aprox.", "Interacción %", "Estado", "Cómo se cargó", "Verificó"]),
       ...P.map(({ r, s, d, rate }) => [d.date ? dm(d.date) + "/" + d.date.slice(0, 4) : "", r.x.name, s ? iflSlotLbl(s) : "Extra", IFL_KINDS[d.kind] || "", d.brand || "", IFL_NETS[d.net] || d.net || "", d.link || "", isNum(d.likes) ? d.likes : "", isNum(d.comments) ? d.comments : "", isNum(d.views) ? d.views : "", iflReach(d, r.fol) || "", pct(rate), iflStatus(d),
-        d.auto ? (d.src === "story" ? (d.rp ? "Automático (reposteo de la marca)" : "Automático (mención en historia)") : d.tg ? "Automático (etiqueta en la foto)" : d.dm ? "Automático (por mensaje)" : "Automático (Instagram)") : `A mano (${iflWho(d.by)})`, d.ver ? iflWho(d.ver.by) : ""]),
+        d.auto ? (d.src === "story" ? (d.src === "share" ? "Historias que volvimos a subir (CM)" : d.rp ? "Automático (reposteo de la marca)" : "Automático (mención en historia)") : d.tg ? "Automático (etiqueta en la foto)" : d.dm ? "Automático (por mensaje)" : "Automático (Instagram)") : `A mano (${iflWho(d.by)})`, d.ver ? iflWho(d.ver.by) : ""]),
       ...R.flatMap(r => r.slots.filter(s => !s.d).map(s => ["", r.x.name, iflSlotLbl(s), "", "", "", "", "", "", "", "", "", MONTH < CURRENT_MONTH ? "No se subió" : "Falta", "", ""]))] },
     { name:"Cómo leerlo", rows:[[{ v:"Cómo leer este informe", s:1 }], [{ v:"Interacción: de cada 100 seguidores de la cuenta, cuántos dieron me gusta o comentaron en esa publicación.", s:2 }],
       [{ v:"Me gusta y comentarios: los que muestra Instagram de la cuenta del influencer (los lee la app sola). El alcance de otras cuentas no se ve: las vistas son las que se cargaron de las capturas.", s:2 }],
